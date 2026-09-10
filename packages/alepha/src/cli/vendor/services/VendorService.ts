@@ -25,6 +25,36 @@ export interface VendorSyncResult {
 }
 
 /**
+ * Options for building vendored packages in place, after the consumer has
+ * installed them.
+ */
+export interface VendorBuildOptions {
+  root: string;
+  dir: string;
+  packages: string[];
+  /**
+   * The consumer's package manager, e.g. `yarn`. The build runs as
+   * `<pm> run build` with the package directory as the working directory,
+   * which every package manager spells the same way - unlike the
+   * `--workspace` / `--filter` flags, which none of them agree on.
+   */
+  packageManager: string;
+}
+
+/**
+ * Result of building vendored packages.
+ */
+export interface VendorBuildResult {
+  built: string[];
+  /**
+   * Packages with no `build` script. Not an error: a vendored package that
+   * ships no build is already loadable as whatever it is.
+   */
+  skipped: string[];
+  errors: string[];
+}
+
+/**
  * Options for diffing vendored packages against a remote repository.
  */
 export interface VendorDiffOptions {
@@ -258,6 +288,15 @@ export class VendorService {
         continue;
       }
 
+      // ⚠️ The baseline gets the same `publishConfig` transform the local
+      // copy was given after its build, or every synced package would report
+      // its own `package.json` as a local modification and abort the next
+      // sync. Comparing like with like: a REAL edit to `package.json` - a
+      // changed dependency, a patched script - still shows, because the
+      // transform touches only the keys `publishConfig` names. The clone is
+      // a throwaway temp directory, so mutating it costs nothing.
+      await this.applyPublishConfig(remotePkgDir);
+
       const result = await this.diffDirectories(localPkgDir, remotePkgDir);
       const pkgChanges =
         result.added.length + result.modified.length + result.removed.length;
@@ -275,18 +314,147 @@ export class VendorService {
   }
 
   /**
+   * Build each vendored package in place, then make it resolve to what it
+   * built.
+   *
+   * ## Why a vendored package has to be built at all
+   *
+   * `alepha vendor sync` copies the framework's **source**. Anything loading
+   * `alepha/*` through Vite is fine, because Vite transforms it; anything
+   * loading it OUTSIDE Vite gets raw TypeScript, and Node's loader cannot
+   * cope. Two failures, and the second has no flag behind it:
+   *
+   * - `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` on a parameter property, which
+   *   strip-only mode refuses because it is a declaration plus an assignment
+   *   rather than an annotation to erase. (A lint rule bans those in `src/`
+   *   now, which is the other half of #Q2150.)
+   * - `ERR_UNKNOWN_FILE_EXTENSION` on `.tsx`, which Node refuses outright:
+   *   JSX needs a transform, not an erasure. `alepha/react`'s barrel
+   *   re-exports fifteen `.tsx` files across seven sub-barrels, `AlephaProvider`
+   *   among them, so **any published package importing `alepha/react` is
+   *   unloadable in a project that vendors the framework.** `@alepha/lore` is
+   *   the first to do it and will not be the last.
+   *
+   * A published `alepha` never sees either, and the reason is `publishConfig`
+   * rather than `files`: the repository's own `exports` map points at
+   * `./src/**\/*.ts`, and `publishConfig.exports` overrides all 78 entries to
+   * `./dist/**\/*.js` at publish time. A vendored checkout is a git clone, so
+   * it gets the committed map and no `dist`. **It is the only shape of this
+   * package that resolves to TypeScript.**
+   *
+   * ## Why in the consumer rather than in the clone
+   *
+   * The clone has no `node_modules`, so building there means
+   * `install && build` on a whole monorepo per sync - minutes of network and
+   * CPU. The consumer, by contrast, declares `.vendor/alepha` and
+   * `.vendor/@alepha/*` as **workspaces**, so its own install has already
+   * placed every devDependency the build needs, `tsdown` included. This runs
+   * after that install and costs one build.
+   *
+   * ⚠️ **Order matters.** `packages/alepha`'s build GENERATES its own
+   * `exports` map, pointing at `src`, so the transform has to come after the
+   * build or the build undoes it.
+   */
+  async build(options: VendorBuildOptions): Promise<VendorBuildResult> {
+    const built: string[] = [];
+    const skipped: string[] = [];
+    const errors: string[] = [];
+
+    for (const pkg of options.packages) {
+      const pkgDir = this.fs.join(options.root, options.dir, pkg);
+      const manifest = await this.readManifest(pkgDir);
+
+      if (!manifest?.scripts?.build) {
+        skipped.push(pkg);
+        continue;
+      }
+
+      try {
+        this.log.debug(`Building vendored package: ${pkg}`);
+        await this.shell.run([options.packageManager, "run", "build"], {
+          root: pkgDir,
+        });
+        await this.applyPublishConfig(pkgDir);
+        built.push(pkg);
+      } catch (error) {
+        errors.push(
+          `Failed to build "${pkg}": ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    return { built, skipped, errors };
+  }
+
+  /**
+   * Fold a package's `publishConfig` into its manifest, so a vendored copy
+   * resolves the way a published one does.
+   *
+   * ⚠️ **`publishConfig` is kept, not consumed.** That makes the transform
+   * idempotent, which is what lets `diffFromClone` apply it to the baseline
+   * and get a byte-identical answer.
+   *
+   * Returns whether anything changed, so a caller can stay quiet about a
+   * package that declares no `publishConfig`.
+   */
+  protected async applyPublishConfig(pkgDir: string): Promise<boolean> {
+    const manifest = await this.readManifest(pkgDir);
+    const publishConfig = manifest?.publishConfig;
+
+    if (!manifest || !publishConfig || typeof publishConfig !== "object") {
+      return false;
+    }
+
+    const merged = { ...manifest, ...publishConfig };
+    const next = `${JSON.stringify(merged, null, 2)}\n`;
+    const current = `${JSON.stringify(manifest, null, 2)}\n`;
+
+    if (next === current) {
+      return false;
+    }
+
+    await this.fs.writeFile(this.fs.join(pkgDir, "package.json"), next);
+    return true;
+  }
+
+  /**
+   * A package's manifest, or `undefined` when there is none to read.
+   *
+   * Unreadable and unparseable are the same answer on purpose: both mean
+   * "there is nothing here to build or rewrite", and a vendor sync must not
+   * die on one malformed package it was asked to copy.
+   */
+  protected async readManifest(
+    pkgDir: string,
+  ): Promise<Record<string, any> | undefined> {
+    try {
+      const content = await this.fs.readFile(
+        this.fs.join(pkgDir, "package.json"),
+      );
+      return JSON.parse(content.toString());
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Remove test files and ignored directories from a synced package.
    */
   protected async removeIgnoredFiles(pkgDir: string): Promise<void> {
     const allFiles = await this.fs.ls(pkgDir, { recursive: true });
 
-    // Remove ignored files
+    // Remove ignored files.
+    //
+    // ⚠️ `tsdown.config.ts` is NOT among them, and used to be. A vendored
+    // package now builds itself in place (see `build()`), and
+    // `@alepha/ui`'s build script is a bare `tsdown` that reads exactly that
+    // file - stripping it left a package whose own `build` could not run.
+    // It stays in `isIgnored`, so it is still invisible to the diff.
     for (const file of allFiles) {
       if (
         file.endsWith(".spec.ts") ||
         file.endsWith(".spec.tsx") ||
-        file === "LICENSE" ||
-        file === "tsdown.config.ts"
+        file === "LICENSE"
       ) {
         await this.fs.rm(this.fs.join(pkgDir, file), { force: true });
       }

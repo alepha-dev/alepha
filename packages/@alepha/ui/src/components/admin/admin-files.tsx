@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
@@ -45,7 +47,7 @@ const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
 export const AdminFiles = () => {
   const client = useClient<FileController>();
   const statsClient = useClient<AdminFileStatsController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const toast = useToast();
   // Bumped after a successful upload to reload the bucket-stats query (which
   // lists it in its deps) and the table (via AlephaTable's `refreshSignal`
@@ -302,12 +304,10 @@ export const AdminFiles = () => {
             label: tr("admin.files.colUploaded", { default: "Uploaded" }),
             sortable: true,
             cell: (f) => (
-              <span
+              <TimeAgo
+                value={f.createdAt}
                 className="text-muted-foreground text-xs"
-                title={String(l(f.createdAt, { date: "lll" }))}
-              >
-                {String(l(f.createdAt, { date: "fromNow" }))}
-              </span>
+              />
             ),
           },
         }}

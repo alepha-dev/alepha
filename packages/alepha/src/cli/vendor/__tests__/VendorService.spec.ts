@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { Alepha } from "alepha";
 import {
   FileSystemProvider,
@@ -565,6 +567,356 @@ describe("VendorService", () => {
       });
 
       expect(fs.wasDeleted("/tmp/test-baseline")).toBe(true);
+    });
+  });
+  /**
+   * A vendored checkout is the ONE shape of the framework that resolves to
+   * TypeScript: the committed `exports` map points at `./src/**\/*.ts`, and
+   * `publishConfig.exports` - which overrides all 78 entries to `./dist` at
+   * publish time - never applies to a git clone. Anything loading it outside
+   * Vite therefore gets raw TypeScript, and `.tsx` Node refuses outright.
+   * That is #Q2150: a published package importing `alepha/react` cannot boot
+   * in a project that vendors the framework.
+   */
+  describe("build", () => {
+    const createBuildTestEnv = () => {
+      const alepha = Alepha.create()
+        .with({ provide: ShellProvider, use: MemoryShellProvider })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+
+      return {
+        service: alepha.inject(VendorService),
+        shell: alepha.inject(MemoryShellProvider),
+        fs: alepha.inject(MemoryFileSystemProvider),
+      };
+    };
+
+    const writeManifest = async (
+      fs: MemoryFileSystemProvider,
+      dir: string,
+      manifest: Record<string, unknown>,
+    ) => {
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        `${dir}/package.json`,
+        `${JSON.stringify(manifest, null, 2)}\n`,
+      );
+    };
+
+    const readManifest = async (
+      fs: MemoryFileSystemProvider,
+      dir: string,
+    ): Promise<any> =>
+      JSON.parse((await fs.readFile(`${dir}/package.json`)).toString());
+
+    const vendored = {
+      name: "alepha",
+      scripts: { build: "node scripts/build.ts" },
+      exports: { "./react": { import: "./src/react/index.ts" } },
+      publishConfig: {
+        exports: { "./react": { import: "./dist/react/index.js" } },
+      },
+    };
+
+    it("builds each package in its own directory", async ({ expect }) => {
+      const { service, shell, fs } = createBuildTestEnv();
+      await writeManifest(fs, "/project/.vendor/alepha", vendored);
+
+      const result = await service.build({
+        root: "/project",
+        dir: ".vendor",
+        packages: ["alepha"],
+        packageManager: "yarn",
+      });
+
+      expect(result.built).toEqual(["alepha"]);
+      // ⚠️ `run build` with a cwd, not `--workspace` or `--filter`: those are
+      // spelled differently by every package manager, and this one has to
+      // work under all of them.
+      expect(shell.wasCalled("yarn run build")).toBe(true);
+    });
+
+    it("skips a package that declares no build script", async ({ expect }) => {
+      const { service, shell, fs } = createBuildTestEnv();
+      await writeManifest(fs, "/project/.vendor/plain", { name: "plain" });
+
+      const result = await service.build({
+        root: "/project",
+        dir: ".vendor",
+        packages: ["plain"],
+        packageManager: "yarn",
+      });
+
+      expect(result.skipped).toEqual(["plain"]);
+      expect(result.built).toEqual([]);
+      expect(shell.wasCalled("yarn run build")).toBe(false);
+    });
+
+    it("points the exports map at dist once the build has run", async ({
+      expect,
+    }) => {
+      const { service, fs } = createBuildTestEnv();
+      await writeManifest(fs, "/project/.vendor/alepha", vendored);
+
+      await service.build({
+        root: "/project",
+        dir: ".vendor",
+        packages: ["alepha"],
+        packageManager: "yarn",
+      });
+
+      const manifest = await readManifest(fs, "/project/.vendor/alepha");
+      expect(manifest.exports["./react"].import).toBe("./dist/react/index.js");
+    });
+
+    /**
+     * ⚠️ Kept rather than consumed, and the idempotence is what
+     * `diffFromClone` leans on: it applies the same transform to the baseline
+     * before comparing, and a transform that removed its own input could not
+     * produce a matching answer twice.
+     */
+    it("keeps publishConfig, so applying it twice changes nothing", async ({
+      expect,
+    }) => {
+      const { service, fs } = createBuildTestEnv();
+      await writeManifest(fs, "/project/.vendor/alepha", vendored);
+
+      await service.build({
+        root: "/project",
+        dir: ".vendor",
+        packages: ["alepha"],
+        packageManager: "yarn",
+      });
+      const once = await readManifest(fs, "/project/.vendor/alepha");
+
+      await service.build({
+        root: "/project",
+        dir: ".vendor",
+        packages: ["alepha"],
+        packageManager: "yarn",
+      });
+      const twice = await readManifest(fs, "/project/.vendor/alepha");
+
+      expect(once.publishConfig).toEqual(vendored.publishConfig);
+      expect(twice).toEqual(once);
+    });
+
+    it("collects a failed build instead of aborting the rest", async ({
+      expect,
+    }) => {
+      const { service, shell, fs } = createBuildTestEnv();
+      shell.configure({ errors: { "yarn run build": "tsdown exploded" } });
+      await writeManifest(fs, "/project/.vendor/alepha", vendored);
+
+      const result = await service.build({
+        root: "/project",
+        dir: ".vendor",
+        packages: ["alepha"],
+        packageManager: "yarn",
+      });
+
+      expect(result.built).toEqual([]);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("alepha");
+    });
+  });
+
+  /**
+   * The two ways the build phase could have broken the commands around it.
+   */
+  describe("build, against the rest of the flow", () => {
+    it("leaves tsdown.config.ts in the synced copy", async ({ expect }) => {
+      // `@alepha/ui`'s build script is a bare `tsdown`, which reads exactly
+      // that file. Stripping it - which sync used to do - left a package
+      // whose own build could not run.
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      await fs.mkdir("/tmp/test-clone/packages/ui", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/ui/index.ts", "export {}");
+      await fs.writeFile(
+        "/tmp/test-clone/packages/ui/tsdown.config.ts",
+        "export default {}",
+      );
+      await fs.writeFile("/tmp/test-clone/packages/ui/thing.spec.ts", "test");
+
+      await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        dir: "packages",
+        packages: ["ui"],
+        force: true,
+      });
+
+      expect(await fs.exists("/project/packages/ui/tsdown.config.ts")).toBe(
+        true,
+      );
+      // The specs still go, so this is not a blanket "keep everything".
+      expect(await fs.exists("/project/packages/ui/thing.spec.ts")).toBe(false);
+    });
+
+    /**
+     * The regression the transform would otherwise cause: the local
+     * `package.json` no longer matches the remote's, so an ordinary
+     * `vendor sync` would abort on a modification the tool made itself.
+     */
+    it("does not report its own exports rewrite as a local modification", async ({
+      expect,
+    }) => {
+      class TestVendorService extends VendorService {
+        protected override async cloneAtCommit(): Promise<string> {
+          return "/tmp/test-baseline";
+        }
+      }
+
+      const alepha = Alepha.create()
+        .with({ provide: ShellProvider, use: MemoryShellProvider })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      const service = alepha.inject(TestVendorService);
+      const fs = alepha.inject(MemoryFileSystemProvider);
+
+      const manifest = {
+        name: "alepha",
+        scripts: { build: "node scripts/build.ts" },
+        exports: { "./react": { import: "./src/react/index.ts" } },
+        publishConfig: {
+          exports: { "./react": { import: "./dist/react/index.js" } },
+        },
+      };
+
+      await fs.mkdir("/project/packages", { recursive: true });
+      await fs.writeFile(
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "abc123" }),
+      );
+
+      // The baseline is what the remote committed: exports on src.
+      await fs.mkdir("/tmp/test-baseline/packages/alepha", { recursive: true });
+      await fs.writeFile(
+        "/tmp/test-baseline/packages/alepha/package.json",
+        `${JSON.stringify(manifest, null, 2)}\n`,
+      );
+
+      // The local copy is the same package after `build()` rewrote it.
+      await fs.mkdir("/project/packages/alepha", { recursive: true });
+      await fs.writeFile(
+        "/project/packages/alepha/package.json",
+        `${JSON.stringify(manifest, null, 2)}\n`,
+      );
+      await service.build({
+        root: "/project",
+        dir: "packages",
+        packages: ["alepha"],
+        packageManager: "yarn",
+      });
+
+      const result = await service.diff({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        dir: "packages",
+        packages: ["alepha"],
+      });
+
+      expect(result.totalChanges).toBe(0);
+    });
+
+    /**
+     * The end of the chain, against the REAL manifest rather than a fixture.
+     *
+     * This is what a non-Vite consumer actually does: Node reads the
+     * `exports` map and loads whatever it names. Today the vendored map
+     * names `./src/**\/*.ts` for all 78 entries, so Node hits
+     * `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` on a parameter property or, with
+     * no flag to save it, `ERR_UNKNOWN_FILE_EXTENSION` on a `.tsx`.
+     *
+     * ⚠️ An entry added to `exports` with no `publishConfig.exports`
+     * counterpart turns this red, which is the point: it would be an entry
+     * that stays on TypeScript after the transform and takes the whole
+     * class of failure back with it.
+     */
+    it("leaves no TypeScript in the real alepha exports map", async ({
+      expect,
+    }) => {
+      const manifest = JSON.parse(
+        readFileSync(
+          new URL("../../../../package.json", import.meta.url),
+          "utf8",
+        ),
+      );
+
+      // ⚠️ `.d.ts` is exempt: those sit on the `types` condition, which only
+      // the TypeScript compiler reads. Node never loads one, so a declaration
+      // file left on TypeScript is not this bug.
+      const loadable = (exports: unknown): string[] =>
+        (JSON.stringify(exports).match(/\.\/[^"]+\.[a-z]+/g) ?? []).filter(
+          (it) => !it.endsWith(".d.ts"),
+        );
+      const typescript = (paths: string[]) =>
+        paths.filter((it) => /\.tsx?$/.test(it));
+
+      const vendored = { ...manifest, ...manifest.publishConfig };
+
+      expect(loadable(vendored.exports).length).toBeGreaterThan(0);
+      expect(typescript(loadable(vendored.exports))).toEqual([]);
+      // And the untransformed map IS the failure, so this cannot pass by the
+      // transform having done nothing.
+      expect(typescript(loadable(manifest.exports)).length).toBeGreaterThan(0);
+    });
+
+    it("still reports a real edit to package.json", async ({ expect }) => {
+      // The other half: the transform must not become a blanket exemption
+      // for the one file that says what the package depends on.
+      class TestVendorService extends VendorService {
+        protected override async cloneAtCommit(): Promise<string> {
+          return "/tmp/test-baseline";
+        }
+      }
+
+      const alepha = Alepha.create()
+        .with({ provide: ShellProvider, use: MemoryShellProvider })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      const service = alepha.inject(TestVendorService);
+      const fs = alepha.inject(MemoryFileSystemProvider);
+
+      const base = {
+        name: "alepha",
+        dependencies: { zod: "1.0.0" },
+        publishConfig: {
+          exports: { "./react": { import: "./dist/react/index.js" } },
+        },
+      };
+
+      await fs.mkdir("/project/packages", { recursive: true });
+      await fs.writeFile(
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "abc123" }),
+      );
+      await fs.mkdir("/tmp/test-baseline/packages/alepha", { recursive: true });
+      await fs.writeFile(
+        "/tmp/test-baseline/packages/alepha/package.json",
+        `${JSON.stringify(base, null, 2)}\n`,
+      );
+
+      await fs.mkdir("/project/packages/alepha", { recursive: true });
+      await fs.writeFile(
+        "/project/packages/alepha/package.json",
+        `${JSON.stringify({ ...base, dependencies: { zod: "2.0.0" } }, null, 2)}\n`,
+      );
+
+      const result = await service.diff({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        dir: "packages",
+        packages: ["alepha"],
+      });
+
+      expect(result.totalChanges).toBeGreaterThan(0);
     });
   });
 });

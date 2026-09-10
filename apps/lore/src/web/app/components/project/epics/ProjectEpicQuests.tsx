@@ -1,4 +1,5 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
@@ -8,8 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Bot, Plus, X } from "lucide-react";
@@ -83,7 +83,6 @@ export interface ProjectEpicQuestsProps {
 const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
-  const dateFormatter = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
   const agentPrompt = useAgentPrompt();
   const promptSubject = useAgentPromptSubject();
@@ -265,9 +264,10 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   sortable: true,
                   className: "w-32",
                   cell: (quest) => (
-                    <span className="text-muted-foreground text-xs">
-                      {dateFormatter.of(quest.updatedAt).fromNow()}
-                    </span>
+                    <TimeAgo
+                      value={quest.updatedAt}
+                      className="text-muted-foreground text-xs"
+                    />
                   ),
                 },
               }}

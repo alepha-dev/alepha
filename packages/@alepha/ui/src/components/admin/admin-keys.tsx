@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { AdminKeysTokenDialog } from "@alepha/ui/components/admin/admin-keys-token-dialog";
@@ -25,7 +27,7 @@ export const AdminKeys = () => {
   const userClient = useClient<ApiKeyController>();
   const toast = useToast();
   const dialog = useDialog();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [refreshSignal, setRefreshSignal] = useState(0);
 
@@ -189,9 +191,10 @@ export const AdminKeys = () => {
             label: tr("admin.keys.colCreated", { default: "Created" }),
             sortable: true,
             cell: (k) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(k.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={k.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
         }}

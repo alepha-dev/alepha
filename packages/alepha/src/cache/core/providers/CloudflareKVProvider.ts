@@ -105,29 +105,52 @@ export class CloudflareKVProvider extends CacheProvider {
         return;
       }
 
-      const cloudflareEnv = this.alepha.get("cloudflare.env") as
-        | Record<string, unknown>
-        | undefined;
-      if (!cloudflareEnv) {
-        throw new AlephaError(
-          "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
-        );
-      }
-
-      const binding = cloudflareEnv[KV_DEFAULT_BINDING] as
-        | KVNamespace
-        | undefined;
-      if (!binding) {
-        throw new AlephaError(
-          `KV binding '${KV_DEFAULT_BINDING}' not found in Cloudflare Workers environment.`,
-        );
-      }
-
-      this.kv = binding;
-
-      this.log.info("Cloudflare KV cache OK");
+      this.connect();
     },
   });
+
+  /**
+   * Take the KV binding out of the Workers environment, or refuse loudly.
+   *
+   * ⚠️ **Separate from the hook above because the hook cannot see every
+   * caller.** Since `$cache` defaults to {@link CloudflareCacheProvider} on
+   * workerd, a primitive that ends up on KV reads `provider === delegator`,
+   * not `provider === this`, so the hook's own filter answers zero and skips
+   * an initialization that IS needed. The delegator calls this directly once
+   * it has chosen KV.
+   *
+   * Idempotent, and it stays a hard failure: a `$cache` that reached KV with
+   * no `KV_CACHE` binding is a deploy that provisioned the wrong resource,
+   * and finding that out on the first cache read rather than at boot is
+   * strictly worse.
+   */
+  public connect(): void {
+    if (this.kv) {
+      return;
+    }
+
+    const cloudflareEnv = this.alepha.get("cloudflare.env") as
+      | Record<string, unknown>
+      | undefined;
+    if (!cloudflareEnv) {
+      throw new AlephaError(
+        "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
+      );
+    }
+
+    const binding = cloudflareEnv[KV_DEFAULT_BINDING] as
+      | KVNamespace
+      | undefined;
+    if (!binding) {
+      throw new AlephaError(
+        `KV binding '${KV_DEFAULT_BINDING}' not found in Cloudflare Workers environment.`,
+      );
+    }
+
+    this.kv = binding;
+
+    this.log.info("Cloudflare KV cache OK");
+  }
 
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {
     if (!this.alepha.isStarted()) {

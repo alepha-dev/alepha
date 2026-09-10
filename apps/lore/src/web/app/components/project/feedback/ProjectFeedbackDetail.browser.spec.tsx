@@ -379,16 +379,33 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
   });
 
   /**
-   * Not on `rejected`: the prompt's first step accepts the item, and a
-   * rejected report is a decision already taken.
+   * ⚠️ **Present on `rejected`, carrying the loop alone** (feedback #P2176).
+   * This footer had no menu at all until the loop moved into it, and the
+   * distinction is the whole reason the entry list is computed once rather
+   * than per footer: `feedbackWork` opens by accepting the item, which a
+   * rejected report has already been decided against, while `feedbackLoop`
+   * is about the INBOX and has nothing to do with the report you happen to
+   * be looking at. Hiding the control here would make it appear and
+   * disappear on something unrelated to what it does.
    */
-  it("is absent on a rejected report", async ({ expect }) => {
+  it("offers the loop but not Work on it, on a rejected report", async ({
+    expect,
+  }) => {
     await mount({
       ...pendingFeedback,
       status: "rejected",
     } as FeedbackResource);
-    await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
-    expect(trigger()).toBeNull();
+    await waitFor(() => expect(trigger()).not.toBeNull());
+
+    fireEvent.click(trigger()!);
+    const items = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')];
+      if (found.length === 0) throw new Error("not open yet");
+      return found;
+    });
+    const labels = items.map((it) => it.textContent ?? "").join(" ");
+    expect(labels).toContain("Triage the inbox");
+    expect(labels).not.toContain("Work on it");
   });
 
   /**

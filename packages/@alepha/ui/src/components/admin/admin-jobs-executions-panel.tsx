@@ -10,6 +10,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Ban, Braces, CircleDot, RotateCcw } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
 import {
   JOB_EXECUTION_STATUSES,
   useJobStatusLabels,
@@ -165,12 +166,10 @@ export const AdminJobsExecutionsPanel = (
               e.status === "scheduled" && e.scheduledAt ? (
                 // A parked row: a retry waiting out its backoff, a delayed
                 // push, or a job rescheduled onto its next stage.
-                <span
+                <TimeAgo
+                  value={e.scheduledAt}
                   className="text-muted-foreground text-xs"
-                  title={String(l(e.scheduledAt, { date: "lll" }))}
-                >
-                  {String(l(e.scheduledAt, { date: "fromNow" }))}
-                </span>
+                />
               ) : (
                 <span className="text-muted-foreground">-</span>
               ),

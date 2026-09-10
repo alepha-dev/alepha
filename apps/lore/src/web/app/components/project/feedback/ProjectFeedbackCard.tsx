@@ -1,6 +1,5 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { cn } from "@alepha/ui/lib/utils";
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,
@@ -30,7 +29,6 @@ export interface ProjectFeedbackCardProps {
 const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
   const { feedback } = props;
   const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
 
   const reporterLabel =
     feedback.reporter?.name ??
@@ -63,9 +61,7 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
         </span>
         <span className="text-muted-foreground flex min-w-0 items-center gap-1 text-xs leading-tight">
           <Clock className="size-3 shrink-0" />
-          <span className="shrink-0">
-            {dt.of(feedback.createdAt).fromNow()}
-          </span>
+          <TimeAgo value={feedback.createdAt} className="shrink-0" />
           <span className="shrink-0 opacity-50">·</span>
           {/* Reporter name is user-provided — plain escaped text only. */}
           <span className="truncate">{reporterLabel}</span>

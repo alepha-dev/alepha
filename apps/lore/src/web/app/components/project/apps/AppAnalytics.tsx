@@ -69,6 +69,7 @@ const ROW_FILTER: Record<
   referrer: "referrer",
   browser: "browser",
   os: "os",
+  auth: "auth",
 };
 
 /**
@@ -501,6 +502,21 @@ const AppAnalytics = () => {
                 percentage: share(row.count),
               })),
             },
+            {
+              // A fourth segment rather than a stat tile of its own: it adds
+              // no component, and it inherits `onPick`, so clicking "Signed
+              // in" narrows the whole page to authenticated traffic. The
+              // leaderboard already renders a share per row, which is the
+              // number this was asked for.
+              dimension: "auth",
+              title: String(tr("insights.topAudience")),
+              rows: data.topAudience.map((row) => ({
+                value: row.auth,
+                label: audienceLabel(tr, row.auth),
+                count: row.count,
+                percentage: share(row.count),
+              })),
+            },
           )}
         />
 
@@ -538,6 +554,23 @@ const deviceLabel = (
   if (device === "tablet") return String(tr("insights.device.tablet"));
   if (device === "desktop") return String(tr("insights.device.desktop"));
   return device;
+};
+
+/**
+ * `user` and `anon` under names a reader recognises.
+ *
+ * Literal keys rather than a template, so the i18n audit sees them, and a
+ * fallback to the raw value for the same reason `deviceLabel` has one: a
+ * third value arriving from a newer proxy renders as itself rather than as
+ * an empty row.
+ */
+const audienceLabel = (
+  tr: ReturnType<typeof useI18n<I18n, "en">>["tr"],
+  auth: string,
+): string => {
+  if (auth === "user") return String(tr("insights.audience.user"));
+  if (auth === "anon") return String(tr("insights.audience.anon"));
+  return auth;
 };
 
 /**

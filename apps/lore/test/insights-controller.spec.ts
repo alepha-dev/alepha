@@ -78,6 +78,12 @@ class Probe {
       browser?: string;
       os?: string;
       /**
+       * `user` | `anon`, or `""` for a row written before the dimension
+       * existed. Optional and defaulted like the rest, so every fixture that
+       * predates it keeps reading as it did.
+       */
+      auth?: string;
+      /**
        * `human` | `bot`, or `""` to stand in for a row written before the
        * dimension existed. Optional and defaulted on the dataset, like
        * `referrer`, so every fixture that predates the traffic filter keeps
@@ -2270,6 +2276,56 @@ describe("InsightsController", () => {
       // the traffic the rest of the page describes.
       expect(res.data.topBrowsers).toEqual([{ browser: "other", count: 6 }]);
       expect(res.data.topSystems).toEqual([{ os: "other", count: 6 }]);
+    });
+
+    it("ranks the audience, and folds a legacy empty bucket into anon", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 8),
+        path: "/",
+        country: "FR",
+        auth: "user",
+        count: 3,
+      });
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/",
+        country: "FR",
+        auth: "anon",
+        count: 5,
+      });
+      // ⚠️ Written before the dimension existed. It folds into `anon`, NOT
+      // into `other` the way every other dimension's empty string does - and
+      // that difference is the point of this case. `other` means "we cannot
+      // name this"; here we can. A row from a proxy that stamped nothing is a
+      // visit with no session, and anonymous is the true reading. An `other`
+      // bucket beside `user` and `anon` would be a third audience that does
+      // not exist.
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        path: "/",
+        country: "FR",
+        auth: "",
+        count: 2,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "30d" } },
+        { user: owner },
+      );
+
+      expect(res.data.topAudience).toEqual([
+        { auth: "anon", count: 7 },
+        { auth: "user", count: 3 },
+      ]);
     });
 
     it("narrows the page by browser like any other dimension", async ({

@@ -169,10 +169,24 @@ export class BuildManifestTask extends BuildTask {
     }
 
     try {
-      // Only count $cache primitives without an explicit `provider`
-      // option — those fall back to KV on workerd. Explicit memory /
-      // Redis / Postgres providers opt out of KV provisioning.
+      // ⚠️ **A `$cache` with no explicit provider no longer implies KV.**
+      // Since #Q2151 the workerd default is `CloudflareCacheProvider`, which
+      // picks the database cache whenever the container has one, so an app
+      // that registered `alepha/cache/database` needs no KV namespace at all
+      // and used to get one provisioned that nothing ever wrote to.
+      //
+      // Asked by NAME for the same reason the provider itself does it: the
+      // CLI must not import `alepha/cache/database` to answer a question
+      // about somebody else's container. `inject` throws when nothing
+      // answers, which is the ordinary no-database-cache case.
+      let hasDatabaseCache = false;
+      try {
+        hasDatabaseCache = !!ctx.alepha.inject("DatabaseCacheProvider");
+      } catch {}
+
+      // Explicit memory / Redis / database providers opt out either way.
       hasKV =
+        !hasDatabaseCache &&
         ctx.alepha
           .primitives("cache")
           .filter(

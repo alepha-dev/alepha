@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import {
@@ -31,7 +33,7 @@ export interface AdminUserDetailSessionsTabProps {
 export const AdminUserDetailSessionsTab = (
   props: AdminUserDetailSessionsTabProps,
 ) => {
-  const { tr, l } = useI18n();
+  const { tr } = useI18n();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
@@ -83,9 +85,10 @@ export const AdminUserDetailSessionsTab = (
             }),
             sortable: true,
             cell: (s) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(s.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={s.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
         }}

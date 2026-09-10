@@ -63,8 +63,15 @@ export const useAgentPrompt = (): AgentPromptHandle => {
       const text = renderPromptTemplate(template, subject);
       try {
         await navigator.clipboard.writeText(text);
+        // ⚠️ A surface-scoped subject has no reference to name, so it gets
+        // its own line rather than `agentPrompts.copied` with the project
+        // title standing in - "Copied Alepha" reads as having copied the
+        // project. `in` rather than a `kind` check, so the toast follows the
+        // subject that was actually rendered.
         toaster.success(
-          tr("agentPrompts.copied", { args: [subject.reference] }),
+          "reference" in subject
+            ? tr("agentPrompts.copied", { args: [subject.reference] })
+            : tr("agentPrompts.copied.surface"),
         );
       } catch {
         toaster.error(tr("agentPrompts.copyError"));

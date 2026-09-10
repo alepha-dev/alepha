@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
@@ -50,7 +52,7 @@ export const AdminAudits = () => {
   const client = useClient<AdminAuditController>();
   const toast = useToast();
   const router = useRouter();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
 
   const [actions, setActions] = useState<AuditActionPair[]>([]);
 
@@ -266,9 +268,10 @@ export const AdminAudits = () => {
             label: tr("admin.audits.colWhen", { default: "When" }),
             sortable: true,
             cell: (a) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(a.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={a.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
           action: {

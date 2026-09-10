@@ -18,6 +18,7 @@ const LABEL: Record<
   | "insights.filter.device"
   | "insights.filter.browser"
   | "insights.filter.os"
+  | "insights.filter.auth"
 > = {
   path: "insights.filter.path",
   country: "insights.filter.country",
@@ -26,6 +27,7 @@ const LABEL: Record<
   device: "insights.filter.device",
   browser: "insights.filter.browser",
   os: "insights.filter.os",
+  auth: "insights.filter.auth",
 };
 
 export interface AppAnalyticsFilterChipsProps {

@@ -177,6 +177,21 @@ export const sigilForwarded = sigilEnvelope.extend({
    */
   traffic: z.string().max(16).optional(),
   /**
+   * `user` | `anon`: whether a session was on the request the app's own
+   * server handled.
+   *
+   * ⚠️ **Cookie sessions only.** The browser posts to the proxy with a plain
+   * same-origin `fetch`, which carries cookies and carries no `Authorization`
+   * header, so an app that keeps its token in memory reports every visit as
+   * `anon` - silently, and correctly, since there is no session on that
+   * request to read. A flat 0% signed in is that before it is a bug.
+   *
+   * Stamped by the proxy beside `device` and `traffic`, on the same argument:
+   * the app's own server already knows, and the browser must not be asked
+   * something it could lie about.
+   */
+  auth: z.string().max(8).optional(),
+  /**
    * The host this app is served on, from its own inbound `Host` header.
    *
    * The one field here that describes the SENDER rather than the visitor, and

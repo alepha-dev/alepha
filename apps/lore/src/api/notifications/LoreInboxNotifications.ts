@@ -236,6 +236,201 @@ export class LoreInboxNotifications {
   });
 
   /**
+   * Your report was accepted, or rejected.
+   *
+   * ⚠️ **ONE template with the outcome as a variable**, not two. They are the
+   * same event with a different word, and two templates would be two places
+   * to edit the next time this copy changes - and two rows in the preference
+   * table for one decision a reader makes once.
+   *
+   * The reporter is frequently NOT a project member: they submitted through
+   * `/:projectSlug/request` and may belong to nothing. That is the whole
+   * reason this exists - `inboxMention` reaches project members, and the
+   * person who wrote the report was outside every path Lore had.
+   */
+  public readonly inboxFeedbackTriaged = $notification({
+    name: "lore:feedback:triaged",
+    category: "feedback",
+    description:
+      "Sent to the person who submitted a feedback item when the project accepts or rejects it.",
+    schema: z.object({
+      /**
+       * `#P120`, already formatted. `P`, not `F` - see `feedbackReference`.
+       */
+      reference: z.text(),
+      feedbackTitle: z.text(),
+      projectTitle: z.text(),
+      /**
+       * `accepted` or `rejected`. A variable rather than two templates.
+       */
+      outcome: z.text(),
+      href: z.text(),
+      url: z.text(),
+      scope: z.text(),
+    }),
+    inbox: {
+      title: (it) =>
+        it.outcome === "accepted"
+          ? `${it.reference} was accepted`
+          : `${it.reference} was rejected`,
+      body: (it) => it.feedbackTitle,
+      href: (it) => it.href,
+      scope: (it) => it.scope,
+      scopeLabel: (it) => it.projectTitle,
+    },
+    email: {
+      subject: (it) =>
+        it.outcome === "accepted"
+          ? `${it.projectTitle} accepted ${it.reference}`
+          : `${it.projectTitle} rejected ${it.reference}`,
+      body: (it) => {
+        const projectTitle = this.html.escape(it.projectTitle);
+        const feedbackTitle = this.html.escape(it.feedbackTitle);
+        const reference = this.html.escape(it.reference);
+        const url = encodeURI(it.url);
+        const verdict =
+          it.outcome === "accepted"
+            ? "has been <strong>accepted</strong>"
+            : "has been <strong>rejected</strong>";
+        return `
+        <h1>${projectTitle} — ${reference}</h1>
+        <p>Your report <strong>${feedbackTitle}</strong> ${verdict}.</p>
+        <p>
+          <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            See your report
+          </a>
+        </p>
+      `;
+      },
+    },
+    translations: {
+      fr: {
+        inbox: {
+          title: (it) =>
+            it.outcome === "accepted"
+              ? `${it.reference} a été acceptée`
+              : `${it.reference} a été refusée`,
+          body: (it) => it.feedbackTitle,
+          href: (it) => it.href,
+          scope: (it) => it.scope,
+          scopeLabel: (it) => it.projectTitle,
+        },
+        email: {
+          subject: (it) =>
+            it.outcome === "accepted"
+              ? `${it.projectTitle} a accepté ${it.reference}`
+              : `${it.projectTitle} a refusé ${it.reference}`,
+          body: (it) => {
+            const projectTitle = this.html.escape(it.projectTitle);
+            const feedbackTitle = this.html.escape(it.feedbackTitle);
+            const reference = this.html.escape(it.reference);
+            const url = encodeURI(it.url);
+            const verdict =
+              it.outcome === "accepted"
+                ? "a été <strong>acceptée</strong>"
+                : "a été <strong>refusée</strong>";
+            return `
+        <h1>${projectTitle} — ${reference}</h1>
+        <p>Votre demande <strong>${feedbackTitle}</strong> ${verdict}.</p>
+        <p>
+          <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Voir votre demande
+          </a>
+        </p>
+      `;
+          },
+        },
+      },
+    },
+  });
+
+  /**
+   * Somebody answered the report you wrote.
+   *
+   * Separate from {@link inboxFeedbackTriaged} because they are different
+   * events and a reader may want one without the other - but they share the
+   * `feedback` category, because muting "news about my reports" is one
+   * decision. Distinct from `mentions`, which cannot express it: folding this
+   * in would mean muting your own name to stop hearing about your reports.
+   */
+  public readonly inboxFeedbackComment = $notification({
+    name: "lore:feedback:comment",
+    category: "feedback",
+    description:
+      "Sent to the person who submitted a feedback item when somebody else comments on it.",
+    schema: z.object({
+      reference: z.text(),
+      feedbackTitle: z.text(),
+      authorName: z.text(),
+      excerpt: z.text(),
+      projectTitle: z.text(),
+      href: z.text(),
+      url: z.text(),
+      scope: z.text(),
+    }),
+    inbox: {
+      title: (it) => `${it.authorName} answered ${it.reference}`,
+      body: (it) => it.feedbackTitle,
+      href: (it) => it.href,
+      scope: (it) => it.scope,
+      scopeLabel: (it) => it.projectTitle,
+    },
+    email: {
+      subject: (it) => `${it.authorName} answered ${it.reference}`,
+      body: (it) => {
+        const projectTitle = this.html.escape(it.projectTitle);
+        const authorName = this.html.escape(it.authorName);
+        const feedbackTitle = this.html.escape(it.feedbackTitle);
+        const reference = this.html.escape(it.reference);
+        const excerpt = this.html.escape(it.excerpt);
+        const url = encodeURI(it.url);
+        return `
+        <h1>${projectTitle} — ${reference}</h1>
+        <p><strong>${authorName}</strong> answered your report <strong>${feedbackTitle}</strong>.</p>
+        <blockquote style="margin: 16px 0; padding: 8px 16px; border-left: 3px solid #e5e7eb; color: #4b5563;">${excerpt}</blockquote>
+        <p>
+          <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Read the answer
+          </a>
+        </p>
+      `;
+      },
+    },
+    translations: {
+      fr: {
+        inbox: {
+          title: (it) => `${it.authorName} a répondu à ${it.reference}`,
+          body: (it) => it.feedbackTitle,
+          href: (it) => it.href,
+          scope: (it) => it.scope,
+          scopeLabel: (it) => it.projectTitle,
+        },
+        email: {
+          subject: (it) => `${it.authorName} a répondu à ${it.reference}`,
+          body: (it) => {
+            const projectTitle = this.html.escape(it.projectTitle);
+            const authorName = this.html.escape(it.authorName);
+            const feedbackTitle = this.html.escape(it.feedbackTitle);
+            const reference = this.html.escape(it.reference);
+            const excerpt = this.html.escape(it.excerpt);
+            const url = encodeURI(it.url);
+            return `
+        <h1>${projectTitle} — ${reference}</h1>
+        <p><strong>${authorName}</strong> a répondu à votre demande <strong>${feedbackTitle}</strong>.</p>
+        <blockquote style="margin: 16px 0; padding: 8px 16px; border-left: 3px solid #e5e7eb; color: #4b5563;">${excerpt}</blockquote>
+        <p>
+          <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Lire la réponse
+          </a>
+        </p>
+      `;
+          },
+        },
+      },
+    },
+  });
+
+  /**
    * The reference string for a quest, so a call site never builds `#Q402`
    * by hand. `formatReference` is the one implementation of that grammar.
    */

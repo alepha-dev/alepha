@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
@@ -447,9 +449,10 @@ export const AdminUsers = (props: AdminUsersProps) => {
             // sortable header still works once enabled.
             defaultHidden: true,
             cell: (u) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(u.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={u.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
           lastLoginAt: {

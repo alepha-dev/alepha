@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { agentPromptKindSchema } from "@/api/schemas/agentPromptKindSchema.ts";
+import {
+  type AgentPromptKind,
+  agentPromptKindSchema,
+} from "@/api/schemas/agentPromptKindSchema.ts";
 
 import { capabilityRegistry } from "../services/capabilityRegistry.ts";
 import { AGENT_PROMPT_DEFAULTS } from "./agentPromptDefaults.ts";
@@ -37,7 +40,7 @@ const namedTools = (template: string): string[] => {
   return [...new Set(found.map((it) => it.slice(1, -1)))];
 };
 
-describe("the four default prompts", () => {
+describe("the default prompts", () => {
   it("has a default for every kind, and no kind without one", () => {
     expect(Object.keys(AGENT_PROMPT_DEFAULTS).sort()).toEqual(
       [...agentPromptKindSchema.options].sort(),
@@ -95,14 +98,42 @@ describe("the four default prompts", () => {
   /**
    * A default is a template, so it has to carry placeholders: one that
    * lost them would copy the same text for every subject.
+   *
+   * ⚠️ **Which ones depends on the SHAPE.** Every kind is item-scoped except
+   * `feedbackLoop`, whose subject is the inbox and has no `number`,
+   * `reference` or `title` to name. Asserting the item four on all of them
+   * was right while there were four kinds and is the assertion that went red
+   * when the fifth arrived.
    */
+  const SURFACE_SCOPED: AgentPromptKind[] = ["feedbackLoop", "blightTriage"];
+
   it("carries the placeholders that name its subject", () => {
-    for (const template of Object.values(AGENT_PROMPT_DEFAULTS)) {
-      expect(template).toContain("{{reference}}");
-      expect(template).toContain("{{title}}");
-      expect(template).toContain("{{project}}");
-      expect(template).toContain("{{number}}");
-      expect(template).toContain("{{url}}");
+    for (const [kind, template] of Object.entries(AGENT_PROMPT_DEFAULTS)) {
+      // Both shapes name the project and point somewhere.
+      expect(template, kind).toContain("{{project}}");
+      expect(template, kind).toContain("{{url}}");
+
+      if (SURFACE_SCOPED.includes(kind as AgentPromptKind)) continue;
+
+      expect(template, kind).toContain("{{reference}}");
+      expect(template, kind).toContain("{{title}}");
+      expect(template, kind).toContain("{{number}}");
+    }
+  });
+
+  /**
+   * The other direction, and the one that matters more: a surface-scoped
+   * template naming an item placeholder does not fail, it renders
+   * `{{reference}}` verbatim into a pasted prompt. Nothing but this catches
+   * it.
+   */
+  it("never asks a surface-scoped prompt for an item it does not have", () => {
+    for (const kind of SURFACE_SCOPED) {
+      const template = AGENT_PROMPT_DEFAULTS[kind];
+      expect(template, kind).not.toContain("{{reference}}");
+      expect(template, kind).not.toContain("{{title}}");
+      expect(template, kind).not.toContain("{{number}}");
+      expect(template, kind).not.toContain("{{id}}");
     }
   });
 });

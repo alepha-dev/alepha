@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
@@ -297,9 +299,10 @@ export const AdminSessions = () => {
             label: tr("admin.sessions.colStarted", { default: "Started" }),
             sortable: true,
             cell: (s) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(s.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={s.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
           lastUsedAt: {
@@ -316,9 +319,10 @@ export const AdminSessions = () => {
           expiresAt: {
             label: tr("admin.sessions.colExpires", { default: "Expires" }),
             cell: (s) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(s.expiresAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={s.expiresAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
         }}
