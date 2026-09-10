@@ -894,6 +894,239 @@ describe("$job — cron lock (multi-instance)", () => {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * A cron handler that holds its first run open until `release()`, so a test
+ * can land a second run while the first is still in flight. Every later run
+ * returns at once: one that slips past the guard shows up in `started`
+ * instead of hanging the test on the gate.
+ */
+const heldFirstRun = () => {
+  let open!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const runs = { started: 0 };
+  return {
+    runs,
+    release: () => open(),
+    handler: async () => {
+      runs.started++;
+      if (runs.started === 1) await gate;
+    },
+  };
+};
+
+/**
+ * The scheduled tick exactly as the scheduler fires it: the cron's own
+ * handler, called with the instant it was scheduled for.
+ */
+const scheduledTick = (container: Alepha, jobName: string, iso: string) =>
+  container
+    .inject(CronProvider)
+    .getCronJobs()
+    .find((job) => job.name === jobName)!
+    .handler({ now: container.inject(DateTimeProvider).of(iso) });
+
+describe("$job - cron overlap (same process)", () => {
+  it("a manual trigger during a scheduled tick returns without running", async ({
+    expect,
+  }) => {
+    const alepha = makeAppDirect();
+    const held = heldFirstRun();
+    class App {
+      tick = $job({ cron: "0 0 * * *", handler: held.handler });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const tick = scheduledTick(alepha, "App.tick", "2026-01-01T00:00:00.000Z");
+    try {
+      await waitFor(
+        () => held.runs.started,
+        (n) => n === 1,
+        { label: "the tick is running" },
+      );
+
+      // The admin "run now" that used to start a second purge over the same
+      // rows, whose loser then failed on rows the winner had deleted.
+      await app.tick.trigger();
+      expect(held.runs.started).toBe(1);
+    } finally {
+      held.release();
+      await tick;
+    }
+
+    // Skipped, not queued: the tick finishing does not run it late...
+    expect(held.runs.started).toBe(1);
+    // ...and the guard leaves with the tick, so the next trigger runs.
+    await app.tick.trigger();
+    expect(held.runs.started).toBe(2);
+  });
+
+  it("a scheduled tick during a manual trigger stands down, and the next instant runs", async ({
+    expect,
+  }) => {
+    const alepha = makeAppDirect();
+    const held = heldFirstRun();
+    class App {
+      tick = $job({ cron: "0 0 * * *", handler: held.handler });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const manual = app.tick.trigger();
+    try {
+      await waitFor(
+        () => held.runs.started,
+        (n) => n === 1,
+        { label: "the trigger is running" },
+      );
+      await scheduledTick(alepha, "App.tick", "2026-01-01T00:00:00.000Z");
+      expect(held.runs.started).toBe(1);
+    } finally {
+      held.release();
+      await manual;
+    }
+
+    // The instant it stood down from stays claimed, as it would had another
+    // replica held the lock, but that lease is per instant: the next one runs.
+    await scheduledTick(alepha, "App.tick", "2026-01-02T00:00:00.000Z");
+    expect(held.runs.started).toBe(2);
+  });
+
+  it("a skipped trigger leaves the tick's lock in place for the other replicas", async ({
+    expect,
+  }) => {
+    for (const k of Object.keys(sharedLockStore)) delete sharedLockStore[k];
+
+    const held = heldFirstRun();
+    class App {
+      tick = $job({ cron: "0 0 * * *", handler: held.handler });
+    }
+    const make = () =>
+      Alepha.create()
+        .with({ provide: LockProvider, use: SharedMemoryLockProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
+    const a = make();
+    const b = make();
+    a.inject(App);
+    b.inject(App);
+    await a.start();
+    await b.start();
+
+    const tick = scheduledTick(a, "App.tick", "2026-01-01T00:00:00.000Z");
+    try {
+      await waitFor(
+        () => held.runs.started,
+        (n) => n === 1,
+        { label: "the tick is running on a" },
+      );
+      // Stands down on `a`. A skip that went out through the release path
+      // would delete the lock the tick still holds...
+      await a.inject(App).tick.trigger();
+      // ...and `b` would find it free and run a second copy.
+      await b.inject(App).tick.trigger();
+      expect(held.runs.started).toBe(1);
+    } finally {
+      held.release();
+      await tick;
+    }
+  });
+
+  it("keeps the guard until the lock release lands, so no run starts on a lock about to go", async ({
+    expect,
+  }) => {
+    let releaseStarted = false;
+    let holdNextRelease = false;
+    let letReleaseLand!: () => void;
+    const releaseHeld = new Promise<void>((resolve) => {
+      letReleaseLand = resolve;
+    });
+    /**
+     * Holds the first release it sees open: the window between a finished run
+     * and its lock actually being gone, which a real store makes a network
+     * round-trip long. `delIfOwner` because that is how `releaseCronLock`
+     * lets go, and the owner check does not close this window: two runs in
+     * one process share a holder id.
+     */
+    class HeldReleaseLockProvider extends MemoryLockProvider {
+      public override async delIfOwner(
+        key: string,
+        ownerId: string,
+      ): Promise<boolean> {
+        if (holdNextRelease) {
+          holdNextRelease = false;
+          releaseStarted = true;
+          await releaseHeld;
+        }
+        return super.delIfOwner(key, ownerId);
+      }
+    }
+
+    let started = 0;
+    class App {
+      tick = $job({
+        cron: "0 0 * * *",
+        handler: async () => {
+          started++;
+        },
+      });
+    }
+    const alepha = Alepha.create()
+      .with({ provide: LockProvider, use: HeldReleaseLockProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    holdNextRelease = true;
+    const first = app.tick.trigger();
+    try {
+      await waitFor(
+        () => releaseStarted,
+        (v) => v,
+        { label: "the first run is releasing its lock" },
+      );
+      // Let in now, this run would "acquire" the lock the first still holds
+      // (same process, same holder id) and then lose it to that release.
+      await app.tick.trigger();
+      expect(started).toBe(1);
+    } finally {
+      letReleaseLand();
+      await first;
+    }
+  });
+
+  it("holds with lock: false, which opts out of the replicas, not of overlapping itself", async ({
+    expect,
+  }) => {
+    const alepha = makeAppDirect();
+    const held = heldFirstRun();
+    class App {
+      tick = $job({ cron: "0 0 * * *", lock: false, handler: held.handler });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const tick = scheduledTick(alepha, "App.tick", "2026-01-01T00:00:00.000Z");
+    try {
+      await waitFor(
+        () => held.runs.started,
+        (n) => n === 1,
+        { label: "the tick is running" },
+      );
+      await app.tick.trigger();
+      expect(held.runs.started).toBe(1);
+    } finally {
+      held.release();
+      await tick;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("$job — retry semantics", () => {
   it("retries: 2 runs the handler 3 times before the row is terminal", async ({
     expect,

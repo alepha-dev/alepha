@@ -493,7 +493,12 @@ is what makes "once per tick" hold for a job with `retry`, where the tick only
 writes an outbox row and is over in a millisecond.
 
 A manual `trigger()` is not a scheduled instant, so it is never suppressed by
-one; it still takes the per-job lock, and so cannot overlap a running tick.
+one. It still never overlaps a run of the same job already in progress, whether
+on this replica or, through the per-job lock, on another: it returns without
+running instead. It resolves either way, so a trigger from the admin that lands
+on a tick is a no-op, not a second run. With `retry`, the run it cannot overlap
+is the tick writing its outbox row; the handler runs afterwards from the
+outbox, outside that guard.
 
 `lock` has no effect on queue-mode and direct-mode jobs. Those serialize through
 the outbox `claim()` UPDATE-guard instead, which is always on.
