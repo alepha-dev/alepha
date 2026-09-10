@@ -91,13 +91,22 @@ encrypted before they are stored, and **no screen and no endpoint ever shows one
 again** - not to a member, not to you. Changing a variable means setting it
 again.
 
-Two families of name are refused, and the refusal says so:
+Three families of name are refused, and the refusal says so:
 
 - `DATABASE_URL`, `R2_BUCKET_NAME` and the `CLOUDFLARE_*` names. The deploy
   creates those resources and derives these from the ids it gets back, so a
   value stored here would be overwritten - or worse, would win, and point a
   fresh deploy at somebody else's database.
 - Framework knobs the platform sets itself, like `LOG_LEVEL`.
+- On a copy that deploys to a **Bay** estate, the names Bay writes into every
+  instance itself: `APP_SECRET`, `APP_NAME`, `NODE_ENV`, `DATABASE_URL`,
+  `DATA_DIR`, `STORAGE_PATH`, `SERVER_HOST`, `SERVER_PORT` and the `S3_*`
+  names. A value stored under one would never reach the app.
+
+A copy moved onto a Bay estate keeps the variables it already had, including
+the `APP_SECRET` and `APP_NAME` a first Cloudflare deploy gave it. Bay's names
+among them stay listed here and are simply not sent to the machine, so moving
+the copy back finds them where they were.
 
 ### Three you do not have to set
 

@@ -271,6 +271,59 @@ describe("a deployed copy's environment", () => {
     });
   });
 
+  describe("the names Bay writes itself", () => {
+    /**
+     * Points the copy at a Bay estate lent to its project.
+     */
+    const onBay = async (w: Awaited<ReturnType<typeof world>>) => {
+      const rows = alepha.inject(TestRows);
+      const estate = await rows.estates.create({
+        ownerUserId: w.user.id,
+        slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
+        type: "bay",
+        deployAllowed: true,
+      } as never);
+      await rows.grants.create({
+        estateId: estate.id,
+        projectId: w.project.id,
+      } as never);
+      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+    };
+
+    it.each(["APP_SECRET", "APP_NAME", "S3_BUCKET_NAME", "data_dir"])(
+      "refuses %s on a copy that deploys to a Bay estate, naming why",
+      async (key) => {
+        // Bay writes these into every instance itself and the secret pull
+        // leaves them out, so a stored value would sit on the tab and never
+        // reach the app. Refused while the operator can still read why.
+        const w = await world();
+        await onBay(w);
+
+        await expect(set(w, key, "a-value-long-enough")).rejects.toThrow(
+          /set by Bay, not here/,
+        );
+        expect(await list(w)).toEqual({ items: [] });
+      },
+    );
+
+    it("still takes APP_SECRET and APP_NAME on a copy with no Bay estate", async ({
+      expect,
+    }) => {
+      // ⚠️ Deliberately settable there: a copy replacing a live deployment has
+      // to keep the APP_SECRET its sessions were signed with, and a first
+      // Cloudflare deploy honours an operator's APP_NAME over its own.
+      const w = await world();
+
+      await set(w, "APP_SECRET", "a-value-long-enough");
+      await set(w, "APP_NAME", "acme-my-app");
+
+      expect((await list(w)).items.map((it) => it.key)).toEqual([
+        "APP_NAME",
+        "APP_SECRET",
+      ]);
+    });
+  });
+
   describe("opening the set for a deploy", () => {
     it("hands back every value, and is the only thing that does", async ({
       expect,

@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
+import { BAY_OWNED_SECRET_KEYS } from "../secretKeys.ts";
 
 /**
  * Runs a task's handler straight through.
@@ -1434,7 +1435,11 @@ describe("BayAdapter — the Bay-owned key list", () => {
       .sort();
 
     expect(goKeys.length).toBeGreaterThan(0);
-    expect([...BayAdapter.BAY_OWNED_KEYS].sort()).toEqual(goKeys);
+    expect([...BAY_OWNED_SECRET_KEYS].sort()).toEqual(goKeys);
+    // One set with two names, never two copies: Lore reads the exported one
+    // and the adapter filters with its own, and a second literal here would
+    // let either drift with only the other guarded.
+    expect(BayAdapter.BAY_OWNED_KEYS).toBe(BAY_OWNED_SECRET_KEYS);
   });
 });
 

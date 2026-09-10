@@ -278,6 +278,12 @@ name: the deploy provisions those resources and derives the values from the ids
 it gets back, so a value stored under one of them would be overwritten, or would
 win and point a fresh deploy at somebody else's database.
 
+A Bay machine pulls the set when it executes the deploy, and never receives the
+names Bay writes into every instance itself (`APP_SECRET`, `APP_NAME`,
+`DATABASE_URL`, the `S3_*` family and the rest of `BAY_OWNED_SECRET_KEYS`):
+Bay refuses a set holding one, and fails the whole deploy. For a copy on a Bay
+estate those names are refused on the way in as well.
+
 Two more are filled in when the copy has none, and an explicit value wins:
 `APP_SECRET`, minted on the first deploy that finds none, and `PUBLIC_URL`,
 derived from the copy's domain the same way `alepha platform up` derives it.
