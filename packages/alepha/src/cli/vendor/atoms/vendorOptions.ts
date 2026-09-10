@@ -41,6 +41,19 @@ export const vendorOptions = $atom({
        * @example ["alepha", "@alepha/payments-stripe"]
        */
       packages: z.array(z.text()),
+
+      /**
+       * Build each synced package and point its manifest at `dist` (its
+       * `publishConfig`), so Node can load it outside Vite.
+       *
+       * Turn it off when the project loads every vendored package through
+       * Vite as source and no published package imports the framework: the
+       * committed manifests then keep resolving to `src`, and a fresh clone
+       * runs without building anything first.
+       *
+       * @default true
+       */
+      build: z.boolean().optional(),
     })
     .optional(),
   serverOnly: true,

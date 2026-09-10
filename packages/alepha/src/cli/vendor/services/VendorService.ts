@@ -13,6 +13,14 @@ export interface VendorSyncOptions {
   dir: string;
   packages: string[];
   force?: boolean;
+  /**
+   * Whether synced packages get built and their manifests pointed at `dist`
+   * (see {@link VendorService.build}). When `false` the local manifests stay
+   * as the remote committed them, so the baseline is compared untransformed.
+   *
+   * @default true
+   */
+  build?: boolean;
 }
 
 /**
@@ -63,6 +71,14 @@ export interface VendorDiffOptions {
   branch: string;
   dir: string;
   packages: string[];
+  /**
+   * Whether synced packages get built and their manifests pointed at `dist`
+   * (see {@link VendorService.build}). When `false` the local manifests stay
+   * as the remote committed them, so the baseline is compared untransformed.
+   *
+   * @default true
+   */
+  build?: boolean;
 }
 
 /**
@@ -158,6 +174,7 @@ export class VendorService {
             baselineDir,
             options.dir,
             options.packages,
+            options.build ?? true,
           );
 
           if (diffResult.totalChanges > 0) {
@@ -230,6 +247,7 @@ export class VendorService {
         tmpDir,
         options.dir,
         options.packages,
+        options.build ?? true,
       );
     } finally {
       if (tmpDir) {
@@ -246,6 +264,7 @@ export class VendorService {
     tmpDir: string,
     dir: string,
     packages: string[],
+    build = true,
   ): Promise<VendorDiffResult> {
     const results: VendorPackageDiff[] = [];
     let totalChanges = 0;
@@ -294,8 +313,12 @@ export class VendorService {
       // sync. Comparing like with like: a REAL edit to `package.json` - a
       // changed dependency, a patched script - still shows, because the
       // transform touches only the keys `publishConfig` names. The clone is
-      // a throwaway temp directory, so mutating it costs nothing.
-      await this.applyPublishConfig(remotePkgDir);
+      // a throwaway temp directory, so mutating it costs nothing. A project
+      // that syncs with `build: false` never transformed its copy, so its
+      // baseline is compared as committed.
+      if (build) {
+        await this.applyPublishConfig(remotePkgDir);
+      }
 
       const result = await this.diffDirectories(localPkgDir, remotePkgDir);
       const pkgChanges =

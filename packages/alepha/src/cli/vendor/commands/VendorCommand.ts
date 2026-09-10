@@ -39,6 +39,7 @@ export class VendorCommand {
       branch: this.options.branch ?? "main",
       dir: this.options.dir ?? ".vendor",
       packages: this.options.packages,
+      build: this.options.build ?? true,
     };
   }
 
@@ -81,6 +82,7 @@ export class VendorCommand {
             dir: opts.dir,
             packages: opts.packages,
             force: flags.force,
+            build: opts.build,
           });
         },
       });
@@ -119,18 +121,22 @@ export class VendorCommand {
         // anything that loads it outside Vite, and `.tsx` cannot be loaded by
         // Node at all: any published package importing `alepha/react` is
         // unbootable in a project that vendors the framework (#Q2150). See
-        // `VendorService.build`.
-        await run({
-          name: "Building vendored packages",
-          handler: async () => {
-            buildResult = await this.vendorService.build({
-              root,
-              dir: opts.dir,
-              packages: result.synced,
-              packageManager: pmName,
-            });
-          },
-        });
+        // `VendorService.build`. A project that opts out with `build: false`
+        // loads every vendored package through Vite and keeps the source
+        // manifests the remote committed.
+        if (opts.build) {
+          await run({
+            name: "Building vendored packages",
+            handler: async () => {
+              buildResult = await this.vendorService.build({
+                root,
+                dir: opts.dir,
+                packages: result.synced,
+                packageManager: pmName,
+              });
+            },
+          });
+        }
       }
 
       run.end();
@@ -173,6 +179,7 @@ export class VendorCommand {
             branch: opts.branch,
             dir: opts.dir,
             packages: opts.packages,
+            build: opts.build,
           });
         },
       });
