@@ -6,8 +6,10 @@ import { ServerStaticProvider } from "./providers/ServerStaticProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./interfaces/StaticFileSource.ts";
 export * from "./primitives/$serve.ts";
 export * from "./providers/ServerStaticProvider.ts";
+export * from "./services/DiskStaticFileSource.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
