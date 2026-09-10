@@ -20,6 +20,24 @@ import { gzip, tar } from "./fixtures/artifactTarball.ts";
  * `DATABASE_URL` is absent - which `alepha/orm` answers by binding
  * `NodeSqliteProvider` and resolving `":memory:"`, saved from silence only by
  * `await import("node:sqlite")` failing on workerd. Loud, but by one step.
+ *
+ * ⚠️ **A replay is not checked here, and cannot be.** A retried or replayed
+ * job execution runs the whole deploy again, so every step has to be safe to
+ * repeat - but the fakes below replace the provisioning client and the
+ * deployer whole, so no find-before-create, asset dedup or `d1_migrations`
+ * guard ever runs under them. A replay driven through these fakes never
+ * exercises what makes a replay safe. It is checked in two places instead:
+ *
+ * - `packages/alepha/src/cli/platform-lib/__tests__/deployIdempotence.spec.ts`
+ *   runs one Worker deploy twice through the real clients, against a fake
+ *   account behind `fetch` that refuses a duplicate the way Cloudflare does.
+ * - `deployments.spec.ts`, beside this file, holds the half that is Lore's
+ *   own: "does not re-run a deploy that already finished".
+ *
+ * One path neither covers: this runner hands its assets to the adapter through
+ * `useAssets`, streamed out of the tarball, while the platform-lib spec lets
+ * the adapter read them off a filesystem. Nothing checks that a replayed Lore
+ * deploy uploads no asset a second time.
  */
 describe("deploying an artifact from inside the Worker", () => {
   let alepha: Alepha;
@@ -225,81 +243,5 @@ describe("deploying an artifact from inside the Worker", () => {
     await runner.run(request() as never);
 
     expect(calls).toContain("deploy:acme-my-app-b14-preview");
-  });
-  /**
-   * ⚠️ A retried or replayed job execution REPLAYS the whole run, so every
-   * step has to be safe to repeat. It already is, and this says so rather than
-   * leaving it assumed: provisioning checks before it creates, the script
-   * upload is a PUT, and migrations are guarded by `d1_migrations`.
-   */
-  describe("replaying a run", () => {
-    it("provisions the same resources without creating a second one", async ({
-      expect,
-    }) => {
-      const created = new Set<string>();
-      const calls: string[] = [];
-      const bytes = await packed({ hasDatabase: true, hasBucket: true });
-
-      const provision = {
-        // Modelled on the real client: `ensure*` LISTS first and creates only
-        // what is missing, so a second run finds what the first made.
-        ensureD1: async (name: string) => {
-          calls.push(`d1:${name}`);
-          if (!created.has(`d1:${name}`)) created.add(`d1:${name}`);
-          return { uuid: "db-uuid", name };
-        },
-        ensureR2: async (name: string) => {
-          calls.push(`r2:${name}`);
-          created.add(`r2:${name}`);
-        },
-        ensureKV: async () => ({ id: "kv", title: "kv" }),
-        ensureQueue: async (name: string) => ({
-          queue_id: "q",
-          queue_name: name,
-        }),
-        resolveD1Id: async () => "db-uuid",
-        d1Query: async () => [{ results: [{ name: "0001_init" }] }],
-        d1Import: async () => {
-          calls.push("migrate");
-        },
-      };
-      const deploy = {
-        deploy: async (plan: { scriptName: string }) => {
-          calls.push(`deploy:${plan.scriptName}`);
-          return { versionId: "v1" };
-        },
-        getSubdomain: async () => "acme",
-      };
-
-      const runner = alepha.inject(DeployRunner);
-      const container = (
-        runner as unknown as { container: () => Alepha }
-      ).container.bind(runner);
-      Object.assign(runner as unknown as Record<string, unknown>, {
-        artifactBytes: async () => bytes,
-        container: () => {
-          const child = container();
-          Object.assign(
-            child.inject(WorkerCloudflareAdapter) as unknown as Record<
-              string,
-              unknown
-            >,
-            { provisioner: () => provision, deployer: () => deploy },
-          );
-          return child;
-        },
-      });
-
-      await runner.run(request() as never);
-      await runner.run(request() as never);
-
-      // Two runs, two of each call, and one of each resource.
-      expect(created.size).toBe(2);
-      expect(calls.filter((it) => it.startsWith("deploy:"))).toHaveLength(2);
-      // ⚠️ And the migration did NOT run a second time: `d1_migrations`
-      // already names it, which is what makes a replay safe rather than a
-      // second table rebuild against live data.
-      expect(calls.filter((it) => it === "migrate")).toHaveLength(0);
-    });
   });
 });
