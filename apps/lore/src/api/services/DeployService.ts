@@ -174,26 +174,32 @@ export class DeployService {
   protected running = 0;
 
   /**
-   * Run one queued deployment to a terminal state.
+   * Run one queued deployment to a terminal state, or answer that this isolate
+   * has no slot for it.
    *
-   * ⚠️ **Every exit is terminal.** A row left `running` is a deploy the UI
-   * follows forever and the operator cannot retry, so the catch is not
-   * optional: it is the only thing that guarantees the row moves.
+   * ⚠️ **Every exit that starts is terminal.** A row left `running` is a
+   * deploy the UI follows forever and the operator cannot retry, so the catch
+   * is not optional: it is the only thing that guarantees the row moves.
+   *
+   * @returns `"busy"` when the isolate is already running its cap, having
+   * touched nothing: no gate, no secret opened, no write. The row is still
+   * `queued` and waiting is the caller's to arrange. `"done"` once the row is
+   * terminal.
    */
-  public async run(row: Deployment): Promise<void> {
+  public async run(row: Deployment): Promise<"done" | "busy"> {
     const cap = await this.limits.concurrency();
     if (this.running >= cap) {
-      // ⚠️ Refused, not silently interleaved. A deploy holds an unpacked
+      // ⚠️ Turned away, not silently interleaved. A deploy holds an unpacked
       // artifact and its modules in memory against a ceiling shared with
       // everything else Lore is doing, so letting a third one in is an OOM
       // that takes the other two with it.
       //
-      // The job's own retry is what makes this a queue rather than a loss: the
-      // execution fails, is rescheduled with backoff, and lands when a slot is
-      // free. The row stays `queued`, which is what the UI shows.
-      throw new BadRequestError(
-        `This Lore instance is already running ${cap} deploys. This one will start when a slot frees up.`,
-      );
+      // ⚠️ Answered, NOT thrown. `lore.deploy.run` declares no retry, so a
+      // throw here was the end of the execution: the row sat `queued` until
+      // the sweep failed it as "stopped reporting". `DeployJobs.runDeploy`
+      // reschedules on this answer instead, which is what makes the cap a
+      // queue rather than a loss.
+      return "busy";
     }
 
     this.running++;
@@ -304,6 +310,7 @@ export class DeployService {
     } finally {
       this.running--;
     }
+    return "done";
   }
 
   /**

@@ -83,6 +83,15 @@ export class DeployJobs {
    */
   public static readonly SWEEP_GRACE_MS = 5 * 60 * 1000;
 
+  /**
+   * How long a deploy that found no free slot waits before it looks again.
+   *
+   * A redeploy takes 5 to 15 seconds, so ten is about one run's worth: short
+   * enough that a burst drains at the pace the slots free up, long enough
+   * that a wait of the whole deploy timeout is sixty looks, not thousands.
+   */
+  public static readonly SLOT_RETRY_SECONDS = 10;
+
   public readonly runDeploy = $job({
     name: "lore.deploy.run",
     schema: z.object({
@@ -95,7 +104,7 @@ export class DeployJobs {
        */
       stage: z.enum(["deploy"]).default("deploy"),
     }),
-    handler: async ({ payload }) => {
+    handler: async ({ payload, reschedule }) => {
       const row = await this.rows.findById(payload.deploymentId);
       if (!row) {
         // The row went with its instance or its project. Nothing to deploy and
@@ -117,7 +126,38 @@ export class DeployJobs {
         return;
       }
 
-      await this.deploys.run(row);
+      if ((await this.deploys.run(row)) === "done") {
+        return;
+      }
+
+      // ⚠️ No slot in this isolate. Waiting is not a failure, so this is a
+      // `reschedule`, never a `retry` policy: a reschedule resets `attempt`
+      // and leaves the row `queued`, where a retry would spend a budget meant
+      // for real failures and could run out halfway through a burst. And it
+      // RETURNS after the call rather than throwing: `reschedule` only
+      // records an intent, and a handler that throws takes the retry path on
+      // the old payload and drops it.
+      //
+      // The next look may well land in another isolate with a slot free,
+      // which is fine: the cap bounds one isolate's memory, not the account.
+      const budgetMs = await this.limits.timeoutMs();
+      const waitedMs =
+        this.dateTime.nowMillis() - new Date(row.createdAt).getTime();
+      if (waitedMs >= budgetMs) {
+        // Bounded by the same timeout a run gets, so a wedged pair of deploys
+        // cannot leave a third one looking for a slot forever.
+        await this.registry.failed(
+          row.id,
+          `This deploy waited ${Math.round(waitedMs / 60_000)} minutes for a free slot and never got one: this Lore instance was already running as many deploys as it may. Nothing reached Cloudflare; retry it once the others have finished.`,
+        );
+        return;
+      }
+
+      this.log.info("No free deploy slot; waiting for one", {
+        deploymentId: row.id,
+        retryInSeconds: DeployJobs.SLOT_RETRY_SECONDS,
+      });
+      reschedule({ delay: [DeployJobs.SLOT_RETRY_SECONDS, "seconds"] });
     },
   });
 
@@ -142,6 +182,13 @@ export class DeployJobs {
    * claim more. The Worker upload may well have reached Cloudflare before the
    * isolate went, so the message sends the operator to look rather than
    * asserting that nothing shipped.
+   *
+   * ## ⚠️ Except for a row that never started
+   *
+   * A row still `queued` never reached the runner, which records the start
+   * before it contacts Cloudflare. Telling that operator to check a Worker
+   * would send them looking for a deploy that never happened, so it gets its
+   * own message: nothing was deployed, retry it.
    *
    * ## The age is `startedAt`, falling back to `createdAt`
    *
@@ -177,6 +224,18 @@ export class DeployJobs {
           // owns it.
           continue;
         }
+        const minutes = Math.round(budgetMs / 60_000);
+        if (row.status === "queued") {
+          this.log.warn("Deploy never started; marking it failed", {
+            deploymentId: row.id,
+            since,
+          });
+          await this.registry.failed(
+            row.id,
+            `This deploy never started: no run picked it up in ${minutes} minutes. Nothing reached Cloudflare, so it is safe to retry.`,
+          );
+          continue;
+        }
         this.log.warn("Deploy stopped reporting; marking it failed", {
           deploymentId: row.id,
           status: row.status,
@@ -184,7 +243,7 @@ export class DeployJobs {
         });
         await this.registry.failed(
           row.id,
-          `This deploy stopped reporting after ${Math.round(budgetMs / 60_000)} minutes and was abandoned. The run holding it is gone - a large artifact can exhaust the Worker's memory while unpacking - so it never got to write its own result. It may still have reached Cloudflare; check the Worker before retrying.`,
+          `This deploy stopped reporting after ${minutes} minutes and was abandoned. The run holding it is gone - a large artifact can exhaust the Worker's memory while unpacking - so it never got to write its own result. It may still have reached Cloudflare; check the Worker before retrying.`,
         );
       }
     },
