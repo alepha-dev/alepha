@@ -1990,7 +1990,6 @@ export default {
   "epic.action.setRelease": "Définir la version",
   "agentPrompts.menu": "Invites pour agents",
   "agentPrompts.review": "Relire",
-  "agentPrompts.activate": "Activer",
   "agentPrompts.triageInbox": "Traiter la boîte",
   "agentPrompts.triageBlights": "Traiter les anomalies",
   "agentPrompts.workOnIt": "S’en charger",

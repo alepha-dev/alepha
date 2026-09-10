@@ -20,9 +20,9 @@ import {
   FlagOff,
   Play,
   Plus,
-  Rocket,
   Search,
   Trash2,
+  Wrench,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -605,8 +605,11 @@ const ProjectEpics = () => {
                     ...(epic.status === "planned" || epic.status === "active"
                       ? [
                           {
-                            icon: Rocket,
-                            label: tr("agentPrompts.activate"),
+                            // The verb and glyph quests and feedback use for
+                            // the same hand-over, as the detail page's menu
+                            // does through AGENT_PROMPT_MENU_META (#P2182).
+                            icon: Wrench,
+                            label: tr("agentPrompts.workOnIt"),
                             onClick: (row: EpicResource) =>
                               agentPrompt.copy(
                                 "epicActivate",

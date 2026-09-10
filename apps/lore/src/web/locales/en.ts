@@ -2000,8 +2000,7 @@ export default {
   "epic.action.delete": "Delete",
   "epic.action.setRelease": "Set Release",
   "agentPrompts.menu": "Agent Prompts",
-  "agentPrompts.review": "Review",
-  "agentPrompts.activate": "Activate",
+  "agentPrompts.review": "Review Epic",
   "agentPrompts.workOnIt": "Work on it",
   "agentPrompts.triageInbox": "Triage the inbox",
   "agentPrompts.triageBlights": "Triage the blights",
@@ -2037,7 +2036,7 @@ export default {
   "agentPrompts.settings.epicReview.title": "Epic: Review",
   "agentPrompts.settings.epicReview.description":
     "Offered on an epic that is still planned. Asks an agent to sharpen the plan before anyone works it.",
-  "agentPrompts.settings.epicActivate.title": "Epic: Activate",
+  "agentPrompts.settings.epicActivate.title": "Epic: Work on it",
   "agentPrompts.settings.epicActivate.description":
     "Offered on a planned or active epic. Hands the whole epic over, quest by quest.",
   "agentPrompts.settings.questWork.title": "Quest: Work on it",

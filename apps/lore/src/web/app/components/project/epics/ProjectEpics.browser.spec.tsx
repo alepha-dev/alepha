@@ -440,15 +440,19 @@ describe("ProjectEpics - the status filter", () => {
       const inside = (await openAgentPrompts(opened)).map(
         (item) => item.textContent,
       );
-      expect(inside.join(" ")).toContain("Review");
-      expect(inside.join(" ")).toContain("Activate");
+      // The labels a quest and a feedback item use for the same acts
+      // (feedback #P2182): "Review Epic", and "Work on it" for epicActivate.
+      // The list also holds the row menu's own entries, hence contains.
+      expect(inside).toContain("Review Epic");
+      expect(inside).toContain("Work on it");
+      expect(inside).not.toContain("Activate");
     });
 
-    it("drops Review once the epic has begun but keeps Activate", async () => {
+    it("drops Review Epic once the epic has begun but keeps Work on it", async () => {
       await mount();
 
       // Reviewing a plan is a thing you do while the plan is still open;
-      // after Begin the quest set is what is being worked. Activate stays,
+      // after Begin the quest set is what is being worked. Work on it stays,
       // because a half-worked epic can still be handed over, and Begin is
       // gone because it has already happened.
       const opened = await openRowMenu("#E2 - Active epic");
@@ -459,8 +463,8 @@ describe("ProjectEpics - the status filter", () => {
       const inside = (await openAgentPrompts(opened)).map(
         (item) => item.textContent,
       );
-      expect(inside.join(" ")).toContain("Activate");
-      expect(inside.join(" ")).not.toContain("Review");
+      expect(inside).toContain("Work on it");
+      expect(inside).not.toContain("Review Epic");
     });
 
     /**
@@ -475,8 +479,8 @@ describe("ProjectEpics - the status filter", () => {
         (item) => item.textContent,
       );
       expect(top.join(" ")).not.toContain("Agent Prompts");
-      expect(top.join(" ")).not.toContain("Review");
-      expect(top.join(" ")).not.toContain("Activate");
+      expect(top.join(" ")).not.toContain("Review Epic");
+      expect(top.join(" ")).not.toContain("Work on it");
     });
 
     /**

@@ -3,7 +3,6 @@ import {
   ClipboardCheck,
   ListChecks,
   type LucideIcon,
-  PlayCircle,
   Wrench,
 } from "lucide-react";
 
@@ -52,9 +51,14 @@ export const AGENT_PROMPT_MENU_META: Record<
     Icon: ClipboardCheck,
     labelKey: "agentPrompts.review",
   },
+  // `Wrench` and "Work on it", like the two below: handing an epic over is
+  // the same verb as handing over a quest or a report, so it reads the same
+  // on all three surfaces (feedback #P2182). Only the label and the glyph:
+  // the kind stays `epicActivate`, because it is persisted in
+  // `project_prompts.kind` and a rename would orphan every stored template.
   epicActivate: {
-    Icon: PlayCircle,
-    labelKey: "agentPrompts.activate",
+    Icon: Wrench,
+    labelKey: "agentPrompts.workOnIt",
   },
   questWork: {
     Icon: Wrench,
@@ -65,9 +69,9 @@ export const AGENT_PROMPT_MENU_META: Record<
     labelKey: "agentPrompts.workOnIt",
   },
   // ⚠️ Its own glyph and its own label, not `Wrench` and "Work on it". The
-  // two above share those because they are the same verb on two surfaces;
-  // this is a different verb on a surface neither touches, and a menu where
-  // every row is a wrench says nothing.
+  // three above share those because they are the same verb on three
+  // surfaces; this is a different verb on a surface none of them touches,
+  // and a menu where every row is a wrench says nothing.
   feedbackLoop: {
     Icon: ListChecks,
     labelKey: "agentPrompts.triageInbox",
