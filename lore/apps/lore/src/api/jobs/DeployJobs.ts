@@ -20,10 +20,15 @@ import { DeployService } from "../services/DeployService.ts";
  * dispatched and survives the response.
  *
  * And a retried or rescheduled execution **replays work**, so every step has to
- * be idempotent. It already is, and `deploy-idempotence.spec.ts` says so rather
- * than leaving it to be assumed: provisioning checks before it creates, asset
- * upload dedups by content hash, the script upload is a PUT, and migrations are
- * guarded by the `d1_migrations` bookkeeping table.
+ * be idempotent. It is, and
+ * `packages/alepha/src/cli/platform-lib/__tests__/deployIdempotence.spec.ts`
+ * says so rather than leaving it to be assumed, by running one deploy twice
+ * against a fake account that refuses a duplicate the way Cloudflare does:
+ * provisioning finds before it creates, asset upload dedups by content hash,
+ * the script upload is a PUT, the queue consumer is found and rebound rather
+ * than created again, and migrations are guarded by the `d1_migrations`
+ * bookkeeping table. It lives beside the adapter rather than here because
+ * every one of those steps is framework code.
  *
  * ## ⚠️ `$workflow` is gone (epic #33, 2026-09-05)
  *
