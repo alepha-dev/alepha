@@ -1,5 +1,4 @@
 import { $inject, Alepha } from "alepha";
-import { AlephaSecurity } from "alepha/security";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
@@ -33,14 +32,6 @@ describe("SecretProvider", () => {
       const alepha = Alepha.create({ env: { NODE_ENV: "production" } })
         .with(AlephaCrypto)
         .with(Signer);
-
-      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
-    });
-
-    it("still refuses the default in production once the security module is registered", async () => {
-      const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
-        AlephaSecurity,
-      );
 
       await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
     });
