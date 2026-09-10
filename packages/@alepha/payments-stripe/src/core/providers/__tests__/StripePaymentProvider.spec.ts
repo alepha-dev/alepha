@@ -19,6 +19,33 @@ class TestStripeProvider extends StripePaymentProvider {
       checkout: { sessions: { create: async () => session } },
     };
   }
+
+  /**
+   * Swap the v2 accounts API for a stub: `retrieve` answers `account`, and
+   * every `create` call's params are recorded in the returned array.
+   */
+  public stubAccounts(account: {
+    id: string;
+    display_name?: string;
+    metadata: Record<string, string>;
+  }): Array<Record<string, unknown>> {
+    const created: Array<Record<string, unknown>> = [];
+    (this as unknown as { stripe: unknown }).stripe = {
+      v2: {
+        core: {
+          accountTokens: { create: async () => ({ id: "acct_token_1" }) },
+          accounts: {
+            create: async (params: Record<string, unknown>) => {
+              created.push(params);
+              return account;
+            },
+            retrieve: async () => account,
+          },
+        },
+      },
+    };
+    return created;
+  }
 }
 
 const make = (env: Record<string, string> = {}) =>
@@ -236,6 +263,44 @@ describe("StripePaymentProvider", () => {
           cancelUrl: "https://app.test/ko",
         }),
       ).rejects.toThrow(AlephaError);
+    });
+  });
+
+  describe("connected accounts", () => {
+    it("tags the account with the caller's metadata", async () => {
+      const provider = make();
+      const created = provider.stubAccounts({ id: "acct_1", metadata: {} });
+
+      await provider.createConnectAccount({
+        displayName: "Padel Aix",
+        metadata: { clubSlug: "padel-aix" },
+      });
+
+      expect(created[0]?.metadata).toEqual({ clubSlug: "padel-aix" });
+    });
+
+    it("sends no metadata when none is given", async () => {
+      const provider = make();
+      const created = provider.stubAccounts({ id: "acct_1", metadata: {} });
+
+      await provider.createConnectAccount({ displayName: "Padel Aix" });
+
+      expect(created[0]).not.toHaveProperty("metadata");
+    });
+
+    it("reads the account's metadata back", async () => {
+      const provider = make();
+      provider.stubAccounts({
+        id: "acct_2",
+        display_name: "Padel Aix",
+        metadata: { clubSlug: "padel-aix" },
+      });
+
+      await expect(provider.getConnectAccount("acct_2")).resolves.toEqual({
+        id: "acct_2",
+        displayName: "Padel Aix",
+        metadata: { clubSlug: "padel-aix" },
+      });
     });
   });
 });

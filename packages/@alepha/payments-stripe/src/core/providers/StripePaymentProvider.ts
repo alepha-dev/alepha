@@ -443,6 +443,14 @@ export class StripePaymentProvider implements PaymentProvider {
      * Public support email prefill (`configuration.merchant.support.email`).
      */
     supportEmail?: string;
+    /**
+     * Your own tags on the account, returned by {@link getConnectAccount}.
+     * A platform that receives every connected account's events on one
+     * webhook uses them to route each event to its owner (e.g. which club
+     * created the account). Not identity data, so it goes on the create
+     * directly, not through the account token.
+     */
+    metadata?: Record<string, string>;
   }): Promise<{ id: string }> {
     // FR/EU platforms (PSD2, verified empirically 2026-06-11 on the Stripe
     // sandbox): creating a v2 account WITH a merchant configuration requires
@@ -486,9 +494,33 @@ export class StripePaymentProvider implements PaymentProvider {
         },
       },
       include: ["configuration.merchant", "requirements"],
+      ...(opts.metadata ? { metadata: opts.metadata } : {}),
     });
 
     return { id: account.id };
+  }
+
+  /**
+   * Read a connected account's identity and the `metadata` it was created
+   * with (see {@link createConnectAccount}).
+   */
+  public async getConnectAccount(accountId: string): Promise<{
+    id: string;
+    displayName?: string;
+    metadata: Record<string, string>;
+  }> {
+    const account = await this.stripe.v2.core.accounts.retrieve(accountId);
+    const metadata: Record<string, string> = {};
+    for (const [key, value] of Object.entries(account.metadata ?? {})) {
+      if (typeof value === "string") {
+        metadata[key] = value;
+      }
+    }
+    return {
+      id: account.id,
+      displayName: account.display_name ?? undefined,
+      metadata,
+    };
   }
 
   /**

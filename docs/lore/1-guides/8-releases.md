@@ -54,8 +54,8 @@ quest lands when nobody said where it should go.
 
 It is a **fallback, not a plan**. Everything can still be filed by hand, a
 hotfix still is, and a project with no default at all is a perfectly normal
-project. Creating a release never makes it the default; pointing intake
-somewhere is always an explicit act.
+project. Creating a release never makes it the default, and nothing ever picks
+a default for a project that has none: starting one is always an explicit act.
 
 ### What it catches, and what it leaves alone
 
@@ -88,13 +88,35 @@ land in the default individually as they complete, and show on that release as
 loose work while the epic itself is in none. That is honest, and it is fixed
 by attaching the epic to a release by hand.
 
-### Publishing clears it
+### Publishing hands it on
 
 Publishing the default release stops it being the default, because nothing can
 be attached to a published release: leaving intake pointed at one would mean
-the next finished quest could not be closed at all. Reopening does **not**
-restore it. Reopening says the record was wrong, not that intake should resume
-there.
+the next finished quest could not be closed at all.
+
+The default then moves to the release **next in line**: the lowest open release
+above the one you published whose patch is `0`. In practice that is the next
+minor, or the next major once no minor is left:
+
+| Open when `0.29.0` (the default) is published | The new default |
+| --------------------------------------------- | --------------- |
+| `0.30.0`, `1.0.0`                             | `0.30.0`        |
+| `1.0.0`                                       | `1.0.0`         |
+| `0.29.1`, `1.0.0`                             | `1.0.0`         |
+| `0.27.0`, `demo-2`                            | none            |
+
+It never picks a patch or a prerelease (`1.0.0-rc.1`): a hotfix is filed by
+hand, and catching loose work into it would put unrelated quests in its
+changelog. It never moves backwards to an older release left open, and never
+picks a tag that is not a version. When nothing qualifies, the project is left
+with no default. The move is recorded in the new default's activity, naming the
+release it came from.
+
+Publishing any **other** release leaves the default where it is, and a project
+with no default keeps none.
+
+Reopening does **not** restore it. Reopening says the record was wrong, not
+that intake should resume there.
 
 ## Over MCP
 
