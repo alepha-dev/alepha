@@ -534,7 +534,8 @@ func cmdServe(args []string) error {
 
 	router := proxy.New(root, store, log)
 	srv.router = router
-	var httpHandler http.Handler = router
+	// Stays nil without TLS, which leaves port 80 the plain router it always was.
+	var challenge func(http.Handler) http.Handler
 
 	// TLS is obtained synchronously at startup: a certificate that cannot be
 	// issued must surface now, not as a browser warning in three months.
@@ -576,9 +577,10 @@ func cmdServe(args []string) error {
 			return err
 		}
 		srv.tls = mgr
-		// ACME HTTP-01 challenges ride the plain-HTTP listener; everything else
-		// falls through to the proxy.
-		httpHandler = mgr.HTTPChallengeHandler(router)
+		// ACME HTTP-01 challenges ride the plain-HTTP listener, answered first;
+		// every other request for a registered domain is sent to HTTPS. See
+		// portEighty.
+		challenge = mgr.HTTPChallengeHandler
 
 		// The challenge handler goes on BOTH listeners. A proxy in front with
 		// "Always Use HTTPS" turns the plain-HTTP challenge into a 301, and the
@@ -598,7 +600,7 @@ func cmdServe(args []string) error {
 		}()
 	}
 
-	proxySrv := &http.Server{Addr: addr, Handler: httpHandler}
+	proxySrv := &http.Server{Addr: addr, Handler: portEighty(router, challenge, store, tlsAddr)}
 	// The control API listens on a unix socket and nowhere else.
 	//
 	// It can create users, read every app's secrets and delete every backup.

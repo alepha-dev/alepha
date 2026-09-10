@@ -85,6 +85,16 @@ WantedBy=multi-user.target
 `--control-socket` path has no parent directory. Ports 80 and 443 both matter even if you only serve
 HTTPS — ACME's HTTP-01 challenge answers on 80.
 
+With `--tls`, port 80 answers that challenge first and then sends every other request for a
+registered domain to HTTPS with a `308`, path and query kept (and the `--tls-addr` port, when it is
+not 443). A host no app is registered for keeps its `404`. Without `--tls`, port 80 serves the apps
+as before.
+
+⚠️ **Behind a Cloudflare proxy, use SSL mode Full (strict), never Flexible.** Flexible talks plain
+HTTP to the origin, so every request lands on port 80, is redirected to HTTPS, and comes back to
+port 80 again: the browser reports "too many redirects" and Bay's logs show nothing wrong. Full
+(strict) talks HTTPS to 443, and Bay's real certificates are what make strict possible.
+
 ```bash
 systemctl daemon-reload && systemctl enable --now bay
 ```
