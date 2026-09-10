@@ -32,6 +32,12 @@ type fakeLore struct {
 	// treats a missing pong as a drop must redial.
 	answerPings atomic.Bool
 	dials       atomic.Int32
+
+	// conns is every socket accepted, so hangUp can close them; hungUp
+	// makes it close any accepted after it too.
+	mu     sync.Mutex
+	conns  []*websocket.Conn
+	hungUp bool
 }
 
 type loreSession struct {
@@ -59,6 +65,10 @@ func newFakeLore(t *testing.T) *fakeLore {
 		if err != nil {
 			return
 		}
+		if !l.track(conn) {
+			_ = conn.Close()
+			return
+		}
 		s := &loreSession{conn: conn, frames: make(chan map[string]any, 16)}
 		conn.SetPingHandler(func(data string) error {
 			s.pings.Add(1)
@@ -84,6 +94,38 @@ func newFakeLore(t *testing.T) *fakeLore {
 // sink is the http origin the client is configured with; loopback, so
 // cleartext is allowed and ws:// is what gets dialed.
 func (l *fakeLore) sink() string { return l.srv.URL }
+
+// track records an accepted socket for hangUp. False once the fake has hung
+// up, so a dial that raced the hang-up is closed as well.
+func (l *fakeLore) track(conn *websocket.Conn) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.hungUp {
+		return false
+	}
+	l.conns = append(l.conns, conn)
+	return true
+}
+
+/*
+hangUp closes every socket from this side, which is how a cancelled client gets
+out of ReadJSON.
+
+Cancelling Run's context does not close the client's socket, so its read stays
+blocked until a frame arrives or the read deadline passes. The deadline is the
+keepalive's, 40 s out with the production defaults, and no test arms a shorter
+one unless the keepalive is what it tests. The sink hanging up is what ends the
+read instead: it fails, the client sees its context done, and Run returns.
+*/
+func (l *fakeLore) hangUp() {
+	l.mu.Lock()
+	l.hungUp = true
+	conns := l.conns
+	l.mu.Unlock()
+	for _, conn := range conns {
+		_ = conn.Close()
+	}
+}
 
 func (l *fakeLore) session(t *testing.T) *loreSession {
 	t.Helper()
@@ -192,6 +234,16 @@ type fixtureOptions struct {
 	// milliseconds, the way MinStatsInterval already does for the gauge.
 	inventoryFloor time.Duration
 	version        string
+	// pingInterval and pongWait arm a keepalive for the test that is about
+	// it. Zero keeps the production 30 s and 10 s, which no test here outlives.
+	//
+	// ⚠️ Any other test must leave them at zero. A keepalive is a wall-clock
+	// deadline on the session, and the fake answering it runs in the same
+	// process: a runner that pauses the process for longer than the window
+	// expires it with nobody at fault, and the session drops under a test
+	// about something else. 40 ms and 40 ms, once the fixture's default, did
+	// exactly that on a loaded CI runner.
+	pingInterval, pongWait time.Duration
 }
 
 type clientFixture struct {
@@ -219,7 +271,7 @@ func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
 	client := &Client{
 		Store: store, Status: NewStatus(), Reload: reload,
 		Log:          slog.New(slog.NewTextHandler(opts.logs, nil)),
-		PingInterval: 40 * time.Millisecond, PongWait: 40 * time.Millisecond,
+		PingInterval: opts.pingInterval, PongWait: opts.pongWait,
 		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
 		Gauge: opts.gauge, MinStatsInterval: 10 * time.Millisecond,
 		Version: opts.version,
@@ -240,6 +292,7 @@ func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
 	}()
 	t.Cleanup(func() {
 		cancel()
+		lore.hangUp()
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
@@ -430,7 +483,12 @@ func TestClientDialsNobodyUntilConfiguredThenWakesOnReload(t *testing.T) {
 }
 
 func TestClientPingsAndTreatsAMissingPongAsADrop(t *testing.T) {
-	f := newClientFixture(t, fixtureOptions{configured: true})
+	f := newClientFixture(t, fixtureOptions{
+		configured: true,
+		// Pings quick enough to count, and a pong window no runner pause
+		// plausibly outlasts, so the drop below is the missing pong's.
+		pingInterval: 40 * time.Millisecond, pongWait: time.Second,
+	})
 	first := f.lore.session(t)
 	_ = first.frame(t)
 	eventually(t, "pings to arrive", func() bool { return first.pings.Load() >= 2 })
@@ -842,8 +900,7 @@ func TestQueryAnswersWhileTheExecutorIsBusy(t *testing.T) {
 	handler.inventory = sampleInventory()
 	client := &Client{
 		Store: store, Status: NewStatus(), Reload: make(chan struct{}, 1),
-		Log:          slog.New(slog.NewTextHandler(io.Discard, nil)),
-		PingInterval: 40 * time.Millisecond, PongWait: 40 * time.Millisecond,
+		Log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
 		Gauge:                fixedGauge{ok: true, reading: Reading{CPUPercent: 1, MemoryPercent: 2}},
 		MinStatsInterval:     10 * time.Millisecond,
@@ -859,6 +916,7 @@ func TestQueryAnswersWhileTheExecutorIsBusy(t *testing.T) {
 	t.Cleanup(func() {
 		close(handler.release)
 		cancel()
+		lore.hangUp()
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
