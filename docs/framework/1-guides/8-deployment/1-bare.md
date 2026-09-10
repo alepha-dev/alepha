@@ -49,6 +49,43 @@ alepha build --runtime=bun
 
 The `--runtime=bun` flag uses Bun-specific export conditions during bundling.
 
+## Single Binary
+
+`--compile` turns the build into one executable, with the client's `public/` files inside it:
+
+```bash
+alepha build --runtime=bun --compile          # dist/app
+alepha build --runtime=bun --compile myapp    # dist/myapp
+```
+
+The compiler is `bun build --compile`, so the build needs `--runtime=bun` and Bun on the build machine. The binary carries its own runtime: nothing has to be installed where it runs. `dist/` then holds the binary, `manifest.json` and, when the app has a database, `migrations/`.
+
+```bash
+cd dist && APP_SECRET=... SERVER_HOST=127.0.0.1 ./myapp
+```
+
+- Run it from the directory that holds `migrations/`: the app reads them relative to where it starts. An app without a database can run from anywhere.
+- A compiled app runs in production mode, which refuses to boot without `APP_SECRET`.
+- Set `SERVER_HOST`: under Bun, `localhost` listens on IPv6 `::1` only.
+- The binary serves its assets from inside itself, ETag and precompressed brotli included, and ignores any `public/` directory next to it.
+- It targets the machine that builds it (`bun-darwin-arm64` on an Apple Silicon Mac). Cross-compile with `build.compile.target`, for example `bun-linux-x64` for a Linux server built on a Mac.
+- Expect about 60 MB, almost all of it the Bun runtime. Windows is untested.
+
+The same in `alepha.config.ts`, where `compile` also takes `true` or just a name:
+
+```typescript check
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: {
+    runtime: "bun",
+    compile: { name: "myapp", target: "bun-linux-x64", minify: true },
+  },
+});
+```
+
+An explicit `--compile` beats the config, and `--no-compile` turns it off. The `docker` target compiles the same way and packages the binary in a distroless image: see the [Docker guide](/docs/guides-deployment-docker).
+
 ## Configuration
 
 Set the target in `alepha.config.ts` to avoid passing flags:

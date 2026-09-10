@@ -162,7 +162,7 @@ That matters as soon as something other than `--image` builds the image - a rele
 
 ## Compile Mode (Single Static Binary)
 
-With `--runtime=bun --compile` (or `build.compile` in config), the server is compiled to one static binary via `bun build --compile` and packaged in a distroless base image:
+With `--runtime=bun --compile` (or `build.compile` in config), the app is compiled to one static binary via `bun build --compile`, client assets included, and packaged in a distroless base image. The compilation itself is the same as for the [bare target](/docs/guides-deployment-bare), for linux-musl:
 
 ```bash
 alepha build --target=docker --runtime=bun --compile --image
@@ -179,7 +179,8 @@ ENV SERVER_HOST=0.0.0.0
 ENTRYPOINT ["/app/app"]
 ```
 
-- The binary lands at `dist/app`; `dist/index.js` and `dist/package.json` are removed.
+- The binary lands at `dist/app` (`dist/<name>` with `--compile <name>`, and the `COPY` and `ENTRYPOINT` follow). `dist/index.js`, `dist/server/`, `dist/package.json` and `dist/public/` are removed: the client assets are inside the binary, which serves them itself.
+- With `--image`, the image is built after the binary exists, at the end of the build.
 - The image runs as root unless `docker.user` says otherwise - distroless has no shell, so a declared volume cannot be created and chowned at build time. The generated file carries a comment saying so.
 - No package manager runs inside the image (distroless has no `npm`), so `docker.install` is ignored and any non-empty runtime `dependencies` fail the build loudly - compile requires fully-bundled output.
 - `compile` accepts a binary name (`--compile <name>` on the command line) or an object for the name, the Bun target triple (`bun-linux-arm64-musl`, ...) and minification. The base image is `docker.from`, distroless by default in this mode.
