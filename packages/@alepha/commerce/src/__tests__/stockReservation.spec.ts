@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { DateTimeProvider } from "alepha/datetime";
+import { DatabaseProvider, sql } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
@@ -13,10 +14,17 @@ import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
 
-const setup = async () => {
-  const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
-    .with(AlephaCommerceCheckout);
+/**
+ * Postgres by default. SQLite is the other path `StockService.claim` takes:
+ * no lock, every writer queued on one connection, and the replay decides.
+ */
+const setup = async (backend: "postgres" | "sqlite" = "postgres") => {
+  const alepha =
+    backend === "postgres"
+      ? Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerceCheckout)
+      : Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }).with(
+          AlephaCommerceCheckout,
+        );
   const ctx = {
     alepha,
     catalog: alepha.inject(CatalogService),
@@ -26,9 +34,61 @@ const setup = async () => {
     stock: alepha.inject(StockService),
     payments: alepha.inject(PaymentService),
     dateTime: alepha.inject(DateTimeProvider),
+    db: alepha.inject(DatabaseProvider),
   };
   await alepha.start();
   return ctx;
+};
+
+/**
+ * How many sessions are queued on the product's stock lock right now.
+ *
+ * Lets a spec hold one claim open and then wait, without a sleep, until every
+ * other racer has either decided or is queued behind it.
+ */
+const waitingOnStock = async (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  productId: string,
+) => {
+  const [row] = await ctx.db.execute(sql`
+    SELECT count(*)::int AS waiting FROM pg_locks
+    WHERE locktype = 'advisory' AND NOT granted AND objsubid = 2
+      AND classid = hashtext(${StockService.LOCK_NAMESPACE})::oid
+      AND objid = hashtext(${productId})::oid`);
+  return Number(row?.waiting ?? 0);
+};
+
+/**
+ * Run `claim` inside a transaction that stays open until `commit()` is
+ * called - the shape of `OrderService.create`, which reserves and then keeps
+ * writing before it commits.
+ */
+const holdOpen = (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  claim: () => Promise<unknown>,
+) => {
+  let commit!: () => void;
+  let claimed!: () => void;
+  const committing = new Promise<void>((resolve) => {
+    commit = resolve;
+  });
+  const ready = new Promise<void>((resolve) => {
+    claimed = resolve;
+  });
+  const outcome = ctx.db
+    .transactional(async () => {
+      try {
+        await claim();
+      } finally {
+        claimed();
+      }
+      await committing;
+    })
+    .then(
+      () => "won" as const,
+      () => "lost" as const,
+    );
+  return { ready, commit, outcome };
 };
 
 const aRing = (catalog: CatalogService) =>
@@ -239,7 +299,8 @@ describe("stock reservation", () => {
   });
 
   /**
-   * Concurrency, on the real Postgres provider.
+   * Concurrency, on the real Postgres provider (and on SQLite, for the three
+   * races both of `StockService.claim`'s paths must win).
    *
    * `reserve` and `recordSale` used to read the sum, compare in memory and
    * write. At READ COMMITTED two transactions read the SAME sum before either
@@ -247,66 +308,238 @@ describe("stock reservation", () => {
    * row to lock, since on-hand is a SUM over an append-only ledger.
    */
   describe("under concurrency", () => {
-    it("lets exactly five of twenty racers reserve the last five units", async ({
-      expect,
-    }) => {
-      const ctx = await setup();
-      const ring = await aRing(ctx.catalog);
-      await ctx.stock.recordIntake(ring.id, 5);
+    /*
+     * The same three races on both of `StockService.claim`'s paths: Postgres,
+     * where the product lock decides, and SQLite, where the replay does.
+     */
+    describe.each(["postgres", "sqlite"] as const)("on %s", (backend) => {
+      it("lets exactly five of twenty racers reserve the last five units", async ({
+        expect,
+      }) => {
+        const ctx = await setup(backend);
+        const ring = await aRing(ctx.catalog);
+        await ctx.stock.recordIntake(ring.id, 5);
 
-      const outcomes = await Promise.all(
-        Array.from({ length: 20 }, () =>
-          ctx.stock
-            .reserve(ring.id, 1, { orderId: randomUUID() })
-            .then(() => "held" as const)
-            .catch(() => "refused" as const),
-        ),
-      );
+        const outcomes = await Promise.all(
+          Array.from({ length: 20 }, () =>
+            ctx.stock
+              .reserve(ring.id, 1, { orderId: randomUUID() })
+              .then(() => "held" as const)
+              .catch(() => "refused" as const),
+          ),
+        );
 
-      expect(outcomes.filter((it) => it === "held")).toHaveLength(5);
-      expect(await ctx.stock.reserved(ring.id)).toBe(5);
-      expect(await ctx.stock.available(ring.id)).toBe(0);
+        expect(outcomes.filter((it) => it === "held")).toHaveLength(5);
+        expect(await ctx.stock.reserved(ring.id)).toBe(5);
+        expect(await ctx.stock.available(ring.id)).toBe(0);
+      });
+
+      it("never lets concurrent sales take the ledger below zero", async ({
+        expect,
+      }) => {
+        const ctx = await setup(backend);
+        const ring = await aRing(ctx.catalog);
+        await ctx.stock.recordIntake(ring.id, 3);
+
+        const outcomes = await Promise.all(
+          Array.from({ length: 10 }, () =>
+            ctx.stock
+              .recordSale(ring.id, 1)
+              .then(() => "sold" as const)
+              .catch(() => "refused" as const),
+          ),
+        );
+
+        expect(outcomes.filter((it) => it === "sold")).toHaveLength(3);
+        expect(await ctx.stock.onHand(ring.id)).toBe(0);
+      });
+
+      it("respects multi-unit reservations at the boundary", async ({
+        expect,
+      }) => {
+        const ctx = await setup(backend);
+        const ring = await aRing(ctx.catalog);
+        await ctx.stock.recordIntake(ring.id, 4);
+
+        // Three racers wanting two each: the ledger backs exactly two of them.
+        const outcomes = await Promise.all(
+          Array.from({ length: 3 }, () =>
+            ctx.stock
+              .reserve(ring.id, 2, { orderId: randomUUID() })
+              .then(() => "held" as const)
+              .catch(() => "refused" as const),
+          ),
+        );
+
+        expect(outcomes.filter((it) => it === "held")).toHaveLength(2);
+        expect(await ctx.stock.reserved(ring.id)).toBe(4);
+      });
     });
 
-    it("never lets concurrent sales take the ledger below zero", async ({
-      expect,
-    }) => {
-      const ctx = await setup();
-      const ring = await aRing(ctx.catalog);
-      await ctx.stock.recordIntake(ring.id, 3);
-
-      const outcomes = await Promise.all(
-        Array.from({ length: 10 }, () =>
-          ctx.stock
-            .recordSale(ring.id, 1)
-            .then(() => "sold" as const)
-            .catch(() => "refused" as const),
-        ),
-      );
-
-      expect(outcomes.filter((it) => it === "sold")).toHaveLength(3);
-      expect(await ctx.stock.onHand(ring.id)).toBe(0);
-    });
-
-    it("respects multi-unit reservations at the boundary", async ({
+    /*
+     * The two below are the window the three above only hit by luck.
+     *
+     * A claim's `createdAt` is Postgres' `now()`, the start of the inserting
+     * transaction, but the row is only visible from its COMMIT. Ordering the
+     * claims by `(createdAt, id)` and keeping the ones that fit let a racer
+     * stamped later decide before an earlier claim was visible, and both
+     * kept. In CI that window was the gap between INSERT and COMMIT under
+     * load; here it is held open on purpose, the way `OrderService.create`
+     * holds it open while it writes the rest of the order.
+     */
+    it("counts a hold whose transaction has not committed yet", async ({
       expect,
     }) => {
       const ctx = await setup();
       const ring = await aRing(ctx.catalog);
       await ctx.stock.recordIntake(ring.id, 4);
 
-      // Three racers wanting two each: the ledger backs exactly two of them.
-      const outcomes = await Promise.all(
-        Array.from({ length: 3 }, () =>
-          ctx.stock
-            .reserve(ring.id, 2, { orderId: randomUUID() })
-            .then(() => "held" as const)
-            .catch(() => "refused" as const),
-        ),
+      const first = holdOpen(ctx, () =>
+        ctx.stock.reserve(ring.id, 2, { orderId: randomUUID() }),
+      );
+      await first.ready;
+
+      let settled = 0;
+      const others = Array.from({ length: 2 }, () =>
+        ctx.stock
+          .reserve(ring.id, 2, { orderId: randomUUID() })
+          .then(
+            () => "won" as const,
+            () => "lost" as const,
+          )
+          .finally(() => {
+            settled++;
+          }),
       );
 
-      expect(outcomes.filter((it) => it === "held")).toHaveLength(2);
+      // Each racer has either decided without seeing the open hold, or is
+      // queued behind it. Only then does the first one commit.
+      await expect
+        .poll(async () => settled + (await waitingOnStock(ctx, ring.id)))
+        .toBe(2);
+      first.commit();
+
+      const outcomes = [await first.outcome, ...(await Promise.all(others))];
+      expect(outcomes.filter((it) => it === "won")).toHaveLength(2);
       expect(await ctx.stock.reserved(ring.id)).toBe(4);
+    });
+
+    it("counts a sale whose transaction has not committed yet", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 2);
+
+      const first = holdOpen(ctx, () => ctx.stock.recordSale(ring.id, 1));
+      await first.ready;
+
+      let settled = 0;
+      const others = Array.from({ length: 2 }, () =>
+        ctx.stock
+          .recordSale(ring.id, 1)
+          .then(
+            () => "won" as const,
+            () => "lost" as const,
+          )
+          .finally(() => {
+            settled++;
+          }),
+      );
+
+      await expect
+        .poll(async () => settled + (await waitingOnStock(ctx, ring.id)))
+        .toBe(2);
+      first.commit();
+
+      const outcomes = [await first.outcome, ...(await Promise.all(others))];
+      expect(outcomes.filter((it) => it === "won")).toHaveLength(2);
+      expect(await ctx.stock.onHand(ring.id)).toBe(0);
+    });
+
+    /*
+     * Each claim holds its product's lock until the order commits, so an
+     * order walking its lines in cart order could hold one product while
+     * waiting on another that a second order holds while waiting on the
+     * first. Postgres breaks that deadlock by failing one of the checkouts.
+     */
+    it("takes an order's stock locks in one order, so two orders cannot deadlock", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const [low, high] = [
+        await aRing(ctx.catalog),
+        await aRing(ctx.catalog),
+      ].sort((a, b) => (a.id < b.id ? -1 : 1));
+      await ctx.stock.recordIntake(low!.id, 2);
+      await ctx.stock.recordIntake(high!.id, 2);
+
+      // One transaction claims the lower product, and pauses before the
+      // higher one.
+      let resume!: () => void;
+      let claimedLow!: () => void;
+      const paused = new Promise<void>((resolve) => {
+        resume = resolve;
+      });
+      const holdingLow = new Promise<void>((resolve) => {
+        claimedLow = resolve;
+      });
+      // A failure reads as the driver's own message ("deadlock detected"),
+      // not drizzle's "Failed query" wrapper around it.
+      const reason = (error: Error) =>
+        (error.cause as Error | undefined)?.message ?? error.message;
+
+      const first = ctx.db
+        .transactional(async () => {
+          try {
+            await ctx.stock.reserve(low!.id, 1, { orderId: randomUUID() });
+          } finally {
+            claimedLow();
+          }
+          await paused;
+          await ctx.stock.reserve(high!.id, 1, { orderId: randomUUID() });
+        })
+        .then(() => "won", reason);
+      await holdingLow;
+
+      // An order listing the same two products the other way round.
+      const second = ctx.orders
+        .create({
+          status: "pending",
+          lines: [
+            { productId: high!.id, quantity: 1 },
+            { productId: low!.id, quantity: 1 },
+          ],
+        })
+        .then(() => "won", reason);
+
+      // It queues on the lower product. Taking its lines as listed, it would
+      // hold the higher one while it waits, and the first could not finish.
+      await expect.poll(() => waitingOnStock(ctx, low!.id)).toBe(1);
+      resume();
+
+      expect([await first, await second]).toEqual(["won", "won"]);
+    });
+
+    /*
+     * REPEATABLE READ keeps the snapshot it took before waiting on the lock,
+     * so the check reads none of the claims that committed meanwhile: three
+     * racers for two units each all kept their holds against four on hand.
+     */
+    it("refuses a claim under REPEATABLE READ, which the lock cannot protect", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 1);
+
+      await expect(
+        ctx.db.transactional(
+          () => ctx.stock.reserve(ring.id, 1, { orderId: randomUUID() }),
+          { isolationLevel: "repeatable read" },
+        ),
+      ).rejects.toThrow(/REPEATABLE READ/);
+      expect(await ctx.stock.reserved(ring.id)).toBe(0);
     });
   });
 

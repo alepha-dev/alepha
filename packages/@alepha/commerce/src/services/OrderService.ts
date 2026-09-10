@@ -533,10 +533,11 @@ export class OrderService {
    * Hand each line to the handler that owns its kind.
    *
    * Sequential on purpose: two lines of the same product must not race each
-   * other on the stock ledger.
+   * other on the stock ledger. In {@link inLockOrder}, for the reason given
+   * there.
    */
   protected async fulfilAll(items: OrderItemEntity[]): Promise<void> {
-    for (const item of items) {
+    for (const item of this.inLockOrder(items)) {
       await this.kinds.get(item.kind).fulfil(item);
     }
   }
@@ -550,8 +551,23 @@ export class OrderService {
    * money for a ring that has just been sold.
    */
   protected async reserveAll(items: OrderItemEntity[]): Promise<void> {
-    for (const item of items) {
+    for (const item of this.inLockOrder(items)) {
       await this.kinds.get(item.kind).reserve?.(item);
     }
+  }
+
+  /**
+   * An order's lines by product id, the order their stock claims must run in.
+   *
+   * On Postgres every claim holds its product's lock until the order's
+   * transaction commits. Two orders walking the same two products in cart
+   * order, one each way, would each hold one lock and wait on the other, and
+   * Postgres would break that deadlock by failing one of the checkouts. In
+   * one global order, the second order waits for the first instead.
+   */
+  protected inLockOrder(items: OrderItemEntity[]): OrderItemEntity[] {
+    return [...items].sort((a, b) =>
+      a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
+    );
   }
 }
