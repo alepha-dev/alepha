@@ -1,10 +1,15 @@
-import { spawn } from "node:child_process";
-import { mkdtempSync, readdirSync } from "node:fs";
+import {
+  type ChildProcess,
+  type ChildProcessByStdio,
+  spawn,
+} from "node:child_process";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const child = join(here, "fixtures", "exclusive-child.ts");
@@ -16,8 +21,66 @@ interface Mark {
 }
 
 describe("exclusive across processes", () => {
-  const scratch = (): string =>
-    mkdtempSync(join(tmpdir(), "alepha-exclusive-xp-"));
+  /**
+   * The scratch directories and the children of the current case.
+   *
+   * Tracked so the case can clean up after itself: a scratch directory sits
+   * at the root of the system temp directory, where nothing else sweeps it.
+   */
+  const scratchDirs: string[] = [];
+  const children: ChildProcess[] = [];
+
+  const scratch = (): string => {
+    const dir = mkdtempSync(join(tmpdir(), "alepha-exclusive-xp-"));
+    scratchDirs.push(dir);
+    return dir;
+  };
+
+  /**
+   * Start the fixture with `dir` as its queue base, and record it.
+   */
+  const spawnChild = (
+    dir: string,
+    key: string,
+    holdMs: number,
+    env: Record<string, string> = {},
+  ): ChildProcessByStdio<null, Readable, Readable> => {
+    const proc = spawn(process.execPath, [child, key, String(holdMs)], {
+      env: { ...process.env, ALEPHA_EXCLUSIVE_DIR: dir, ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    children.push(proc);
+    return proc;
+  };
+
+  /**
+   * Resolves once `proc` has exited, killing it first if it has not.
+   */
+  const reap = (proc: ChildProcess): Promise<void> => {
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      return Promise.resolve();
+    }
+
+    const exited = new Promise<void>((resolve) => {
+      proc.once("exit", () => resolve());
+    });
+    proc.kill("SIGKILL");
+    return exited;
+  };
+
+  afterEach(async () => {
+    // The children share the scratch directory through ALEPHA_EXCLUSIVE_DIR,
+    // so it can only go once all of them are gone: a child that has not
+    // acquired yet recreates it, and one that has keeps writing its ticket
+    // there. A case that passed has seen its children out, bar a SIGTERM'd
+    // holder still finishing its handler; one that failed can leave a holder
+    // parked on a long hold, so whatever is left is killed, not waited out.
+    await Promise.all(children.splice(0).map(reap));
+
+    for (const dir of scratchDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   /**
    * Every ticket under a scratch root, across the one key directory below it.
@@ -40,10 +103,7 @@ describe("exclusive across processes", () => {
     env: Record<string, string> = {},
   ): Promise<Mark[]> =>
     new Promise((resolve, reject) => {
-      const proc = spawn(process.execPath, [child, key, String(holdMs)], {
-        env: { ...process.env, ALEPHA_EXCLUSIVE_DIR: dir, ...env },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      const proc = spawnChild(dir, key, holdMs, env);
 
       let out = "";
       let err = "";
@@ -129,13 +189,8 @@ describe("exclusive across processes", () => {
   it("frees the slot when the holder is killed outright", async () => {
     const dir = scratch();
 
-    const holder = spawn(process.execPath, [child, "shared", "60000"], {
-      env: {
-        ...process.env,
-        ALEPHA_EXCLUSIVE_DIR: dir,
-        CHILD_WAIT_FOR_SIGNAL: "1",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
+    const holder = spawnChild(dir, "shared", 60_000, {
+      CHILD_WAIT_FOR_SIGNAL: "1",
     });
 
     await new Promise<void>((resolve) => {
@@ -161,13 +216,8 @@ describe("exclusive across processes", () => {
   it("frees the slot when the holder is terminated", async () => {
     const dir = scratch();
 
-    const holder = spawn(process.execPath, [child, "shared", "60000"], {
-      env: {
-        ...process.env,
-        ALEPHA_EXCLUSIVE_DIR: dir,
-        CHILD_WAIT_FOR_SIGNAL: "1",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
+    const holder = spawnChild(dir, "shared", 60_000, {
+      CHILD_WAIT_FOR_SIGNAL: "1",
     });
 
     await new Promise<void>((resolve) => {

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -136,7 +136,8 @@ describe("$command", () => {
 
   describe("exclusive", () => {
     /**
-     * Point the queue at a scratch directory for the duration of one case.
+     * Point the queue at a scratch directory for the duration of one case, and
+     * remove it afterwards.
      *
      * The variable is read inside `baseDir()` at acquire time, so it has to be
      * set on this process rather than passed in.
@@ -150,6 +151,7 @@ describe("$command", () => {
         await body(dir);
       } finally {
         delete process.env.ALEPHA_EXCLUSIVE_DIR;
+        rmSync(dir, { recursive: true, force: true });
       }
     };
 

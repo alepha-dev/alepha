@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -13,14 +14,32 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Alepha, AlephaError } from "alepha";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { ExclusiveTicket } from "../index.ts";
 import { ExclusiveProvider, exclusiveOptions } from "../index.ts";
 
 describe("ExclusiveProvider", () => {
-  const scratch = (): string =>
-    mkdtempSync(join(tmpdir(), "alepha-exclusive-test-"));
+  /**
+   * Every directory `scratch()` handed out during the current case.
+   *
+   * Removed once the case is over: they sit at the root of the system temp
+   * directory, where nothing else ever sweeps them, so each run of this file
+   * used to leave about twenty behind.
+   */
+  const scratchDirs: string[] = [];
+
+  const scratch = (): string => {
+    const dir = mkdtempSync(join(tmpdir(), "alepha-exclusive-test-"));
+    scratchDirs.push(dir);
+    return dir;
+  };
+
+  afterEach(() => {
+    for (const dir of scratchDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   /**
    * A pid that provably names nothing.
