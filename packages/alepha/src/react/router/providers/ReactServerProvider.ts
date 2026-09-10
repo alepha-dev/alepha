@@ -104,18 +104,7 @@ export class ReactServerProvider {
       let root = "";
 
       // non-serverless mode only -> serve static files
-      // SPIKE (throwaway): a `bun build --compile` binary publishes its
-      // embedded public/ as a URL -> embedded-path map before the app loads.
-      const embedded = (globalThis as any).__ALEPHA_EMBEDDED_PUBLIC__;
-      if (embedded && !this.alepha.isViteDev()) {
-        this.log.info(
-          `Serving ${Object.keys(embedded).length} embedded static files`,
-        );
-        this.serverStaticProvider.createEmbeddedStaticServer(embedded, {
-          cacheControl: { maxAge: [1, "hour"], immutable: true },
-          ...this.options.staticServer,
-        });
-      } else if (!this.alepha.isServerless() && !this.alepha.isViteDev()) {
+      if (!this.alepha.isServerless() && !this.alepha.isViteDev()) {
         root = await this.getPublicDirectory();
         if (!root) {
           this.log.warn(
