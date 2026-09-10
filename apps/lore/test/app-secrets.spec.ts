@@ -492,9 +492,7 @@ describe("a deployed copy's environment", () => {
       expect(set.APP_NAME).toBeUndefined();
     });
 
-    it("gives none to a copy whose Worker is on record", async ({
-      expect,
-    }) => {
+    it("gives none to a copy whose Worker is on record", async ({ expect }) => {
       const w = await world();
       await deployable(w);
       await alepha.inject(TestRows).instances.updateById(w.instance.id, {
