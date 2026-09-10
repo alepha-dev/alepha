@@ -34,7 +34,15 @@
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { type AddressInfo, createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -643,6 +651,81 @@ describe("Alepha CLI E2E", () => {
       } finally {
         await server.kill();
       }
+    });
+
+    /**
+     * `--compile` must produce ONE file that serves the whole app, its client
+     * assets included. So the binary is copied into a directory that holds
+     * nothing else: every asset it serves has to come from inside it.
+     *
+     * The bytes cannot be compared with the file before compiling, because
+     * the build deletes `public/` and every build bakes its own date into the
+     * client bundle. What proves the embedding instead: the page's own entry
+     * script is served as JavaScript, and its brotli sibling, a second
+     * embedded file, decodes to exactly the same bytes.
+     */
+    it("compiles to one binary that serves its assets from an empty directory", async () => {
+      const result = await run(
+        `"${CLI}" build --runtime=bun --compile e2e`,
+        PROJECT_DIR,
+      );
+
+      if (result.exitCode !== 0) {
+        console.log("COMPILE OUTPUT:", result.stdout.slice(-2000));
+        console.log("COMPILE STDERR:", result.stderr);
+      }
+
+      expect(result.exitCode).toBe(0);
+      const binary = join(PROJECT_DIR, "dist/e2e");
+      expect(existsSync(binary)).toBe(true);
+      expect(existsSync(join(PROJECT_DIR, "dist/manifest.json"))).toBe(true);
+      expect(existsSync(join(PROJECT_DIR, "dist/index.js"))).toBe(false);
+      expect(existsSync(join(PROJECT_DIR, "dist/public"))).toBe(false);
+
+      const alone = join(WORK_DIR, "compiled");
+      await rm(alone, { recursive: true, force: true });
+      await mkdir(alone, { recursive: true });
+      await copyFile(binary, join(alone, "e2e"));
+      await chmod(join(alone, "e2e"), 0o755);
+
+      const port = await freePort();
+      const base = `http://127.0.0.1:${port}`;
+      const server = startProcess("./e2e", alone, {
+        SERVER_PORT: String(port),
+        SERVER_HOST: "127.0.0.1",
+        NODE_ENV: "production",
+        APP_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
+      });
+
+      try {
+        const page = await fetchWithRetry(`${base}/`, 30, 500);
+        expect(page.status).toBe(200);
+        const entry = (await page.text()).match(
+          /<script[^>]*src="(\/[^"]+\.js)"/,
+        )?.[1];
+        expect(entry).toBeDefined();
+
+        const plain = await fetch(`${base}${entry}`, {
+          headers: { "accept-encoding": "identity" },
+        });
+        expect(plain.status).toBe(200);
+        expect(plain.headers.get("content-type")).toContain("javascript");
+        const plainBody = await plain.text();
+        expect(plainBody.length).toBeGreaterThan(1000);
+
+        const brotli = await fetch(`${base}${entry}`, {
+          headers: { "accept-encoding": "br" },
+        });
+        expect(brotli.headers.get("content-encoding")).toBe("br");
+        expect(await brotli.text()).toBe(plainBody);
+
+        const missing = await fetch(`${base}/not-embedded.js`);
+        expect(missing.status).toBe(404);
+      } finally {
+        await server.kill();
+      }
+
+      expect(await readdir(alone)).toEqual(["e2e"]);
     });
   });
 });
