@@ -27,7 +27,7 @@ import { ProjectScopeGrants } from "./web/app/services/ProjectScopeGrants.ts";
 
 const alepha = Alepha.create({
   env: {
-    APP_NAME: "RDM",
+    APP_NAME: "LORE",
   },
 });
 
