@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { $inject, Alepha, z } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
@@ -635,6 +636,65 @@ describe("ApiKeyService", () => {
 
     const userInfo = await service.validate(token);
     expect(userInfo?.id).toBe(userId);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Usage tracking
+  // ---------------------------------------------------------------------------
+
+  it("should record usage through the background task provider", async () => {
+    // A bare fire-and-forget promise is cancelled on Workers once the response
+    // is returned, and dropped on stop everywhere else. Routed through the
+    // provider it gets `waitUntil` on Workers and is flushed on stop.
+    class TestApp {
+      issuer = $issuer({
+        secret: "test-secret",
+        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
+      });
+    }
+
+    /**
+     * Counts what reaches `defer`, so a write routed through the provider can
+     * be told apart from one fired bare.
+     */
+    class RecordingBackgroundTaskProvider extends BackgroundTaskProvider {
+      public deferred = 0;
+
+      public override defer(task: () => unknown): void {
+        this.deferred++;
+        super.defer(task);
+      }
+    }
+
+    const alepha = Alepha.create()
+      .with({
+        provide: BackgroundTaskProvider,
+        use: RecordingBackgroundTaskProvider,
+      })
+      .with(AlephaOrmPostgres)
+      .with(AlephaServer)
+      .with(AlephaSecurity)
+      .with(AlephaApiKeys);
+    alepha.inject(TestApp);
+
+    const service = alepha.inject(ApiKeyService);
+    const background = alepha.inject(RecordingBackgroundTaskProvider);
+    await alepha.start();
+
+    const { apiKey, token } = await service.create({
+      userId: randomUUID(),
+      name: "Usage Key",
+      roles: ["admin"],
+    });
+
+    expect(await service.validate(token)).not.toBeNull();
+    expect(background.deferred).toBe(1);
+
+    await background.flush();
+
+    const row = await service.getById(apiKey.id);
+    expect(row.usageCount).toBe(1);
+    expect(row.lastUsedAt).toBeDefined();
   });
 
   // ---------------------------------------------------------------------------
