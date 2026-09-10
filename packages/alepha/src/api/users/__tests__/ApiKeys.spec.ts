@@ -1,11 +1,12 @@
 import { Alepha } from "alepha";
 import { ApiKeyService } from "alepha/api/keys";
+import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ForbiddenError } from "alepha/server";
-import { describe, it, vi } from "vitest";
+import { describe, it } from "vitest";
 
 import { $realm, AlephaApiUsers, SessionService } from "../index.ts";
 
@@ -173,7 +174,7 @@ describe("alepha/api/users - API Keys Integration", () => {
   it("should update lastUsedAt and usageCount on validate", async ({
     expect,
   }) => {
-    const { sessionService, apiKeyService } = await setup();
+    const { alepha, sessionService, apiKeyService } = await setup();
 
     const user = await sessionService.users().create({
       username: "testuser",
@@ -192,18 +193,13 @@ describe("alepha/api/users - API Keys Integration", () => {
     const info = await apiKeyService.validate(token);
     expect(info).not.toBeNull();
 
-    // `validate` fires `updateUsage` without awaiting it, so poll the row
-    // until the write lands. A fixed sleep is a guess that a loaded CI runner
-    // outlasts. The deadline stays under the 10s test timeout, so a write that
-    // never lands still fails on this assertion rather than a bare timeout.
-    await vi.waitFor(
-      async () => {
-        const after = await apiKeyService.getById(apiKey.id);
-        expect(after.lastUsedAt).toBeDefined();
-        expect(after.usageCount).toBe(1);
-      },
-      { timeout: 5_000, interval: 20 },
-    );
+    // `validate` defers the usage write rather than awaiting it. Flushing the
+    // background provider waits for exactly that write, so no polling.
+    await alepha.inject(BackgroundTaskProvider).flush();
+
+    const after = await apiKeyService.getById(apiKey.id);
+    expect(after.lastUsedAt).toBeDefined();
+    expect(after.usageCount).toBe(1);
   });
 
   it("should reject revoked API key", async ({ expect }) => {

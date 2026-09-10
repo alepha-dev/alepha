@@ -431,6 +431,53 @@ describe("the worker-side Cloudflare adapter", () => {
       });
     });
 
+    it("binds SEND_EMAIL, so an app sending mail through Cloudflare still can", async ({
+      expect,
+    }) => {
+      // `BuildCloudflareTask.enhanceEmail` writes the binding into
+      // `wrangler.jsonc`, and wrangler would carry it. The API upload carries
+      // only what `bindings()` lists, so without it every verification code
+      // and notification fails at send time, behind a green deploy.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await fs.writeFile(
+        "/deploy/dist/wrangler.jsonc",
+        JSON.stringify({
+          name: "my-app",
+          main: "./main.cloudflare.js",
+          compatibility_date: "2025-11-17",
+          rules: [{ type: "ESModule", globs: ["index.js"] }],
+          send_email: [
+            { name: "SEND_EMAIL" },
+            {
+              name: "ALERTS",
+              destination_address: "ops@example.com",
+              allowed_sender_addresses: ["noreply@example.com"],
+            },
+          ],
+        }),
+      );
+      await fs.writeFile(
+        "/deploy/dist/main.cloudflare.js",
+        "export default {};",
+      );
+      await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "send_email",
+        name: "SEND_EMAIL",
+      });
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "send_email",
+        name: "ALERTS",
+        destination_address: "ops@example.com",
+        allowed_sender_addresses: ["noreply@example.com"],
+      });
+    });
+
     it("sends no assets for an app that has none", async ({ expect }) => {
       // An API-only Worker has no `public/` and no `assets` block, and must
       // not open an upload session for an empty manifest.

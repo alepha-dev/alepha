@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { $inject, Alepha } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -12,6 +13,7 @@ import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
 
 export class ApiKeyService {
   protected readonly alepha = $inject(Alepha);
+  protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly repo = $repository(apiKeyEntity);
@@ -148,7 +150,7 @@ export class ApiKeyService {
           return null;
         }
 
-        return this.validate(token, options.resolveOwner);
+        return this.validate(token, options.resolveOwner, req.ip);
       },
     };
   }
@@ -357,12 +359,18 @@ export class ApiKeyService {
    *
    * @param resolveOwner - Optional per-request owner check; a false return
    * refuses the key (owner disabled or deleted).
+   * @param ip - The client address of the request being authenticated,
+   * recorded as the key's `lastUsedIp`. Pass it whenever the request is at
+   * hand: the issuer resolver runs in `server:onRequest`, before the router
+   * stores the request, so the fallback (the stored request's IP) only
+   * reaches a caller inside a route handler.
    */
   public async validate(
     token: string,
     resolveOwner?: (
       userId: string,
     ) => Promise<{ enabled: boolean; roles?: string[] } | undefined>,
+    ip?: string,
   ): Promise<UserInfo | null> {
     // Quick check for API key format
     if (!token.includes("_")) {
@@ -434,10 +442,13 @@ export class ApiKeyService {
       }
     }
 
-    // Update usage stats (fire and forget)
-    this.updateUsage(apiKey.id).catch((error) => {
-      this.log.warn("Failed to update API key usage", { error });
-    });
+    // Record usage without holding up the request. The provider keeps the
+    // write alive past the response on Workers (`waitUntil`), flushes it on
+    // stop, and logs a failure. The IP is resolved now, so the deferred task
+    // depends on nothing but its arguments. The caller's `ip` comes first:
+    // the store holds no request yet when the resolver calls this.
+    const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
+    this.background.defer(() => this.updateUsage(apiKey.id, clientIp));
 
     return {
       id: apiKey.userId,
@@ -447,13 +458,19 @@ export class ApiKeyService {
 
   /**
    * Update usage statistics for an API key.
+   *
+   * An IP the column cannot hold is not written, and the row keeps the one it
+   * had. Under `TRUST_PROXY` (the default) it can come verbatim from a header
+   * the client sets, and a value the column refuses fails the whole write, so
+   * one oversized `X-Real-IP` would hide the key's `lastUsedAt` and
+   * `usageCount`.
    */
-  protected async updateUsage(id: string): Promise<void> {
-    const request = this.alepha.store.get("alepha.http.request");
+  protected async updateUsage(id: string, ip?: string): Promise<void> {
+    const ipFits = apiKeyEntity.schema.shape.lastUsedIp.safeParse(ip).success;
 
     await this.repo.updateById(id, {
       lastUsedAt: this.dateTimeProvider.now().toISOString(),
-      lastUsedIp: request?.ip,
+      lastUsedIp: ipFits ? ip : undefined,
       usageCount: sql`${this.repo.table.usageCount} + 1`,
     });
   }

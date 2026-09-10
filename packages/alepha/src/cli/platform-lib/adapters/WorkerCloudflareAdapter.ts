@@ -766,6 +766,13 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
         dataset: dataset.dataset,
       });
     }
+    // ⚠️ wrangler carries `send_email` on its own, and this upload does not:
+    // an app with `AlephaEmailCloudflare` deployed through Lore would lose
+    // `env.SEND_EMAIL` and fail every send behind a green deploy. The address
+    // keys are the API's own names, so they travel as they are.
+    for (const email of config.send_email ?? []) {
+      bindings.push({ type: "send_email", ...email });
+    }
     for (const [name, text] of Object.entries(config.vars ?? {})) {
       bindings.push({ type: "plain_text", name, text: String(text) });
     }
@@ -1020,6 +1027,12 @@ interface WranglerConfig {
   d1_databases?: Array<{ binding: string; database_id: string }>;
   r2_buckets?: Array<{ binding: string; bucket_name: string }>;
   kv_namespaces?: Array<{ binding: string; id: string }>;
+  send_email?: Array<{
+    name: string;
+    destination_address?: string;
+    allowed_destination_addresses?: string[];
+    allowed_sender_addresses?: string[];
+  }>;
   queues?: {
     producers?: Array<{ binding: string; queue: string }>;
     /**

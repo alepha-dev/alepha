@@ -1,5 +1,6 @@
 import { $inject, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
@@ -79,6 +80,47 @@ export class ReleaseController {
   }
   owned = $inject(OwnedResourceProvider);
   releaseNotifier = $inject(ReleaseNotifier);
+  protected readonly log = $logger();
+
+  /**
+   * Hand the project's intake on from a default that has just been published
+   * to the release next in line (`DefaultReleaseService.successor`), and say
+   * so in the successor's activity.
+   *
+   * ⚠️ **Best effort, and that is the design.** D1 has no transaction, so this
+   * is a second write after the publish patch rather than part of it. The
+   * publish patch has already cleared `defaultSince`, so a failure here leaves
+   * the project with no default, which is exactly what publishing did before
+   * this existed, and never a publish that reports failure after it happened.
+   *
+   * The audit row carries `reason: "publish"` beside `from`, which is what
+   * tells this move apart from somebody pointing intake by hand.
+   */
+  protected async handDefaultOn(
+    published: Release,
+    user: UserAccountToken,
+  ): Promise<void> {
+    try {
+      const next = await this.defaults.successor(published);
+      if (!next) return;
+
+      await this.defaults.set(
+        published.projectId,
+        next.id,
+        this.dt.nowISOString(),
+      );
+      await this.logRelease("default", next, user, {
+        from: published.tag ?? published.number,
+        reason: "publish",
+      });
+    } catch (error) {
+      this.log.warn("Could not hand the default release on after a publish", {
+        projectId: published.projectId,
+        releaseId: published.id,
+        error,
+      });
+    }
+  }
 
   /**
    * The gates this controller needs: the param names the project, or it names
@@ -321,6 +363,8 @@ export class ReleaseController {
         // `ReleaseAttachmentService.assertOpen` refuses, and the quest cannot
         // close. In the patch this action already builds rather than a second
         // write, because there is no transaction on D1 to make two atomic.
+        // Handing it on to the next release is `handDefaultOn`, below, and
+        // is the part allowed to fail.
         //
         // `reopenRelease` deliberately does NOT restore it: reopening says the
         // record was wrong, not that intake should resume here.
@@ -336,6 +380,14 @@ export class ReleaseController {
       // Publishing is one-way and freezes the record, which is exactly what
       // makes it worth a row.
       await this.logRelease("publish", release, user);
+
+      // Only when THIS release was the default: publishing any other release
+      // leaves intake where it is, and a project with no default keeps none.
+      // After the publish row, so the activity feed reads in the order it
+      // happened.
+      if (release.defaultSince) {
+        await this.handDefaultOn(published, user);
+      }
 
       // After the write AND the audit row, deliberately: a notification for a
       // release that failed to persist is the one failure mode worse than a
@@ -421,7 +473,10 @@ export class ReleaseController {
    *    own `WHERE project_id` would have made it a silent no-op.
    * 3. `publishRelease` clears `defaultSince` on the row it publishes, in the
    *    patch it already builds. Publishing is the natural end of being the
-   *    intake point, and skipping it is the same deadlock as refusal 1.
+   *    intake point, and skipping it is the same deadlock as refusal 1. It
+   *    then hands the default to the release next in line, when there is one
+   *    (`handDefaultOn`), which is the only time the default moves without
+   *    this action.
    *
    * `deleteRelease` needs nothing: the flag lives on the row that goes.
    * `reopenRelease` deliberately does NOT restore it - reopening says the

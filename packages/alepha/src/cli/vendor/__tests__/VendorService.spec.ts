@@ -826,6 +826,69 @@ describe("VendorService", () => {
     });
 
     /**
+     * The opt-out: a project that syncs with `build: false` never rewrote its
+     * manifests, so its copy must be compared to the baseline as committed.
+     * Transforming the baseline anyway would report every synced
+     * `package.json` as a local modification and abort the next sync.
+     */
+    it("compares an unbuilt copy as committed when build is off", async ({
+      expect,
+    }) => {
+      class TestVendorService extends VendorService {
+        protected override async cloneAtCommit(): Promise<string> {
+          return "/tmp/test-baseline";
+        }
+      }
+
+      const alepha = Alepha.create()
+        .with({ provide: ShellProvider, use: MemoryShellProvider })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      const service = alepha.inject(TestVendorService);
+      const fs = alepha.inject(MemoryFileSystemProvider);
+
+      const manifest = `${JSON.stringify(
+        {
+          name: "alepha",
+          scripts: { build: "node scripts/build.ts" },
+          exports: { "./react": { import: "./src/react/index.ts" } },
+          publishConfig: {
+            exports: { "./react": { import: "./dist/react/index.js" } },
+          },
+        },
+        null,
+        2,
+      )}\n`;
+
+      await fs.mkdir("/project/packages", { recursive: true });
+      await fs.writeFile(
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "abc123" }),
+      );
+      await fs.mkdir("/tmp/test-baseline/packages/alepha", { recursive: true });
+      await fs.writeFile(
+        "/tmp/test-baseline/packages/alepha/package.json",
+        manifest,
+      );
+      // The local copy is exactly what the remote committed: never built.
+      await fs.mkdir("/project/packages/alepha", { recursive: true });
+      await fs.writeFile("/project/packages/alepha/package.json", manifest);
+
+      const diff = (build?: boolean) =>
+        service.diff({
+          root: "/project",
+          remote: "remote",
+          branch: "main",
+          dir: "packages",
+          packages: ["alepha"],
+          build,
+        });
+
+      expect((await diff(false)).totalChanges).toBe(0);
+      // The default still expects a built copy, so the same tree differs.
+      expect((await diff()).totalChanges).toBe(1);
+    });
+
+    /**
      * The end of the chain, against the REAL manifest rather than a fixture.
      *
      * This is what a non-Vite consumer actually does: Node reads the

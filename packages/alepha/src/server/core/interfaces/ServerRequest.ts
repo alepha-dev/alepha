@@ -244,7 +244,13 @@ export type ServerHandler<
 > = (request: ServerRequest<TConfig>) => Async<ServerResponseBody<TConfig>>;
 
 export interface ServerResponse {
-  body: string | Buffer | ArrayBuffer | NodeStream | NodeWebStream;
+  body:
+    | string
+    | Buffer
+    | ArrayBuffer
+    | ArrayBufferView
+    | NodeStream
+    | NodeWebStream;
   headers: Record<string, string>;
   status: number;
 }

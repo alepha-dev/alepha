@@ -359,6 +359,19 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       return;
     }
 
+    // Any other binary: an `ArrayBuffer`, or a view onto one (a `Uint8Array`
+    // that is not a `Buffer`, another typed array, a `DataView`). These used
+    // to reach the JSON branch below like any object, so an `ArrayBuffer`
+    // went out as `{}` and a `Uint8Array` as an object of its indices. The
+    // body becomes a `Buffer` over the same bytes because a `Buffer` is what
+    // every later stage already handles: HEAD measures it, the compressor and
+    // the ETag hash read it, and both server providers write it.
+    if (reply.body instanceof ArrayBuffer || ArrayBuffer.isView(reply.body)) {
+      headers["content-type"] ??= "application/octet-stream";
+      reply.body = this.toBuffer(reply.body);
+      return;
+    }
+
     if (
       reply.body instanceof NodeWebStream ||
       reply.body instanceof NodeStream
@@ -376,6 +389,17 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     headers["content-type"] ??= "text/plain";
     reply.body = String(reply.body);
+  }
+
+  /**
+   * A `Buffer` over the bytes of an `ArrayBuffer` or of a view onto one,
+   * without copying them. A view's window is honoured: `view.buffer` alone is
+   * the whole backing store, which for a `subarray` is more than the body.
+   */
+  protected toBuffer(body: ArrayBuffer | ArrayBufferView): Buffer {
+    return body instanceof ArrayBuffer
+      ? Buffer.from(body)
+      : Buffer.from(body.buffer, body.byteOffset, body.byteLength);
   }
 
   /**

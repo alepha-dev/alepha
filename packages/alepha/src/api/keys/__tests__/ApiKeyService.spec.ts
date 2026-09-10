@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { $inject, Alepha, z } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
@@ -635,6 +636,190 @@ describe("ApiKeyService", () => {
 
     const userInfo = await service.validate(token);
     expect(userInfo?.id).toBe(userId);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Usage tracking
+  // ---------------------------------------------------------------------------
+
+  it("should record usage through the background task provider", async () => {
+    // A bare fire-and-forget promise is cancelled on Workers once the response
+    // is returned, and dropped on stop everywhere else. Routed through the
+    // provider it gets `waitUntil` on Workers and is flushed on stop.
+    class TestApp {
+      issuer = $issuer({
+        secret: "test-secret",
+        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
+      });
+    }
+
+    /**
+     * Counts usage writes that have finished. Reading the row back cannot
+     * tell whether `flush()` waited for the write: the read queues behind an
+     * UPDATE already sent, so it passes even when the provider was handed
+     * a promise that settles before the write does.
+     */
+    class TrackingApiKeyService extends ApiKeyService {
+      public usageWrites = 0;
+
+      protected async updateUsage(id: string, ip?: string): Promise<void> {
+        await super.updateUsage(id, ip);
+        this.usageWrites++;
+      }
+    }
+
+    const alepha = Alepha.create()
+      .with({ provide: ApiKeyService, use: TrackingApiKeyService })
+      .with(AlephaOrmPostgres)
+      .with(AlephaServer)
+      .with(AlephaSecurity)
+      .with(AlephaApiKeys);
+    alepha.inject(TestApp);
+
+    const service = alepha.inject(TrackingApiKeyService);
+    const background = alepha.inject(BackgroundTaskProvider);
+    await alepha.start();
+
+    const { apiKey, token } = await service.create({
+      userId: randomUUID(),
+      name: "Usage Key",
+      roles: ["admin"],
+    });
+
+    expect(await service.validate(token)).not.toBeNull();
+
+    // The promise `flush()` awaits is the one handed to `waitUntil` on
+    // Workers, so it must cover the write itself, not only its scheduling.
+    await background.flush();
+    expect(service.usageWrites).toBe(1);
+
+    const row = await service.getById(apiKey.id);
+    expect(row.usageCount).toBe(1);
+    expect(row.lastUsedAt).toBeDefined();
+  });
+
+  describe("usage recorded over HTTP", () => {
+    /**
+     * Counts usage writes that have finished. A row read back after
+     * `flush()` cannot say whether the write was awaited: the read and the
+     * UPDATE may run on different connections, so which lands first is down
+     * to timing.
+     */
+    class TrackingApiKeyService extends ApiKeyService {
+      public usageWrites = 0;
+
+      protected async updateUsage(id: string, ip?: string): Promise<void> {
+        await super.updateUsage(id, ip);
+        this.usageWrites++;
+      }
+    }
+
+    class TestApp {
+      apiKeyService = $inject(ApiKeyService);
+      issuer = $issuer({
+        secret: "test-secret",
+        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
+      });
+
+      whoami = $action({
+        use: [$secure()],
+        schema: {
+          response: z.object({ ip: z.string().optional() }),
+        },
+        handler: (request) => ({ ip: request.ip }),
+      });
+
+      // Not `api_key`, so the resolver leaves it alone and only the handler
+      // validates it.
+      validateInHandler = $action({
+        schema: {
+          query: z.object({ token: z.string() }),
+          response: z.object({ ip: z.string().optional() }),
+        },
+        handler: async (request) => {
+          await this.apiKeyService.validate(request.query.token);
+          return { ip: request.ip };
+        },
+      });
+    }
+
+    const setup = async () => {
+      const alepha = Alepha.create()
+        .with({ provide: ApiKeyService, use: TrackingApiKeyService })
+        .with(AlephaOrmPostgres)
+        .with(AlephaServer)
+        .with(AlephaSecurity)
+        .with(AlephaApiKeys);
+      const app = alepha.inject(TestApp);
+      const service = alepha.inject(TrackingApiKeyService);
+      const background = alepha.inject(BackgroundTaskProvider);
+      await alepha.start();
+
+      app.issuer.registerResolver(service.createResolver());
+
+      const { apiKey, token } = await service.create({
+        userId: randomUUID(),
+        name: "HTTP Key",
+        roles: ["admin"],
+      });
+
+      return { app, service, background, apiKey, token };
+    };
+
+    it("should record the IP the request came from", async () => {
+      // The resolver runs in `server:onRequest`, before the router stores the
+      // request, so an IP read from the store is `undefined` on this path.
+      const { app, service, background, apiKey, token } = await setup();
+
+      const response = await app.whoami.fetch({ query: { api_key: token } });
+      await background.flush();
+
+      // No proxy header, so this is the socket address (`::1` or similar).
+      expect(response.data.ip).toBeTruthy();
+      expect(service.usageWrites).toBe(1);
+
+      const row = await service.getById(apiKey.id);
+      expect(row.lastUsedIp).toBe(response.data.ip);
+    });
+
+    it("should fall back to the stored request for a caller inside a handler", async () => {
+      // By the time a handler runs, the router has stored the request, so a
+      // `validate()` called without an `ip` still records one.
+      const { app, service, background, apiKey, token } = await setup();
+
+      const response = await app.validateInHandler.fetch({ query: { token } });
+      await background.flush();
+
+      expect(response.data.ip).toBeTruthy();
+      expect(service.usageWrites).toBe(1);
+
+      const row = await service.getById(apiKey.id);
+      expect(row.lastUsedIp).toBe(response.data.ip);
+    });
+
+    it("should still record usage when the client IP does not fit the column", async () => {
+      // With `TRUST_PROXY` on (the default) `X-Real-IP` becomes `request.ip`
+      // verbatim, so the client chooses it. One character over the column's
+      // `max(45)` must not fail the write and hide the key's usage.
+      const { app, service, background, apiKey, token } = await setup();
+      const oversized = "a".repeat(46);
+
+      const response = await app.whoami.fetch({
+        query: { api_key: token },
+        headers: { "x-real-ip": oversized },
+      });
+      await background.flush();
+
+      // Proves the header reached `request.ip`, without which this passes
+      // for the wrong reason.
+      expect(response.data.ip).toBe(oversized);
+      expect(service.usageWrites).toBe(1);
+
+      const row = await service.getById(apiKey.id);
+      expect(row.usageCount).toBe(1);
+      expect(row.lastUsedAt).toBeDefined();
+      expect(row.lastUsedIp).toBeUndefined();
+    });
   });
 
   // ---------------------------------------------------------------------------

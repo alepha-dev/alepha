@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
@@ -41,6 +42,7 @@ interface TestContext {
   questController: QuestController;
   epicController: EpicController;
   fakeProvider: FakeProvider;
+  audits: AuditService;
   probe: Probe;
 }
 
@@ -75,6 +77,7 @@ const setup = async (): Promise<TestContext> => {
     questController: alepha.inject(QuestController),
     epicController: alepha.inject(EpicController),
     fakeProvider: alepha.inject(FakeProvider),
+    audits: alepha.inject(AuditService),
     probe,
   };
 };
@@ -131,6 +134,32 @@ const setDefault = async (
       { user },
     )
   ).data;
+
+const publish = async (ctx: TestContext, user: TestUser, releaseId: number) => {
+  await ctx.releaseController.publishRelease.fetch(
+    { params: { id: releaseId }, body: {} },
+    { user },
+  );
+};
+
+/**
+ * The tags of every release carrying `defaultSince`, read back through the
+ * same list the Releases page paints. At most one entry, and an empty list is
+ * a project with no default.
+ */
+const defaultTags = async (
+  ctx: TestContext,
+  user: TestUser,
+  projectId: number,
+) =>
+  (
+    await ctx.releaseController.getReleases.fetch(
+      { params: { projectId } },
+      { user },
+    )
+  ).data
+    .filter((it) => it.defaultSince)
+    .map((it) => it.tag);
 
 const createQuest = async (
   ctx: TestContext,
@@ -262,7 +291,7 @@ describe("ReleaseController: the default release", () => {
     ).rejects.toThrowError(/not found in this project/);
   });
 
-  it("clears the default when the default release is published", async ({
+  it("clears the default when the default release is published and nothing is next", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
@@ -311,6 +340,208 @@ describe("ReleaseController: the default release", () => {
     ).data;
     // Reopening says the record was wrong, not that intake resumes here.
     expect(releases.filter((it) => it.defaultSince)).toEqual([]);
+  });
+});
+
+/**
+ * Publishing the default hands it to the release next in line: the lowest
+ * open release above the published one whose patch is zero. A minor of the
+ * same major is always lower than the next major, so "the next minor, else
+ * the next major" needs no second rule.
+ *
+ * Every fixture creates its releases OUT of version order on purpose. A
+ * release's `number` is creation order, and a fixture created in version
+ * order cannot tell "next by tag" from "next by number" apart - which is how
+ * the #1633 e2e once passed against the wrong comparator.
+ */
+describe("ReleaseController: publishing the default hands it on", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("hands the default to the next minor", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "1.0.0");
+    await createRelease(ctx, user, project.id, "0.30.0");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["0.30.0"]);
+  });
+
+  it("takes the next major when no minor is left", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "1.0.0");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["1.0.0"]);
+  });
+
+  it("never takes a patch", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "1.0.0");
+    await createRelease(ctx, user, project.id, "0.29.1");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    // A hotfix is filed by hand, never caught by intake.
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["1.0.0"]);
+  });
+
+  it("skips a prerelease, the way it skips a patch", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "1.0.0");
+    await createRelease(ctx, user, project.id, "1.0.0-rc.1");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["1.0.0"]);
+  });
+
+  it("reads a two-part tag as a minor", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "1.0.0");
+    await createRelease(ctx, user, project.id, "0.30");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    // `0.30` is `0.30.0`, the same reading the Releases table sorts by.
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["0.30"]);
+  });
+
+  it("never moves the default backwards", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await createRelease(ctx, user, project.id, "0.27.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    // A forgotten older release left open is not "next".
+    expect(await defaultTags(ctx, user, project.id)).toEqual([]);
+  });
+
+  it("never hands the default to a tag that is not a version", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "demo-2");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    expect(await defaultTags(ctx, user, project.id)).toEqual([]);
+  });
+
+  it("moves nothing when the published default is not a version", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "0.30.0");
+    const current = await createRelease(ctx, user, project.id, "demo-1");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    // `demo-1` has no "next": there is no version to be above.
+    expect(await defaultTags(ctx, user, project.id)).toEqual([]);
+  });
+
+  it("gives a project with no default none, when any release is published", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "1.0.0");
+    await createRelease(ctx, user, project.id, "0.30.0");
+    const published = await createRelease(ctx, user, project.id, "0.29.0");
+
+    await publish(ctx, user, published.id);
+
+    // Only a choice the owner already made is carried on. Nothing ever
+    // picks a default for a project that has none.
+    expect(await defaultTags(ctx, user, project.id)).toEqual([]);
+  });
+
+  it("leaves the default alone when another release is published", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const major = await createRelease(ctx, user, project.id, "1.0.0");
+    await createRelease(ctx, user, project.id, "0.30.0");
+    const published = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, major.id);
+
+    await publish(ctx, user, published.id);
+
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["1.0.0"]);
+  });
+
+  it("records who moved it, from where, and why", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await createRelease(ctx, user, project.id, "0.30.0");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+
+    const page = await ctx.audits.find({ type: "release" } as never);
+    const rows = page.content as unknown as Array<Record<string, any>>;
+    const moved = rows.filter(
+      (row) => row.action === "default" && row.resourceId === "0.30.0",
+    );
+    // The release page's activity feed is the only surface that will ever
+    // say why intake moved, so the row names the release it came from and
+    // the publish that moved it.
+    expect(moved).toHaveLength(1);
+    expect(moved[0].userId).toBe(user.id);
+    expect(moved[0].metadata).toEqual({ from: "0.29.0", reason: "publish" });
+  });
+
+  it("lands the next loose quest in the release it was handed to", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const next = await createRelease(ctx, user, project.id, "0.30.0");
+    const current = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, current.id);
+
+    await publish(ctx, user, current.id);
+    const quest = await createQuest(ctx, user, project.id);
+    const completed = await completeQuest(ctx, user, quest.id);
+
+    // The point of carrying the default on: the work finished the day after
+    // `0.29.0` shipped goes somewhere, without anybody pointing it there.
+    expect(completed.releaseId).toBe(next.id);
   });
 });
 

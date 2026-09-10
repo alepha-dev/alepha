@@ -104,7 +104,7 @@ export class ServerProvider {
         headers["content-length"] = String(Buffer.byteLength(body));
       } else if (Buffer.isBuffer(body)) {
         headers["content-length"] = String(body.length);
-      } else if (body instanceof ArrayBuffer) {
+      } else if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
         headers["content-length"] = String(body.byteLength);
       }
     }
@@ -296,6 +296,20 @@ export class ServerProvider {
       return;
     }
 
+    // Any other binary: an `ArrayBuffer`, or a view onto one that is not a
+    // `Buffer`. The router's serializer already turns these into a `Buffer`,
+    // but a body a hook sets after it ran (`server:onSend`, an error page)
+    // arrives as it is, and used to fall through to the 500 at the bottom.
+    // `res.end` takes neither an `ArrayBuffer` nor a `DataView`.
+    if (
+      response.body instanceof ArrayBuffer ||
+      ArrayBuffer.isView(response.body)
+    ) {
+      res.writeHead(response.status, response.headers);
+      res.end(this.toBuffer(response.body));
+      return;
+    }
+
     // if response.body is node stream
     if (response.body instanceof Readable) {
       res.writeHead(response.status, response.headers);
@@ -473,6 +487,20 @@ export class ServerProvider {
       return;
     }
 
+    // Any other binary, set by a hook after the router's serializer ran (see
+    // `handleNodeRequest`). Copied out like the `Buffer` above, so that only
+    // the view's own bytes are sent, never the rest of its backing store.
+    if (
+      response.body instanceof ArrayBuffer ||
+      ArrayBuffer.isView(response.body)
+    ) {
+      ev.res = new Response(new Uint8Array(this.toBuffer(response.body)), {
+        status: response.status,
+        headers: webHeaders,
+      });
+      return;
+    }
+
     // if response.body is node stream
     if (response.body instanceof Readable) {
       ev.res = new Response(
@@ -500,6 +528,17 @@ export class ServerProvider {
       status: 500,
       headers: { "content-type": "text/plain" },
     });
+  }
+
+  /**
+   * A `Buffer` over the bytes of an `ArrayBuffer` or of a view onto one,
+   * without copying them. A view's window is honoured: `view.buffer` alone is
+   * the whole backing store, which for a `subarray` is more than the body.
+   */
+  protected toBuffer(body: ArrayBuffer | ArrayBufferView): Buffer {
+    return body instanceof ArrayBuffer
+      ? Buffer.from(body)
+      : Buffer.from(body.buffer, body.byteOffset, body.byteLength);
   }
 
   /**
