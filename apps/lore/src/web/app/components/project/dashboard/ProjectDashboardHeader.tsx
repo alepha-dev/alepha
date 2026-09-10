@@ -38,26 +38,25 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
 
-  const standfirst =
-    props.cardCount === 0 ? (
-      tr("project.dashboard.standfirst.empty")
-    ) : (
-      <>
-        {tr(
-          props.cardCount === 1
-            ? "project.dashboard.standfirst.one"
-            : "project.dashboard.standfirst",
-          { args: [String(props.cardCount)] },
-        )}{" "}
-        {props.refreshedAt && (
-          <ClientOnly>
-            {tr("dashboard.refreshed", {
-              args: [dateTime.of(props.refreshedAt).fromNow()],
-            })}
-          </ClientOnly>
-        )}
-      </>
-    );
+  // Only ever rendered with cards on the board: at zero the empty state is the
+  // whole page (feedback #P2180), which is why there is no empty standfirst.
+  const standfirst = (
+    <>
+      {tr(
+        props.cardCount === 1
+          ? "project.dashboard.standfirst.one"
+          : "project.dashboard.standfirst",
+        { args: [String(props.cardCount)] },
+      )}{" "}
+      {props.refreshedAt && (
+        <ClientOnly>
+          {tr("dashboard.refreshed", {
+            args: [dateTime.of(props.refreshedAt).fromNow()],
+          })}
+        </ClientOnly>
+      )}
+    </>
+  );
 
   return (
     <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-end">

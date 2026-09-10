@@ -2150,8 +2150,6 @@ export default {
   "project.dashboard.empty.docs": "How project dashboards work",
   "project.dashboard.standfirst": "$1 cards on this project's board.",
   "project.dashboard.standfirst.one": "1 card on this project's board.",
-  "project.dashboard.standfirst.empty":
-    "This board is shared by everyone in the project.",
   "project.dashboard.card.delete.shared":
     "The board belongs to the project, so this removes the card for everyone in it.",
   "dashboard.greeting": "Welcome back, $1",

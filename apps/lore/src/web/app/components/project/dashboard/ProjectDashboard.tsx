@@ -1,4 +1,5 @@
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { cn } from "@alepha/ui/lib/utils";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useMemo, useState } from "react";
@@ -300,36 +301,49 @@ const ProjectDashboard = () => {
     setCatalogueOpen(true);
   };
 
+  // ⚠️ At zero cards the empty state is the whole page (feedback #P2180): no
+  // header, no heading, no Add button up top. It carries Add card itself, and
+  // the page stretches so it can centre on both axes of the content area.
+  const empty = cards.length === 0;
+
   return (
-    <div className="@container flex min-h-0 w-full flex-col px-8 pt-6 pb-10">
-      <ProjectDashboardHeader
-        cardCount={cards.length}
-        refreshedAt={board.refreshedAt}
-        canEdit={canEdit}
-        onAdd={openCatalogue}
-      />
-
-      <DashboardGrid
-        cards={cards}
-        values={values}
-        metrics={metrics}
-        boardProjectId={projectId}
-        canEdit={canEdit}
-        onReorder={onReorder}
-        onAdd={openCatalogue}
-        onChangeScope={(card) => {
-          setEditing(card);
-          setCatalogueOpen(true);
-        }}
-        onDuplicate={onDuplicate}
-        onRemove={onRemove}
-      />
-
-      {cards.length === 0 && (
+    <div
+      className={cn(
+        "@container flex min-h-0 w-full flex-col px-8 pt-6 pb-10",
+        empty && "flex-1",
+      )}
+    >
+      {empty ? (
         <ProjectDashboardEmpty
           canEdit={canEdit}
           hasOfferableMetric={hasOfferableMetric}
+          onAdd={openCatalogue}
         />
+      ) : (
+        <>
+          <ProjectDashboardHeader
+            cardCount={cards.length}
+            refreshedAt={board.refreshedAt}
+            canEdit={canEdit}
+            onAdd={openCatalogue}
+          />
+
+          <DashboardGrid
+            cards={cards}
+            values={values}
+            metrics={metrics}
+            boardProjectId={projectId}
+            canEdit={canEdit}
+            onReorder={onReorder}
+            onAdd={openCatalogue}
+            onChangeScope={(card) => {
+              setEditing(card);
+              setCatalogueOpen(true);
+            }}
+            onDuplicate={onDuplicate}
+            onRemove={onRemove}
+          />
+        </>
       )}
 
       {/*
