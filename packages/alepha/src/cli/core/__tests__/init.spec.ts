@@ -206,8 +206,7 @@ describe("alepha init", () => {
           /from "vitest\/config"/,
         ),
       ).toBe(true);
-      // `test.root` is what stops Vitest walking up into a parent monorepo
-      // config that boots containers this project knows nothing about.
+      // `test.root` pins test discovery to the project directory.
       expect(
         fs.wasWrittenMatching("/project/vite.config.ts", /root: "\."/),
       ).toBe(true);

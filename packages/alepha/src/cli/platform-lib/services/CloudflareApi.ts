@@ -1,4 +1,4 @@
-import { md5 } from "@noble/hashes/legacy";
+import { md5 } from "@noble/hashes/legacy.js";
 import { $inject, Alepha, AlephaError, type ZType, z } from "alepha";
 
 import type {

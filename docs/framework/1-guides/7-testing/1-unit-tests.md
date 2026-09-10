@@ -10,7 +10,7 @@ Every Alepha project is scaffolded with test support - no flag needed:
 alepha init my-app
 ```
 
-`init` writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` so a parent monorepo config can't take over) and a starter `test/dummy.spec.ts` - there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
+`init` writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` to the project directory) and a starter `test/dummy.spec.ts` - there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
 
 Run tests with `alepha test`. Positional arguments are forwarded to Vitest as filename/test filters:
 

@@ -25,21 +25,21 @@
     "react": "^19.2.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
+    "@types/react-dom": "^19.2.7",
     "@xmldom/xmldom": "^0.9.12",
     "alepha": "^0.28.0",
     "highlight.js": "^11.12.0",
     "jsdom": "^30.0.1",
-    "marked": "^18.0.11",
+    "marked": "^18.0.12",
     "marked-highlight": "^2.2.4",
     "react-dom": "^19.2.8",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11",
-    "wrangler": "^4.127.1"
+    "vitest": "^5.0.0",
+    "wrangler": "^4.130.0"
   }
 }

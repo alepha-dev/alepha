@@ -7,10 +7,11 @@
  * second place for plugins and aliases to drift apart — which is the failure
  * that actually hurts: tests resolving imports differently from the build.
  *
- * `test.root` is the one setting worth spelling out. Without it Vitest walks up
- * the directory tree looking for a config and can inherit a parent monorepo's,
- * pulling in setup files, database connections and projects that have nothing
- * to do with this app.
+ * `test.root` pins test discovery to this directory. It mattered more before
+ * Vitest 5: earlier versions walked up the directory tree looking for a config
+ * and could inherit a parent monorepo's, pulling in setup files, database
+ * connections and projects that have nothing to do with this app. Vitest 5 no
+ * longer searches parent directories, so the setting is now belt and braces.
  */
 export const viteConfigTs = () => {
   return `import tailwindcss from "@tailwindcss/vite";
