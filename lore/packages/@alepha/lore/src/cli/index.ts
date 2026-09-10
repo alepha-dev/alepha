@@ -7,6 +7,7 @@ import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
+import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
@@ -32,11 +33,12 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
  * lore quality push -p alepha
  * ```
  *
- * ## ⚠️ Six top-level commands, and no root of its own
+ * ## ⚠️ Top-level commands, and no root of its own
  *
- * `quality`, `artifacts`, `attachments`, `releases`, `login` and `logout`
- * register at the top level, because the binary IS the root. A `lore` command
- * inside a `lore` binary reads `lore lore quality push`.
+ * `quality`, `artifacts`, `attachments`, `releases`, `apps`, `deploy`,
+ * `secrets`, `login` and `logout` register at the top level, because the
+ * binary IS the root. A `lore` command inside a `lore` binary reads
+ * `lore lore quality push`.
  *
  * That also means nothing here may inject a command from `alepha/cli`:
  * `Alepha.inject` registers the module that declares a service, so one such
@@ -69,7 +71,7 @@ export const AlephaLoreCli = $module({
     GitContextService,
     ArtifactUploader,
     LoreTokenStore,
-    // ⚠️ None of the seven below is re-exported. Each names, directly or
+    // ⚠️ None of the eight below is re-exported. Each names, directly or
     // through what it injects, a type from the private `lore` workspace, and
     // an exported signature carrying one would put that workspace in the
     // published `.d.ts`. `scripts/check-dts.ts` fails the build if it does.
@@ -86,6 +88,7 @@ export const AlephaLoreCli = $module({
     ArtifactCommand,
     AttachmentCommand,
     ReleaseCommand,
+    SecretsCommand,
     LoginCommand,
   ],
 });
