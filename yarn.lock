@@ -7514,6 +7514,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"loom@workspace:apps/loom":
+  version: 0.0.0-use.local
+  resolution: "loom@workspace:apps/loom"
+  dependencies:
+    alepha: "workspace:^"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+  languageName: unknown
+  linkType: soft
+
 "lore@workspace:*, lore@workspace:apps/lore":
   version: 0.0.0-use.local
   resolution: "lore@workspace:apps/lore"
