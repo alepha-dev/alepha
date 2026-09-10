@@ -383,9 +383,9 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     /**
      * This copy runs a Durable Object namespace, because it uses `$websocket`.
      *
-     * ⚠️ Recorded because DO storage is DATA, and a teardown has to know that
-     * before deciding whether it may force the script delete - which is what
-     * takes the namespace with it.
+     * ⚠️ Not a resource of its own: it has no name and no delete, and the
+     * forced Worker delete takes it. {@link teardownRecorded} reports it gone
+     * with the Worker, which is what lets the caller strike it.
      */
     durableObjects?: boolean;
   } = {};
@@ -939,6 +939,17 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
     if (record.worker) {
       await attempt("worker", () => api.deleteWorker(record.worker as string));
+    }
+    // ⚠️ The namespace has no delete of its own: the forced script delete
+    // above takes it. So it is reported gone whenever the Worker is not left
+    // standing, a record whose Worker an earlier run removed included, or the
+    // caller could never strike it and a copy holding nothing would read as
+    // holding something forever.
+    if (
+      record.durableObjects &&
+      !failed.some((it) => it.resource === "worker")
+    ) {
+      removed.push("durableObjects");
     }
     if (record.queue) {
       await attempt("queue", () => api.deleteQueue(record.queue as string));

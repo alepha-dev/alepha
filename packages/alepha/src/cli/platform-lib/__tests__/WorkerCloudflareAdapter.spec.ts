@@ -81,6 +81,24 @@ describe("the worker-side Cloudflare adapter", () => {
 
   const credential = { apiToken: "estate-token", accountId: "estate-account" };
 
+  const recordingProvisioner = (failing: string[] = []) => {
+    const calls: string[] = [];
+    const remove = (kind: string) => async (name: string) => {
+      calls.push(`${kind}:${name}`);
+      if (failing.includes(name)) {
+        throw new Error(`${name} could not be deleted`);
+      }
+    };
+    return {
+      calls,
+      provisioner: {
+        deleteWorker: remove("worker"),
+        deleteQueue: remove("queue"),
+        deleteKV: remove("kv"),
+      },
+    };
+  };
+
   it("refuses to do anything without the estate's credential", async ({
     expect,
   }) => {
@@ -763,24 +781,6 @@ describe("the worker-side Cloudflare adapter", () => {
    * estate's account, with nothing on Lore's side that could name it again.
    */
   describe("the dead-letter queue", () => {
-    const recordingProvisioner = (failing: string[] = []) => {
-      const calls: string[] = [];
-      const remove = (kind: string) => async (name: string) => {
-        calls.push(`${kind}:${name}`);
-        if (failing.includes(name)) {
-          throw new Error(`${name} could not be deleted`);
-        }
-      };
-      return {
-        calls,
-        provisioner: {
-          deleteWorker: remove("worker"),
-          deleteQueue: remove("queue"),
-          deleteKV: remove("kv"),
-        },
-      };
-    };
-
     it("is recorded beside the queue it serves", async ({ expect }) => {
       const { adapter, naming } = setup();
       adapter.use(credential);
@@ -860,6 +860,68 @@ describe("the worker-side Cloudflare adapter", () => {
       await adapter.teardownRecorded({ queue: "q" });
 
       expect(calls).toEqual(["queue:q"]);
+    });
+  });
+
+  /**
+   * ⚠️ The namespace has no delete of its own and no name to record: the
+   * forced Worker delete is what takes it. Unless the result says so, the
+   * caller can never strike it, and a copy whose teardown left nothing would
+   * read as still holding something.
+   */
+  describe("the Durable Object namespace", () => {
+    it("is reported gone with the Worker that holds it", async ({ expect }) => {
+      const { adapter } = setup();
+      adapter.use(credential);
+      const { calls, provisioner } = recordingProvisioner();
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => provisioner,
+      });
+
+      const result = await adapter.teardownRecorded({
+        worker: "w",
+        durableObjects: true,
+      });
+
+      expect(calls).toEqual(["worker:w"]);
+      expect(result.removed).toEqual(["worker", "durableObjects"]);
+    });
+
+    it("stays recorded while its Worker does", async ({ expect }) => {
+      const { adapter } = setup();
+      adapter.use(credential);
+      const { provisioner } = recordingProvisioner(["w"]);
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => provisioner,
+      });
+
+      const result = await adapter.teardownRecorded({
+        worker: "w",
+        durableObjects: true,
+      });
+
+      // The Worker still stands, so its namespace does too, and the retry
+      // that removes one has to find both named.
+      expect(result.removed).toEqual([]);
+      expect(result.failed.map((it) => it.resource)).toEqual(["worker"]);
+    });
+
+    it("is reported gone for a record whose Worker already went", async ({
+      expect,
+    }) => {
+      // Every deploy records the Worker beside the flag, so a record holding
+      // the flag alone is one an earlier teardown struck the Worker from.
+      const { adapter } = setup();
+      adapter.use(credential);
+      const { calls, provisioner } = recordingProvisioner();
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => provisioner,
+      });
+
+      const result = await adapter.teardownRecorded({ durableObjects: true });
+
+      expect(calls).toEqual([]);
+      expect(result.removed).toEqual(["durableObjects"]);
     });
   });
 });
