@@ -63,7 +63,15 @@ test.describe("Device login", () => {
     const device = await start(request);
     await page.goto(device.verification_uri_complete);
 
-    await page.waitForURL(/\/auth\/login/);
+    // ⚠️ The BRIDGED login URL, `?redirect=`, never just `/auth/login`. The
+    // device page lands on `/auth/login?redirect_uri=`, whose loader then
+    // redirects to `?redirect=/oauth/continue...` - a second page load. A
+    // wait that matched the first URL filled the first page's form, the
+    // redirect replaced it, and the click submitted the second page's empty
+    // form ("'identifier' is required"): 3 of 3 attempts on one CI run, 1 in
+    // 12 locally under load. Waiting for the second URL is also the proof
+    // that the bridge fired.
+    await page.waitForURL(/\/auth\/login\?redirect=/);
     await submitSignInForm(page, email, password);
 
     // Back on the page the link named, code and all - through the login
