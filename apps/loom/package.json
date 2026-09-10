@@ -6,11 +6,19 @@
     "dev": "alepha dev",
     "build": "alepha build",
     "deploy": "alepha build && mkdir -p \"$HOME/.alepha/apps/loom\" && cp dist/loom \"$HOME/.alepha/apps/loom/loom.next\" && mv -f \"$HOME/.alepha/apps/loom/loom.next\" \"$HOME/.alepha/apps/loom/loom\"",
+    "test": "alepha test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@alepha/ui": "workspace:*",
     "alepha": "workspace:^",
+    "lucide-react": "^1.43.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.2"
   }
 }
