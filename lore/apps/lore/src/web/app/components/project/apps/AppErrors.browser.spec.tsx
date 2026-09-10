@@ -14,7 +14,7 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
-import AppErrors from "./AppErrors.tsx";
+import AppErrors from "./AppErrors.client.tsx";
 
 class FakeLinkProvider extends LinkProvider {
   public responses: Record<string, unknown> = {};

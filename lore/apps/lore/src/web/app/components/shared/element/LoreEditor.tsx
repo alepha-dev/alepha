@@ -2,7 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { useState } from "react";
 
 import MarkdownEditor from "../markdown-editor/MarkdownEditor.tsx";
-import type { MarkdownEditorMode } from "../markdown-editor/MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "../markdown-editor/MarkdownEditorInner.client.tsx";
 import MarkdownModeToggle from "../markdown-editor/MarkdownModeToggle.tsx";
 import type { ElementRef } from "./elementRef.ts";
 import { useElementImageUpload } from "./useElementImageUpload.ts";

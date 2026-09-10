@@ -13,7 +13,7 @@ import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { ElementRef } from "../../../shared/element/elementRef.ts";
 import LoreEditor from "../../../shared/element/LoreEditor.tsx";
-import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import WikiLinkHoverProvider from "../../WikiLinkHoverProvider.tsx";
 import FolioMenubar from "../menubar/FolioMenubar.tsx";

@@ -7,7 +7,7 @@ import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { I18n } from "../../../services/I18n.ts";
-import MarkdownEditorInner from "./MarkdownEditorInner.tsx";
+import MarkdownEditorInner from "./MarkdownEditorInner.client.tsx";
 
 /**
  * The fixed formatting bar above a description field (feedback #2056).

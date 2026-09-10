@@ -10,7 +10,7 @@ import {
   type MarkdownCommandId,
   markdownCommands,
 } from "../../shared/markdown-editor/markdownCommands.ts";
-import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioFindBar from "./document/FolioFindBar.tsx";

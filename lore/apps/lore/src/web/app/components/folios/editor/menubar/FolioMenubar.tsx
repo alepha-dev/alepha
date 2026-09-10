@@ -17,7 +17,7 @@ import type { ReactElement } from "react";
 
 import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
-import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
   FOLIO_MENUS,
