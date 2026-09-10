@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
-    "deploy": "alepha build && mkdir -p \"$HOME/.alepha/apps/loom\" && cp dist/loom \"$HOME/.alepha/apps/loom/loom.next\" && mv -f \"$HOME/.alepha/apps/loom/loom.next\" \"$HOME/.alepha/apps/loom/loom\"",
+    "deploy": "alepha build && mkdir -p \"$HOME/.alepha/apps\" && cp dist/loom \"$HOME/.alepha/apps/loom.next\" && mv -f \"$HOME/.alepha/apps/loom.next\" \"$HOME/.alepha/apps/loom\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

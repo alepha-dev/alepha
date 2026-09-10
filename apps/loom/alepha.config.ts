@@ -7,8 +7,8 @@ export default defineConfig({
   dev: { port: 3312 },
   // Loom ships as one binary, `dist/loom`, its public/ files inside it: the
   // dogfood of `alepha build --compile`, and the file a login item runs.
-  // `yarn w loom deploy` installs it into ~/.alepha/apps/loom under a
-  // temporary name, then renames it into place. Copying over the old file
+  // `yarn w loom deploy` installs it as ~/.alepha/apps/loom, the binary
+  // itself: copied under a temporary name, then renamed into place. Copying over the old file
   // would rewrite the binary a running Loom is executing, and on Apple
   // Silicon a signed binary rewritten in place gets killed; a rename leaves
   // the running one its own file until it restarts.
