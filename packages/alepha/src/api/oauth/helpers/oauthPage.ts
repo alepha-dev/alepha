@@ -39,18 +39,23 @@ export const escapeHtml = (s: string): string =>
  * The stylesheet, inline. Light and dark both defined, because the viewport
  * this lands in belongs to whoever opened it and the page has no theme toggle
  * and nowhere to remember one.
+ *
+ * The accent is neutral, the text colour on the panel, rather than a brand
+ * hue (#Q2233). These pages speak for whichever app mounts the module, and a
+ * colour of the framework's own choosing was the one thing on them that
+ * belonged to no app at all.
  */
 export const OAUTH_PAGE_STYLE = `
 :root{
   color-scheme:light dark;
   --bg:#f6f6f8; --panel:#fff; --line:#e3e3e9; --text:#17171c;
-  --muted:#63636e; --accent:#5b4bd6; --accent-text:#fff;
+  --muted:#63636e; --accent:#17171c; --accent-text:#fff;
   --chip:#f0f0f4; --chip-text:#63636e;
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#0b0b0f; --panel:#141419; --line:#292933; --text:#ececed;
-    --muted:#9a9aa5; --accent:#6d5cf0; --accent-text:#fff;
+    --muted:#9a9aa5; --accent:#ececed; --accent-text:#0b0b0f;
     --chip:#1e1e26; --chip-text:#9a9aa5;
   }
 }

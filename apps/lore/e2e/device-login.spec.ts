@@ -17,11 +17,11 @@ test.describe("Device login", () => {
   const password = "GoodPassw0rd";
 
   /**
-   * What `lore login` does first.
+   * What `lore login` does first, with the scope it asks for (#Q2244).
    */
   const start = async (request: APIRequestContext) => {
     const res = await request.post("/oauth/device_authorization", {
-      data: { client_id: "alepha-cli", scope: "mcp" },
+      data: { client_id: "alepha-cli", scope: "cli" },
     });
     expect(res.ok(), await res.text()).toBe(true);
     return (await res.json()) as {
@@ -63,7 +63,15 @@ test.describe("Device login", () => {
     const device = await start(request);
     await page.goto(device.verification_uri_complete);
 
-    await page.waitForURL(/\/auth\/login/);
+    // ⚠️ The BRIDGED login URL, `?redirect=`, never just `/auth/login`. The
+    // device page lands on `/auth/login?redirect_uri=`, whose loader then
+    // redirects to `?redirect=/oauth/continue...` - a second page load. A
+    // wait that matched the first URL filled the first page's form, the
+    // redirect replaced it, and the click submitted the second page's empty
+    // form ("'identifier' is required"): 3 of 3 attempts on one CI run, 1 in
+    // 12 locally under load. Waiting for the second URL is also the proof
+    // that the bridge fired.
+    await page.waitForURL(/\/auth\/login\?redirect=/);
     await submitSignInForm(page, email, password);
 
     // Back on the page the link named, code and all - through the login
@@ -71,7 +79,10 @@ test.describe("Device login", () => {
     // `/oauth/authorize` before.
     await page.waitForURL(/\/oauth\/device\?user_code=/, { timeout: 15_000 });
     await expect(page.getByText(device.user_code)).toBeVisible();
-    await expect(page.getByText("Your projects")).toBeVisible();
+    // Lore's words for the terminal, not the MCP connection's.
+    await expect(
+      page.getByText("Your account, from the terminal"),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "Allow" }).click();
     await expect(
