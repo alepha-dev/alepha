@@ -102,9 +102,10 @@ test.describe("agent prompts", () => {
       });
 
       await page.getByRole("button", { name: "Open row actions" }).click();
-      // Begin is there, so the menu opened and the absence below is real.
+      // Mark as ready is there, so the menu opened and the absence below is
+      // real.
       await expect(
-        page.getByRole("menuitem", { name: /begin/i }),
+        page.getByRole("menuitem", { name: /mark as ready/i }),
       ).toBeVisible();
       await expect(
         page.getByRole("menuitem", { name: /agent prompts/i }),

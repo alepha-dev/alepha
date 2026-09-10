@@ -1,6 +1,6 @@
 /**
  * The built-in default for `epicReview`: Agent Prompts > Review, offered on
- * a planned epic.
+ * an epic whose plan is still open, `planned` or `ready`.
  *
  * A template, not a builder. It is what a project gets before anyone edits
  * it in Settings > Work, and what Reset restores. The placeholders are the
@@ -46,7 +46,7 @@ If you do not have it, open the URL above and read the epic and its quests there
 
 ## The job
 
-This epic is still \`planned\`, which means its plan is open and its quest set is still being written. Your job is to make it a plan worth executing:
+Nobody has started this epic yet (it is \`planned\` or \`ready\`), which means its plan is open and its quest set can still change. Your job is to make it a plan worth executing:
 
 1. **Take every decision the spec has left open.** Where it says "either X or Y", pick one and say why. Where it names a trade-off and does not resolve it, resolve it.
 2. **Sharpen the quests that are vague.** A quest whose objectives could be ticked by two different pieces of work is not specified yet. Look for ordering that is implied but not written down, and for work that is named nowhere.

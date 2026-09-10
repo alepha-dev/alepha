@@ -78,23 +78,26 @@ const ProjectEpic = (props: ProjectEpicProps) => {
    * Keep the sidebar's planned-epic badge honest when the status changes
    * here rather than on the list.
    *
-   * Releasing an epic is the only way that badge goes DOWN, and it happens
-   * on this page. `ProjectEpics` recounts from `getEpics` on every fetch,
-   * but that only helps once the user navigates back to the list.
+   * Marking an epic ready takes it off that badge and sending it back to
+   * planning puts it on again, and both happen on this page. `ProjectEpics`
+   * recounts from `getEpics` on every fetch, but that only helps once the
+   * user navigates back to the list.
    *
    * A delta, not a count: this page knows one epic, never the project total.
    * Read through `store.get` instead of `useStore` so the badge stays
-   * write-only here, exactly as it is in the list. Since epic #31 the
-   * lifecycle is a ratchet, so the only edge that leaves `planned` is Begin
-   * and nothing ever comes back: the delta is minus one on that edge and
-   * nothing otherwise. Kept as a comparison rather than a literal so a
-   * response that echoes the same status moves the badge by nothing.
+   * write-only here, exactly as it is in the list. The only edges that cross
+   * `planned` are the two hand-set ones (#Q2223), so the delta is minus one
+   * leaving it, plus one entering it, and nothing otherwise. Kept as a
+   * comparison rather than a literal so a response that echoes the same
+   * status moves the badge by nothing.
    */
   const applyStatusChange = (updated: EpicResource) => {
-    if (epic.status === "planned" && updated.status !== "planned") {
+    const wasPlanned = epic.status === "planned";
+    const isPlanned = updated.status === "planned";
+    if (wasPlanned !== isPlanned) {
       const current = alepha.store.get(currentEpicCountAtom)?.count ?? 0;
       alepha.store.set(currentEpicCountAtom, {
-        count: Math.max(0, current - 1),
+        count: Math.max(0, current + (isPlanned ? 1 : -1)),
       });
     }
     setEpic(updated);
@@ -299,10 +302,12 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               group, through the same component, so the two surfaces cannot
               come to call the actions different things. `AgentPromptsMenu`
               renders nothing when the option is off or the list is empty,
-              which is what a `done` epic produces. */}
+              which is what a completed epic produces. Review while the plan
+              is open, Work on it once the epic is ready: a planned epic's
+              quests refuse to be accepted. */}
           <AgentPromptsMenu
             items={[
-              ...(epic.status === "planned"
+              ...(epic.status === "planned" || epic.status === "ready"
                 ? [
                     {
                       kind: "epicReview" as const,
@@ -310,7 +315,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                     },
                   ]
                 : []),
-              ...(epic.status === "planned" || epic.status === "active"
+              ...(epic.status === "ready" || epic.status === "in_progress"
                 ? [
                     {
                       kind: "epicActivate" as const,

@@ -12,13 +12,13 @@ export interface ProjectEpicsProgressProps {
  * plus one line of prose saying what the ticks mean.
  *
  * The prose is status-dependent because "3 of 13 done" answers a different
- * question for each of the three statuses. A `planned` epic that has not
- * started reports how much is *specified* and that none of it is released
- * — the backlog gate (`EpicVisibilityService`) is exactly what "not
- * released" means, and quest counts alone never say it. A `done` epic
- * reports when it concluded, because by then the ratio is settled and the
- * date is the only part still worth reading. Only an `active` epic gets
- * the bucket breakdown.
+ * question depending on the status. A `planned` epic reports how much is
+ * *specified* and that none of it is released — the backlog gate
+ * (`EpicVisibilityService`) is exactly what "not released" means, and quest
+ * counts alone never say it. A `completed` epic reports when it completed,
+ * because by then the ratio is settled and the date is the only part still
+ * worth reading. A `ready` or `in_progress` epic gets the bucket breakdown,
+ * since its quests are released and the buckets are what moves.
  */
 const ProjectEpicsProgress = (props: ProjectEpicsProgressProps) => {
   const i18n = useI18n<I18n, "en">();
@@ -42,8 +42,8 @@ const ProjectEpicsProgress = (props: ProjectEpicsProgressProps) => {
   }
 
   const caption =
-    props.epic.status === "done" && props.epic.completedAt
-      ? tr("epic.progress.concluded", {
+    props.epic.status === "completed" && props.epic.completedAt
+      ? tr("epic.progress.completedOn", {
           args: [String(i18n.l(props.epic.completedAt, { date: "ll" }))],
         })
       : props.epic.status === "planned" && completed === 0 && inProgress === 0

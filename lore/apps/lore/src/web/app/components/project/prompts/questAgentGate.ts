@@ -8,15 +8,20 @@ import type { EpicRefResource } from "@/api/schemas/epicRefResourceSchema.ts";
  * cannot make a localized string. `QuestView` maps the code to its key and
  * keeps its tooltip; the tables only test for `undefined`.
  */
-export type QuestAgentGateReason = "epicPlanned" | "epicDone";
+export type QuestAgentGateReason = "epicPlanned" | "epicCompleted";
 
 /**
- * Whether a quest's epic is in a phase that would refuse the work.
+ * Whether a quest's epic is in a status that would refuse the work.
  *
  * The prompt's second step is `quest_accept`, which a `planned` epic refuses
- * with "Begin it first" and a `done` one with "File this in a new epic". So
- * the gate on offering the prompt is the gate on accepting the quest, and
- * this is the one place both express it.
+ * (it is not ready for development) and a `completed` one refuses with "File
+ * this in a new epic". A `ready` epic accepts, and that accept is what starts
+ * it (#Q2223). So the gate on offering the prompt is the gate on accepting
+ * the quest, and this is the one place both express it.
+ *
+ * ⚠️ A ready epic whose predecessor is not completed also refuses, and this
+ * does not see it: an epic ref carries no `dependsOn`. The server answers
+ * 400 with the reason, which is the rule below applied to one more case.
  *
  * ⚠️ **When the epic list could not be read, the gate OPENS.**
  * `currentEpicsAtom` is `undefined` after a failed read (the loader's
@@ -34,6 +39,8 @@ export const questAgentGate = (
 ): QuestAgentGateReason | undefined => {
   if (quest.epicId == null) return undefined;
   const epic = epics?.find((it) => it.id === quest.epicId);
-  if (!epic || epic.status === "active") return undefined;
-  return epic.status === "planned" ? "epicPlanned" : "epicDone";
+  if (!epic) return undefined;
+  if (epic.status === "planned") return "epicPlanned";
+  if (epic.status === "completed") return "epicCompleted";
+  return undefined;
 };

@@ -42,7 +42,7 @@ const anEpic = {
   projectId: 1,
   number: 24,
   title: "Kanban v2",
-  status: "done",
+  status: "completed",
   releaseId: aRelease.id,
   progress: { completed: 0, total: 0 },
 } as unknown as EpicResource;

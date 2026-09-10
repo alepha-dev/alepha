@@ -90,16 +90,17 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
   // The create sheet, opened from the toolbar beside Attach (feedback #2057).
   const [creating, setCreating] = useState(false);
-  // The plan freeze (epic #31): once the epic has begun, the quest set is
-  // what was committed. Create, Attach and Detach all go with it.
+  // The plan freeze (epic #31): once the epic is in progress, the quest set
+  // is what was committed. Create, Attach and Detach all go with it.
   const epicApi = useClient<EpicController>();
 
   // Two conjuncts, and both are real: an epic's quest set is frozen once it
-  // leaves `planned` (`EpicWorkflowService`), and a rank may not hold
+  // is in progress (`EpicWorkflowService`), and a rank may not hold
   // `epic:manage` at all. The table, its rows and the counts stay readable
   // under either.
   const planEditable =
-    props.epic.status === "planned" && epicApi.attachQuest.can();
+    (props.epic.status === "planned" || props.epic.status === "ready") &&
+    epicApi.attachQuest.can();
 
   return (
     /*
@@ -287,26 +288,28 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   : []),
                 // ⚠️ Outside the `planEditable` branch, because this is
                 // exactly the case that had no row menu at all: on an
-                // ACTIVE epic the plan is frozen, so Detach is gone, and
-                // an active epic is precisely when its quests are being
-                // handed out one at a time.
+                // IN-PROGRESS epic the plan is frozen, so Detach is gone,
+                // and that is precisely when its quests are being handed
+                // out one at a time.
                 //
-                // The two never coexist by construction: a planned epic
-                // gets Detach and no group (the gate wants `active`), an
-                // active one gets the group and no Detach, a concluded one
-                // gets neither. The group is OMITTED here rather than
-                // handed over empty, and #Q1959's effective-entry count is
-                // the backstop rather than the mechanism.
+                // Offered wherever accepting works: a ready epic (whose
+                // first accept starts it) and one in progress. A planned
+                // epic gets Detach and no group, a ready one gets both, an
+                // in-progress one the group and no Detach, a completed one
+                // neither. The group is OMITTED rather than handed over
+                // empty, and #Q1959's effective-entry count is the backstop
+                // rather than the mechanism.
                 //
                 // ⚠️ The gate reads `props.epic.status` and NOT
                 // `questAgentGate`. The shared helper resolves a quest's
                 // epic through `currentEpicsAtom`, which this table has no
                 // other reason to read and which is `undefined` after a
-                // failed load; the epic is a PROP here, so its phase is
+                // failed load; the epic is a PROP here, so its status is
                 // known directly. Same condition, better source.
                 ...(agentPrompt.enabled &&
                 !quest.completedAt &&
-                props.epic.status === "active"
+                (props.epic.status === "ready" ||
+                  props.epic.status === "in_progress")
                   ? [
                       {
                         icon: Bot,
