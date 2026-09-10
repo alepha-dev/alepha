@@ -211,7 +211,7 @@ describe("dashboard resolve", () => {
         status: "planned",
       });
       const active = await createTestEpic(ctx.alepha, project, {
-        status: "active",
+        status: "in_progress",
       });
       await createTestQuest(ctx.alepha, project, { epicId: planned.id });
       await createTestQuest(ctx.alepha, project, { epicId: active.id });
@@ -465,7 +465,7 @@ describe("dashboard resolve", () => {
     }) => {
       const { user, project } = await memberOf(ctx);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "active",
+        status: "in_progress",
       });
       const now = new Date().toISOString();
       await createTestQuest(ctx.alepha, project, {
@@ -498,7 +498,7 @@ describe("dashboard resolve", () => {
     }) => {
       const { user, project } = await memberOf(ctx);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "active",
+        status: "in_progress",
       });
       await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
@@ -518,7 +518,7 @@ describe("dashboard resolve", () => {
     it("agrees with the rollup the Epics list reads", async ({ expect }) => {
       const { user, project } = await memberOf(ctx);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "active",
+        status: "in_progress",
       });
       const now = new Date().toISOString();
       await createTestQuest(ctx.alepha, project, {
@@ -538,12 +538,12 @@ describe("dashboard resolve", () => {
       expect(value.detail.total).toBe(buckets.get(epic.id)?.total);
     });
 
-    it("keeps a concluded epic's card, and says it is concluded", async ({
+    it("keeps a completed epic's card, and says it is completed", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "done",
+        status: "completed",
         completedAt: new Date().toISOString(),
       });
       await createTestQuest(ctx.alepha, project, {
@@ -553,12 +553,12 @@ describe("dashboard resolve", () => {
 
       const value = await resolveEpic(project, user, epic.id);
 
-      // ⚠️ It stays. `done` is terminal, so the number is settled rather than
-      // stale, and repointing is the Edit item the menu already has - never
-      // an auto-repoint and never a self-deletion.
+      // ⚠️ It stays. `completed` is terminal, so the number is settled rather
+      // than stale, and repointing is the Edit item the menu already has -
+      // never an auto-repoint and never a self-deletion.
       expect(value.ok).toBe(true);
       expect(value.value).toBe(100);
-      expect(value.detail.status).toBe("done");
+      expect(value.detail.status).toBe("completed");
       expect(value.detail.completedAt).toBeTruthy();
       expect(value.link?.route).toBe("projectEpic");
     });
@@ -1689,7 +1689,7 @@ describe("dashboard resolve", () => {
         status: "planned",
       });
       const activeThere = await createTestEpic(ctx.alepha, second, {
-        status: "active",
+        status: "in_progress",
       });
       await createTestQuest(ctx.alepha, project, { epicId: plannedHere.id });
       await createTestQuest(ctx.alepha, project);

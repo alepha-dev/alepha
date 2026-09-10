@@ -98,7 +98,7 @@ describe("EpicVisibilityService", () => {
     expect(visible.map((q) => q.id)).toEqual([loose.id]);
   });
 
-  it("shows quests of an active epic and hides those of a planned one", async ({
+  it("shows quests of a ready epic and hides those of a planned one", async ({
     expect,
   }) => {
     const alepha = Alepha.create({
@@ -112,12 +112,14 @@ describe("EpicVisibilityService", () => {
     await alepha.start();
 
     const project = await createTestProject(alepha);
-    const active = await createTestEpic(alepha, project, { status: "active" });
+    // `ready` and not `in_progress`: the backlog opens the moment an epic is
+    // marked ready, before anyone has accepted a quest of it (#Q2223).
+    const ready = await createTestEpic(alepha, project, { status: "ready" });
     const planned = await createTestEpic(alepha, project, {
       status: "planned",
     });
     const shown = await createTestQuest(alepha, project, {
-      epicId: active.id,
+      epicId: ready.id,
     });
     await createTestQuest(alepha, project, { epicId: planned.id });
 

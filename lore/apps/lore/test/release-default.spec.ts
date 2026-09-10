@@ -609,7 +609,7 @@ describe("QuestController: completing into the default release", () => {
       { user },
     );
     await ctx.epicController.setEpicStatus.fetch(
-      { params: { id: epic.id }, body: { status: "active" } },
+      { params: { id: epic.id }, body: { status: "ready" } },
       { user },
     );
 
@@ -654,7 +654,7 @@ describe("QuestController: completing into the default release", () => {
     );
     await setDefault(ctx, user, project.id, fallback.id);
     await ctx.epicController.setEpicStatus.fetch(
-      { params: { id: epic.id }, body: { status: "active" } },
+      { params: { id: epic.id }, body: { status: "ready" } },
       { user },
     );
 

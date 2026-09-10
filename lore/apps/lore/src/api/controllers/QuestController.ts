@@ -45,6 +45,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
+import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
@@ -161,9 +162,11 @@ export class QuestController {
   epicVisibility = $inject(EpicVisibilityService);
   /**
    * The epic phase gate (epic #31): a quest can be worked only while its
-   * epic is `active`, and deleted only while it is `planned`. Every refusal
-   * and its wording is written on the service, once; the handlers below
-   * only say which verb they are.
+   * epic is `ready` or `in_progress`, and deleted only while it is `planned`
+   * or `ready`. Every refusal and its wording is written on the service,
+   * once; the handlers below only say which verb they are. The service also
+   * performs the epic's two automatic moves (#Q2223), which the accept,
+   * assign, complete and shelve handlers trigger after their own write.
    */
   epicWorkflow = $inject(EpicWorkflowService);
   openQuests = $inject(OpenQuestScope);
@@ -1707,7 +1710,10 @@ export class QuestController {
    *
    * Deliberately NOT behind the epic phase gate (epic #31). Shelving moves
    * a quest toward resolution, and it is the only exit for a `new` quest
-   * sitting in a concluded epic from before that rule existed.
+   * sitting in a completed epic from before that rule existed.
+   *
+   * Shelving the last open quest of an in-progress epic completes the epic
+   * (#Q2223): shelving is the epic-level equivalent of waiving an objective.
    */
   shelveQuest = $action({
     use: [$transactional(), this.ownsQuestForWork("quest:update")],
@@ -1738,6 +1744,8 @@ export class QuestController {
 
       await this.quests.save(quest);
       await this.logQuest("shelve", quest, user);
+      // After the save, so the count sees this quest resolved.
+      await this.epicWorkflow.completeIfResolved(quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -1755,8 +1763,9 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       const { quest } = this.getQuestForTransition("unshelve", ["shelved"]);
-      // Re-opening work inside a concluded epic is refused; unshelving
-      // inside a planned one is allowed, since that edits an open plan.
+      // Re-opening work inside a completed epic is refused; unshelving
+      // inside a planned or ready one is allowed, since that edits an open
+      // plan, and it starts nothing.
       await this.epicWorkflow.assertQuestWorkable(quest, "unshelve");
 
       quest.shelvedAt = undefined;
@@ -1949,8 +1958,9 @@ export class QuestController {
       ]);
 
       // Epic phase gate (epic #31), BEFORE the questline gate: a quest can
-      // be accepted only while its epic is active, and of the two reasons
-      // this is the one fixed by a single click somewhere else.
+      // be accepted only while its epic is ready or in progress, and a ready
+      // epic's predecessor must be completed, since this accept is what
+      // starts it.
       await this.epicWorkflow.assertQuestWorkable(quest, "accept");
 
       // Questline gate (Lore #32): refuse to accept while a non-null
@@ -1995,9 +2005,29 @@ export class QuestController {
 
       await this.quests.save(quest);
       await this.logQuest("accept", quest, user);
-      return this.mapQuestToResource(quest);
+      // The first accepted quest of a ready epic starts it (#Q2223). After
+      // the save, so a refusal above never leaves an epic started with
+      // nothing accepted in it.
+      const cascade = await this.epicWorkflow.startIfReady(quest, user);
+      return this.mapQuestToResource(await this.afterCascade(quest, cascade));
     },
   });
+
+  /**
+   * The quest as the database now holds it, when starting its epic carried
+   * the project's default release down onto it.
+   *
+   * `startIfReady` writes that release onto every quest of the epic that
+   * named none, the one just accepted included, so the row in hand is stale
+   * by exactly that column. One re-read, and only when something moved.
+   */
+  protected async afterCascade(
+    quest: Quest,
+    cascade: ReleaseCascade | undefined,
+  ): Promise<Quest> {
+    if (!cascade || cascade.moved === 0) return quest;
+    return await this.quests.getById(quest.id);
+  }
 
   /**
    * Hand a quest to another member.
@@ -2032,7 +2062,8 @@ export class QuestController {
       ]);
 
       // Assigning makes a quest accepted without going through
-      // `acceptQuest`, so it answers to the same epic phase gate.
+      // `acceptQuest`, so it answers to the same epic phase gate, and it
+      // starts a ready epic the same way.
       await this.epicWorkflow.assertQuestWorkable(quest, "assign");
 
       if (!(await this.security.isMemberById(quest.projectId, body.userId))) {
@@ -2090,7 +2121,8 @@ export class QuestController {
 
       await this.quests.save(quest);
       await this.logQuest("assign", quest, user, { assigneeId: body.userId });
-      return this.mapQuestToResource(quest);
+      const cascade = await this.epicWorkflow.startIfReady(quest, user);
+      return this.mapQuestToResource(await this.afterCascade(quest, cascade));
     },
   });
 
@@ -2220,7 +2252,7 @@ export class QuestController {
    *
    * ⚠️ Rarer than it looks, and still mandatory. `ReleaseCascadeService`
    * writes an epic's release down onto its quests when the epic gains one,
-   * when a quest joins one, and on the epic's Begin edge, so most quests
+   * when a quest joins one, and when the epic starts, so most quests
    * inside a release-bearing epic carry an explicit `releaseId` and never
    * reach the second branch at all. The null-inheritance case survives for
    * rows written before that service, and for any quest whose cascade was
@@ -2232,8 +2264,8 @@ export class QuestController {
    * work could never scatter into a release the epic is not in. Rejected on
    * 2026-09-09: a quest inside an epic that names no release still lands in
    * the default, and shows there as loose work while its epic shows nowhere.
-   * That is the accepted cost of the Begin edge firing only once - an epic
-   * begun before a default existed keeps stamping its quests one at a time,
+   * That is the accepted cost of the start firing only once - an epic
+   * started before a default existed keeps stamping its quests one at a time,
    * forever. The quests land somewhere, which is the point of the feature,
    * and the release page is honest about them being loose.
    *
@@ -2333,9 +2365,10 @@ export class QuestController {
     },
     handler: async ({ params, body, user }) => {
       const { quest } = this.getQuestForTransition("complete", ["accepted"]);
-      // Unreachable once the clean-conclude rule holds (a done epic has no
-      // accepted quest), but rows that pre-date epic #31 can still be here,
-      // and the refusal has to be right for them too.
+      // Mostly settled by the accept already: a quest is accepted only in a
+      // ready or in-progress epic, and a completed epic has no accepted
+      // quest. Rows that pre-date epic #31 can still be here, and the
+      // refusal has to be right for them too.
       await this.epicWorkflow.assertQuestWorkable(quest, "complete");
 
       const now = this.dt.nowISOString();
@@ -2434,6 +2467,13 @@ export class QuestController {
       await this.quests.save(quest);
       await this.syncQuestLinks(quest);
       await this.logQuest("complete", quest, user);
+
+      // The epic's two automatic moves (#Q2223), after the save so both see
+      // this quest completed. The first only fires for a quest accepted in a
+      // ready epic before that epic could start, which only old rows do; the
+      // second completes an in-progress epic whose last open quest this was.
+      await this.epicWorkflow.startIfReady(quest, user);
+      await this.epicWorkflow.completeIfResolved(quest, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -2943,7 +2983,8 @@ export class QuestController {
 
       // The plan freeze (epic #31): a quest leaves a frozen plan by being
       // shelved, never by being deleted, or "no quest leaves the plan" would
-      // hold against detach and not against delete. Free while planned.
+      // hold against detach and not against delete. Free while planned or
+      // ready.
       await this.epicWorkflow.assertQuestDeletable(quest);
 
       // Clear dependents' `dependsOn` so the dependency graph does not keep

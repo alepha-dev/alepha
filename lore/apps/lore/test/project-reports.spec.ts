@@ -317,9 +317,9 @@ describe("ProjectReportsController", () => {
       const activeEpic = await ctx.repos.epics.create({
         projectId: project.id,
         number: 2,
-        title: "Active Epic",
+        title: "Ready Epic",
         description: "",
-        status: "active",
+        status: "ready",
       });
 
       await ctx.repos.quests.updateById(parked.id, { epicId: plannedEpic.id });

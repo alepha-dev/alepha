@@ -1,13 +1,12 @@
 import { $inject, z } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
+import { epicManualStatusSchema } from "../schemas/epicManualStatusSchema.ts";
 import { epicRefResourceSchema } from "../schemas/epicRefResourceSchema.ts";
 import {
   type EpicResource,
@@ -19,7 +18,6 @@ import {
 } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
-import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import {
   type EpicProgress,
@@ -46,7 +44,7 @@ import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
  * quests and folios, both of which any member may already create, rename
  * and delete; gating the grouping on ownership meant the header's "Create
  * epic" entry (shown to every member, `ProjectActionsCreateButton`) answered
- * 403, and an epic a member could not activate or attach anything to would
+ * 403, and an epic a member could not mark ready or attach anything to would
  * be inert anyway. `deleteEpic` follows `QuestController.deleteQuest`, which
  * is member-gated for the same reason.
  *
@@ -67,21 +65,15 @@ export class EpicController {
   epics = $repository(epics);
   quests = $repository(quests);
   folios = $repository(folios);
-  dt = $inject(DateTimeProvider);
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
   cascade = $inject(ReleaseCascadeService);
-  /**
-   * Where an epic ships when nobody said (#E48). Read on the Begin edge only,
-   * and best effort: beginning an epic must never fail over a planning
-   * convenience.
-   */
-  defaults = $inject(DefaultReleaseService);
   dependencies = $inject(EpicDependencyService);
   /**
-   * The epic phase gate (epic #31): the quest set can change only while the
-   * epic is `planned`, and the two status edges each have a precondition.
-   * Every refusal and its wording is written on the service, once.
+   * The epic phase gate: the quest set can change only while the epic is
+   * `planned` or `ready`, and only those two statuses are set by hand. Every
+   * refusal and its wording is written on the service, once, beside the two
+   * automatic transitions the quest actions trigger.
    */
   workflow = $inject(EpicWorkflowService);
   audits = $inject(LoreAudits);
@@ -221,10 +213,10 @@ export class EpicController {
    * the work behind it. `countOpenQuests` runs `applyBacklogGate`, so every
    * quest inside a planned epic is absent from the Quests badge by design,
    * and with no badge here at all that work had no representation in the
-   * sidebar whatsoever. `planned` and not `active`, because an active epic's
-   * quests are already counted next to Quests and badging them would
-   * double-report them. The count is now derived client-side from this list,
-   * the same way `ProjectEpics` already derives it.
+   * sidebar whatsoever. `planned` alone, because the quests of a ready or
+   * in-progress epic are already counted next to Quests and badging them
+   * would double-report them. The count is now derived client-side from this
+   * list, the same way `ProjectEpics` already derives it.
    */
   getEpicRefs = $action({
     use: [this.ownsProject("epic:read")],
@@ -279,9 +271,9 @@ export class EpicController {
         title: z.string().min(3).max(80),
         description: z.string().meta({ size: "rich" }).optional(),
         /**
-         * The epic that has to come first. Advisory: nothing is refused
-         * because of it - see the column's own comment for why. `null` is
-         * the same as omitting it.
+         * The epic that has to come first. It gates the START: no quest of
+         * this epic is accepted while the predecessor is not completed - see
+         * the column's own comment. `null` is the same as omitting it.
          */
         dependsOn: z.integer().nullable().optional(),
       }),
@@ -334,9 +326,9 @@ export class EpicController {
         /**
          * The epic that has to come first. `null` clears it.
          *
-         * Advisory - no status transition is refused because of it. Cycles
-         * are refused, which is a different question; both are settled on the
-         * column, in `epics.ts`.
+         * Writable in every status: it gates the start, which is checked when
+         * it happens. Cycles are refused, which is a different question; both
+         * are settled on the column, in `epics.ts`.
          */
         dependsOn: z.integer().nullable().optional(),
       }),
@@ -418,67 +410,38 @@ export class EpicController {
   });
 
   /**
-   * A one-way ratchet: `planned` to `active`, `active` to `done`, and
-   * nothing else. `done` is terminal, with no reopen and no return to
-   * planning; the way forward from a concluded epic is a new epic that
-   * depends on it.
+   * The only status moves a person makes: `planned` to `ready`, and back.
    *
-   * Nine legal transitions became two with epic #31, and this is what makes
-   * the rest of that epic hold: every refusal the phase gate adds (a quest
-   * can be worked only while its epic is active, the quest set is frozen
-   * once it is) would be undone by flipping the epic back a phase. Until
-   * then every edge was legal on purpose, and `activatedAt` carried a
-   * paragraph about surviving `done`/`planned` swings; there are no swings,
-   * so it is simply when the epic began, stamped on the one edge that
-   * begins it. `completedAt` is stamped on the one edge that concludes it,
-   * and is never cleared.
+   * `ready` is the one decision left in the lifecycle ("the spec is done,
+   * release it to the backlog"). The other two statuses are facts, written by
+   * the quest requests that make them true: the first quest accepted or
+   * assigned moves a ready epic to `in_progress`, and the request that
+   * resolves the last open quest moves it to `completed`
+   * (`EpicWorkflowService.startIfReady` / `completeIfResolved`). So the body
+   * offers two values, and an agent reading the tool schema sees that it
+   * cannot ask for the others.
    *
-   * The body schema still accepts the three values: the refusal is on the
-   * EDGE, not the value, so asking for the status the epic already has is a
-   * no-op that writes nothing and logs nothing (`epic_set_status` is declared
-   * idempotent).
+   * It replaced epic #31's Begin and Conclude clicks (#Q2223). Neither was a
+   * decision in practice: the Work-on-it prompt told the agent to make both,
+   * and on 2026-09-10 not one of project 1's 49 epics was `active`.
    *
-   * ⚠️ **Status is never written to a quest row, and that invariant is
-   * unchanged.** Activating an epic releases its quests because the backlog
-   * gate (`EpicVisibilityService`) stops matching them, not because anything
-   * about them changed - this is the single most important rule in this
-   * controller, and a terminal `done` is the transition most tempted to break
-   * it by "stamping" the quests. Nothing here touches `status`, `acceptedAt`,
-   * `shelvedAt` or the kanban column, on any edge.
+   * Asking for the status the epic already has is a no-op that writes
+   * nothing and logs nothing (`epic_set_status` is declared idempotent).
    *
-   * ⚠️ **One narrow carve-out, added by #E48 and deliberate.** An epic that
-   * names no release takes the project's DEFAULT release when it begins, and
-   * `ReleaseCascadeService` then writes that one column, `releaseId`, onto
-   * every quest of it that named none. That is the same cascade `updateEpic`
-   * already runs, on an edge that is a release move like any other; the
-   * alternative was an epic whose release disagrees with its own contents
-   * forever, which is the 0/0 card the "why Begin" note below describes. Do
-   * not delete the cascade to restore a rule whose point is the paragraph
-   * above: the rule is about a quest's STATUS, and this writes a release.
-   *
-   * `EpicController.spec.ts` pins both halves - a Begin with no default
-   * touches no quest row at all, and a Begin with one moves exactly the
-   * release-less quests.
+   * ⚠️ **Status is never written to a quest row.** Marking an epic ready
+   * releases its quests because the backlog gate (`EpicVisibilityService`)
+   * stops matching them, not because anything about them changed, and moving
+   * it back to `planned` hides them the same way. Nothing here touches a
+   * quest, on either edge.
    */
   setEpicStatus = $action({
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
-        status: z.enum(["planned", "active", "done"]),
+        status: epicManualStatusSchema,
       }),
-      /**
-       * The epic, plus what a Begin-attached release did to its quests.
-       *
-       * `releaseCascade` is present only when the default fired, so every
-       * other transition answers exactly what it answered before. Same shape
-       * `updateEpic` returns: an epic that silently acquires a release and
-       * moves nine quest rows is a bigger surprise than the one
-       * `quest_complete` reports.
-       */
-      response: epicResourceSchema.extend({
-        releaseCascade: releaseCascadeSchema.optional(),
-      }),
+      response: epicResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
@@ -486,108 +449,20 @@ export class EpicController {
       if (body.status === epic.status) {
         return await this.buildEpicResource(epic);
       }
-      this.assertStatusEdge(epic, body.status);
-      // The gate on Begin (epic #31): an epic cannot begin while the epic it
-      // depends on is not done. Evaluated here and only here; `dependsOn`
-      // stays writable in every phase because the roadmap draws it.
-      if (body.status === "active") {
-        await this.workflow.assertCanBegin(epic);
-      }
-      // The gate on Conclude (epic #31): every quest completed or shelved,
-      // or a terminal `done` strands the open one forever. Shelving is the
-      // epic-level equivalent of waiving an objective on `completeQuest`.
-      if (body.status === "done") {
-        await this.workflow.assertCanConclude(epic);
-      }
-
-      // ⚠️ Begin, and never Conclude. Attaching on Conclude produces an epic
-      // card that reads 0/0: its quests complete one at a time while the epic
-      // still names no release, each is stamped individually by
-      // `QuestController.attachToDefaultRelease` with whatever was default at
-      // the time, and the epic then concludes into a release holding none of
-      // its own work. Attaching on Begin inverts it - the epic names a
-      // release from the moment work can start, the cascade below writes it
-      // onto every quest that named none, and the completion rule then finds
-      // an explicit release on each and leaves it alone.
-      //
-      // Best effort: `openDefault` answers `undefined` for a project with no
-      // default, for one whose default has been published, and for a read
-      // that failed. Beginning an epic must never fail over this.
-      const releaseId =
-        body.status === "active" && epic.releaseId == null
-          ? (await this.defaults.openDefault(epic.projectId))?.id
-          : undefined;
+      this.workflow.assertManualEdge(epic, body.status);
 
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
-        ...(body.status === "active"
-          ? { activatedAt: this.dt.nowISOString() }
-          : {}),
-        ...(body.status === "done"
-          ? { completedAt: this.dt.nowISOString() }
-          : {}),
-        ...(releaseId != null ? { releaseId } : {}),
       });
-
-      // AFTER the epic's own write, for the reason `updateEpic` gives: there
-      // is no transaction here, so the other order can leave quests pointing
-      // at a release the epic is not in, and catching cannot undo it.
-      //
-      // ⚠️ `previous` is `null`, and that is load-bearing. The epic named no
-      // release, so the follower test (`current === null || current ===
-      // previous`) selects exactly the quests that name nothing. A quest
-      // given an explicit release while the epic was being planned is counted
-      // in `kept` and keeps its own - the deliberate cross-release state
-      // `release-contents.spec.ts` pins, which the cascade must not eat here
-      // any more than anywhere else.
-      const cascade =
-        releaseId != null
-          ? await this.cascade.toQuests(updated, null, releaseId)
-          : undefined;
 
       await this.logEpic("status", updated, user, {
         from: epic.status,
         to: body.status,
-        ...(cascade ? { cascade } : {}),
       });
 
-      return {
-        ...(await this.buildEpicResource(updated)),
-        ...(cascade ? { releaseCascade: cascade } : {}),
-      };
+      return await this.buildEpicResource(updated);
     },
   });
-
-  /**
-   * The two edges of the ratchet, and the words for the three refused ones.
-   *
-   * Written here rather than on `EpicWorkflowService` because this is the
-   * one place a status is ever written, so there is nothing to keep in step
-   * with; the service holds the questions the two legal edges consult
-   * (`assertCanBegin`, `assertCanConclude`), which several callers ask.
-   * Same rule as every message on the service: name the epic by its number,
-   * and name the way forward.
-   */
-  protected assertStatusEdge(
-    epic: Pick<Epic, "number" | "status">,
-    to: Epic["status"],
-  ): void {
-    if (epic.status === "planned" && to === "active") return;
-    if (epic.status === "active" && to === "done") return;
-
-    const move = `Cannot move Epic ${formatReference("epic", epic.number)} from ${epic.status} to ${to}.`;
-    if (epic.status === "done") {
-      throw new BadRequestError(
-        `${move} An epic is concluded once. Create a new epic that depends on it.`,
-      );
-    }
-    if (epic.status === "active") {
-      throw new BadRequestError(
-        `${move} Its plan is frozen. Shelve what will not be done, or create a new epic.`,
-      );
-    }
-    throw new BadRequestError(`${move} Begin it first.`);
-  }
 
   /**
    * Relies on the `epicId` FK's `ON DELETE SET NULL` to orphan the epic's
@@ -654,10 +529,10 @@ export class EpicController {
       let cascade: ReleaseCascade | undefined;
       if (quest.epicId !== epic.id) {
         // The plan freeze (epic #31). A quest enters an epic only while
-        // that epic is planned, and a MOVE has to satisfy both ends: the
-        // quest cannot be pulled out of a frozen plan any more than pushed
-        // into one. The target is checked first, since it is what the
-        // caller asked for; the source only when there is one.
+        // that epic is planned or ready, and a MOVE has to satisfy both
+        // ends: the quest cannot be pulled out of a frozen plan any more
+        // than pushed into one. The target is checked first, since it is
+        // what the caller asked for; the source only when there is one.
         this.workflow.assertPlanEditable(epic, { kind: "add" });
         if (quest.epicId != null) {
           const source = await this.epics.findOne({
@@ -704,8 +579,8 @@ export class EpicController {
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
         // The plan freeze (epic #31): a quest leaves an epic only while the
-        // epic is planned. Shelve is the route for one that will not be
-        // done, and the message says so.
+        // epic is planned or ready. Shelve is the route for one that will
+        // not be done, and the message says so.
         this.workflow.assertPlanEditable(epic, { kind: "remove", quest });
 
         await this.quests.updateById(quest.id, { epicId: null });

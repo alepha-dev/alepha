@@ -119,9 +119,9 @@ describe("the backlog gate on the listing surfaces", () => {
     const activeEpic = await ctx.repos.epics.create({
       projectId,
       number: 2,
-      title: "Active Epic",
+      title: "Ready Epic",
       description: "",
-      status: "active",
+      status: "ready",
     });
 
     await ctx.repos.quests.updateById(parked.id, { epicId: plannedEpic.id });
@@ -208,14 +208,14 @@ describe("the backlog gate on the listing surfaces", () => {
     ]);
   });
 
-  it("does not gate a project whose epics are all active", async ({
-    expect,
-  }) => {
+  it("does not gate a project with no planned epic", async ({ expect }) => {
     // The zero-planned-epics path is the normal case and the one that
     // throws on `notInArray: []`, so it is asserted through the real
     // controller and not only through the service.
     const c = await setupProject();
-    await ctx.repos.epics.updateById(c.plannedEpic.id, { status: "active" });
+    await ctx.repos.epics.updateById(c.plannedEpic.id, {
+      status: "in_progress",
+    });
 
     const res = await ctx.quests.getQuests.fetch(
       { params: { projectId: c.projectId }, query: {} },
