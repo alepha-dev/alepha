@@ -33,8 +33,10 @@ alternative cost something.
    edit the primary checkout: parallel sessions share it, and a `git add` there
    sweeps up somebody else's work.
 2. **Commit as you go, and name the quest.** Small commits, staged by explicit
-   path (never `git add -A`). When the work belongs to a quest, put its
-   reference in the message so Lore can link the commit to it.
+   path (never `git add -A`). Every commit belongs to a Lore quest and names it
+   as `#Q<n>` in its message, so Lore can link the commit to it. That holds
+   whether or not anyone named a quest: see "Every commit belongs to a quest"
+   below.
 3. **Push the branch to verify.** Every branch triggers the full graph, and
    that graph is the source of truth. It takes about five minutes. Wait for it
    or carry on with something else - it costs your machine nothing either way.
@@ -119,7 +121,20 @@ Everything that came from Lore carries a **shortId offset of +1000** (quest `#20
 
 - Before non-trivial framework changes, orient via `project_context` (project `1`) — returns project metadata, active quests, and the folio index in one shot.
 - Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
-- **Prefer folios over quests for framework work.** Folios capture decisions, plans, and gotchas — write one (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note. Only create quests when the user explicitly asks.
+- **Folios record decisions, quests record work.** Folios capture decisions, plans, and gotchas: write one (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note. A quest is the log of one piece of work, and every session that commits has one: see below.
+
+#### Every commit belongs to a quest
+
+Lore is the log of what was done, and a quest is the unit of that log. So a session that commits in this repo works under a quest, whether or not the user named one. A session started from a suggested background task is no exception, and neither is a one-line fix.
+
+1. **Find the quest or file it.** Look for the one this work belongs to with `quest_list` / `quest_get` in project `1`. Failing that, `quest_create` with `accept: true`: a title saying what changes, a description saying why, and an existing `area` (`project_context` lists them).
+2. **Accept it before the first commit** with `quest_accept`, unless `quest_create` already did.
+3. **Name it in every commit** as `#Q<n>`, in the subject or the body, and record each sha with `quest_commit_add`.
+4. **Complete it when the work lands** with `quest_complete`, and a note on what shipped and what was left out.
+
+One piece of work is one quest, however many commits it takes: never a quest per commit.
+
+**Suggesting a task for another session.** Before raising a background task (the desktop app's `spawn_task`), file its quest with the context you have and put its `#Q<n>` in the task's prompt, so the session that takes it accepts that quest instead of filing a second one. A dismissed task leaves its quest in the backlog, which is where an issue nobody took on belongs.
 
 #### The folio tree is organised — file folios, don't dump them at the root
 
