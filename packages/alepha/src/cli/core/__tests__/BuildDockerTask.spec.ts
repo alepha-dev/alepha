@@ -321,42 +321,54 @@ describe("BuildDockerTask", () => {
   });
 
   describe("compile mode", () => {
+    // `build.compile` as `BuildCommand.resolveCompile` leaves it: merged with
+    // the flag, validated, the name defaulted.
     const compileOptions: BuildOptions = {
       target: "docker",
       runtime: "bun",
-      docker: { compile: true },
+      compile: { name: "app", minify: true },
     };
 
-    it("invokes bun build --compile with the host-arch musl target", async () => {
+    it("names the COPY and the ENTRYPOINT after compile.name", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.js", "// bundle");
-      await fs.writeFile(
-        "/project/dist/package.json",
-        JSON.stringify({ dependencies: {} }),
+
+      await task.run(
+        createCtx(fs, shell, {
+          ...compileOptions,
+          compile: { name: "loom", minify: true },
+        }),
       );
 
-      await task.run(createCtx(fs, shell, compileOptions));
-
-      expect(
-        shell.wasCalledMatching(
-          /bun build --compile --target=bun-linux-(x64|arm64)-musl --minify --outfile=app index\.js/,
-        ),
-      ).toBe(true);
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toMatch(/^COPY loom \.$/m);
+      expect(dockerfile).toContain('ENTRYPOINT ["/app/loom"]');
     });
 
-    it("runs the compile command from the dist directory", async () => {
+    it("leaves compiling to BuildCompileTask, which runs after compression", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.js", "// bundle");
-      await fs.writeFile(
-        "/project/dist/package.json",
-        JSON.stringify({ dependencies: {} }),
-      );
 
       await task.run(createCtx(fs, shell, compileOptions));
 
-      const calls = shell.getCallsMatching(/^bun build/);
-      expect(calls).toHaveLength(1);
-      expect(calls[0].options.root).toBe("/project/dist");
+      expect(shell.wasCalledMatching(/^bun build/)).toBe(false);
+      expect(await fs.exists("/project/dist/index.js")).toBe(true);
+    });
+
+    it("does not build the image before the binary exists", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { ...compileOptions, docker: { image: { tag: "ghcr.io/o/app" } } },
+          { flags: { image: true } },
+        ),
+      );
+
+      expect(shell.wasCalledMatching(/^docker build/)).toBe(false);
     });
 
     it("writes a distroless Dockerfile without bun install", async () => {
@@ -389,75 +401,20 @@ describe("BuildDockerTask", () => {
       ).toBe(true);
     });
 
-    it("honors a custom target, base image, and minify=false", async () => {
+    it("takes a custom base image from docker.from", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
-          target: "docker",
-          runtime: "bun",
-          docker: {
-            compile: {
-              target: "bun-linux-x64-modern-musl",
-              base: "alpine:3.20",
-              minify: false,
-            },
-          },
+          ...compileOptions,
+          docker: { from: "alpine:3.20" },
         }),
       );
 
       expect(
-        shell.wasCalledMatching(
-          /bun build --compile --target=bun-linux-x64-modern-musl --outfile=app index\.js/,
-        ),
-      ).toBe(true);
-      expect(shell.wasCalledMatching(/--minify/)).toBe(false);
-      expect(
         fs.wasWrittenMatching("/project/dist/Dockerfile", /FROM alpine:3\.20/),
       ).toBe(true);
-    });
-
-    it("removes pre-compile artifacts after building the binary", async () => {
-      const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
-      await fs.writeFile("/project/dist/server/abc123.js", "// chunk");
-      await fs.writeFile(
-        "/project/dist/package.json",
-        JSON.stringify({ dependencies: {} }),
-      );
-
-      await task.run(createCtx(fs, shell, compileOptions));
-
-      expect(await fs.exists("/project/dist/index.js")).toBe(false);
-      expect(await fs.exists("/project/dist/server")).toBe(false);
-      expect(await fs.exists("/project/dist/package.json")).toBe(false);
-    });
-
-    it("rejects when externals are present", async () => {
-      const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
-      await fs.writeFile(
-        "/project/dist/package.json",
-        JSON.stringify({ dependencies: { sharp: "^0.33.0" } }),
-      );
-
-      await expect(
-        task.run(createCtx(fs, shell, compileOptions)),
-      ).rejects.toThrow(/not bundled by Vite.*sharp/);
-    });
-
-    it("rejects when runtime is not bun", async () => {
-      const { fs, shell, task } = createTestEnv();
-      await expect(
-        task.run(
-          createCtx(fs, shell, {
-            target: "docker",
-            runtime: "node",
-            docker: { compile: true },
-          }),
-        ),
-      ).rejects.toThrow(/Compile mode requires runtime 'bun'/);
     });
 
     it("omits the migrations COPY line when no migrations directory exists", async () => {
@@ -490,7 +447,6 @@ describe("BuildDockerTask", () => {
         createCtx(fs, shell, {
           ...compileOptions,
           docker: {
-            compile: true,
             env: { DATA_DIR: "/data" },
             volumes: ["/data"],
           },
@@ -511,7 +467,7 @@ describe("BuildDockerTask", () => {
       await task.run(
         createCtx(fs, shell, {
           ...compileOptions,
-          docker: { compile: true, user: "65532" },
+          docker: { user: "65532" },
         }),
       );
 
@@ -695,8 +651,8 @@ describe("BuildDockerTask", () => {
         createCtx(fs, shell, {
           target: "docker",
           runtime: "bun",
+          compile: { name: "app", minify: true },
           docker: {
-            compile: true,
             image: {
               tag: "ghcr.io/myorg/app",
               oci: true,
@@ -757,7 +713,7 @@ describe("BuildDockerTask", () => {
       const dockerfile = await writeDockerfileFor({
         target: "docker",
         runtime: "bun",
-        docker: { compile: true },
+        compile: { name: "app", minify: true },
       });
 
       expect(dockerfile).toContain("FROM gcr.io/distroless/static-debian12");
@@ -765,13 +721,14 @@ describe("BuildDockerTask", () => {
     });
 
     it("declares node in the compile variant's sibling, the node standard build", async () => {
-      // The compile branch cannot be node (`resolveCompile` throws), so the
-      // node assertion for that code path is the standard one above. This
-      // pins that the two branches do not disagree about the label's shape.
+      // The compile branch cannot be node (`BuildCommand.resolveCompile`
+      // throws), so the node assertion for that code path is the standard one
+      // above. This pins that the two branches do not disagree about the
+      // label's shape.
       const compile = await writeDockerfileFor({
         target: "docker",
         runtime: "bun",
-        docker: { compile: true },
+        compile: { name: "app", minify: true },
       });
       const standard = await writeDockerfileFor({
         target: "docker",

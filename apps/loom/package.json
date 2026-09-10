@@ -1,0 +1,15 @@
+{
+  "name": "loom",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "alepha": "workspace:^",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  }
+}

@@ -17,7 +17,12 @@ import { $logger } from "alepha/logger";
 import { ServerHeadProvider } from "alepha/react/head";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
-import { ServerStaticProvider } from "alepha/server/static";
+import {
+  EmbeddedStaticFileSource,
+  ServerStaticProvider,
+  type StaticFileSource,
+  staticEmbeddedAtom,
+} from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
 
 import { PAGE_ROUTE, type PageServerRoute } from "../constants/PAGE_ROUTE.ts";
@@ -103,8 +108,21 @@ export class ReactServerProvider {
       // production mode
       let root = "";
 
-      // non-serverless mode only -> serve static files
-      if (!this.alepha.isServerless() && !this.alepha.isViteDev()) {
+      // A compiled binary carries its own public/: serve that, even when a
+      // public/ directory sits beside it, which can only be a stale one.
+      const embedded = this.alepha.store.get(staticEmbeddedAtom);
+      const embeddedFiles = embedded?.files ?? {};
+
+      if (Object.keys(embeddedFiles).length > 0 && !this.alepha.isViteDev()) {
+        this.log.debug(
+          `Using ${Object.keys(embeddedFiles).length} static files embedded in the binary`,
+        );
+        await this.configureStaticServer(
+          "",
+          this.createEmbeddedSource(embeddedFiles, embedded?.builtAt ?? 0),
+        );
+      } else if (!this.alepha.isServerless() && !this.alepha.isViteDev()) {
+        // non-serverless mode only -> serve static files from disk
         root = await this.getPublicDirectory();
         if (!root) {
           this.log.warn(
@@ -344,29 +362,47 @@ export class ReactServerProvider {
   }
 
   /**
-   * Configure the static file server to serve files from the given root directory.
+   * The source for the files embedded in a compiled binary. Its own method so
+   * a spec can replace it: the real one needs the Bun runtime.
    */
-  protected async configureStaticServer(root: string) {
-    await this.serverStaticProvider.createStaticServer({
-      root,
-      cacheControl: {
-        // `[1, "hour"]`, not `3600`. The field is a `DurationLike`, and a bare
-        // number there is read as **milliseconds**, so `3600` shipped
-        // `cache-control: public, max-age=3.6, immutable` on every asset of
-        // every Alepha app: an hour of caching turned into 3.6 seconds, and a
-        // fractional delta-seconds is not even valid per RFC 9111, so a cache
-        // is free to read it as zero and drop the directive entirely.
-        //
-        // An hour rather than the year `immutable` would normally earn,
-        // because `getCacheControl` selects by file extension and not by
-        // whether the name carries a content hash: `public/logo.png` gets this
-        // same header as `asset.B_Zwhoqw.css`, and a year on a name the user
-        // can overwrite is unrecoverable.
-        maxAge: [1, "hour"],
-        immutable: true,
+  protected createEmbeddedSource(
+    files: Record<string, string>,
+    builtAt: number,
+  ): StaticFileSource {
+    return new EmbeddedStaticFileSource(files, builtAt);
+  }
+
+  /**
+   * Configure the static file server to serve files from the given root
+   * directory, or from `source` when the files do not live on disk.
+   */
+  protected async configureStaticServer(
+    root: string,
+    source?: StaticFileSource,
+  ) {
+    await this.serverStaticProvider.createStaticServer(
+      {
+        root,
+        cacheControl: {
+          // `[1, "hour"]`, not `3600`. The field is a `DurationLike`, and a bare
+          // number there is read as **milliseconds**, so `3600` shipped
+          // `cache-control: public, max-age=3.6, immutable` on every asset of
+          // every Alepha app: an hour of caching turned into 3.6 seconds, and a
+          // fractional delta-seconds is not even valid per RFC 9111, so a cache
+          // is free to read it as zero and drop the directive entirely.
+          //
+          // An hour rather than the year `immutable` would normally earn,
+          // because `getCacheControl` selects by file extension and not by
+          // whether the name carries a content hash: `public/logo.png` gets this
+          // same header as `asset.B_Zwhoqw.css`, and a year on a name the user
+          // can overwrite is unrecoverable.
+          maxAge: [1, "hour"],
+          immutable: true,
+        },
+        ...this.options.staticServer,
       },
-      ...this.options.staticServer,
-    });
+      source,
+    );
   }
 
   /**

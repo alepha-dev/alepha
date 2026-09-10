@@ -18,6 +18,27 @@ export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
 export type BuildRuntime = "node" | "bun" | "workerd";
 
 /**
+ * Compile options once the `--compile` flag and the config are merged and
+ * validated: what the build tasks read.
+ */
+export interface BuildCompile {
+  /**
+   * File name of the binary in `dist/`.
+   */
+  name: string;
+
+  /**
+   * Bun target triple; unset means the target's default.
+   */
+  target?: string;
+
+  /**
+   * Minify the compiled output.
+   */
+  minify: boolean;
+}
+
+/**
  * Build options atom for CLI build command.
  *
  * Defines the available build configuration options with their defaults.
@@ -54,6 +75,49 @@ export const buildOptions = $atom({
      * - `cloudflare` always uses `workerd`
      */
     runtime: z.enum(["node", "bun", "workerd"]).optional(),
+
+    /**
+     * Compile the app to one executable with `bun build --compile`, its
+     * `public/` files embedded inside it. Requires `runtime: "bun"`, and a
+     * `bare` (the default) or `docker` target.
+     *
+     * - `true` names the binary `app`
+     * - a string names it: `compile: "loom"` produces `dist/loom`
+     * - an object sets the name, the Bun target triple and minification
+     *
+     * `dist/` then holds the binary, `manifest.json` and, when the app has
+     * any, `migrations/` beside it. The `--compile [name]` flag beats this.
+     */
+    compile: z
+      .union([
+        z.boolean(),
+        z.string(),
+        z.object({
+          /**
+           * File name of the binary: lowercase letters, digits, `.`, `_`
+           * and `-`, starting with a letter or a digit.
+           *
+           * @default "app"
+           */
+          name: z.string().optional(),
+
+          /**
+           * Bun target triple, e.g. `bun-darwin-arm64`, `bun-linux-x64` or
+           * `bun-linux-arm64-musl`.
+           *
+           * @default the host for `bare`, linux-musl on the host's CPU for `docker`
+           */
+          target: z.string().optional(),
+
+          /**
+           * Minify the compiled output.
+           *
+           * @default true
+           */
+          minify: z.boolean().optional(),
+        }),
+      ])
+      .optional(),
 
     /**
      * Output directory configuration.
@@ -120,6 +184,7 @@ export const buildOptions = $atom({
          *
          * @default "node:24-alpine" for node runtime
          * @default "oven/bun:alpine" for bun runtime
+         * @default "gcr.io/distroless/static-debian12" in `compile` mode
          */
         from: z.string().optional(),
 
@@ -272,51 +337,6 @@ export const buildOptions = $atom({
              */
             licenses: z.string().optional(),
           })
-          .optional(),
-
-        /**
-         * Compile the server entry to a single static binary using
-         * `bun build --compile`, then package it inside a minimal base image
-         * (distroless by default). Requires `runtime: "bun"`.
-         *
-         * When enabled:
-         * - the binary is produced at `<dist>/app` and the original `dist/server/`,
-         *   `dist/index.js` and `dist/package.json` are removed
-         * - the generated Dockerfile uses a distroless base image and does not
-         *   run `bun install` (everything is embedded in the binary)
-         * - any non-empty `dependencies` in the externals manifest causes the
-         *   task to fail loudly (compile requires fully-bundled output)
-         *
-         * Pass `true` to enable with defaults, or an object to override.
-         */
-        compile: z
-          .union([
-            z.boolean(),
-            z.object({
-              /**
-               * Bun target triple, e.g. `bun-linux-x64-musl`,
-               * `bun-linux-arm64-musl`, or `bun-linux-x64-modern-musl`
-               * (AVX2 required).
-               *
-               * @default derived from host arch — always linux-musl.
-               */
-              target: z.string().optional(),
-
-              /**
-               * Base image for the generated Dockerfile.
-               *
-               * @default "gcr.io/distroless/static-debian12"
-               */
-              base: z.string().optional(),
-
-              /**
-               * Minify the compiled output.
-               *
-               * @default true
-               */
-              minify: z.boolean().optional(),
-            }),
-          ])
           .optional(),
       })
       .optional(),
