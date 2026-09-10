@@ -99,11 +99,18 @@ describe("@alepha/lore packaging", () => {
   });
 
   /**
-   * `./cli` types itself against Lore's own controllers through a type-only
-   * devDependency on `apps/lore`. That workspace declared no `exports` at all,
-   * so a deep import into it resolved only by undeclared legacy file
+   * `./cli` types itself against Lore's own controllers, type-only, through a
+   * declared subpath of `apps/lore`. That workspace once declared no `exports`
+   * at all, so a deep import into it resolved only by undeclared legacy file
    * resolution: it worked, until the day it did not, with nothing in either
    * manifest saying it was supposed to.
+   *
+   * The dependency is an OPTIONAL peer, not a devDependency. A `workspace:*`
+   * devDependency made the package uninstallable anywhere there is no `lore`
+   * workspace: a project vendoring it failed `yarn install` before running
+   * anything. An optional peer still says the relationship out loud, the
+   * monorepo satisfies it through its workspace link, and a consumer without
+   * the Lore app is never asked for it.
    */
   it("type-imports Lore's controllers through a declared subpath", () => {
     const lore = JSON.parse(
@@ -113,7 +120,9 @@ describe("@alepha/lore packaging", () => {
       ),
     );
 
-    expect(manifest.devDependencies.lore).toBe("workspace:*");
+    expect(manifest.devDependencies.lore).toBeUndefined();
+    expect(manifest.peerDependencies.lore).toBe("*");
+    expect(manifest.peerDependenciesMeta.lore).toEqual({ optional: true });
     expect(lore.exports["./api/controllers/*"]).toBe(
       "./src/api/controllers/*.ts",
     );

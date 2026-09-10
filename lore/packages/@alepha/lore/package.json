@@ -90,10 +90,14 @@
     "vitest": "^5.0.0"
   },
   "peerDependencies": {
+    "lore": "*",
     "react": "*",
     "react-dom": "*"
   },
   "peerDependenciesMeta": {
+    "lore": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
