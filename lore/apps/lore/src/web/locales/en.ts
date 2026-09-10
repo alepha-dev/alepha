@@ -849,12 +849,12 @@ export default {
   "release.default.clear": "Clear default",
   "release.default.confirm.title": "Make $1 the default release?",
   "release.default.confirm.description":
-    "Finished quests that name no release will land in $1, and an epic begun without one will ship in it. Everything can still be filed by hand, and publishing $1 clears the default.",
+    "Finished quests that name no release will land in $1, and an epic begun without one will ship in it. Everything can still be filed by hand. Publishing $1 hands the default on to the next open release, the next minor or else the next major, and clears it if there is none.",
   "release.default.cleared": "$1 is no longer the default release",
   "quest.complete.landedIn": "Completed in $1",
   "release.publish.title": "Publish this release?",
   "release.publish.description":
-    "Publishing $1 freezes its changelog and its progress counts, and no epic or quest can be attached to it afterwards. If $1 is the default release, it stops being it. This is one-way: reopening it clears everything it froze, and does not make it the default again.",
+    "Publishing $1 freezes its changelog and its progress counts, and no epic or quest can be attached to it afterwards. If $1 is the default release, the default moves to the next open release, the next minor or else the next major, or to none. This is one-way: reopening it clears everything it froze, and does not make it the default again.",
   "release.publish.confirm": "Publish",
   "release.reopen.action": "Reopen",
   "release.reopen.title": "Reopen this release?",
