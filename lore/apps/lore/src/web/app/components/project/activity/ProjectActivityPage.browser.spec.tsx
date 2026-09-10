@@ -23,6 +23,14 @@ import ProjectActivityPage from "./ProjectActivityPage.tsx";
 class FakeLinkProvider extends LinkProvider {
   public rows: ProjectActivityRow[] = [];
   public lastQuery: Record<string, unknown> | undefined;
+  /**
+   * The project's members. One by default, which is the case the people
+   * filter hides itself for.
+   */
+  public people: Array<{ id: string; username: string }> = [
+    { id: ACTOR, username: "feunard" },
+  ];
+  public usersCalls = 0;
 
   override client(): any {
     return new Proxy(
@@ -34,7 +42,8 @@ class FakeLinkProvider extends LinkProvider {
             return page(this.rows);
           }
           if (prop === "getProjectUsers") {
-            return [{ id: ACTOR, username: "feunard" }];
+            this.usersCalls++;
+            return this.people;
           }
           if (prop === "getProjectActivityFilters") {
             return { types: ["quest", "folio"], actions: ["create", "update"] };
@@ -47,6 +56,7 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 const ACTOR = "00000000-0000-4000-8000-000000000009";
+const SECOND = "00000000-0000-4000-8000-000000000010";
 
 const page = (rows: ProjectActivityRow[]): Page<ProjectActivityRow> => ({
   content: rows,
@@ -99,11 +109,15 @@ describe("ProjectActivityPage", () => {
 
   afterEach(async () => {
     cleanup();
+    window.localStorage.clear();
     await alepha?.stop();
     alepha = undefined;
   });
 
-  const show = async (rows: ProjectActivityRow[]) => {
+  const show = async (
+    rows: ProjectActivityRow[],
+    people?: Array<{ id: string; username: string }>,
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -118,6 +132,9 @@ describe("ProjectActivityPage", () => {
     alepha.inject(I18n);
     await alepha.start();
     alepha.inject(FakeLinkProvider).rows = rows;
+    if (people) {
+      alepha.inject(FakeLinkProvider).people = people;
+    }
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
       currentProjectAtom,
@@ -226,5 +243,79 @@ describe("ProjectActivityPage", () => {
       expect(screen.getByText("create")).toBeTruthy();
     });
     expect(screen.queryByText(/^×/)).toBeNull();
+  });
+
+  /**
+   * Feedback #P2178: on a project with one member the people dropdown lists
+   * the owner alone, so it can only ever select every row.
+   */
+  describe("the people filter", () => {
+    const TWO = [
+      { id: ACTOR, username: "feunard" },
+      { id: SECOND, username: "second" },
+    ];
+
+    it("is not offered on a one-member project", async ({ expect }) => {
+      const screen = await show([row({})]);
+
+      await waitFor(() => {
+        expect(screen.getByText("Wire it")).toBeTruthy();
+        expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
+      });
+      expect(screen.queryByText("Everyone")).toBeNull();
+    });
+
+    it("is offered from two members up", async ({ expect }) => {
+      const screen = await show([row({})], TWO);
+
+      await waitFor(() => {
+        expect(screen.getByText("Everyone")).toBeTruthy();
+      });
+    });
+
+    it("does not apply a stored person while it is hidden", async ({
+      expect,
+    }) => {
+      // Stored while the project had two members. The control is gone now,
+      // so nothing on screen could clear it.
+      window.localStorage.setItem(
+        "lor.activity.1.filters",
+        JSON.stringify({ userId: SECOND }),
+      );
+      const screen = await show([row({})]);
+
+      await waitFor(() => {
+        expect(screen.getByText("Wire it")).toBeTruthy();
+        expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
+      });
+      expect(
+        alepha!.inject(FakeLinkProvider).lastQuery?.userId,
+      ).toBeUndefined();
+    });
+
+    it("applies a stored person once the filter is shown", async ({
+      expect,
+    }) => {
+      window.localStorage.setItem(
+        "lor.activity.1.filters",
+        JSON.stringify({ userId: SECOND }),
+      );
+      await show([row({})], TWO);
+
+      await waitFor(() => {
+        expect(alepha!.inject(FakeLinkProvider).lastQuery?.userId).toBe(SECOND);
+      });
+    });
+
+    it("decides from the member list the page already fetches", async ({
+      expect,
+    }) => {
+      const screen = await show([row({})], TWO);
+
+      await waitFor(() => {
+        expect(screen.getByText("Everyone")).toBeTruthy();
+      });
+      expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
+    });
   });
 });
