@@ -20,6 +20,16 @@ OAuth 2.1 authorization server module for MCP.
 - Stateless authorization codes (short-lived signed JWTs)
 - Single-use code enforcement
 - Refresh tokens bound to the client they were issued to
+- Device authorization grant (RFC 8628), with the page a human approves a
+  device on
+
+**The device grant ships both halves.** `POST /oauth/device_authorization`
+and the `device_code` token grant are the device's; `/oauth/device` is the
+human's, and it is the `verification_uri` a device is told to print. It is
+server-rendered HTML like the consent screen, sends a signed-out visitor to
+`loginPath?redirect_uri=` and back, and refuses an answer posted from
+another origin - see `OAuthController.deviceDecision` for why that check
+matters more here than on the consent POST.
 
 **Registration is deduplicated, and that is what makes a "connected app"
 a thing.** A client that registers again with the same name, the same

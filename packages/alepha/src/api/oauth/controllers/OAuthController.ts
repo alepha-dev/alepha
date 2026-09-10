@@ -1,4 +1,4 @@
-import { $atom, $inject, $store, Alepha, z } from "alepha";
+import { $atom, $inject, $store, Alepha, AlephaError, z } from "alepha";
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
@@ -9,6 +9,7 @@ import {
   type ConsentScope,
   renderConsentPage,
 } from "../helpers/consentPage.ts";
+import { renderDevicePage } from "../helpers/devicePage.ts";
 import {
   buildAuthorizationServerMetadata,
   buildProtectedResourceMetadata,
@@ -17,6 +18,8 @@ import { buildOpenIdConfiguration } from "../helpers/oidcMetadata.ts";
 import { authorizeDecisionBodySchema } from "../schemas/authorizeDecisionBodySchema.ts";
 import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
 import { deviceAuthorizationBodySchema } from "../schemas/deviceAuthorizationBodySchema.ts";
+import { deviceDecisionBodySchema } from "../schemas/deviceDecisionBodySchema.ts";
+import { deviceVerificationQuerySchema } from "../schemas/deviceVerificationQuerySchema.ts";
 import { oauthScopeCopySchema } from "../schemas/oauthScopeCopySchema.ts";
 import { registerClientBodySchema } from "../schemas/registerClientBodySchema.ts";
 import { tokenRequestBodySchema } from "../schemas/tokenRequestBodySchema.ts";
@@ -45,11 +48,21 @@ export const oauthOptions = $atom({
      * Page where a human approves a device authorization (RFC 8628). Handed to
      * the device as `verification_uri` so it can print it.
      *
+     * Defaults to `/oauth/device`, which this controller serves. Point it
+     * elsewhere only to hand the step to a page of the app's own; the built-in
+     * one stays mounted either way.
+     *
+     * ⚠️ It defaulted to `/device` until #Q2217, a page nothing served: every
+     * code a device printed led to a 404 and could never be approved. The
+     * built-in page lives under `/oauth/` rather than at `/device` because a
+     * root segment claimed by a module is claimed in every app that mounts
+     * it - in Lore, a root segment is also a project slug.
+     *
      * Optional so adding it does not break every existing caller of
      * `alepha.set(oauthOptions, …)` — the sibling fields are required, and any
      * app already configuring them would stop compiling.
      */
-    devicePath: z.text({ default: "/device" }).optional(),
+    devicePath: z.text({ default: "/oauth/device" }).optional(),
     /**
      * The app's own name, shown on the consent screen as the party being
      * connected to ("Claude wants access to your Lore account").
@@ -83,7 +96,7 @@ export const oauthOptions = $atom({
     realm: "users",
     resource: "/mcp",
     loginPath: "/login",
-    devicePath: "/device",
+    devicePath: "/oauth/device",
   },
   serverOnly: true,
 });
@@ -91,7 +104,7 @@ export const oauthOptions = $atom({
 /**
  * OAuth 2.1 authorization server endpoints: discovery metadata, RFC 7591
  * dynamic client registration, authorization, token and RFC 8628 device
- * authorization.
+ * authorization, with the page a human approves a device on.
  */
 export class OAuthController {
   protected readonly alepha = $inject(Alepha);
@@ -142,6 +155,44 @@ export class OAuthController {
       return undefined;
     }
   }
+
+  /**
+   * Whether a post came from a page on this host.
+   *
+   * The device approval POST needs this and the consent POST does not. A
+   * forged consent can only mint a code bound by PKCE, which the forger cannot
+   * redeem. A forged device approval hands the forger's own device a token for
+   * the victim's account, with nothing left to redeem.
+   *
+   * The session cookie is `SameSite=Lax`, which already keeps a cross-SITE
+   * post from carrying it. This closes what Lax leaves open: a sibling on the
+   * same site (another subdomain) posting with the victim's cookie attached.
+   * Every browser sends `Origin` on a form post, so a post naming no origin
+   * at all is refused rather than trusted.
+   *
+   * Hosts are compared, not whole origins, so a proxy that terminates TLS
+   * without forwarding the scheme cannot refuse every legitimate post.
+   */
+  protected isSameOrigin(headers: Record<string, string>, url: URL): boolean {
+    const source = headers.origin ?? headers.referer;
+    if (!source) return false;
+    try {
+      return new URL(source).host === url.host;
+    } catch {
+      // `Origin: null` - a sandboxed frame, a privacy-sensitive redirect.
+      return false;
+    }
+  }
+
+  /**
+   * One answer for every code the approval page will not act on.
+   *
+   * Unknown, expired, already answered and throttled all read the same, so
+   * the page is not an oracle for which codes exist. `DeviceCodeService`
+   * holds the same line for the first three.
+   */
+  protected readonly deviceCodeRefused =
+    "That code is not valid, has expired, or has already been used. Start again on your device to get a new one.";
 
   metadata = $route({
     method: "GET",
@@ -516,7 +567,7 @@ export class OAuthController {
         resource: body.resource,
       });
       const base = this.baseUrl(url);
-      const verificationUri = `${base}${this.options.devicePath ?? "/device"}`;
+      const verificationUri = `${base}${this.options.devicePath ?? "/oauth/device"}`;
       reply.body = JSON.stringify({
         device_code: record.deviceCode,
         user_code: record.userCode,
@@ -527,6 +578,128 @@ export class OAuthController {
         verification_uri_complete: `${verificationUri}?user_code=${encodeURIComponent(record.userCode)}`,
         expires_in: DEVICE_CODE_TTL_SECONDS,
         interval: DEVICE_POLL_INTERVAL_SECONDS,
+      });
+    },
+  });
+
+  /**
+   * GET /oauth/device - the page a human approves a device on (RFC 8628
+   * §3.3), and the default `verification_uri`.
+   *
+   * No session: through the login page and back, with the same
+   * `redirect_uri` parameter `/oauth/authorize` uses, so an app's login page
+   * needs one bridge for both. No code: a form to type one. A code: the
+   * confirm screen, or the form again with a refusal.
+   *
+   * A lookup counts against the signed-in user, so this is the path
+   * `DEVICE_USER_CODE_MAX_ATTEMPTS` guards: someone guessing codes here is
+   * someone with a session, typing.
+   */
+  devicePage = $route({
+    method: "GET",
+    path: "/oauth/device",
+    schema: { query: deviceVerificationQuerySchema },
+    use: [],
+    handler: async ({ query, user, url, reply }) => {
+      if (!user) {
+        const returnTo = encodeURIComponent(url.pathname + url.search);
+        reply.redirect(
+          `${this.options.loginPath}?redirect_uri=${returnTo}`,
+          302,
+        );
+        return;
+      }
+
+      reply.headers["content-type"] = "text/html; charset=utf-8";
+      // It names the account, and the code in it is live for ten minutes.
+      reply.headers["cache-control"] = "no-store";
+      const productName = this.options.productName;
+
+      if (!query.user_code) {
+        reply.body = renderDevicePage({ step: "enter", productName });
+        return;
+      }
+
+      const record = await this.deviceCodes.byUserCode(
+        query.user_code,
+        user.id,
+      );
+      if (!record || record.status !== "pending") {
+        reply.body = renderDevicePage({
+          step: "enter",
+          userCode: query.user_code,
+          error: this.deviceCodeRefused,
+          productName,
+        });
+        return;
+      }
+
+      reply.body = renderDevicePage({
+        step: "confirm",
+        // The canonical form, not what was typed: it is what the device
+        // shows, and comparing the two is the whole point of the screen.
+        userCode: record.userCode,
+        userName: user.name ?? user.email ?? "your account",
+        // What the device asked for, which is what it will get. Nothing
+        // narrows a device grant's scopes, so the screen must not either.
+        scopes: this.describeScopes(record.scopes),
+        productName,
+      });
+    },
+  });
+
+  /**
+   * POST /oauth/device - the answer from the approval page.
+   *
+   * ⚠️ Unlike the consent POST, this one checks where it came from: see
+   * {@link isSameOrigin}. The origin is checked before the session, so a
+   * forged post learns nothing about whether its victim was signed in.
+   */
+  deviceDecision = $route({
+    method: "POST",
+    path: "/oauth/device",
+    schema: { body: deviceDecisionBodySchema },
+    use: [],
+    handler: async ({ body, user, url, headers, reply }) => {
+      if (!this.isSameOrigin(headers, url)) {
+        reply.status = 403;
+        reply.body = "cross-origin request refused";
+        return;
+      }
+      if (!user) {
+        reply.status = 401;
+        reply.body = "authentication required";
+        return;
+      }
+
+      reply.headers["content-type"] = "text/html; charset=utf-8";
+      reply.headers["cache-control"] = "no-store";
+      const productName = this.options.productName;
+
+      try {
+        await this.deviceCodes.decide(
+          body.user_code,
+          body.decision === "allow" ? "approve" : "deny",
+          user.id,
+        );
+      } catch (error) {
+        // `decide` refuses an unknown, expired or already answered code with
+        // an AlephaError. Anything else is a real failure and must reach the
+        // error handler rather than read as a bad code.
+        if (!(error instanceof AlephaError)) throw error;
+        reply.body = renderDevicePage({
+          step: "enter",
+          userCode: body.user_code,
+          error: this.deviceCodeRefused,
+          productName,
+        });
+        return;
+      }
+
+      reply.body = renderDevicePage({
+        step: "done",
+        decision: body.decision,
+        productName,
       });
     },
   });

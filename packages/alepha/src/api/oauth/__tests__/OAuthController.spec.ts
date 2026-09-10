@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { cacheOptions } from "alepha/cache";
+import { DateTimeProvider } from "alepha/datetime";
 import {
   MemoryDestinationProvider,
   LogDestinationProvider,
@@ -18,6 +19,7 @@ import {
 } from "../helpers/consentPage.ts";
 import { buildAuthorizationServerMetadata } from "../helpers/oauthMetadata.ts";
 import { AlephaOAuth, oauthOptions } from "../index.ts";
+import { DEVICE_POLL_INTERVAL_SECONDS } from "../services/DeviceCodeService.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
 
 describe("oauth helpers", () => {
@@ -952,7 +954,9 @@ describe("device authorization grant", () => {
     const body = await res.json();
 
     expect(body.user_code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
-    expect(body.verification_uri).toBe(`${hostname}/device`);
+    // A page this module serves itself (#Q2217). It used to advertise
+    // `/device`, which nothing served, so no code could ever be approved.
+    expect(body.verification_uri).toBe(`${hostname}/oauth/device`);
     // RFC 8628 §3.3.1 — the same page with the code filled in, for anyone who
     // can follow a link. The plain URI stays, for anyone who cannot.
     expect(body.verification_uri_complete).toContain("user_code=");
@@ -1004,6 +1008,311 @@ describe("device authorization grant", () => {
     });
     // Not "no such code": that would confirm which codes ever existed.
     expect((await res.json()).error).toBe("expired_token");
+  });
+});
+
+/**
+ * The human half of the device grant, #Q2217.
+ *
+ * This module shipped the device's half - start, poll - and advertised a
+ * verification page it did not serve. The CLI's own specs fake the server, so
+ * nothing ever approved a code for real, and `lore login` could only ever
+ * expire. These drive the approval through the page, then poll as the device
+ * would.
+ */
+describe("device approval page", () => {
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+      productName: "Lore",
+      scopes: {
+        mcp: {
+          label: "Your projects",
+          description: "Read and manage your projects.",
+        },
+      },
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    alepha
+      .inject(OAuthClientService)
+      .registerIssuer(
+        "users",
+        app.issuer,
+        async (id) => ({ id, roles: [] }) as UserAccount,
+      );
+
+    const { hostname } = alepha.inject(ServerProvider);
+
+    /**
+     * A signed-in human, as the page sees one.
+     */
+    const session = async (id: string) => {
+      const { access_token } = await app.issuer.createToken({
+        id,
+        name: "Bob",
+        roles: [],
+      } as UserAccount);
+      return access_token;
+    };
+
+    /**
+     * What `lore login` does first.
+     */
+    const start = async () => {
+      const res = await fetch(`${hostname}/oauth/device_authorization`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "alepha-cli", scope: "mcp" }),
+      });
+      return (await res.json()) as {
+        device_code: string;
+        user_code: string;
+        verification_uri: string;
+        verification_uri_complete: string;
+      };
+    };
+
+    /**
+     * What `lore login` does next, until it is let through.
+     */
+    const poll = async (deviceCode: string) => {
+      const res = await fetch(`${hostname}/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+          device_code: deviceCode,
+          client_id: "alepha-cli",
+        }),
+      });
+      return { status: res.status, body: await res.json() };
+    };
+
+    /**
+     * The page, opened in a browser.
+     */
+    const open = (path: string, token?: string) =>
+      fetch(`${hostname}${path}`, {
+        redirect: "manual",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+
+    /**
+     * A click on Allow or Deny: a form post, from the page's own origin.
+     */
+    const answer = (
+      userCode: string,
+      decision: "allow" | "deny",
+      options: { token?: string; origin?: string | null } = {},
+    ) => {
+      const headers: Record<string, string> = {
+        "content-type": "application/x-www-form-urlencoded",
+      };
+      if (options.token) headers.authorization = `Bearer ${options.token}`;
+      const origin = options.origin === undefined ? hostname : options.origin;
+      if (origin) headers.origin = origin;
+      return fetch(`${hostname}/oauth/device`, {
+        method: "POST",
+        redirect: "manual",
+        headers,
+        body: new URLSearchParams({ user_code: userCode, decision }).toString(),
+      });
+    };
+
+    /**
+     * A device honours the poll interval; a test has to as well, or the
+     * second poll is a `slow_down` rather than the answer.
+     */
+    const waitInterval = () =>
+      alepha
+        .inject(DateTimeProvider)
+        .travel([DEVICE_POLL_INTERVAL_SECONDS + 1, "seconds"]);
+
+    return { hostname, session, start, poll, open, answer, waitInterval };
+  };
+
+  const decodeJwt = (jwt: string) =>
+    JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString());
+
+  it("advertises a verification URI that answers", async ({ expect }) => {
+    const { hostname, session, start, open } = await boot();
+    const { verification_uri } = await start();
+
+    const res = await open(
+      verification_uri.slice(hostname.length),
+      await session("user-1"),
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it("sends a signed-out visitor through login and back to the same page", async ({
+    expect,
+  }) => {
+    const { open } = await boot();
+
+    const res = await open("/oauth/device?user_code=CDFG-HJKM");
+
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location") ?? "", "http://x");
+    expect(location.pathname).toBe("/login");
+    // The same parameter `/oauth/authorize` uses, so an app's login page
+    // needs one bridge for both.
+    expect(location.searchParams.get("redirect_uri")).toBe(
+      "/oauth/device?user_code=CDFG-HJKM",
+    );
+  });
+
+  it("asks for the code when the link carried none", async ({ expect }) => {
+    const { session, open } = await boot();
+
+    const res = await open("/oauth/device", await session("user-1"));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain('name="user_code"');
+    expect(html).not.toContain('value="allow"');
+  });
+
+  it("shows the code to check against the device before anything is granted", async ({
+    expect,
+  }) => {
+    const { session, start, open } = await boot();
+    const { user_code, verification_uri_complete } = await start();
+
+    const res = await open(
+      new URL(verification_uri_complete).pathname +
+        new URL(verification_uri_complete).search,
+      await session("user-1"),
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain(user_code);
+    // What the device will get, in the app's own words.
+    expect(html).toContain("Your projects");
+    // Who is granting it, so a wrong-account grant is caught before it happens.
+    expect(html).toContain("Bob");
+    expect(html).toContain('value="allow"');
+    expect(html).toContain('value="deny"');
+  });
+
+  it("refuses a code it does not know, without saying whether it ever existed", async ({
+    expect,
+  }) => {
+    const { session, open } = await boot();
+
+    const res = await open(
+      "/oauth/device?user_code=XXXX-XXXX",
+      await session("user-1"),
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("not valid, has expired, or has already been used");
+    expect(html).not.toContain('value="allow"');
+  });
+
+  it("hands the device a token for the account that approved it", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer, waitInterval } = await boot();
+    const { device_code, user_code } = await start();
+
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+
+    const res = await answer(user_code, "allow", {
+      token: await session("user-1"),
+    });
+    expect(res.status).toBe(200);
+
+    await waitInterval();
+    const granted = await poll(device_code);
+    expect(granted.status).toBe(200);
+    expect(granted.body.scope).toBe("mcp");
+    expect(decodeJwt(granted.body.access_token).sub).toBe("user-1");
+  });
+
+  it("tells the device access_denied when the human says no", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "deny", {
+      token: await session("user-1"),
+    });
+    expect(res.status).toBe(200);
+
+    expect((await poll(device_code)).body.error).toBe("access_denied");
+  });
+
+  it("does not let a second answer overwrite the first", async ({ expect }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+    const token = await session("user-1");
+
+    await answer(user_code, "deny", { token });
+    const second = await answer(user_code, "allow", { token });
+
+    expect(await second.text()).toContain("has already been used");
+    expect((await poll(device_code)).body.error).toBe("access_denied");
+  });
+
+  it("refuses an answer from a visitor with no session", async ({ expect }) => {
+    const { start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "allow");
+
+    expect(res.status).toBe(401);
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+  });
+
+  /**
+   * ⚠️ The attack this page exists to survive. A device code has no PKCE
+   * binding, so a forged Allow does not produce something useless: it hands
+   * the ATTACKER's device a token for the victim's account. The victim only
+   * has to load a page that posts the attacker's code.
+   */
+  it("refuses an answer posted from another origin", async ({ expect }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "allow", {
+      token: await session("victim"),
+      origin: "https://evil.example",
+    });
+
+    expect(res.status).toBe(403);
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+  });
+
+  it("refuses an answer that names no origin at all", async ({ expect }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "allow", {
+      token: await session("victim"),
+      origin: null,
+    });
+
+    expect(res.status).toBe(403);
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
   });
 });
 
