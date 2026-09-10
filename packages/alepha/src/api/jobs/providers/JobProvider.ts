@@ -240,6 +240,15 @@ export class JobProvider {
 
   protected readonly jobs = new Map<string, JobRuntimeRegistration>();
   protected readonly inFlight = new Set<Promise<void>>();
+
+  /**
+   * Names of the cron jobs with a run inside `runCronLocked` in this process.
+   *
+   * The in-process half of "one run at a time". The run lock is the other
+   * half, and it cannot do this one: its value is a per-process holder id, so
+   * a second caller here reads the stored value back as its own.
+   */
+  protected readonly runningCrons = new Set<string>();
   protected readonly abortControllers = new Map<string, AbortController>();
   protected readonly logBuffer = $inject(LogBufferProvider);
   protected stopping = false;
@@ -399,6 +408,14 @@ export class JobProvider {
    * is the older one and stays: it keeps a manual `trigger()` on one
    * instance from overlapping a scheduled run on another, which a
    * per-instant key cannot express because a trigger has no instant.
+   *
+   * **Within one process, `runningCrons` goes first.** The per-job lock
+   * cannot tell two callers in the same process apart (see
+   * `acquireCronLock`), so a trigger that lands on a tick in progress here,
+   * or a tick that lands on a trigger, stands down on the set before it
+   * reaches the lock. A tick checks it after claiming its instant, so it
+   * stands down exactly as it would had another replica held the lock. A
+   * skipped call returns without running, the same as lock contention.
    */
   protected async runCronLocked(
     registration: JobRuntimeRegistration,
@@ -419,39 +436,60 @@ export class JobProvider {
       }
     }
 
-    if (useLock) {
-      const acquired = await this.acquireCronLock(registration);
-      if (!acquired) {
-        this.log.debug(
-          `Cron '${registration.name}' skipped — another instance holds the lock`,
-        );
-        return;
-      }
+    // Checked and taken with no `await` in between, so two callers in this
+    // process cannot both get past it. It has to come before the run lock,
+    // which cannot tell them apart (see `acquireCronLock`), and it holds
+    // whatever `lock` says: that option opts out of the replicas, not of
+    // overlapping itself.
+    if (this.runningCrons.has(registration.name)) {
+      this.log.debug(
+        `Cron '${registration.name}' skipped: a run is already in progress in this process`,
+      );
+      return;
     }
+    this.runningCrons.add(registration.name);
 
     try {
-      if (registration.options.retry) {
-        await this.enqueueCronExecution(registration, ctx);
-        return;
+      if (useLock) {
+        const acquired = await this.acquireCronLock(registration);
+        if (!acquired) {
+          this.log.debug(
+            `Cron '${registration.name}' skipped — another instance holds the lock`,
+          );
+          return;
+        }
       }
 
-      const executionId = this.crypto.randomUUID();
-      const promise = this.executeInline(registration, executionId, {
-        payload: undefined,
-        attempt: 1,
-        triggeredBy: ctx.triggeredBy,
-        triggeredByName: ctx.triggeredByName,
-      });
-      this.inFlight.add(promise);
       try {
-        await promise;
+        if (registration.options.retry) {
+          await this.enqueueCronExecution(registration, ctx);
+          return;
+        }
+
+        const executionId = this.crypto.randomUUID();
+        const promise = this.executeInline(registration, executionId, {
+          payload: undefined,
+          attempt: 1,
+          triggeredBy: ctx.triggeredBy,
+          triggeredByName: ctx.triggeredByName,
+        });
+        this.inFlight.add(promise);
+        try {
+          await promise;
+        } finally {
+          this.inFlight.delete(promise);
+        }
       } finally {
-        this.inFlight.delete(promise);
+        if (useLock) {
+          await this.releaseCronLock(registration);
+        }
       }
     } finally {
-      if (useLock) {
-        await this.releaseCronLock(registration);
-      }
+      // Only once the release has landed. Freed any sooner, the next run in
+      // this process would "acquire" the lock this one still holds, and the
+      // release would then delete it out from under that run: its owner
+      // check sees the same per-process holder id for both.
+      this.runningCrons.delete(registration.name);
     }
   }
 
@@ -485,13 +523,11 @@ export class JobProvider {
    * `2 * timeout` (or 5 minutes if no per-job timeout) so a crashed worker
    * cannot permanently block the cron from firing.
    *
-   * **Caveat — same-process double-fire is not prevented.** The lock value
-   * is a per-process holder id, so two concurrent ticks on the same process
-   * (e.g. a scheduled tick overlapping an admin `trigger()` call) will both
-   * see "we own it". This is acceptable for the multi-replica use case the
-   * lock targets; a process that overlaps its own cron handler should set a
-   * smaller `timeout` or use idempotent handler logic. A future fix can add
-   * a per-process Set guard before reaching the LockProvider.
+   * **It only tells replicas apart.** The lock value is a per-process holder
+   * id, so a second NX set from this same process reads the stored value
+   * back as its own and "acquires" a lock that is already held. Nothing gets
+   * that far: `runCronLocked` stands a second caller in this process down on
+   * `runningCrons` first.
    */
   protected async acquireCronLock(
     registration: JobRuntimeRegistration,
