@@ -29,5 +29,6 @@ Type-safe caching with TTL support.
 ### Providers
 
 - [`CacheProvider`](/docs/reference-providers-cacheprovider) - Cache provider interface.
+- [`CloudflareCacheProvider`](/docs/reference-providers-cloudflarecacheprovider) - Cloudflare cache provider: the database cache when the app has one, else KV.
 - [`CloudflareKVProvider`](/docs/reference-providers-cloudflarekvprovider) - Cloudflare KV cache provider.
 - [`MemoryCacheProvider`](/docs/reference-providers-memorycacheprovider) - In-memory implementation of CacheProvider for testing.
