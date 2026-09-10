@@ -829,12 +829,15 @@ if (flatSpecViolations.length > 0) {
  * 6. A workspace holding spec files owns a Vitest config, and the root config
  *    knows about it.
  *
- * Vitest walks up from its cwd until it finds a config. Before per-workspace
- * configs existed that walk always ended at the repository root, whose
- * `test.root` was the repository, so `yarn w @alepha/protobuf test` ran all
- * 892 specs in the monorepo and `yarn w alepha test` ran 328 files that are
- * not in `packages/alepha`. Every one of those commands reported success, so
- * nobody had a reason to look.
+ * Until Vitest 5, Vitest walked up from its cwd until it found a config.
+ * Before per-workspace configs existed that walk always ended at the
+ * repository root, whose `test.root` was the repository, so
+ * `yarn w @alepha/protobuf test` ran all 892 specs in the monorepo and
+ * `yarn w alepha test` ran 328 files that are not in `packages/alepha`. Every
+ * one of those commands reported success, so nobody had a reason to look.
+ * Vitest 5 no longer walks up, which only makes the miss quieter: a workspace
+ * without its own config now runs its specs on bare defaults, with no service
+ * env, no Paris timezone, no tsconfig aliases and no jsdom project.
  *
  * The failure this guards is the same shape in the other direction: a
  * workspace whose config exists but is missing from the root's import list

@@ -195,9 +195,11 @@ prefix is the workspace's own package name is skipped on purpose, because the
 
 Three rules, enforced by `check:conventions`, not by review:
 
-- A workspace with spec files owns a `vitest.config.ts`. Without one, Vitest
-  walks up to the root config and the workspace's `test` script silently runs
-  the entire monorepo.
+- A workspace with spec files owns a `vitest.config.ts`. Without one, its
+  `test` script runs the specs without any of the shared settings above: no
+  service env, no Paris timezone, no `@/` alias, browser specs under node.
+  (Before Vitest 5 it was worse: Vitest walked up to the root config and the
+  script silently ran the entire monorepo.)
 - The root `vitest.config.ts` imports it. A config nobody imports contributes
   nothing to `yarn test`, and a suite that quietly shrinks looks like one that
   passes.

@@ -590,10 +590,8 @@ export class ProjectScaffolder {
    * Ensure the test directory exists with a dummy spec.
    *
    * No `vitest.config.ts` any more: Vitest falls back to `vite.config.ts`, and
-   * `viteConfigTs` carries the `test` block — including the `test.root` that
-   * stops Vitest walking up into a parent monorepo config (e.g. one that boots
-   * a Postgres container). One file, so plugins and aliases cannot drift
-   * between the build and the tests.
+   * `viteConfigTs` carries the `test` block, `test.root` included. One file, so
+   * plugins and aliases cannot drift between the build and the tests.
    */
   public async ensureTestDir(root: string): Promise<void> {
     const testDir = this.fs.join(root, "test");

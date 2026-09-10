@@ -182,7 +182,7 @@ Step 3 reads `npm_config_user_agent`, which every package manager sets when it s
 
 Vitest ships embedded in `alepha`, so `alepha test` works with nothing to install.
 
-- `vite.config.ts`: Carries the `test` block, including the `test.root` that stops a parent monorepo's vitest config taking over. One file, so plugins and aliases can't drift between the build and the tests
+- `vite.config.ts`: Carries the `test` block, with `test.root` pinned to the project directory. One file, so plugins and aliases can't drift between the build and the tests
 - `test/dummy.spec.ts`: A starter test, also a worked example
 - a `"test": "alepha test"` script
 
@@ -213,7 +213,7 @@ export default defineConfig({
 });
 ```
 
-Everything else about the Vite setup is handled internally by the Alepha CLI - this file exists so Tailwind can hook in and so Vitest has its config (`test.root` stops Vitest walking up into a parent monorepo's config; there is no separate Vitest config file).
+Everything else about the Vite setup is handled internally by the Alepha CLI - this file exists so Tailwind can hook in and so Vitest has its config (`test.root` pins test discovery to the project; there is no separate Vitest config file).
 
 ### .oxlintrc.json and .oxfmtrc.json
 
