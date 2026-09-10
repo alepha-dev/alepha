@@ -107,6 +107,17 @@ export interface CapabilityDescriptor {
    */
   activityKinds: string[];
   /**
+   * The option each activity kind's surface hangs off, for the kinds that
+   * hang off one: the feed offers such a kind only while that option is on,
+   * the same way the sidebar only shows its entry then.
+   *
+   * Declared beside {@link activityKinds} so the Activity filter and the row
+   * narrowing both read it through {@link CapabilityRegistry.isActivityKindEnabled}
+   * rather than a second hand-kept list. A kind with no entry here needs its
+   * capability and nothing more, which is every kind outside Work today.
+   */
+  activityKindOptions?: Record<string, string>;
+  /**
    * `DashboardMetricCatalog` keys the Add-card panel may offer.
    */
   dashboardCards: string[];
@@ -243,6 +254,9 @@ export class CapabilityRegistry {
       ],
       searchKinds: ["quest"],
       activityKinds: ["quest", "epic", "release"],
+      // Epics and Releases are options of Work, and so are their sidebar
+      // entries (`capabilityNav.ts`). Quests are Work's baseline.
+      activityKindOptions: { epic: "epics", release: "releases" },
       dashboardCards: [
         "activeQuests",
         "heldQuests",
@@ -455,6 +469,29 @@ export class CapabilityRegistry {
     return this.capabilities.find((capability) =>
       capability.activityKinds.includes(type),
     )?.key;
+  }
+
+  /**
+   * Whether the activity feed may show an audit `type`, given a project's
+   * enabled capabilities and their options.
+   *
+   * Its capability must be on, and so must the option its surface hangs off
+   * when {@link CapabilityDescriptor.activityKindOptions} names one: a Work
+   * project with `epics` off has no Epics entry in its sidebar, so its feed
+   * does not offer Epic either (feedback #P2177). Core kinds, owned by
+   * nobody, always pass. Like a capability, an option that is off HIDES the
+   * rows; it never deletes them.
+   */
+  isActivityKindEnabled(
+    type: string,
+    enabled: Partial<Record<CapabilityKey, Record<string, boolean>>>,
+  ): boolean {
+    const owner = this.ownerOfActivityKind(type);
+    if (!owner) return true;
+    const options = enabled[owner];
+    if (!options) return false;
+    const option = this.get(owner).activityKindOptions?.[type];
+    return option === undefined || options[option] === true;
   }
 
   /**
