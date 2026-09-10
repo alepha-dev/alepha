@@ -88,9 +88,14 @@ export class LoginCommand {
       }
 
       const hostname = this.client.hostname();
+      // `cli`, a scope of its own. The approval page shows the human the
+      // scope beside the instance's copy for it, and this used to borrow
+      // `mcp` - the one Lore made for Claude connecting - so a sign-in from a
+      // terminal read as an MCP connection (#Q2244). Nothing enforces scopes,
+      // so the name costs nothing but what the page says.
       const start = await this.request<DeviceAuthorization>(
         `${hostname}/oauth/device_authorization`,
-        { client_id: "alepha-cli", scope: "mcp" },
+        { client_id: "alepha-cli", scope: "cli" },
       );
 
       // Printed before the wait, and both forms of it: RFC 8628 §3.3.1 wants
