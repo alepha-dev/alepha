@@ -243,6 +243,20 @@ export const WorktreeView = (props: WorktreeViewProps) => {
               <TimeAgo value={claude.lastActivityAt} />
             </DetailRow>
           )}
+          {claude.contextTokens !== undefined && (
+            <DetailRow label="Context">
+              <span
+                className="font-mono text-[12px] tabular-nums"
+                title={`${claude.contextTokens.toLocaleString("en")} tokens sent by the last turn`}
+              >
+                {formatTokens(claude.contextTokens)}
+              </span>{" "}
+              tokens
+              {claude.model && (
+                <span className="text-muted-foreground"> · {claude.model}</span>
+              )}
+            </DetailRow>
+          )}
           <DetailRow label="Lock">
             {claude.lock ? (
               <>
@@ -336,4 +350,17 @@ export const WorktreeView = (props: WorktreeViewProps) => {
       </div>
     </div>
   );
+};
+
+/**
+ * A token count the way context sizes are spoken of: 877k, 1.2M.
+ */
+const formatTokens = (tokens: number): string => {
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (tokens >= 1_000) {
+    return `${Math.round(tokens / 1_000)}k`;
+  }
+  return String(tokens);
 };

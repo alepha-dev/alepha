@@ -276,6 +276,8 @@ export class ProjectStateService {
       state.claude.lastActivityAt = this.dateTime.toISOString(
         transcript.lastActivityAt,
       );
+      state.claude.contextTokens = transcript.contextTokens;
+      state.claude.model = transcript.model;
       state.claude.activity = this.activity(
         lockAlive || pids.length > 0,
         lock !== undefined,
