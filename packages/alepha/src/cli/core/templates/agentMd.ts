@@ -136,9 +136,10 @@ the build and the tests.
 \`.env.example\` is the committed list of variables; \`.env\` is gitignored. Copy
 one to the other and fill it in.
 
-\`APP_SECRET\` is not optional in production — the app refuses to start without
-it, because the built-in default is public and would let anyone forge
-authentication tokens. Generate one with \`openssl rand -hex 32\`.
+\`APP_SECRET\` is not optional in production once the app signs anything
+(sessions, tokens, signed cookies): it refuses to start without it, because the
+built-in default is public and would let anyone forge authentication tokens.
+Generate one with \`openssl rand -hex 32\`.
 
 ## Rules
 

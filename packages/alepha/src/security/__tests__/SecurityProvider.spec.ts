@@ -2,6 +2,7 @@ import { Alepha, ContainerLockedError } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import {
+  AlephaSecurity,
   InvalidPermissionError,
   JwtProvider,
   SecurityError,
@@ -9,6 +10,16 @@ import {
 } from "../index.ts";
 
 describe("SecurityProvider", () => {
+  it("refuses the default APP_SECRET in production", async () => {
+    // AlephaCrypto no longer creates SecretProvider on registration. This
+    // module's injection of it is what brings the production guard along.
+    const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
+      AlephaSecurity,
+    );
+
+    await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+  });
+
   it("should check permissions with default role", () => {
     const sec = Alepha.create().inject(SecurityProvider);
 

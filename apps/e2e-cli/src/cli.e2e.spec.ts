@@ -631,9 +631,9 @@ describe("Alepha CLI E2E", () => {
       expect(existsSync(join(PROJECT_DIR, "dist/index.js"))).toBe(true);
       expect(await readDepsCache()).toBe(depsCacheBefore);
 
-      // A build that compiles but cannot serve a request is not a build. Needs
-      // APP_SECRET: the app refuses to start in production without one, which
-      // is exactly the behaviour `.env.example` documents.
+      // A build that compiles but cannot serve a request is not a build. Sets
+      // APP_SECRET as a deploy would: an app that signs anything refuses to
+      // start in production without one, which `.env.example` documents.
       const port = await freePort();
       const server = startProcess("node dist/index.js", PROJECT_DIR, {
         SERVER_PORT: String(port),
