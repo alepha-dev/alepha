@@ -244,6 +244,76 @@ describe("tearing a copy's resources down", () => {
     });
   });
 
+  /**
+   * ⚠️ A job queue comes with a dead-letter queue Lore made beside it, and a
+   * teardown that leaves it behind leaves it in somebody else's account.
+   */
+  describe("the dead-letter queue", () => {
+    it("is attempted after its queue, and kept when it did not go", async ({
+      expect,
+    }) => {
+      // A name that cannot be derived from the queue's, so what is read back
+      // is what was recorded and not a derivation that happens to agree.
+      const w = await world({ queue: "q", dlq: "q-dead-letters" });
+      const service = alepha.inject(TeardownService);
+
+      const result = await service.destroy(await loaded(w));
+
+      // The account is invented, so every delete fails: what is pinned is that
+      // the dead-letter queue was ATTEMPTED, after its queue, and that it is
+      // still named for the retry.
+      expect(result.failed.map((it) => it.resource)).toEqual(["queue", "dlq"]);
+      expect(service.read(await loaded(w))).toEqual({
+        queue: "q",
+        dlq: "q-dead-letters",
+      });
+    });
+
+    /**
+     * ⚠️ The one name a teardown derives, because it can be shown to be the
+     * one Lore made: every deploy that recorded `queue` had ensured
+     * `<queue>-dlq` in the same step first. See `TeardownService.read`.
+     */
+    it("is named for a record written before it was recorded", async ({
+      expect,
+    }) => {
+      const w = await world({ worker: "w", queue: "q" });
+
+      expect(alepha.inject(TeardownService).read(await loaded(w))).toEqual({
+        worker: "w",
+        queue: "q",
+        dlq: "q-dlq",
+      });
+    });
+
+    it("is attempted for such a record, and written down if it stays", async ({
+      expect,
+    }) => {
+      const w = await world({ queue: "q" });
+
+      const result = await alepha
+        .inject(TeardownService)
+        .destroy(await loaded(w));
+
+      expect(result.failed.map((it) => it.resource)).toEqual(["queue", "dlq"]);
+      // Stored with the name now, so the retry deletes it because it is
+      // recorded rather than because it was worked out again.
+      expect(JSON.parse((await loaded(w)).resources as string)).toEqual({
+        queue: "q",
+        dlq: "q-dlq",
+      });
+    });
+
+    it("is never invented for a copy with no job queue", async ({ expect }) => {
+      const w = await world({ worker: "w", kv: { name: "k", id: "kv-id" } });
+
+      expect(alepha.inject(TeardownService).read(await loaded(w))).toEqual({
+        worker: "w",
+        kv: { name: "k", id: "kv-id" },
+      });
+    });
+  });
+
   describe("deleting the copy itself", () => {
     /**
      * ⚠️ Deleting the row does not orphan the resources - it makes them

@@ -220,9 +220,11 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           await api.ensureQueue(name);
           // The dead-letter queue is a real queue too, and a consumer that
           // names one Cloudflare does not have is refused at bind time.
-          await api.ensureQueue(`${name}-dlq`);
+          const dlq = `${name}-dlq`;
+          await api.ensureQueue(dlq);
           this.provisioned.CLOUDFLARE_QUEUE_NAME = name;
           this.provisionedResources.queue = name;
+          this.provisionedResources.dlq = dlq;
         },
       });
     }
@@ -369,6 +371,15 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     r2?: string;
     kv?: { name: string; id: string };
     queue?: string;
+    /**
+     * The queue's dead-letter queue, which `provision` makes beside it.
+     *
+     * ⚠️ Recorded under its own key, never derived from `queue` at teardown:
+     * what may be deleted is what a deploy wrote down, and until this existed
+     * every teardown of a copy with a job queue left `<queue>-dlq` standing in
+     * the estate's account.
+     */
+    dlq?: string;
     /**
      * This copy runs a Durable Object namespace, because it uses `$websocket`.
      *
@@ -869,7 +880,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * ## The order is the safety property
    *
    * Worker first, so nothing is serving against a queue or a cache that is
-   * about to go, then the queue, then the namespace.
+   * about to go, then the queue, then its dead-letter queue - the queue's
+   * consumer is what names it - then the namespace.
    *
    * ## ⚠️ It takes a RECORD, not a context
    *
@@ -890,6 +902,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       r2?: string;
       kv?: { name: string; id: string };
       queue?: string;
+      dlq?: string;
       durableObjects?: boolean;
     },
     options: {
@@ -929,6 +942,9 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     }
     if (record.queue) {
       await attempt("queue", () => api.deleteQueue(record.queue as string));
+    }
+    if (record.dlq) {
+      await attempt("dlq", () => api.deleteQueue(record.dlq as string));
     }
     if (record.kv) {
       await attempt("kv", () => api.deleteKV(record.kv!.id));
