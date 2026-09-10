@@ -1,7 +1,6 @@
-import { createReadStream } from "node:fs";
-import { access, readdir, stat } from "node:fs/promises";
-import { basename, isAbsolute, join, sep } from "node:path";
+import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
+import type { ReadableStream as NodeWebStream } from "node:stream/web";
 
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
@@ -9,7 +8,9 @@ import { $logger } from "alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { FileDetector } from "alepha/system";
 
+import type { StaticFileSource } from "../interfaces/StaticFileSource.ts";
 import { $serve, type ServePrimitiveOptions } from "../primitives/$serve.ts";
+import { DiskStaticFileSource } from "../services/DiskStaticFileSource.ts";
 
 export class ServerStaticProvider {
   protected readonly alepha = $inject(Alepha);
@@ -30,35 +31,37 @@ export class ServerStaticProvider {
     },
   });
 
+  /**
+   * Mount every file of `source` under `options.path`.
+   *
+   * Without a source the files come from `options.root` on disk, which is
+   * what every `$serve` does. A compiled binary passes the source that reads
+   * the files embedded in it; the handler below does not know the difference.
+   */
   public async createStaticServer(
     options: ServePrimitiveOptions,
+    source?: StaticFileSource,
   ): Promise<void> {
     const prefix = options.path ?? "/";
+    const fileSource = source ?? this.createDiskSource(options);
 
-    let root = options.root ?? process.cwd();
-    if (!isAbsolute(root)) {
-      root = join(process.cwd(), root);
-    }
+    this.log.debug("Serve static files", {
+      prefix,
+      root: source ? "(source)" : options.root,
+    });
 
-    this.log.debug("Serve static files", { prefix, root });
-
-    await stat(root);
-
-    // 1. get all files in the root directory (recursively)
-    const files = await this.getAllFiles(root, options.ignoreDotEnvFiles);
+    // 1. every file of the source, precompressed siblings included
+    const files = await fileSource.list();
 
     // 2. create a $route for each file (yes, this could be a lot of routes)
     const routes = await Promise.all(
-      files.map(async (file) => {
-        // Normalize to forward slashes for URL paths
-        const urlPath = file.replace(root, "").replace(/\\/g, "/");
+      files.map(async (urlPath) => {
         const routePath = `${prefix}${encodeURI(urlPath)}`.replace(/\/+/g, "/");
-        const filePath = join(root, urlPath.replace(/\//g, sep));
-        this.log.trace(`Mount ${routePath} -> ${filePath}`);
+        this.log.trace(`Mount ${routePath} -> ${urlPath}`);
         return {
           silent: options.silent,
           path: routePath,
-          handler: await this.createFileHandler(filePath, options),
+          handler: await this.createFileHandler(fileSource, urlPath, options),
         };
       }),
     );
@@ -81,10 +84,7 @@ export class ServerStaticProvider {
     }
 
     // 3. store the directory info for reference
-    this.directories.push({
-      options,
-      files: files.map((file) => file.replace(root, "").replace(/\\/g, "/")),
-    });
+    this.directories.push({ options, files });
 
     // bonus! for SPAs, handle history API fallback
     if (options.historyApiFallback) {
@@ -103,44 +103,44 @@ export class ServerStaticProvider {
             return;
           }
 
+          const stream = await fileSource.open("/index.html");
+          if (!stream) {
+            reply.headers["content-type"] = "text/plain";
+            reply.body = "Not Found";
+            reply.status = 404;
+            return;
+          }
+
           reply.headers["content-type"] = "text/html";
           reply.status = 200;
-
-          return new Promise<any>((resolve, reject) => {
-            const stream = createReadStream(join(root, "index.html"));
-            stream.on("open", () => {
-              resolve(stream);
-            });
-            stream.on("error", (err) => {
-              reject(err);
-            });
-          });
+          return stream;
         },
       });
     }
   }
 
+  /**
+   * The request handler for one file of `source`, written once for every
+   * kind of source: its metadata is read here, at boot, and the bytes on
+   * each request.
+   */
   public async createFileHandler(
+    source: StaticFileSource,
     filepath: string,
     options: ServePrimitiveOptions,
   ): Promise<ServerHandler> {
     const filename = basename(filepath);
 
-    const hasGzip = await access(`${filepath}.gz`)
-      .then(() => true)
-      .catch(() => false);
+    const hasGzip = await source.has(`${filepath}.gz`);
+    const hasBr = await source.has(`${filepath}.br`);
 
-    const hasBr = await access(`${filepath}.br`)
-      .then(() => true)
-      .catch(() => false);
-
-    const fileStat = await stat(filepath);
+    const fileStat = await source.stat(filepath);
     const lastModified = fileStat.mtime.toUTCString();
     const etag = `"${fileStat.size}-${fileStat.mtime.getTime()}"`;
     const contentType = this.fileDetector.getContentType(filename);
     const cacheControl = this.getCacheControl(filename, options);
 
-    return async (request): Promise<NodeStream | undefined> => {
+    return async (request): Promise<NodeStream | NodeWebStream | undefined> => {
       const { headers, reply } = request;
       let path = filepath;
 
@@ -208,24 +208,28 @@ export class ServerStaticProvider {
         return;
       }
 
-      return new Promise<any>((resolve, reject) => {
-        const stream = createReadStream(path);
-        stream.on("open", () => {
-          resolve(stream);
-        });
-        stream.on("error", (err: NodeJS.ErrnoException) => {
-          // Metadata is captured once at boot, so a file deleted afterwards
-          // still routes here — and a raw stream error surfaced as a 500.
-          // A missing file is a 404.
-          if (err?.code === "ENOENT") {
-            reply.status = 404;
-            resolve(undefined);
-            return;
-          }
-          reject(err);
-        });
-      });
+      const body = await source.open(path);
+      if (!body) {
+        // Listed at boot, gone since.
+        reply.status = 404;
+        return;
+      }
+      return body;
     };
+  }
+
+  /**
+   * The disk source every `$serve` uses, rooted at `options.root` (relative
+   * to the working directory when not absolute).
+   */
+  protected createDiskSource(
+    options: ServePrimitiveOptions,
+  ): DiskStaticFileSource {
+    let root = options.root ?? process.cwd();
+    if (!isAbsolute(root)) {
+      root = join(process.cwd(), root);
+    }
+    return new DiskStaticFileSource(root, options.ignoreDotEnvFiles);
   }
 
   protected getCacheFileTypes(): string[] {
@@ -298,29 +302,6 @@ export class ServerStaticProvider {
     return Math.round(
       this.dateTimeProvider.duration(maxAge ?? [30, "days"]).as("seconds"),
     );
-  }
-
-  public async getAllFiles(
-    dir: string,
-    ignoreDotEnvFiles = true,
-  ): Promise<string[]> {
-    const entries = await readdir(dir, { withFileTypes: true });
-
-    const files = await Promise.all(
-      entries.map(async (dirent) => {
-        // skip .env & other dot files
-        if (ignoreDotEnvFiles && dirent.name.startsWith(".")) {
-          return [];
-        }
-
-        const fullPath = join(dir, dirent.name);
-        return dirent.isDirectory()
-          ? this.getAllFiles(fullPath, ignoreDotEnvFiles)
-          : fullPath;
-      }),
-    );
-
-    return files.flat();
   }
 }
 
