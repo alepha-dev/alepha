@@ -23,6 +23,7 @@ import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
+import { DeployService } from "../services/DeployService.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateController } from "./EstateController.ts";
 
@@ -402,6 +403,92 @@ describe("EstatePullController, the secret set", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await res.json()).toEqual({
+      STRIPE_SECRET_KEY: "sk_live_abcdefghijkl",
+    });
+  });
+
+  it("leaves out what Bay writes itself, which a first Cloudflare deploy stored", async ({
+    expect,
+  }) => {
+    // ⚠️ A copy first deployed on a Cloudflare estate carries APP_SECRET and
+    // APP_NAME, stored by that deploy, and keeps them when it is pointed at a
+    // Bay estate. Bay refuses a secret set holding either (`refuseBayOwned`)
+    // and fails the whole deploy, so answering them fails every Bay deploy of
+    // that copy.
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+
+    const instance = await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "my-app",
+      env: "production",
+      estateId: machine.estate.id,
+    } as never);
+    const secrets = ctx.alepha.inject(AppSecretService);
+    // What `DeployService.openSecrets` leaves behind on a first deploy.
+    await secrets.ensureGenerated(instance.id);
+    await secrets.ensureDefault(
+      instance.id,
+      DeployService.APP_NAME,
+      "acme-my-app-production",
+    );
+    await secrets.set({
+      instanceId: instance.id,
+      key: "STRIPE_SECRET_KEY",
+      value: "sk_live_abcdefghijkl",
+    });
+
+    const command = await sentDeploy(ctx, machine, artifact);
+    const res = await pull(ctx, "secrets", command.id, machine.secret);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      STRIPE_SECRET_KEY: "sk_live_abcdefghijkl",
+    });
+  });
+
+  it("never opens a row it leaves out, so a stale one cannot refuse the deploy", async ({
+    expect,
+  }) => {
+    // ⚠️ A row that fails to open refuses the whole set, and the fix that
+    // refusal names is setting the value again - which the Environment tab
+    // refuses for a Bay-owned name on a Bay copy. So a stale APP_SECRET row
+    // must not be decrypted at all on a path that would only drop it.
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+
+    const instance = await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "my-app",
+      env: "production",
+      estateId: machine.estate.id,
+    } as never);
+    const secrets = ctx.alepha.inject(AppSecretService);
+    await secrets.ensureGenerated(instance.id);
+    await secrets.set({
+      instanceId: instance.id,
+      key: "STRIPE_SECRET_KEY",
+      value: "sk_live_abcdefghijkl",
+    });
+    const generated = await ctx.repos.secrets.getOne({
+      where: {
+        instanceId: { eq: instance.id },
+        key: { eq: AppSecretService.GENERATED_KEY },
+      },
+    });
+    await ctx.repos.secrets.updateById(generated.id, {
+      valueSealed: "00:00:deadbeef",
+    });
+
+    const command = await sentDeploy(ctx, machine, artifact);
+    const res = await pull(ctx, "secrets", command.id, machine.secret);
+
+    expect(res.status, await res.clone().text()).toBe(200);
     expect(await res.json()).toEqual({
       STRIPE_SECRET_KEY: "sk_live_abcdefghijkl",
     });

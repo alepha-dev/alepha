@@ -1,5 +1,6 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
+import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/platform-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -165,6 +166,14 @@ export class EstatePullController {
    * ⚠️ Empty is still a legitimate answer - a copy with no variables set - and
    * it is what an estate had before this landed. It is not a signal of failure.
    *
+   * ⚠️ **Bay's own names are left out** (`BAY_OWNED_SECRET_KEYS`, the mirror
+   * of Bay's `bayOwnedKeys`). Bay writes them into every instance itself and
+   * refuses a secret set holding one, which fails the whole deploy - and a
+   * copy first deployed on a Cloudflare estate carries two, APP_SECRET and
+   * APP_NAME, stored by that deploy. The rows are kept rather than deleted:
+   * they are that copy's durable state if it ever goes back. Only a Bay
+   * machine holds an estate secret, so this route never answers anything else.
+   *
    * ⚠️ The response is never logged, never cached and never audited by body.
    * `cache-control: no-store` is set here rather than left to a default, and
    * the one log line names the command id and how MANY variables went, never
@@ -216,7 +225,9 @@ export class EstatePullController {
         throw this.refused();
       }
 
-      const set = await this.secrets.open(matches[0].id);
+      const set = await this.secrets.open(matches[0].id, {
+        except: BAY_OWNED_SECRET_KEYS,
+      });
       this.log.debug("Secret set pulled", {
         commandId: command.id,
         count: Object.keys(set).length,
