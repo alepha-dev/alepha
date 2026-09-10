@@ -2138,8 +2138,6 @@ export default {
   "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
   "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
   "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
-  "project.dashboard.standfirst.empty":
-    "Ce tableau est partage par tous les membres du projet.",
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.greeting": "Bon retour, $1",

@@ -369,14 +369,19 @@ test.describe("Project dashboard", () => {
 
     await test.step("a fresh project's board is empty, with the way in on screen", async () => {
       // Nothing seeds, so this is the first impression rather than a corner
-      // case. Asserted as the empty state plus the header's Add card button,
-      // never as a card count that a seeder could satisfy. The dashed Add
-      // tile that used to be the second half of this assertion was deleted
-      // with feedback #P2168: an empty board says what a board is for, and
-      // the way in is the one button in the header.
+      // case. Asserted as the empty state carrying the Add card button, never
+      // as a card count that a seeder could satisfy. Feedback #P2168 deleted
+      // the dashed Add tile; feedback #P2180 took the header off the empty
+      // board as well, so the empty state is the whole page and the one Add
+      // button lives inside it.
+      const empty = page.getByTestId("dashboard-empty");
       await expect(page.getByTestId("dashboard-card")).toHaveCount(0);
-      await expect(page.getByTestId("dashboard-add")).toBeVisible();
-      await expect(page.getByTestId("dashboard-empty-docs")).toBeVisible();
+      await expect(empty.getByTestId("dashboard-add")).toBeVisible();
+      await expect(page.getByTestId("dashboard-add")).toHaveCount(1);
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Dashboard" }),
+      ).toHaveCount(0);
+      await expect(empty.getByTestId("dashboard-empty-docs")).toBeVisible();
     });
 
     await test.step("Activity is still there, one path down", async () => {
