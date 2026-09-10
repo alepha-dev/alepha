@@ -80,10 +80,23 @@ describe("ClaudeService", () => {
       ].join("\n"),
     );
 
+    shell.outputs.set(
+      `tail -c 262144 ${dir}/new.jsonl`,
+      [
+        // The tail starts mid-record; that line must not break the read.
+        'ut_tokens":1,"cache_read_input_tokens":5}}}',
+        '{"type":"assistant","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_creation_input_tokens":1908,"cache_read_input_tokens":875502,"output_tokens":177}}}',
+        '{"type":"user","message":{"content":"next"}}',
+      ].join("\n"),
+    );
+
     expect(await claude.transcript("/repo/wt")).toEqual({
       sessionId: "new",
       title: "Loom dashboard",
       lastActivityAt: 2_000,
+      // input + cache writes + cache reads of the last assistant turn.
+      contextTokens: 877_412,
+      model: "claude-opus-5",
     });
   });
 

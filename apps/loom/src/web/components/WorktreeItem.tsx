@@ -5,6 +5,7 @@ import type { WorktreeState } from "../../api/schemas/worktreeStateSchema.ts";
 import { ChangesBadge } from "./ChangesBadge.tsx";
 import { CiIndicator } from "./CiIndicator.tsx";
 import { ClaudeIndicator } from "./ClaudeIndicator.tsx";
+import { VerifyIndicator } from "./VerifyIndicator.tsx";
 
 export interface WorktreeItemProps {
   worktree: WorktreeState;
@@ -14,7 +15,8 @@ export interface WorktreeItemProps {
 
 /**
  * One worktree in the side bar, decorated on the right the way VS Code
- * decorates a file: changes as letters, then CI, then the Claude dot.
+ * decorates a file: changes as letters, then CI, a flask while a local
+ * `yarn v` runs or waits, then the Claude mark.
  */
 export const WorktreeItem = (props: WorktreeItemProps) => {
   const worktree = props.worktree;
@@ -43,6 +45,7 @@ export const WorktreeItem = (props: WorktreeItemProps) => {
       <span className="min-w-0 flex-1 truncate">{worktree.name}</span>
       <ChangesBadge status={worktree.status} compact />
       <CiIndicator ci={worktree.ci} compact />
+      <VerifyIndicator verify={worktree.verify} compact />
       <ClaudeIndicator claude={worktree.claude} compact />
     </button>
   );

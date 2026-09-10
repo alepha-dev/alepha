@@ -6,7 +6,7 @@ export interface WeaveProps {
 }
 
 /**
- * A worktree's divergence from the default branch, drawn as the logo draws:
+ * A worktree's divergence from the default branch, drawn as a loom draws:
  * a thread, and stitches across it.
  *
  * The horizontal thread is the branch. Each commit it has that the base

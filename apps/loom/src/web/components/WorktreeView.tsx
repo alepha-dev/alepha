@@ -19,7 +19,9 @@ import { ClaudeIndicator } from "./ClaudeIndicator.tsx";
 import { DetailGroup } from "./DetailGroup.tsx";
 import { DetailRow } from "./DetailRow.tsx";
 import { QuestChips } from "./QuestChips.tsx";
+import { VerifyIndicator } from "./VerifyIndicator.tsx";
 import { Weave } from "./Weave.tsx";
+import { WorktreeViewSessions } from "./WorktreeViewSessions.tsx";
 
 export interface WorktreeViewProps {
   path: string;
@@ -74,7 +76,13 @@ export const WorktreeView = (props: WorktreeViewProps) => {
             {worktree.branch}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <WorktreeViewSessions
+            worktree={worktree}
+            root={props.state?.project.path ?? worktree.path}
+            base={props.state?.base ?? "origin/main"}
+          />
+          <span className="bg-border mx-1 h-5 w-px" />
           <Button
             size="sm"
             variant="outline"
@@ -177,6 +185,15 @@ export const WorktreeView = (props: WorktreeViewProps) => {
               </span>
             </DetailRow>
           )}
+          <DetailRow label="yarn v">
+            {worktree.verify ? (
+              <VerifyIndicator verify={worktree.verify} />
+            ) : (
+              <span className="text-muted-foreground">
+                Not running from here.
+              </span>
+            )}
+          </DetailRow>
         </DetailGroup>
 
         <DetailGroup title="Lore" icon={ScrollText}>
@@ -224,6 +241,20 @@ export const WorktreeView = (props: WorktreeViewProps) => {
           {claude.lastActivityAt && (
             <DetailRow label="Last active">
               <TimeAgo value={claude.lastActivityAt} />
+            </DetailRow>
+          )}
+          {claude.contextTokens !== undefined && (
+            <DetailRow label="Context">
+              <span
+                className="font-mono text-[12px] tabular-nums"
+                title={`${claude.contextTokens.toLocaleString("en")} tokens sent by the last turn`}
+              >
+                {formatTokens(claude.contextTokens)}
+              </span>{" "}
+              tokens
+              {claude.model && (
+                <span className="text-muted-foreground"> · {claude.model}</span>
+              )}
             </DetailRow>
           )}
           <DetailRow label="Lock">
@@ -319,4 +350,17 @@ export const WorktreeView = (props: WorktreeViewProps) => {
       </div>
     </div>
   );
+};
+
+/**
+ * A token count the way context sizes are spoken of: 877k, 1.2M.
+ */
+const formatTokens = (tokens: number): string => {
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (tokens >= 1_000) {
+    return `${Math.round(tokens / 1_000)}k`;
+  }
+  return String(tokens);
 };

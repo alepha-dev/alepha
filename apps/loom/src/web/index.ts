@@ -3,6 +3,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 
 import { AppRouter } from "./AppRouter.ts";
+import { ClaudeLinks } from "./services/ClaudeLinks.ts";
 
 /**
  * The browser half: one IDE-shaped shell over the two routes.
@@ -16,5 +17,5 @@ import { AppRouter } from "./AppRouter.ts";
 export const LoomWeb = $module({
   name: "loom.web",
   imports: [AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter],
+  services: [AppRouter, ClaudeLinks],
 });

@@ -49,6 +49,15 @@ export const claudeSessionSchema = z.object({
    * When the transcript was last written, ISO 8601.
    */
   lastActivityAt: z.string().optional(),
+  /**
+   * Tokens the session's last turn sent (input, cache writes and cache
+   * reads): how full its context is.
+   */
+  contextTokens: z.integer().optional(),
+  /**
+   * The model that answered the last turn.
+   */
+  model: z.string().optional(),
 });
 
 export type ClaudeSession = Infer<typeof claudeSessionSchema>;

@@ -17,6 +17,11 @@ export interface ClaudeTranscript {
   sessionId: string;
   title?: string;
   lastActivityAt: number;
+  /**
+   * Tokens the last turn sent: how full the session's context is.
+   */
+  contextTokens?: number;
+  model?: string;
 }
 
 /**
@@ -33,7 +38,11 @@ export interface ClaudeTranscript {
  *   character as "-">/<session>.jsonl`. The newest one's modification time is
  *   the session's last activity, and its `custom-title` record is the name
  *   shown in the app. Transcripts run to megabytes, so the title is found
- *   with `grep` rather than by reading the file.
+ *   with `grep` and the context size with `tail`, never by reading the file.
+ * - **Context size.** The last assistant message's `usage`:
+ *   `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` is
+ *   what that turn sent, which is how full the context is. The window size is
+ *   not in the transcript, so no percentage is derived from it.
  */
 export class ClaudeService {
   protected readonly shell = $inject(ShellProvider);
@@ -50,6 +59,18 @@ export class ClaudeService {
     string,
     { mtimeMs: number; title?: string }
   >();
+
+  protected readonly contextCache = new Map<
+    string,
+    { mtimeMs: number; context?: { tokens: number; model?: string } }
+  >();
+
+  /**
+   * How much of a transcript's end is read for the last turn's usage. A
+   * large tool result can push it further back; the context is then absent
+   * until the next turn, not wrong.
+   */
+  protected readonly tailBytes = 262_144;
 
   public parseLock(
     reason: string | undefined,
@@ -133,11 +154,71 @@ export class ClaudeService {
       return undefined;
     }
     const name = newest.file.slice(newest.file.lastIndexOf("/") + 1);
+    const [title, context] = await Promise.all([
+      this.title(newest.file, newest.mtimeMs),
+      this.context(newest.file, newest.mtimeMs),
+    ]);
     return {
       sessionId: name.replace(/\.jsonl$/, ""),
-      title: await this.title(newest.file, newest.mtimeMs),
+      title,
       lastActivityAt: newest.mtimeMs,
+      contextTokens: context?.tokens,
+      model: context?.model,
     };
+  }
+
+  /**
+   * How full the session's context is, from the last assistant message that
+   * carries `usage`. Read from the file's last {@link tailBytes}: a turn is
+   * recorded at the end, and the rest of the transcript does not matter.
+   */
+  protected async context(
+    file: string,
+    mtimeMs: number,
+  ): Promise<{ tokens: number; model?: string } | undefined> {
+    const cached = this.contextCache.get(file);
+    if (cached && cached.mtimeMs === mtimeMs) {
+      return cached.context;
+    }
+    const result = await this.shell
+      .capture(["tail", "-c", String(this.tailBytes), file], {
+        timeout: 5_000,
+      })
+      .catch(() => ({ stdout: "", stderr: "", exitCode: -1 }));
+    let context: { tokens: number; model?: string } | undefined;
+    const lines = result.stdout.split("\n");
+    for (let i = lines.length - 1; i >= 0 && !context; i--) {
+      if (!lines[i].includes('"usage"')) {
+        continue;
+      }
+      try {
+        const record = JSON.parse(lines[i]) as {
+          type?: string;
+          message?: {
+            model?: string;
+            usage?: {
+              input_tokens?: number;
+              cache_creation_input_tokens?: number;
+              cache_read_input_tokens?: number;
+            };
+          };
+        };
+        const usage = record.message?.usage;
+        if (record.type === "assistant" && usage) {
+          context = {
+            tokens:
+              (usage.input_tokens ?? 0) +
+              (usage.cache_creation_input_tokens ?? 0) +
+              (usage.cache_read_input_tokens ?? 0),
+            model: record.message?.model,
+          };
+        }
+      } catch {
+        // The tail's first line is cut mid-record; it is never the last turn.
+      }
+    }
+    this.contextCache.set(file, { mtimeMs, context });
+    return context;
   }
 
   protected async title(

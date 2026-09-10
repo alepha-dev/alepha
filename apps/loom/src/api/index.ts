@@ -8,6 +8,7 @@ import { GitService } from "./services/GitService.ts";
 import { LoreService } from "./services/LoreService.ts";
 import { ProjectStateService } from "./services/ProjectStateService.ts";
 import { ProjectStore } from "./services/ProjectStore.ts";
+import { VerifyService } from "./services/VerifyService.ts";
 
 /**
  * The server half: the project list and everything Loom reads about a
@@ -27,5 +28,6 @@ export const LoomApi = $module({
     LoreService,
     ClaudeService,
     DevServerService,
+    VerifyService,
   ],
 });
