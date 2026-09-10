@@ -321,11 +321,30 @@ describe("BuildDockerTask", () => {
   });
 
   describe("compile mode", () => {
+    // `build.compile` as `BuildCommand.resolveCompile` leaves it: merged with
+    // the flag, validated, the name defaulted.
     const compileOptions: BuildOptions = {
       target: "docker",
       runtime: "bun",
-      docker: { compile: true },
+      compile: { name: "app", minify: true },
     };
+
+    it("names the binary, the COPY and the ENTRYPOINT after compile.name", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          ...compileOptions,
+          compile: { name: "loom", minify: true },
+        }),
+      );
+
+      expect(shell.wasCalledMatching(/--outfile=loom index\.js/)).toBe(true);
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toMatch(/^COPY loom \.$/m);
+      expect(dockerfile).toContain('ENTRYPOINT ["/app/loom"]');
+    });
 
     it("invokes bun build --compile with the host-arch musl target", async () => {
       const { fs, shell, task } = createTestEnv();
@@ -397,13 +416,12 @@ describe("BuildDockerTask", () => {
         createCtx(fs, shell, {
           target: "docker",
           runtime: "bun",
-          docker: {
-            compile: {
-              target: "bun-linux-x64-modern-musl",
-              base: "alpine:3.20",
-              minify: false,
-            },
+          compile: {
+            name: "app",
+            target: "bun-linux-x64-modern-musl",
+            minify: false,
           },
+          docker: { from: "alpine:3.20" },
         }),
       );
 
@@ -447,19 +465,6 @@ describe("BuildDockerTask", () => {
       ).rejects.toThrow(/not bundled by Vite.*sharp/);
     });
 
-    it("rejects when runtime is not bun", async () => {
-      const { fs, shell, task } = createTestEnv();
-      await expect(
-        task.run(
-          createCtx(fs, shell, {
-            target: "docker",
-            runtime: "node",
-            docker: { compile: true },
-          }),
-        ),
-      ).rejects.toThrow(/Compile mode requires runtime 'bun'/);
-    });
-
     it("omits the migrations COPY line when no migrations directory exists", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.js", "// bundle");
@@ -490,7 +495,6 @@ describe("BuildDockerTask", () => {
         createCtx(fs, shell, {
           ...compileOptions,
           docker: {
-            compile: true,
             env: { DATA_DIR: "/data" },
             volumes: ["/data"],
           },
@@ -511,7 +515,7 @@ describe("BuildDockerTask", () => {
       await task.run(
         createCtx(fs, shell, {
           ...compileOptions,
-          docker: { compile: true, user: "65532" },
+          docker: { user: "65532" },
         }),
       );
 
@@ -695,8 +699,8 @@ describe("BuildDockerTask", () => {
         createCtx(fs, shell, {
           target: "docker",
           runtime: "bun",
+          compile: { name: "app", minify: true },
           docker: {
-            compile: true,
             image: {
               tag: "ghcr.io/myorg/app",
               oci: true,
@@ -757,7 +761,7 @@ describe("BuildDockerTask", () => {
       const dockerfile = await writeDockerfileFor({
         target: "docker",
         runtime: "bun",
-        docker: { compile: true },
+        compile: { name: "app", minify: true },
       });
 
       expect(dockerfile).toContain("FROM gcr.io/distroless/static-debian12");
@@ -765,13 +769,14 @@ describe("BuildDockerTask", () => {
     });
 
     it("declares node in the compile variant's sibling, the node standard build", async () => {
-      // The compile branch cannot be node (`resolveCompile` throws), so the
-      // node assertion for that code path is the standard one above. This
-      // pins that the two branches do not disagree about the label's shape.
+      // The compile branch cannot be node (`BuildCommand.resolveCompile`
+      // throws), so the node assertion for that code path is the standard one
+      // above. This pins that the two branches do not disagree about the
+      // label's shape.
       const compile = await writeDockerfileFor({
         target: "docker",
         runtime: "bun",
-        docker: { compile: true },
+        compile: { name: "app", minify: true },
       });
       const standard = await writeDockerfileFor({
         target: "docker",

@@ -9,6 +9,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * Resolved compile options after merging config + flag defaults.
  */
 interface ResolvedCompile {
+  name: string;
   target: string;
   base: string;
   minify: boolean;
@@ -100,26 +101,30 @@ export class BuildDockerTask extends BuildTask {
   }
 
   /**
-   * Merge the user-supplied compile config with sensible defaults.
+   * `build.compile` with the Docker defaults filled in: a linux-musl target
+   * and a distroless base image unless `docker.from` names another.
    * Returns null when compile mode is disabled.
+   *
+   * The flag and the config were already merged and validated by the build
+   * command (runtime, target, binary name); this only reads the result.
    */
   protected resolveCompile(ctx: BuildTaskContext): ResolvedCompile | null {
-    const raw = ctx.options.docker?.compile;
+    const raw = ctx.options.compile;
     if (!raw) {
       return null;
     }
 
-    if (ctx.options.runtime !== "bun") {
-      throw new AlephaError(
-        `Compile mode requires runtime 'bun', got '${ctx.options.runtime}'`,
-      );
-    }
-
-    const config = typeof raw === "object" ? raw : {};
+    const config =
+      typeof raw === "object"
+        ? raw
+        : typeof raw === "string"
+          ? { name: raw }
+          : {};
 
     return {
+      name: config.name ?? "app",
       target: config.target ?? this.defaultBunTarget(),
-      base: config.base ?? "gcr.io/distroless/static-debian12",
+      base: ctx.options.docker?.from ?? "gcr.io/distroless/static-debian12",
       minify: config.minify ?? true,
     };
   }
@@ -225,7 +230,7 @@ export class BuildDockerTask extends BuildTask {
       default:
         throw new AlephaError(
           `No bun linux-musl target available for host arch '${process.arch}'. ` +
-            "Set `build.docker.compile.target` explicitly.",
+            "Set `build.compile.target` explicitly.",
         );
     }
   }
@@ -240,7 +245,7 @@ export class BuildDockerTask extends BuildTask {
       "--compile",
       `--target=${compile.target}`,
       compile.minify ? "--minify" : "",
-      "--outfile=app",
+      `--outfile=${compile.name}`,
       "index.js",
     ].filter(Boolean);
     return parts.join(" ");
@@ -374,11 +379,11 @@ export class BuildDockerTask extends BuildTask {
       dockerfile = `${header}FROM ${opts.compile.base}
 WORKDIR /app
 ${labelLines ? `\n${labelLines}` : ""}
-COPY app .
+COPY ${opts.compile.name} .
 ${migrationsLine}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumeLines}` : ""}
-${userLine}ENTRYPOINT ["/app/app"]
+${userLine}ENTRYPOINT ["/app/${opts.compile.name}"]
 `;
     } else {
       const { image, command } = opts.standard;

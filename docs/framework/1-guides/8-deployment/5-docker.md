@@ -158,11 +158,11 @@ That matters as soon as something other than `--image` builds the image - a rele
 | `docker.volumes` | `[]`                                 | `VOLUME` mount points, created and chowned to the container user first                            |
 | `docker.user`    | `1000` (root in compile mode)        | `USER` the server runs as                                                                         |
 | `docker.image`   | -                                    | Image tag, extra `docker build` args, OCI labels including `source` (used with `--image`)         |
-| `docker.compile` | -                                    | Single-binary compile mode, see below                                                             |
+| `compile`        | -                                    | Single-binary compile mode, a build-level option, see below                                       |
 
 ## Compile Mode (Single Static Binary)
 
-With `--runtime=bun --compile` (or `docker.compile` in config), the server is compiled to one static binary via `bun build --compile` and packaged in a distroless base image:
+With `--runtime=bun --compile` (or `build.compile` in config), the server is compiled to one static binary via `bun build --compile` and packaged in a distroless base image:
 
 ```bash
 alepha build --target=docker --runtime=bun --compile --image
@@ -182,7 +182,7 @@ ENTRYPOINT ["/app/app"]
 - The binary lands at `dist/app`; `dist/index.js` and `dist/package.json` are removed.
 - The image runs as root unless `docker.user` says otherwise - distroless has no shell, so a declared volume cannot be created and chowned at build time. The generated file carries a comment saying so.
 - No package manager runs inside the image (distroless has no `npm`), so `docker.install` is ignored and any non-empty runtime `dependencies` fail the build loudly - compile requires fully-bundled output.
-- `compile` accepts an object to override the Bun target triple (`bun-linux-arm64-musl`, ...), the base image, and minification.
+- `compile` accepts a binary name (`--compile <name>` on the command line) or an object for the name, the Bun target triple (`bun-linux-arm64-musl`, ...) and minification. The base image is `docker.from`, distroless by default in this mode.
 
 The result is a minimal image with no shell, no package manager, and no interpreter - a small attack surface and a fast cold start.
 

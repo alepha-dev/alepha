@@ -3,6 +3,7 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
 import {
+  type BuildCompile,
   type BuildRuntime,
   type BuildTarget,
   buildOptions,
@@ -106,6 +107,68 @@ export class BuildCommand {
     return runtime ?? "node";
   }
 
+  /**
+   * Merge the `--compile` flag with `build.compile`, and refuse what cannot
+   * produce a binary.
+   *
+   * The flag is explicit intent and wins: `--compile` alone keeps the
+   * config's settings, `--compile <name>` renames the binary and keeps the
+   * rest, and `--no-compile` turns compile off whatever the config says.
+   *
+   * @throws {AlephaError} On a binary name that is not a plain file name, a
+   * runtime other than bun, or a target that cannot hold a binary.
+   */
+  protected resolveCompile(
+    flag: boolean | string | undefined,
+    config:
+      | boolean
+      | string
+      | { name?: string; target?: string; minify?: boolean }
+      | undefined,
+    target: BuildTarget | undefined,
+    runtime: BuildRuntime | undefined,
+  ): BuildCompile | undefined {
+    // The parser hands a boolean-or-text flag its raw text, so
+    // `--compile=false` arrives as "false", itself a valid file name.
+    const requested = flag === "false" ? false : flag === "true" ? true : flag;
+
+    const enabled = requested !== undefined ? requested !== false : !!config;
+    if (!enabled) {
+      return undefined;
+    }
+
+    const base =
+      typeof config === "object"
+        ? config
+        : typeof config === "string"
+          ? { name: config }
+          : {};
+    const name =
+      typeof requested === "string" ? requested : (base.name ?? "app");
+
+    if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) {
+      throw new AlephaError(
+        `Invalid binary name '${name}': use lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit.`,
+      );
+    }
+    if (runtime !== "bun") {
+      throw new AlephaError(
+        `Compile mode needs the Bun runtime, got '${runtime ?? "node"}': add --runtime=bun (or build.runtime: "bun").`,
+      );
+    }
+    if (target && target !== "bare" && target !== "docker") {
+      throw new AlephaError(
+        `Compile mode produces a binary, and only 'bare' and 'docker' targets can hold one, got '${target}'.`,
+      );
+    }
+
+    return {
+      name,
+      ...(base.target && { target: base.target }),
+      minify: base.minify ?? true,
+    };
+  }
+
   public readonly build = $command({
     name: "build",
     mode: "production",
@@ -133,10 +196,10 @@ export class BuildCommand {
         )
         .optional(),
       compile: z
-        .boolean()
+        .union([z.boolean(), z.text()])
         .meta({ aliases: ["c"] })
         .describe(
-          "Compile server to a single static binary (requires --target=docker --runtime=bun)",
+          "Compile the app to one executable with its public/ files inside: --compile names it 'app', --compile <name> names it; --no-compile turns it off. Requires --runtime=bun, and the bare or docker target",
         )
         .optional(),
       prebuilt: z
@@ -175,24 +238,23 @@ export class BuildCommand {
       // Resolve flags → mutate the atom (single source of truth)
       this.alepha.store.mut(buildOptions, (current) => {
         const target = this.resolveTarget(flags.target) ?? current.target;
+        const runtime = this.resolveRuntime(
+          target,
+          flags.runtime ?? current.runtime,
+        );
         return {
           ...current,
           stats: flags.stats ?? current.stats ?? false,
           target,
-          runtime: this.resolveRuntime(
+          runtime,
+          // Resolved once, so every task reads the same merged, validated
+          // options rather than re-merging flag and config itself.
+          compile: this.resolveCompile(
+            flags.compile,
+            current.compile,
             target,
-            flags.runtime ?? current.runtime,
+            runtime,
           ),
-          ...(flags.compile !== undefined && {
-            docker: {
-              ...current.docker,
-              // The flag is explicit intent and wins outright. The old
-              // `flags.compile ? (current.docker?.compile ?? true) : false`
-              // let a config `compile: false` swallow an explicit `--compile`,
-              // because the `?? true` only rescued `undefined`.
-              compile: flags.compile,
-            },
-          }),
         };
       });
 
@@ -229,20 +291,6 @@ export class BuildCommand {
         throw new AlephaError(
           `Flag '--image' requires '--target=docker', got '${target ?? "bare"}'`,
         );
-      }
-
-      // Validate --compile requires --target=docker --runtime=bun
-      if (options.docker?.compile) {
-        if (target !== "docker") {
-          throw new AlephaError(
-            `Compile mode requires '--target=docker', got '${target ?? "bare"}'`,
-          );
-        }
-        if (options.runtime !== "bun") {
-          throw new AlephaError(
-            `Compile mode requires '--runtime=bun', got '${options.runtime}'`,
-          );
-        }
       }
 
       this.log.trace("Build configuration", {

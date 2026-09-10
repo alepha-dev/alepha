@@ -53,7 +53,7 @@ node dist/index.js
 | `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd`                                                                                |
 | `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                          |
 | `--image`, `-i`   | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker`                          |
-| `--compile`, `-c` | Compile the server to a single static binary. Requires `--target=docker --runtime=bun`                                         |
+| `--compile`, `-c` | Compile to one executable, `dist/app` or `dist/<name>` with `--compile <name>`. Requires `--runtime=bun`; `bare` or `docker`   |
 | `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built |
 
 Some targets force a runtime: `cloudflare` always uses `workerd`.
@@ -91,7 +91,7 @@ alepha build --target=docker --image=1.3.4     # tag:1.3.4
 
 The generated image runs as uid `1000`, not root (`docker.user` overrides it). `docker.env` and `docker.volumes` bake `ENV` defaults and `VOLUME` declarations into it, so a self-contained image needs no `docker run` flags - see the [Docker deployment guide](/docs/guides-deployment-docker).
 
-With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image. That variant stays root: distroless has no shell to prepare a volume with.
+With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image (`docker.from` overrides it). `--compile <name>` names the binary. That variant stays root: distroless has no shell to prepare a volume with.
 
 ### Cloudflare Workers
 
@@ -214,9 +214,9 @@ export default defineConfig({
     target: "docker",
     runtime: "bun",
     stats: true,
+    compile: "myapp",
     docker: {
       image: { tag: "ghcr.io/myorg/myapp", oci: true },
-      compile: true,
     },
     pwa: {
       name: "My App",
@@ -226,13 +226,13 @@ export default defineConfig({
 });
 ```
 
-Available options mirror the flags (`stats`, `target`, `runtime`) plus per-target configuration:
+Available options mirror the flags (`stats`, `target`, `runtime`, `compile`) plus per-target configuration. `compile` takes `true`, a binary name, or `{ name, target, minify }` for the Bun target triple and minification:
 
 | Section      | Description                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `output`     | Override `dist` and `public` directory names                                                                                   |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
-| `docker`     | Base image, run command, global installs, baked `env`/`volumes`/`user`, image tag/args/OCI labels, `compile` mode              |
+| `docker`     | Base image, run command, global installs, baked `env`/`volumes`/`user`, image tag/args/OCI labels                              |
 | `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
 | `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |
 
