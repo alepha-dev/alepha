@@ -654,31 +654,30 @@ describe("ApiKeyService", () => {
     }
 
     /**
-     * Counts what reaches `defer`, so a write routed through the provider can
-     * be told apart from one fired bare.
+     * Counts usage writes that have finished. Reading the row back cannot
+     * tell whether `flush()` waited for the write: the read queues behind an
+     * UPDATE already sent, so it passes even when the provider was handed
+     * a promise that settles before the write does.
      */
-    class RecordingBackgroundTaskProvider extends BackgroundTaskProvider {
-      public deferred = 0;
+    class TrackingApiKeyService extends ApiKeyService {
+      public usageWrites = 0;
 
-      public override defer(task: () => unknown): void {
-        this.deferred++;
-        super.defer(task);
+      protected async updateUsage(id: string, ip?: string): Promise<void> {
+        await super.updateUsage(id, ip);
+        this.usageWrites++;
       }
     }
 
     const alepha = Alepha.create()
-      .with({
-        provide: BackgroundTaskProvider,
-        use: RecordingBackgroundTaskProvider,
-      })
+      .with({ provide: ApiKeyService, use: TrackingApiKeyService })
       .with(AlephaOrmPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
     alepha.inject(TestApp);
 
-    const service = alepha.inject(ApiKeyService);
-    const background = alepha.inject(RecordingBackgroundTaskProvider);
+    const service = alepha.inject(TrackingApiKeyService);
+    const background = alepha.inject(BackgroundTaskProvider);
     await alepha.start();
 
     const { apiKey, token } = await service.create({
@@ -688,9 +687,11 @@ describe("ApiKeyService", () => {
     });
 
     expect(await service.validate(token)).not.toBeNull();
-    expect(background.deferred).toBe(1);
 
+    // The promise `flush()` awaits is the one handed to `waitUntil` on
+    // Workers, so it must cover the write itself, not only its scheduling.
     await background.flush();
+    expect(service.usageWrites).toBe(1);
 
     const row = await service.getById(apiKey.id);
     expect(row.usageCount).toBe(1);
