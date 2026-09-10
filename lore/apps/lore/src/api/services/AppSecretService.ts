@@ -1,10 +1,15 @@
 import { $inject } from "alepha";
-import { EXCLUDED_SECRET_KEYS } from "alepha/cli/platform-lib";
+import {
+  BAY_OWNED_SECRET_KEYS,
+  EXCLUDED_SECRET_KEYS,
+} from "alepha/cli/platform-lib";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
+import { appInstances } from "../entities/appInstances.ts";
 import { type AppSecret, appSecrets } from "../entities/appSecrets.ts";
+import { estates } from "../entities/estates.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 
 /**
@@ -31,6 +36,8 @@ import { CredentialSealService } from "./CredentialSealService.ts";
  */
 export class AppSecretService {
   protected readonly rows = $repository(appSecrets);
+  protected readonly instances = $repository(appInstances);
+  protected readonly estates = $repository(estates);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly crypto = $inject(CryptoProvider);
 
@@ -181,6 +188,7 @@ export class AppSecretService {
     updatedBy?: string;
   }): Promise<AppSecret> {
     const key = this.assertKey(input.key);
+    await this.assertDeliverable(input.instanceId, key);
 
     if (!input.value) {
       throw new BadRequestError(
@@ -323,6 +331,38 @@ export class AppSecretService {
       );
     }
     return key;
+  }
+
+  /**
+   * That the estate this copy deploys to will deliver a variable by that name.
+   *
+   * ⚠️ Bay writes its own names (`BAY_OWNED_SECRET_KEYS`) into every instance
+   * itself, and the secret pull leaves them out, so a value stored under one
+   * for a copy on a Bay estate would sit on this tab and never reach the app.
+   * Refused while the operator is still holding the request. Everywhere else
+   * APP_SECRET and APP_NAME stay settable, on purpose: see
+   * {@link AppSecretService.GENERATED_KEY}.
+   *
+   * Asked of the estate the copy deploys to NOW. A copy moved onto a Bay
+   * estate afterwards keeps the rows it had, which is why the pull filters
+   * as well.
+   */
+  protected async assertDeliverable(
+    instanceId: string,
+    key: string,
+  ): Promise<void> {
+    if (!BAY_OWNED_SECRET_KEYS.has(key)) {
+      return;
+    }
+    const instance = await this.instances.findById(instanceId);
+    const estate = instance?.estateId
+      ? await this.estates.findById(instance.estateId)
+      : undefined;
+    if (estate?.type === "bay") {
+      throw new BadRequestError(
+        `${key} is set by Bay, not here. This copy deploys to the Bay estate '${estate.slug}', which writes ${key} into every instance itself, so a value stored here would never reach the app.`,
+      );
+    }
   }
 
   /**
