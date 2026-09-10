@@ -756,6 +756,78 @@ describe("$job — cron lock (multi-instance)", () => {
     expect(fired).toBe(2);
   });
 
+  it("a run that outlived its lock leaves the next holder's lock in place", async ({
+    expect,
+  }) => {
+    for (const k of Object.keys(sharedLockStore)) delete sharedLockStore[k];
+
+    // Every run parks on a gate of its own, pushed in the order runs start.
+    const gates: Array<() => void> = [];
+    class App {
+      tick = $job({
+        cron: "0 0 * * *",
+        handler: () =>
+          new Promise<void>((resolve) => {
+            gates.push(resolve);
+          }),
+      });
+    }
+
+    const make = () =>
+      Alepha.create()
+        .with({ provide: LockProvider, use: SharedMemoryLockProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
+
+    const a = make();
+    const b = make();
+    a.inject(App);
+    b.inject(App);
+    await a.start();
+    await b.start();
+
+    const runA = a.inject(App).tick.trigger();
+    let runB: Promise<void> | undefined;
+    try {
+      await waitFor(
+        () => gates.length,
+        (n) => n === 1,
+        { label: "a's run to start" },
+      );
+      // A trigger has no instant to claim, so the run lock is the only key.
+      const [lockKey, ...others] = Object.keys(sharedLockStore);
+      expect(others).toEqual([]);
+
+      // The lock's TTL runs out while a's run carries on: a handler that
+      // ignores its abort signal, or a cron with no `timeout` outliving the
+      // 5-minute default. Expiry is the key going away, nothing more.
+      delete sharedLockStore[lockKey];
+
+      runB = b.inject(App).tick.trigger();
+      await waitFor(
+        () => gates.length,
+        (n) => n === 2,
+        { label: "b's run to start" },
+      );
+      const heldByB = sharedLockStore[lockKey];
+      expect(heldByB).toBeDefined();
+
+      // a finishing must not release a lock that is b's now. Deleted, a third
+      // replica would take it and run alongside b.
+      gates[0]();
+      await runA;
+      expect(sharedLockStore[lockKey]).toBe(heldByB);
+
+      // ...while b's own release still frees it.
+      gates[1]();
+      await runB;
+      expect(sharedLockStore[lockKey]).toBeUndefined();
+    } finally {
+      for (const open of gates) open();
+      await Promise.allSettled([runA, runB]);
+    }
+  });
+
   it("two replicas ticking the same instant enqueue one execution, even with retry", async ({
     expect,
   }) => {

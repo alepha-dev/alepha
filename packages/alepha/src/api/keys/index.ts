@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaBackground } from "alepha/background";
 
 import { AdminApiKeyController } from "./controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "./controllers/ApiKeyController.ts";
@@ -43,5 +44,6 @@ export * from "./services/ApiKeyService.ts";
  */
 export const AlephaApiKeys = $module({
   name: "alepha.api.keys",
+  imports: [AlephaBackground],
   services: [ApiKeyService, ApiKeyController, AdminApiKeyController],
 });
