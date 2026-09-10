@@ -187,6 +187,7 @@ export class ViteDevServerProvider {
     if (viteReact && !this.options.noViteReactPlugin) plugins.push(viteReact());
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
+    plugins.push(this.viteUtils.createClientModulesPlugin());
     plugins.push(...this.extraVitePlugins);
     plugins.push(this.createAlephaPlugin());
 
