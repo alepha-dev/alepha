@@ -1101,7 +1101,7 @@ export class AppRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Analytics`,
     }),
-    lazy: () => import("./components/project/apps/AppAnalytics.tsx"),
+    lazy: () => import("./components/project/apps/AppAnalytics.client.tsx"),
     loader: async () => {
       this.assertBeacon();
     },
@@ -1185,7 +1185,7 @@ export class AppRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Errors`,
     }),
-    lazy: () => import("./components/project/apps/AppErrors.tsx"),
+    lazy: () => import("./components/project/apps/AppErrors.client.tsx"),
     loader: async () => {
       this.assertBlights();
     },
@@ -1727,7 +1727,8 @@ export class AppRouter {
   reportsOverview = $page({
     name: "reportsOverview",
     path: "/",
-    lazy: () => import("./components/project/reports/ReportsOverview.tsx"),
+    lazy: () =>
+      import("./components/project/reports/ReportsOverview.client.tsx"),
     loader: async () => ({
       overview: await this.projectReportsApi.getReportsOverview({
         params: {
@@ -1740,7 +1741,7 @@ export class AppRouter {
   reportsQuests = $page({
     name: "reportsQuests",
     path: "/quests",
-    lazy: () => import("./components/project/reports/ReportsQuests.tsx"),
+    lazy: () => import("./components/project/reports/ReportsQuests.client.tsx"),
     loader: async () => ({
       quests: await this.projectReportsApi.getReportsQuests({
         params: {
@@ -1753,7 +1754,8 @@ export class AppRouter {
   reportsMembers = $page({
     name: "reportsMembers",
     path: "/members",
-    lazy: () => import("./components/project/reports/ReportsMembers.tsx"),
+    lazy: () =>
+      import("./components/project/reports/ReportsMembers.client.tsx"),
     loader: async () => ({
       members: await this.projectReportsApi.getReportsMembers({
         params: {
@@ -1777,7 +1779,8 @@ export class AppRouter {
   reportsQuality = $page({
     name: "reportsQuality",
     path: "/quality",
-    lazy: () => import("./components/project/reports/ReportsQuality.tsx"),
+    lazy: () =>
+      import("./components/project/reports/ReportsQuality.client.tsx"),
     loader: async () => ({
       quality: await this.qualityApi.getQualityRuns({
         params: {

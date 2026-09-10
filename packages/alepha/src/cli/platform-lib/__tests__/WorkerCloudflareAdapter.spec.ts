@@ -426,6 +426,195 @@ describe("the worker-side Cloudflare adapter", () => {
       expect(calls[0]!.assets).toBeUndefined();
     });
   });
+  /**
+   * ⚠️ **A queue provisioned, produced to, and consumed by nothing.**
+   * `provision` made the job queue and its dead-letter queue, `bindings()`
+   * gave the Worker a producer, and the consumer the build wrote into
+   * `wrangler.jsonc` never left the file: the plan carried no
+   * `queueConsumers`, so `CloudflareDeployClient` had nothing to bind. An app
+   * deployed through Lore with `AlephaApiJobsQueue` would have pushed every
+   * `$job` into a queue no Worker reads, and reported a green deploy.
+   */
+  describe("the queue consumers", () => {
+    /**
+     * Cloudflare's queues, with state: `provision` creates through
+     * `ensureQueue` and `deploy` reads back through `listQueues`, so the id a
+     * consumer is bound to is the one provisioning actually made.
+     */
+    const account = (
+      existing: Array<{ queue_id: string; queue_name: string }> = [],
+    ) => {
+      const queues = [...existing];
+      const lists: string[] = [];
+      return {
+        lists,
+        ensureQueue: async (name: string) => {
+          const found = queues.find((it) => it.queue_name === name);
+          if (found) {
+            return found;
+          }
+          const queue = { queue_id: `id-of-${name}`, queue_name: name };
+          queues.push(queue);
+          return queue;
+        },
+        listQueues: async () => {
+          lists.push("listQueues");
+          return [...queues];
+        },
+      };
+    };
+
+    const withConsumers = async (
+      fs: MemoryFileSystemProvider,
+      consumers: Array<Record<string, unknown>>,
+    ) => {
+      await deployable(fs, "./main.cloudflare.js");
+      const config = JSON.parse(
+        await fs.readTextFile("/deploy/dist/wrangler.jsonc"),
+      );
+      config.queues = { consumers };
+      await fs.writeFile("/deploy/dist/wrangler.jsonc", JSON.stringify(config));
+    };
+
+    /**
+     * The whole path, with the real build in the middle: what `deploy` reads
+     * is what `BuildCloudflareTask` wrote, not a config shaped to suit the
+     * adapter.
+     */
+    it("binds the job queue it provisioned, as the build declared it", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      const cloudflare = account();
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => cloudflare,
+      });
+      await fs.writeFile(
+        "/deploy/dist/manifest.json",
+        JSON.stringify({
+          version: 1,
+          runtime: "workerd",
+          project: "my-app",
+          defaultEnv: "production",
+          environments: { production: { adapter: "cloudflare" } },
+          crons: [],
+          websocketPaths: [],
+          env: [],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: true,
+            hasCron: false,
+            hasWebSocket: false,
+          },
+        }),
+      );
+      const ctx = context(naming, { hasQueue: true });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.provision(ctx, run);
+      await adapter.build(ctx, run);
+      await adapter.deploy(ctx, run);
+
+      // `batch_size: 1` is the build's `max_batch_size: 1`, renamed: without
+      // it Cloudflare holds a job until 10 have arrived or 5 seconds passed.
+      expect(calls[0]!.queueConsumers).toEqual([
+        {
+          queueId: "id-of-my-app-staging",
+          deadLetterQueue: "my-app-staging-dlq",
+          settings: { batch_size: 1, max_retries: 3 },
+        },
+      ]);
+    });
+
+    /**
+     * ⚠️ The two vocabularies differ in more than spelling. wrangler's
+     * `max_batch_size` is the API's `batch_size`, and `max_batch_timeout` is
+     * SECONDS where `max_wait_time_ms` is milliseconds: passed through
+     * unconverted, a two-second window becomes two milliseconds.
+     */
+    it("sends wrangler's consumer settings in the API's names and units", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () =>
+          account([{ queue_id: "q-jobs", queue_name: "jobs" }]),
+      });
+      await withConsumers(fs, [
+        {
+          queue: "jobs",
+          dead_letter_queue: "jobs-dlq",
+          max_retries: 3,
+          max_batch_size: 1,
+          max_batch_timeout: 2,
+          max_concurrency: 4,
+          retry_delay: 30,
+        },
+      ]);
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.queueConsumers).toEqual([
+        {
+          queueId: "q-jobs",
+          deadLetterQueue: "jobs-dlq",
+          settings: {
+            batch_size: 1,
+            max_retries: 3,
+            max_wait_time_ms: 2000,
+            max_concurrency: 4,
+            retry_delay: 30,
+          },
+        },
+      ]);
+    });
+
+    /**
+     * Refused before the upload, and never created here. `provision` makes
+     * the queues Lore records for teardown; a queue made at deploy time would
+     * be one no teardown knows about, on an estate that was only LENT.
+     */
+    it("refuses by name a consumer whose queue the account does not have", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => account(),
+      });
+      await withConsumers(fs, [{ queue: "jobs", max_retries: 3 }]);
+      const calls = recordingDeployer(adapter);
+
+      await expect(adapter.deploy(context(naming), run)).rejects.toThrowError(
+        /consumes the queue `jobs`/,
+      );
+      expect(calls).toHaveLength(0);
+    });
+
+    it("asks Cloudflare nothing about queues for an app that consumes none", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      const cloudflare = account();
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => cloudflare,
+      });
+      await deployable(fs, "./main.cloudflare.js");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(cloudflare.lists).toEqual([]);
+      expect(calls[0]!.queueConsumers).toBeUndefined();
+    });
+  });
   describe("what the copy's address implies", () => {
     /**
      * ⚠️ `CloudflareAdapter` has derived `PUBLIC_URL` from the configured

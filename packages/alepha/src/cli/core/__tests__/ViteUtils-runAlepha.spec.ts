@@ -70,4 +70,28 @@ describe("ViteUtils — the server behind runAlepha", () => {
     expect(optimizeDeps?.noDiscovery).toBe(true);
     expect(optimizeDeps?.include ?? []).toHaveLength(0);
   });
+
+  it("should load the app with its .client modules stubbed, as the server bundle has them", async () => {
+    // `build`, `gen env`, `db …` and the build's own analysis all read the app
+    // through this server. Were a `.client` module real here and a stub in the
+    // bundle, the two would be describing different apps.
+    const nodeEnv = process.env.NODE_ENV;
+    const alepha = Alepha.create().with({
+      provide: ViteUtils,
+      use: FakeViteUtils,
+    });
+    const vite = alepha.inject(FakeViteUtils);
+
+    try {
+      await vite.runAlepha({ entry, mode: "development" });
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+      delete (globalThis as any).__alepha;
+    }
+
+    const names = (vite.serverConfigs[0].plugins ?? []).map(
+      (plugin: { name?: string }) => plugin?.name,
+    );
+    expect(names).toContain("alepha-client-modules");
+  });
 });

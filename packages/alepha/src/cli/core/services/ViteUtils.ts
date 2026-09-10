@@ -273,6 +273,70 @@ export class ViteUtils {
   }
 
   // ---------------------------------------------------------------------------------------------------------------
+  // Client modules plugin
+  // ---------------------------------------------------------------------------------------------------------------
+
+  /**
+   * What a `*.client.*` module becomes on the server: a component that renders
+   * nothing, and no other export.
+   *
+   * No named export, on purpose. Server code that imports one by name from a
+   * `.client` file fails the build, which is the loud failure that misuse
+   * deserves; a default import gets this, and renders nothing.
+   */
+  protected readonly clientModuleStub =
+    "export default function ClientModule() {\n  return null;\n}\n";
+
+  /**
+   * Whether a module id names one of the app's own `*.client.ts(x)` files.
+   *
+   * Dependencies are left alone: a package that ships a file named
+   * `index.client.js` means something of its own by it, and stubbing that on
+   * the server would break the package.
+   */
+  public isClientModule(id: string): boolean {
+    const path = id.split("?")[0];
+    if (path.includes("/node_modules/")) {
+      return false;
+    }
+    return /\.client\.[cm]?[jt]sx?$/.test(path);
+  }
+
+  /**
+   * Vite plugin that keeps `*.client.ts(x)` modules off the server.
+   *
+   * On the server such a module is replaced by {@link clientModuleStub}, so
+   * nothing it imports is ever resolved there: an editor, a chart library and
+   * every grammar they load stay out of the server bundle, while the browser
+   * gets the real module. The runtime already never imports the component of a
+   * page whose SSR is off (`ReactPageProvider` skips its `lazy()`), but the
+   * bundler cannot know that and emitted a chunk for every `import()` it could
+   * see: 2 MB of Lore's Worker was code that never ran.
+   *
+   * Keyed on the environment rather than on the build, so one plugin serves the
+   * server build, the browser build and both halves of the dev server alike.
+   *
+   * ⚠️ A `.client` module must only be reached from code the server never
+   * renders: `lazy()` under a page with SSR off, or inside `<ClientOnly>`.
+   * Rendered on the server anyway, it renders nothing, and hydration reports
+   * the mismatch.
+   */
+  public createClientModulesPlugin(): Plugin {
+    const isClientModule = (id: string) => this.isClientModule(id);
+    const stub = this.clientModuleStub;
+
+    return {
+      name: "alepha-client-modules",
+      enforce: "pre",
+      load(id) {
+        if (this.environment.config.consumer !== "server") return null;
+        if (!isClientModule(id)) return null;
+        return stub;
+      },
+    };
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------
   // SSR preload plugin
   // ---------------------------------------------------------------------------------------------------------------
 
@@ -561,7 +625,10 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
       server: { middlewareMode: true },
       appType: "custom",
       logLevel: "silent",
-      plugins: [this.createTsconfigPathsPlugin()],
+      plugins: [
+        this.createTsconfigPathsPlugin(),
+        this.createClientModulesPlugin(),
+      ],
       // No client dependency optimizer. This server only ever serves
       // `ssrLoadModule`, yet Vite still created one for the client
       // environment: with no entries it scanned nothing, and on crawl end it

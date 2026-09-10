@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
-import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 
 export interface ReleaseDescriptionEditorProps {

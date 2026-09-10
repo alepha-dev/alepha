@@ -5,7 +5,7 @@ import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import MarkdownEditorInner from "./MarkdownEditorInner.tsx";
+import MarkdownEditorInner from "./MarkdownEditorInner.client.tsx";
 
 /**
  * Edit mode mounts `MarkdownSelectionToolbar`, which is localized, so it

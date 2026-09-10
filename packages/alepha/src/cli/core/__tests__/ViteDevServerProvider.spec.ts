@@ -1,9 +1,14 @@
 import { EventEmitter } from "node:events";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError, type AlephaMeta } from "alepha";
 import { describe, it } from "vitest";
 
-import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";
+import {
+  type DevServerOptions,
+  ViteDevServerProvider,
+} from "../providers/ViteDevServerProvider.ts";
+import { MetaResolver } from "../services/MetaResolver.ts";
+import { ViteUtils } from "../services/ViteUtils.ts";
 
 /**
  * Replaces the two things the retry loop touches - the file watcher and the
@@ -97,5 +102,63 @@ describe("ViteDevServerProvider — retry loop", () => {
     await expect(provider.testStart()).rejects.toThrow(
       "Port 4321 is already in use",
     );
+  });
+});
+
+/**
+ * Stands in for Vite: records the config the dev server is created from and
+ * stops there, since the config is all this spec reads.
+ */
+class RecordingViteUtils extends ViteUtils {
+  public configs: Array<{ plugins?: Array<{ name?: string }> }> = [];
+
+  public async importVite(): Promise<any> {
+    return {
+      createServer: async (config: any) => {
+        this.configs.push(config);
+        throw new AlephaError("stop: the config is all this spec reads");
+      },
+      resolveConfig: async () => ({ server: {} }),
+    };
+  }
+
+  public async importViteReact(): Promise<any> {
+    return undefined;
+  }
+}
+
+/**
+ * A build record without the git calls behind the real one.
+ */
+class FixedMetaResolver extends MetaResolver {
+  public async resolve(): Promise<AlephaMeta> {
+    return {} as AlephaMeta;
+  }
+}
+
+describe("ViteDevServerProvider: the Vite server it creates", () => {
+  it("renders the app's .client modules on the server as the build does: not at all", async ({
+    expect,
+  }) => {
+    // Without this, a server render of a `.client` module would show its
+    // real content under `alepha dev` and nothing in production.
+    const alepha = Alepha.create()
+      .with({ provide: ViteUtils, use: RecordingViteUtils })
+      .with({ provide: MetaResolver, use: FixedMetaResolver });
+    const provider = alepha.inject(ViteDevServerProvider);
+    const vite = alepha.inject(RecordingViteUtils);
+
+    await expect(
+      provider.init({
+        root: "/app",
+        entry: { root: "/app", server: "src/main.server.ts" },
+        port: 4321,
+      } as DevServerOptions),
+    ).rejects.toThrow(/stop/);
+
+    const names = (vite.configs[0]?.plugins ?? []).map(
+      (plugin) => plugin?.name,
+    );
+    expect(names).toContain("alepha-client-modules");
   });
 });

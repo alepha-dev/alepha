@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
   type FolioActionState,
