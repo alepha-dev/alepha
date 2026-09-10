@@ -1989,7 +1989,7 @@ export default {
   "epic.action.delete": "Supprimer",
   "epic.action.setRelease": "Définir la version",
   "agentPrompts.menu": "Invites pour agents",
-  "agentPrompts.review": "Relire",
+  "agentPrompts.review": "Relire l’épopée",
   "agentPrompts.triageInbox": "Traiter la boîte",
   "agentPrompts.triageBlights": "Traiter les anomalies",
   "agentPrompts.workOnIt": "S’en charger",
@@ -2023,7 +2023,7 @@ export default {
   "agentPrompts.settings.epicReview.title": "Épopée : relire",
   "agentPrompts.settings.epicReview.description":
     "Proposée sur une épopée encore planifiée. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
-  "agentPrompts.settings.epicActivate.title": "Épopée : activer",
+  "agentPrompts.settings.epicActivate.title": "Épopée : s’en charger",
   "agentPrompts.settings.epicActivate.description":
     "Proposée sur une épopée planifiée ou active. Confie l’épopée entière, quête par quête.",
   "agentPrompts.settings.questWork.title": "Quête : s’en charger",
