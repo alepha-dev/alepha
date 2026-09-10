@@ -314,6 +314,12 @@ mail without one.
 | Local      | built in                  | writes `.eml.json` files under `DATA_DIR`, which is what the devtools outbox reads      |
 | Memory     | built in                  | the default under test                                                                  |
 
+SMTP does not run on Cloudflare Workers: nodemailer needs `node:net` and
+`node:tls`. A Cloudflare build resolves `alepha/email/smtp` to an entry
+without nodemailer, so it costs the Worker nothing to import, and registering
+`AlephaEmailSmtp` there throws, naming the Cloudflare provider instead of
+dropping mail in silence.
+
 Cloudflare takes a `to: string[]` as **one** message (50 recipients max) and
 returns one id; Local and Memory fan out to one record per recipient. The
 notification layer always pushes one job per contact, so receipts line up
