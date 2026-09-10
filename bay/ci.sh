@@ -6,9 +6,9 @@
 # nested quoting to work around — the previous version could not write an
 # apostrophe in its own error message.
 #
-# Run inside the container by `test-linux.sh`, and mirrored by
-# .github/workflows/ci.yml. The two must stay in step: this one exists so a
-# break is found before the push, not by the push.
+# Run inside the container by `test-linux.sh`, and mirrored by the `bay` job
+# in .github/workflows/verify.yml. The two must stay in step: this one exists
+# so a break is found before the push, not by the push.
 
 set -eu
 
