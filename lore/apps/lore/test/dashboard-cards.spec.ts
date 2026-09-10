@@ -229,7 +229,7 @@ describe("dashboard cards", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError(/Project not found/);
+    ).rejects.toThrow(/Project not found/);
   });
 
   it("refuses a scope naming an app in someone else's project", async ({
@@ -257,7 +257,7 @@ describe("dashboard cards", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError(/App not found/);
+    ).rejects.toThrow(/App not found/);
   });
 
   it("refuses an app id that exists nowhere", async ({ expect }) => {
@@ -273,7 +273,7 @@ describe("dashboard cards", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError(/App not found/);
+    ).rejects.toThrow(/App not found/);
   });
 
   it("refuses a scope kind the metric does not accept", async ({ expect }) => {
@@ -296,7 +296,7 @@ describe("dashboard cards", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError(/does not accept a apps scope/);
+    ).rejects.toThrow(/does not accept a apps scope/);
   });
 
   it("refuses a scope carrying a payload its kind does not call for", async ({
@@ -314,7 +314,7 @@ describe("dashboard cards", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError(/must not carry projectIds/);
+    ).rejects.toThrow(/must not carry projectIds/);
   });
 
   it("persists a new grid order", async ({ expect }) => {
@@ -334,7 +334,7 @@ describe("dashboard cards", () => {
 
     await expect(
       ctx.controller.reorderCards({ body: { ids: [cards[0]!.id] } }, { user }),
-    ).rejects.toThrowError(/every card exactly once/);
+    ).rejects.toThrow(/every card exactly once/);
   });
 
   it("keeps an emptied board empty across reads", async ({ expect }) => {
@@ -367,6 +367,6 @@ describe("dashboard cards", () => {
         { params: { cardId: foreign.id } },
         { user: theirs.user },
       ),
-    ).rejects.toThrowError(/Card not found/);
+    ).rejects.toThrow(/Card not found/);
   });
 });

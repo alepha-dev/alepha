@@ -219,7 +219,7 @@ describe("Attaching an epic to a release", () => {
         { params: { id: epic.data.id }, body: { releaseId: release.data.id } },
         { user },
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("refuses detaching from a published release", async ({ expect }) => {
@@ -244,7 +244,7 @@ describe("Attaching an epic to a release", () => {
         { params: { id: epic.data.id }, body: { releaseId: null } },
         { user },
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("allows a no-op update on an epic in a published release", async ({
@@ -288,7 +288,7 @@ describe("Attaching an epic to a release", () => {
         { params: { id: epic.data.id }, body: { releaseId: foreign.data.id } },
         { user },
       ),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
   });
   /**
    * The cascade (#Q2111). An epic's release is its quests' release, and the

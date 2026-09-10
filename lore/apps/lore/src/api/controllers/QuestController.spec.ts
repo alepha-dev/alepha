@@ -176,7 +176,7 @@ describe("QuestController hold", () => {
 
       await expect(
         ctx.controller.acceptQuest({ params: { id: quest.id } }, { user }),
-      ).rejects.toThrowError(/on hold/);
+      ).rejects.toThrow(/on hold/);
     });
 
     it("refuses to complete a held quest", async ({ expect }) => {
@@ -194,7 +194,7 @@ describe("QuestController hold", () => {
           { params: { id: quest.id }, body: {} },
           { user },
         ),
-      ).rejects.toThrowError(/on hold/);
+      ).rejects.toThrow(/on hold/);
     });
 
     it("refuses to shelve a held quest rather than clearing the hold", async ({
@@ -210,7 +210,7 @@ describe("QuestController hold", () => {
 
       await expect(
         ctx.controller.shelveQuest({ params: { id: quest.id } }, { user }),
-      ).rejects.toThrowError(/on hold/);
+      ).rejects.toThrow(/on hold/);
     });
 
     it("ALLOWS abandoning a held accepted quest, and keeps it held", async ({
@@ -248,7 +248,7 @@ describe("QuestController hold", () => {
 
       await expect(
         ctx.controller.abandonQuest({ params: { id: quest.id } }, { user }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("refuses a second hold rather than discarding the new reason", async ({
@@ -267,7 +267,7 @@ describe("QuestController hold", () => {
           { params: { id: quest.id }, body: { reason: "Second reason" } },
           { user },
         ),
-      ).rejects.toThrowError(/already on hold/);
+      ).rejects.toThrow(/already on hold/);
     });
 
     it("refuses to unhold a quest that is not held", async ({ expect }) => {
@@ -277,7 +277,7 @@ describe("QuestController hold", () => {
 
       await expect(
         ctx.controller.unholdQuest({ params: { id: quest.id } }, { user }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("refuses to hold a completed quest", async ({ expect }) => {
@@ -295,7 +295,7 @@ describe("QuestController hold", () => {
           { params: { id: quest.id }, body: { reason: "Too late" } },
           { user },
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("lets a running timer be stopped while the quest is held", async ({
@@ -387,7 +387,7 @@ describe("QuestController hold", () => {
           { params: { id: quest.id }, body: { reason: "Second" } },
           { user },
         ),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       const comments = await ctx.repos.comments.findMany({
         where: { questId: { eq: quest.id } },

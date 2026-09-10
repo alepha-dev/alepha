@@ -171,7 +171,7 @@ describe("tearing a copy's resources down", () => {
 
       await expect(
         alepha.inject(TeardownService).destroy(await loaded(w)),
-      ).rejects.toThrowError(/no record of what it created/);
+      ).rejects.toThrow(/no record of what it created/);
     });
 
     it("answers plainly for a copy that provisioned nothing", async ({
@@ -358,7 +358,7 @@ describe("tearing a copy's resources down", () => {
           },
           { user: w.user },
         ),
-      ).rejects.toThrowError(/still has a Worker, database or bucket/);
+      ).rejects.toThrow(/still has a Worker, database or bucket/);
     });
 
     it("allows it when asked to forget", async ({ expect }) => {
@@ -593,7 +593,7 @@ describe("tearing a copy's resources down", () => {
           },
           { user: w.user },
         ),
-      ).rejects.toThrowError(/Type "my-app\/production" to confirm/);
+      ).rejects.toThrow(/Type "my-app\/production" to confirm/);
     });
   });
 });

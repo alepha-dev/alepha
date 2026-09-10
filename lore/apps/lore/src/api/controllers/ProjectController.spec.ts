@@ -147,7 +147,7 @@ describe("ProjectController.createProject", () => {
         { body: { title: "Doomed Project" } },
         { user },
       ),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
 
     // Nothing survives: on this driver `$transactional()` rolls the whole
     // handler back, and on a driver that cannot (D1) the compensating delete
@@ -170,7 +170,7 @@ describe("ProjectController.createProject", () => {
         { body: { title: "Retried Project" } },
         { user },
       ),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
 
     const retried = await ctx.controller.createProject(
       { body: { title: "Retried Project" } },

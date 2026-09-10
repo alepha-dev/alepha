@@ -141,7 +141,7 @@ describe("unpacking an artifact", () => {
         fs,
         "/deploy",
       ),
-    ).rejects.toThrowError(/climbs out of the archive/);
+    ).rejects.toThrow(/climbs out of the archive/);
   });
 
   it("refuses an absolute path", async ({ expect }) => {
@@ -149,7 +149,7 @@ describe("unpacking an artifact", () => {
 
     await expect(
       reader.extract(await archive({ "/etc/passwd": "x" }), fs, "/deploy"),
-    ).rejects.toThrowError(/will not unpack/);
+    ).rejects.toThrow(/will not unpack/);
   });
 
   it("refuses a symlink rather than writing it out as a file", async ({
@@ -170,7 +170,7 @@ describe("unpacking an artifact", () => {
         fs,
         "/deploy",
       ),
-    ).rejects.toThrowError(/contains a link/);
+    ).rejects.toThrow(/contains a link/);
   });
 
   it("refuses a GNU long-name record rather than writing its pseudo-name", async ({
@@ -186,7 +186,7 @@ describe("unpacking an artifact", () => {
         fs,
         "/deploy",
       ),
-    ).rejects.toThrowError(/GNU long-name records/);
+    ).rejects.toThrow(/GNU long-name records/);
   });
 
   it("creates a directory entry, and the directories a file implies", async ({
@@ -217,7 +217,7 @@ describe("unpacking an artifact", () => {
 
     await expect(
       reader.extract(await archive(many), fs, "/deploy"),
-    ).rejects.toThrowError(/more than a deploy will unpack/);
+    ).rejects.toThrow(/more than a deploy will unpack/);
   });
 
   it("still reads a manifest, through the same walk", async ({ expect }) => {

@@ -167,7 +167,7 @@ describe("Project capabilities", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("turns one on, and answers the whole project back", async ({ expect }) => {
@@ -318,6 +318,6 @@ describe("Project capabilities", () => {
         },
         { user: stranger },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 });

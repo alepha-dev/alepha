@@ -127,7 +127,7 @@ describe("QuestController — shelving", () => {
 
     await expect(
       ctx.quests.shelveQuest.fetch({ params: { id: quest.id } }, { user }),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("refuses to shelve a completed quest", async ({ expect }) => {
@@ -142,7 +142,7 @@ describe("QuestController — shelving", () => {
 
     await expect(
       ctx.quests.shelveQuest.fetch({ params: { id: quest.id } }, { user }),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("unshelves back to new", async ({ expect }) => {

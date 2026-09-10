@@ -469,7 +469,7 @@ describe("a deployed copy's environment", () => {
           .provisionSigil({ ...w.instance, sigilId: "already" } as never, {
             createdBy: w.user.id,
           }),
-      ).rejects.toThrowError(/only a hash is kept/);
+      ).rejects.toThrow(/only a hash is kept/);
     });
   });
 

@@ -377,7 +377,7 @@ describe("Lore MCP — epics", () => {
 
       await expect(
         call(epicTools.epic_get, { project: project.id, number: 999 }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
   });
 
@@ -485,7 +485,7 @@ describe("Lore MCP — epics", () => {
           project: project.id,
           number: doomed.number,
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       const context = await call(projectTools.project_context, {
         project: project.id,
@@ -505,7 +505,7 @@ describe("Lore MCP — epics", () => {
       const stranger = crypto.randomUUID();
 
       // `NotFoundError` and not `ForbiddenError`, asserted rather than left
-      // to a bare `toThrowError()`: the refusal has to come from the
+      // to a bare `toThrow()`: the refusal has to come from the
       // membership filter, and a bare assertion would also pass if the call
       // died on a broken fixture. The project is reported as not found
       // rather than forbidden, so the tool leaks no existence either.
@@ -515,7 +515,7 @@ describe("Lore MCP — epics", () => {
           { project: project.id, number: epic.number },
           stranger,
         ),
-      ).rejects.toThrowError(NotFoundError);
+      ).rejects.toThrow(NotFoundError);
 
       expect(await repos.epics.getById(epic.id)).toBeDefined();
     });
@@ -632,7 +632,7 @@ describe("Lore MCP — epics", () => {
           priority: "medium",
           epic_number: epic.number,
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       const after = await repos.quests.count({
         projectId: { eq: project.id },
@@ -666,7 +666,7 @@ describe("Lore MCP — epics", () => {
           title: "Changed title",
           epic_number: epic.number,
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       expect((await repos.quests.getById(created.id)).title).toBe(
         "Original title",
@@ -720,7 +720,7 @@ describe("Lore MCP — epics", () => {
           title: "Should not survive",
           epic_number: epic.number,
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       const after = await repos.folios.count({
         projectId: { eq: project.id },
@@ -780,7 +780,7 @@ describe("Lore MCP — epics", () => {
           title: "Changed title",
           epic_number: epic.number,
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       expect((await repos.folios.getById(created.id)).title).toBe(
         "Original title",

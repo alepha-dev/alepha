@@ -90,7 +90,7 @@ describe("LoreClientService", () => {
 
       await expect(
         (scope.authorization as () => Promise<string>)(),
-      ).rejects.toThrowError(/LORE_API_KEY/);
+      ).rejects.toThrow(/LORE_API_KEY/);
     });
 
     /**
@@ -128,14 +128,14 @@ describe("LoreClientService", () => {
      * of to the error that names the fix.
      */
     it("reads an empty LORE_PROJECT as unset, not as a slug", () => {
-      expect(() => create({ LORE_PROJECT: "" }).resolveProject()).toThrowError(
+      expect(() => create({ LORE_PROJECT: "" }).resolveProject()).toThrow(
         /No Lore project named/,
       );
     });
 
     it("names both ways of supplying it when neither is set", () => {
-      expect(() => create().resolveProject()).toThrowError(/--project/);
-      expect(() => create().resolveProject()).toThrowError(/LORE_PROJECT/);
+      expect(() => create().resolveProject()).toThrow(/--project/);
+      expect(() => create().resolveProject()).toThrow(/LORE_PROJECT/);
     });
   });
 

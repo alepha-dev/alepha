@@ -289,7 +289,7 @@ describe("lore quality push", () => {
 
       await expect(
         ctx.cli.run(ctx.command.push, { argv: "", root: "/repo" }),
-      ).rejects.toThrowError(/alepha test --coverage/);
+      ).rejects.toThrow(/alepha test --coverage/);
     });
 
     it("names the file it could not find", async () => {
@@ -302,7 +302,7 @@ describe("lore quality push", () => {
 
       await expect(
         ctx.cli.run(ctx.command.push, { argv: "", root: "/repo" }),
-      ).rejects.toThrowError(/test-results\.json/);
+      ).rejects.toThrow(/test-results\.json/);
     });
 
     /**

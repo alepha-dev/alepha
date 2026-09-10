@@ -187,7 +187,7 @@ describe("assignQuest", () => {
           { params: { id: quest.id }, body: { userId: stranger.id } },
           { user: owner },
         ),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
 
     it("leaves the quest untouched when it refuses", async () => {

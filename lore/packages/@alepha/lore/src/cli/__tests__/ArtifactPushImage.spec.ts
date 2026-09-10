@@ -190,7 +190,7 @@ describe("lore artifacts push-image", () => {
             argv: `--project 7 --image ${REFERENCE} ${flag}`,
             root: "/repo",
           }),
-        ).rejects.toThrowError(/[Uu]nknown flag/);
+        ).rejects.toThrow(/[Uu]nknown flag/);
       }
     });
 
@@ -243,7 +243,7 @@ describe("lore artifacts push-image", () => {
           argv: "--project 7",
           root: "/repo",
         }),
-      ).rejects.toThrowError(/No image named. Pass --image/);
+      ).rejects.toThrow(/No image named. Pass --image/);
       expect(ctx.sink.received).toBeUndefined();
     });
 
@@ -255,7 +255,7 @@ describe("lore artifacts push-image", () => {
           argv: `--image ${REFERENCE}`,
           root: "/repo",
         }),
-      ).rejects.toThrowError(/No Lore project named/);
+      ).rejects.toThrow(/No Lore project named/);
     });
 
     /**
@@ -273,7 +273,7 @@ describe("lore artifacts push-image", () => {
           argv: `--project 7 --image ${REFERENCE}`,
           root: "/repo",
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
   });
 

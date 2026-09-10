@@ -159,7 +159,7 @@ describe("InvitationController.revokeProjectInvitation", () => {
         { params: { id: invitationId } },
         { user: invitee },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("refuses a member who does not own the project", async ({ expect }) => {
@@ -170,7 +170,7 @@ describe("InvitationController.revokeProjectInvitation", () => {
         { params: { projectId, id: invitationId } },
         { user: stranger },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
 
     expect(await pendingCount()).toBe(1);
   });
@@ -191,7 +191,7 @@ describe("InvitationController.revokeProjectInvitation", () => {
         { params: { projectId: other.data.id, id: invitationId } },
         { user: owner },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
 
     expect(await pendingCount()).toBe(1);
   });
@@ -207,6 +207,6 @@ describe("InvitationController.revokeProjectInvitation", () => {
         { params: { projectId, id: invitationId } },
         { user: owner },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 });

@@ -101,7 +101,7 @@ describe("Lore MCP: quest_update optimistic concurrency", () => {
         title: "Second writer overwrites",
         expectedUpdatedAt: read.updatedAt,
       }),
-    ).rejects.toThrowError(/changed since you read it/i);
+    ).rejects.toThrow(/changed since you read it/i);
 
     const after = await call(questTools.quest_get, { id: quest.id });
     expect(after.title).toBe("First writer wins");
@@ -172,7 +172,7 @@ describe("Lore MCP: quest_update optimistic concurrency", () => {
         epic_number: epic.number,
         expectedUpdatedAt: read.updatedAt,
       }),
-    ).rejects.toThrowError(/changed since you read it/i);
+    ).rejects.toThrow(/changed since you read it/i);
 
     // The epic move never happened either: the check runs first.
     const after = await call(questTools.quest_get, { id: quest.id });

@@ -116,7 +116,7 @@ describe("AreaController", () => {
         { params: { projectId: project.id } },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("refuses to get an area's detail for a non-member", async ({ expect }) => {
@@ -128,7 +128,7 @@ describe("AreaController", () => {
         { params: { id: area!.id } },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("saves a description", async ({ expect }) => {
@@ -158,7 +158,7 @@ describe("AreaController", () => {
         { params: { id: area!.id }, body: { description: "nope" } },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("reports a plain rename as not merged", async ({ expect }) => {
@@ -186,7 +186,7 @@ describe("AreaController", () => {
         { params: { id: area!.id }, body: { name: "@alepha/ui" } },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("reports a rename onto an existing name as a merge, with the count", async ({
@@ -235,7 +235,7 @@ describe("AreaController", () => {
 
     await expect(
       ctx.controller.deleteArea({ params: { id: area!.id } }, { user }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("refuses to delete an area for a non-owner", async ({ expect }) => {
@@ -247,7 +247,7 @@ describe("AreaController", () => {
         { params: { id: area!.id } },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("refuses to bulk-merge areas for a non-owner", async ({ expect }) => {
@@ -263,7 +263,7 @@ describe("AreaController", () => {
         },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("bulk-merges several areas into one", async ({ expect }) => {

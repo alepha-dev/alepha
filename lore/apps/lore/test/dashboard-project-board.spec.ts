@@ -230,7 +230,7 @@ describe("the project dashboard controller", () => {
           },
           { user: owner },
         ),
-      ).rejects.toThrowError(/Epic not found/);
+      ).rejects.toThrow(/Epic not found/);
     });
 
     it("refuses a metric that does not belong on a project board", async ({
@@ -246,7 +246,7 @@ describe("the project dashboard controller", () => {
           },
           { user: owner },
         ),
-      ).rejects.toThrowError(/does not accept/);
+      ).rejects.toThrow(/does not accept/);
     });
   });
 
@@ -292,7 +292,7 @@ describe("the project dashboard controller", () => {
           },
           { user: owner },
         ),
-      ).rejects.toThrowError(/Invalid filters/);
+      ).rejects.toThrow(/Invalid filters/);
     });
   });
 
@@ -307,7 +307,7 @@ describe("the project dashboard controller", () => {
           { params: { projectId }, body: { ids: [first.data.id] } },
           { user: owner },
         ),
-      ).rejects.toThrowError(/every card exactly once/);
+      ).rejects.toThrow(/every card exactly once/);
     });
 
     it("applies a complete one", async ({ expect }) => {
@@ -423,7 +423,7 @@ describe("the project dashboard controller", () => {
           },
           { user: reader },
         ),
-      ).rejects.toThrowError(/project:update/);
+      ).rejects.toThrow(/project:update/);
 
       await expect(
         ctx.board.updateProjectDashboardCard.fetch(

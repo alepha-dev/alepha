@@ -178,7 +178,7 @@ describe("Lore credentials", () => {
     it("errors naming both fixes rather than starting a flow", async () => {
       const ctx = await setup();
 
-      await expect(ctx.client.authorization()).rejects.toThrowError(
+      await expect(ctx.client.authorization()).rejects.toThrow(
         /lore login[\s\S]*LORE_API_KEY/,
       );
     });
@@ -192,7 +192,7 @@ describe("Lore credentials", () => {
         accessToken: "elsewhere",
       });
 
-      await expect(ctx.client.authorization()).rejects.toThrowError();
+      await expect(ctx.client.authorization()).rejects.toThrow();
     });
   });
 });

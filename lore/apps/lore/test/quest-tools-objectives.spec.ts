@@ -180,6 +180,6 @@ describe("Lore MCP: quest objectives", () => {
         objectiveId: 999,
         completed: true,
       }),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
   });
 });

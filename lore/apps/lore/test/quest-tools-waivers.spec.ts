@@ -129,7 +129,7 @@ describe("Lore MCP: completion with waived objectives", () => {
 
     await expect(
       call(questTools.quest_complete, { id: quest.id, message: "done" }),
-    ).rejects.toThrowError(/neither completed nor waived/i);
+    ).rejects.toThrow(/neither completed nor waived/i);
 
     // And nothing was written on the way out.
     const after = await call(questTools.quest_get, { id: quest.id });
@@ -184,7 +184,7 @@ describe("Lore MCP: completion with waived objectives", () => {
           { objectiveId: objectives[1].id, reason: "manual" },
         ],
       }),
-    ).rejects.toThrowError(/already completed/i);
+    ).rejects.toThrow(/already completed/i);
   });
 
   it("refuses to waive an objective the quest does not carry", async () => {
@@ -196,6 +196,6 @@ describe("Lore MCP: completion with waived objectives", () => {
         id: quest.id,
         waive: [{ objectiveId: 999, reason: "manual" }],
       }),
-    ).rejects.toThrowError(/no such objective/i);
+    ).rejects.toThrow(/no such objective/i);
   });
 });
