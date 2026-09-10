@@ -30,6 +30,11 @@ class Routes {
     path: "/feedback",
     component: () => null,
   });
+  blights = $page({
+    name: "projectBlights",
+    path: "/blights",
+    component: () => null,
+  });
 }
 
 /**
@@ -192,5 +197,36 @@ describe("useAgentPromptSubject", () => {
     expect(subject.url).toContain("/feedback");
     expect(subject.number).toBe(2087);
     expect(subject.id).toBe(3110);
+  });
+
+  /**
+   * The surface-scoped shape, and the reason it exists.
+   *
+   * A loop has no item, so it has no number to render. The alternative that
+   * was rejected was populating the item four with `0` and `""`, which puts
+   * `#P0` and an empty title on somebody's clipboard - a lie rather than a
+   * gap. `renderPromptTemplate` leaves a placeholder it cannot answer
+   * verbatim instead, and that is only true while these keys are ABSENT.
+   */
+  it("builds an inbox subject of three fields, with no item in it", async () => {
+    const handle = await handleFor();
+    const subject = handle.forFeedbackInbox();
+
+    expect(Object.keys(subject).sort()).toEqual(["project", "slug", "url"]);
+    expect(subject.url).toContain("/feedback");
+    // Asserted by absence, because the whole design decision is the absence.
+    expect(subject).not.toHaveProperty("reference");
+    expect(subject).not.toHaveProperty("number");
+    expect(subject).not.toHaveProperty("id");
+    expect(subject).not.toHaveProperty("title");
+  });
+
+  it("builds a blights subject of the same three fields", async () => {
+    const handle = await handleFor();
+    const subject = handle.forBlightsInbox();
+
+    expect(Object.keys(subject).sort()).toEqual(["project", "slug", "url"]);
+    expect(subject.url).toContain("/blights");
+    expect(subject).not.toHaveProperty("reference");
   });
 });

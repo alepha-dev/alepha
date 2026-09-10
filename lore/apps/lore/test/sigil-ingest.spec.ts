@@ -71,7 +71,7 @@ const readMeasures = async (analytics: LoreAnalytics, sigilId: string) => {
 const readBy = async (
   analytics: LoreAnalytics,
   sigilId: string,
-  dimension: "campaign" | "device" | "traffic",
+  dimension: "campaign" | "device" | "traffic" | "auth",
 ) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
@@ -448,6 +448,46 @@ describe("sigil ingest", () => {
     expect(await readBy(analytics, sigil.id, "traffic")).toEqual([
       { value: "bot", count: 1 },
       { value: "human", count: 2 },
+    ]);
+  });
+
+  it("stores the auth stamp, defaulting to anon", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    expect((await post({ views: [{ path: "/" }], auth: "user" })).status).toBe(
+      204,
+    );
+    expect(
+      (await post({ views: [{ path: "/docs" }], auth: "anon" })).status,
+    ).toBe(204);
+    // ⚠️ An app whose proxy predates the stamp sends nothing, and an app that
+    // keeps its token in memory sends nothing forever - its browser reaches
+    // the proxy with a `fetch` carrying cookies and no `Authorization`
+    // header, so there is no session to read. Counting either as signed in is
+    // the direction this may not be wrong in: silence is anonymous.
+    expect((await post({ views: [{ path: "/about" }] })).status).toBe(204);
+
+    expect(await readBy(analytics, sigil.id, "auth")).toEqual([
+      { value: "anon", count: 2 },
+      { value: "user", count: 1 },
+    ]);
+  });
+
+  it("keeps signed-in and signed-out views in separate buckets", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    // Same hour, same path, same everything else. The bucket key has to
+    // separate them or one audience's views land under the other's.
+    expect((await post({ views: [{ path: "/" }], auth: "user" })).status).toBe(
+      204,
+    );
+    expect((await post({ views: [{ path: "/" }], auth: "anon" })).status).toBe(
+      204,
+    );
+
+    expect(await readBy(analytics, sigil.id, "auth")).toEqual([
+      { value: "anon", count: 1 },
+      { value: "user", count: 1 },
     ]);
   });
 

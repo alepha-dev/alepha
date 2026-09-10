@@ -22,6 +22,8 @@ const KINDS: AgentPromptKind[] = [
   "epicActivate",
   "questWork",
   "feedbackWork",
+  "feedbackLoop",
+  "blightTriage",
 ];
 
 /**

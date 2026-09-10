@@ -125,6 +125,22 @@ const setup = async () => {
   };
 };
 
+/**
+ * ⚠️ Every assertion below counts MENTIONS, never the whole inbox.
+ *
+ * The owner answering a report also writes to its reporter since #Q2155
+ * (`lore:feedback:comment`), and every case here has the owner comment on
+ * an item the reporter filed - so a bare `findMany({})` counts a message
+ * this file is not about and turns a passing suite red for the right
+ * behaviour. Filtering by template keeps each case asking its own question.
+ */
+const mentionsIn = async (ctx: {
+  probe: { inbox: { findMany: (q: object) => Promise<any[]> } };
+}) =>
+  await ctx.probe.inbox.findMany({
+    where: { template: { eq: "lore:inbox:mention" } },
+  });
+
 describe("a mention in a feedback comment", () => {
   it("reaches the member a member named", async ({ expect }) => {
     const ctx = await setup();
@@ -139,7 +155,7 @@ describe("a mention in a feedback comment", () => {
 
     await ctx.deliver();
 
-    const rows = await ctx.probe.inbox.findMany({});
+    const rows = await mentionsIn(ctx);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       userId: ctx.member.id,
@@ -221,7 +237,7 @@ describe("a mention in a feedback comment", () => {
 
     await ctx.deliver();
 
-    expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
+    expect(await mentionsIn(ctx)).toHaveLength(0);
 
     await ctx.alepha.stop();
   });
@@ -241,7 +257,7 @@ describe("a mention in a feedback comment", () => {
 
     await ctx.deliver();
 
-    expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
+    expect(await mentionsIn(ctx)).toHaveLength(0);
 
     await ctx.alepha.stop();
   });

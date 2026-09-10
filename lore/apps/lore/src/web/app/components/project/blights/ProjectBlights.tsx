@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
   Dialog,
@@ -10,8 +11,7 @@ import {
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, z } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -32,8 +32,11 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { hasCapability } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
+import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 
 /**
  * Filter form, owned by AlephaTable: a status multi-select (open / resolved,
@@ -79,12 +82,17 @@ const ProjectBlights = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
+  const promptSubject = useAgentPromptSubject();
+  // Blights live under Apps: there is no capability of their own, and this
+  // page's route is already gated on it. Stated anyway rather than passing
+  // the item unconditionally, so the menu carries its own gate wherever this
+  // component ends up rendered.
+  const appsEnabled = hasCapability(project, "apps");
   const alepha = useAlepha();
   const blightApi = useClient<BlightController>();
   const canTriage = blightApi.resolveBlight.can();
   const toaster = useToast();
   const dialog = useDialog();
-  const dt = useInject(DateTimeProvider);
 
   const [stackView, setStackView] = useState<BlightResource | null>(null);
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
@@ -225,6 +233,27 @@ const ProjectBlights = () => {
             </div>
           ),
         }}
+        // ⚠️ `toolbar`, not `actions`: `AgentPromptsMenu` is a dropdown
+        // trigger rather than a button that acts on click, which is the
+        // distinction `AlephaTable`'s own note draws between the two slots.
+        //
+        // Two switches, like the feedback inbox: the menu renders nothing
+        // when the project has `agentPrompts` off, and this passes no items
+        // when Apps is off, so both have to be on for anything to appear.
+        toolbar={
+          <AgentPromptsMenu
+            items={
+              appsEnabled
+                ? [
+                    {
+                      kind: "blightTriage" as const,
+                      subject: () => promptSubject.forBlightsInbox(),
+                    },
+                  ]
+                : []
+            }
+          />
+        }
         fetch={fetchBlights}
         // The bulk bar is triage too: a rank that may not resolve one blight
         // may not delete twenty.
@@ -314,13 +343,15 @@ const ProjectBlights = () => {
           lastSeenAt: {
             label: tr("blights.col.lastSeen"),
             sortable: true,
+            // This column was the reference implementation - relative label,
+            // exact date on hover - and `TimeAgo` is that pattern extracted.
+            // Its own `title` went with the span: two titles means the outer
+            // one never shows.
             cell: (b) => (
-              <span
+              <TimeAgo
+                value={b.lastSeenAt}
                 className="text-muted-foreground whitespace-nowrap"
-                title={formatDate(b.lastSeenAt)}
-              >
-                {dt.of(b.lastSeenAt).fromNow()}
-              </span>
+              />
             ),
           },
         }}
@@ -471,14 +502,6 @@ const ProjectBlights = () => {
 };
 
 export default ProjectBlights;
-
-/**
- * Format an ISO timestamp for the `title` tooltip, falling back to raw.
- */
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-};
 
 /**
  * Client-side sort over the deduped blight list. Supports the two sortable

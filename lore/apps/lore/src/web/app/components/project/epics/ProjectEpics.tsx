@@ -4,12 +4,12 @@ import {
   type BulkMenuAction,
 } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, z } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -136,7 +136,6 @@ const ProjectEpics = () => {
   const dialog = useDialog();
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
-  const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
   const reportBulk = useBulkReport();
@@ -561,9 +560,10 @@ const ProjectEpics = () => {
             sortable: true,
             className: "w-32",
             cell: (epic) => (
-              <span className="text-muted-foreground whitespace-nowrap">
-                {dt.of(epic.updatedAt).fromNow()}
-              </span>
+              <TimeAgo
+                value={epic.updatedAt}
+                className="text-muted-foreground whitespace-nowrap"
+              />
             ),
           },
         }}

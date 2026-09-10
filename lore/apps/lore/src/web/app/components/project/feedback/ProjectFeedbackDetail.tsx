@@ -47,6 +47,42 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   // component and a spec can mount it directly, so a gate that only exists
   // upstream is a gate this component does not have.
   const supportEnabled = hasCapability(project, "support");
+
+  /**
+   * What the robot menu offers, in all three footers.
+   *
+   * ⚠️ **The loop is here rather than on the inbox toolbar** (feedback
+   * #P2176, reversing #Q2153). It was put on the toolbar on the reasoning
+   * that a loop is not an action on the open report and would be invisible
+   * with nothing selected - and the second half was simply wrong:
+   * `ProjectFeedback` seeds `activeId` from the first item, so a non-empty
+   * list always has one open. An inbox with nothing selected is an EMPTY
+   * inbox, which is the one state where a loop has nothing to do. What the
+   * toolbar actually produced was two robot buttons on one page.
+   *
+   * `feedbackLoop` is offered whatever the open item's status, because it is
+   * about the queue and not about that item; `feedbackWork` only where there
+   * is something to work on, which a rejected report is not.
+   */
+  const promptItems = supportEnabled
+    ? [
+        ...(feedback.status === "rejected"
+          ? []
+          : [
+              {
+                kind: "feedbackWork" as const,
+                subject: () => promptSubject.forFeedback(feedback),
+              },
+            ]),
+        {
+          // Still surface-scoped: the loop names the inbox, never the item
+          // whose footer it happens to be drawn in, so it must not carry
+          // that item's `{{reference}}`.
+          kind: "feedbackLoop" as const,
+          subject: () => promptSubject.forFeedbackInbox(),
+        },
+      ]
+    : [];
   const feedbackApi = useClient<FeedbackController>();
   const router = useRouter<AppRouter>();
   const toaster = useToast();
@@ -384,19 +420,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu
-            iconOnly
-            items={
-              supportEnabled
-                ? [
-                    {
-                      kind: "feedbackWork" as const,
-                      subject: () => promptSubject.forFeedback(feedback),
-                    },
-                  ]
-                : []
-            }
-          />
+          <AgentPromptsMenu items={promptItems} />
         </div>
       )}
 
@@ -411,19 +435,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu
-            iconOnly
-            items={
-              supportEnabled
-                ? [
-                    {
-                      kind: "feedbackWork" as const,
-                      subject: () => promptSubject.forFeedback(feedback),
-                    },
-                  ]
-                : []
-            }
-          />
+          <AgentPromptsMenu items={promptItems} />
         </div>
       )}
 
@@ -432,6 +444,14 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
+          {/* ⚠️ This footer had no menu at all, and gains one rather than
+              being left out. The loop is about the INBOX, not about the item
+              open in front of it, so hiding it because the report you happen
+              to be looking at was rejected would make the control appear and
+              disappear on something unrelated to what it does. `promptItems`
+              drops `feedbackWork` here on its own: there is nothing to work
+              on in a rejected report. */}
+          <AgentPromptsMenu items={promptItems} />
         </div>
       )}
 

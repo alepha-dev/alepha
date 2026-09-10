@@ -86,6 +86,7 @@ export const ANALYTICS_DIMENSIONS = new Set([
   "referrer",
   "browser",
   "os",
+  "auth",
 ]);
 
 export class AppRouter {

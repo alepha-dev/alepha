@@ -1,5 +1,6 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
@@ -23,7 +24,7 @@ import { z } from "alepha";
 import type { InvitationEntity } from "alepha/api/invitations";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormValues } from "alepha/react/form";
-import { Localize, useI18n } from "alepha/react/i18n";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
 import { useState } from "react";
@@ -247,9 +248,10 @@ const ProjectSettingsMembersSection = (
                   </span>
                 </div>
 
-                <span className="text-muted-foreground text-xs">
-                  <Localize value={member.createdAt} date="fromNow" />
-                </span>
+                <TimeAgo
+                  value={member.createdAt}
+                  className="text-muted-foreground text-xs"
+                />
 
                 <ProjectMemberRankPicker
                   projectId={props.project.id}
@@ -341,9 +343,10 @@ const ProjectSettingsMembersSection = (
                       {tr("invitations.badge.pending")}
                     </Badge>
                   </div>
-                  <span className="text-muted-foreground text-xs">
-                    <Localize value={invitation.createdAt} date="fromNow" />
-                  </span>
+                  <TimeAgo
+                    value={invitation.createdAt}
+                    className="text-muted-foreground text-xs"
+                  />
                 </div>
                 {/* Owner-only, on the same condition as Invite above — the
                     endpoint refuses anyone else anyway, so showing it to a

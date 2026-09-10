@@ -18,7 +18,7 @@ export const appInsightsFiltersSchema = z.object({
   range: z.enum(["1d", "7d", "30d"]).optional(),
   traffic: z.enum(["all", "humans", "bots"]).optional(),
   /**
-   * The five view dimensions a leaderboard row can narrow the page to.
+   * The view dimensions a leaderboard row can narrow the page to.
    *
    * In the URL for the same three reasons the window is: a filtered view
    * survives a reload, travels in a link, and is reachable from the dimension
@@ -32,4 +32,5 @@ export const appInsightsFiltersSchema = z.object({
   device: z.string().optional(),
   browser: z.string().optional(),
   os: z.string().optional(),
+  auth: z.string().optional(),
 });

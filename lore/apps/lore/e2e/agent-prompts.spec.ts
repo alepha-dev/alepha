@@ -302,6 +302,9 @@ test.describe("agent prompts", () => {
         timeout: 15_000,
       });
 
+      // Page-wide again: the inbox toolbar's second robot button is gone
+      // (feedback #P2176), so this names one thing once more. It was scoped
+      // to `feedback-detail` for the fortnight the two coexisted.
       await page.getByRole("button", { name: /agent prompts/i }).click();
       await page.getByRole("menuitem", { name: /work on it/i }).click();
 

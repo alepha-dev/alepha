@@ -1,6 +1,6 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare } from "lucide-react";
 
@@ -29,7 +29,6 @@ export interface QuestDiscussionCommentProps {
 const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
   const { entry } = props;
   const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
 
   const user = entry.by
@@ -93,7 +92,7 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
                 {tr("quest.discussion.edited")}
               </span>
             )}
-            {dt.of(entry.at).fromNow()}
+            <TimeAgo value={entry.at} />
           </span>
         </div>
         <div className="border-border bg-muted/40 rounded-md border px-3 py-3">

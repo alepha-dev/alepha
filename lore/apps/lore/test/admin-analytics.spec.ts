@@ -49,6 +49,7 @@ describe("Lore admin analytics surface", () => {
         "traffic",
         "browser",
         "os",
+        "auth",
       ].sort(),
     );
     expect(Object.keys(views?.measures.properties ?? {}).sort()).toEqual(
@@ -75,13 +76,17 @@ describe("Lore admin analytics surface", () => {
       "sigilId",
       "traffic",
     ]);
-    // The two that prove the pin does its job. `browser` sorts BEFORE
+    // The three that prove the pin does its job. `browser` sorts BEFORE
     // `campaign` and `os` between `device` and `path`, so under the old
     // alphabetical derivation adding them would have moved every slot above
-    // and hidden another month of production data. Appended, they sit at 7 and
-    // 8 and nothing else moved - which the prefix assertion above is what
-    // actually checks.
-    expect(pinned.slice(7)).toEqual(["browser", "os"]);
+    // and hidden another month of production data.
+    //
+    // ⚠️ `auth` is the strongest case yet: it sorts FIRST of all nine, so
+    // alphabetical derivation would have pushed EVERY slot on this dataset
+    // along - not a suffix of them - and made every row production holds
+    // unreadable in one deploy. Appended, it sits at 9 and nothing moved,
+    // which is what the prefix assertion above actually checks.
+    expect(pinned.slice(7)).toEqual(["browser", "os", "auth"]);
     expect(analytics.views.dataset.slots.measures.slice(0, 3)).toEqual([
       "count",
       "engaged",

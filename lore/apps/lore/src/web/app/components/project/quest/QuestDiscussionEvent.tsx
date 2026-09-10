@@ -1,5 +1,5 @@
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   Archive,
@@ -49,7 +49,6 @@ export interface QuestDiscussionEventProps {
 const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
   const { entry } = props;
   const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
   // Keyed on the feedback id, so this and the badge on the quest above it
   // pay for one read between them. Disabled for the events that carry no
@@ -88,7 +87,7 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
                 {tr("quest.discussion.edited")}
               </span>
             )}
-            {dt.of(entry.at).fromNow()}
+            <TimeAgo value={entry.at} />
           </span>
         </div>
 
