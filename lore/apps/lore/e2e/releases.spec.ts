@@ -490,7 +490,7 @@ test.describe("Releases", () => {
     });
   });
 
-  test("the default release catches unfiled work, and publishing clears it", async ({
+  test("the default release catches unfiled work, and publishing hands it on", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -503,6 +503,12 @@ test.describe("Releases", () => {
       { options: { work: ["releases"] } },
     );
 
+    // `0.3.0` is created FIRST, out of version order: the default is handed
+    // on by parsed tag, and a fixture created in version order could not tell
+    // that from "the next release by number".
+    const next = await post<Release>(page, `/api/createRelease/${projectId}`, {
+      tag: "0.3.0",
+    });
     await post<Release>(page, `/api/createRelease/${projectId}`, {
       tag: "0.1.0",
     });
@@ -607,7 +613,7 @@ test.describe("Releases", () => {
       });
     });
 
-    await test.step("publishing the default clears it", async () => {
+    await test.step("publishing the default hands it to the next release", async () => {
       await page.goto(`/${slug}/releases/0.2.0`);
       await page.getByRole("button", { name: "Publish" }).first().click();
       await page
@@ -625,13 +631,31 @@ test.describe("Releases", () => {
 
       await page.goto(`/${slug}/releases`);
       const rows = page.locator("tbody tr");
+      await expect(rows).toHaveCount(3, { timeout: 15_000 });
+      await expect(rows.filter({ hasText: "Released" })).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      // `0.3.0`, the lowest open release above `0.2.0`. Never `0.1.0`, which
+      // is open too: intake does not move backwards.
+      const defaultRow = rows.filter({ has: defaultMarker() });
+      await expect(defaultRow).toHaveCount(1, { timeout: 15_000 });
+      await expect(defaultRow).toContainText("0.3.0");
+    });
+
+    await test.step("publishing the last one in line clears it", async () => {
+      // Through the API: the plate's Publish flow is the step above, and this
+      // one is about what the table shows once nothing is next in line.
+      await post(page, `/api/publishRelease/${next.id}`, {});
+
+      await page.goto(`/${slug}/releases`);
+      const rows = page.locator("tbody tr");
       // ⚠️ Wait for the table to PAINT before counting an absence.
       // `toHaveCount(0)` is trivially true on a tbody that has not rendered
       // yet, so a publish that silently failed would read as a cleared
       // default - which is exactly how this step passed while the release
       // was still open.
-      await expect(rows).toHaveCount(2, { timeout: 15_000 });
-      await expect(rows.filter({ hasText: "Released" })).toHaveCount(1, {
+      await expect(rows).toHaveCount(3, { timeout: 15_000 });
+      await expect(rows.filter({ hasText: "Released" })).toHaveCount(2, {
         timeout: 15_000,
       });
       await expect(rows.filter({ has: defaultMarker() })).toHaveCount(0);

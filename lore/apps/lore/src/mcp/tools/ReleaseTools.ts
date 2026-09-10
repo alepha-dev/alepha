@@ -197,7 +197,8 @@ export class ReleaseTools {
       "Point this project's intake at a release: from then on, a quest completed WITHOUT a release of its own, and inheriting none from its epic, lands in it, and an epic begun without a release takes it and carries it down to its own release-less quests. " +
       "⚠️ **Omit `tag` to CLEAR the default**, leaving the project with none - a normal state, and where every project starts. Exactly one release per project may be the default, and setting one clears the previous in the same write. " +
       "A quality-of-life fallback, never a plan: everything can still be attached by hand with release_attach and quest_update's `release_tag`, and a hotfix is still a release beside the one it patches. " +
-      "A PUBLISHED release is refused - reopen it first - and publishing the default clears it, because a published release cannot accept anything. Creating a release never makes it the default: only this call does.",
+      "A PUBLISHED release is refused - reopen it first. Publishing the default hands it on to the next open release (the lowest one above it whose patch is 0: the next minor, else the next major; never a patch, a prerelease or a named tag), or clears it when there is none, because a published release cannot accept anything. " +
+      "Creating a release never makes it the default, and a project with no default never gets one on its own: only this call starts one.",
     title: "Set the default release",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -290,6 +291,7 @@ export class ReleaseTools {
     description:
       "Publish a release: stamps its release date and FREEZES both its changelog and its four progress counts onto the row. " +
       "ONE-WAY. Afterwards nothing can be attached or detached, the release cannot be edited, and the counts are never recomputed - so completing a quest next month does not rewrite what this release shipped. `release_reopen` is the only way back. " +
+      "If this release is the project's DEFAULT, the default moves to the next open release (the next minor, else the next major; never a patch, a prerelease or a named tag), or is cleared when there is none; `release_list` shows where it went. Publishing any other release leaves the default alone. " +
       "A hotfix is NOT a reopening: create the next release beside this one and publish that.",
     title: "Publish release",
     annotations: { readOnlyHint: false, destructiveHint: false },
