@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "alepha dev",
-    "build": "alepha build --runtime=bun",
+    "build": "alepha build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
