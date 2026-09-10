@@ -8,7 +8,7 @@ import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Layers, User, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.ts";
@@ -84,7 +84,11 @@ const ProjectActivityPage = () => {
   const projectApi = useClient<ProjectController>();
   const dt = useInject(DateTimeProvider);
 
-  const [people, setPeople] = useState<{ id: string; label: string }[]>([]);
+  // `undefined` until the member list lands, which is a different answer from
+  // an empty list: see `showPeople`.
+  const [people, setPeople] = useState<
+    { id: string; label: string }[] | undefined
+  >(undefined);
   const [options, setOptions] = useState<{
     types: string[];
     actions: string[];
@@ -120,6 +124,34 @@ const ProjectActivityPage = () => {
     };
   }, [project, projectApi]);
 
+  /**
+   * Whether the people filter is offered at all (feedback #P2178).
+   *
+   * Not on a one-member project, where it lists the owner alone and can only
+   * ever select every row; and not before the member list has landed, rather
+   * than rendering an empty control that may then vanish. Read off the list
+   * the dropdown is filled from, so the decision costs no request.
+   */
+  const showPeople = (people?.length ?? 0) > 1;
+
+  /**
+   * ⚠️ A stored `userId` must not apply while the control is hidden.
+   * `AlephaTable` persists filters under `persistenceKey`, so one picked while
+   * the project had two members would keep narrowing the table after the
+   * control disappeared, with nothing on screen to clear it. So the fetch
+   * drops it while hidden, and says so here: when the control then turns up
+   * (the member list landing on a multi-member project) the table is asked
+   * once more, so the person shown in the control is the one applied.
+   */
+  const droppedUserId = useRef(false);
+  const [refetch, setRefetch] = useState(0);
+  useEffect(() => {
+    if (showPeople && droppedUserId.current) {
+      droppedUserId.current = false;
+      setRefetch((n) => n + 1);
+    }
+  }, [showPeople]);
+
   const fetchActivity = async ({
     page,
     size,
@@ -134,16 +166,19 @@ const ProjectActivityPage = () => {
     if (!project) {
       return emptyPage(page, size);
     }
+    // `""` is what a cleared Control sends, and it is not a filter: sent
+    // through, it would select the rows whose column is the empty string,
+    // which is none of them.
+    const userId: string | undefined = filters?.userId || undefined;
+    droppedUserId.current = !showPeople && userId !== undefined;
     return await projectApi.getProjectActivity({
       params: { id: project.id },
       query: {
         page,
         size,
         sort,
-        // `""` is what a cleared Control sends, and it is not a filter: sent
-        // through, it would select the rows whose column is the empty string,
-        // which is none of them.
-        userId: filters?.userId || undefined,
+        // Only while the control is on screen. See `droppedUserId`.
+        userId: showPeople ? userId : undefined,
         // Comma-joined, which `AuditService.find` splits back into one
         // condition. A single value still produces the `eq` it always did.
         type: filters?.type?.length ? filters.type.join(",") : undefined,
@@ -182,24 +217,27 @@ const ProjectActivityPage = () => {
         defaultSort={{ field: "createdAt", direction: "desc" }}
         emptyMessage={tr("activity.empty")}
         fetch={fetchActivity}
+        refreshSignal={refetch}
         filters={{
           schema: activityFiltersSchema,
           render: (form) => (
             <div className="flex flex-wrap gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.userId}
-                  label=""
-                  clearable
-                  icon={User}
-                  clearLabel={String(tr("activity.filter.allPeople"))}
-                  triggerClassName="w-full"
-                  items={people.map((person) => ({
-                    label: person.label,
-                    value: person.id,
-                  }))}
-                />
-              </FilterSlot>
+              {showPeople && (
+                <FilterSlot>
+                  <Control
+                    input={form.input.userId}
+                    label=""
+                    clearable
+                    icon={User}
+                    clearLabel={String(tr("activity.filter.allPeople"))}
+                    triggerClassName="w-full"
+                    items={(people ?? []).map((person) => ({
+                      label: person.label,
+                      value: person.id,
+                    }))}
+                  />
+                </FilterSlot>
+              )}
               <FilterSlot>
                 <Control
                   input={form.input.type}
