@@ -264,6 +264,8 @@ export class DeployService {
         );
       }
 
+      const project = await this.projectSegmentOf(instance);
+
       // ⚠️ A wedged deploy that holds a `$job` execution open forever is worse
       // than a failed one: the row stays `running`, the UI follows it, and the
       // operator cannot retry. The race is what makes the timeout terminal -
@@ -272,7 +274,7 @@ export class DeployService {
         row,
         this.runner.run({
           artifact,
-          project: await this.projectSegmentOf(instance),
+          project,
           env: instance.env,
           domain: instance.url ? new URL(instance.url).host : undefined,
           deploymentId: row.id,
@@ -282,7 +284,7 @@ export class DeployService {
           // a Worker shipped without one of its variables boots half
           // configured and fails as whatever that variable was holding
           // together.
-          secrets: await this.openSecrets(instance.id),
+          secrets: await this.openSecrets(instance, project),
           credential: {
             apiToken: this.seal.open(
               estate.credential,
@@ -376,17 +378,25 @@ export class DeployService {
       return slug;
     }
 
-    // ⚠️ The full name the runner and `NamingService` will compose between
-    // them: the runner joins this segment to the app, and `NamingService`
-    // joins that to the env. Restated here so the comparison is against what
-    // will actually be created, not against a piece of it.
-    const wanted = this.slugify(`${slug}-${instance.app}-${instance.env}`);
+    const wanted = this.workerNameOf(slug, instance);
     if (recorded !== wanted) {
       throw new BadRequestError(
         `${instance.app}/${instance.env} was deployed as \`${recorded}\` and this deploy would target \`${wanted}\`. Cloudflare cannot rename, so deploying would create empty resources beside the ones this copy is using. Rename the project back, or destroy this copy and deploy it again to move it deliberately.`,
       );
     }
     return slug;
+  }
+
+  /**
+   * The Worker name this copy deploys under, `<project>-<app>-<env>`.
+   *
+   * ⚠️ The full name the runner and `NamingService` will compose between
+   * them: the runner joins the project segment to the app, and
+   * `NamingService` joins that to the env. Restated here so a comparison is
+   * against what will actually be created, not against a piece of it.
+   */
+  protected workerNameOf(project: string, instance: AppInstance): string {
+    return this.slugify(`${project}-${instance.app}-${instance.env}`);
   }
 
   /**
@@ -538,7 +548,7 @@ export class DeployService {
   }
 
   /**
-   * The copy's variables, minting the one no operator should have to.
+   * The copy's variables, filling in the ones no operator should have to.
    *
    * ⚠️ **Before `open`, and only ever adding what is missing.** Every Alepha
    * app refuses to boot in production without `APP_SECRET`, and that refusal
@@ -546,12 +556,69 @@ export class DeployService {
    * a copy nobody set one on deployed "successfully" and then answered 500,
    * five layers from the cause. `ensureGenerated` writes the row once and
    * leaves an existing value alone, so an operator who set their own keeps it.
+   *
+   * {@link APP_NAME} is filled the same way, on a first deploy only.
    */
   protected async openSecrets(
-    instanceId: string,
+    instance: AppInstance,
+    project: string,
   ): Promise<Record<string, string>> {
-    await this.secrets.ensureGenerated(instanceId);
-    return await this.secrets.open(instanceId);
+    await this.secrets.ensureGenerated(instance.id);
+    if (!(await this.hasBeenDeployed(instance))) {
+      await this.secrets.ensureDefault(
+        instance.id,
+        DeployService.APP_NAME,
+        this.workerNameOf(project, instance),
+      );
+    }
+    return await this.secrets.open(instance.id);
+  }
+
+  /**
+   * The name a copy is given on its first deploy: its Worker name,
+   * `<project>-<app>-<env>`, so it reads the same in its own logs, in the
+   * Cloudflare dashboard and in Lore. Bay gives its instances `<app>-<env>`
+   * the same way.
+   *
+   * ## ⚠️ A default, and stored
+   *
+   * `APP_NAME` is more than a log label: it prefixes the session cookie, and
+   * it is the key prefix of the copy's bucket when `S3_KEY_PREFIX` is unset.
+   * So it is durable state, like `APP_SECRET` - written once and read on every
+   * deploy after, never recomputed. A value on the Environment tab wins, and so
+   * does one the app declares in code, which the framework keeps over anything
+   * the environment says.
+   *
+   * ## ⚠️ Never given to a copy that has already been deployed
+   *
+   * Such a copy may hold objects at the root of its bucket, and a prefix
+   * appearing under it would make every one of them 404, with nothing
+   * reporting it - on top of signing every user out once. An operator can
+   * still set it on the Environment tab, knowing that. Deleting the stored
+   * value is how a copy opts out: a copy that has deployed is never given it
+   * again.
+   */
+  public static readonly APP_NAME = "APP_NAME";
+
+  /**
+   * Whether this copy has ever gone live.
+   *
+   * Two signals, because both are written best-effort after a successful run
+   * ({@link recordResources} and `DeployRegistry.succeeded` each swallow a
+   * failed write), so either can be missing from a copy that is live. Asking
+   * both means a copy is misread as new only when both writes were lost.
+   */
+  protected async hasBeenDeployed(instance: AppInstance): Promise<boolean> {
+    if (this.recordedWorker(instance)) {
+      return true;
+    }
+    const succeeded = await this.rows.findOne({
+      where: {
+        instanceId: { eq: instance.id },
+        status: { eq: "succeeded" },
+      },
+    });
+    return !!succeeded;
   }
 
   protected async withTimeout<T>(
