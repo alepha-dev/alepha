@@ -175,6 +175,44 @@ const sentDeploy = async (
 };
 
 /**
+ * A copy holding what a first Cloudflare deploy stores for it, APP_SECRET and
+ * APP_NAME, plus one variable of the operator's, since pointed at this
+ * machine's estate.
+ *
+ * The rows are written BEFORE the move because the Environment tab refuses
+ * Bay's names on a Bay copy: this is a state a copy arrives in, never one it
+ * can be put in once it is there.
+ */
+const movedToBay = async (
+  ctx: TestContext,
+  projectId: number,
+  machine: Machine,
+) => {
+  const instance = await ctx.repos.instances.create({
+    projectId,
+    app: "my-app",
+    env: "production",
+  } as never);
+  const secrets = ctx.alepha.inject(AppSecretService);
+  // What `DeployService.openSecrets` leaves behind on a first deploy.
+  await secrets.ensureGenerated(instance.id);
+  await secrets.ensureDefault(
+    instance.id,
+    DeployService.APP_NAME,
+    "acme-my-app-production",
+  );
+  await secrets.set({
+    instanceId: instance.id,
+    key: "STRIPE_SECRET_KEY",
+    value: "sk_live_abcdefghijkl",
+  });
+  await ctx.repos.instances.updateById(instance.id, {
+    estateId: machine.estate.id,
+  });
+  return instance;
+};
+
+/**
  * A refusal minus its per-request id, which is the one field two identical
  * refusals legitimately differ on.
  */
@@ -420,26 +458,7 @@ describe("EstatePullController, the secret set", () => {
     const project = await createTestProject(ctx.alepha);
     const machine = await enrol(ctx, owner, "ovh-1");
     const artifact = await storeArtifact(ctx, project.id, "1.0.0");
-
-    const instance = await ctx.repos.instances.create({
-      projectId: project.id,
-      app: "my-app",
-      env: "production",
-      estateId: machine.estate.id,
-    } as never);
-    const secrets = ctx.alepha.inject(AppSecretService);
-    // What `DeployService.openSecrets` leaves behind on a first deploy.
-    await secrets.ensureGenerated(instance.id);
-    await secrets.ensureDefault(
-      instance.id,
-      DeployService.APP_NAME,
-      "acme-my-app-production",
-    );
-    await secrets.set({
-      instanceId: instance.id,
-      key: "STRIPE_SECRET_KEY",
-      value: "sk_live_abcdefghijkl",
-    });
+    await movedToBay(ctx, project.id, machine);
 
     const command = await sentDeploy(ctx, machine, artifact);
     const res = await pull(ctx, "secrets", command.id, machine.secret);
@@ -461,20 +480,8 @@ describe("EstatePullController, the secret set", () => {
     const project = await createTestProject(ctx.alepha);
     const machine = await enrol(ctx, owner, "ovh-1");
     const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+    const instance = await movedToBay(ctx, project.id, machine);
 
-    const instance = await ctx.repos.instances.create({
-      projectId: project.id,
-      app: "my-app",
-      env: "production",
-      estateId: machine.estate.id,
-    } as never);
-    const secrets = ctx.alepha.inject(AppSecretService);
-    await secrets.ensureGenerated(instance.id);
-    await secrets.set({
-      instanceId: instance.id,
-      key: "STRIPE_SECRET_KEY",
-      value: "sk_live_abcdefghijkl",
-    });
     const generated = await ctx.repos.secrets.getOne({
       where: {
         instanceId: { eq: instance.id },
