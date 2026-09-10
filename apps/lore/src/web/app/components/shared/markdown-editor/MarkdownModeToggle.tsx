@@ -4,7 +4,7 @@ import { BookOpen, Pencil } from "lucide-react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { MarkdownEditorMode } from "./MarkdownEditorInner.tsx";
+import type { MarkdownEditorMode } from "./MarkdownEditorInner.client.tsx";
 
 export interface MarkdownModeToggleProps {
   mode: MarkdownEditorMode;

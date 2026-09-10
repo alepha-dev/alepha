@@ -236,6 +236,7 @@
     },
     "./email/smtp": {
       "types": "./src/email/smtp/index.ts",
+      "workerd": "./src/email/smtp/index.workerd.ts",
       "import": "./src/email/smtp/index.ts",
       "default": "./src/email/smtp/index.ts"
     },
@@ -685,6 +686,7 @@
       },
       "./email/smtp": {
         "types": "./dist/email/smtp/index.d.ts",
+        "workerd": "./dist/email/smtp/index.workerd.js",
         "import": "./dist/email/smtp/index.js",
         "default": "./dist/email/smtp/index.js"
       },

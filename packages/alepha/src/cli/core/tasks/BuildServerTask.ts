@@ -121,6 +121,7 @@ export class BuildServerTask extends BuildTask {
 
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
+    plugins.push(this.viteUtils.createClientModulesPlugin());
 
     if (opts.conditions?.includes("workerd")) {
       plugins.push(this.workerdCreateRequirePlugin());

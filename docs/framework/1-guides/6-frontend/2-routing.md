@@ -160,6 +160,32 @@ Disable server-side rendering for the page component (`@default true`). With `ss
 ssr: false;
 ```
 
+#### Browser-only modules: `*.client.tsx`
+
+`ssr: false` stops the server from rendering a page, not from bundling it: the
+build follows every `import()` it can see, so an editor or a chart library
+reached only from a client-rendered page still ships in the server bundle.
+Name the file that pulls it in `*.client.tsx` (or `.client.ts`) and it does not
+exist on the server. Every server-side build, and the server half of
+`alepha dev`, replaces it with a component that renders nothing, so nothing it
+imports is resolved there. The browser gets the real module.
+
+```tsx
+// Reports.client.tsx imports the chart library. The server never sees it.
+reports = $page({
+  path: "/reports",
+  ssr: false,
+  lazy: () => import("./components/Reports.client.tsx"),
+});
+```
+
+Reach a `.client` module only from code the server never renders: a lazy page
+that is not server-rendered (`ssr: false`, or beneath a guarded layout such as
+`$secure()`), or a component inside `<ClientOnly>`. Rendered on the server
+anyway, it renders nothing and hydration reports the mismatch. Server code that
+imports one of its exports **by name** fails the build. Files under
+`node_modules` are never replaced.
+
 ### stream
 
 Buffer the HTML instead of streaming it, so the page can choose its status code (`@default true`).
