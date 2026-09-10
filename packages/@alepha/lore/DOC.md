@@ -242,3 +242,41 @@ a later step meaning to deploy exactly these bytes should read the second.
 
 A push that cannot happen exits non-zero. There is no `--soft`: the safety
 belongs where the command runs, and the CI step that runs it gates no deploy.
+
+### `secrets`
+
+A deployed copy's secrets live in Lore, sealed, one set per copy. Every deploy
+uploads the whole set, so the machine that runs a deploy needs no value at all:
+a CI job holds `LORE_API_KEY` and nothing else.
+
+```bash
+lore secrets set STRIPE_SECRET_KEY=sk_live_... --app platform --env production
+lore secrets set STRIPE_SECRET_KEY --app platform --env production   # value from $STRIPE_SECRET_KEY
+lore secrets set --file .env.production --app platform --env production
+lore secrets list --app platform --env production                    # keys, masked
+lore secrets unset STRIPE_SECRET_KEY --app platform --env production
+```
+
+| command               |                                                                              |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `set KEY=VALUE`       | One secret. Everything after the first `=` is the value.                     |
+| `set KEY`             | One secret, its value read from `$KEY`: out of shell history, and CI-shaped. |
+| `set --file <dotenv>` | Every key of the file, `SIGIL_KEY` and empty values aside.                   |
+| `list`                | The keys, with Lore's masked prefix.                                         |
+| `unset KEY`           | Removes one.                                                                 |
+
+A change applies on the copy's **next deploy**.
+
+⚠️ **`--env` is required, and never guessed.** `deploy` falls back to
+`LORE_ENV` and to an app's only copy; these do not, because `set --file
+.env.staging` in an app whose only copy is production would write staging's
+secrets into production without the word ever appearing on screen. A copy that
+does not exist is refused, never created.
+
+⚠️ **A file import leaves `SIGIL_KEY` alone.** Lore mints each copy's sigil and
+stores its key; an env file carrying an older one would point the copy at
+another sigil. `set SIGIL_KEY=...` one by one still overrides it.
+
+A value is never printed, by any of the three. When Lore refuses a key (a name
+the platform owns, like `DATABASE_URL`, or an oversized value), the rest of a
+file is still set and the command then fails naming each refusal.
