@@ -170,7 +170,7 @@ export const projectContextResultSchema = z.object({
    */
   activeQuests: z.array(questOrientationRefSchema).optional(),
   /**
-   * The project's epic index — every epic, planned/active/done alike (this
+   * The project's epic index — every epic, whatever its status (this
    * is never gated, same as an epic's own view of itself). Kept to number,
    * title, status, questCount and completed deliberately: this is paid for
    * on every `project_context` call, and its whole job is to make a parked

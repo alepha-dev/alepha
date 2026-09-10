@@ -40,10 +40,10 @@ import { EpicProgressService } from "./EpicProgressService.ts";
  * again. A number two surfaces disagree about with nothing on screen
  * explaining why is the exact failure the reuse rule exists to avoid.
  *
- * ## A concluded epic
+ * ## A completed epic
  *
- * The card stays and says so (D3 of the epic). An epic's status is a one-way
- * ratchet and `done` is terminal, so the number is settled rather than stale.
+ * The card stays and says so (D3 of the epic). `completed` is terminal, so
+ * the number is settled rather than stale.
  * Repointing is the Edit item the card menu already has: no auto-repoint and
  * no self-deletion, because a card is somebody's configuration and a board
  * that quietly rewrites itself is worse than one that goes visibly stale.
