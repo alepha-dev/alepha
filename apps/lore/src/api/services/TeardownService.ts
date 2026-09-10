@@ -20,6 +20,14 @@ export interface RecordedResources {
   r2?: string;
   kv?: { name: string; id: string };
   queue?: string;
+  /**
+   * The job queue's dead-letter queue, made beside it by the same deploy.
+   *
+   * ⚠️ Absent from every record written before the adapter recorded it, and
+   * {@link TeardownService.read} is the one place that fills it in. See there
+   * for why that is not the name-guessing the rest of this service refuses.
+   */
+  dlq?: string;
 }
 
 /**
@@ -64,11 +72,53 @@ export class TeardownService {
     if (!instance.resources) {
       return undefined;
     }
+    let record: RecordedResources;
     try {
-      return JSON.parse(instance.resources) as RecordedResources;
+      record = JSON.parse(instance.resources) as RecordedResources;
     } catch {
       return undefined;
     }
+    return this.withDeadLetterQueue(record);
+  }
+
+  /**
+   * A record that names a job queue, completed with the dead-letter queue its
+   * deploy made beside it.
+   *
+   * ## ⚠️ The one derived name here, and why it is not a guess
+   *
+   * Everything else this service deletes, it deletes because a deploy wrote it
+   * down. A record naming a `queue` and no `dlq` was written before
+   * `WorkerCloudflareAdapter` recorded one, and honouring only what it names
+   * would leave `<queue>-dlq` standing in the estate's account with nothing
+   * left anywhere that knows its name.
+   *
+   * It can be shown to be the one Lore made. In every version of the adapter
+   * that recorded `queue` - from 229a6632b, which started recording, to the
+   * change that added `dlq` - the provision step awaited the ensure of
+   * `<name>-dlq` and only then wrote `queue = name`, from the same `name`, in
+   * the same handler, and `DeployService.recordResources` is the column's
+   * only writer. So a record carrying `queue` proves its deploy got past that
+   * ensure, and the derived name has exactly the provenance the recorded
+   * queue has: no less, and no more, since `ensureQueue` adopts an existing
+   * queue for both.
+   *
+   * Done here and not in the adapter, which deletes only what it is handed:
+   * this side knows which deploys wrote the row, and `strike` has to see the
+   * name, or a failed delete of it would be struck along with its queue and
+   * never be retried.
+   *
+   * A newer record reaches this too when a teardown removed the dead-letter
+   * queue but not the queue. The retry derives it again, and `deleteQueue`
+   * answers quietly for a queue that is already gone.
+   *
+   * Delete this once no stored record names a `queue` without a `dlq`.
+   */
+  protected withDeadLetterQueue(record: RecordedResources): RecordedResources {
+    if (!record?.queue || record.dlq) {
+      return record;
+    }
+    return { ...record, dlq: `${record.queue}-dlq` };
   }
 
   /**

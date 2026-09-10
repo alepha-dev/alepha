@@ -218,9 +218,10 @@ take.
 For every other copy:
 
 ⚠️ **The database, the bucket and any Durable Object storage are kept.** Lore
-removes what a redeploy puts back - the Worker, the queue, the cache namespace -
-and never what it cannot: a D1 database and an R2 bucket are what the app was
-serving, and Cloudflare offers no rename and no archive to soften deleting one.
+removes what a redeploy puts back - the Worker, the job queue and its
+dead-letter queue, the cache namespace - and never what it cannot: a D1
+database and an R2 bucket are what the app was serving, and Cloudflare offers no
+rename and no archive to soften deleting one.
 
 An app that uses websockets also runs a Durable Object namespace, and that one
 **is** removed with the Worker. It is not the same kind of thing as a database:

@@ -753,4 +753,113 @@ describe("the worker-side Cloudflare adapter", () => {
       expect(steps.join("\n")).not.toContain("resolve workers.dev address");
     });
   });
+  /**
+   * ⚠️ A job queue comes with a dead-letter queue Lore makes beside it, so it
+   * is one Lore has to record.
+   *
+   * `provision` ensures `<name>-dlq` because a consumer naming a dead-letter
+   * queue Cloudflare does not have is refused at bind time. Until it was
+   * recorded, every teardown of a copy with a job queue left it standing in the
+   * estate's account, with nothing on Lore's side that could name it again.
+   */
+  describe("the dead-letter queue", () => {
+    const recordingProvisioner = (failing: string[] = []) => {
+      const calls: string[] = [];
+      const remove = (kind: string) => async (name: string) => {
+        calls.push(`${kind}:${name}`);
+        if (failing.includes(name)) {
+          throw new Error(`${name} could not be deleted`);
+        }
+      };
+      return {
+        calls,
+        provisioner: {
+          deleteWorker: remove("worker"),
+          deleteQueue: remove("queue"),
+          deleteKV: remove("kv"),
+        },
+      };
+    };
+
+    it("is recorded beside the queue it serves", async ({ expect }) => {
+      const { adapter, naming } = setup();
+      adapter.use(credential);
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => ({
+          ensureQueue: async (name: string) => ({
+            queue_id: "q",
+            queue_name: name,
+          }),
+        }),
+      });
+
+      await adapter.provision(context(naming, { hasQueue: true }), run);
+
+      expect(adapter.provisionedResources).toEqual({
+        queue: "my-app-staging",
+        dlq: "my-app-staging-dlq",
+      });
+    });
+
+    it("is deleted after the queue it serves", async ({ expect }) => {
+      const { adapter } = setup();
+      adapter.use(credential);
+      const { calls, provisioner } = recordingProvisioner();
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => provisioner,
+      });
+
+      const result = await adapter.teardownRecorded({
+        worker: "w",
+        queue: "q",
+        dlq: "q-dlq",
+        kv: { name: "k", id: "kv-id" },
+      });
+
+      // The queue first: its consumer is what names the dead-letter queue, so
+      // the referrer goes before what it refers to.
+      expect(calls).toEqual(["worker:w", "queue:q", "queue:q-dlq", "kv:kv-id"]);
+      expect(result.removed).toEqual(["worker", "queue", "dlq", "kv"]);
+    });
+
+    it("is reported when it cannot be deleted, never thrown", async ({
+      expect,
+    }) => {
+      const { adapter } = setup();
+      adapter.use(credential);
+      const { provisioner } = recordingProvisioner(["q-dlq"]);
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => provisioner,
+      });
+
+      const result = await adapter.teardownRecorded({
+        queue: "q",
+        dlq: "q-dlq",
+      });
+
+      // Reported, so the caller strikes the queue from the record and keeps
+      // the dead-letter queue for the retry to find.
+      expect(result.removed).toEqual(["queue"]);
+      expect(result.failed).toEqual([
+        { resource: "dlq", message: "q-dlq could not be deleted" },
+      ]);
+    });
+
+    it("is never derived from the queue's name", async ({ expect }) => {
+      // ⚠️ The adapter deletes what the record names and nothing else. A record
+      // written before the dead-letter queue was recorded is completed by
+      // `TeardownService.read` in Lore, the one side that knows which deploys
+      // wrote it.
+      const { adapter } = setup();
+      adapter.use(credential);
+      const { calls, provisioner } = recordingProvisioner();
+      Object.assign(adapter as unknown as Record<string, unknown>, {
+        provisioner: () => provisioner,
+      });
+
+      await adapter.teardownRecorded({ queue: "q" });
+
+      expect(calls).toEqual(["queue:q"]);
+    });
+  });
 });
