@@ -205,7 +205,7 @@ export const WorktreeView = (props: WorktreeViewProps) => {
           {!props.state?.sources.lore && worktree.quests.length > 0 && (
             <DetailRow label="Titles">
               <span className="text-muted-foreground">
-                Set LORE_API_KEY to show titles and epics.
+                Put a Lore API key in ~/.lore-api-key to show titles and epics.
               </span>
             </DetailRow>
           )}

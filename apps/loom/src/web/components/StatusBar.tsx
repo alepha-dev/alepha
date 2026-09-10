@@ -94,7 +94,7 @@ export const StatusBar = (props: StatusBarProps) => {
       {state && !state.sources.lore && (
         <span
           className="opacity-80"
-          title="Set LORE_API_KEY to show quest titles and epics."
+          title="Put a Lore API key in ~/.lore-api-key to show quest titles and epics."
         >
           Lore: numbers only
         </span>

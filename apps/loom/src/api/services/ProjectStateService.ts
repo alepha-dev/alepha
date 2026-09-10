@@ -184,7 +184,7 @@ export class ProjectStateService {
       base,
       github,
       worktrees,
-      sources: { gh: ci !== undefined, lore: this.lore.enabled() },
+      sources: { gh: ci !== undefined, lore: await this.lore.enabled() },
       collectedAt: this.dateTime.nowISOString(),
       took: this.dateTime.nowMillis() - started,
     };
