@@ -32,12 +32,6 @@ type fakeLore struct {
 	// treats a missing pong as a drop must redial.
 	answerPings atomic.Bool
 	dials       atomic.Int32
-
-	// conns is every socket accepted, so hangUp can close them; hungUp
-	// makes it close any accepted after it too.
-	mu     sync.Mutex
-	conns  []*websocket.Conn
-	hungUp bool
 }
 
 type loreSession struct {
@@ -65,10 +59,6 @@ func newFakeLore(t *testing.T) *fakeLore {
 		if err != nil {
 			return
 		}
-		if !l.track(conn) {
-			_ = conn.Close()
-			return
-		}
 		s := &loreSession{conn: conn, frames: make(chan map[string]any, 16)}
 		conn.SetPingHandler(func(data string) error {
 			s.pings.Add(1)
@@ -94,38 +84,6 @@ func newFakeLore(t *testing.T) *fakeLore {
 // sink is the http origin the client is configured with; loopback, so
 // cleartext is allowed and ws:// is what gets dialed.
 func (l *fakeLore) sink() string { return l.srv.URL }
-
-// track records an accepted socket for hangUp. False once the fake has hung
-// up, so a dial that raced the hang-up is closed as well.
-func (l *fakeLore) track(conn *websocket.Conn) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.hungUp {
-		return false
-	}
-	l.conns = append(l.conns, conn)
-	return true
-}
-
-/*
-hangUp closes every socket from this side, which is how a cancelled client gets
-out of ReadJSON.
-
-Cancelling Run's context does not close the client's socket, so its read stays
-blocked until a frame arrives or the read deadline passes. The deadline is the
-keepalive's, 40 s out with the production defaults, and no test arms a shorter
-one unless the keepalive is what it tests. The sink hanging up is what ends the
-read instead: it fails, the client sees its context done, and Run returns.
-*/
-func (l *fakeLore) hangUp() {
-	l.mu.Lock()
-	l.hungUp = true
-	conns := l.conns
-	l.mu.Unlock()
-	for _, conn := range conns {
-		_ = conn.Close()
-	}
-}
 
 func (l *fakeLore) session(t *testing.T) *loreSession {
 	t.Helper()
@@ -252,6 +210,10 @@ type clientFixture struct {
 	client  *Client
 	handler *recordingHandler
 	reload  chan struct{}
+	// cancel ends Run's context, and done closes once Run has returned. The
+	// cleanup does both; a test about shutdown may do it first.
+	cancel context.CancelFunc
+	done   <-chan struct{}
 }
 
 func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
@@ -292,14 +254,14 @@ func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
 	}()
 	t.Cleanup(func() {
 		cancel()
-		lore.hangUp()
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
 			t.Error("Run did not return after cancel")
 		}
 	})
-	return &clientFixture{lore: lore, store: store, client: client, handler: handler, reload: reload}
+	return &clientFixture{lore: lore, store: store, client: client, handler: handler, reload: reload,
+		cancel: cancel, done: done}
 }
 
 func eventually(t *testing.T, what string, ok func() bool) {
@@ -501,6 +463,22 @@ func TestClientPingsAndTreatsAMissingPongAsADrop(t *testing.T) {
 	second := f.lore.session(t)
 	if second.frame(t)["type"] != "hello" {
 		t.Fatal("a missing pong must end in a redial")
+	}
+}
+
+func TestClientRunReturnsOnCancelWithoutWaitingOutTheReadDeadline(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{configured: true})
+	s := f.lore.session(t)
+	_ = s.frame(t) // hello: the client now sits in its read
+
+	// The production keepalive puts the read deadline 40 s out, and this sink
+	// neither sends another frame nor hangs up. Only the client can end the
+	// read, and it must, because cancelling is how its owner shuts it down.
+	f.cancel()
+	select {
+	case <-f.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run did not return within 5 s of cancel: the read waited for its deadline")
 	}
 }
 
@@ -916,7 +894,6 @@ func TestQueryAnswersWhileTheExecutorIsBusy(t *testing.T) {
 	t.Cleanup(func() {
 		close(handler.release)
 		cancel()
-		lore.hangUp()
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
