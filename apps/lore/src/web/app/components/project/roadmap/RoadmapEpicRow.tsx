@@ -58,14 +58,15 @@ const RoadmapEpicRow = (props: RoadmapEpicRowProps) => {
             first") that could not be rendered, sorted or checked.
 
             "After Epic 7", and deliberately not "Blocked by Epic 7", even
-            though the field is a gate since epic #31 (Begin is refused while
-            the predecessor is not done). A roadmap draws ORDER, and the
-            order is exactly as true now as when the field was advisory.
+            though the field is a gate since epic #31 (the epic cannot start
+            while the predecessor is not completed). A roadmap draws ORDER,
+            and the order is exactly as true now as when the field was
+            advisory.
             Whether the gate currently blocks needs the predecessor's status,
             which this row does not have: `roadmapEpicSchema` is a closed
             `pick` with a pinned key set, the page may be public, and the
             predecessor may sit in no release at all. "Blocked by" belongs
-            where Begin is clickable, on the epic page, which reads
+            on the epic page, beside its status control, which reads
             `dependsOnStatus` off the full resource. The rows are also sorted
             so the predecessor is already above this one. */}
         {dependsOnNumber !== undefined ? (
