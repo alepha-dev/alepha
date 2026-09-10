@@ -47,6 +47,36 @@ export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The keys Bay writes into every instance's `.env` itself.
+ *
+ * A mirror of `bayOwnedKeys` in `apps/bay/internal/deploy/deploy.go`, which
+ * is the authority: Bay REFUSES a secrets file holding one of these, naming
+ * it, and the refusal fails the whole deploy. `BayAdapter.spec.ts` reads the
+ * Go source and fails if the two lists diverge.
+ *
+ * Here rather than on `BayAdapter` because Lore reads it too, under
+ * workerd, when it answers a Bay machine's secret pull - and `BayAdapter`
+ * shells out, so the workerd entry of this module does not carry it.
+ * `BayAdapter.BAY_OWNED_KEYS` is this same set.
+ */
+export const BAY_OWNED_SECRET_KEYS: ReadonlySet<string> = new Set([
+  "NODE_ENV",
+  "DATABASE_URL",
+  "APP_SECRET",
+  "STORAGE_PATH",
+  "DATA_DIR",
+  "SERVER_PORT",
+  "SERVER_HOST",
+  "APP_NAME",
+  "S3_ENDPOINT",
+  "S3_BUCKET_NAME",
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+  "S3_REGION",
+  "S3_KEY_PREFIX",
+]);
+
+/**
  * Every key the app declares via `$env`, read from `dist/manifest.json`.
  *
  * This is the **allowlist**, and it is what makes reading `process.env` safe at

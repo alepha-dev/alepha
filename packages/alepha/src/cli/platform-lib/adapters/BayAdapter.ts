@@ -9,6 +9,7 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { platformOptions } from "../atoms/platformOptions.ts";
 import {
+  BAY_OWNED_SECRET_KEYS,
   EXCLUDED_SECRET_KEYS,
   readManifestEnvKeys,
   selectSecrets,
@@ -781,23 +782,12 @@ export class BayAdapter extends PlatformAdapter {
    * source and fails if the two lists diverge. Without that, a key added on
    * the Go side would not break anything here — it would just start failing
    * every deploy of any app that happens to set it.
+   *
+   * The set itself is {@link BAY_OWNED_SECRET_KEYS}, declared beside the
+   * platform-wide list: Lore answers a Bay machine's secret pull from a
+   * Worker, which cannot import this adapter.
    */
-  static readonly BAY_OWNED_KEYS: ReadonlySet<string> = new Set([
-    "NODE_ENV",
-    "DATABASE_URL",
-    "APP_SECRET",
-    "STORAGE_PATH",
-    "DATA_DIR",
-    "SERVER_PORT",
-    "SERVER_HOST",
-    "APP_NAME",
-    "S3_ENDPOINT",
-    "S3_BUCKET_NAME",
-    "S3_ACCESS_KEY_ID",
-    "S3_SECRET_ACCESS_KEY",
-    "S3_REGION",
-    "S3_KEY_PREFIX",
-  ]);
+  static readonly BAY_OWNED_KEYS: ReadonlySet<string> = BAY_OWNED_SECRET_KEYS;
 
   /**
    * Everything this adapter refuses to push, in one set.

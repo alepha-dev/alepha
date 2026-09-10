@@ -261,11 +261,22 @@ export class AppSecretService {
    * happen, and shipping a Worker that is missing one variable is worse than
    * not shipping: the app boots, half-configured, and the fault surfaces as
    * whatever that variable was holding together.
+   *
+   * `except` names what the caller will not deliver, and those rows are
+   * skipped BEFORE they are opened rather than dropped after: a value that is
+   * never sent has no business being decrypted, and a row that fails to open
+   * must not refuse a deploy it would never have reached.
    */
-  public async open(instanceId: string): Promise<Record<string, string>> {
+  public async open(
+    instanceId: string,
+    options: { except?: ReadonlySet<string> } = {},
+  ): Promise<Record<string, string>> {
     const rows = await this.list(instanceId);
     const set: Record<string, string> = {};
     for (const row of rows) {
+      if (options.except?.has(row.key)) {
+        continue;
+      }
       try {
         set[row.key] = this.seal.open(
           row.valueSealed,
