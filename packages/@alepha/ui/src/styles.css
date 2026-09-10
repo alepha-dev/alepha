@@ -368,6 +368,45 @@
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+ * A sidebar entry sinks on press the way a Button does (feedback #P2181).
+ *
+ * `Button` nudges down one pixel with
+ * `not-disabled:active:not-aria-[haspopup]:translate-y-px` under
+ * `transition-all`; this is the same nudge, with the same exclusions, on
+ * `SidebarMenuButton`. Here rather than in `sidebar.tsx` for the reason the
+ * active bar above is: `yarn w @alepha/ui sync` overwrites that file.
+ *
+ * - `aria-haspopup` is excluded as Button excludes it: a trigger that sinks
+ *   reads as a button that did something rather than one that opened. Lore's
+ *   project switcher renders through `SidebarMenuButton` as a menu trigger,
+ *   and Base UI gives it the trigger's `data-slot`, so this rule does not
+ *   match it today; the exclusion keeps it that way if that ever changes.
+ * - Disabled and `aria-disabled` entries do not move.
+ * - `translate` joins the button's own `width, height, padding` transition
+ *   rather than replacing it, so the collapse animation is untouched, and it
+ *   keeps the utility's duration and easing - Tailwind's defaults, the ones
+ *   Button's `transition-all` runs on. Without it the nudge would snap.
+ * - The x half reads `--tw-translate-x`, so a translate utility anybody puts
+ *   on an entry survives the press.
+ *
+ * Sub-buttons are left alone: they already carry `-translate-x-px`, and the
+ * report was about the entries themselves.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+[data-slot="sidebar-menu-button"] {
+  transition-property: width, height, padding, translate;
+}
+
+[data-slot="sidebar-menu-button"]:active:not(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled],
+    [aria-haspopup]
+  ) {
+  translate: var(--tw-translate-x, 0) 1px;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
  * Menu and list items, which are the OTHER half of the cursor problem.
  *
  * The rule in `@layer base` above cannot reach these. shadcn ships
