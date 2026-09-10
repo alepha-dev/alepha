@@ -1042,7 +1042,7 @@ Mitigations, in order of preference:
 
 **Why local testing won't catch this:** the suites use in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
 
-**CI auto-deploys to prod on every push to `main`** (alepha monorepo's `.github/workflows/ci.yml` → `deploy-lore-production` job → `yarn alepha platform up --env production` from `apps/lore`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
+**CI auto-deploys to prod on every push to `main` whose Verify succeeds** (alepha monorepo's `.github/workflows/verify.yml`, workflow **Verify**, then `.github/workflows/deploy-latest.yml` → `deploy-lore-production` job, a `workflow_run` on Verify → `yarn alepha platform up --env production` from `apps/lore`). A Verify cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
 ### What the 2026-08 great-rename migration got right (worked example)
 
@@ -1532,4 +1532,4 @@ Clears all projects, members, sessions, etc. Migrations auto-apply on boot. Opti
 
 Lore is a workspace member of the Alepha monorepo — there is no vendor step. Edit `../../packages/alepha/src/...` or `../../packages/@alepha/ui/src/...` directly; Vite HMR picks the change up immediately. Run `yarn v` from the monorepo root for the inner loop, then push the branch and read CI before calling it done.
 
-The same CI run that ships Alepha now also verifies Lore (because Lore is just another workspace under `yarn workspaces foreach`), and the `deploy-lore-production` job in `.github/workflows/ci.yml` ships Lore to Cloudflare on every push to `main`. So a single commit covers both sides — no cross-repo handoff, no sync drift to worry about.
+The same CI run that ships Alepha now also verifies Lore (because Lore is just another workspace under `yarn workspaces foreach`), and the `deploy-lore-production` job in `.github/workflows/deploy-latest.yml` ships Lore to Cloudflare once that Verify run succeeds on a push to `main`. So a single commit covers both sides — no cross-repo handoff, no sync drift to worry about.
