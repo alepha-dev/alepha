@@ -2,7 +2,7 @@ import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { FileSystemProvider } from "alepha/system";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FileJobs, FileService } from "../index.ts";
 
@@ -56,13 +56,21 @@ describe("FileJobRegistry", () => {
 
     await dtp.travel(2, "hours");
 
-    // Time-travel fires the hourly cron, whose purge handler runs asynchronously
-    // (CronProvider dispatches handlers fire-and-forget) and holds the scheduler
-    // lock while in flight. Let that settle so the manual trigger below isn't
-    // (correctly) deduped by the still-running travel-fired run.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // travel() fires the hourly cron, whose purge CronProvider runs
+    // fire-and-forget, so it can still be deleting when the trigger below
+    // starts. Today the trigger runs a purge of its own (the cron lock is held
+    // per process, see JobProvider.acquireCronLock); behind a lock that
+    // dedupes in-process, as $scheduler's did, it would return at once. Either
+    // way a purge after the +1h expiry lands, so wait for its outcome rather
+    // than a guessed delay. The deadline stays under the 10s test timeout, so
+    // a purge that never lands still fails on this assertion.
     await jobs.purgeFiles.trigger();
 
-    expect(await list()).toHaveLength(2);
+    await vi.waitFor(
+      async () => {
+        expect(await list()).toHaveLength(2);
+      },
+      { timeout: 5_000, interval: 20 },
+    );
   });
 });
