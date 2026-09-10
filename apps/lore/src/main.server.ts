@@ -100,12 +100,22 @@ alepha.set(oauthOptions, {
    * folios, feedback, blights, the lot. The copy says so in those words rather
    * than in the word "mcp", which is what the screen used to print and which
    * tells a reader nothing about what they are handing over.
+   *
+   * `cli` is what `lore login` asks for (#Q2244), and it is the whole
+   * application too: nothing enforces a scope, so the token acts as the
+   * account. It has its own entry so the device approval page names the
+   * terminal rather than Claude's MCP connection, which it used to borrow.
    */
   scopes: {
     mcp: {
       label: "Your projects",
       description:
         "Read and manage the projects you are a member of - their quests, folios, feedback and blights.",
+    },
+    cli: {
+      label: "Your account, from the terminal",
+      description:
+        "What the lore command does as you: push builds and reports, deploy your apps, and read or manage the projects you are a member of.",
     },
     openid: {
       label: "Who you are",

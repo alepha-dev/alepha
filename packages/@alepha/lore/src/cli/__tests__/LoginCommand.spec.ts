@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import { CliProvider } from "alepha/command";
 import { AlephaDateTime } from "alepha/datetime";
 import { $route, AlephaServer, ServerProvider } from "alepha/server";
@@ -25,11 +25,23 @@ class FakeAuthServer {
   public answers: Array<Record<string, unknown>> = [];
   public polls = 0;
 
+  /**
+   * What the CLI asked for when it started the flow.
+   */
+  public requested?: { client_id?: string; scope?: string };
+
   public deviceAuthorization = $route({
     method: "POST",
     path: "/oauth/device_authorization",
+    schema: {
+      body: z.object({
+        client_id: z.text().optional(),
+        scope: z.text().optional(),
+      }),
+    },
     use: [],
-    handler: async ({ reply }) => {
+    handler: async ({ body, reply }) => {
+      this.requested = body;
       reply.headers["content-type"] = "application/json";
       reply.body = JSON.stringify({
         device_code: "dev-code",
@@ -107,6 +119,21 @@ describe("lore login", () => {
     await ctx.runner.run(ctx.command.login, {});
 
     expect(await ctx.tokens.read(ctx.hostname)).toBe("granted");
+  });
+
+  /**
+   * The scope is what the approval page shows the human, beside Lore's copy
+   * for it (#Q2244). This used to borrow `mcp`, the scope Lore made for Claude
+   * connecting, so a sign-in from a terminal read as an MCP connection.
+   */
+  it("asks for the cli scope, not the one made for MCP", async () => {
+    const ctx = await setup();
+    ctx.auth.answers = [{ access_token: "granted", expires_in: 3600 }];
+
+    await ctx.runner.run(ctx.command.login, {});
+
+    expect(ctx.auth.requested?.scope).toBe("cli");
+    expect(ctx.auth.requested?.client_id).toBe("alepha-cli");
   });
 
   /**
