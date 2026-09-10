@@ -646,6 +646,15 @@ export class BuildCloudflareTask extends BuildTask {
       max_retries: Number.isSafeInteger(maxRetries)
         ? maxRetries
         : QUEUE_DEFAULT_MAX_RETRIES,
+      // ⚠️ Without this, Cloudflare holds messages until 10 have arrived or 5
+      // seconds have passed, and a `$job.push()` is ONE message - so every job
+      // sat out the whole window before its handler started. Lore's deploys
+      // went from ~1.5s to 8-10s of queueing the day its jobs moved onto this
+      // queue. A batch of one is full the moment it lands.
+      //
+      // It also gives each job its own invocation, so its own CPU and
+      // wall-clock budget rather than a share of a batch's.
+      max_batch_size: 1,
     });
   }
 
@@ -1099,16 +1108,22 @@ export default {
       throw err;
     }
 
-    await withExecutionContext(executionCtx, async () => {
-      for (const msg of batch.messages) {
-        try {
-          await __alepha.events.emit("cloudflare:queue", msg.body);
-          msg.ack();
-        } catch (e) {
-          msg.retry();
-        }
-      }
-    });
+    // Every message at once, never one after another. Awaited in turn, the
+    // second job of a batch waited for the whole of the first - a Lore deploy
+    // sat behind another for up to 43s - and a job's own concurrency limit
+    // never came into play. Each message still settles on its own.
+    await withExecutionContext(executionCtx, () =>
+      Promise.all(
+        batch.messages.map(async (msg) => {
+          try {
+            await __alepha.events.emit("cloudflare:queue", msg.body);
+            msg.ack();
+          } catch (e) {
+            msg.retry();
+          }
+        }),
+      ),
+    );
   },
 };
 `.trim();
