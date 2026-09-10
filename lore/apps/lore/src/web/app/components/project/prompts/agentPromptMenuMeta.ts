@@ -10,35 +10,38 @@ import {
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
 
 /**
- * What one prompt looks like in a menu: its glyph, its label and the line
- * under it.
+ * What one prompt looks like in a menu: its glyph and its label.
  *
- * ## One record, not three lookups
+ * ## One record, not two lookups
  *
  * A `Record` keyed by the schema's own type, like `AGENT_PROMPT_DEFAULTS`
  * beside it, so adding a literal to `agentPromptKindSchema` without giving
- * it a label AND a description AND an icon is a type error rather than a
- * blank second line on somebody's menu (feedback #P2149 asked for the
- * descriptions; this is what keeps the fifth one from arriving without
- * either).
+ * it a label AND an icon is a type error rather than a bare row on
+ * somebody's menu.
+ *
+ * ## ⚠️ No description, and that is a reversal
+ *
+ * Feedback #P2149 gave every entry a line under its label saying what the
+ * prompt is for, so picking between templates would not mean copying one to
+ * find out. Feedback #P2183 took it off again, on every surface, by the
+ * owner's ruling: the label carries the choice alone. So a label that does
+ * not say which prompt it is gets fixed in the label (#P2182 on epics), and
+ * the line does not come back. `agentPrompts.settings.*.description` is not
+ * a menu and keeps its text.
  *
  * The keys are i18n keys rather than strings: this module is imported by
  * components that already hold a `tr`, and a translated string here would
  * need a hook a plain module cannot call.
  *
  * ⚠️ **Built-in kinds only, and the set is closed by design.** The prompt
- * TEXT is user-editable in Settings, but the four kinds are not: a project
- * cannot invent a fifth. So there is no "custom prompt" row to give a
- * default glyph to - what an owner customises is the template behind one of
- * these four, and the row keeps the icon and the description of the kind it
- * is. The description says what the prompt is FOR, which stays true when
- * its wording changes; a description generated from the template would go
- * stale the first time somebody edited it.
+ * TEXT is user-editable in Settings, but the kinds are not: a project cannot
+ * invent another. So there is no "custom prompt" row to give a default glyph
+ * to - what an owner customises is the template behind one of these, and the
+ * row keeps the icon and the label of the kind it is.
  */
 export interface AgentPromptMenuMeta {
   Icon: LucideIcon;
   labelKey: string;
-  descriptionKey: string;
 }
 
 export const AGENT_PROMPT_MENU_META: Record<
@@ -48,22 +51,18 @@ export const AGENT_PROMPT_MENU_META: Record<
   epicReview: {
     Icon: ClipboardCheck,
     labelKey: "agentPrompts.review",
-    descriptionKey: "agentPrompts.review.description",
   },
   epicActivate: {
     Icon: PlayCircle,
     labelKey: "agentPrompts.activate",
-    descriptionKey: "agentPrompts.activate.description",
   },
   questWork: {
     Icon: Wrench,
     labelKey: "agentPrompts.workOnIt",
-    descriptionKey: "agentPrompts.questWork.description",
   },
   feedbackWork: {
     Icon: Wrench,
     labelKey: "agentPrompts.workOnIt",
-    descriptionKey: "agentPrompts.feedbackWork.description",
   },
   // ⚠️ Its own glyph and its own label, not `Wrench` and "Work on it". The
   // two above share those because they are the same verb on two surfaces;
@@ -72,13 +71,11 @@ export const AGENT_PROMPT_MENU_META: Record<
   feedbackLoop: {
     Icon: ListChecks,
     labelKey: "agentPrompts.triageInbox",
-    descriptionKey: "agentPrompts.feedbackLoop.description",
   },
   // `Bug`, not `ListChecks`: both are triage loops, and the surface is what
   // tells them apart in a menu.
   blightTriage: {
     Icon: Bug,
     labelKey: "agentPrompts.triageBlights",
-    descriptionKey: "agentPrompts.blightTriage.description",
   },
 };

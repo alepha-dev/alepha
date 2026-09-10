@@ -17,10 +17,10 @@ import { useAgentPrompt } from "./useAgentPrompt.ts";
 
 export interface AgentPromptsMenuItem {
   /**
-   * Which prompt. The glyph, the label and the description all come from
+   * Which prompt. The glyph and the label both come from
    * {@link AGENT_PROMPT_MENU_META} keyed on this, so a caller cannot give
-   * one and forget the others - and a fifth kind is a type error there
-   * rather than a blank line here (feedback #P2149).
+   * one and forget the other - and a fifth kind is a type error there
+   * rather than a bare row here.
    */
   kind: AgentPromptKind;
   /**
@@ -100,22 +100,15 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
         {props.items.map((item) => {
           const meta = AGENT_PROMPT_MENU_META[item.kind];
           return (
+            // The label alone, on the default one-line row (feedback
+            // #P2183). The line under it that #P2149 asked for is gone on
+            // every surface, so do not bring it back from an older comment.
             <DropdownMenuItem
               key={item.kind}
               onClick={() => agentPrompt.copy(item.kind, item.subject())}
-              // The default row centres one line of text against the icon;
-              // with two lines the icon belongs at the top of them.
-              className="items-start gap-2"
             >
-              <meta.Icon className="mt-0.5 size-4 shrink-0" />
-              <span className="flex flex-col gap-0.5">
-                <span>{tr(meta.labelKey as never)}</span>
-                {/* One line saying what the prompt does, so picking between
-                    four templates does not mean copying one to find out. */}
-                <span className="text-muted-foreground text-xs">
-                  {tr(meta.descriptionKey as never)}
-                </span>
-              </span>
+              <meta.Icon />
+              {tr(meta.labelKey as never)}
             </DropdownMenuItem>
           );
         })}

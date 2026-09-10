@@ -91,16 +91,16 @@ describe("AgentPromptsMenu", () => {
     expect(items.map((it) => it.textContent).join(" ")).toContain("Activate");
   });
 
-  it("names each entry and says what it does", async () => {
+  it("names each entry by its label alone", async () => {
     /*
-     * Feedback #P2149: the trigger read as a plain button and its one item
-     * was a bare label. Both halves are the point - a reader picking
-     * between four templates should not have to copy one to find out what
-     * it is for.
+     * ⚠️ A reversal. Feedback #P2149 added a line under each label saying
+     * what the prompt does; feedback #P2183 took it off again, on every
+     * surface. The label carries the choice now, so a label that does not
+     * say which prompt it is (#P2182 on epics) is the thing to fix, not a
+     * reason to bring the line back.
      *
-     * ⚠️ The label and the description come from `AGENT_PROMPT_MENU_META`
-     * keyed on the kind, never from the caller, which is what stops a fifth
-     * prompt arriving with a label and a blank line under it.
+     * The label and the glyph still come from `AGENT_PROMPT_MENU_META`
+     * keyed on the kind, never from the caller.
      */
     await mount([{ kind: "epicReview" }]);
 
@@ -127,8 +127,12 @@ describe("AgentPromptsMenu", () => {
       if (!found) throw new Error("not open yet");
       return found;
     });
-    expect(item.textContent).toContain("Review");
-    expect(item.textContent).toContain("challenge the plan");
+    // The label and nothing under it.
+    expect(item.textContent).toBe("Review");
+    expect(item.textContent).not.toContain("challenge the plan");
+    // The default one-line row: nothing top-aligns the glyph for a second
+    // line that is not there.
+    expect(item.className).not.toContain("items-start");
     // Its own glyph, not the trigger's `Bot`: the row is an action.
     expect(item.querySelector("svg")).not.toBeNull();
   });
