@@ -46,10 +46,10 @@ import { compareReleaseTags, parseReleaseTag } from "../releaseOrder.ts";
  * ## Why the readers are separate from the writer
  *
  * {@link DefaultReleaseService.openDefault} is what `QuestController`'s
- * completion path and `EpicController`'s Begin edge ask, and it is **best
- * effort by construction**: it answers `undefined` for a project with no
- * default, for a default that has since been published, and for a read that
- * failed. A quest that will not close, or an epic that will not begin,
+ * completion path and `EpicWorkflowService.startIfReady` ask, and it is
+ * **best effort by construction**: it answers `undefined` for a project with
+ * no default, for a default that has since been published, and for a read
+ * that failed. A quest that will not close, or an epic that will not start,
  * because of a planning convenience is a worse bug than a missed attachment,
  * which is why neither of those paths goes through
  * `ReleaseAttachmentService.resolve` - that method throws, by design.

@@ -450,8 +450,8 @@ export class ReleaseController {
    *
    * The release named here is where a completed quest that names no release,
    * and inherits none from its epic, lands (`QuestController.completeQuest`),
-   * and what an epic with no release of its own takes when it begins
-   * (`EpicController.setEpicStatus`). A quality-of-life fallback, never a
+   * and what an epic with no release of its own takes when it starts
+   * (`EpicWorkflowService.startIfReady`). A quality-of-life fallback, never a
    * plan: everything can still be filed by hand, and a hotfix always is.
    *
    * ## One action, both directions

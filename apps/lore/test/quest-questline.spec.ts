@@ -140,7 +140,7 @@ describe("a quest's questline", () => {
         number: 7,
         title: "The Epic",
         description: "",
-        status: "active",
+        status: "in_progress",
       });
       await ctx.repos.quests.updateById(quest.id, { epicId: epic.id });
 

@@ -49,8 +49,9 @@ const epicOf = (
 class FakeLinkProvider extends LinkProvider {
   epics: EpicResource[] = [
     epicOf(1, "Planned epic", "planned"),
-    epicOf(2, "Active epic", "active"),
-    epicOf(3, "Done epic", "done"),
+    epicOf(2, "Ready epic", "ready"),
+    epicOf(3, "Started epic", "in_progress"),
+    epicOf(4, "Completed epic", "completed"),
   ];
 
   // matches the real client's own loose virtual-action shape
@@ -82,9 +83,9 @@ class Routes {
 }
 
 /**
- * The status filter takes several statuses (feedback #2069): Planned plus
- * Active, the everyday view, used to be impossible with one value at a
- * time. An empty selection still means every status.
+ * The status filter takes several statuses (feedback #2069): everything
+ * not started yet, say, used to be impossible with one value at a time. An
+ * empty selection still means every status.
  */
 describe("ProjectEpics - the status filter", () => {
   let alepha: Alepha | undefined;
@@ -149,21 +150,23 @@ describe("ProjectEpics - the status filter", () => {
     await mount();
 
     expect(row("#E1 - Planned epic")).not.toBeNull();
-    expect(row("#E2 - Active epic")).not.toBeNull();
-    expect(row("#E3 - Done epic")).not.toBeNull();
+    expect(row("#E2 - Ready epic")).not.toBeNull();
+    expect(row("#E3 - Started epic")).not.toBeNull();
+    expect(row("#E4 - Completed epic")).not.toBeNull();
   });
 
-  it("keeps Planned and Active when both are selected, and hides Done", async () => {
+  it("keeps Planned and Ready when both are selected, and hides the rest", async () => {
     await mount();
 
     const status = screen.getByRole("combobox", { name: "Status" });
     fireEvent.keyDown(status, { key: "ArrowDown" });
     fireEvent.click(await screen.findByRole("option", { name: /Planned/ }));
-    fireEvent.click(await screen.findByRole("option", { name: /Active/ }));
+    fireEvent.click(await screen.findByRole("option", { name: /Ready/ }));
 
-    await waitFor(() => expect(row("#E3 - Done epic")).toBeNull());
+    await waitFor(() => expect(row("#E4 - Completed epic")).toBeNull());
+    expect(row("#E3 - Started epic")).toBeNull();
     expect(row("#E1 - Planned epic")).not.toBeNull();
-    expect(row("#E2 - Active epic")).not.toBeNull();
+    expect(row("#E2 - Ready epic")).not.toBeNull();
     // The trigger says how many, the way the Quests list's does.
     expect(status.textContent).toContain("2 status");
   });
@@ -199,8 +202,8 @@ describe("ProjectEpics - the status filter", () => {
     ];
 
     const EPICS = [
-      epicOf(1, "Shipped epic", "done", 7),
-      epicOf(2, "Next epic", "active", 8),
+      epicOf(1, "Shipped epic", "completed", 7),
+      epicOf(2, "Next epic", "in_progress", 8),
       epicOf(3, "Unassigned epic", "planned"),
     ];
 
@@ -423,18 +426,18 @@ describe("ProjectEpics - the status filter", () => {
       });
     };
 
-    it("is offered on a planned epic, beside Begin", async () => {
+    it("offers Review but not Work on it on a planned epic, beside Mark as ready", async () => {
       await mount();
 
-      // The top level carries the group and Begin. Review is one level in,
-      // which is what the submenu changed.
+      // The top level carries the group and Mark as ready. Review is one
+      // level in, which is what the submenu changed.
       //
       // ⚠️ The row menu is opened ONCE and the list reused: the three-dots
       // trigger toggles, so opening it again to read the submenu closes it.
       const opened = await openRowMenu("#E1 - Planned epic");
       const top = opened.map((item) => item.textContent);
       expect(top.join(" ")).toContain("Agent Prompts");
-      expect(top.join(" ")).toContain("Begin");
+      expect(top.join(" ")).toContain("Mark as ready");
       expect(top.join(" ")).not.toContain("Review");
 
       const inside = (await openAgentPrompts(opened)).map(
@@ -444,21 +447,40 @@ describe("ProjectEpics - the status filter", () => {
       // (feedback #P2182): "Review Epic", and "Work on it" for epicActivate.
       // The list also holds the row menu's own entries, hence contains.
       expect(inside).toContain("Review Epic");
-      expect(inside).toContain("Work on it");
-      expect(inside).not.toContain("Activate");
+      // A planned epic's quests refuse to be accepted, and whether its spec
+      // is done is the owner's call, not the agent's (#Q2223).
+      expect(inside).not.toContain("Work on it");
     });
 
-    it("drops Review Epic once the epic has begun but keeps Work on it", async () => {
+    it("offers both on a ready epic, beside Back to planning", async () => {
+      await mount();
+
+      // Ready: the plan is still open, so Review stays, and its quests can
+      // be accepted, so Work on it appears. Its first accept starts it.
+      const opened = await openRowMenu("#E2 - Ready epic");
+      const top = opened.map((item) => item.textContent);
+      expect(top.join(" ")).toContain("Back to planning");
+      expect(top.join(" ")).not.toContain("Mark as ready");
+
+      const inside = (await openAgentPrompts(opened)).map(
+        (item) => item.textContent,
+      );
+      expect(inside).toContain("Review Epic");
+      expect(inside).toContain("Work on it");
+    });
+
+    it("drops Review Epic once the epic is in progress but keeps Work on it", async () => {
       await mount();
 
       // Reviewing a plan is a thing you do while the plan is still open;
-      // after Begin the quest set is what is being worked. Work on it stays,
-      // because a half-worked epic can still be handed over, and Begin is
-      // gone because it has already happened.
-      const opened = await openRowMenu("#E2 - Active epic");
+      // once the epic has started the quest set is what is being worked.
+      // Work on it stays, because a half-worked epic can still be handed
+      // over, and no status move is offered: the rest happen on their own.
+      const opened = await openRowMenu("#E3 - Started epic");
       const top = opened.map((item) => item.textContent);
       expect(top.join(" ")).toContain("Agent Prompts");
-      expect(top.join(" ")).not.toContain("Begin");
+      expect(top.join(" ")).not.toContain("Mark as ready");
+      expect(top.join(" ")).not.toContain("Back to planning");
 
       const inside = (await openAgentPrompts(opened)).map(
         (item) => item.textContent,
@@ -468,14 +490,14 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     /**
-     * ⚠️ The empty-group case. A `done` epic passes neither gate, so the
+     * ⚠️ The empty-group case. A completed epic passes neither gate, so the
      * group has no children, and #Q1959's effective-entry count is what
      * keeps it from rendering a trigger over an empty menu.
      */
-    it("offers no group at all on a concluded epic", async () => {
+    it("offers no group at all on a completed epic", async () => {
       await mount();
 
-      const top = (await openRowMenu("#E3 - Done epic")).map(
+      const top = (await openRowMenu("#E4 - Completed epic")).map(
         (item) => item.textContent,
       );
       expect(top.join(" ")).not.toContain("Agent Prompts");
@@ -558,9 +580,9 @@ describe("ProjectEpics - the status filter", () => {
       );
       expect(items.join(" ")).not.toContain("Agent Prompts");
       expect(items.join(" ")).not.toContain("Review");
-      // Begin is untouched: it is the epic's own lifecycle action and has
-      // nothing to do with this option.
-      expect(items.join(" ")).toContain("Begin");
+      // Mark as ready is untouched: it is the epic's own lifecycle move and
+      // has nothing to do with this option.
+      expect(items.join(" ")).toContain("Mark as ready");
     });
   });
   /**
@@ -709,7 +731,7 @@ describe("ProjectEpics - the status filter", () => {
       );
       expect(items.join(" ")).not.toContain("Set Release");
       // The rest of the menu is untouched.
-      expect(items.join(" ")).toContain("Begin");
+      expect(items.join(" ")).toContain("Mark as ready");
     });
   });
 });

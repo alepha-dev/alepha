@@ -527,8 +527,11 @@ on it and renders an "After Epic N" chip. It replaced prose: "Depends on epic
 #14 landing first" in a description cannot be rendered, sorted or checked.
 
 ⚠️ **It is a GATE since epic #31 (2026-09-04), like `quests.dependsOn`.**
-`setEpicStatus` refuses Begin while the predecessor is not `done`
-(`EpicWorkflowService.assertCanBegin`). It shipped advisory on 2026-09-01,
+It gates the START: the first quest of a `ready` epic is not accepted or
+assigned while the predecessor is not `completed`
+(`EpicWorkflowService.assertQuestWorkable`). Marking the dependent epic ready
+is allowed, so a chain can be specified at once; that moved from Begin to the
+start with #Q2223. It shipped advisory on 2026-09-01,
 on the reasoning that epics overlap by design and a refusal would make people
 stop setting the field; three days later the advisory channel had measured
 zero (epic #27 was worked to 9 of 9 while `planned`, by an agent told the
@@ -542,18 +545,33 @@ page says "Blocked by" off `dependsOnStatus`. MCP speaks in per-project
 numbers (`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
 `quest_*` makes.
 
-**An epic's status is the permission (epic #31).** `planned | active | done`
-is a one-way ratchet (`EpicController.setEpicStatus`, Begin then Conclude,
-`done` terminal, same status a no-op), and every phase rule lives on
-`EpicWorkflowService`, once: a quest is accepted, assigned, completed or
-reopened only while its epic is `active`; it enters, leaves or is deleted
-only while the epic is `planned` (no carve-out for completed quests, by
-decision); Begin needs the predecessor `done`; Conclude needs every quest
-completed or shelved. Shelve and unassign are never refused by phase, and
-unshelve is refused only under `done`. Folios attach in every phase. The
-refusal strings are the interface an agent reads, so they name the epic and
-the fix; folio #1197 is the review that closed the plan, and the pinned
-vocabulary folio (#1002) carries the matrix in its first section.
+**An epic's status is the permission (epic #31), and only two of its four
+statuses are set by hand (#Q2223).** `planned | ready | in_progress |
+completed`: `setEpicStatus` moves between `planned` and `ready`, both ways,
+and takes no other value; the first quest of a ready epic accepted or
+assigned moves it to `in_progress` (`EpicWorkflowService.startIfReady`, which
+also attaches the default release), and the request that completes or
+shelves its last open quest moves it to `completed`
+(`completeIfResolved`), which is terminal. Every rule lives on
+`EpicWorkflowService`, once: a quest is accepted, assigned or completed only
+while its epic is `ready` or `in_progress`; it enters, leaves or is deleted
+only while the epic is `planned` or `ready` (no carve-out for completed
+quests, by decision); a ready epic whose quests are all shelved stays ready.
+Shelve and unassign are never refused by status, and unshelve is refused
+only under `completed`. Folios attach in every status. The refusal strings
+are the interface an agent reads, so they name the epic; a planned epic's
+refusal deliberately does NOT tell the agent to mark it ready, since whether
+a spec is done is the owner's call.
+
+⚠️ It replaced epic #31's `planned | active | done` ratchet, whose Begin and
+Conclude clicks carried no decision: the Work-on-it prompt told the agent to
+make both, and on 2026-09-10 not one of project 1's 49 epics was `active`.
+`active` and `done` were MIGRATED, not relabelled, and `activatedAt` became
+`startedAt` (`20260910205427_epic_four_statuses`): the enum is validated on
+read, so a row left holding a retired value fails every epic query, the
+2026-08-05 shape. `test/epic-status-migration.spec.ts` applies that
+migration to seeded rows. The pinned vocabulary folio (#1002) carries the
+matrix in its first section.
 
 ⚠️ **Publishing a roadmap publishes the titles of epics nobody has
 announced.** Planned epics are shown on purpose: an epic that is specified and

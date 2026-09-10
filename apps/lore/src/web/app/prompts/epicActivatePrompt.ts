@@ -1,15 +1,19 @@
 /**
- * The built-in default for `epicActivate`: Agent Prompts > Activate, offered
- * on a planned or an active epic.
+ * The built-in default for `epicActivate`: Agent Prompts > Work on it,
+ * offered on a ready or an in-progress epic.
  *
- * Activate is not Begin. Begin is the epic's own lifecycle action and stays
- * where it is; this hands the whole epic to an agent, which begins it if
- * needed. Offered on an active epic too, because a half-worked epic can be
- * handed over.
+ * It sets no status (#Q2223). Its first `quest_accept` is what moves a ready
+ * epic to `in_progress`, and closing the last quest is what completes it.
+ * Until then this prompt told the agent to Begin the epic itself and to
+ * Conclude it after the merge, which is exactly why neither click was a
+ * decision. Not offered on a planned epic: its quests refuse to be accepted,
+ * and whether a spec is done is the owner's call, so the prompt says to stop
+ * rather than to flip it. Offered on an in-progress epic too, because a
+ * half-worked epic can be handed over.
  *
  * What an agent cannot guess is filled in: which calls read the plan, what
- * the frozen quest set forbids once the epic is active, and what to do when
- * a quest cannot be done as written.
+ * the frozen quest set forbids once the epic has started, and what to do
+ * when a quest cannot be done as written.
  *
  * ⚠️ It names `folio_create`, which belongs to the Knowledge capability, so
  * on a project with Work on and Knowledge off the last step is refused by
@@ -36,7 +40,8 @@ The epic: {{url}}
 
 - Work in a git worktree of your own, on a branch named after the epic. Never on main.
 - Read the epic with \`epic_get\` (project_name "{{project}}", number {{number}}) and its quests with \`quest_list\` (\`epic: {{id}}\`, \`detail: "full"\`). Read the folios \`epic_get\` lists: they hold the decisions already taken.
-- If the epic is still \`planned\`, begin it: \`epic_set_status\` "active". From then on its quest set is frozen. Anything you discover is an objective on a quest in the epic (\`quest_update\`) or a comment (\`quest_comment_add\`), never a new quest.
+- The epic must be \`ready\` or \`in_progress\`. If it is still \`planned\`, stop and say so: its plan is not finished, and marking it ready is the owner's call, not yours.
+- Your first \`quest_accept\` starts the epic, and from then on its quest set is frozen. Anything you discover is an objective on a quest in the epic (\`quest_update\`) or a comment (\`quest_comment_add\`), never a new quest.
 - Order the quests by their dependencies and by the order the epic's description gives.
 
 ## Each quest, one at a time
@@ -55,8 +60,9 @@ Push the branch as you go rather than only at the end. If the project verifies o
 
 1. Push, and wait for CI this time. Fix and push again until it is green.
 2. Only when it is green: merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.
-3. Conclude the epic: \`epic_set_status\` "done".
-4. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left.
+3. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left.
+
+There is no status to set: the epic completed on its own when its last open quest was completed or shelved.
 
 When a quest cannot be done as written, say so in a comment on it and move on to one that can. Do not guess at a decision that is the owner's to make.
 

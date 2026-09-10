@@ -52,7 +52,7 @@ export class EpicTools {
    */
   epic_list = $tool({
     description:
-      "List all epics for a project: planned, active and done alike (unlike quest_list's default view, nothing is hidden here). An epic is a bounded initiative that spans several areas and owns quests and folios. Sorted by epic number ascending. Each entry includes id, number, title, description, status, questCount, and the completed/total progress rollup, counted over EVERY quest in the epic, including ones a planned epic keeps out of the human-facing backlog.",
+      "List all epics for a project: planned, ready, in progress and completed alike (unlike quest_list's default view, nothing is hidden here). An epic is a bounded initiative that spans several areas and owns quests and folios. Sorted by epic number ascending. Each entry includes id, number, title, description, status, questCount, and the completed/total progress rollup, counted over EVERY quest in the epic, including ones a planned epic keeps out of the human-facing backlog.",
     title: "List epics",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -79,7 +79,7 @@ export class EpicTools {
           questCount: epic.questCount,
           progress: epic.progress,
           createdAt: epic.createdAt,
-          activatedAt: epic.activatedAt,
+          startedAt: epic.startedAt,
           completedAt: epic.completedAt,
           // The column stores an id; this surface speaks in per-project
           // numbers, the same split `quest_*` makes with `dependsOn_shortId`.
@@ -129,7 +129,7 @@ export class EpicTools {
         questCount: epic.questCount,
         progress: epic.progress,
         createdAt: epic.createdAt,
-        activatedAt: epic.activatedAt,
+        startedAt: epic.startedAt,
         completedAt: epic.completedAt,
         dependsOn_number: epic.dependsOnNumber,
         dependsOn_status: epic.dependsOnStatus,
@@ -171,7 +171,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'planned' status. The status IS the permission: while planned, quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includePlanned: true` reads them), and none of them can be accepted. epic_set_status 'active' (Begin) freezes the quest set and releases it for work; 'done' (Conclude) is terminal. Anything discovered after Begin is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
+      "Create a new epic in the project, in the 'planned' status. The status IS the permission. While 'planned' the epic is being specified: quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includePlanned: true` reads them), and none of them can be accepted. epic_set_status 'ready' says the spec is done: the quests join the backlog and can be accepted, and the plan can still be edited. The first quest accepted or assigned moves the epic to 'in_progress' by itself and freezes its quest set; the last open quest completed or shelved moves it to 'completed', which is terminal. Anything discovered once it is in progress is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -212,7 +212,7 @@ export class EpicTools {
    */
   epic_update = $tool({
     description:
-      "Update an epic's title, description or predecessor. Omitted fields stay unchanged. Allowed in every phase, 'done' included: the description is the account of what happened and project memory is meant to be curated. Only the quest set and the status are gated by phase (see quest_create, quest_update and epic_set_status).",
+      "Update an epic's title, description or predecessor. Omitted fields stay unchanged. Allowed in every status, 'completed' included: the description is the account of what happened and project memory is meant to be curated. Only the quest set and the status are gated by status (see quest_create, quest_update and epic_set_status).",
     title: "Update epic",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -251,12 +251,12 @@ export class EpicTools {
   });
 
   /**
-   * Change an epic's status.
+   * Move an epic between its two hand-set statuses.
    */
   epic_set_status = $tool({
     description:
-      "Move an epic forward through its lifecycle, one way: 'planned' to 'active' (Begin), then 'active' to 'done' (Conclude). Every other edge is refused: 'done' is terminal, and the way forward from a concluded epic is a new epic with dependsOn_number pointing at it; an active epic cannot return to planning, since its quest set is frozen. Asking for the status the epic already has is a no-op. Begin stamps activatedAt, Conclude stamps completedAt. " +
-      "Begin releases the epic's quests because the backlog gate stops matching them, and never by changing anything about their status. ⚠️ It does write ONE column on them: an epic that names no release takes the project's DEFAULT release (see release_set_default) when it begins, and that release is carried down to every quest of the epic that named none - a quest that named its own keeps it. When that happens the result carries `releaseCascade` with what moved, what was kept and what was refused.",
+      "Mark an epic 'ready' (its spec is done) or move it back to 'planned' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'planned' takes them out again. Neither changes anything about the quests themselves. The other two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'planned'. Asking for the status the epic already has is a no-op. " +
+      "Deciding that a spec is done is the owner's call. Do not mark an epic ready just to be allowed to work on it: if a quest refuses because its epic is planned, say so and stop.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -282,10 +282,6 @@ export class EpicTools {
         number: epic.number,
         title: epic.title,
         status: epic.status,
-        activatedAt: epic.activatedAt,
-        completedAt: epic.completedAt,
-        // Only when Begin attached the default release and carried it down.
-        ...(epic.releaseCascade ? { releaseCascade: epic.releaseCascade } : {}),
       };
     },
   });
@@ -301,7 +297,7 @@ export class EpicTools {
    */
   epic_delete = $tool({
     description:
-      "Permanently delete an epic. Its quests and folios are DETACHED, never deleted: every one of them survives with its epic link cleared, keeping its own status, objectives and history. Use this to remove a mis-created epic or to restructure a plan. Only the epic itself is lost, and it cannot be recovered. Note that quests parked under a `planned` epic rejoin the human-facing backlog, kanban and reports once the epic is gone, because the gate that was hiding them no longer exists. To release them deliberately use epic_set_status 'active'; to keep them out of the backlog use quest_shelve.",
+      "Permanently delete an epic. Its quests and folios are DETACHED, never deleted: every one of them survives with its epic link cleared, keeping its own status, objectives and history. Use this to remove a mis-created epic or to restructure a plan. Only the epic itself is lost, and it cannot be recovered. Note that quests parked under a `planned` epic rejoin the human-facing backlog, kanban and reports once the epic is gone, because the gate that was hiding them no longer exists. To release them deliberately use epic_set_status 'ready'; to keep them out of the backlog use quest_shelve.",
     title: "Delete epic",
     annotations: {
       destructiveHint: true,

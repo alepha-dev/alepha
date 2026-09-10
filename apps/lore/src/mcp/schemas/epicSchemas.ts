@@ -1,6 +1,6 @@
 import { z } from "alepha";
 
-import { releaseCascadeSchema } from "../../api/schemas/releaseCascadeSchema.ts";
+import { epicManualStatusSchema } from "../../api/schemas/epicManualStatusSchema.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
@@ -44,17 +44,17 @@ export const epicListResultSchema = z.object({
       questCount: z.integer(),
       progress: epicProgressSchema,
       createdAt: z.datetime(),
-      activatedAt: z.datetime().optional(),
+      startedAt: z.datetime().optional(),
       completedAt: z.datetime().optional(),
       dependsOn_number: z
         .integer()
         .describe(
-          "Per-project number of the epic that has to come first, if any. A gate: epic_set_status refuses 'active' while that epic is not 'done'. It is also what the roadmap draws the order from - see `epics.dependsOn`.",
+          "Per-project number of the epic that has to come first, if any. A gate: no quest of this epic can be accepted, so the epic cannot start, while that epic is not 'completed'. It is also what the roadmap draws the order from - see `epics.dependsOn`.",
         )
         .optional(),
       dependsOn_status: epicStatusSchema
         .describe(
-          "The predecessor's status, present exactly when dependsOn_number is. Anything but 'done' means this epic cannot begin yet.",
+          "The predecessor's status, present exactly when dependsOn_number is. Anything but 'completed' means this epic cannot start yet.",
         )
         .optional(),
     }),
@@ -79,17 +79,17 @@ export const epicGetResultSchema = z.object({
   // own view of itself is never gated (design §5.3).
   progress: epicProgressSchema,
   createdAt: z.datetime(),
-  activatedAt: z.datetime().optional(),
+  startedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
   dependsOn_number: z
     .integer()
     .describe(
-      "Per-project number of the epic that has to come first, if any. A gate: epic_set_status refuses 'active' while that epic is not 'done'. It is also what the roadmap draws the order from.",
+      "Per-project number of the epic that has to come first, if any. A gate: no quest of this epic can be accepted, so the epic cannot start, while that epic is not 'completed'. It is also what the roadmap draws the order from.",
     )
     .optional(),
   dependsOn_status: epicStatusSchema
     .describe(
-      "The predecessor's status, present exactly when dependsOn_number is. Anything but 'done' means this epic cannot begin yet.",
+      "The predecessor's status, present exactly when dependsOn_number is. Anything but 'completed' means this epic cannot start yet.",
     )
     .optional(),
   /**
@@ -123,7 +123,7 @@ export const epicCreateParamsSchema = projectParamsSchema.extend({
   dependsOn_number: z
     .integer()
     .describe(
-      "Per-project number of an epic that has to come first. A gate, like a quest's `dependsOn_shortId`: epic_set_status refuses 'active' while that epic is not 'done', so record a predecessor only when this epic genuinely cannot start before it concludes. Cycles are refused on write. Write the order here instead of in the description; prose cannot be rendered, sorted or enforced.",
+      "Per-project number of an epic that has to come first. A gate, like a quest's `dependsOn_shortId`: no quest of this epic can be accepted while that epic is not 'completed', so this epic cannot start. It can still be marked 'ready', which lets a whole chain be specified at once. Record a predecessor only when this epic genuinely cannot start before the other completes. Cycles are refused on write. Write the order here instead of in the description; prose cannot be rendered, sorted or enforced.",
     )
     .optional(),
 });
@@ -151,7 +151,7 @@ export const epicUpdateParamsSchema = epicRefSchema.extend({
   dependsOn_number: z
     .integer()
     .describe(
-      "Reparent the epic's predecessor to the epic with this per-project number. Pass 0 to clear it. A gate: epic_set_status refuses 'active' while the predecessor is not 'done'. Writable in every phase; the gate is evaluated at Begin only. Cycles are refused on write.",
+      "Reparent the epic's predecessor to the epic with this per-project number. Pass 0 to clear it. A gate: no quest of this epic can be accepted, so the epic cannot start, while the predecessor is not 'completed'. Writable in every status; the gate is evaluated when the epic starts, and only then. Cycles are refused on write.",
     )
     .optional(),
 });
@@ -169,8 +169,8 @@ export const epicUpdateResultSchema = z.object({
 // -----------------------------------------------------------------------------
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
-  status: epicStatusSchema.describe(
-    "New epic status. Only two edges are legal: `active` from `planned` (Begin), and `done` from `active` (Conclude); `done` is terminal, and the same status again is a no-op. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports and into quest_list's default view.",
+  status: epicManualStatusSchema.describe(
+    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `planned` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. The same status again is a no-op.",
   ),
 });
 
@@ -179,18 +179,6 @@ export const epicSetStatusResultSchema = z.object({
   number: z.integer(),
   title: z.string(),
   status: epicStatusSchema,
-  activatedAt: z.datetime().optional(),
-  completedAt: z.datetime().optional(),
-  /**
-   * Present only when Begin attached the project's default release to this
-   * epic and carried it down to the epic's release-less quests (#E48).
-   *
-   * Absent on every other transition, and on a Begin that attached nothing -
-   * the epic already named a release, or the project has no default. An epic
-   * that silently acquires a release and moves nine quest rows is a bigger
-   * surprise than the one `quest_complete` reports, so it is said out loud.
-   */
-  releaseCascade: releaseCascadeSchema.optional(),
 });
 
 // -----------------------------------------------------------------------------

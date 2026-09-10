@@ -8,6 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { QuestController } from "../src/api/controllers/QuestController.ts";
+import type { Project } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {
   createTestEpic,
@@ -17,24 +18,27 @@ import {
 } from "./fixtures/entities.ts";
 
 /**
- * The epic phase gate on the quest transitions (epic #31): a quest can be
- * worked only while its epic is `active`.
+ * The epic phase gate on the quest transitions, and the two epic moves those
+ * transitions now make on their own (#Q2223).
  *
- * Five actions open or advance work and all five are gated: accept and
- * complete, which the plan named, and assign, reopen and unshelve, which
- * each open work by another door. Two are deliberately NOT gated, shelve
- * and unassign, because they move a quest toward resolution; a spec pins
- * that too, so nobody "completes the set" later.
+ * A quest is worked only while its epic is `ready` or `in_progress`. The
+ * actions that open or advance work are gated: accept and complete, and
+ * assign and unshelve, which each open work by another door. Shelve and
+ * unassign are deliberately NOT gated, because they move a quest toward
+ * resolution; a spec pins that too, so nobody "completes the set" later.
+ *
+ * The first quest of a `ready` epic to be accepted or assigned moves the
+ * epic to `in_progress`, and the request that resolves its last open quest
+ * moves it to `completed`. Both used to be clicks (Begin, Conclude) that the
+ * agent was told to make itself.
  *
  * The WORDING of every refusal is pinned on `EpicWorkflowService.spec.ts`.
- * This file is about the fact of the refusal reaching each handler, and
- * about the order: the epic reason is reported before the questline reason,
- * since it is the one fixed by a single click somewhere else.
+ * This file is about the fact of the refusal reaching each handler, the
+ * order of the gates, and the epic ending up where the rule says.
  *
  * Rows are seeded through the fixtures rather than the controllers on
- * purpose. An accepted quest inside a planned epic cannot be produced
- * through the API once this gate exists, and a spec that had to walk an
- * epic backwards to build its fixture would break the day the ratchet lands.
+ * purpose: an accepted quest inside a planned epic cannot be produced
+ * through the API once this gate exists.
  */
 
 interface TestContext {
@@ -81,6 +85,9 @@ describe("the epic phase gate on quest transitions", () => {
     await ctx.alepha.stop();
   });
 
+  const statusOf = async (epic: { id: number }) =>
+    (await ctx.repos.epics.getById(epic.id)).status;
+
   describe("accept", () => {
     it("accepts a loose quest, which is most of them", async ({ expect }) => {
       const project = await createTestProject(ctx.alepha);
@@ -94,7 +101,7 @@ describe("the epic phase gate on quest transitions", () => {
       expect(accepted.acceptedAt).toBeDefined();
     });
 
-    it("refuses a planned epic's quest and says to begin the epic", async ({
+    it("refuses a planned epic's quest and leaves it untouched", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
@@ -111,21 +118,25 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
       );
       expect(
         (await ctx.repos.quests.getById(quest.id)).acceptedAt,
       ).toBeUndefined();
+      expect(await statusOf(epic)).toBe("planned");
     });
 
-    it("accepts an active epic's quest", async ({ expect }) => {
+    it("starts a ready epic with its first accepted quest", async ({
+      expect,
+    }) => {
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "active",
+        status: "ready",
       });
       const quest = await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
       });
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id });
 
       const accepted = await ctx.controller.acceptQuest(
         { params: { id: quest.id } },
@@ -133,14 +144,35 @@ describe("the epic phase gate on quest transitions", () => {
       );
 
       expect(accepted.acceptedAt).toBeDefined();
+      const after = await ctx.repos.epics.getById(epic.id);
+      expect(after.status).toBe("in_progress");
+      expect(after.startedAt).toBeDefined();
     });
 
-    it("refuses a concluded epic's quest and names the successor route", async ({
+    it("accepts an in-progress epic's quest and leaves its start date alone", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "done",
+        status: "in_progress",
+        startedAt: STAMP,
+      });
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      await ctx.controller.acceptQuest(
+        { params: { id: quest.id } },
+        { user: ownerToken(project) },
+      );
+
+      expect((await ctx.repos.epics.getById(epic.id)).startedAt).toBe(STAMP);
+    });
+
+    it("refuses a completed epic's quest", async ({ expect }) => {
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "completed",
       });
       const quest = await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
@@ -152,15 +184,39 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is concluded. File this in a new epic.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is completed. File this in a new epic.`,
       );
+    });
+
+    it("refuses to start a ready epic whose predecessor is not completed", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const first = await createTestEpic(ctx.alepha, project, {
+        status: "in_progress",
+      });
+      const second = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+        dependsOn: first.id,
+      });
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: second.id,
+      });
+
+      await expect(
+        ctx.controller.acceptQuest(
+          { params: { id: quest.id } },
+          { user: ownerToken(project) },
+        ),
+      ).rejects.toThrow(/depends on Epic #E\d+, which is not completed/);
+      expect(await statusOf(second)).toBe("ready");
     });
 
     it("reports the epic reason before the questline reason", async ({
       expect,
     }) => {
-      // Both gates apply: the epic is planned AND the predecessor is still
-      // open. The epic reason wins, because it is fixed by one click.
+      // Both gates apply: the epic is planned AND the predecessor quest is
+      // still open. The epic reason wins.
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
         status: "planned",
@@ -176,79 +232,318 @@ describe("the epic phase gate on quest transitions", () => {
           { params: { id: quest.id } },
           { user: ownerToken(project) },
         ),
-      ).rejects.toThrow(/is planned. Begin it first/);
+      ).rejects.toThrow(/is planned, and not ready for development yet/);
+    });
+
+    it("does not start the epic when a later gate refuses the accept", async ({
+      expect,
+    }) => {
+      // The epic is written AFTER the quest, so a questline refusal leaves
+      // a ready epic ready rather than started with nothing accepted in it.
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+      });
+      const predecessor = await createTestQuest(ctx.alepha, project);
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        dependsOn: predecessor.id,
+      });
+
+      await expect(
+        ctx.controller.acceptQuest(
+          { params: { id: quest.id } },
+          { user: ownerToken(project) },
+        ),
+      ).rejects.toThrow(/blocked by/);
+      expect(await statusOf(epic)).toBe("ready");
     });
   });
 
-  it("assign refuses inside a planned epic before it looks at the assignee", async ({
-    expect,
-  }) => {
-    const project = await createTestProject(ctx.alepha);
-    const epic = await createTestEpic(ctx.alepha, project, {
-      status: "planned",
-    });
-    const quest = await createTestQuest(ctx.alepha, project, {
-      epicId: epic.id,
+  describe("assign", () => {
+    it("refuses inside a planned epic before it looks at the assignee", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      // A non-member assignee would be refused on its own; the epic reason
+      // comes first, so this is the message that reaches the caller.
+      await expect(
+        ctx.controller.assignQuest(
+          { params: { id: quest.id }, body: { userId: crypto.randomUUID() } },
+          { user: ownerToken(project) },
+        ),
+      ).rejects.toThrow(
+        `Cannot assign quest #Q${quest.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+      );
     });
 
-    // A non-member assignee would be refused on its own; the epic reason
-    // comes first, so this is the message that reaches the caller.
-    await expect(
-      ctx.controller.assignQuest(
-        { params: { id: quest.id }, body: { userId: crypto.randomUUID() } },
+    it("starts a ready epic, like accepting does", async ({ expect }) => {
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+      });
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      await ctx.controller.assignQuest(
+        { params: { id: quest.id }, body: { userId: project.createdBy } },
         { user: ownerToken(project) },
-      ),
-    ).rejects.toThrow(
-      `Cannot assign quest #Q${quest.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
-    );
+      );
+
+      expect(await statusOf(epic)).toBe("in_progress");
+    });
   });
 
-  it("complete refuses inside a planned epic and works inside an active one", async ({
-    expect,
-  }) => {
-    // A row that pre-dates the gate: accepted while the epic was planned.
-    const project = await createTestProject(ctx.alepha);
-    const planned = await createTestEpic(ctx.alepha, project, {
-      status: "planned",
-    });
-    const active = await createTestEpic(ctx.alepha, project, {
-      status: "active",
-    });
-    const parked = await createTestQuest(ctx.alepha, project, {
-      epicId: planned.id,
-      acceptedAt: STAMP,
-      acceptedBy: project.createdBy,
-    });
-    const live = await createTestQuest(ctx.alepha, project, {
-      epicId: active.id,
-      acceptedAt: STAMP,
-      acceptedBy: project.createdBy,
-    });
-    const user = ownerToken(project);
+  describe("complete", () => {
+    it("refuses inside a planned epic", async ({ expect }) => {
+      // A row that pre-dates the gate: accepted while the epic was planned.
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      const parked = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        acceptedAt: STAMP,
+        acceptedBy: project.createdBy,
+      });
 
-    await expect(
-      ctx.controller.completeQuest(
-        { params: { id: parked.id }, body: {} },
+      await expect(
+        ctx.controller.completeQuest(
+          { params: { id: parked.id }, body: {} },
+          { user: ownerToken(project) },
+        ),
+      ).rejects.toThrow(
+        `Cannot complete quest #Q${parked.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+      );
+    });
+
+    it("completes the epic with its last open quest, and only then", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const user = ownerToken(project);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "in_progress",
+        startedAt: STAMP,
+      });
+      const first = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        acceptedAt: STAMP,
+        acceptedBy: project.createdBy,
+      });
+      const second = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        acceptedAt: STAMP,
+        acceptedBy: project.createdBy,
+      });
+      // Resolved already, so it does not hold the epic open.
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        shelvedAt: STAMP,
+      });
+
+      await ctx.controller.completeQuest(
+        { params: { id: first.id }, body: {} },
         { user },
-      ),
-    ).rejects.toThrow(
-      `Cannot complete quest #Q${parked.shortId}: Epic #E${planned.number} is planned. Begin it first.`,
-    );
+      );
+      expect(await statusOf(epic)).toBe("in_progress");
 
-    const completed = await ctx.controller.completeQuest(
-      { params: { id: live.id }, body: {} },
-      { user },
-    );
-    expect(completed.completedAt).toBeDefined();
+      await ctx.controller.completeQuest(
+        { params: { id: second.id }, body: {} },
+        { user },
+      );
+      const after = await ctx.repos.epics.getById(epic.id);
+      expect(after.status).toBe("completed");
+      expect(after.completedAt).toBeDefined();
+    });
+  });
+
+  describe("shelve", () => {
+    it("completes an in-progress epic when the last open quest is shelved", async ({
+      expect,
+    }) => {
+      // Shelving is the epic-level equivalent of waiving an objective.
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "in_progress",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        acceptedAt: STAMP,
+        completedAt: STAMP,
+      });
+      const declined = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      await ctx.controller.shelveQuest(
+        { params: { id: declined.id } },
+        { user: ownerToken(project) },
+      );
+
+      expect(await statusOf(epic)).toBe("completed");
+    });
+
+    it("leaves a ready epic ready, even with every quest shelved", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+      });
+      const only = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      await ctx.controller.shelveQuest(
+        { params: { id: only.id } },
+        { user: ownerToken(project) },
+      );
+
+      expect(await statusOf(epic)).toBe("ready");
+    });
+  });
+
+  /**
+   * The default release (#E48) is taken when the epic STARTS, which is where
+   * Begin used to take it. Ported from `EpicController.spec.ts` with the
+   * Begin click replaced by the first accept.
+   */
+  describe("the default release on start", () => {
+    const withDefault = async (project: Project) =>
+      ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "0.30.0",
+        title: "0.30.0",
+        description: "",
+        defaultSince: new Date().toISOString(),
+      });
+
+    it("takes the default release, and the epic's release-less quests follow", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const release = await withDefault(project);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+      });
+      const accepted = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      const follower = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      const result = await ctx.controller.acceptQuest(
+        { params: { id: accepted.id } },
+        { user: ownerToken(project) },
+      );
+
+      // One shape for "an epic has a release": the epic's row and its
+      // quests' rows all name it, the one just accepted included, and the
+      // response is not stale about it.
+      expect((await ctx.repos.epics.getById(epic.id)).releaseId).toBe(
+        release.id,
+      );
+      expect(result.releaseId).toBe(release.id);
+      const after = await ctx.repos.quests.getById(follower.id);
+      expect(after.releaseId).toBe(release.id);
+      // The carve-out is one COLUMN. Nothing about the quest's status moved.
+      expect(after.acceptedAt).toBeUndefined();
+      expect(after.shelvedAt).toBeUndefined();
+      expect(after.kanbanColumn).toBeUndefined();
+    });
+
+    it("keeps a quest that named its own release while the epic was planned", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const fallback = await withDefault(project);
+      const own = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 2,
+        tag: "1.0.0",
+        title: "1.0.0",
+        description: "",
+      });
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+      });
+      const accepted = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      const crossRelease = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        releaseId: own.id,
+      });
+
+      await ctx.controller.acceptQuest(
+        { params: { id: accepted.id } },
+        { user: ownerToken(project) },
+      );
+
+      expect((await ctx.repos.quests.getById(accepted.id)).releaseId).toBe(
+        fallback.id,
+      );
+      expect((await ctx.repos.quests.getById(crossRelease.id)).releaseId).toBe(
+        own.id,
+      );
+    });
+
+    it("leaves an epic that already names a release, and its quests, untouched", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      await withDefault(project);
+      const own = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 2,
+        tag: "1.0.0",
+        title: "1.0.0",
+        description: "",
+      });
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
+        releaseId: own.id,
+      });
+      const accepted = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      const other = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      const before = (await ctx.repos.quests.getById(other.id)).updatedAt;
+
+      await ctx.controller.acceptQuest(
+        { params: { id: accepted.id } },
+        { user: ownerToken(project) },
+      );
+
+      // The attach only ever fills a blank. An epic that answered the
+      // question is not second-guessed, and no cascade runs at all.
+      expect((await ctx.repos.epics.getById(epic.id)).releaseId).toBe(own.id);
+      expect((await ctx.repos.quests.getById(other.id)).updatedAt).toEqual(
+        before,
+      );
+    });
   });
 
   it("has no way to reopen a completed quest at all", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
-    const active = await createTestEpic(ctx.alepha, project, {
-      status: "active",
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "in_progress",
     });
     const shipped = await createTestQuest(ctx.alepha, project, {
-      epicId: active.id,
+      epicId: epic.id,
       acceptedAt: STAMP,
       acceptedBy: project.createdBy,
       completedAt: STAMP,
@@ -257,10 +552,7 @@ describe("the epic phase gate on quest transitions", () => {
     const user = ownerToken(project);
 
     // Epic #E48 deleted reopen: a quest is immutable, and follow-up work is
-    // a NEW quest linked to the old one. This case replaces the pair that
-    // asserted reopen was refused under a concluded epic and allowed under
-    // an active one - there is now no phase in which it is allowed, because
-    // there is no action.
+    // a NEW quest linked to the old one.
     expect(
       (ctx.controller as unknown as Record<string, unknown>).reopenQuest,
     ).toBeUndefined();
@@ -268,8 +560,7 @@ describe("the epic phase gate on quest transitions", () => {
     // And the one write path that is left cannot undo a completion: whether
     // `updateQuestById` refuses the field or drops it, `completedAt` is still
     // there afterwards. Asserting the END STATE rather than a throw is the
-    // point - what matters is that the quest stays closed, not which of the
-    // two ways it stays closed.
+    // point.
     await ctx.controller
       .updateQuestById(
         { params: { id: shipped.id }, body: { completedAt: null } as never },
@@ -281,17 +572,10 @@ describe("the epic phase gate on quest transitions", () => {
     );
   });
 
-  it("unshelve refuses inside a concluded epic and works while planned or active", async ({
+  it("unshelve refuses inside a completed epic and works in every other status", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
-    const done = await createTestEpic(ctx.alepha, project, { status: "done" });
-    const planned = await createTestEpic(ctx.alepha, project, {
-      status: "planned",
-    });
-    const active = await createTestEpic(ctx.alepha, project, {
-      status: "active",
-    });
     const user = ownerToken(project);
     const shelvedIn = (epicId: number) =>
       createTestQuest(ctx.alepha, project, {
@@ -300,40 +584,48 @@ describe("the epic phase gate on quest transitions", () => {
         shelvedBy: project.createdBy,
       });
 
-    const sealed = await shelvedIn(done.id);
+    const completed = await createTestEpic(ctx.alepha, project, {
+      status: "completed",
+    });
+    const sealed = await shelvedIn(completed.id);
     await expect(
       ctx.controller.unshelveQuest({ params: { id: sealed.id } }, { user }),
     ).rejects.toThrow(
-      `Cannot unshelve quest #Q${sealed.shortId}: Epic #E${done.number} is concluded. File this in a new epic.`,
+      `Cannot unshelve quest #Q${sealed.shortId}: Epic #E${completed.number} is completed. File this in a new epic.`,
     );
 
-    // Shelving during planning is an edit to an open plan, and so is
-    // bringing the quest back.
-    for (const epic of [planned, active]) {
+    // Bringing a quest back into an open plan is an edit to it, and starts
+    // nothing: a ready epic stays ready.
+    for (const status of ["planned", "ready", "in_progress"] as const) {
+      const epic = await createTestEpic(ctx.alepha, project, { status });
       const quest = await shelvedIn(epic.id);
       const back = await ctx.controller.unshelveQuest(
         { params: { id: quest.id } },
         { user },
       );
       expect(back.shelvedAt).toBeUndefined();
+      expect(await statusOf(epic)).toBe(status);
     }
   });
 
   describe("delete", () => {
-    it("deletes a loose quest and a planned epic's quest", async ({
+    it("deletes a loose quest and a planned or ready epic's quest", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
-      const epic = await createTestEpic(ctx.alepha, project, {
+      const planned = await createTestEpic(ctx.alepha, project, {
         status: "planned",
       });
-      const loose = await createTestQuest(ctx.alepha, project);
-      const parked = await createTestQuest(ctx.alepha, project, {
-        epicId: epic.id,
+      const ready = await createTestEpic(ctx.alepha, project, {
+        status: "ready",
       });
       const user = ownerToken(project);
 
-      for (const quest of [loose, parked]) {
+      for (const quest of [
+        await createTestQuest(ctx.alepha, project),
+        await createTestQuest(ctx.alepha, project, { epicId: planned.id }),
+        await createTestQuest(ctx.alepha, project, { epicId: ready.id }),
+      ]) {
         const result = await ctx.controller.deleteQuest(
           { params: { id: quest.id } },
           { user },
@@ -342,33 +634,33 @@ describe("the epic phase gate on quest transitions", () => {
       }
     });
 
-    it("refuses inside an active or concluded epic, naming shelve", async ({
+    it("refuses inside an in-progress or completed epic, naming shelve", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
-      const active = await createTestEpic(ctx.alepha, project, {
-        status: "active",
+      const started = await createTestEpic(ctx.alepha, project, {
+        status: "in_progress",
       });
-      const done = await createTestEpic(ctx.alepha, project, {
-        status: "done",
+      const completed = await createTestEpic(ctx.alepha, project, {
+        status: "completed",
       });
       const held = await createTestQuest(ctx.alepha, project, {
-        epicId: active.id,
+        epicId: started.id,
       });
       const sealed = await createTestQuest(ctx.alepha, project, {
-        epicId: done.id,
+        epicId: completed.id,
       });
       const user = ownerToken(project);
 
       await expect(
         ctx.controller.deleteQuest({ params: { id: held.id } }, { user }),
       ).rejects.toThrow(
-        `Cannot delete quest #Q${held.shortId}: Epic #E${active.number} is active. Its plan is frozen. Shelve it instead.`,
+        `Cannot delete quest #Q${held.shortId}: Epic #E${started.number} is in progress. Its plan is frozen. Shelve it instead.`,
       );
       await expect(
         ctx.controller.deleteQuest({ params: { id: sealed.id } }, { user }),
       ).rejects.toThrow(
-        `Cannot delete quest #Q${sealed.shortId}: Epic #E${done.number} is concluded.`,
+        `Cannot delete quest #Q${sealed.shortId}: Epic #E${completed.number} is completed.`,
       );
       // Both rows survive.
       expect((await ctx.repos.quests.getById(held.id)).id).toBe(held.id);
@@ -376,16 +668,18 @@ describe("the epic phase gate on quest transitions", () => {
     });
   });
 
-  it("shelve and unassign stay ungated in every phase", async ({ expect }) => {
-    // The two exits out of a concluded epic for rows that pre-date the
+  it("shelve and unassign stay ungated in every status", async ({ expect }) => {
+    // The two exits out of a completed epic for rows that pre-date the
     // rule. Refusing either would trap the first such row forever.
     const project = await createTestProject(ctx.alepha);
-    const done = await createTestEpic(ctx.alepha, project, { status: "done" });
+    const completed = await createTestEpic(ctx.alepha, project, {
+      status: "completed",
+    });
     const stranded = await createTestQuest(ctx.alepha, project, {
-      epicId: done.id,
+      epicId: completed.id,
     });
     const held = await createTestQuest(ctx.alepha, project, {
-      epicId: done.id,
+      epicId: completed.id,
       acceptedAt: STAMP,
       acceptedBy: project.createdBy,
     });

@@ -642,13 +642,14 @@ test.describe("Project dashboard", () => {
         }),
       );
     }
-    // ⚠️ Both attached while the epic is PLANNED, then it begins: the quest
-    // set freezes at Begin, and a quest is acceptable only inside an active
-    // epic. Reversing these two is the refusal "Begin it first".
+    // ⚠️ Both attached while the epic is PLANNED, then it is marked ready: a
+    // quest is acceptable only inside a ready or in-progress epic, and the
+    // first accept below is what starts it and freezes its quest set
+    // (#Q2223). Accepting while planned is refused as not ready.
     for (const quest of made) {
       await post(`/api/attachQuest/${epic.id}`, { questId: quest.id });
     }
-    await post(`/api/setEpicStatus/${epic.id}`, { status: "active" });
+    await post(`/api/setEpicStatus/${epic.id}`, { status: "ready" });
 
     // One of the two done → 1/2.
     await page.evaluate(async (id) => {

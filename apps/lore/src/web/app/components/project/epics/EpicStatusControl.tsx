@@ -17,14 +17,15 @@ export interface EpicStatusControlProps {
 }
 
 /**
- * The lifecycle verb for the epic's current status: `planned` offers
- * "Begin", `active` offers "Conclude", `done` offers nothing.
+ * The one lifecycle decision a person makes: `planned` offers "Mark as
+ * ready", `ready` offers "Back to planning", and an epic that has started or
+ * completed offers nothing.
  *
- * Two verbs, one way. Epic #31 made `setEpicStatus` a ratchet, so "Return
- * to Planning" and "Reopen" are gone along with their keys: the server
- * refuses both edges, and a button that answers 400 is worse than no
- * button. The way forward from a concluded epic is a new epic that depends
- * on it, which is what the Conclude dialog says.
+ * Two verbs because there are only two hand-set statuses (#Q2223). The epic
+ * moves to `in_progress` when its first quest is accepted or assigned, and
+ * to `completed` when its last open quest is completed or shelved, so a
+ * button for either would be a click that restates something the server
+ * already knows. That is what Begin and Conclude turned out to be.
  *
  * It renders the verb and NOT the status badge. The badge lives in
  * `ProjectEpicAside`: the aside states what the epic currently is, and this
@@ -35,28 +36,26 @@ export interface EpicStatusControlProps {
  * `setEpicStatus` calls, the same way `ProjectEpics.tsx`'s `submitCreate`
  * guards its own in-flight request.
  *
- * ## Both verbs confirm, for two different reasons
+ * ## Mark as ready confirms, Back to planning does not
  *
- * **Begin moves the backlog gate.** A `planned` epic hides its quests from
- * the project's backlog (`EpicVisibilityService`), so beginning one releases
- * them for everybody: it changes what other people see on a page they are
- * not looking at, which is the property worth a confirmation. Same copy as
- * the Epics list's row menu, from the same keys.
+ * **Ready moves the backlog gate.** A `planned` epic hides its quests from
+ * the project's backlog (`EpicVisibilityService`), so marking it ready
+ * releases them for everybody: it changes what other people see on a page
+ * they are not looking at, and the first of them to accept a quest freezes
+ * the plan. That is worth a confirmation, and the copy says both. Same copy
+ * as the Epics list's row menu, from the same keys.
  *
- * **Conclude is a one-way door.** It used to confirm nothing, on the
- * reasoning that `active -> done` crossed no gate and could be undone, so a
- * dialog there would teach people to dismiss dialogs unread. It cannot be
- * undone any more, which is exactly what a confirmation is for, and the copy
- * says so plainly. The server also refuses to conclude while a quest is
- * open, and that refusal reaches the toast with its count.
+ * **Back to planning is the safe direction.** It hides quests nobody has
+ * started yet (a ready epic with an accepted quest is already in progress),
+ * and the next click undoes it.
  *
- * ## A blocked Begin says why
+ * ## A blocked epic says why
  *
- * `epics.dependsOn` is a gate since epic #31: Begin is refused while the
- * predecessor is not done. The button is disabled and captioned with the
- * blocking epic rather than left to fail on click, because until the aside
- * gained its predecessor row nothing on this page showed the field at all,
- * and a refusal for a reason nobody can see reads as a bug.
+ * `epics.dependsOn` gates the start: no quest of a ready epic is accepted
+ * while its predecessor is not completed. Marking it ready is still allowed,
+ * so a chain can be specified together, and the caption beside the control
+ * says what the epic is waiting for rather than leaving the refusal to
+ * surprise whoever accepts the first quest.
  */
 const EpicStatusControl = (props: EpicStatusControlProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -66,30 +65,21 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
   const [submitting, setSubmitting] = useState(false);
   const blockedBy = epicBlockedBy(props.epic);
 
-  const confirmFor = async (status: "active" | "done"): Promise<boolean> => {
-    if (status === "active") {
-      return await dialog.confirm({
-        title: tr("epic.begin.title"),
-        description: tr("epic.begin.confirm", {
+  const changeStatus = async (status: "planned" | "ready") => {
+    if (submitting) return;
+    if (
+      status === "ready" &&
+      !(await dialog.confirm({
+        title: tr("epic.ready.title"),
+        description: tr("epic.ready.confirm", {
           args: [props.epic.title],
         }) as string,
-        confirmLabel: tr("epic.status.actions.begin"),
+        confirmLabel: tr("epic.status.actions.markReady"),
         cancelLabel: tr("common.cancel"),
-      });
+      }))
+    ) {
+      return;
     }
-    return await dialog.confirm({
-      title: tr("epic.conclude.title"),
-      description: tr("epic.conclude.confirm", {
-        args: [props.epic.title],
-      }) as string,
-      confirmLabel: tr("epic.status.actions.conclude"),
-      cancelLabel: tr("common.cancel"),
-    });
-  };
-
-  const changeStatus = async (status: "active" | "done") => {
-    if (submitting) return;
-    if (!(await confirmFor(status))) return;
     setSubmitting(true);
     try {
       const updated = await epicApi.setEpicStatus({
@@ -104,50 +94,44 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
     }
   };
 
-  if (props.epic.status === "done") {
+  if (props.epic.status !== "planned" && props.epic.status !== "ready") {
+    return null;
+  }
+
+  // The whole control, not each button: an epic's status is not something a
+  // rank without `epic:write` can move at all.
+  if (!epicApi.setEpicStatus.can()) {
     return null;
   }
 
   const blockedLabel =
     blockedBy !== undefined
-      ? String(tr("epic.begin.blocked", { args: [String(blockedBy)] }))
+      ? String(tr("epic.start.blocked", { args: [String(blockedBy)] }))
       : undefined;
-
-  // The whole control, not each button: an epic's phase is not something a
-  // rank without `epic:write` can move at all, so a disabled Begin beside a
-  // disabled Conclude would be two dead affordances where none belongs.
-  if (!epicApi.setEpicStatus.can()) {
-    return null;
-  }
 
   return (
     <div className="flex items-center gap-2">
-      {props.epic.status === "planned" && (
-        <>
-          {blockedLabel !== undefined && (
-            <span className="text-muted-foreground text-xs">
-              {blockedLabel}
-            </span>
-          )}
-          <Button
-            type="button"
-            size="lg"
-            disabled={submitting || blockedLabel !== undefined}
-            title={blockedLabel}
-            onClick={() => void changeStatus("active")}
-          >
-            {tr("epic.status.actions.begin")}
-          </Button>
-        </>
+      {blockedLabel !== undefined && (
+        <span className="text-muted-foreground text-xs">{blockedLabel}</span>
       )}
-      {props.epic.status === "active" && (
+      {props.epic.status === "planned" ? (
         <Button
           type="button"
           size="lg"
           disabled={submitting}
-          onClick={() => void changeStatus("done")}
+          onClick={() => void changeStatus("ready")}
         >
-          {tr("epic.status.actions.conclude")}
+          {tr("epic.status.actions.markReady")}
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="lg"
+          variant="outline"
+          disabled={submitting}
+          onClick={() => void changeStatus("planned")}
+        >
+          {tr("epic.status.actions.backToPlanning")}
         </Button>
       )}
     </div>
