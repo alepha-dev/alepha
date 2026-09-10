@@ -10,9 +10,11 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   createTestEpic,
   createTestProject,
+  createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
 import { EpicController } from "../controllers/EpicController.ts";
+import { QuestController } from "../controllers/QuestController.ts";
 import { LoreApi } from "../index.ts";
 import { EpicDependencyService } from "./EpicDependencyService.ts";
 
@@ -20,17 +22,19 @@ import { EpicDependencyService } from "./EpicDependencyService.ts";
  * `epics.dependsOn`: what it refuses, and the order it puts epics in.
  *
  * ⚠️ Read the column's own comment in `epics.ts` before changing anything
- * here. The field is a **gate** since epic #31: `setEpicStatus` refuses
- * Begin while the predecessor is not done. It was **advisory** for three
- * days before that, deliberately, and this file held a test whose whole job
- * was to go red when the gate arrived; it did, and was rewritten into its
- * opposite rather than deleted. **Cycles are refused** on write, which was
- * always a different question with a different answer.
+ * here. The field is a **gate** since epic #31: an epic cannot START while
+ * its predecessor is not completed, so the first accept of its quests is
+ * refused (#Q2223; it gated the Begin click before). It was **advisory**
+ * for three days before that, deliberately, and this file held a test whose
+ * whole job was to go red when the gate arrived; it did, and was rewritten
+ * into its opposite rather than deleted. **Cycles are refused** on write,
+ * which was always a different question with a different answer.
  */
 
 interface TestContext {
   alepha: Alepha;
   controller: EpicController;
+  quests: QuestController;
   dependencies: EpicDependencyService;
   repos: TestEntityRepositories;
 }
@@ -58,6 +62,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     controller: alepha.inject(EpicController),
+    quests: alepha.inject(QuestController),
     dependencies: alepha.inject(EpicDependencyService),
     repos,
   };
@@ -267,45 +272,46 @@ describe("EpicDependencyService", () => {
      * read and replaced: the advisory channel had measured zero (epic #27
      * went to 9 of 9 while planned). It went red as designed, and is now its
      * own opposite, not deleted. The column comment holds both decisions.
+     *
+     * #Q2223 moved the gate from Begin to the START: marking a dependent
+     * epic ready is allowed, so a chain can be specified at once, and it is
+     * accepting its first quest that waits for the predecessor.
      */
-    it("refuses activating an epic whose predecessor is not done, and allows it once it is", async ({
+    it("marks a dependent epic ready, and refuses to start it until the predecessor completes", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
       const first = await createTestEpic(ctx.alepha, project);
       const second = await createTestEpic(ctx.alepha, project);
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: second.id,
+      });
       const user = ownerToken(project);
 
       await ctx.controller.updateEpic(
         { params: { id: second.id }, body: { dependsOn: first.id } },
         { user },
       );
+      const ready = await ctx.controller.setEpicStatus(
+        { params: { id: second.id }, body: { status: "ready" } },
+        { user },
+      );
+      expect(ready.status).toBe("ready");
 
       await expect(
-        ctx.controller.setEpicStatus(
-          { params: { id: second.id }, body: { status: "active" } },
-          { user },
-        ),
+        ctx.quests.acceptQuest({ params: { id: quest.id } }, { user }),
       ).rejects.toThrow(
-        `Cannot begin Epic #E${second.number}: it depends on Epic #E${first.number}, which is not concluded.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${second.number} depends on Epic #E${first.number}, which is not completed.`,
       );
-      expect((await ctx.repos.epics.getById(second.id)).status).toBe("planned");
+      expect((await ctx.repos.epics.getById(second.id)).status).toBe("ready");
 
-      // Walk the predecessor to done through the ratchet, then Begin passes.
-      await ctx.controller.setEpicStatus(
-        { params: { id: first.id }, body: { status: "active" } },
-        { user },
-      );
-      await ctx.controller.setEpicStatus(
-        { params: { id: first.id }, body: { status: "done" } },
-        { user },
-      );
-      const activated = await ctx.controller.setEpicStatus(
-        { params: { id: second.id }, body: { status: "active" } },
-        { user },
-      );
+      // Once the predecessor completes, the same accept starts the epic.
+      await ctx.repos.epics.updateById(first.id, { status: "completed" });
+      await ctx.quests.acceptQuest({ params: { id: quest.id } }, { user });
 
-      expect(activated.status).toBe("active");
+      expect((await ctx.repos.epics.getById(second.id)).status).toBe(
+        "in_progress",
+      );
     });
 
     /**

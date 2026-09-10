@@ -288,7 +288,8 @@ describe("Lore MCP — epics", () => {
   }) => {
     // The common `acceptNote` case since epic #31: the quest is filed, the
     // accept is refused by the epic phase gate, and the note is the server's
-    // own message, which names the fix.
+    // own message. It says the epic is not ready and stops there: whether a
+    // spec is done is the owner's call, not the agent's (#Q2223).
     const { alepha, repos, project, questTools, call } = await setup();
     const epic = await createTestEpic(alepha, project, { status: "planned" });
 
@@ -304,7 +305,7 @@ describe("Lore MCP — epics", () => {
 
     expect(created.acceptedAt).toBeUndefined();
     expect(created.acceptNote).toBe(
-      `Cannot accept quest #Q${created.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
+      `Cannot accept quest #Q${created.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
     );
     const row = await repos.quests.getById(created.id);
     expect(row.epicId).toBe(epic.id);
@@ -412,7 +413,7 @@ describe("Lore MCP — epics", () => {
   });
 
   describe("epic_set_status", () => {
-    it("moves an epic through its lifecycle without touching its quests", async ({
+    it("marks an epic ready without touching its quests", async ({
       expect,
     }) => {
       const { alepha, repos, project, epicTools, call } = await setup();
@@ -425,17 +426,29 @@ describe("Lore MCP — epics", () => {
       const questUpdatedAtBefore = (await repos.quests.getById(quest.id))
         .updatedAt;
 
-      const activated = await call(epicTools.epic_set_status, {
+      const ready = await call(epicTools.epic_set_status, {
         project: project.id,
         number: epic.number,
-        status: "active",
+        status: "ready",
       });
 
-      expect(activated.status).toBe("active");
-      expect(activated.activatedAt).toBeDefined();
+      expect(ready.status).toBe("ready");
       expect((await repos.quests.getById(quest.id)).updatedAt).toEqual(
         questUpdatedAtBefore,
       );
+    });
+
+    it("offers only the two hand-set statuses in its schema", async ({
+      expect,
+    }) => {
+      // An agent reads the tool schema on connect. `in_progress` and
+      // `completed` are written by the quest requests, so they must not be
+      // offered as something to ask for.
+      const { epicTools } = await setup();
+
+      expect(
+        epicTools.epic_set_status.options.schema?.params.shape.status.options,
+      ).toEqual(["planned", "ready"]);
     });
   });
 

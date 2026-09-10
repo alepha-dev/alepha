@@ -14,6 +14,7 @@ import {
 } from "@/api/services/DashboardMetricCatalog.ts";
 
 import type { I18n } from "../../services/I18n.ts";
+import { STATUS_LABEL_KEYS } from "../project/epics/epicStatus.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 import { eligibleApps, eligibleProjects } from "./dashboardEligibility.ts";
 
@@ -210,7 +211,7 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{epic.title}</span>
                 <span className="text-muted-foreground block truncate text-[11px]">
-                  {tr(`epic.status.${epic.status}`)}
+                  {tr(STATUS_LABEL_KEYS[epic.status])}
                 </span>
               </span>
               {selected && <Check className="size-3.5 shrink-0" />}

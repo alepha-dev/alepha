@@ -119,6 +119,36 @@ describe("useQuery", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  test("does not poll while enabled is false, and polls once it is", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const handler = vi.fn(async () => "value");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    // `enabled: !!id` with polling: while the gate is shut, the interval must
+    // not fire either, or every tick requests the missing id.
+    const { rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useQuery({ handler, enabled, runEvery: 10 }, []),
+      { wrapper, initialProps: { enabled: false } },
+    );
+
+    await new Promise((r) => setTimeout(r, 60));
+    expect(handler).not.toHaveBeenCalled();
+
+    rerender({ enabled: true });
+
+    await waitFor(() => {
+      expect(handler.mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
   test("refetch supersedes an in-flight request", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();

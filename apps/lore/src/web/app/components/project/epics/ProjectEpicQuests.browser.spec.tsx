@@ -50,7 +50,8 @@ const questOf = (
 
 /**
  * The epic the tab belongs to. Only its status matters here: the quest set
- * is editable while `planned` and frozen otherwise (epic #31).
+ * is editable while `planned` or `ready`, and frozen once the epic is in
+ * progress (epic #31, #Q2223).
  */
 const epicOf = (status: EpicResource["status"]): EpicResource =>
   ({
@@ -228,18 +229,42 @@ describe("ProjectEpicQuests - columns", () => {
   });
 
   /**
-   * The plan freeze (epic #31). Once the epic has begun the server refuses
-   * attach, detach and create-into, so the affordances go with the
+   * A ready epic is both at once (#Q2223): its plan is still open, so New,
+   * Attach and Detach stay, and its quests can be accepted, so the Agent
+   * Prompts group is there too. The first accept is what freezes it.
+   */
+  it("keeps the plan editable on a ready epic and offers the agent group beside Detach", async () => {
+    await mount([questOf(12, "Ship the thing", "low")], "ready");
+
+    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
+    expect(screen.getByRole("button", { name: "New Quest" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Attach Quest" })).toBeTruthy();
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /actions|menu/i })[0],
+    );
+    const items = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')];
+      if (found.length === 0) throw new Error("not open yet");
+      return found.map((it) => it.textContent).join(" ");
+    });
+    expect(items).toContain("Agent Prompts");
+    expect(items).toContain("Detach");
+  });
+
+  /**
+   * The plan freeze (epic #31). Once the epic is in progress the server
+   * refuses attach, detach and create-into, so the affordances go with the
    * permission instead of answering 400: no New Quest, no Attach Quest, and
    * no Detach.
    *
-   * ⚠️ The row menu itself no longer disappears with them on an ACTIVE
+   * ⚠️ The row menu itself no longer disappears with them on an IN-PROGRESS
    * epic: that is exactly when its quests are handed out one at a time, so
-   * the Agent Prompts group takes the slot Detach left. On a CONCLUDED epic
+   * the Agent Prompts group takes the slot Detach left. On a COMPLETED epic
    * both are gone and the table is back to no menu at all.
    */
   it("hides Create, Attach and Detach once the plan is frozen", async () => {
-    for (const status of ["active", "done"] as const) {
+    for (const status of ["in_progress", "completed"] as const) {
       const { view } = await mount(
         [questOf(12, "Ship the thing", "low")],
         status,
@@ -250,7 +275,7 @@ describe("ProjectEpicQuests - columns", () => {
       expect(screen.queryByRole("button", { name: "Attach Quest" })).toBeNull();
 
       const menus = screen.queryAllByRole("button", { name: /actions|menu/i });
-      if (status === "active") {
+      if (status === "in_progress") {
         // The group, and nothing else: Detach is gone with the freeze.
         expect(menus.length).toBe(1);
         fireEvent.click(menus[0]);
@@ -277,17 +302,17 @@ describe("ProjectEpicQuests - columns", () => {
 
   /**
    * ⚠️ The case #Q1959's effective-entry count exists for, reached here and
-   * nowhere else: an ACTIVE epic (no Detach) holding a COMPLETED quest (the
-   * agent gate fails) leaves a row with nothing to offer. This table omits
+   * nowhere else: an IN-PROGRESS epic (no Detach) holding a COMPLETED quest
+   * (the agent gate fails) leaves a row with nothing to offer. This table omits
    * the group rather than handing over an empty one, and the table's own
    * count is the backstop.
    */
-  it("renders no menu on a completed quest inside an active epic", async () => {
+  it("renders no menu on a completed quest inside an in-progress epic", async () => {
     const completed = {
       ...questOf(12, "Ship the thing", "low"),
       completedAt: "2026-09-01T10:00:00.000Z",
     };
-    await mount([completed as never], "active");
+    await mount([completed as never], "in_progress");
 
     await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
     expect(screen.queryAllByRole("button", { name: /actions|menu/i })).toEqual(
@@ -299,10 +324,10 @@ describe("ProjectEpicQuests - columns", () => {
    * ⚠️ `projectFixture()` turns every declared option ON, so this is the
    * only case that has to pass an override.
    */
-  it("renders no menu on an active epic when agent prompts are off", async () => {
+  it("renders no menu on an in-progress epic when agent prompts are off", async () => {
     await mount(
       [questOf(12, "Ship the thing", "low")],
-      "active",
+      "in_progress",
       projectFixture({ options: { work: { agentPrompts: false } } }),
     );
 
@@ -322,7 +347,7 @@ describe("ProjectEpicQuests - columns", () => {
         },
       },
     });
-    await mount([questOf(12, "Ship the thing", "low")], "active");
+    await mount([questOf(12, "Ship the thing", "low")], "in_progress");
 
     await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
     fireEvent.click(

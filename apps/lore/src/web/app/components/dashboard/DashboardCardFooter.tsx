@@ -55,17 +55,18 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
     if (props.metric === "epicProgress") {
       // ⚠️ Status-dependent, reusing the Epics list's own readings rather
       // than inventing prose: a `planned` epic reports what is SPECIFIED and
-      // that none of it is released, a `done` one reports when it concluded,
-      // and only an `active` one gets the buckets. See `ProjectEpicsProgress`.
+      // that none of it is released, a `completed` one reports when it
+      // completed, and a ready or in-progress one gets the ratio. See
+      // `ProjectEpicsProgress`.
       if (detail.hidden) return tr("dashboard.footer.epic.hidden");
       const denominator = Number(detail.denominator ?? 0);
       if (denominator === 0) return tr("dashboard.footer.epic.nothing");
-      if (detail.status === "done") {
+      if (detail.status === "completed") {
         return detail.completedAt
-          ? tr("dashboard.footer.epic.concluded", {
+          ? tr("dashboard.footer.epic.completed", {
               args: [String(l(String(detail.completedAt), { date: "ll" }))],
             })
-          : tr("dashboard.footer.epic.concludedUndated");
+          : tr("dashboard.footer.epic.completedUndated");
       }
       if (detail.status === "planned") {
         return tr("dashboard.footer.epic.specified", {

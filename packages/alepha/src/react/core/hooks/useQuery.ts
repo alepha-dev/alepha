@@ -143,7 +143,11 @@ export function useQuery<Result>(
             )
         : options.handler,
       runOnInit: shouldRun,
-      runEvery: options.runEvery,
+      // A disabled query does not poll either. Passing `runEvery` through
+      // regardless kept the timer running behind `enabled: !!id`, so the gate
+      // stopped the first fetch and let every later one through, with the
+      // very `undefined` id the gate existed to keep out of the request.
+      runEvery: enabled ? options.runEvery : undefined,
       debounce: options.debounce,
       onError: options.onError,
       onSuccess: async (result) => {
@@ -248,8 +252,8 @@ export interface UseQueryOptions<Result> {
   id?: string;
 
   /**
-   * If `false`, skip automatic execution on mount and dep change. Use
-   * `refetch()` to trigger manually. Defaults to `true`.
+   * If `false`, skip automatic execution on mount, on dep change and on
+   * `runEvery`. Use `refetch()` to trigger manually. Defaults to `true`.
    */
   enabled?: boolean;
 

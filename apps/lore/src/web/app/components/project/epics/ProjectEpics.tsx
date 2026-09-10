@@ -22,13 +22,17 @@ import {
   Plus,
   Search,
   Trash2,
+  Undo2,
   Wrench,
 } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
-import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import {
+  type EpicResource,
+  epicResourceSchema,
+} from "@/api/schemas/epicResourceSchema.ts";
 import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -47,9 +51,10 @@ import { releaseRowMenu } from "../releaseRowMenu.ts";
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import {
-  epicBlockedBy,
+  EPIC_STATUSES,
   STATUS_ICONS,
   STATUS_LABEL_KEYS,
+  STATUS_ORDER,
   STATUS_TONE,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
@@ -58,14 +63,19 @@ import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
  * Filter form, owned by AlephaTable: free-text over title + description,
  * and a status multi-select whose empty selection means "all".
  *
- * An array, like the Quests list's, because the everyday view is Planned
- * plus Active and a single value could not say it (feedback #2069). The
- * array is what `AlephaTable` persists and carries in the URL, the same
- * way it already does for the board's four list filters.
+ * An array, like the Quests list's, because the everyday view is several
+ * statuses at once (everything not yet completed, say) and a single value
+ * could not say it (feedback #2069). The array is what `AlephaTable`
+ * persists and carries in the URL, the same way it already does for the
+ * board's four list filters.
+ *
+ * The status is the column's own enum rather than a list restated here, so
+ * a status renamed on the entity cannot survive in a filter that no longer
+ * matches anything.
  */
 const epicsFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.array(z.enum(["planned", "active", "done"])).optional(),
+  status: z.array(epicResourceSchema.shape.status).optional(),
   /**
    * Release ids as strings, plus the `QUEST_RELEASE_NONE` sentinel, exactly
    * like the Quests table's (feedback #2102).
@@ -91,25 +101,17 @@ const epicsFiltersSchema = z.object({
  * rather than round-tripping. Same shape as `ProjectBlights`, and the
  * reason neither needed a paginated endpoint.
  *
- * Status is a read-only CHIP here, but the row menu carries one verb:
- * **Begin**, on a `planned` epic only. That reverses an earlier decision
- * (this comment used to say the menu offers Delete and nothing else), and
- * it is a deliberate reversal rather than drift.
+ * Status is a read-only CHIP here, but the row menu carries the one
+ * lifecycle decision a person makes: **Mark as ready** on a `planned` epic,
+ * **Back to planning** on a `ready` one (#Q2223). The other two statuses
+ * happen on their own (the first accepted quest starts an epic, the last
+ * resolved one completes it), so an epic that has started offers nothing.
+ * Marking a whole chain ready from the list is the point: `dependsOn` gates
+ * the start, not `ready`, so each epic opens when its predecessor completes.
  *
- * Only Begin, out of `EpicStatusControl`'s two verbs, and the reason is
- * what you are doing when you are looking at this page. Scanning a backlog
- * and starting the next thing is a list-shaped action. Concluding an epic
- * is a judgement about whether its quests are actually finished, and since
- * epic #31 it is final, so it wants the epic's own page, where its progress
- * is in front of you. (Reopen and Return to Planning were the other two
- * verbs until epic #31 made the lifecycle a one-way ratchet.) Begin is
- * disabled here with the blocking epic named when the predecessor is not
- * done, the same way the detail page's button is.
- *
- * The label comes from `epic.status.actions.begin`, the same key the detail
- * page's button uses, so the two surfaces cannot come to call it different
- * things - which is the real content of the old comment's warning about
- * duplicating the transition-verb vocabulary.
+ * The labels come from `epic.status.actions.*`, the same keys the detail
+ * page's control uses, so the two surfaces cannot come to call the same
+ * move different things.
  *
  * ### Built to the Quests table's shape
  *
@@ -171,6 +173,28 @@ const ProjectEpics = () => {
       // the fetch comes back with the new value.
       refresh();
       reportCascade(updated.releaseCascade);
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  /**
+   * The row menu's one lifecycle write, the same `setEpicStatus` the epic
+   * page's control makes. `refresh` is what repaints the status chip AND
+   * recomputes the sidebar's planned-epic badge, since `fetchEpics` pushes
+   * that count on every fetch.
+   */
+  const setStatus = async (
+    epic: EpicResource,
+    status: "planned" | "ready",
+    refresh: () => void,
+  ) => {
+    try {
+      await epicApi.setEpicStatus({
+        params: { id: epic.id },
+        body: { status },
+      });
+      refresh();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }
@@ -273,10 +297,10 @@ const ProjectEpics = () => {
   // can leave the selection with nothing to do, which is why both are
   // pushed conditionally rather than rendered disabled.
   //
-  // ⚠️ No bulk Begin. The row menu keeps it because beginning is a per-epic
-  // decision with a per-epic confirmation, and epic #31 is about to make the
-  // status transitions themselves refuse things a selection cannot reason
-  // about.
+  // ⚠️ No bulk Mark as ready. The row menu keeps it because deciding that a
+  // spec is done is a per-epic decision with a per-epic confirmation, and a
+  // selection mixing planned, ready and started epics would have to refuse
+  // most of what it held.
   //
   // Every entry refreshes and then clears, in that order: a selection that
   // survives a delete points at rows that no longer exist. `ctx.refresh()`
@@ -424,11 +448,10 @@ const ProjectEpics = () => {
                     String(tr("epic.filter.statusCount", { args: [String(n)] }))
                   }
                   triggerClassName="w-full"
-                  items={[
-                    { label: tr("epic.status.planned"), value: "planned" },
-                    { label: tr("epic.status.active"), value: "active" },
-                    { label: tr("epic.status.done"), value: "done" },
-                  ]}
+                  items={EPIC_STATUSES.map((status) => ({
+                    label: tr(STATUS_LABEL_KEYS[status]),
+                    value: status,
+                  }))}
                   inputProps={{ "aria-label": tr("epic.filter.status") }}
                 />
               </FilterSlot>
@@ -572,24 +595,24 @@ const ProjectEpics = () => {
           // two different status gates, and the whole group behind the
           // project's `agentPrompts` option, which is off by default.
           //
-          // Review is offered while the plan is still open: after Begin the
-          // quest set is what is being worked, not what is being written.
-          // Activate is offered on an active epic too, because a
-          // half-worked epic can be handed over. A `done` epic gets neither,
-          // so the group has no children and `AlephaTable` renders nothing
-          // for it.
+          // Review is offered while the plan is still open (planned or
+          // ready): once the epic is in progress its quest set is what is
+          // being worked, not what is being written. Work on it is offered
+          // on a ready epic, whose first accepted quest starts it, and on
+          // one in progress, because a half-worked epic can be handed over.
+          // NOT on a planned one: its quests refuse to be accepted, and
+          // whether the spec is done is the owner's call, not the agent's.
+          // A completed epic gets neither, so the group has no children and
+          // `AlephaTable` renders nothing for it.
           //
-          // ⚠️ Activate is NOT Begin. Begin is the epic's own lifecycle
-          // action and stays below, untouched; Activate copies a prompt that
-          // tells an agent to begin the epic if it needs beginning. Nothing
-          // here calls `setEpicStatus`.
+          // Nothing here calls `setEpicStatus`.
           ...(agentPrompt.enabled
             ? [
                 {
                   icon: Bot,
                   label: tr("agentPrompts.menu"),
                   children: [
-                    ...(epic.status === "planned"
+                    ...(epic.status === "planned" || epic.status === "ready"
                       ? [
                           {
                             icon: ClipboardCheck,
@@ -602,7 +625,7 @@ const ProjectEpics = () => {
                           },
                         ]
                       : []),
-                    ...(epic.status === "planned" || epic.status === "active"
+                    ...(epic.status === "ready" || epic.status === "in_progress"
                       ? [
                           {
                             // The verb and glyph quests and feedback use for
@@ -672,61 +695,47 @@ const ProjectEpics = () => {
                 },
               ]
             : []),
-          // Gated on the row's own status, which is why this callback reads
-          // its argument now. Beginning an epic that has already begun is
-          // not a thing to offer.
-          ...(epic.status === "planned"
+          // The one lifecycle decision, gated on the row's own status: a
+          // planned epic can be marked ready, a ready one sent back to
+          // planning, and an epic that has started offers nothing, because
+          // its other two moves happen on their own (#Q2223).
+          ...(epic.status === "planned" && epicApi.setEpicStatus.can()
             ? [
                 {
                   icon: Play,
-                  // `dependsOn` is a gate since epic #31: Begin is refused
-                  // while the predecessor is not done. The entry stays on the
-                  // row, disabled, and its label names the blocking epic, so
-                  // the reason sits where the click would have been rather
-                  // than in a 400 after it.
-                  label:
-                    epicBlockedBy(epic) !== undefined
-                      ? String(
-                          tr("epic.begin.blocked", {
-                            args: [String(epicBlockedBy(epic))],
-                          }),
-                        )
-                      : tr("epic.status.actions.begin"),
-                  disabled: (row: EpicResource) =>
-                    epicBlockedBy(row) !== undefined,
+                  label: tr("epic.status.actions.markReady"),
                   onClick: async (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },
                   ) => {
-                    // Same copy as the detail page's own Begin, from the
-                    // same keys. Beginning releases the epic's quests into
-                    // the backlog for everybody, which is what the
-                    // confirmation is for; it is not destructive, so no
-                    // `destructive: true`.
+                    // Same copy as the detail page's own control, from the
+                    // same keys. Ready releases the epic's quests into the
+                    // backlog for everybody, and the first accept freezes
+                    // the plan, which is what the confirmation is for; it is
+                    // not destructive, so no `destructive: true`.
                     const ok = await dialog.confirm({
-                      title: tr("epic.begin.title"),
-                      description: tr("epic.begin.confirm", {
+                      title: tr("epic.ready.title"),
+                      description: tr("epic.ready.confirm", {
                         args: [row.title],
                       }) as string,
-                      confirmLabel: tr("epic.status.actions.begin"),
+                      confirmLabel: tr("epic.status.actions.markReady"),
                       cancelLabel: tr("common.cancel"),
                     });
                     if (!ok) return;
-                    try {
-                      await epicApi.setEpicStatus({
-                        params: { id: row.id },
-                        body: { status: "active" },
-                      });
-                      // `refresh` is what repaints the status chip AND
-                      // recomputes the sidebar's planned-epic badge, since
-                      // `fetchEpics` pushes that count on every fetch.
-                      refresh();
-                    } catch (error) {
-                      toaster.error(
-                        error instanceof Error ? error.message : String(error),
-                      );
-                    }
+                    await setStatus(row, "ready", refresh);
                   },
+                },
+              ]
+            : []),
+          ...(epic.status === "ready" && epicApi.setEpicStatus.can()
+            ? [
+                {
+                  icon: Undo2,
+                  label: tr("epic.status.actions.backToPlanning"),
+                  onClick: (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => setStatus(row, "planned", refresh),
                 },
               ]
             : []),
@@ -855,15 +864,4 @@ const releaseOf = (
 ): ReleaseResource | undefined => {
   if (!epic.releaseId) return undefined;
   return releases?.find((release) => release.id === epic.releaseId);
-};
-
-/**
- * Sorting `status` alphabetically would read as arbitrary (active, done,
- * planned). This orders it along the lifecycle instead, so ascending walks
- * an epic's life from specified to finished.
- */
-const STATUS_ORDER: Record<EpicResource["status"], number> = {
-  planned: 0,
-  active: 1,
-  done: 2,
 };

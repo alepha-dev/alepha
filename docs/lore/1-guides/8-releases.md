@@ -2,7 +2,7 @@
 
 A **release** is a named goal that holds the work due to ship in it: `0.28.0`,
 `demo-1`, `v1.0.0-rc.1`. An **area** is where work happens (a module,
-permanent), an **epic** is what is being built (it starts and it concludes),
+permanent), an **epic** is what is being built (it starts and it completes),
 and a release is when something ships.
 
 Membership is an **assignment, not a time window**. Nothing is in a release
@@ -72,18 +72,20 @@ inside an epic that ships in `1.0.0` is already in `1.0.0`; stamping the
 default onto it would quietly move it out, dropping a line from that release's
 changelog and a unit from its progress bar.
 
-### Beginning an epic
+### Starting an epic
 
-An epic that names no release takes the default **when it begins**, and
-carries that release down to every quest of it that named none. A quest that
-was given its own release while the epic was still being planned keeps it.
+An epic that names no release takes the default **when it starts**, which is
+the moment its first quest is accepted, and carries that release down to
+every quest of it that named none. A quest that was given its own release
+while the epic was still being planned keeps it.
 
-Beginning is deliberately the moment, rather than concluding: where an epic
-ships is a question you answer when you start it, and an epic that only
-learned its release at the end would find its quests already scattered across
-whatever was default while they were being closed.
+Starting is deliberately the moment, rather than completing: where an epic
+ships is a question answered when work begins, and an epic that only learned
+its release at the end would find its quests already scattered across
+whatever was default while they were being closed. Marking an epic ready does
+not attach anything: nothing has started yet.
 
-An epic begun before the project had a default never gets one. Its quests then
+An epic started before the project had a default never gets one. Its quests then
 land in the default individually as they complete, and show on that release as
 loose work while the epic itself is in none. That is honest, and it is fixed
 by attaching the epic to a release by hand.
