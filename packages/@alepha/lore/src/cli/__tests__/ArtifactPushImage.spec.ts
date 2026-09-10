@@ -109,7 +109,8 @@ describe("lore artifacts push-image", () => {
         LORE_API_KEY: "lore_secret",
         LORE_URL: server.inject(ServerProvider).hostname,
         // Blanked unless a case sets them, for the reason the GITHUB_* ones
-        // below carry: `ci.yml` sets `LORE_PROJECT: alepha` for every job, so
+        // below carry: `verify.yml` (and `deploy-latest.yml`) set
+        // `LORE_PROJECT: alepha` workflow-wide, for every job, so
         // a suite that does not clear it never sees the no-project branch -
         // the run resolves the CI slug, asks the sink for `getProjectBySlug`,
         // and fails with a missing action instead. Green locally, red in CI.

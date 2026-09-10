@@ -10,7 +10,7 @@ permissions:
 
 # One release at a time, and never cancel one.
 #
-# `cancel-in-progress: true` — what `ci.yml` uses, and right there — would be
+# `cancel-in-progress: true` — what `verify.yml` uses, and right there — would be
 # actively dangerous here: interrupting the job between `npm publish` and
 # `git push` leaves a published version whose tag exists on no remote, which is
 # the exact tear the step order further down is arranged to avoid. Two
@@ -21,10 +21,10 @@ concurrency:
   cancel-in-progress: false
 
 # Where every `lore` command in this workflow reports, named once so no step
-# can forget. See the same block in `ci.yml`: this is the line that replaces
-# four `continue-on-error` steps each relying on whichever `alepha.config.ts`
-# their working directory happened to hold. One of them held none, and Lore's
-# own 0.28.0 artifact was never pushed because of it.
+# can forget. See the same block in `verify.yml` and `deploy-latest.yml`:
+# this is the line that replaces four `continue-on-error` steps each relying on
+# whichever `alepha.config.ts` their working directory happened to hold. One of
+# them held none, and Lore's own 0.28.0 artifact was never pushed because of it.
 env:
   LORE_PROJECT: alepha
 
@@ -300,7 +300,7 @@ jobs:
       # second job would have nothing to check out and `dist` would have to
       # travel as an artifact.
       #
-      # The `docker` job in `ci.yml` runs this same two-platform build on
+      # The `docker` job in `verify.yml` runs this same two-platform build on
       # every push and PR, so it is not first exercised on release day.
       #
       # Two tags, both fixed. Nothing floating: Lore's version IS the
