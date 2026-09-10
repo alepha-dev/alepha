@@ -16,22 +16,23 @@ what you pasted.
 
 ## The four prompts
 
-| Prompt         | Where                                                              | Offered when                                                         |
-| -------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| **Review**     | an epic's row menu, and the epic page                              | the epic is still `planned`                                          |
-| **Activate**   | the same two places                                                | the epic is `planned` or `active`                                    |
-| **Work on it** | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `active` |
-| **Work on it** | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on             |
+| Prompt                 | Where                                                              | Offered when                                                                         |
+| ---------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| **Review**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is `planned` or `ready`                              |
+| **Work on it** (epic)  | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
+| **Work on it** (quest) | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
+| **Work on it**         | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
 
 **Review** asks an agent to sharpen a plan before anyone works it: take the
 decisions the spec left open, tighten the vague quests, and say plainly what
 it cannot answer alone.
 
-**Activate** hands the whole epic over, quest by quest: begin it if it needs
-beginning, then accept, work, verify, commit and complete each quest in
-turn. It is not the same thing as **Begin**, which is the epic's own
-lifecycle action and stays where it is. Copying Activate changes nothing
-about the epic.
+**Work on it** on an epic hands the whole epic over, quest by quest: accept,
+work, verify, commit and complete each quest in turn. It sets no status. The
+first quest the agent accepts is what moves a ready epic to in progress, and
+the last one it closes is what completes it. It is not offered on a planned
+epic: that one's quests refuse to be accepted, and whether its spec is done
+is your call, not the agent's. Copying it changes nothing about the epic.
 
 **Work on it** on a quest is the narrow version: one quest, one branch, one
 commit, and anything discovered beyond it is a comment rather than extra
@@ -79,8 +80,8 @@ quest titled `Fix {{url}} handling` keeps its own title.
 ### A worked example
 
 Every project's verify commands and branch rules are different, and that is
-the edit worth making. An **Activate** template for a project that verifies
-with one command and does not let an agent merge:
+the edit worth making. An epic **Work on it** template for a project that
+verifies with one command and does not let an agent merge:
 
 ```
 Work epic {{reference}} "{{title}}" of the Lore project "{{project}}" to
