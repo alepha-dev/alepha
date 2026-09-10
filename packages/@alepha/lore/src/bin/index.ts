@@ -35,16 +35,7 @@ const alepha = Alepha.create({
     CLI_NAME: "lore",
     CLI_DESCRIPTION: `Lore CLI v${pkg.version} - Talk to a Lore instance from a build or a CI job.`,
     LOG_FORMAT: (process.env.LOG_FORMAT ?? "cli") as any,
-    // ⚠️ `alepha.crypto:error` is not noise-hiding. `HttpClient` pulls
-    // `alepha.crypto` in transitively, and `SecretProvider` then warns on
-    // every single invocation that `APP_SECRET` is the built-in default. It
-    // is a true statement about a process that signs nothing: the one secret
-    // this CLI holds is the Lore token, and `LoreTokenStore` writes it to
-    // `~/.alepha/credentials.json` in the clear rather than encrypting it.
-    // The plugin never showed it only because a module registered from
-    // `alepha.config.ts` arrives after `configure` has already run.
-    LOG_LEVEL:
-      process.env.LOG_LEVEL ?? "alepha.core:warn,alepha.crypto:error,info",
+    LOG_LEVEL: process.env.LOG_LEVEL ?? "alepha.core:warn,info",
   },
 });
 

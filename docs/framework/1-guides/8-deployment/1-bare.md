@@ -65,7 +65,7 @@ cd dist && APP_SECRET=... SERVER_HOST=127.0.0.1 ./myapp
 ```
 
 - Run it from the directory that holds `migrations/`: the app reads them relative to where it starts. An app without a database can run from anywhere.
-- A compiled app runs in production mode, which refuses to boot without `APP_SECRET`.
+- A compiled app runs in production mode, which refuses to boot without `APP_SECRET` as soon as the app signs anything: sessions, tokens, signed cookies. An app that signs nothing boots without one.
 - Set `SERVER_HOST`: under Bun, `localhost` listens on IPv6 `::1` only.
 - The binary serves its assets from inside itself, ETag and precompressed brotli included, and ignores any `public/` directory next to it.
 - It targets the machine that builds it (`bun-darwin-arm64` on an Apple Silicon Mac). Cross-compile with `build.compile.target`, for example `bun-linux-x64` for a Linux server built on a Mac.

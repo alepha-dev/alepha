@@ -1,13 +1,51 @@
-import { Alepha } from "alepha";
+import { $inject, Alepha } from "alepha";
+import { AlephaSecurity } from "alepha/security";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import { AlephaCrypto } from "../index.ts";
+import { CryptoProvider } from "../providers/CryptoProvider.ts";
 import {
   DEFAULT_SECRET_KEY_VALUE,
   SecretProvider,
 } from "../providers/SecretProvider.ts";
 
 describe("SecretProvider", () => {
+  describe("registration", () => {
+    it("is not created by AlephaCrypto, so an app that only hashes boots in production", async () => {
+      // The server and etag modules reach AlephaCrypto for hashes and request
+      // ids. An app that signs nothing must not need APP_SECRET for that.
+      const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
+        AlephaCrypto,
+      );
+      alepha.inject(CryptoProvider);
+
+      await expect(alepha.start()).resolves.toBeDefined();
+      expect(alepha.has(SecretProvider)).toBe(false);
+
+      await alepha.stop();
+    });
+
+    it("is created by the first service that injects it, and still refuses the default", async () => {
+      class Signer {
+        protected readonly secrets = $inject(SecretProvider);
+      }
+      const alepha = Alepha.create({ env: { NODE_ENV: "production" } })
+        .with(AlephaCrypto)
+        .with(Signer);
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+
+    it("still refuses the default in production once the security module is registered", async () => {
+      const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
+        AlephaSecurity,
+      );
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+  });
+
   it("throws on start in production when APP_SECRET is the default", async () => {
     const alepha = Alepha.create({ env: { NODE_ENV: "production" } });
     // Register the provider so its `configure` hook runs on start.

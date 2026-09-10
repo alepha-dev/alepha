@@ -12,9 +12,10 @@ export interface EnvExampleOptions {
  *
  * It exists because the generated `.gitignore` already carries a
  * `!.env.example` negation — it expected this file all along — and because
- * `APP_SECRET` is a hard stop: `SecretProvider` refuses to boot in production
- * without it, so the very first `node dist/index.js` after `alepha build`
- * failed with nothing on disk pointing at the fix.
+ * `APP_SECRET` is a hard stop for an app that signs anything: `SecretProvider`
+ * refuses to boot in production without it, so the very first
+ * `node dist/index.js` after `alepha build` failed with nothing on disk
+ * pointing at the fix.
  *
  * `APP_SECRET` is left empty on purpose. A scaffolded secret would be a public
  * one, committed to every project generated from this template — worse than
@@ -38,8 +39,8 @@ export const envExample = (options: EnvExampleOptions = {}) =>
   `
 # Copy to .env and fill in. .env is gitignored; this file is not.
 
-# Signs sessions and tokens. Required in production — the app refuses to start
-# without it. Generate one with:  openssl rand -hex 32
+# Signs sessions, tokens and cookies. Required in production by any app that
+# uses them: it refuses to start without it. Generate one with:  openssl rand -hex 32
 APP_SECRET=
 ${
   options.database
