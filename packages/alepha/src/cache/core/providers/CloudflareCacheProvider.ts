@@ -25,8 +25,9 @@ const DATABASE_CACHE_PROVIDER = "DatabaseCacheProvider";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * The `CacheProvider` a Cloudflare Worker gets: the database cache when the
- * app has one, KV when it does not.
+ * Cloudflare cache provider: the database cache when the app has one, else KV.
+ *
+ * This is the `CacheProvider` a Cloudflare Worker gets by default.
  *
  * ## Why the default moved off KV
  *
