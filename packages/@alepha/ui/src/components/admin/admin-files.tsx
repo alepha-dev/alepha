@@ -56,8 +56,10 @@ export const AdminFiles = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Populate the bucket filter from storage stats. Re-runs after uploads so
-  // counts (and any newly-created bucket) stay current. If stats can't be
+  // Populate the bucket filter from storage stats, the only source of the
+  // bucket names. Re-runs after uploads so a newly-created bucket appears in
+  // the list. The filter shows bare names: the per-bucket file counts were
+  // noise, and truncated the longest name in the trigger. If stats can't be
   // fetched the filter degrades to empty.
   const { data: stats } = useQuery(
     {
@@ -71,7 +73,7 @@ export const AdminFiles = () => {
     () =>
       (stats?.byBucket ?? []).map((b) => ({
         value: b.bucket,
-        label: `${b.bucket} (${b.fileCount})`,
+        label: b.bucket,
       })),
     [stats],
   );
