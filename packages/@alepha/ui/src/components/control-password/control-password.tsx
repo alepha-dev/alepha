@@ -71,6 +71,12 @@ export const ControlPassword = (props: ControlPasswordProps) => {
             .filter(Boolean)
             .join(" ")}
         />
+        {/*
+         * Centred with `inset-y-0 my-auto`, never `top-1/2 -translate-y-1/2`:
+         * Button's press nudge (`active:translate-y-px`) writes the same
+         * `--tw-translate-y`, so while pressed `-50%` became `1px` and the
+         * button slid down by half its height (#Q2219).
+         */}
         <Button
           type="button"
           variant="ghost"
@@ -78,7 +84,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
           disabled={props.disabled}
           onClick={() => setReveal((r) => !r)}
           aria-label={reveal ? "Hide password" : "Show password"}
-          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1 size-7 -translate-y-1/2"
+          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-1 my-auto size-7"
         >
           {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </Button>
