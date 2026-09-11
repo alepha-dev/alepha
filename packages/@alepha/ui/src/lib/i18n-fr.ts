@@ -605,6 +605,9 @@ export const uiFr: Record<string, string> = {
   "admin.parameters.treeTitle": "Paramètres",
   "admin.parameters.versionActions": "Actions sur la version",
   "admin.parameters.view": "Consulter",
+  // A Parameters tree label, not admin chrome: the tree reads
+  // `parameters.<dotted path>`, and `api` is the framework's own namespace.
+  "parameters.api": "Système",
   "admin.payments.colAmount": "Montant",
   "admin.payments.colCustomer": "Client",
   "admin.payments.colProvider": "Prestataire",

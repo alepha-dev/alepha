@@ -1980,6 +1980,13 @@ export default {
   "admin.sessions.revoked": "Session revoked",
   "admin.sessions.bulkRevokeTitle": "Revoke sessions",
 
+  // Admin → Parameters: the tree's group labels, keyed by `$parameter` path.
+  // Labels only: the stored names (`lore.campaign.limits`,
+  // `lore.deploy.limits`) keep their old words, since renaming one orphans
+  // every override saved under it.
+  "parameters.lore.campaign": "Projects",
+  "parameters.lore.deploy": "Deployments",
+
   // Epics
   "project.menu.epics": "Epics",
   "epic.status.planned": "Planned",

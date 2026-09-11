@@ -500,11 +500,7 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
   const { tr } = useI18n();
   const [open, setOpen] = useState(true);
   const isActive = node.isLeaf && props.selected === node.path;
-  // Translatable label keyed by the full dotted path
-  // (`parameters.courts.pricing`, `parameters.courts`), falling back to the
-  // English title-case of the last segment when the app has no dictionary
-  // entry — so a parameters tree always renders, localized or not.
-  const label = tr(`parameters.${node.path}`, { default: labelOf(node.name) });
+  const label = parameterLabel(tr, node.path);
   const indent = props.depth * 12;
   const orphan = node.origin === "orphan";
 
@@ -800,7 +796,7 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
     [props.name, props.schemaHash],
   );
   const title = useMemo(
-    () => tr(`parameters.${props.name}`, { default: labelOf(props.name) }),
+    () => parameterLabel(tr, props.name),
     [props.name, tr, lang],
   );
   /**
@@ -820,13 +816,10 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
   const breadcrumb = useMemo(() => {
     const parts = props.name.split(".");
     parts.pop();
-    // Translate each ancestor folder by its cumulative path
-    // (`parameters.courts`), falling back to the raw segment.
+    // Each ancestor folder by its cumulative path (`parameters.courts`),
+    // through the same lookup the tree uses, so the two never disagree.
     return parts
-      .map((segment, i) => {
-        const path = parts.slice(0, i + 1).join(".");
-        return tr(`parameters.${path}`, { default: segment });
-      })
+      .map((_, i) => parameterLabel(tr, parts.slice(0, i + 1).join(".")))
       .join(" / ");
   }, [props.name, tr, lang]);
 
@@ -1016,9 +1009,34 @@ const downloadJson = (data: unknown, fileName: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 };
 
-const labelOf = (s: string) => {
-  const last = s.split(".").pop() ?? s;
-  return last.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+/**
+ * The label of one node of the tree, keyed by its full dotted path
+ * (`parameters.courts.pricing`, `parameters.courts`), falling back to the
+ * English title case of the last segment when the app has no dictionary
+ * entry, so a parameters tree always renders, localized or not.
+ *
+ * ⚠️ A label, never a rename. `$parameter` stores overrides under the exact
+ * name, so renaming `api.realms.default` to read better would orphan the row
+ * an admin saved and fall back to the code default without a word.
+ *
+ * `api` is the framework's own namespace (`api.notifications`,
+ * `api.realms.<realm>`): every app has it, so its label ships here rather
+ * than in each app's dictionary. It is written as a literal call so the
+ * French catalogue's coverage test can see it; an app's own entry still wins.
+ */
+const parameterLabel = (
+  tr: (key: string, options: { default: string }) => string,
+  path: string,
+): string => {
+  if (path === "api") {
+    return tr("parameters.api", { default: "System" });
+  }
+  const last = path.split(".").pop() ?? path;
+  return tr(`parameters.${path}`, {
+    default: last
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase()),
+  });
 };
 
 export default AdminParameters;

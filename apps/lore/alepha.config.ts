@@ -191,6 +191,11 @@ export default defineConfig({
         // `tr(permission.label)` off the registry entry. Declaring a
         // permission adds keys under this prefix and touches no component.
         "permission.",
+        // tr(`parameters.${path}`) - the admin Parameters tree labels every
+        // node by its dotted `$parameter` path, so the set is the
+        // DECLARATIONS: a new parameter is labelled by its title-cased last
+        // segment until somebody writes an entry here.
+        "parameters.",
       ],
     }),
     // Retired app-local commands, kept as notes:
