@@ -1,4 +1,5 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { DateTimeProvider } from "alepha/datetime";
@@ -25,7 +26,6 @@ import { QuestDueDate } from "../project/quest/questDueDate.ts";
 import { TAG_CHIP_CLASS, TAG_CHIP_FALLBACK } from "../shared/areaColor.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import type { ProjectUser } from "../shared/useProjectUsers.ts";
-import { UserAvatar } from "../shared/UserAvatar.tsx";
 
 export interface KanbanCardProps {
   quest: QuestResource;
@@ -331,6 +331,7 @@ const KanbanCard = (props: KanbanCardProps) => {
               rather than among the badges below. */}
           {quest.acceptedBy && (
             <UserAvatar
+              public
               fileId={props.assignee?.picture}
               className="size-4"
               alt={String(displayName(props.assignee, quest.acceptedBy))}

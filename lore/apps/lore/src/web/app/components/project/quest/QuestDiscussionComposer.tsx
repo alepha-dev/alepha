@@ -1,4 +1,5 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
@@ -12,7 +13,6 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import LoreEditor from "../../shared/element/LoreEditor.tsx";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 export interface QuestDiscussionComposerProps {
   quest: QuestResource;
@@ -89,6 +89,7 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
     // in the feed rather than a form bolted under it.
     <div className="flex gap-3 px-1 pt-3">
       <UserAvatar
+        public
         fileId={(auth.user as { picture?: string } | undefined)?.picture}
         className="mt-1 size-7 shrink-0"
         alt=""

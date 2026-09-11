@@ -4,6 +4,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/components/ui/chart";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import type { Infer } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
@@ -13,7 +14,6 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { reportsMembersSchema } from "@/api/schemas/reportsSchemas.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import ReportsSection from "./ReportsSection.tsx";
 
 type ReportsMembers = Infer<typeof reportsMembersSchema>;
@@ -73,6 +73,7 @@ const ReportsMembers = (props: ReportsMembersProps) => {
                   {index + 1}
                 </span>
                 <UserAvatar
+                  public
                   fileId={member.picture}
                   className="size-8"
                   alt={member.name}
@@ -141,6 +142,7 @@ const ReportsMembers = (props: ReportsMembersProps) => {
                 className="flex items-center gap-3 py-2 text-sm"
               >
                 <UserAvatar
+                  public
                   fileId={member.picture}
                   className="size-8"
                   alt={member.name}

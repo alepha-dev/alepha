@@ -19,6 +19,7 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
@@ -65,7 +66,6 @@ import { formatReference } from "../shared/element/typedReference.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
 import { useBulkReport } from "../shared/useBulkReport.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
-import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { questAgentGate } from "./prompts/questAgentGate.ts";
 import { useAgentPrompt } from "./prompts/useAgentPrompt.ts";
 import { useAgentPromptSubject } from "./prompts/useAgentPromptSubject.ts";
@@ -209,7 +209,12 @@ const ProjectQuestsTable = () => {
   const renderAvatar = (userId?: string) => {
     const user = userId ? users.find((u) => u.id === userId) : undefined;
     return (
-      <UserAvatar fileId={user?.picture} className="size-6" alt="user avatar" />
+      <UserAvatar
+        public
+        fileId={user?.picture}
+        className="size-6"
+        alt="user avatar"
+      />
     );
   };
 
