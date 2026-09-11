@@ -202,13 +202,14 @@ const ProjectActivityPage = () => {
     // open straight into their toolbar (feedback #2090). If that pattern is
     // ever revisited the answer is a visually-hidden heading, not this one
     // back.
-    // ⚠️ `p-4` flat, with no `md:p-6`. This page was the only table page
-    // whose padding scaled with the viewport, so above `md` it sat 8px
-    // further from the edge than Epics, Releases, Blights and Apps, which is
-    // what made it read as random rather than as a rule (feedback #2099).
-    // Below `md` the two already agreed, which is why it was invisible in a
-    // narrow window. Epics is the baseline the report named.
-    <div className="flex min-h-0 flex-1 flex-col p-4">
+    // ⚠️ `p-2` flat, with nothing responsive. This page was once the only
+    // table page whose padding scaled with the viewport (`p-4 md:p-6`), so
+    // above `md` it sat 8px further from the edge than Epics, Releases,
+    // Blights and Apps, which is what made it read as random rather than as a
+    // rule (feedback #2099). The shared value then went from `p-4` to `p-2`
+    // with #Q2266, for every project page and the admin console at once:
+    // change it everywhere or nowhere.
+    <div className="flex min-h-0 flex-1 flex-col p-2">
       <AlephaTable<ProjectActivityRow>
         className="min-h-0 flex-1"
         persistenceKey={`lor.activity.${project.id}`}

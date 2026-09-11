@@ -26,6 +26,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 
 /**
@@ -162,7 +163,10 @@ const ProjectArtifacts = () => {
     () =>
       [...new Set(rows.map((row) => row.runtime))]
         .sort((a, b) => a.localeCompare(b))
-        .map((runtime) => ({ label: runtime, value: runtime })),
+        .map((runtime) => ({
+          label: artifactRuntimeLabel(runtime),
+          value: runtime,
+        })),
     [rows],
   );
   // Derived like the other two rather than hardcoded to the two known
@@ -201,7 +205,7 @@ const ProjectArtifacts = () => {
   return (
     <div
       data-testid="artifacts-table"
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4"
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-2"
     >
       {/*
         The error state is still the page's own, and the empty one is not it -
@@ -442,7 +446,7 @@ const ProjectArtifacts = () => {
                     ) : (
                       <Server className="size-3 shrink-0" aria-hidden />
                     )}
-                    {row.runtime}
+                    {artifactRuntimeLabel(row.runtime)}
                   </Badge>
                 ),
               },

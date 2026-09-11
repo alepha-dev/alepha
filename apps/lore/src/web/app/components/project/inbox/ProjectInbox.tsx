@@ -183,7 +183,7 @@ const ProjectInbox = () => {
   return (
     <div
       data-testid="inbox-table"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden p-4"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden p-2"
     >
       <AlephaTable<InboxRow>
         className="min-h-0 flex-1"

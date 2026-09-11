@@ -29,7 +29,7 @@ export const AdminUserDetailAuditsTab = (
   const { tr } = useI18n();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
       <AlephaTable<AuditEntity>
         className="min-h-0 flex-1"
         persistenceKey={`admin.userDetail.${props.userId}.audits`}

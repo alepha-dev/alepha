@@ -55,7 +55,7 @@ export const AdminUserDetailOverviewTab = (
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <div className="flex max-w-6xl flex-col gap-6 p-6">
+      <div className="flex max-w-6xl flex-col gap-6 p-2">
         <AutoForm
           form={props.form}
           groups={[{ fields: [...fields] }]}
