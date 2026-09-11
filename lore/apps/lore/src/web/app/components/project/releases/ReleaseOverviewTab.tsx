@@ -150,7 +150,7 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
   ];
 
   return (
-    <div className="flex flex-col gap-[18px] px-6 pt-[22px] pb-8">
+    <div className="flex flex-col gap-[18px] p-2">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
           <div

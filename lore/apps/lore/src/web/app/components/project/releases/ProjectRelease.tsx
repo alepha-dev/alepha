@@ -208,6 +208,13 @@ const ProjectRelease = () => {
   );
 
   const artifacts = artifactData?.groups ?? [];
+  // Variants, not groups: the Artifacts tab lists one row per variant since
+  // #Q2267, so the count on its badge, on the plate and in the retag warning
+  // is the number of rows a reader sees there.
+  const artifactCount = artifacts.reduce(
+    (count, group) => count + group.variants.length,
+    0,
+  );
 
   const handleCopy = async () => {
     if (!changelog) return;
@@ -305,7 +312,7 @@ const ProjectRelease = () => {
       key: "artifacts",
       label: String(tr("release.tab.artifacts")),
       icon: Package,
-      count: artifacts.length,
+      count: artifactCount,
     },
   ];
 
@@ -324,7 +331,7 @@ const ProjectRelease = () => {
         <ReleasePlate
           release={release}
           epicCount={contents?.epics.length ?? 0}
-          artifactCount={artifacts.length}
+          artifactCount={artifactCount}
           onEdit={() => setEditOpen(true)}
           onChanged={() => void reload()}
         />
@@ -359,7 +366,7 @@ const ProjectRelease = () => {
           {tab === "overview" && (
             <ReleaseOverviewTab
               release={release}
-              artifactCount={artifacts.length}
+              artifactCount={artifactCount}
               onEdit={() => setEditOpen(true)}
             />
           )}
@@ -386,7 +393,7 @@ const ProjectRelease = () => {
           and nesting it in a tab body would unmount it on a tab switch. */}
       <ReleaseEditSheet
         release={release}
-        artifactCount={artifacts.length}
+        artifactCount={artifactCount}
         open={editOpen}
         onOpenChange={setEditOpen}
         onSubmit={() => {

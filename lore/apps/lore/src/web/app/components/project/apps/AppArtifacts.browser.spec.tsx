@@ -191,7 +191,9 @@ describe("AppArtifacts", () => {
     expect(await findByText("1.2.3")).toBeTruthy();
     const card = getByTestId("app-artifacts").textContent ?? "";
     expect(card).toContain("node");
-    expect(card).toContain("workerd");
+    // The stored runtime is `workerd`; a person reads the infrastructure.
+    expect(card).toContain("cloudflare");
+    expect(card).not.toContain("workerd");
     // The digest is short on the row; the whole value lives on the title.
     expect(card).toContain("a".repeat(12));
     expect(card).not.toContain("a".repeat(64));

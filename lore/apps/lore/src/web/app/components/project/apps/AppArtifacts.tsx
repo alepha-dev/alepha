@@ -24,7 +24,7 @@ const AppArtifacts = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-2">
       {/*
         Keyed on the APP, not the instance: `artifacts.app` is a plain string
         and a build is pushed once for an app, not once per deployed copy.

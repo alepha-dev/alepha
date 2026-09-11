@@ -132,7 +132,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
      * for them. A scroll region added to `DetailLayout` would give those
      * three a second scrollbar.
      */
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
       <Card className="flex min-h-0 flex-1 flex-col py-0 shadow">
         {/* No header row. It held the word "Quests" and the attach button
             directly above the table's own toolbar, which is two stacked bars

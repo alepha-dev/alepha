@@ -118,7 +118,7 @@ const AppAnalytics = () => {
 
   if (!data || !project || !instance) {
     return (
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4 p-2">
         {controls}
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">
@@ -191,7 +191,7 @@ const AppAnalytics = () => {
     list.map((entry) => ({ ...entry, href: detailHref(entry.dimension) }));
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-2">
       {controls}
 
       {error && (
