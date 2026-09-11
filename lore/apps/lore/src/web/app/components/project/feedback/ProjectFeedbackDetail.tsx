@@ -12,7 +12,7 @@ import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { currentUserAtom } from "alepha/security";
-import { ExternalLink, Paperclip, Plus } from "lucide-react";
+import { Paperclip, Plus } from "lucide-react";
 import { Fragment, useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
@@ -24,6 +24,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import { hasCapability } from "../../../services/projectCapabilities.ts";
 import AttachmentLightbox from "../../shared/AttachmentLightbox.tsx";
 import { attachmentPreview } from "../../shared/attachmentPreview.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import { useRank } from "../../shared/useRank.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
@@ -304,7 +305,13 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                       className="bg-muted/30 hover:bg-muted/60 border-border flex items-center gap-2 rounded border px-3 py-2 text-sm"
                       data-testid={`linked-quest-${q.id}`}
                     >
-                      <ExternalLink className="size-3.5" />
+                      {/* The quest's typed reference, not the
+                          `ExternalLink` icon it used to carry: that icon
+                          means "this leaves Lore" everywhere else
+                          (#Q2222), and a quest is an in-app route. */}
+                      <span className="text-muted-foreground font-mono text-xs">
+                        {formatReference("quest", q.shortId)}
+                      </span>
                       <span className="flex-1 truncate">{q.title}</span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase ${

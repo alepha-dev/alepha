@@ -20,6 +20,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
+import { OutboundLink } from "../../shared/OutboundLink.tsx";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
@@ -230,15 +231,13 @@ const ProjectReleases = () => {
               {/* ⚠️ Absolute, through `loreDocsUrl`: written root-relative it
                   resolves against Lore's own origin and 404s (feedback
                   #P2142). */}
-              <a
+              <OutboundLink
                 href={loreDocsUrl("guides-releases")}
-                target="_blank"
-                rel="noreferrer"
                 className="text-muted-foreground text-sm underline underline-offset-4"
                 data-testid="releases-empty-docs"
               >
                 {tr("release.empty.docs")}
-              </a>
+              </OutboundLink>
             </div>
           ),
         }}

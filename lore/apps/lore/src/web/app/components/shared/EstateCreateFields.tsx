@@ -14,6 +14,7 @@ import {
   estateDraftSlug,
 } from "./estateCreateDraft.ts";
 import { estateCreateFormSchema } from "./estateCreateFormSchema.ts";
+import { OutboundLink } from "./OutboundLink.tsx";
 
 export interface EstateCreateFieldsProps {
   draft: EstateCreateDraft;
@@ -214,30 +215,26 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                     explanation: the form still asks for an account scope
                     and a TTL, and the token is still copied once. Both
                     links stay. */}
-                <a
+                <OutboundLink
                   href={cloudflareTokenTemplateUrl()}
-                  target="_blank"
-                  rel="noreferrer"
                   className="underline underline-offset-4"
                   data-testid="estate-create-mint"
                 >
                   {tr("estates.cloudflare.mint")}
-                </a>
+                </OutboundLink>
                 {/* The guide is the onboarding, not a footnote: which
                     template to start from, and the two permissions it
                     lacks. */}
-                <a
+                <OutboundLink
                   // ⚠️ Absolute, through `loreDocsUrl`. Written
                   // root-relative it resolved against Lore's own origin and
                   // 404'd (feedback #P2142).
                   href={loreDocsUrl("guides-cloudflare-token")}
-                  target="_blank"
-                  rel="noreferrer"
                   className="underline underline-offset-4"
                   data-testid="estate-create-guide"
                 >
                   {tr("estates.cloudflare.guide")}
-                </a>
+                </OutboundLink>
               </span>
               {/* ⚠️ Said out loud because the link is NOT scoped:
                   `accountId=*` pre-selects All accounts, and whether a real
