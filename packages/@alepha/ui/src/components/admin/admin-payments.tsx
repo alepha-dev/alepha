@@ -5,9 +5,9 @@ import TimeAgo from "../time-ago/time-ago.tsx";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminPaymentsStatusBadge } from "@alepha/ui/components/admin/admin-payments-status-badge";
 import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import type {
   AdminPaymentController,
   IntentResource,
@@ -72,19 +72,7 @@ export const AdminPayments = () => {
           },
           status: {
             label: tr("admin.payments.colStatus", { default: "Status" }),
-            cell: (p) => {
-              const s = p.status;
-              const variant =
-                s === "captured" || s === "refunded"
-                  ? "default"
-                  : s === "failed" ||
-                      s === "cancelled" ||
-                      s === "expired" ||
-                      s === "voided"
-                    ? "destructive"
-                    : "outline";
-              return <Badge variant={variant}>{s}</Badge>;
-            },
+            cell: (p) => <AdminPaymentsStatusBadge status={p.status} />,
           },
         }}
       />

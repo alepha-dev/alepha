@@ -6,10 +6,10 @@ void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { AdminUsersRolesPicker } from "@alepha/ui/components/admin/admin-users-roles-picker";
+import { AdminUsersStatusBadge } from "@alepha/ui/components/admin/admin-users-status-badge";
 import { AdminUsersStatusFilter } from "@alepha/ui/components/admin/admin-users-status-filter";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
@@ -438,13 +438,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
           },
           enabled: {
             label: tr("admin.users.colStatus", { default: "Status" }),
-            cell: (u) => (
-              <Badge variant={u.enabled ? "default" : "destructive"}>
-                {u.enabled
-                  ? tr("admin.users.active", { default: "Active" })
-                  : tr("admin.users.statusDisabled", { default: "Disabled" })}
-              </Badge>
-            ),
+            cell: (u) => <AdminUsersStatusBadge enabled={u.enabled} />,
           },
           createdAt: {
             label: tr("admin.users.colJoined", { default: "Joined" }),

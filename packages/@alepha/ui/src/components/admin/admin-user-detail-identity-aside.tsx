@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { AdminUsersStatusBadge } from "@alepha/ui/components/admin/admin-users-status-badge";
 import {
   DetailAside,
   type DetailAsideRow,
@@ -83,13 +84,12 @@ export const AdminUserDetailIdentityAside = (
     label: String(tr("admin.userDetail.fieldStatus", { default: "Status" })),
     value: (
       <div className="flex flex-wrap items-center gap-1">
-        <Badge variant={user.enabled ? "default" : "destructive"}>
-          {user.enabled
-            ? tr("admin.userDetail.active", { default: "Active" })
-            : tr("admin.userDetail.disabledBadge", { default: "Disabled" })}
-        </Badge>
+        {/* The list's own chip, so the two pages cannot show one status two
+            ways. Verified sits beside it in the same design: a fact about
+            the address rather than a status, so an `info` tint. */}
+        <AdminUsersStatusBadge enabled={user.enabled} />
         {user.emailVerified && (
-          <Badge variant="outline" className="gap-1">
+          <Badge variant="tint" tone="info">
             <ShieldCheck className="size-3" />
             {tr("admin.userDetail.verified", { default: "Verified" })}
           </Badge>

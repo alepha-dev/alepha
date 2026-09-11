@@ -639,7 +639,6 @@ export const uiFr: Record<string, string> = {
     "L'utilisateur sera déconnecté de cette session.",
   "admin.sessions.revokeTitle": "Révoquer la session",
   "admin.sessions.revoked": "Session révoquée",
-  "admin.userDetail.active": "Actif",
   "admin.userDetail.back": "Retour aux utilisateurs",
   "admin.userDetail.bulkRevokeConfirm": "Révoquer $1 sessions ?",
   "admin.userDetail.bulkRevokeTitle": "Révoquer des sessions",
@@ -679,7 +678,6 @@ export const uiFr: Record<string, string> = {
     "Désactiver $1 ? Cette personne ne pourra plus se connecter.",
   "admin.userDetail.disableTitle": "Désactiver l'utilisateur",
   "admin.userDetail.disabled": "Utilisateur désactivé",
-  "admin.userDetail.disabledBadge": "Désactivé",
   "admin.userDetail.email": "Adresse e-mail",
   "admin.userDetail.emailCannotBeCleared":
     "L'adresse e-mail ne peut pas être supprimée une fois renseignée",
