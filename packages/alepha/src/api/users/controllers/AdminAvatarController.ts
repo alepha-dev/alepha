@@ -110,7 +110,9 @@ export class AdminAvatarController {
         throw new NotFoundError(`User ${params.id} not found`);
       }
 
-      const updated = await repo.updateById(params.id, { picture: undefined });
+      // `null`, not `undefined`, for the reason `MyAvatarController` gives:
+      // `undefined` leaves the column alone and the row outlives its blob.
+      const updated = await repo.updateById(params.id, { picture: null });
       await this.deletePrevious(target.picture);
 
       await this.userAudits(user.realm)?.user.logSuccess("update", {

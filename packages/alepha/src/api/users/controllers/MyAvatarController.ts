@@ -74,7 +74,10 @@ export class MyAvatarController {
       const repo = this.users(user.realm);
       const current = await repo.getOne({ where: { id: { eq: user.id } } });
 
-      const updated = await repo.updateById(user.id, { picture: undefined });
+      // `null`, not `undefined`: an explicit `undefined` in an update means
+      // "leave the column alone", so the row kept pointing at the blob that
+      // `deletePrevious` then removed.
+      const updated = await repo.updateById(user.id, { picture: null });
       await this.deletePrevious(current.picture);
 
       return this.mapper.toMyProfile(updated);

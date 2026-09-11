@@ -1,10 +1,17 @@
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { LinkProvider } from "alepha/server/links";
+import { FileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
-import { $realm } from "../index.ts";
+import {
+  $realm,
+  AdminAvatarController,
+  MyAvatarController,
+  RealmProvider,
+  UserStorage,
+} from "../index.ts";
 
 /**
  * **Regression guard: `features.avatars` has to gate the endpoints, not just
@@ -33,6 +40,44 @@ const registeredActions = async (features?: { avatars: boolean }) => {
   return alepha.inject(LinkProvider).links.map((link) => link.name);
 };
 
+const operator: UserAccountToken = {
+  id: "00000000-0000-0000-0000-000000000001",
+  name: "Test Admin",
+  roles: ["admin"],
+};
+
+/**
+ * A realm with avatars on, and one account whose row points at a real blob.
+ *
+ * Arranged through the storage and the repository rather than through either
+ * upload endpoint, so each removal spec below exercises exactly one action.
+ */
+const withAvatar = async (username: string) => {
+  const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaSecurity);
+  alepha.with(() => ({ realm: $realm({ features: { avatars: true } }) }));
+  await alepha.start();
+
+  const users = alepha.inject(RealmProvider).userRepository();
+  const storage = alepha.inject(UserStorage);
+
+  const user = await users.create({
+    username,
+    email: `${username}@example.com`,
+  });
+  const file = await storage.avatars.upload(
+    alepha.inject(FileSystemProvider).createFile({
+      text: "not really a png",
+      name: "avatar.png",
+      type: "image/png",
+    }),
+  );
+  await users.updateById(user.id, { picture: file.id });
+
+  return { alepha, users, storage, user, pictureId: file.id };
+};
+
 describe("alepha/api/users - MyAvatarController", () => {
   it("should not register the avatar endpoints on a realm without the flag", async ({
     expect,
@@ -54,6 +99,33 @@ describe("alepha/api/users - MyAvatarController", () => {
 
     expect(actions).toContain("updateMyAvatar");
     expect(actions).toContain("deleteMyAvatar");
+  });
+
+  it("should clear the row's picture when the caller removes their avatar", async ({
+    expect,
+  }) => {
+    /*
+      The handler wrote `{ picture: undefined }`, and an explicit `undefined`
+      in an update means "leave the column alone" (pinned by the ORM's
+      `update-explicit-undefined` spec). So the endpoint answered 200 and
+      deleted the blob while the row kept pointing at it, and every avatar
+      surface went on requesting a file that no longer existed.
+
+      Read back from the repository, not only the response: the row is what
+      `GET /users/me` serves next. The blob check is the other half, and the
+      two only failed together.
+    */
+    const ctx = await withAvatar("avatar-self");
+
+    const profile = await ctx.alepha
+      .inject(MyAvatarController)
+      .deleteMyAvatar({} as never, {
+        user: { id: ctx.user.id, realm: "default", sessionId: "s-1" } as never,
+      });
+
+    expect((await ctx.users.getById(ctx.user.id)).picture).toBeUndefined();
+    expect(profile.picture).toBeUndefined();
+    expect(await ctx.storage.avatars.exists(ctx.pictureId)).toBe(false);
   });
 });
 
@@ -111,5 +183,22 @@ describe("alepha/api/users - AdminAvatarController", () => {
         typeof secured === "object" ? secured.permissions : undefined,
       ).toEqual(["admin:user:avatar"]);
     }
+  });
+
+  it("should clear the target's picture when an operator removes it", async ({
+    expect,
+  }) => {
+    // The same `{ picture: undefined }` no-op as the self-service removal.
+    const ctx = await withAvatar("avatar-admin");
+
+    const target = await ctx.alepha
+      .inject(AdminAvatarController)
+      .deleteUserAvatar({ params: { id: ctx.user.id } } as never, {
+        user: operator,
+      });
+
+    expect((await ctx.users.getById(ctx.user.id)).picture).toBeUndefined();
+    expect(target.picture).toBeUndefined();
+    expect(await ctx.storage.avatars.exists(ctx.pictureId)).toBe(false);
   });
 });
