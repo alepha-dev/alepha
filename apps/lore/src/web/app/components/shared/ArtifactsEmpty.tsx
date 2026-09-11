@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 
 import type { I18n } from "../../services/I18n.ts";
+import { OutboundLink } from "./OutboundLink.tsx";
 
 export interface ArtifactsEmptyProps {
   /**
@@ -85,17 +86,15 @@ const ArtifactsEmpty = (props: ArtifactsEmptyProps) => {
       */}
       <p className="text-muted-foreground text-sm">{props.description}</p>
 
-      <a
+      <OutboundLink
         // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it
         // resolves against Lore's own origin and 404s (feedback #P2142).
         href={loreDocsUrl("guides-artifacts")}
-        target="_blank"
-        rel="noreferrer"
         className="text-sm underline underline-offset-4"
         data-testid="artifacts-empty-docs"
       >
         {tr("artifacts.empty.docs")}
-      </a>
+      </OutboundLink>
     </div>
   );
 };

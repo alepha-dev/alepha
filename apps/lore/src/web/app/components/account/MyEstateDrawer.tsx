@@ -32,6 +32,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import BayCommands from "../bay/BayCommands.tsx";
+import { OutboundLink } from "../shared/OutboundLink.tsx";
 
 export interface MyEstateDrawerProps {
   /**
@@ -468,15 +469,13 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                       estate's account id is known here, but whether the
                       parameter narrows the form is untested. */}
                   <span className="text-muted-foreground text-xs">
-                    <a
+                    <OutboundLink
                       href={cloudflareTokenTemplateUrl()}
-                      target="_blank"
-                      rel="noreferrer"
                       className="underline underline-offset-4"
                       data-testid="my-estate-token-mint"
                     >
                       {tr("estates.cloudflare.mint")}
-                    </a>
+                    </OutboundLink>
                   </span>
                   {credentialError && (
                     <span

@@ -5,6 +5,7 @@ import { Gauge, Plus } from "lucide-react";
 import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
+import { OutboundLink } from "../../shared/OutboundLink.tsx";
 
 export interface ProjectDashboardEmptyProps {
   /**
@@ -83,18 +84,16 @@ const ProjectDashboardEmpty = (props: ProjectDashboardEmptyProps) => {
           </Button>
         </div>
       )}
-      <a
+      <OutboundLink
         // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it would
         // resolve against Lore's own origin and 404 - feedback #P2142, on the
         // one link that fails exactly when the reader is stuck.
         href={loreDocsUrl("guides-project-dashboard")}
-        target="_blank"
-        rel="noreferrer"
         data-testid="dashboard-empty-docs"
-        className="text-primary mt-1 inline-block text-[12.5px] hover:underline"
+        className="text-primary mt-1 text-[12.5px] hover:underline"
       >
         {tr("project.dashboard.empty.docs")}
-      </a>
+      </OutboundLink>
     </div>
   );
 };

@@ -225,6 +225,11 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <span className="flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-0.5">
               {quest.commits.map((commit) => {
                 const short = commit.sha.slice(0, 7);
+                // Leaves Lore, and still carries no `ExternalLink` icon, by
+                // decision (#Q2222): a monospace sha already reads as "this
+                // commit, in the repository", and the rail wraps two or three
+                // of them to a line, where an icon each would double the
+                // weight of a list whose shas are the whole content.
                 const sha = project?.repositoryUrl ? (
                   <a
                     href={`${project.repositoryUrl}/commit/${commit.sha}`}
