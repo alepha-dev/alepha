@@ -5,6 +5,7 @@ import {
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, UserMinus } from "lucide-react";
@@ -16,7 +17,6 @@ import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 export interface QuestAssigneePickerProps {
   quest: QuestResource;
@@ -92,6 +92,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
       >
         {quest.acceptedBy ? (
           <UserAvatar
+            public
             fileId={assignee?.picture}
             className="size-4"
             alt="user avatar"
@@ -111,6 +112,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
             onClick={() => void assign(member.id)}
           >
             <UserAvatar
+              public
               fileId={member.picture}
               className="size-4"
               alt="user avatar"

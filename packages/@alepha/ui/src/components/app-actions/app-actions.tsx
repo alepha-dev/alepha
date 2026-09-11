@@ -49,8 +49,9 @@ export interface AppActionsProps {
   };
 
   /**
-   * Forwarded to {@link ButtonUser.avatar}: what the signed-in account
-   * button shows instead of the generic glyph. Absent, the glyph stands.
+   * Forwarded to {@link ButtonUser.avatar}: overrides what the signed-in
+   * account button shows. Absent, the button draws the viewer's own picture
+   * when they have one and the generic glyph when they do not.
    */
   avatar?: ReactNode;
 

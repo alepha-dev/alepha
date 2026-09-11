@@ -4,6 +4,7 @@ import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
@@ -24,7 +25,6 @@ import type { I18n } from "../../../services/I18n.ts";
 import type { LoreAccountRouter } from "../../account/LoreAccountRouter.ts";
 import PageHeader from "../../shared/header/PageHeader.tsx";
 import { ProjectIcon } from "../../shared/ProjectIcon.tsx";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
 // Unlike the attachment bucket name (see FeedbackRateLimiter.ATTACHMENT_BUCKET),
@@ -534,7 +534,7 @@ const ProjectFeedbackRequest = () => {
             <CardContent className="px-4">
               <div className="border-border bg-muted/30 mb-4 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <UserAvatar fileId={userPicture} className="size-8" />
+                  <UserAvatar public fileId={userPicture} className="size-8" />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm font-medium">
                       {userLabel}

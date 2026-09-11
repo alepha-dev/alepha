@@ -12,10 +12,11 @@ import { I18n } from "../../../services/I18n.ts";
 import HeaderActions from "./HeaderActions.tsx";
 
 /**
- * The Lore half of feedback #P2138: `@alepha/ui` owns the slot, this file
- * owns what goes in it. What is worth pinning here is the DECISION - the
- * avatar is passed only when the viewer has a picture - and the fallback,
- * which is the one path a picture can still take to the generic glyph.
+ * Feedback #P2138 in Lore's header. Since #Q2229 `ButtonUser` draws the
+ * avatar itself and this header passes nothing, so what these pin is that
+ * Lore's header still gets it: the plain glyph without a picture, the picture
+ * when there is one, and the fallback when it fails to load. The kit's own
+ * spec (`button-user-avatar.browser.spec.tsx`) owns the contract.
  */
 describe("HeaderActions' account avatar", () => {
   let alepha: Alepha | undefined;
@@ -65,14 +66,15 @@ describe("HeaderActions' account avatar", () => {
     expect(trigger().querySelector("svg")).not.toBeNull();
   });
 
-  it("serves the picture through the public file route", async () => {
+  it("serves the picture through the authenticated file route", async () => {
     await mount("00000000-0000-4000-8000-00000000000a");
 
     const img = trigger().querySelector("img");
-    // `public`, so it is the anonymous edge-cacheable route rather than the
-    // authenticated one - this is chrome on every page.
+    // The kit default, and no longer the public route: the viewer's own
+    // avatar is `private, max-age=1y` in the browser, so an edge cache
+    // would only share it with viewers who never ask for it.
     expect(img?.getAttribute("src")).toBe(
-      "/api/public/files/00000000-0000-4000-8000-00000000000a",
+      "/api/files/00000000-0000-4000-8000-00000000000a",
     );
   });
 
