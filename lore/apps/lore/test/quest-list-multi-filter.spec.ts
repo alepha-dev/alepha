@@ -144,7 +144,7 @@ describe("getQuests with multi-value filters", () => {
 
   it("reads several statuses as a union", async ({ expect }) => {
     const { titles } = await setupProject();
-    expect(await titles({ status: "new,accepted" })).toEqual([
+    expect(await titles({ status: "todo,in_progress" })).toEqual([
       "Fresh",
       "Running",
     ]);
@@ -175,7 +175,7 @@ describe("getQuests with multi-value filters", () => {
     expect,
   }) => {
     const { titles } = await setupProject();
-    expect(await titles({ status: "new,accepted,completed,shelved" })).toEqual([
+    expect(await titles({ status: "todo,in_progress,completed,shelved" })).toEqual([
       "Done",
       "Fresh",
       "Parked",
@@ -185,14 +185,14 @@ describe("getQuests with multi-value filters", () => {
 
   it("unions areas and unions tags", async ({ expect }) => {
     const { titles } = await setupProject();
-    expect(await titles({ area: "core,ui", status: "new,accepted" })).toEqual([
+    expect(await titles({ area: "core,ui", status: "todo,in_progress" })).toEqual([
       "Fresh",
       "Running",
     ]);
     expect(
-      await titles({ area: "ui", status: "new,accepted,completed" }),
+      await titles({ area: "ui", status: "todo,in_progress,completed" }),
     ).toEqual(["Done"]);
-    expect(await titles({ tag: "alpha,beta", status: "new" })).toEqual([
+    expect(await titles({ tag: "alpha,beta", status: "todo" })).toEqual([
       "Fresh",
     ]);
   });
@@ -202,7 +202,7 @@ describe("getQuests with multi-value filters", () => {
     // (new or accepted) AND (area core) AND (tag beta) is only Running, even
     // though each clause on its own matches more.
     expect(
-      await titles({ status: "new,accepted", area: "core", tag: "beta" }),
+      await titles({ status: "todo,in_progress", area: "core", tag: "beta" }),
     ).toEqual(["Running"]);
   });
 
@@ -210,7 +210,7 @@ describe("getQuests with multi-value filters", () => {
     const { titles } = await setupProject();
     // A stale bookmark, or a value from a later version of the page. The
     // known half of the list still applies.
-    expect(await titles({ status: "new,banana" })).toEqual(["Fresh"]);
+    expect(await titles({ status: "todo,banana" })).toEqual(["Fresh"]);
     // And a list of nothing but unknowns reads as no filter at all, rather
     // than as a filter matching nothing.
     expect(await titles({ status: "banana,kiwi" })).toEqual([
@@ -233,7 +233,7 @@ describe("getQuests with multi-value filters", () => {
 
   it("trims whitespace and collapses duplicates", async ({ expect }) => {
     const { titles } = await setupProject();
-    expect(await titles({ status: " new , new ,accepted" })).toEqual([
+    expect(await titles({ status: " todo , todo ,in_progress" })).toEqual([
       "Fresh",
       "Running",
     ]);

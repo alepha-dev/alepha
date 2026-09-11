@@ -42,7 +42,7 @@ const questOf = (
     createdAt: "2026-09-01T10:00:00.000Z",
     updatedAt: "2026-09-01T10:00:00.000Z",
     metadata: {
-      status: "new",
+      status: "todo",
       objectivesProgress: { completed: 0, waived: 0, total: 0 },
       totalTimeSpent: 0,
     },
@@ -237,8 +237,8 @@ describe("ProjectEpicQuests - columns", () => {
     await mount([questOf(12, "Ship the thing", "low")], "ready");
 
     await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
-    expect(screen.getByRole("button", { name: "New Quest" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Attach Quest" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New quest" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Attach quest" })).toBeTruthy();
 
     fireEvent.click(
       screen.getAllByRole("button", { name: /actions|menu/i })[0],
@@ -255,7 +255,7 @@ describe("ProjectEpicQuests - columns", () => {
   /**
    * The plan freeze (epic #31). Once the epic is in progress the server
    * refuses attach, detach and create-into, so the affordances go with the
-   * permission instead of answering 400: no New Quest, no Attach Quest, and
+   * permission instead of answering 400: no New quest, no Attach quest, and
    * no Detach.
    *
    * ⚠️ The row menu itself no longer disappears with them on an IN-PROGRESS
@@ -271,8 +271,8 @@ describe("ProjectEpicQuests - columns", () => {
       );
 
       await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
-      expect(screen.queryByRole("button", { name: "New Quest" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Attach Quest" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "New quest" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Attach quest" })).toBeNull();
 
       const menus = screen.queryAllByRole("button", { name: /actions|menu/i });
       if (status === "in_progress") {
@@ -380,7 +380,7 @@ describe("ProjectEpicQuests - columns", () => {
     expect(written[0]).not.toContain("sg_");
   });
   /**
-   * New Quest beside Attach Quest (feedback #2057): the same sheet the
+   * New quest beside Attach quest (feedback #2057): the same sheet the
    * header opens, and the new quest is handed to the page through
    * `onCreated` so the page can file it under the epic and reload, rather
    * than the sheet navigating away to the quest it just made.
@@ -390,9 +390,9 @@ describe("ProjectEpicQuests - columns", () => {
       questOf(12, "Ship the thing", "low"),
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "New Quest" }));
+    fireEvent.click(screen.getByRole("button", { name: "New quest" }));
     const sheet = await view.findByRole("dialog");
-    expect(sheet.textContent).toContain("New Quest");
+    expect(sheet.textContent).toContain("New quest");
 
     const title = await waitFor(() => {
       const input = sheet.querySelector<HTMLInputElement>(
@@ -406,7 +406,7 @@ describe("ProjectEpicQuests - columns", () => {
     fireEvent.keyDown(area, { key: "ArrowDown" });
     fireEvent.click(await screen.findByRole("option", { name: /General/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Add Quest to Project" }),
+      screen.getByRole("button", { name: "Create quest" }),
     );
 
     await waitFor(() => expect(links.created).toEqual(["Quest for the epic"]));

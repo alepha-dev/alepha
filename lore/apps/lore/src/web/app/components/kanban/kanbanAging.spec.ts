@@ -26,7 +26,7 @@ describe("KanbanAging", () => {
   }): QuestResource =>
     ({
       id: 1,
-      metadata: { status: options.status ?? "accepted" },
+      metadata: { status: options.status ?? "in_progress" },
       acceptedAt: options.acceptedAt,
       createdAt: options.createdAt ?? daysAgo(0),
       history: options.history ?? [],
@@ -95,7 +95,7 @@ describe("KanbanAging", () => {
   describe("which cards age at all", () => {
     it("never ages a new card", () => {
       expect(
-        aging.levelOf(quest({ status: "new", createdAt: daysAgo(400) }), dt),
+        aging.levelOf(quest({ status: "todo", createdAt: daysAgo(400) }), dt),
       ).toBe("fresh");
     });
 

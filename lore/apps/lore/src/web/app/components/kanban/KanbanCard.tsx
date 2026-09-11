@@ -45,7 +45,7 @@ export interface KanbanCardProps {
    */
   tagColors?: Record<string, PaletteColor>;
   /**
-   * True when the quest is `new` and its predecessor is not complete — or
+   * True when the quest is `todo` and its predecessor is not complete — or
    * is outside the board's set, in which case the blocker exists and we
    * simply cannot see it. Derived by the board, which holds every quest.
    */
@@ -261,7 +261,7 @@ const KanbanCard = (props: KanbanCardProps) => {
               {held && (
                 <PauseCircle
                   data-testid="kanban-card-held"
-                  aria-label={String(tr("quest.status.held"))}
+                  aria-label={String(tr("quest.status.onHold"))}
                   className="text-destructive size-3"
                 />
               )}

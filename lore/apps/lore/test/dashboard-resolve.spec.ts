@@ -199,7 +199,7 @@ describe("dashboard resolve", () => {
       expect(values[0]).toMatchObject({
         ok: true,
         value: 3,
-        detail: { newCount: 2, acceptedCount: 1 },
+        detail: { todoCount: 2, inProgressCount: 1 },
       });
     });
 
@@ -230,7 +230,7 @@ describe("dashboard resolve", () => {
       expect(values[0]?.value).toBe(2);
     });
 
-    it("links to status=new even though it counted new + accepted", async ({
+    it("links to status=todo even though it counted new + accepted", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
@@ -250,7 +250,7 @@ describe("dashboard resolve", () => {
       expect(values[0]?.link).toEqual({
         route: "projectQuests",
         params: { projectSlug: project.slug },
-        query: { status: "new" },
+        query: { status: "todo" },
       });
     });
 
@@ -404,11 +404,11 @@ describe("dashboard resolve", () => {
 
       expect(value.link?.route).toBe("projectQuests");
       expect(value.link?.params?.projectSlug).toBe(project.slug);
-      // ⚠️ Asserted to ARRIVE filtered. `?status=held` decodes only because
+      // ⚠️ Asserted to ARRIVE filtered. `?status=on_hold` decodes only because
       // `boardFiltersSchema.status` is derived from `questStatusSchema`; when
       // it was a hand-written four-value enum the param was dropped and this
       // link opened the whole list.
-      expect(value.link?.query).toEqual({ status: "held" });
+      expect(value.link?.query).toEqual({ status: "on_hold" });
     });
 
     it("answers zero rather than failing when the project turned Work off", async ({
@@ -969,7 +969,7 @@ describe("dashboard resolve", () => {
       expect(value.link?.route).toBe("projectQuests");
       expect(value.link?.query).toEqual({
         tag: "api",
-        status: "new,accepted",
+        status: "todo,in_progress",
       });
     });
   });

@@ -739,7 +739,7 @@ export class EpicController {
    * The four buckets are disjoint by construction, so a caller can derive
    * the untouched remainder as `total - completed - inProgress - shelved`
    * without a fifth count: `shelvedAt` is only ever set on a quest still in
-   * `new` status (see `quests.shelvedAt`), so it never coexists with
+   * `todo` status (see `quests.shelvedAt`), so it never coexists with
    * `acceptedAt` or `completedAt`, and `inProgress` explicitly excludes both
    * of the others.
    *

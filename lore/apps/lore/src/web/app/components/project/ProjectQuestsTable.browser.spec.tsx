@@ -47,7 +47,7 @@ const questOf = (
     updatedAt: "2026-09-02T10:00:00.000Z",
     shelvedAt: shelved ? "2026-09-02T11:00:00.000Z" : undefined,
     metadata: {
-      status: shelved ? "shelved" : "new",
+      status: shelved ? "shelved" : "todo",
       objectivesProgress: { completed: 0, waived: 0, total: 0 },
       totalTimeSpent: 0,
     },
@@ -250,14 +250,14 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     return { view, links: alepha.inject(FakeLinkProvider) };
   };
 
-  it("renders a labelled primary New Quest action in the toolbar", async () => {
+  it("renders a labelled primary New quest action in the toolbar", async () => {
     const { view } = await mount();
 
-    const button = screen.getByRole("button", { name: "New Quest" });
+    const button = screen.getByRole("button", { name: "New quest" });
     // The label is on the button, not only in a tooltip that opens later,
     // and the surface is the primary one: the bare `+` feedback #2055 saw
     // was this control at the weight of the column picker.
-    expect(button.textContent).toBe("New Quest");
+    expect(button.textContent).toBe("New quest");
     expect(button.className).toContain("bg-primary");
     // The divider the table draws between its actions and the utility
     // icons, which only exists once there is an action to divide from.
@@ -270,10 +270,10 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     const { view, links } = await mount();
     const fetchesBefore = links.fetches;
 
-    fireEvent.click(screen.getByRole("button", { name: "New Quest" }));
+    fireEvent.click(screen.getByRole("button", { name: "New quest" }));
 
     const sheet = await view.findByRole("dialog");
-    expect(sheet.textContent).toContain("New Quest");
+    expect(sheet.textContent).toContain("New quest");
 
     const title = await waitFor(() => {
       const input = sheet.querySelector<HTMLInputElement>(
@@ -289,7 +289,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     fireEvent.keyDown(area, { key: "ArrowDown" });
     fireEvent.click(await screen.findByRole("option", { name: /General/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Add Quest to Project" }),
+      screen.getByRole("button", { name: "Create quest" }),
     );
 
     await waitFor(() =>

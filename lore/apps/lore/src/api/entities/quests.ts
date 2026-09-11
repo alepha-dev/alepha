@@ -92,7 +92,7 @@ export const quests = $entity({
     boardRank: z.string().min(1).max(64).optional(),
     /**
      * Set when the quest is shelved — deliberately set aside as out of
-     * scope for now, without deleting it. Only quests still in `new`
+     * scope for now, without deleting it. Only quests still in `todo`
      * status can be shelved, so this is never set alongside `acceptedAt`
      * or `completedAt`. Shelved quests are hidden from the default quest
      * list and excluded from progress/stats denominators; they come back
@@ -108,7 +108,7 @@ export const quests = $entity({
      * "waiting on another quest" and nothing else; this covers waiting on
      * an answer, a credential, a decision, a deploy window.
      *
-     * Reachable from `new` and from `accepted`, and that is why the status
+     * Reachable from `todo` and from `in_progress`, and that is why the status
      * derived from it works at all: `acceptedAt` is left untouched
      * underneath, so `unholdQuest` restores the previous status by clearing
      * two columns and needs no record of where the hold came from. See
@@ -146,7 +146,7 @@ export const quests = $entity({
      */
     completionMessageUpdatedAt: z.datetime().optional(),
     /**
-     * Kanban sub-column the quest sits in while `status === "accepted"`.
+     * Kanban sub-column the quest sits in while `status === "in_progress"`.
      * Only used when the project's `kanban` feature is on. Free-form text
      * that must match one of the project's configured `kanbanColumns`.
      * Cleared when the quest moves back to "New" or forward to "Completed".

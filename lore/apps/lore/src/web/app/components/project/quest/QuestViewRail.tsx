@@ -40,6 +40,7 @@ import QuestReleaseControl from "./QuestReleaseControl.tsx";
 import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailEpicLink from "./QuestViewRailEpicLink.tsx";
+import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
@@ -112,13 +113,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     };
   }, [project?.id, quest.epicId, epicsEnabled]);
 
-  const statusLabel = {
-    new: tr("quest.status.new"),
-    accepted: tr("quest.status.accepted"),
-    held: tr("quest.status.held"),
-    completed: tr("quest.status.completed"),
-    shelved: tr("quest.status.shelved"),
-  }[quest.metadata.status];
+  const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -294,8 +289,8 @@ const QuestViewRail = (props: QuestViewRailProps) => {
               {tr("quest.view.actions.unhold")}
             </Button>
           ) : (
-            // Not offered on a shelved quest: `holdQuest` accepts `new` and
-            // `accepted` only, and a quest already set aside as out of scope
+            // Not offered on a shelved quest: `holdQuest` accepts `todo` and
+            // `in_progress` only, and a quest already set aside as out of scope
             // is not waiting for anything.
             !quest.shelvedAt && (
               <Button

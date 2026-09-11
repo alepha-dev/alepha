@@ -18,7 +18,7 @@ import {
  * proves the reader who cleared their board does not find it repopulated.
  *
  * **The drill-through.** The Active Quests tile counts `new + accepted` and
- * navigates to `status=new`, deliberately. That divergence only means
+ * navigates to `status=todo`, deliberately. That divergence only means
  * anything if clicking it lands on a list that actually filters.
  *
  * **One failing tile costs a tile.** Cards read unrelated tables, so a
@@ -78,7 +78,7 @@ test.describe("Dashboard", () => {
     await test.step("the quests tile counts new + accepted", async () => {
       const card = page.locator('[data-metric="activeQuests"]');
       await expect(card).toContainText("3", { timeout: 15_000 });
-      await expect(card).toContainText("1 accepted, 2 new");
+      await expect(card).toContainText("1 in progress, 2 to do");
     });
 
     await test.step("the rail agrees with the tile", async () => {
@@ -89,7 +89,7 @@ test.describe("Dashboard", () => {
       );
     });
 
-    await test.step("clicking it opens status=new, not the filter it counted", async () => {
+    await test.step("clicking it opens status=todo, not the filter it counted", async () => {
       await page
         .locator('[data-metric="activeQuests"]')
         .getByTestId("dashboard-card-open")
@@ -98,17 +98,17 @@ test.describe("Dashboard", () => {
       // `/`. The tile names its destination by route, so the catalog needed
       // no change - only this URL, and the matching unit assertion in
       // `test/dashboard-links.spec.ts`.
-      await page.waitForURL(`**/${slug}/quests?status=new`, {
+      await page.waitForURL(`**/${slug}/quests?status=todo`, {
         timeout: 15_000,
       });
       await page.waitForLoadState("networkidle");
 
       // The divergence, made visible: the tile counted 3 (new + accepted) and
-      // this list holds the 2 the footer called "new".
+      // this list holds the 2 the footer called "todo".
       //
       // ⚠️ Scoped to the TABLE, not to the page. The accepted quest is still
       // on screen, in the questlog rail down the left — which is the entire
-      // reason this drill-through targets `status=new` rather than the filter
+      // reason this drill-through targets `status=todo` rather than the filter
       // the tile counted. A page-wide text assertion here fails, and it fails
       // by proving the design right.
       const table = page.locator("[data-testid=quests-table]");
@@ -132,7 +132,7 @@ test.describe("Dashboard", () => {
       // `Accepted` narrows the card to new quests only.
       await page
         .getByTestId("dashboard-filter-option")
-        .filter({ hasText: "Accepted" })
+        .filter({ hasText: "In progress" })
         .click();
       await page.getByTestId("dashboard-catalogue-save").click();
 
@@ -141,7 +141,7 @@ test.describe("Dashboard", () => {
       });
       const added = page.getByTestId("dashboard-card").last();
       await expect(added).toContainText("2");
-      await expect(added).toContainText("0 accepted, 2 new");
+      await expect(added).toContainText("0 in progress, 2 to do");
     });
 
     await test.step("an emptied board stays empty across a reload", async () => {

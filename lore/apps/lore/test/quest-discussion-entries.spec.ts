@@ -33,7 +33,7 @@ const quest = (over: Partial<QuestResource> = {}): QuestResource =>
     note: "",
     projectId: 1,
     metadata: {
-      status: "new",
+      status: "todo",
       objectivesProgress: { completed: 0, total: 0 },
       totalTimeSpent: 0,
     },

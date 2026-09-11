@@ -1,7 +1,7 @@
 export interface ExportRow {
   shortId: number;
   title: string;
-  status: "new" | "accepted" | "completed";
+  status: "todo" | "in_progress" | "completed";
   priority: "optional" | "low" | "medium" | "high";
   /**
    * T-shirt size as the stored ordinal, 1 (XS) to 5 (XL). The number rather

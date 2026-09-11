@@ -104,7 +104,7 @@ describe("Lore MCP: quest_unassign", () => {
     expect(armed.reminderNextAt).toBeTruthy();
 
     const result = await call(questTools.quest_unassign, { id: quest.id });
-    expect(result.status).toBe("new");
+    expect(result.status).toBe("todo");
     expect(result.shortId).toBe(quest.shortId);
 
     const after = await resource();
@@ -118,12 +118,12 @@ describe("Lore MCP: quest_unassign", () => {
     expect(after.description).toBe("x");
   });
 
-  it("unblocks quest_shelve, which only takes a quest in 'new'", async () => {
+  it("unblocks quest_shelve, which only takes a quest in 'todo'", async () => {
     const { questTools, quest, call } = await setup();
 
     await expect(
       call(questTools.quest_shelve, { id: quest.id }),
-    ).rejects.toThrow(/expected "new"/i);
+    ).rejects.toThrow(/expected "todo"/i);
 
     await call(questTools.quest_unassign, { id: quest.id });
     const shelved = await call(questTools.quest_shelve, { id: quest.id });
@@ -143,6 +143,6 @@ describe("Lore MCP: quest_unassign", () => {
 
     await expect(
       call(questTools.quest_unassign, { id: fresh.id }),
-    ).rejects.toThrow(/expected "accepted"/i);
+    ).rejects.toThrow(/expected "in_progress"/i);
   });
 });

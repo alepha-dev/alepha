@@ -21,7 +21,7 @@ export const releaseResourceSchema = releases.schema.extend({
     completed: z.integer(),
     /**
      * Accepted but not yet completed. Disjoint from `completed` and from
-     * `shelved` — a shelved quest is by definition still `new`, so the three
+     * `shelved` — a shelved quest is by definition still `todo`, so the three
      * buckets never overlap and `total - completed - inProgress` is the count
      * still open and untouched.
      *

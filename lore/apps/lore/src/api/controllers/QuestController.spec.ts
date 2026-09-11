@@ -98,7 +98,7 @@ describe("QuestController hold", () => {
         { user },
       );
 
-      expect(held.metadata.status).toBe("held");
+      expect(held.metadata.status).toBe("on_hold");
       expect(held.heldAt).toBeDefined();
       expect(held.heldBy).toBe(user.id);
     });
@@ -118,7 +118,7 @@ describe("QuestController hold", () => {
 
       // The whole mechanism: `acceptedAt` survives underneath the hold, so
       // nothing has to record where the hold came from.
-      expect(held.metadata.status).toBe("held");
+      expect(held.metadata.status).toBe("on_hold");
       expect(held.acceptedAt).toBeDefined();
       expect(held.acceptedBy).toBe(user.id);
     });
@@ -140,13 +140,13 @@ describe("QuestController hold", () => {
         { user },
       );
 
-      expect(lifted.metadata.status).toBe("accepted");
+      expect(lifted.metadata.status).toBe("in_progress");
       expect(lifted.acceptedBy).toBe(user.id);
       expect(lifted.heldAt).toBeUndefined();
       expect(lifted.heldBy).toBeUndefined();
     });
 
-    it("returns a held new quest to `new` on unhold", async ({ expect }) => {
+    it("returns a held new quest to `todo` on unhold", async ({ expect }) => {
       const project = await createTestProject(ctx.alepha);
       const user = ownerToken(project);
       const quest = await createTestQuest(ctx.alepha, project);
@@ -160,7 +160,7 @@ describe("QuestController hold", () => {
         { user },
       );
 
-      expect(lifted.metadata.status).toBe("new");
+      expect(lifted.metadata.status).toBe("todo");
     });
 
     it("refuses to accept a held quest, and names the fix", async ({
@@ -225,14 +225,14 @@ describe("QuestController hold", () => {
         { user },
       );
 
-      const abandoned = await ctx.controller.abandonQuest(
+      const abandoned = await ctx.controller.unassignQuest(
         { params: { id: quest.id } },
         { user },
       );
 
       // Handing back a blocked quest must not silently unblock it.
       expect(abandoned.acceptedBy).toBeUndefined();
-      expect(abandoned.metadata.status).toBe("held");
+      expect(abandoned.metadata.status).toBe("on_hold");
     });
 
     it("refuses to abandon a held quest nobody accepted", async ({
@@ -247,7 +247,7 @@ describe("QuestController hold", () => {
       );
 
       await expect(
-        ctx.controller.abandonQuest({ params: { id: quest.id } }, { user }),
+        ctx.controller.unassignQuest({ params: { id: quest.id } }, { user }),
       ).rejects.toThrow(BadRequestError);
     });
 
@@ -397,7 +397,7 @@ describe("QuestController hold", () => {
   });
 
   describe("the status filter", () => {
-    it("keeps held quests out of the `new` and `accepted` buckets", async ({
+    it("keeps held quests out of the `todo` and `in_progress` buckets", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
@@ -412,7 +412,7 @@ describe("QuestController hold", () => {
       const newOnes = await ctx.controller.getQuests(
         {
           params: { projectId: project.id },
-          query: { status: "new" } as never,
+          query: { status: "todo" } as never,
         },
         { user },
       );
@@ -424,7 +424,7 @@ describe("QuestController hold", () => {
       expect(ids).not.toContain(blocked.id);
     });
 
-    it("returns held quests under the `held` filter", async ({ expect }) => {
+    it("returns held quests under the `on_hold` filter", async ({ expect }) => {
       const project = await createTestProject(ctx.alepha);
       const user = ownerToken(project);
       await createTestQuest(ctx.alepha, project);
@@ -437,7 +437,7 @@ describe("QuestController hold", () => {
       const held = await ctx.controller.getQuests(
         {
           params: { projectId: project.id },
-          query: { status: "held" } as never,
+          query: { status: "on_hold" } as never,
         },
         { user },
       );

@@ -73,7 +73,7 @@ describe("QuestCsvFormatter", () => {
       {
         shortId: 1,
         title: "Build the wall",
-        status: "new",
+        status: "todo",
         priority: "medium",
         size: 3,
         area: "North",
@@ -147,7 +147,7 @@ describe("QuestCsvFormatter", () => {
       {
         shortId: 4,
         title: '=HYPERLINK("https://evil.example","click")',
-        status: "new",
+        status: "todo",
         priority: "medium",
         size: 3,
         // Each of the other openings Excel and Sheets treat as a formula.
@@ -183,7 +183,7 @@ describe("QuestCsvFormatter", () => {
       {
         shortId: 5,
         title: "'tis the season",
-        status: "new",
+        status: "todo",
         priority: "medium",
         size: 3,
         area: "",
@@ -209,7 +209,7 @@ describe("QuestCsvFormatter", () => {
       {
         shortId: 3,
         title: "Quest",
-        status: "new",
+        status: "todo",
         priority: "medium",
         size: 3,
         area: "",

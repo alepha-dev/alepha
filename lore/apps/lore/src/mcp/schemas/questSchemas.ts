@@ -65,7 +65,7 @@ const questEpicRefSchema = z.object({
 export const questListParamsSchema = projectParamsSchema.extend({
   status: questStatusSchema
     .describe(
-      'Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly, and HELD quests are not: a held quest is blocked, not out of scope, and it is the one you may be able to unblock. `held` is exclusive with `new` and `accepted`, so `status: "accepted"` never returns a quest that is currently on hold.',
+      'Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly, and HELD quests are not: a held quest is blocked, not out of scope, and it is the one you may be able to unblock. `on_hold` is exclusive with `todo` and `in_progress`, so `status: "in_progress"` never returns a quest that is currently on hold.',
     )
     .optional(),
   search: z.string().describe("Search quests by title").optional(),
@@ -167,7 +167,7 @@ export const questListResultSchema = z.object({
       heldAt: z
         .datetime()
         .describe(
-          "When this quest was put on hold. Present exactly when `status` is `held`; the reason is a comment on the quest, so read the discussion with `quest_get` to find out what it is waiting for.",
+          "When this quest was put on hold. Present exactly when `status` is `on_hold`; the reason is a comment on the quest, so read the discussion with `quest_get` to find out what it is waiting for.",
         )
         .optional(),
       epic: questEpicRefSchema
@@ -448,7 +448,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   accept: z
     .boolean()
     .describe(
-      "Immediately accept (assign to yourself) the quest right after it is created — the MCP equivalent of the UI's 'Create and accept' button, so an agent about to work the quest skips a separate quest_accept round-trip. Defaults to false. Best-effort: if the quest can't be accepted yet (e.g. it depends on an incomplete predecessor) it is still created and left in the 'new' lane, with `acceptNote` explaining why.",
+      "Immediately accept (assign to yourself) the quest right after it is created — the MCP equivalent of the UI's 'Create and accept' button, so an agent about to work the quest skips a separate quest_accept round-trip. Defaults to false. Best-effort: if the quest can't be accepted yet (e.g. it depends on an incomplete predecessor) it is still created and left in the 'todo' lane, with `acceptNote` explaining why.",
     )
     .optional(),
 });
@@ -459,11 +459,11 @@ export const questCreateResultSchema = z.object({
   title: z.string(),
   createdAt: z.datetime(),
   // Present (and `accept: true` was requested) when the accept landed —
-  // the quest is in the 'accepted' lane, assigned to the caller.
+  // the quest is in the 'in_progress' lane, assigned to the caller.
   acceptedAt: z.datetime().optional(),
   // Present when `accept: true` was requested but the accept was refused
   // (e.g. blocked by an incomplete predecessor). The quest is still
-  // created; this explains why it stayed in the 'new' lane.
+  // created; this explains why it stayed in the 'todo' lane.
   acceptNote: z.string().optional(),
   ...diagramWarningsShape,
 });
@@ -532,8 +532,8 @@ export const questUnholdResultSchema = z.object({
   title: z.string(),
   /**
    * What the quest went back to, which is whatever it was before the hold.
-   * Worth returning rather than assuming `new`: a quest held while somebody
-   * had it comes back `accepted`, still theirs.
+   * Worth returning rather than assuming `todo`: a quest held while somebody
+   * had it comes back `in_progress`, still theirs.
    */
   status: questStatusSchema,
 });

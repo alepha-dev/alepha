@@ -342,7 +342,7 @@ export class QuestController {
    * wrong state then matched no row and came back as the ORM's
    * `DbEntityNotFoundError` — "Entity from 'quests' was not found" — which
    * says nothing about what to do next. MCP agents hit this constantly:
-   * `quest_complete` on a quest still in "new" reported the quest as
+   * `quest_complete` on a quest still in "todo" reported the quest as
    * missing when the real answer was "accept it first". Reading the row and
    * checking the status separately keeps 404 honest and turns a precondition
    * failure into a 400 naming both the current status and the required one.
@@ -363,11 +363,11 @@ export class QuestController {
     const status = this.questMapper.questStatus(quest);
     if (!allowed.includes(status)) {
       // A hold gets its own sentence because the generic one is unhelpful
-      // exactly where it is read most: `expected "accepted"` does not tell
+      // exactly where it is read most: `expected "in_progress"` does not tell
       // an agent that the quest IS accepted underneath and that one call
       // fixes it. Naming the fix here rather than in accept / complete /
       // shelve keeps it true for every verb added later.
-      if (status === "held") {
+      if (status === "on_hold") {
         throw new BadRequestError(
           `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is on hold. Lift the hold first, then ${action} it.`,
         );
@@ -418,7 +418,7 @@ export class QuestController {
   /**
    * The same, restricted to values the status filter understands. An
    * unknown status is dropped rather than rejected, and duplicates are
-   * collapsed so `?status=new,new` is one condition.
+   * collapsed so `?status=todo,todo` is one condition.
    */
   protected parseStatusList(value: string | undefined): QuestStatus[] {
     const known = new Set<string>(z.schema.enumValues(questStatusSchema));
@@ -472,7 +472,7 @@ export class QuestController {
    * condition objects rather than values, and the single-status branch and
    * the OR branch must not be allowed to drift apart.
    *
-   * ⚠️ **`held` is EXCLUSIVE with `new` and `accepted`, and it has to be.**
+   * ⚠️ **`on_hold` is EXCLUSIVE with `todo` and `in_progress`, and it has to be.**
    * A held quest still has its `acceptedAt` (or its absence) underneath, so
    * without the `heldAt: isNull` conjunct below, filtering "New" would
    * return rows the table renders with a **Held** badge — a filter
@@ -482,20 +482,20 @@ export class QuestController {
    */
   protected statusConditions(status: QuestStatus): Record<string, any> {
     switch (status) {
-      case "new":
+      case "todo":
         return {
           acceptedAt: { isNull: true },
           completedAt: { isNull: true },
           shelvedAt: { isNull: true },
           heldAt: { isNull: true },
         };
-      case "accepted":
+      case "in_progress":
         return {
           acceptedAt: { isNotNull: true },
           completedAt: { isNull: true },
           heldAt: { isNull: true },
         };
-      case "held":
+      case "on_hold":
         // `completedAt IS NULL` restates the precedence rather than trusting
         // it: `completeQuest` refuses a held quest, so the pair cannot arise
         // legitimately, and a row that carries both reads as completed
@@ -943,7 +943,7 @@ export class QuestController {
         // evidence about the hold. Refusing it would mean the one moment
         // somebody has a picture of the problem is the one moment they
         // cannot attach it.
-        ["new", "accepted", "held", "shelved", "completed"],
+        ["todo", "in_progress", "on_hold", "shelved", "completed"],
       );
 
       if (quest.attachments.includes(body.fileId)) {
@@ -1150,7 +1150,7 @@ export class QuestController {
         "remove an attachment from",
         // Held mirrors the attach side above: a hold must not turn a file
         // somebody just attached by mistake into one they cannot take back.
-        ["new", "accepted", "held", "shelved"],
+        ["todo", "in_progress", "on_hold", "shelved"],
       );
 
       // Only an id this quest lists can be removed through it. The handler
@@ -1199,7 +1199,7 @@ export class QuestController {
       }),
       query: pageQuerySchema.extend({
         /**
-         * One status, or several comma-separated (`new,accepted`). Several
+         * One status, or several comma-separated (`todo,in_progress`). Several
          * means the union, and an empty or unparseable value means no status
          * filter at all rather than an error - the Quests page is reachable
          * by hand-edited link and by stale bookmark, and both must land on
@@ -1207,7 +1207,7 @@ export class QuestController {
          *
          * A list rather than repeated keys because
          * `ServerProvider.parseQueryString` returns `Record<string, string>`:
-         * `?status=new&status=accepted` would keep only the last one.
+         * `?status=todo&status=in_progress` would keep only the last one.
          */
         status: z.string().optional(),
         search: z.string().optional(),
@@ -1256,8 +1256,8 @@ export class QuestController {
       }
 
       // Every multi-value filter is OR'd within itself and AND'd against the
-      // others, so `status=new,accepted` + `area=a,b` reads as "(new or
-      // accepted) and (area a or b)". The groups collect here because `where`
+      // others, so `status=todo,in_progress` + `area=a,b` reads as "(todo or
+      // in progress) and (area a or b)". The groups collect here because `where`
       // itself carries only one `or`.
       const groups: Array<Record<string, any>> = [];
 
@@ -1324,7 +1324,7 @@ export class QuestController {
         // there is no single date the list is about, so `-updatedAt` stands.
         if (statuses[0] === "completed") query.sort ??= "-completedAt";
         if (statuses[0] === "shelved") query.sort ??= "-shelvedAt";
-        if (statuses[0] === "held") query.sort ??= "-heldAt";
+        if (statuses[0] === "on_hold") query.sort ??= "-heldAt";
       } else {
         groups.push({
           or: statuses.map((status) => this.statusConditions(status)),
@@ -1641,13 +1641,13 @@ export class QuestController {
   });
 
   /**
-   * Hand an accepted quest back to the backlog as "new".
+   * Hand an accepted quest back to the backlog as "todo".
    *
    * Deliberately NOT behind the epic phase gate (epic #31), for the reason
    * `shelveQuest` is not: unassigning is the step before shelving, and both
    * move a quest toward resolution rather than opening work.
    */
-  abandonQuest = $action({
+  unassignQuest = $action({
     use: [$transactional(), this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -1656,26 +1656,26 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      // `held` is allowed, and it is the one verb where it is. A held quest
+      // `on_hold` is allowed, and it is the one verb where it is. A held quest
       // keeps its assignee, so handing it back is a real thing to want, and
-      // abandoning does not touch `heldAt`: the quest stays blocked and
+      // unassigning does not touch `heldAt`: the quest stays blocked and
       // becomes unassigned, which is exactly what happened. Shelving, by
       // contrast, WOULD have to clear the hold - a quest that is out of
       // scope is not waiting for anything - so it refuses instead of doing
       // that silently.
-      const { quest } = this.getQuestForTransition("abandon", [
-        "accepted",
-        "held",
+      const { quest } = this.getQuestForTransition("unassign", [
+        "in_progress",
+        "on_hold",
       ]);
 
-      // A held quest reads as "held" whether or not it was ever accepted,
+      // A held quest reads as "on_hold" whether or not it was ever accepted,
       // so the status alone cannot stand in for the assignment the way it
-      // does for every other verb here. Without this, abandoning a held
-      // `new` quest would clear four fields that are already empty and
+      // does for every other verb here. Without this, unassigning a held
+      // `todo` quest would clear four fields that are already empty and
       // write an "unassigned" event that never happened.
       if (!quest.acceptedAt) {
         throw new BadRequestError(
-          `Cannot abandon quest ${formatReference("quest", quest.shortId)}: nobody has accepted it.`,
+          `Cannot unassign quest ${formatReference("quest", quest.shortId)}: nobody has accepted it.`,
         );
       }
 
@@ -1683,7 +1683,7 @@ export class QuestController {
       quest.acceptedBy = undefined;
       quest.kanbanColumn = undefined;
       // Reminders are tied to the assignee — clear when the quest is
-      // abandoned so the sweep doesn't keep emailing an absent owner.
+      // unassigned so the sweep doesn't keep emailing an absent owner.
       quest.reminderInterval = undefined;
       quest.reminderNextAt = undefined;
       quest.history.push({
@@ -1704,12 +1704,12 @@ export class QuestController {
    * denominators — the backlog stops showing work nobody intends to do
    * right now, but the idea survives.
    *
-   * Only quests still in "new" status can be shelved: an accepted quest
-   * must be abandoned first, so that clearing the assignee, timer and
+   * Only quests still in "todo" status can be shelved: an accepted quest
+   * must be unassigned first, so that clearing the assignee, timer and
    * reminders stays an explicit act rather than a side-effect of shelving.
    *
    * Deliberately NOT behind the epic phase gate (epic #31). Shelving moves
-   * a quest toward resolution, and it is the only exit for a `new` quest
+   * a quest toward resolution, and it is the only exit for a `todo` quest
    * sitting in a completed epic from before that rule existed.
    *
    * Shelving the last open quest of an in-progress epic completes the epic
@@ -1726,7 +1726,7 @@ export class QuestController {
     handler: async ({ params, user }) => {
       // "shelved" is allowed so re-shelving stays idempotent below.
       const { quest } = this.getQuestForTransition("shelve", [
-        "new",
+        "todo",
         "shelved",
       ]);
 
@@ -1751,7 +1751,7 @@ export class QuestController {
   });
 
   /**
-   * Bring a shelved quest back into the backlog as "new".
+   * Bring a shelved quest back into the backlog as "todo".
    */
   unshelveQuest = $action({
     use: [$transactional(), this.ownsQuestForWork("quest:update")],
@@ -1789,7 +1789,7 @@ export class QuestController {
    * This covers the rest of what actually stalls work: an unanswered
    * question, a credential somebody else holds, a decision, a deploy window.
    *
-   * **Reachable from `new` and from `accepted`**, and neither is a special
+   * **Reachable from `todo` and from `in_progress`**, and neither is a special
    * case: `heldAt` sits above `acceptedAt` in the derived status, so a held
    * quest keeps its assignee, its kanban column, its timer and its reminder,
    * and `unholdQuest` gives all of them back by clearing two columns.
@@ -1809,7 +1809,7 @@ export class QuestController {
    * unreadable.
    *
    * Deliberately NOT behind the epic phase gate, for the reason
-   * `shelveQuest` and `abandonQuest` are not: a hold moves a quest away from
+   * `shelveQuest` and `unassignQuest` are not: a hold moves a quest away from
    * work. `unholdQuest` IS gated, because it moves one back toward it.
    */
   holdQuest = $action({
@@ -1829,15 +1829,15 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ body, user }) => {
-      // "held" is allowed through the generic guard so the refusal below is
+      // "on_hold" is allowed through the generic guard so the refusal below is
       // the one that fires. Without it `getQuestForTransition` answers with
       // its own hold-specific message, which reads "Lift the hold first,
       // then hold it." for this verb and only this verb. Same shape as
       // `shelveQuest` allowing "shelved" so its own branch can answer.
       const { quest, project } = this.getQuestForTransition("hold", [
-        "new",
-        "accepted",
-        "held",
+        "todo",
+        "in_progress",
+        "on_hold",
       ]);
 
       // Not idempotent, unlike `shelveQuest`, and the difference is the
@@ -1901,7 +1901,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = this.getQuestForTransition("unhold", ["held"]);
+      const { quest } = this.getQuestForTransition("unhold", ["on_hold"]);
       await this.epicWorkflow.assertQuestWorkable(quest, "unhold");
 
       quest.heldAt = undefined;
@@ -1953,7 +1953,7 @@ export class QuestController {
     handler: async ({ params, user }) => {
       // "shelved" is allowed on purpose — see the un-shelving branch below.
       const { quest, project } = this.getQuestForTransition("accept", [
-        "new",
+        "todo",
         "shelved",
       ]);
 
@@ -1965,7 +1965,7 @@ export class QuestController {
 
       // Questline gate (Lore #32): refuse to accept while a non-null
       // predecessor is still in flight. The dependent quest stays
-      // visible in the "new" lane — the UI flips its badge to
+      // visible in the "todo" lane — the UI flips its badge to
       // "Unblocked" once the predecessor completes.
       if (quest.dependsOn != null) {
         const predecessor = await this.quests.findOne({
@@ -2039,7 +2039,7 @@ export class QuestController {
    * `isMemberById`, so a quest cannot be parked on somebody who cannot
    * see the project.
    *
-   * Accepted from `new`, `shelved` and `accepted`: assigning is how a
+   * Accepted from `todo`, `shelved` and `in_progress`: assigning is how a
    * shelved idea comes back with an owner, and reassigning an already
    * accepted quest is the whole point.
    */
@@ -2056,9 +2056,9 @@ export class QuestController {
     },
     handler: async ({ params, body, user }) => {
       const { quest, project } = this.getQuestForTransition("assign", [
-        "new",
+        "todo",
         "shelved",
-        "accepted",
+        "in_progress",
       ]);
 
       // Assigning makes a quest accepted without going through
@@ -2089,7 +2089,7 @@ export class QuestController {
 
       // Reminders are a per-user nudge (`setQuestReminder` is gated on
       // `acceptedBy === user.id`), so they do not travel with the quest.
-      // Same reasoning `abandonQuest` already applies: the alternative is
+      // Same reasoning `unassignQuest` already applies: the alternative is
       // emailing somebody about work that is no longer theirs.
       quest.reminderInterval = undefined;
       quest.reminderNextAt = undefined;
@@ -2139,7 +2139,7 @@ export class QuestController {
     },
     handler: async ({ params, body, user }) => {
       const { quest, project } = this.getQuestForTransition("move", [
-        "accepted",
+        "in_progress",
       ]);
       const columns = project.kanbanColumns ?? [];
       if (!columns.includes(body.kanbanColumn)) {
@@ -2188,7 +2188,7 @@ export class QuestController {
     handler: async ({ params, body, user }) => {
       const { quest, project } = this.getQuestForTransition(
         "set a reminder on",
-        ["accepted"],
+        ["in_progress"],
       );
 
       if (quest.acceptedBy !== user.id) {
@@ -2364,7 +2364,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest } = this.getQuestForTransition("complete", ["accepted"]);
+      const { quest } = this.getQuestForTransition("complete", ["in_progress"]);
       // Mostly settled by the accept already: a quest is accepted only in a
       // ready or in-progress epic, and a completed epic has no accepted
       // quest. Rows that pre-date epic #31 can still be here, and the
@@ -2838,7 +2838,7 @@ export class QuestController {
     },
     handler: async ({ params, user, body }) => {
       const { quest } = this.getQuestForTransition("tick an objective on", [
-        "accepted",
+        "in_progress",
       ]);
 
       // Backfill ids for legacy rows before the lookup — preserves the
@@ -2921,10 +2921,10 @@ export class QuestController {
         "edit the objectives of",
         // Held is allowed: rewriting what a quest is FOR is planning, and a
         // blocked quest is a normal thing to re-plan. Ticking one is not,
-        // and `toggleQuestObjective` still requires `accepted` - a tick is
+        // and `toggleQuestObjective` still requires `in_progress` - a tick is
         // a claim that work happened, which is exactly what a hold says is
         // not happening.
-        ["new", "accepted", "held", "shelved"],
+        ["todo", "in_progress", "on_hold", "shelved"],
       );
 
       if (quest.createdBy !== user.id && project.createdBy !== user.id) {
@@ -3045,7 +3045,7 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       const { quest } = this.getQuestForTransition("start a timer on", [
-        "accepted",
+        "in_progress",
       ]);
 
       // Check if timer is already running (last session has no stoppedAt)
@@ -3077,16 +3077,16 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      // ⚠️ `held` is allowed here and NOT on `startQuestTimer`, and the
+      // ⚠️ `on_hold` is allowed here and NOT on `startQuestTimer`, and the
       // asymmetry is the whole point. `holdQuest` deliberately touches
       // nothing else on the quest, so a quest held with its timer running
-      // still has it running. If stopping required `accepted`, that timer
+      // still has it running. If stopping required `in_progress`, that timer
       // would keep accruing until somebody lifted the hold - the hold would
       // silently bill the blocker to the assignee. Starting one on a held
       // quest is a different claim, and stays refused.
       const { quest } = this.getQuestForTransition("stop a timer on", [
-        "accepted",
-        "held",
+        "in_progress",
+        "on_hold",
       ]);
 
       // Find the running timer session

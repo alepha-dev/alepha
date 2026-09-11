@@ -583,6 +583,18 @@ says `'draft'`, accepted drift like the `projects.features` one below:
 itself. `test/epic-draft-migration.spec.ts` applies it to seeded rows. Why
 the name: folio #1290.
 
+⚠️ **A quest's status became `todo | in_progress | on_hold | shelved |
+completed` the same day** (#Q2269), where it was `new | accepted | held |
+shelved | completed`. The status is derived from timestamps, so no quest row
+moved, but `20260911143021_quest_status_names` rewrites the stored copies of
+the old values, which are validated on read: `projects.kanbanColumnConfig[*]
+.status` (on the projects row, so a stale one fails every project read) and
+the Active quests card's `statuses` in `project_dashboard_cards` and
+`dashboard_cards`. `test/quest-status-migration.spec.ts` applies it to seeded
+rows. `quests.history` keeps its action names (`assigned`, `held`), which are
+events, not statuses. Labels go through `QUEST_STATUS_LABEL_KEYS`
+(`questChips.ts`), never a key built from the status string.
+
 ⚠️ **Publishing a roadmap publishes the titles of epics nobody has
 announced.** Draft epics are shown on purpose: an epic that is specified and
 not started is exactly what a roadmap is for, and hiding it would make the
@@ -708,7 +720,7 @@ same reason.
 
 ### Drag & Drop
 
-Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.
+Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `todo → in_progress → completed` (named `new → accepted → completed` until #Q2269, folio #1290). Completed quests cannot be moved back. A to-do quest must be accepted before completing.
 
 ### Schemas: derive from the entity, never restate a field
 

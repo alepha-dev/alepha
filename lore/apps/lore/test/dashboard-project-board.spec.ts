@@ -271,7 +271,7 @@ describe("the project dashboard controller", () => {
       );
 
       expect(res.data.cards[0]?.filters).toEqual({
-        statuses: ["new", "accepted"],
+        statuses: ["todo", "in_progress"],
       });
     });
 

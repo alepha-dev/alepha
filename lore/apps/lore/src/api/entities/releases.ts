@@ -155,7 +155,7 @@ export const releases = $entity({
      *
      * The three in-total buckets are disjoint by construction, so no fifth
      * count is needed: `shelvedAt` is only ever set on a quest still in
-     * `new` status, so it never coexists with `acceptedAt` or `completedAt`,
+     * `todo` status, so it never coexists with `acceptedAt` or `completedAt`,
      * and `inProgress` excludes both of the others.
      */
     completed: z.integer().optional(),

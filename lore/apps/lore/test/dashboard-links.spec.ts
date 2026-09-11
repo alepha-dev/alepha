@@ -74,10 +74,10 @@ describe("dashboard drill-through links", () => {
     }
   });
 
-  it("sends the active-quests tile to status=new, not to its own filter", ({
+  it("sends the active-quests tile to status=todo, not to its own filter", ({
     expect,
   }) => {
-    // The count is `new + accepted`; the link is `new` only, because the
+    // The count is `new + accepted`; the link is `todo` only, because the
     // questlog rail already shows the accepted ones. This divergence is the
     // reason `link()` is a declared function rather than a translation of the
     // filter — if someone "fixes" it, this fails.
@@ -88,14 +88,14 @@ describe("dashboard drill-through links", () => {
     expect(link).toEqual({
       route: "projectQuests",
       params: { projectSlug: "sds" },
-      query: { status: "new" },
+      query: { status: "todo" },
     });
     // `/quests`, not `/`: the quest list moved off the project root when
     // Activity took it. The tile still names its destination by ROUTE, which
     // is why the move needed no change to the catalog — only to this
     // assertion, which is the one place the path is spelled out.
     expect(router.path(link!.route, { params, query: link!.query })).toBe(
-      "/sds/quests?status=new",
+      "/sds/quests?status=todo",
     );
   });
 
@@ -152,10 +152,10 @@ describe("dashboard drill-through links", () => {
     expect(link).toEqual({
       route: "projectQuests",
       params: { projectSlug: "sds" },
-      query: { tag: "need-answer", status: "new,accepted" },
+      query: { tag: "need-answer", status: "todo,in_progress" },
     });
     expect(router.path(link!.route, { params, query: link!.query })).toBe(
-      "/sds/quests?tag=need-answer&status=new%2Caccepted",
+      "/sds/quests?tag=need-answer&status=todo%2Cin_progress",
     );
   });
 

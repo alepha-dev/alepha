@@ -19,7 +19,7 @@ export const feedbackLinkedQuestSchema = quests.schema
      * shelved or held linked quest reads as whichever of the three it
      * last was.
      *
-     * `held` is excluded deliberately rather than by omission. This is the
+     * `on_hold` is excluded deliberately rather than by omission. This is the
      * reporter-facing surface, and an outside reporter reading "Held" is
      * being told that their request is blocked on something internal
      * without being told what — which is worse than seeing the quest as
@@ -27,7 +27,7 @@ export const feedbackLinkedQuestSchema = quests.schema
      * answer for them.
      */
     status: questStatusSchema
-      .exclude(["shelved", "held"])
+      .exclude(["shelved", "on_hold"])
       .meta({ mode: "text" }),
     acceptedAt: z.datetime().optional(),
     completedAt: z.datetime().optional(),
@@ -41,8 +41,8 @@ export type FeedbackLinkedQuest = Infer<typeof feedbackLinkedQuestSchema>;
  * Adds `reporter` (resolved from `reporterUserId`), `attachmentUrls` so the
  * inbox UI can render attachments without a second round-trip per file, and
  * `linkedQuests` — the quests spawned from this feedback (via
- * `quests.feedbackId`). Status is derived per-quest: a fresh quest is `new`
- * until accepted, `accepted` while in progress, `completed` when finished.
+ * `quests.feedbackId`). Status is derived per-quest: a fresh quest is `todo`
+ * until accepted, `in_progress` while in progress, `completed` when finished.
  */
 export const feedbackResourceSchema = feedback.schema.extend({
   reporter: z

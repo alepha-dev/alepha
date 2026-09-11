@@ -1068,8 +1068,8 @@ export class FeedbackController {
         status: q.completedAt
           ? ("completed" as const)
           : q.acceptedAt
-            ? ("accepted" as const)
-            : ("new" as const),
+            ? ("in_progress" as const)
+            : ("todo" as const),
         priority: q.priority,
         area: q.area,
         acceptedAt: q.acceptedAt ?? undefined,

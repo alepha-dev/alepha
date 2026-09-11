@@ -137,7 +137,7 @@ interface QuestCreateResult {
 
 interface QuestGetResult {
   id: number;
-  status: "new" | "accepted" | "completed";
+  status: "todo" | "in_progress" | "completed";
 }
 
 describe("quest_create — accept flag", () => {
@@ -181,7 +181,7 @@ describe("quest_create — accept flag", () => {
     const got = await mcpCall(ctx.baseUrl, token, "quest_get", {
       id: quest.id,
     });
-    expect(payload<QuestGetResult>(got).status).toBe("accepted");
+    expect(payload<QuestGetResult>(got).status).toBe("in_progress");
   });
 
   it("leaves the quest unaccepted when accept is omitted", async ({
@@ -202,13 +202,13 @@ describe("quest_create — accept flag", () => {
     const got = await mcpCall(ctx.baseUrl, token, "quest_get", {
       id: quest.id,
     });
-    expect(payload<QuestGetResult>(got).status).toBe("new");
+    expect(payload<QuestGetResult>(got).status).toBe("todo");
   });
 
   it("still creates the quest but skips accept when blocked by an incomplete predecessor", async ({
     expect,
   }) => {
-    // Predecessor stays "new" (never accepted/completed).
+    // Predecessor stays "todo" (never accepted/completed).
     const predecessor = await mcpCall(ctx.baseUrl, token, "quest_create", {
       project: projectId,
       title: "Setup first",
@@ -239,6 +239,6 @@ describe("quest_create — accept flag", () => {
     const got = await mcpCall(ctx.baseUrl, token, "quest_get", {
       id: quest.id,
     });
-    expect(payload<QuestGetResult>(got).status).toBe("new");
+    expect(payload<QuestGetResult>(got).status).toBe("todo");
   });
 });

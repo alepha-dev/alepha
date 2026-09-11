@@ -15,7 +15,7 @@ import KanbanColumnMenu from "./KanbanColumnMenu.tsx";
 
 const PAGE_SIZE = 20;
 
-export type ColumnKind = "new" | "accepted" | "completed";
+export type ColumnKind = "todo" | "in_progress" | "completed";
 
 export interface ColumnDescriptor {
   /**
@@ -23,7 +23,7 @@ export interface ColumnDescriptor {
    */
   key: string;
   /**
-   * Free-form sub-column name when `kind === "accepted"`.
+   * Free-form sub-column name when `kind === "in_progress"`.
    */
   subColumn?: string;
   /**

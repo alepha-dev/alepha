@@ -22,21 +22,46 @@ export type QuestTone = "neutral" | "info" | "success" | "warning" | "danger";
  * `shelved` is deliberately neutral: it is the absence of a state, and
  * tinting it would give a parked quest more presence than an active one.
  *
- * `held` is `danger`, and it is the only status that shouts. A held quest is
- * the one thing on a board that will not move on its own: shelved needs
- * nobody, new and accepted are proceeding, and completed is done. Reading as
- * loud as `high` priority is correct here, because the whole point of the
- * status is that somebody has to go and unblock it.
+ * `on_hold` is `danger`, and it is the only status that shouts. A quest on
+ * hold is the one thing on a board that will not move on its own: shelved
+ * needs nobody, to do and in progress are proceeding, and completed is done.
+ * Reading as loud as `high` priority is correct here, because the whole point
+ * of the status is that somebody has to go and unblock it.
  */
 export const QUEST_STATUS_TONE: Record<
   QuestResource["metadata"]["status"],
   QuestTone
 > = {
-  new: "info",
-  accepted: "warning",
-  held: "danger",
+  todo: "info",
+  in_progress: "warning",
+  on_hold: "danger",
   completed: "success",
   shelved: "neutral",
+};
+
+export type QuestStatusLabelKey =
+  | "quest.status.todo"
+  | "quest.status.inProgress"
+  | "quest.status.onHold"
+  | "quest.status.completed"
+  | "quest.status.shelved";
+
+/**
+ * Badge copy for a quest's status, shared by every surface that draws it.
+ *
+ * The keys are camelCase while `in_progress` and `on_hold` are not: this map
+ * is the one place the two meet, as `STATUS_LABEL_KEYS` is for epics, so
+ * nothing builds a key from the status string by hand.
+ */
+export const QUEST_STATUS_LABEL_KEYS: Record<
+  QuestResource["metadata"]["status"],
+  QuestStatusLabelKey
+> = {
+  todo: "quest.status.todo",
+  in_progress: "quest.status.inProgress",
+  on_hold: "quest.status.onHold",
+  completed: "quest.status.completed",
+  shelved: "quest.status.shelved",
 };
 
 /**

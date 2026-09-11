@@ -196,8 +196,8 @@ describe("ProjectReportsController", () => {
         { user: ctx.owner },
       );
       expect(
-        res.data.funnel.new +
-          res.data.funnel.accepted +
+        res.data.funnel.todo +
+          res.data.funnel.inProgress +
           res.data.funnel.completed,
       ).toBeGreaterThanOrEqual(3);
       expect(Array.isArray(res.data.byArea)).toBe(true);
@@ -353,7 +353,7 @@ describe("ProjectReportsController", () => {
       // the burn-up — rewriting the record of work that actually happened.
       //
       // The shelved-quest exemption `liveQuest` relies on does NOT carry
-      // over here: only a `new` quest can be shelved, so a shelved quest is
+      // over here: only a `todo` quest can be shelved, so a shelved quest is
       // never a completed one, whereas a completed quest can sit in a
       // draft epic quite happily.
       const owner = await createTestUser(ctx);
@@ -411,10 +411,10 @@ describe("ProjectReportsController", () => {
         { user: c.owner },
       );
 
-      // Same two quests, both still `new` — the gate filters, it never
+      // Same two quests, both still `todo` — the gate filters, it never
       // touches a quest's lifecycle state.
-      expect(res.data.funnel.new).toBe(2);
-      expect(res.data.funnel.accepted).toBe(0);
+      expect(res.data.funnel.todo).toBe(2);
+      expect(res.data.funnel.inProgress).toBe(0);
       expect(res.data.funnel.completed).toBe(0);
     });
   });

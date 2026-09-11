@@ -29,6 +29,7 @@ import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
   QUEST_PRIORITY_TONE,
+  QUEST_STATUS_LABEL_KEYS,
   QUEST_STATUS_TONE,
 } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
@@ -209,7 +210,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                       variant="tint"
                       tone={QUEST_STATUS_TONE[quest.metadata.status]}
                     >
-                      {tr(`quest.status.${quest.metadata.status}`)}
+                      {tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status])}
                     </Badge>
                   ),
                 },

@@ -167,15 +167,15 @@ const ProjectSettingsWorkPage = () => {
    */
   const setColumnSettings = async (
     name: string,
-    patch: { status?: "new" | "accepted" | "completed"; wipLimit?: number },
+    patch: { status?: "todo" | "in_progress" | "completed"; wipLimit?: number },
   ) => {
     const current = project.kanbanColumnConfig ?? {};
     const merged = { ...current[name], ...patch };
-    // Strip keys back to absent rather than storing a default: "accepted"
+    // Strip keys back to absent rather than storing a default: "in_progress"
     // and "no limit" are what a column means with no entry at all, so
     // writing them would leave two encodings of one state.
     const settings: Record<string, unknown> = {};
-    if (merged.status && merged.status !== "accepted") {
+    if (merged.status && merged.status !== "in_progress") {
       settings.status = merged.status;
     }
     if (merged.wipLimit) settings.wipLimit = merged.wipLimit;
@@ -261,7 +261,7 @@ const ProjectSettingsWorkPage = () => {
                       pending !== null || !projectApi.updateProjectById.can()
                     }
                     status={
-                      project.kanbanColumnConfig?.[col]?.status ?? "accepted"
+                      project.kanbanColumnConfig?.[col]?.status ?? "in_progress"
                     }
                     wipLimit={project.kanbanColumnConfig?.[col]?.wipLimit}
                     onRename={(newName) => handleRename(col, newName)}
@@ -322,12 +322,12 @@ interface ColumnRowProps {
    * Which lifecycle state this column collapses to. The triple stays the
    * truth; a column only maps onto it (#1227).
    */
-  status: "new" | "accepted" | "completed";
+  status: "todo" | "in_progress" | "completed";
   wipLimit?: number;
   onRename: (next: string) => void;
   onDelete: () => void;
   onSettings: (patch: {
-    status?: "new" | "accepted" | "completed";
+    status?: "todo" | "in_progress" | "completed";
     wipLimit?: number;
   }) => void;
 }
@@ -437,13 +437,13 @@ const ColumnRow = (props: ColumnRowProps) => {
         triggerClassName="h-8 text-xs"
         items={[
           {
-            value: "new",
-            label: String(tr("project.settings.kanban.columns.status.new")),
+            value: "todo",
+            label: String(tr("project.settings.kanban.columns.status.todo")),
           },
           {
-            value: "accepted",
+            value: "in_progress",
             label: String(
-              tr("project.settings.kanban.columns.status.accepted"),
+              tr("project.settings.kanban.columns.status.inProgress"),
             ),
           },
           {

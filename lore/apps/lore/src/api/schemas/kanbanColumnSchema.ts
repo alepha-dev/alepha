@@ -30,10 +30,10 @@ import { paletteColorSchema } from "./paletteColorSchema.ts";
 export const kanbanColumnSettingsSchema = z.object({
   /**
    * Which lifecycle state a card dropped in this column ends up in.
-   * Absent means `accepted`, which is what every configured column meant
+   * Absent means `in_progress`, which is what every configured column meant
    * before this existed.
    */
-  status: z.enum(["new", "accepted", "completed"]).optional(),
+  status: z.enum(["todo", "in_progress", "completed"]).optional(),
   /**
    * A soft cap. The header reads `3/5` and a drop past it warns; it never
    * refuses, because a hard block on your own board is a tool arguing with
@@ -46,7 +46,7 @@ export const kanbanColumnSettingsSchema = z.object({
    * A token rather than a hex value, for the reason `paletteColorSchema`
    * gives: the class it resolves to carries a CSS variable and stays legible
    * in light and dark. Absent means the board derives one - blue for the
-   * `new` lane, green for `completed`, and a rotating tint for the
+   * `todo` lane, green for `completed`, and a rotating tint for the
    * in-progress ones - which is what every column meant before this existed.
    *
    * Additive and optional, so the existing `kanbanColumnConfig` rows keep

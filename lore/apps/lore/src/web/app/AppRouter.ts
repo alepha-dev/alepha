@@ -1408,11 +1408,11 @@ export class AppRouter {
       /**
        * The quests table's filters, seeded from the URL on arrival — the
        * drill-through target for a dashboard card, and for any link that
-       * wants to open one slice of the backlog. `?status=new&tag=need-answer`
+       * wants to open one slice of the backlog. `?status=todo&tag=need-answer`
        * opens the list already narrowed, and the toolbar's Share item is what
        * produces such a link.
        *
-       * Multi-value filters are comma-joined (`?status=new,accepted`), the
+       * Multi-value filters are comma-joined (`?status=todo,in_progress`), the
        * same spelling `getQuests` takes on the wire, because
        * `parseQueryString` returns one value per key and a repeated param
        * keeps only the last.

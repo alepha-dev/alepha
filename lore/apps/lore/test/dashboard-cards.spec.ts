@@ -161,7 +161,7 @@ describe("dashboard cards", () => {
         body: {
           metric: "activeQuests",
           scope: { kind: "projects", projectIds: [project.id] },
-          filters: { statuses: ["new"] },
+          filters: { statuses: ["todo"] },
           size: 2,
         },
       },
@@ -175,7 +175,7 @@ describe("dashboard cards", () => {
       kind: "projects",
       projectIds: [project.id],
     });
-    expect(stored?.filters).toEqual({ statuses: ["new"] });
+    expect(stored?.filters).toEqual({ statuses: ["todo"] });
     expect(stored?.size).toBe(2);
   });
 
@@ -189,7 +189,7 @@ describe("dashboard cards", () => {
       { user },
     );
 
-    expect(created.filters).toEqual({ statuses: ["new", "accepted"] });
+    expect(created.filters).toEqual({ statuses: ["todo", "in_progress"] });
   });
 
   it("degrades a card whose stored filters no longer parse", async ({
@@ -209,7 +209,7 @@ describe("dashboard cards", () => {
     const { cards } = await ctx.controller.listCards({}, { user });
 
     expect(cards.find((card) => card.id === created.id)?.filters).toEqual({
-      statuses: ["new", "accepted"],
+      statuses: ["todo", "in_progress"],
     });
   });
 

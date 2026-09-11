@@ -186,7 +186,7 @@ export class ReleaseContentService {
    * every quest of the epic including the shelved ones.
    *
    * The three in-total buckets are disjoint, so no fifth count is needed:
-   * `shelvedAt` is only ever set on a quest still in `new` status, so it
+   * `shelvedAt` is only ever set on a quest still in `todo` status, so it
    * never coexists with `acceptedAt` or `completedAt`, and `inProgress`
    * excludes both of the others.
    *

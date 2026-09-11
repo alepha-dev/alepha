@@ -49,7 +49,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
   const line = (() => {
     if (props.metric === "activeQuests") {
       return tr("dashboard.footer.questSplit", {
-        args: [String(detail.acceptedCount ?? 0), String(detail.newCount ?? 0)],
+        args: [String(detail.inProgressCount ?? 0), String(detail.todoCount ?? 0)],
       });
     }
     if (props.metric === "epicProgress") {

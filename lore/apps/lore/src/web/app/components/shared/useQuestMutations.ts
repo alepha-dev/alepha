@@ -115,7 +115,7 @@ export const useQuestMutations = (): QuestMutations => {
     // Viewer is only read-only if all three agree.
     can: {
       accept: questApi.acceptQuest.can(),
-      unassign: questApi.abandonQuest.can(),
+      unassign: questApi.unassignQuest.can(),
       complete: questApi.completeQuest.can(),
       shelve: questApi.shelveQuest.can(),
       unshelve: questApi.unshelveQuest.can(),
@@ -130,10 +130,10 @@ export const useQuestMutations = (): QuestMutations => {
       return quest;
     },
     unassign: async (id) => {
-      // Still `abandonQuest` on the server: it clears `acceptedAt` /
-      // `acceptedBy` / the kanban column and pushes an `unassigned` history
-      // event, and has never deleted anything.
-      const quest = await questApi.abandonQuest({ params: { id } });
+      // `unassignQuest` on the server (`abandonQuest` until #Q2269): it
+      // clears `acceptedAt` / `acceptedBy` / the kanban column and pushes an
+      // `unassigned` history event, and has never deleted anything.
+      const quest = await questApi.unassignQuest({ params: { id } });
       dropFromAssigned(id);
       return quest;
     },

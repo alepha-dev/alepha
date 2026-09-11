@@ -55,18 +55,18 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
     },
   } satisfies ChartConfig;
 
-  const funnelTotal = funnel.new + funnel.accepted + funnel.completed;
+  const funnelTotal = funnel.todo + funnel.inProgress + funnel.completed;
   const funnelItems = [
     {
-      key: "new",
-      value: funnel.new,
-      label: tr("reports.quests.status.new"),
+      key: "todo",
+      value: funnel.todo,
+      label: tr("reports.quests.status.todo"),
       segment: "bg-muted-foreground/40",
     },
     {
-      key: "accepted",
-      value: funnel.accepted,
-      label: tr("reports.quests.status.accepted"),
+      key: "inProgress",
+      value: funnel.inProgress,
+      label: tr("reports.quests.status.inProgress"),
       segment: "bg-[var(--chart-4)]",
     },
     {
