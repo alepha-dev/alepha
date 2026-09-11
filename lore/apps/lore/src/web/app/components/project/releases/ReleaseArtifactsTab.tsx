@@ -1,11 +1,13 @@
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { useI18n } from "alepha/react/i18n";
-import { Cloud, Container, Link2, Server } from "lucide-react";
+import { Archive, Cloud, Container, Link2, Server } from "lucide-react";
+import { useMemo } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
+import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 
 export interface ReleaseArtifactsTabProps {
   /**
@@ -40,12 +42,28 @@ export interface ReleaseArtifactsTabProps {
  * release with no artifact are both normal**, which is why the empty state
  * here is a sentence rather than a warning.
  *
- * ## Why these columns
+ * ## Why one row per variant (#Q2267)
  *
- * **App** and **runtimes** are the two axes that vary; the version is this
- * release's tag on every row, so it is in the header rather than repeated.
- * **Digest** is short, with the whole value on the title: a deploy pins a
- * digest because a tag can be moved by whoever pushes next.
+ * The endpoint groups by `(app, tag)`, which is right on an app's page, where
+ * the TAG is what varies and the variants are what a tag carries. Here the
+ * tag is this release's on every row, so what varies is the app, the format
+ * and the runtime, and each of those combinations is a separate thing that
+ * shipped: its own bytes, its own digest, its own size, pushed at its own
+ * time. Grouped by app, the row could show only one variant's digest and
+ * size (the archive's, by rule) beside chips for the others, so two of the
+ * three builds of a release had no digest on screen at all.
+ *
+ * So the groups are unwound: one row per `(app, format, runtime)`, ordered
+ * by app, then format, then the stored runtime value, and every cell reads
+ * from its own variant. The runtime prints as `artifactRuntimeLabel` has it
+ * (`workerd` reads "cloudflare"), and the version is in the header rather
+ * than repeated. **Digest** is short, with the whole value on the title: a
+ * deploy pins a digest because a tag can be moved by whoever pushes next.
+ *
+ * An image row carries its registry reference in the one flexible column,
+ * which is empty on a tarball: Lore records an image's reference and never
+ * its bytes, so the reference IS that artifact. It sits before the digest so
+ * the fixed columns line up down the table whichever rows carry one.
  *
  * **There is no state column, and there should never be one.** A registry row
  * exists or it does not. Ready / building / failed chips would be modelling a
@@ -61,6 +79,19 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
 
   const size = (bytes: number) =>
     `${l(bytes / 1_000_000, { number: { maximumFractionDigits: 1 } })} MB`;
+
+  const variants = useMemo(
+    () =>
+      props.artifacts
+        .flatMap((group) => group.variants)
+        .sort(
+          (a, b) =>
+            a.app.localeCompare(b.app) ||
+            a.format.localeCompare(b.format) ||
+            a.runtime.localeCompare(b.runtime),
+        ),
+    [props.artifacts],
+  );
 
   return (
     <div className="flex flex-col gap-4 p-2">
@@ -83,7 +114,7 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
         <p className="text-muted-foreground text-[13px]">
           {tr("release.artifacts.loading")}
         </p>
-      ) : props.artifacts.length === 0 ? (
+      ) : variants.length === 0 ? (
         <p className="text-muted-foreground text-[13px]">
           {tr("release.artifacts.empty", { args: [props.tag] })}
         </p>
@@ -93,9 +124,15 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
             <span className="w-40 shrink-0">
               {tr("release.artifacts.column.app")}
             </span>
-            <span className="min-w-0 flex-1">
-              {tr("release.artifacts.column.target")}
+            <span className="w-24 shrink-0">
+              {tr("release.artifacts.column.format")}
             </span>
+            <span className="w-28 shrink-0">
+              {tr("release.artifacts.column.runtime")}
+            </span>
+            {/* The reference column has no heading: only an image fills it,
+                and its cell says what it is. */}
+            <span className="min-w-0 flex-1" aria-hidden />
             <span className="w-[130px] shrink-0">
               {tr("release.artifacts.column.digest")}
             </span>
@@ -106,95 +143,54 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
               {tr("release.artifacts.column.uploaded")}
             </span>
           </div>
-          {/*
-            One row per app, since every row here already shares one tag. The
-            runtimes sit inside it as chips: `(app, tag, runtime)` is the key
-            precisely so two builds of one release are variants rather than two
-            releases.
-          */}
-          {props.artifacts.map((group) => {
-            // ⚠️ The ARCHIVE's digest, not `variants[0]`'s. An index digest
-            // and a tarball digest are different kinds of fact, and a row
-            // showing whichever sorted first is a row nobody can read. Where
-            // a tag has only an image, its digest is the only answer there is.
-            const newest =
-              group.variants.find((it) => it.format === "archive") ??
-              group.variants[0];
-            // ⚠️ Only the variants that HAVE a size. A `Math.max` over a list
-            // holding one `undefined` is `NaN`, and an image variant often
-            // carries no size at all.
-            const sizes = group.variants
-              .map((variant) => variant.size)
-              .filter((it): it is number => it !== undefined);
-            const heaviest = sizes.length ? Math.max(...sizes) : undefined;
-
-            return (
-              <div
-                key={group.app}
-                className="border-border/60 flex items-center gap-4 border-b px-[15px] py-2.5 text-[12.5px] last:border-b-0"
+          {variants.map((variant) => (
+            <div
+              key={variant.id}
+              data-testid="release-artifact-row"
+              className="border-border/60 flex items-center gap-4 border-b px-[15px] py-2.5 text-[12.5px] last:border-b-0"
+            >
+              <span className="w-40 shrink-0 truncate font-medium">
+                {variant.app}
+              </span>
+              <span className="flex w-24 shrink-0 items-center gap-1.5 font-mono text-[12px]">
+                {variant.format === "image" ? (
+                  <Container className="size-3.5 shrink-0" aria-hidden />
+                ) : (
+                  <Archive className="size-3.5 shrink-0" aria-hidden />
+                )}
+                {variant.format}
+              </span>
+              <span className="flex w-28 shrink-0 items-center gap-1.5 font-mono text-[12px]">
+                {variant.runtime === "workerd" ? (
+                  <Cloud className="size-3.5 shrink-0" aria-hidden />
+                ) : (
+                  <Server className="size-3.5 shrink-0" aria-hidden />
+                )}
+                {artifactRuntimeLabel(variant.runtime)}
+              </span>
+              <span className="flex min-w-0 flex-1">
+                {variant.format === "image" && variant.reference && (
+                  <ArtifactPullCommand reference={variant.reference} />
+                )}
+              </span>
+              <span
+                className="text-muted-foreground w-[130px] shrink-0 truncate font-mono text-[11.5px]"
+                title={variant.sha256}
               >
-                <span className="w-40 shrink-0 truncate font-medium">
-                  {group.app}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                  {group.variants.map((variant) => (
-                    // ⚠️ `runtime` alone is no longer unique: two variants of
-                    // one tag may share it, differing only in `format`.
-                    <span
-                      key={`${variant.runtime}:${variant.format}`}
-                      className="flex items-center gap-1.5 font-mono text-[12px]"
-                    >
-                      {variant.format === "image" ? (
-                        <Container className="size-3.5 shrink-0" aria-hidden />
-                      ) : variant.runtime === "workerd" ? (
-                        <Cloud className="size-3.5 shrink-0" aria-hidden />
-                      ) : (
-                        <Server className="size-3.5 shrink-0" aria-hidden />
-                      )}
-                      {variant.format === "image"
-                        ? `${variant.runtime} image`
-                        : variant.runtime}
-                    </span>
-                  ))}
-                </span>
-                <span
-                  className="text-muted-foreground w-[130px] shrink-0 truncate font-mono text-[11.5px]"
-                  title={newest.sha256}
-                >
-                  {newest.sha256.slice(0, 12)}
-                </span>
-                <span
-                  className="w-[78px] shrink-0 text-right font-mono text-[11.5px] tabular-nums"
-                  title={
-                    heaviest === undefined
-                      ? undefined
-                      : tr("app.artifacts.size.hint")
-                  }
-                >
-                  {heaviest === undefined ? "N/A" : size(heaviest)}
-                </span>
-                <TimeAgo
-                  value={group.pushedAt}
-                  className="text-muted-foreground w-30 shrink-0 truncate text-[11.5px]"
-                />
-                {/*
-                  ⚠️ Beside the tarballs, and the only affordance any variant
-                  on this page has. An image has nothing to download - Lore
-                  records the reference and never the bytes - so the reference
-                  IS the artifact, and this is what a self-hoster came here
-                  for: which image goes with this release.
-                */}
-                {group.variants
-                  .filter((it) => it.format === "image" && it.reference)
-                  .map((it) => (
-                    <ArtifactPullCommand
-                      key={it.id}
-                      reference={it.reference as string}
-                    />
-                  ))}
-              </div>
-            );
-          })}
+                {variant.sha256.slice(0, 12)}
+              </span>
+              {/* An image variant often carries no size: N/A, never NaN. */}
+              <span className="w-[78px] shrink-0 text-right font-mono text-[11.5px] tabular-nums">
+                {variant.size === undefined ? "N/A" : size(variant.size)}
+              </span>
+              {/* `updatedAt`, not `createdAt`: `latest` is replaced in place,
+                  so "uploaded" means when these bytes arrived. */}
+              <TimeAgo
+                value={variant.updatedAt}
+                className="text-muted-foreground w-30 shrink-0 truncate text-[11.5px]"
+              />
+            </div>
+          ))}
         </div>
       )}
 

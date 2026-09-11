@@ -55,9 +55,19 @@ const show = async (artifacts: ArtifactGroup[]) => {
   );
 };
 
+const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+
+/**
+ * The first three cells of every row, app / format / runtime, as read.
+ */
+const cellsOf = (rows: HTMLElement[]) =>
+  rows.map((row) =>
+    [...row.children].slice(0, 3).map((cell) => cell.textContent?.trim()),
+  );
+
 describe("ReleaseArtifactsTab", () => {
-  it("shows a copyable docker pull beside the tarballs", async ({ expect }) => {
-    const { findByTestId, container } = await show([
+  it("gives every variant its own row, digest and size", async ({ expect }) => {
+    const { findAllByTestId, findByTestId, container } = await show([
       {
         app: "lore",
         tag: "0.30.0",
@@ -65,7 +75,7 @@ describe("ReleaseArtifactsTab", () => {
         variants: [
           variant(),
           variant({
-            id: "00000000-0000-4000-8000-000000000002",
+            id: id(2),
             format: "image",
             reference: "ghcr.io/alepha-dev/lore:0.30.0",
             sha256: "b".repeat(64),
@@ -75,21 +85,70 @@ describe("ReleaseArtifactsTab", () => {
       } as ArtifactGroup,
     ]);
 
+    const [archive, image] = (
+      await findAllByTestId("release-artifact-row")
+    ).map((row) => row.textContent ?? "");
+    expect(archive).toContain("a".repeat(12));
+    expect(archive).toContain("4.4 MB");
+    // ⚠️ Grouped by app, the row showed the ARCHIVE's digest only, so the
+    // image's own digest was nowhere on the page.
+    expect(image).toContain("b".repeat(12));
+    // Its own size, which it does not have: N/A, never the tarball's.
+    expect(image).toContain("N/A");
+    expect(image).not.toContain("4.4 MB");
+
+    // The image row keeps its registry reference, copyable as a pull.
     const pull = await findByTestId("artifact-pull");
     expect(pull.getAttribute("title")).toBe(
       "docker pull ghcr.io/alepha-dev/lore:0.30.0",
     );
-    // ⚠️ Two variants sharing a runtime used to collide into one key AND read
-    // as two identical "node" chips.
-    expect(container.textContent).toContain("node image");
-    // The ARCHIVE's digest, not whichever variant sorted first.
-    expect(container.textContent).toContain("a".repeat(12));
-    // The one variant that has a size, never `NaN MB`.
-    expect(container.textContent).toContain("4.4 MB");
+    expect(image).toContain("ghcr.io/alepha-dev/lore:0.30.0");
+    expect(archive).not.toContain("ghcr.io");
     expect(container.textContent).not.toContain("NaN");
     // The row reads correctly with nothing to download, which is what it has
     // always had: there is no Download button on any variant anywhere.
     expect(container.textContent).not.toContain("Download");
+  });
+
+  it("orders rows by app, format and runtime, and names workerd cloudflare", async ({
+    expect,
+  }) => {
+    // The five rows of feedback #P2193, handed over grouped and out of order.
+    const { findAllByTestId, container } = await show([
+      {
+        app: "lore",
+        tag: "0.30.0",
+        pushedAt: "2026-09-09T10:00:00.000Z",
+        variants: [
+          variant({ id: id(1), runtime: "workerd" }),
+          variant({
+            id: id(2),
+            format: "image",
+            reference: "ghcr.io/alepha-dev/lore:0.30.0",
+          }),
+          variant({ id: id(3) }),
+        ],
+      } as ArtifactGroup,
+      {
+        app: "docs",
+        tag: "0.30.0",
+        pushedAt: "2026-09-09T10:00:00.000Z",
+        variants: [
+          variant({ id: id(4), app: "docs", runtime: "workerd" }),
+          variant({ id: id(5), app: "docs" }),
+        ],
+      } as ArtifactGroup,
+    ]);
+
+    expect(cellsOf(await findAllByTestId("release-artifact-row"))).toEqual([
+      ["docs", "archive", "node"],
+      ["docs", "archive", "cloudflare"],
+      ["lore", "archive", "node"],
+      ["lore", "archive", "cloudflare"],
+      ["lore", "image", "node"],
+    ]);
+    // The stored value is a key across the stack; only the label moved.
+    expect(container.textContent).not.toContain("workerd");
   });
 
   it("renders N/A rather than NaN when the only variant is a sizeless image", async ({

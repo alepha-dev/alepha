@@ -259,7 +259,8 @@ describe("ProjectArtifacts", () => {
 
     // The tag appears once per runtime row.
     expect(await findAllByText("1.0.0")).toHaveLength(2);
-    expect(await findAllByText("workerd")).toHaveLength(1);
+    // `workerd` is the stored value; the badge reads the infrastructure.
+    expect(await findAllByText("cloudflare")).toHaveLength(1);
     expect(await findAllByText("node")).toHaveLength(1);
   });
 
