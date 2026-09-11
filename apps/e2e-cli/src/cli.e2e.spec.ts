@@ -270,22 +270,15 @@ describe("Alepha CLI E2E", () => {
     // `main`/`types`/`bin`/`exports` at `dist/` are a yarn extension, and npm
     // ignores them. An npm-packed tarball would still point at `src/*.ts` and
     // would not be what the registry serves.
-    for (const [workspace, file] of [
-      ["alepha", "alepha.tgz"],
-      // `alepha init` adds it as a devDependency, so it has to resolve locally
-      // too — otherwise init's install reaches for the published copy.
-      ["@alepha/devtools", "devtools.tgz"],
-    ]) {
-      const out = join(TARBALL_DIR, file);
-      const packed = await run(
-        `yarn workspace ${workspace} pack -o "${out}"`,
-        ROOT,
+    const tarball = join(TARBALL_DIR, "alepha.tgz");
+    const packed = await run(
+      `yarn workspace alepha pack -o "${tarball}"`,
+      ROOT,
+    );
+    if (packed.exitCode !== 0 || !existsSync(tarball)) {
+      throw new Error(
+        `Failed to pack alepha:\n${packed.stdout}\n${packed.stderr}`,
       );
-      if (packed.exitCode !== 0 || !existsSync(out)) {
-        throw new Error(
-          `Failed to pack ${workspace}:\n${packed.stdout}\n${packed.stderr}`,
-        );
-      }
     }
 
     await writeFile(
@@ -293,13 +286,10 @@ describe("Alepha CLI E2E", () => {
       `${JSON.stringify({ name: "e2e-consumer", version: "1.0.0", private: true }, null, 2)}\n`,
     );
 
-    const installed = await run(
-      `npm install "${join(TARBALL_DIR, "alepha.tgz")}" "${join(TARBALL_DIR, "devtools.tgz")}"`,
-      PROJECT_DIR,
-    );
+    const installed = await run(`npm install "${tarball}"`, PROJECT_DIR);
     if (installed.exitCode !== 0) {
       throw new Error(
-        `Failed to install the packed tarballs:\n${installed.stdout}\n${installed.stderr}`,
+        `Failed to install the packed tarball:\n${installed.stdout}\n${installed.stderr}`,
       );
     }
   }, 300_000);

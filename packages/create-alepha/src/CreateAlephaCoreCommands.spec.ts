@@ -18,8 +18,8 @@ import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
  * parsing still runs — this only replaces the `readline` interface underneath
  * it, not the `ask.*` methods themselves. An empty answer resolves to
  * whatever `default` the question was given, exactly like a real user
- * pressing Enter, so tests that supply `name`/`preset` via `args`/`flags` and
- * reach only the devtools question get its `default: true` for free.
+ * pressing Enter, so tests that supply `name` via `args` and reach only the
+ * preset question get its `default` preset for free.
  *
  * `questionCount` lets a test assert that a fully flagged invocation reaches
  * `scaffolder.init` without asking anything at all — the promptless path
@@ -31,8 +31,8 @@ import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
  * every test that reaches a prompt until the suite times out.
  *
  * The answer supply is finite (mirroring `FakeInterface` in `Asker.spec.ts`),
- * not infinite: `CreateAlephaCoreCommands` asks at most three questions
- * (name, preset, devtools) in one run, so this has generous headroom for the
+ * not infinite: `CreateAlephaCoreCommands` asks at most two questions
+ * (name, preset) in one run, so this has generous headroom for the
  * current command while staying bounded. If a regression made any question
  * re-ask on an empty answer, exhausting the supply reproduces real EOF
  * behaviour — `question()` never resolves and the interface closes, which is
@@ -102,13 +102,6 @@ describe("create-alepha", () => {
       )
     ).dependencies;
 
-  const readDevDependencies = async (fs: MemoryFileSystemProvider) =>
-    (
-      await fs.readJsonFile<{ devDependencies: Record<string, string> }>(
-        "/project/my-app/package.json",
-      )
-    ).devDependencies;
-
   it("should scaffold the default preset when no flag is given", async () => {
     const { fs, cli, cmd } = createTestEnv();
 
@@ -171,40 +164,34 @@ describe("create-alepha", () => {
   });
 
   /**
-   * The whole point of `--preset`/`--pm`/`--no-devtools` each having a flag is
-   * that a script or CI can supply all three and never see a question. This
-   * checks that for real, not by reading the source: `asker.questionCount`
-   * would be nonzero the moment any of the three fell through to `ask.*`
-   * instead of its flag, and the resulting package.json is asserted directly
-   * against what `scaffolder.init` actually wrote, not just that the double
-   * was called.
+   * The whole point of `--preset`/`--pm` each having a flag is that a script
+   * or CI can supply both and never see a question. This checks that for
+   * real, not by reading the source: `asker.questionCount` would be nonzero
+   * the moment either fell through to `ask.*` instead of its flag, and the
+   * resulting package.json is asserted directly against what
+   * `scaffolder.init` actually wrote, not just that the double was called.
    */
   it("should reach the scaffolder without asking a question when every flag is supplied", async () => {
     const { fs, cli, cmd, asker } = createTestEnv();
 
     await cli.run(cmd.root, {
-      argv: "my-app --preset saas --pm yarn --no-devtools",
+      argv: "my-app --preset saas --pm yarn",
       root: "/project",
     });
 
     expect(asker.questionCount).toBe(0);
     expect(await readDependencies(fs)).toHaveProperty("@alepha/ui");
-    expect(await readDevDependencies(fs)).not.toHaveProperty(
-      "@alepha/devtools",
-    );
   });
 
   /**
-   * ⚠️ The case the per-question flags could not express, and the reason
-   * `--yes` exists (quest #1647). `--no-devtools` is a NEGATIVE boolean, so
-   * the ONLY fully flagged path was the one that turns devtools off: a
-   * script could not produce the DEFAULT shape, which is what a human gets
-   * by pressing Enter and what the docs recommend. `npm create alepha my-app
-   * --preset default` prompted, then died on closed stdin.
+   * The reason `--yes` exists (#Q1647): a script asking for the DEFAULT
+   * shape, which is what a human gets by pressing Enter and what the docs
+   * recommend, without having to know every flag that would otherwise prompt.
    *
    * `questionCount` is the assertion that matters. Reading the package.json
-   * alone would pass on the old code too, since the auto-answering double
-   * takes `default: true` for the question it should never have been asked.
+   * alone would pass without `--yes` too, since the auto-answering double
+   * takes the `default` preset for the question it should never have been
+   * asked.
    */
   it("should reach the scaffolder with the DEFAULT shape and no question, under --yes", async () => {
     const { fs, cli, cmd, asker } = createTestEnv();
@@ -212,8 +199,7 @@ describe("create-alepha", () => {
     await cli.run(cmd.root, { argv: "my-app --yes", root: "/project" });
 
     expect(asker.questionCount).toBe(0);
-    expect(await readDevDependencies(fs)).toHaveProperty("@alepha/devtools");
-    // `--yes` takes the preset's default too, which is `default`, not saas.
+    // `--yes` takes the preset's default, which is `default`, not saas.
     expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
   });
 
@@ -223,22 +209,19 @@ describe("create-alepha", () => {
     await cli.run(cmd.root, { argv: "my-app -y", root: "/project" });
 
     expect(asker.questionCount).toBe(0);
-    expect(await readDevDependencies(fs)).toHaveProperty("@alepha/devtools");
+    expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
   });
 
   it("should let a flag win over --yes", async () => {
     const { fs, cli, cmd, asker } = createTestEnv();
 
     await cli.run(cmd.root, {
-      argv: "my-app --yes --preset saas --no-devtools",
+      argv: "my-app --yes --preset saas",
       root: "/project",
     });
 
     expect(asker.questionCount).toBe(0);
     expect(await readDependencies(fs)).toHaveProperty("@alepha/ui");
-    expect(await readDevDependencies(fs)).not.toHaveProperty(
-      "@alepha/devtools",
-    );
   });
 
   /**
@@ -255,18 +238,17 @@ describe("create-alepha", () => {
     ).rejects.toThrow(/project name/i);
   });
 
-  it("should include devtools by default when --no-devtools is not passed", async () => {
+  it("should ask for the preset when neither --preset nor --yes is passed", async () => {
     const { fs, cli, cmd, asker } = createTestEnv();
 
     await cli.run(cmd.root, {
-      argv: "my-app --preset saas --pm yarn",
+      argv: "my-app --pm yarn",
       root: "/project",
     });
 
-    // Name and preset are supplied, so the devtools confirm is the only
-    // question left to reach; the auto-answering double's empty reply takes
-    // its `default: true`.
+    // The name is supplied, so the preset choice is the only question left to
+    // reach; the auto-answering double's empty reply takes its `default`.
     expect(asker.questionCount).toBe(1);
-    expect(await readDevDependencies(fs)).toHaveProperty("@alepha/devtools");
+    expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
   });
 });

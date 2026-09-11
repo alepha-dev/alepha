@@ -4,7 +4,7 @@ An inspection UI for your running app, one click away during development. The de
 
 ## Quick Start
 
-Projects scaffolded by `alepha init` already have it - the dependency and the config line are generated for you (opt out with `alepha init --no-devtools`). To add it manually:
+It is opt-in: `alepha init` does not add it. Install the package and register the plugin:
 
 ```bash
 npm install --save-dev @alepha/devtools

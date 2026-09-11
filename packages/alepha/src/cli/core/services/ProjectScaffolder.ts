@@ -131,11 +131,10 @@ export class ProjectScaffolder {
        */
       envExample?: boolean | { database?: boolean };
       /**
-       * `true` writes the file with no optional sections — pass
-       * `{ devtools: true }` to document the `/__devtools/api/` endpoints and
+       * `true` writes the file with no optional sections. Pass
        * `{ saas: true }` to document the identity surface.
        */
-      agentMd?: boolean | { devtools?: boolean; saas?: boolean };
+      agentMd?: boolean | { saas?: boolean };
       /**
        * Write `.vscode/settings.json` pointing the editor's TypeScript
        * server at the `typescript` copy embedded in `alepha`.
@@ -185,7 +184,6 @@ export class ProjectScaffolder {
       tasks.push(
         this.ensureAgentMd(root, {
           force,
-          devtools: agentMdOpts.devtools,
           saas: agentMdOpts.saas,
         }),
       );
@@ -405,13 +403,13 @@ export class ProjectScaffolder {
    */
   public async ensureAgentMd(
     root: string,
-    options: { force?: boolean; devtools?: boolean; saas?: boolean } = {},
+    options: { force?: boolean; saas?: boolean } = {},
   ): Promise<void> {
     await Promise.all([
       this.ensureFile(
         root,
         "AGENTS.md",
-        agentMd({ devtools: options.devtools, saas: options.saas }),
+        agentMd({ saas: options.saas }),
         options.force,
       ),
       this.ensureFile(root, "CLAUDE.md", "@AGENTS.md\n", options.force),
@@ -423,12 +421,12 @@ export class ProjectScaffolder {
    */
   public async ensureAlephaConfig(
     root: string,
-    opts: { force?: boolean; devtools?: boolean } = {},
+    opts: { force?: boolean } = {},
   ): Promise<void> {
     await this.ensureFile(
       root,
       "alepha.config.ts",
-      alephaConfigTs({ devtools: opts.devtools }),
+      alephaConfigTs(),
       opts.force,
     );
   }
@@ -698,7 +696,6 @@ export class ProjectScaffolder {
       preset?: Preset;
       pm?: "yarn" | "npm" | "pnpm" | "bun";
       force?: boolean;
-      "no-devtools"?: boolean;
     };
     args?: string;
   }) {
@@ -802,10 +799,6 @@ export class ProjectScaffolder {
       );
     }
 
-    // Devtools is on by default for apps and never for workspace packages —
-    // a library has no Vite dev shell for the overlay to attach to.
-    const devtools = !flags["no-devtools"] && !workspace.isPackage;
-
     const force = !!flags.force;
 
     await run({
@@ -817,7 +810,6 @@ export class ProjectScaffolder {
             react: web,
             tailwind: web,
             isPackage: workspace.isPackage,
-            devtools,
             ui: saas,
           },
           tsconfigJson: !workspace.config.tsconfigJson,
@@ -826,14 +818,14 @@ export class ProjectScaffolder {
           // Same rule as the agent files: a project root owns its env, a
           // monorepo sub-package reads the workspace root's.
           envExample: writeAgentMd && { database: saas },
-          agentMd: writeAgentMd && { devtools, saas },
+          agentMd: writeAgentMd && { saas },
           // Editor TS-server pointer at a project root only; monorepo
           // sub-packages inherit the workspace-root `.vscode/`.
           vscodeSettings: writeAgentMd,
         });
 
         // Create alepha.config.ts with documented options
-        await this.ensureAlephaConfig(root, { force, devtools });
+        await this.ensureAlephaConfig(root, { force });
 
         // Only the saas preset has an identity surface to hand an admin to.
         // Writing ADMIN_EMAIL into a default-preset project would document a

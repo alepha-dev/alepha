@@ -28,10 +28,10 @@ export class CreateAlephaCoreCommands {
    * Unlike the old four-way question, `--preset` does prompt when it is left
    * unset: `ask.choice` offers the same two values the flag accepts. Every
    * question below works the same way, gated on the flag that would otherwise
-   * answer it, so a fully flagged invocation never prompts at all —
-   * `create-alepha my-app --preset saas --no-devtools` runs start to finish
-   * without a question, which is what a script or CI needs. Leave a flag out
-   * and the command asks instead of guessing.
+   * answer it, so a fully flagged invocation never prompts at all:
+   * `create-alepha my-app --preset saas` runs start to finish without a
+   * question, which is what a script or CI needs. Leave a flag out and the
+   * command asks instead of guessing.
    *
    * The package-manager question is the one exception, and for a different
    * reason: it was asking something the CLI already knows. `PackageManagerUtils`
@@ -42,19 +42,13 @@ export class CreateAlephaCoreCommands {
    * not invoke. `--pm` still overrides, for the case where the two genuinely
    * differ.
    *
-   * DevTools follows the same shape as preset: `--no-devtools` skips the
-   * question, and leaving it unset asks. It is dev-only and costs nothing in
-   * a production bundle, so the default answer is yes.
-   *
-   * ⚠️ Those per-question flags do NOT add up to a promptless default shape,
-   * which is what `--yes` is for. `--no-devtools` is a NEGATIVE boolean, so
-   * "leave devtools at its default" and "said nothing about devtools" are the
-   * same state, and that state prompts — the only fully flagged path was the
-   * one that turns devtools OFF, so a script could not produce the shape a
-   * human gets by pressing Enter. `--yes` answers every remaining question
-   * with its default, the way `npm init -y` does, and keeps covering
-   * questions added later. A plain `--devtools` was the other candidate and
-   * would have fixed exactly one prompt.
+   * `--yes` answers every remaining question with its default, the way
+   * `npm init -y` does, so a script gets the shape a human gets by pressing
+   * Enter without spelling out each flag, and it keeps covering questions
+   * added later. It was born of a devtools question whose only flag was the
+   * negative `--no-devtools`, which left no fully flagged path to the default
+   * shape (#Q1647). That question left with devtools itself (#Q2280); `--yes`
+   * stayed for the preset and whatever comes next.
    */
   public readonly root = $command({
     root: true,
@@ -73,12 +67,6 @@ export class CreateAlephaCoreCommands {
       pm: z
         .enum(["yarn", "npm", "pnpm", "bun"])
         .describe("Package manager to use")
-        .optional(),
-      "no-devtools": z
-        .boolean()
-        .describe(
-          "Skip @alepha/devtools. It is included by default and is dev-only, so it costs nothing in a production bundle",
-        )
         .optional(),
       yes: z
         .boolean()
@@ -135,19 +123,6 @@ export class CreateAlephaCoreCommands {
               { default: "default" },
             ));
 
-      // 3. DevTools is dev-only and costs nothing in a production bundle, so
-      // the default is yes. Asked only when the caller did not already decide:
-      // a fully-flagged invocation has to stay promptless, or `npm create
-      // alepha` stops working from a script.
-      const devtools =
-        flags["no-devtools"] !== undefined
-          ? !flags["no-devtools"]
-          : flags.yes
-            ? true
-            : await ask.confirm("Include @alepha/devtools?", {
-                default: true,
-              });
-
       // Create directory
       await this.fs.mkdir(name);
 
@@ -165,7 +140,6 @@ export class CreateAlephaCoreCommands {
         flags: {
           pm: flags.pm,
           preset,
-          "no-devtools": devtools ? undefined : true,
         },
         args: name,
       });

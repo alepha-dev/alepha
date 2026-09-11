@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { resolveDevtoolsAssetsPath } from "../index.ts";
 
 /**
- * `alepha init` now wires `devtools()` into the generated config by default,
- * so the uninstall path stopped being hypothetical: drop `@alepha/devtools`
- * from package.json and the plugin must not take the whole config load down
- * with it.
+ * Projects scaffolded by `alepha init` before #Q2280 carry `devtools()` in
+ * their generated config, so the uninstall path is not hypothetical: drop
+ * `@alepha/devtools` from package.json and the plugin must not take the
+ * whole config load down with it.
  */
 describe("resolveDevtoolsAssetsPath", () => {
   it("resolves the asset directory when the package is installed", () => {

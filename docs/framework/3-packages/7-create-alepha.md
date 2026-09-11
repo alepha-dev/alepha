@@ -31,10 +31,10 @@ npm create alepha my-app -- --yes
 
 `--yes` answers every remaining question with its default, so the project it
 produces is the same one a human gets by pressing Enter. Flags still win over
-it, so `--yes --preset saas --no-devtools` is a complete, promptless
-description of a different shape. The project name is the one thing `--yes`
-cannot supply, because it has no default; leave it out and the command says so
-rather than prompting.
+it, so `--yes --preset saas` is a complete, promptless description of a
+different shape. The project name is the one thing `--yes` cannot supply,
+because it has no default; leave it out and the command says so rather than
+prompting.
 
 Omit `--yes` and an interactive wizard asks for whatever no flag has answered.
 
@@ -58,12 +58,11 @@ preset decides what is mounted, never where it lives.
 
 ## Options
 
-| Flag              | Description                                                 |
-| ----------------- | ----------------------------------------------------------- |
-| `--preset <name>` | `default` (the default) or `saas`                           |
-| `--pm <manager>`  | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun`    |
-| `--no-devtools`   | Skip the devtools question and leave `@alepha/devtools` out |
-| `--yes`, `-y`     | Take the default for every remaining question               |
+| Flag              | Description                                              |
+| ----------------- | -------------------------------------------------------- |
+| `--preset <name>` | `default` (the default) or `saas`                        |
+| `--pm <manager>`  | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun` |
+| `--yes`, `-y`     | Take the default for every remaining question            |
 
 ## After creating
 

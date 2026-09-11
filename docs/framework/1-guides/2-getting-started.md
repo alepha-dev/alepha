@@ -36,8 +36,8 @@ project, human or AI, already knows where things live. If you don't need the
 frontend, delete `src/web/`. A [preset](#presets) can add more on top of this
 base, but never moves it around.
 
-The flags that change what is scaffolded are `--preset` and `--no-devtools`;
-`--pm` (package manager) and `--force` (overwrite existing files) control how:
+The flag that changes what is scaffolded is `--preset`; `--pm` (package
+manager) and `--force` (overwrite existing files) control how:
 
 ```bash
 npx alepha@latest init my-app --pm=bun
@@ -299,25 +299,6 @@ area at `/account/*`, an admin console at `/admin/*` - plus the `$realm` in
 and a longer `src/web/index.ts`.
 
 Full details in the [init command reference](/docs/cli-commands-init).
-
-### Devtools
-
-`alepha init` registers the devtools plugin in `alepha.config.ts` and adds
-`@alepha/devtools` to `devDependencies`, so `npm run dev` gives you the inspection
-UI straight away - a floating cog at the bottom-left, or `/__devtools/`
-directly. It covers atoms, modules, database contents, configuration and logs.
-
-It is dev-only (a Vite plugin that lazy-loads the UI), so it adds nothing to a
-production build.
-
-```bash
-npx alepha init --no-devtools   # leave it out entirely
-```
-
-Workspace packages never get it - a library has no dev server for it to attach
-to. To keep the route but drop the floating button, pass
-`devtools({ hideButton: true })` in your config. Removing the dependency later
-turns the plugin into a no-op with a warning rather than breaking config load.
 
 Building an API-only service? Delete `src/web/`, `src/main.browser.ts` and
 `src/main.css`, and drop the `WebModule` line from `main.server.ts`. Expo

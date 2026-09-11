@@ -37,7 +37,7 @@ decides what is _mounted_ on the layout below, never where anything lives:
 | `default` | The layout below: API module, web module (React SSR), Tailwind.                                                                                                                                                                                                                                                                                             |
 | `saas`    | The above plus `@alepha/ui` and the identity surface - sign-in at `/auth/*`, an account area at `/account/*`, an admin console at `/admin/*` - backed by a `$realm` in `src/api/Realm.ts`. It also mounts the ORM, generates the initial migration, and writes `ADMIN_EMAIL` into a gitignored `.env`. Refused for Expo projects, which have no web module. |
 
-The remaining options are `--pm <yarn|npm|pnpm|bun>`, `--force` (`-f`) and `--no-devtools`.
+The remaining options are `--pm <yarn|npm|pnpm|bun>` and `--force` (`-f`).
 Building an API-only service? Generate the project, then delete `src/web/`,
 `src/main.browser.ts` and `src/main.css`, and drop `WebModule` from `src/main.server.ts`.
 

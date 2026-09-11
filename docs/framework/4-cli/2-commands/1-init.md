@@ -43,12 +43,11 @@ This is the one axis worth branching on because it is the one you cannot easily 
 
 ## Options
 
-| Flag              | Description                                                   |
-| ----------------- | ------------------------------------------------------------- |
-| `--preset <name>` | Project shape: `default` (the default) or `saas`              |
-| `--pm <manager>`  | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun`       |
-| `--force`, `-f`   | Override existing files                                       |
-| `--no-devtools`   | Skip `@alepha/devtools` (dev-only, no production bundle cost) |
+| Flag              | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `--preset <name>` | Project shape: `default` (the default) or `saas`        |
+| `--pm <manager>`  | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
+| `--force`, `-f`   | Override existing files                                 |
 
 The first positional argument is the target path:
 
@@ -101,7 +100,7 @@ my-app/
 
 The router is wired to the API out of the box - `AppRouter.ts` calls `HelloController` through `$client`, giving you an end-to-end type-safe request on the first run.
 
-**Dependencies:** `alepha`, `react`, `react-dom` and, as dev dependencies, `@types/react`, `tailwindcss`, `@tailwindcss/vite`, `@alepha/devtools`.
+**Dependencies:** `alepha`, `react`, `react-dom` and, as dev dependencies, `@types/react`, `tailwindcss`, `@tailwindcss/vite`.
 
 The toolchain - TypeScript, Vite, Vitest, oxlint, oxfmt, drizzle-kit - ships embedded in `alepha` and never appears in your `package.json`. Upgrading `alepha` moves the whole toolchain at once.
 
@@ -249,7 +248,6 @@ If you run `alepha init` inside a monorepo workspace package (i.e. there's a wor
 - Skips workspace-level configs (`tsconfig.json`, `.editorconfig`, `.vscode/settings.json`) if they already exist higher up
 - Skips package-manager bootstrapping (the workspace already owns it)
 - Skips git init and `AGENTS.md`/`CLAUDE.md` (those belong at the workspace root)
-- Skips `@alepha/devtools` (a library has no dev shell for the overlay to attach to)
 - Runs install from the workspace root, not the package
 
 ## Expo Detection
