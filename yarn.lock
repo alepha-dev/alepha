@@ -7516,21 +7516,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"loom@workspace:apps/loom":
-  version: 0.0.0-use.local
-  resolution: "loom@workspace:apps/loom"
-  dependencies:
-    "@alepha/ui": "workspace:*"
-    "@tailwindcss/vite": "npm:^4.3.3"
-    alepha: "workspace:^"
-    lucide-react: "npm:^1.43.0"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    tailwindcss: "npm:^4.3.3"
-    vite: "npm:^8.2.2"
-  languageName: unknown
-  linkType: soft
-
 "lore@workspace:apps/lore":
   version: 0.0.0-use.local
   resolution: "lore@workspace:apps/lore"

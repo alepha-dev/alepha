@@ -3,7 +3,6 @@ import { defineConfig } from "vitest/config";
 import { projects as docs } from "./apps/docs/vitest.config.ts";
 import { projects as relations } from "./apps/examples/relations/vitest.config.ts";
 import { projects as shop } from "./apps/examples/shop/vitest.config.ts";
-import { projects as loom } from "./apps/loom/vitest.config.ts";
 import { projects as lore } from "./apps/lore/vitest.config.ts";
 import { projects as uiApp } from "./apps/ui/vitest.config.ts";
 import { projects as commerce } from "./packages/@alepha/commerce/vitest.config.ts";
@@ -93,7 +92,6 @@ export default defineConfig({
       ...devtools,
       ...discord,
       ...docs,
-      ...loom,
       ...lore,
       ...loreSdk,
       ...paymentsStripe,
