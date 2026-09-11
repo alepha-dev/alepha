@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { type Page, z } from "alepha";
@@ -18,7 +19,6 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 import { activityResourceHref } from "./activityResourceHref.ts";
 
 const activityFiltersSchema = z.object({

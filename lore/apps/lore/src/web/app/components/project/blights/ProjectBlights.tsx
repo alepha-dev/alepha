@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
@@ -34,7 +35,6 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { hasCapability } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 

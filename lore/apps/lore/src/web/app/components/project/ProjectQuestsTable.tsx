@@ -4,6 +4,7 @@ import {
   type BulkMenuAction,
 } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
@@ -63,7 +64,6 @@ import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
-import FilterSlot from "../shared/FilterSlot.tsx";
 import { useBulkReport } from "../shared/useBulkReport.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { questAgentGate } from "./prompts/questAgentGate.ts";

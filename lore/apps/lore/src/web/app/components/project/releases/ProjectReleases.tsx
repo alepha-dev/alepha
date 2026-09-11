@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { type Page, z } from "alepha";
@@ -19,7 +20,6 @@ import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 import { OutboundLink } from "../../shared/OutboundLink.tsx";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";

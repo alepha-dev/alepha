@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Button } from "@alepha/ui/components/ui/button";
 import { z } from "alepha";
@@ -26,7 +27,6 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
