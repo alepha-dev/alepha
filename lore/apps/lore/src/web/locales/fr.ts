@@ -1969,6 +1969,11 @@ export default {
   "admin.sessions.revoked": "Session révoquée",
   "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
 
+  // Admin → Parameters: the tree's group labels, keyed by `$parameter` path.
+  // Labels only: the stored names keep their old words (see en.ts).
+  "parameters.lore.campaign": "Projets",
+  "parameters.lore.deploy": "Déploiements",
+
   // Epics
   "project.menu.epics": "Épopées",
   "epic.status.planned": "Planifiée",
