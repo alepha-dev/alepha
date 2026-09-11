@@ -26,7 +26,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * DEFAULT, which is the D1 table rebuild that cascade-wipes children.
  *
  * ⚠️ **Public is confirmed, not just switched.** Publishing a roadmap
- * publishes the titles of epics nobody has announced - planned epics are
+ * publishes the titles of epics nobody has announced - draft epics are
  * shown on purpose, because a roadmap that hides unstarted work cannot answer
  * the question it exists for. The confirmation naming that outcome IS the
  * safeguard; there is no filter in the endpoint, since a filter there would

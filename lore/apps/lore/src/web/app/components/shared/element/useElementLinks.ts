@@ -145,12 +145,12 @@ export const useElementLinks = (
         const page = await questApi.getQuests({
           params: { projectId },
           // Direct addressing (design §5.3, "never gated") — a link into a
-          // planned epic must still resolve, or the reader sees a literal
+          // draft epic must still resolve, or the reader sees a literal
           // `[[…]]` token and the author cannot even create the link.
           query: {
             size: 100,
             sort: "-updatedAt",
-            includePlanned: true,
+            includeDrafts: true,
           },
         });
         return page.content.map((q) => ({

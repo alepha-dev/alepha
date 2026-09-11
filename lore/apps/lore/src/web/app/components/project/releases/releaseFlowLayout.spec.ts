@@ -37,7 +37,7 @@ const epic = (
   id,
   number: id,
   title: `Epic ${id}`,
-  status: "planned",
+  status: "draft",
   dependsOn: options.dependsOn,
   quests: options.quests ?? [],
 });

@@ -54,7 +54,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
     }
     if (props.metric === "epicProgress") {
       // ⚠️ Status-dependent, reusing the Epics list's own readings rather
-      // than inventing prose: a `planned` epic reports what is SPECIFIED and
+      // than inventing prose: a `draft` epic reports what is SPECIFIED and
       // that none of it is released, a `completed` one reports when it
       // completed, and a ready or in-progress one gets the ratio. See
       // `ProjectEpicsProgress`.
@@ -68,7 +68,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
             })
           : tr("dashboard.footer.epic.completedUndated");
       }
-      if (detail.status === "planned") {
+      if (detail.status === "draft") {
         return tr("dashboard.footer.epic.specified", {
           args: [String(detail.total ?? 0)],
         });

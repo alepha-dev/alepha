@@ -130,7 +130,7 @@ describe("EpicController", () => {
     expect([first.number, second.number]).toEqual([1, 2]);
   });
 
-  it("creates an epic in `planned`", async ({ expect }) => {
+  it("creates an epic in `draft`", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
 
@@ -139,14 +139,14 @@ describe("EpicController", () => {
       { user },
     );
 
-    expect(epic.status).toBe("planned");
+    expect(epic.status).toBe("draft");
   });
 
   it("marks an epic ready and back, and writes to no quest row", async ({
     expect,
   }) => {
     // `ready` releases the quests because the backlog gate stops matching
-    // them, and `planned` hides them the same way: neither edge touches a
+    // them, and `draft` hides them the same way: neither edge touches a
     // quest. The default release moved to the START with #Q2223, where the
     // first accept carries it down (`quest-epic-workflow.spec.ts`).
     const project = await createTestProject(ctx.alepha);
@@ -160,7 +160,7 @@ describe("EpicController", () => {
       defaultSince: new Date().toISOString(),
     });
     const epic = await createTestEpic(ctx.alepha, project, {
-      status: "planned",
+      status: "draft",
     });
     const quest = await createTestQuest(ctx.alepha, project, {
       epicId: epic.id,
@@ -177,23 +177,23 @@ describe("EpicController", () => {
     expect(ready.releaseId).toBeUndefined();
 
     const back = await ctx.controller.setEpicStatus(
-      { params: { id: epic.id }, body: { status: "planned" } },
+      { params: { id: epic.id }, body: { status: "draft" } },
       { user },
     );
-    expect(back.status).toBe("planned");
+    expect(back.status).toBe("draft");
 
     const after = await ctx.repos.quests.getById(quest.id);
     expect(after.updatedAt).toEqual(before);
     expect(after.releaseId).toBeUndefined();
   });
 
-  it("counts every quest in its progress, planned ones included", async ({
+  it("counts every quest in its progress, draft-gated ones included", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     const epic = await createTestEpic(ctx.alepha, project, {
-      status: "planned",
+      status: "draft",
     });
     await createTestQuest(ctx.alepha, project, { epicId: epic.id });
     await createTestQuest(ctx.alepha, project, {
@@ -361,7 +361,7 @@ describe("EpicController", () => {
 
   /**
    * ⚠️ Epic #31 made this a one-way ratchet with two forward clicks, Begin
-   * and Conclude. #Q2223 replaced both: `planned` and `ready` are the only
+   * and Conclude. #Q2223 replaced both: `draft` and `ready` are the only
    * statuses set by hand, both ways, and `in_progress` and `completed` are
    * written by the quest requests that make them true. So the body schema
    * offers two values, and the refusals left are the ones that would move a
@@ -381,7 +381,7 @@ describe("EpicController", () => {
       startedAt: "2026-09-04T00:00:00.000Z",
       completedAt: "2026-09-04T01:00:00.000Z",
     });
-    const move = (epic: { id: number }, status: "planned" | "ready") =>
+    const move = (epic: { id: number }, status: "draft" | "ready") =>
       ctx.controller.setEpicStatus(
         { params: { id: epic.id }, body: { status } },
         { user },
@@ -390,8 +390,8 @@ describe("EpicController", () => {
     await expect(move(started, "ready")).rejects.toThrow(
       `Cannot move Epic #E${started.number} from in_progress to ready. Work has started and its plan is frozen. Shelve what will not be done, or create a new epic.`,
     );
-    await expect(move(started, "planned")).rejects.toThrow(
-      `Cannot move Epic #E${started.number} from in_progress to planned. Work has started and its plan is frozen.`,
+    await expect(move(started, "draft")).rejects.toThrow(
+      `Cannot move Epic #E${started.number} from in_progress to draft. Work has started and its plan is frozen.`,
     );
     await expect(move(completed, "ready")).rejects.toThrow(
       `Cannot move Epic #E${completed.number} from completed to ready. It is completed. Create a new epic that depends on it.`,
@@ -609,7 +609,7 @@ describe("EpicController", () => {
       status: "in_progress",
     });
     const open = await createTestEpic(ctx.alepha, project, {
-      status: "planned",
+      status: "draft",
     });
     const alsoOpen = await createTestEpic(ctx.alepha, project, {
       status: "ready",
@@ -784,14 +784,14 @@ describe("EpicController", () => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
 
-    await createTestEpic(ctx.alepha, project, { status: "planned" });
+    await createTestEpic(ctx.alepha, project, { status: "draft" });
     await createTestEpic(ctx.alepha, project, { status: "ready" });
     await createTestEpic(ctx.alepha, project, { status: "in_progress" });
     await createTestEpic(ctx.alepha, project, { status: "completed" });
 
-    // A neighbouring project's planned epic must not leak into the badge.
+    // A neighbouring project's draft epic must not leak into the badge.
     const other = await createTestProject(ctx.alepha);
-    await createTestEpic(ctx.alepha, other, { status: "planned" });
+    await createTestEpic(ctx.alepha, other, { status: "draft" });
 
     const refs = await ctx.controller.getEpicRefs(
       { params: { projectId: project.id } },
@@ -799,9 +799,9 @@ describe("EpicController", () => {
     );
 
     expect(refs).toHaveLength(4);
-    // The planned-epic badge is derived from this list client-side, so the
+    // The draft-epic badge is derived from this list client-side, so the
     // count it used to fetch is now a property of what comes back.
-    expect(refs.filter((epic) => epic.status === "planned")).toHaveLength(1);
+    expect(refs.filter((epic) => epic.status === "draft")).toHaveLength(1);
   });
 
   it("refs carry the four fields and NOT the description", async ({
@@ -809,7 +809,7 @@ describe("EpicController", () => {
   }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
-    await createTestEpic(ctx.alepha, project, { status: "planned" });
+    await createTestEpic(ctx.alepha, project, { status: "draft" });
 
     const [ref] = await ctx.controller.getEpicRefs(
       { params: { projectId: project.id } },

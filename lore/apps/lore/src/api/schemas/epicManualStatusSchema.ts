@@ -1,7 +1,7 @@
 import { epics } from "../entities/epics.ts";
 
 /**
- * The two epic statuses a person sets by hand: `planned` and `ready`.
+ * The two epic statuses a person sets by hand: `draft` and `ready`.
  *
  * Extracted from the column rather than restated, so a status renamed on the
  * entity cannot drift out of the one write path that takes it. The other two,
@@ -10,6 +10,6 @@ import { epics } from "../entities/epics.ts";
  * `epic_set_status`'s schema sees that it cannot ask for them.
  */
 export const epicManualStatusSchema = epics.schema.shape.status.extract([
-  "planned",
+  "draft",
   "ready",
 ]);

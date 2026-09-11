@@ -40,8 +40,8 @@ const DESCRIPTION_DESCRIPTION =
 /**
  * The epic a quest is filed under, carried on `quest_list` / `quest_get`
  * results. Includes the epic's own status (not just its identity) because
- * a `quest_list` called with `includePlanned: true`, and `quest_get`
- * always, can hand back a planned epic's quest next to released ones, and
+ * a `quest_list` called with `includeDrafts: true`, and `quest_get`
+ * always, can hand back a draft epic's quest next to released ones, and
  * the status is what lets an agent tell them apart instead of reading a
  * flat, undifferentiated list. Absent when the quest is filed under no
  * epic.
@@ -54,7 +54,7 @@ const questEpicRefSchema = z.object({
     ),
   title: z.string().describe("Epic title."),
   status: epicStatusSchema.describe(
-    "Epic lifecycle status, and the permission on this quest. Under a `ready` or `in_progress` epic it can be accepted, assigned and completed, and accepting the first quest of a `ready` epic moves it to `in_progress`. Under a `planned` epic it is still being specified: readable but not workable, and quest_accept refuses. Under a `completed` epic it is a record, and the way forward is a new epic.",
+    "Epic lifecycle status, and the permission on this quest. Under a `ready` or `in_progress` epic it can be accepted, assigned and completed, and accepting the first quest of a `ready` epic moves it to `in_progress`. Under a `draft` epic it is still being specified: readable but not workable, and quest_accept refuses. Under a `completed` epic it is a record, and the way forward is a new epic.",
   ),
 });
 
@@ -78,13 +78,13 @@ export const questListParamsSchema = projectParamsSchema.extend({
   epic: z
     .integer()
     .describe(
-      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). An epic-filtered call is never gated: it returns that epic's quests whatever the epic's status, with no need for `includePlanned`.",
+      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). An epic-filtered call is never gated: it returns that epic's quests whatever the epic's status, with no need for `includeDrafts`.",
     )
     .optional(),
-  includePlanned: z
+  includeDrafts: z
     .boolean()
     .describe(
-      "Also return quests filed under `planned` epics. Defaults to false, so this list matches what a member sees in Lore's own backlog: a planned epic's quests are specified but not released, and are hidden here as they are there. Pass true to see everything, or pass `epic:` to read one planned epic's quests directly. A backlog-organisation switch, not a permission: every caller has already passed the membership gate.",
+      "Also return quests filed under `draft` epics. Defaults to false, so this list matches what a member sees in Lore's own backlog: a draft epic's quests are specified but not released, and are hidden here as they are there. Pass true to see everything, or pass `epic:` to read one draft epic's quests directly. A backlog-organisation switch, not a permission: every caller has already passed the membership gate.",
     )
     .optional(),
   limit: z
@@ -172,7 +172,7 @@ export const questListResultSchema = z.object({
         .optional(),
       epic: questEpicRefSchema
         .describe(
-          "The epic this quest is filed under, if any. Includes the epic's own status so a quest under a `planned` epic reads as parked rather than as unlabeled noise in this list.",
+          "The epic this quest is filed under, if any. Includes the epic's own status so a quest under a `draft` epic reads as parked rather than as unlabeled noise in this list.",
         )
         .optional(),
     }),
@@ -436,7 +436,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   epic_number: z
     .integer()
     .describe(
-      "Per-project number of an epic to file this quest under (see epic_list / epic_create). The epic must be `planned` or `ready`: an in-progress epic's plan is frozen and a completed one is a record, and either refuses the whole call, so no quest is created. Filing into a `planned` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is marked ready, and out of `quest_list`'s default view too: read it back with `quest_list`'s `epic:` filter or `includePlanned: true`. With `accept: true`, the accept is refused while the epic is planned and the reason lands in `acceptNote`; into a `ready` epic, that accept starts the epic and freezes its quest set. Member-gated, like every other epic mutation.",
+      "Per-project number of an epic to file this quest under (see epic_list / epic_create). The epic must be `draft` or `ready`: an in-progress epic's plan is frozen and a completed one is a record, and either refuses the whole call, so no quest is created. Filing into a `draft` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is marked ready, and out of `quest_list`'s default view too: read it back with `quest_list`'s `epic:` filter or `includeDrafts: true`. With `accept: true`, the accept is refused while the epic is a draft and the reason lands in `acceptNote`; into a `ready` epic, that accept starts the epic and freezes its quest set. Member-gated, like every other epic mutation.",
     )
     .optional(),
   release_tag: z
@@ -669,7 +669,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   epic_number: z
     .integer()
     .describe(
-      "Reparent the quest to the epic with this per-project number (see epic_list). Pass 0 to remove it from its current epic. Both ends must be `planned` or `ready`: a quest cannot be pushed into a frozen plan (an in-progress or completed epic) any more than pulled out of one, whatever the quest's own status, and the refusal names the epic and the route (shelve, or a new epic). Member-gated, like every other epic mutation.",
+      "Reparent the quest to the epic with this per-project number (see epic_list). Pass 0 to remove it from its current epic. Both ends must be `draft` or `ready`: a quest cannot be pushed into a frozen plan (an in-progress or completed epic) any more than pulled out of one, whatever the quest's own status, and the refusal names the epic and the route (shelve, or a new epic). Member-gated, like every other epic mutation.",
     )
     .optional(),
   release_tag: z

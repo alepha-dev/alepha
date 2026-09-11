@@ -136,10 +136,10 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
       (q) => q.dependsOn == null || !ids.has(q.dependsOn),
     ).length;
     rows.push({
-      label: String(tr("epic.aside.ready")),
+      label: String(tr("epic.aside.upNext")),
       value: (
         <span className="text-sm">
-          {tr("epic.aside.ready.value", {
+          {tr("epic.aside.upNext.value", {
             args: [String(roots), String(props.quests.length - roots)],
           })}
         </span>

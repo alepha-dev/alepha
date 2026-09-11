@@ -22,7 +22,7 @@ export type EpicStatus = EpicResource["status"];
 export const EPIC_STATUSES = epicResourceSchema.shape.status.options;
 
 export type EpicStatusLabelKey =
-  | "epic.status.planned"
+  | "epic.status.draft"
   | "epic.status.ready"
   | "epic.status.inProgress"
   | "epic.status.completed";
@@ -37,7 +37,7 @@ export type EpicStatusLabelKey =
  * status string by hand.
  */
 export const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
-  planned: "epic.status.planned",
+  draft: "epic.status.draft",
   ready: "epic.status.ready",
   in_progress: "epic.status.inProgress",
   completed: "epic.status.completed",
@@ -50,7 +50,7 @@ export const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
  * started), in progress is `warning` like an accepted one, and completed is
  * `success`. An epic and the quests inside it therefore read as the same
  * colour when they are at the same stage, which is the whole point of naming
- * meanings instead of hexes. `planned` sits below all of them as `neutral`:
+ * meanings instead of hexes. `draft` sits below all of them as `neutral`:
  * nothing in it can be worked yet.
  *
  * This replaced a `variant` map (`outline` / `default` / `secondary`),
@@ -58,7 +58,7 @@ export const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
  * the row, competing with the progress bar beside it for the same fact.
  */
 export const STATUS_TONE: Record<EpicStatus, BadgeTone> = {
-  planned: "neutral",
+  draft: "neutral",
   ready: "info",
   in_progress: "warning",
   completed: "success",
@@ -72,7 +72,7 @@ export const STATUS_TONE: Record<EpicStatus, BadgeTone> = {
  * closed with a tick when it completes.
  */
 export const STATUS_ICONS: Record<EpicStatus, LucideIcon> = {
-  planned: CircleDashed,
+  draft: CircleDashed,
   ready: Circle,
   in_progress: CircleDotDashed,
   completed: CircleCheck,
@@ -81,10 +81,10 @@ export const STATUS_ICONS: Record<EpicStatus, LucideIcon> = {
 /**
  * The display order of the four statuses, which is the lifecycle's order.
  * Sorting them alphabetically would read as arbitrary (completed, in
- * progress, planned, ready).
+ * progress, draft, ready).
  */
 export const STATUS_ORDER: Record<EpicStatus, number> = {
-  planned: 0,
+  draft: 0,
   ready: 1,
   in_progress: 2,
   completed: 3,

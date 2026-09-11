@@ -143,7 +143,7 @@ const QuestView = (props: QuestViewProps) => {
   const promptSubject = useAgentPromptSubject();
 
   // The epic phase gate (epic #31): a quest can be accepted only while its
-  // epic is active, and this page reaches a planned epic's quest by direct
+  // epic is active, and this page reaches a draft epic's quest by direct
   // URL, where the backlog's own gate never applied. The refs the project
   // route already holds carry the epic's status, so Accept can say why it
   // is withheld instead of answering 400.
@@ -160,8 +160,8 @@ const QuestView = (props: QuestViewProps) => {
     withheldReason && questEpic
       ? String(
           tr(
-            withheldReason === "epicPlanned"
-              ? "quest.view.accept.epicPlanned"
+            withheldReason === "epicDraft"
+              ? "quest.view.accept.epicDraft"
               : "quest.view.accept.epicCompleted",
             { args: [String(questEpic.number)] },
           ),

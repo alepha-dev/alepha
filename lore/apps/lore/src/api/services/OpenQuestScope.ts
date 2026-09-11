@@ -16,9 +16,9 @@ import { EpicVisibilityService } from "./EpicVisibilityService.ts";
  * The definition:
  *
  * - `completedAt IS NULL` and `shelvedAt IS NULL`. `shelvedAt` means "decided
- *   out of scope", a different fact from a planned epic's "not released yet",
+ *   out of scope", a different fact from a draft epic's "not released yet",
  *   and the two must never be conflated again.
- * - plus the planned-epic backlog gate, whose two traps live in
+ * - plus the draft-epic backlog gate, whose two traps live in
  *   `EpicVisibilityService`.
  */
 export class OpenQuestScope {

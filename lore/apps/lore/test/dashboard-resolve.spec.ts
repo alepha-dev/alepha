@@ -203,17 +203,17 @@ describe("dashboard resolve", () => {
       });
     });
 
-    it("excludes quests inside a planned epic, exactly as the list does", async ({
+    it("excludes quests inside a draft epic, exactly as the list does", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      const planned = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+      const draft = await createTestEpic(ctx.alepha, project, {
+        status: "draft",
       });
       const active = await createTestEpic(ctx.alepha, project, {
         status: "in_progress",
       });
-      await createTestQuest(ctx.alepha, project, { epicId: planned.id });
+      await createTestQuest(ctx.alepha, project, { epicId: draft.id });
       await createTestQuest(ctx.alepha, project, { epicId: active.id });
       await createTestQuest(ctx.alepha, project);
 
@@ -226,7 +226,7 @@ describe("dashboard resolve", () => {
       );
 
       // The one thing a drill-through must never do is disagree with the list
-      // it opens. A planned epic's quests are not in that list.
+      // it opens. A draft epic's quests are not in that list.
       expect(values[0]?.value).toBe(2);
     });
 
@@ -365,16 +365,16 @@ describe("dashboard resolve", () => {
       expect(value.detail.open).toBe(1);
     });
 
-    it("honours the planned-epic backlog gate, like the card beside it", async ({
+    it("honours the draft-epic backlog gate, like the card beside it", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      const planned = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+      const draft = await createTestEpic(ctx.alepha, project, {
+        status: "draft",
       });
       await createTestQuest(ctx.alepha, project, {
-        title: "held inside a planned epic",
-        epicId: planned.id,
+        title: "held inside a draft epic",
+        epicId: draft.id,
         heldAt: new Date().toISOString(),
       });
       await createTestQuest(ctx.alepha, project, {
@@ -384,7 +384,7 @@ describe("dashboard resolve", () => {
 
       const value = await resolveHeld(project, user);
 
-      // A quest parked inside a planned epic is out of the Active Quests
+      // A quest parked inside a draft epic is out of the Active Quests
       // count by design, so counting it here would put a number on the board
       // larger than the card beside it can account for.
       expect(value.value).toBe(1);
@@ -898,28 +898,28 @@ describe("dashboard resolve", () => {
       expect(value.value).toBe(100);
     });
 
-    it("keeps an open quest inside a planned epic out, and a completed one in", async ({
+    it("keeps an open quest inside a draft epic out, and a completed one in", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      const planned = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+      const draft = await createTestEpic(ctx.alepha, project, {
+        status: "draft",
       });
       await createTestQuest(ctx.alepha, project, {
         tags: ["api"],
-        epicId: planned.id,
+        epicId: draft.id,
       });
       await createTestQuest(ctx.alepha, project, {
         tags: ["api"],
-        epicId: planned.id,
+        epicId: draft.id,
         completedAt: new Date().toISOString(),
       });
 
       const value = await resolveTag(project, user, "api");
 
       // ⚠️ The completed quest is EXEMPT from the backlog gate, exactly as
-      // `ProjectReportsController.questInScope` exempts it: nothing stops an
-      // owner flipping a done epic back to planned, and gating finished work
+      // `ProjectReportsController.questInScope` exempts it: a draft epic can
+      // hold completed quests, and gating finished work
       // would retroactively erase it.
       expect(value.detail.total).toBe(1);
       expect(value.detail.completed).toBe(1);
@@ -1686,7 +1686,7 @@ describe("dashboard resolve", () => {
     }) => {
       const { user, project, second } = await threeProjects();
       const plannedHere = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const activeThere = await createTestEpic(ctx.alepha, second, {
         status: "in_progress",
@@ -1716,7 +1716,7 @@ describe("dashboard resolve", () => {
       // The claim the batched read rests on: the gate computed over the
       // UNION is the same gate each project would have got on its own,
       // because an epic belongs to exactly one project. The first card
-      // loses its planned-epic quest, the second keeps its active-epic one,
+      // loses its draft-epic quest, the second keeps its active-epic one,
       // and neither is affected by the other's epics.
       expect(ids.map(valueOf)).toEqual([1, 1]);
     });

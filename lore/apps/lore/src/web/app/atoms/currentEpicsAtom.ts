@@ -22,9 +22,9 @@ import { epicRefResourceSchema } from "@/api/schemas/epicRefResourceSchema.ts";
  * `undefined` (not read) and `[]` (no epics) are different states, the same
  * distinction `currentInstancesAtom` draws: the Epic column shows a dash for a
  * quest with no epic either way, but the sidebar badge must not report 0
- * planned epics because a request failed.
+ * draft epics because a request failed.
  *
- * Also the source of the sidebar's planned-epic badge, counted locally the
+ * Also the source of the sidebar's draft-epic badge, counted locally the
  * way `ProjectEpics` counts it. It replaced a `countPlannedEpics` call, so
  * this is one request rather than two.
  */

@@ -281,7 +281,7 @@ describe("the activity feed and capabilities", () => {
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
         body: {
-          title: "Planned",
+          title: "Draft",
           capabilities: [{ key: "work", options: { epics: true } }],
         },
       }),

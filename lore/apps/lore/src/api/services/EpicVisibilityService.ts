@@ -6,7 +6,7 @@ import { quests } from "../entities/quests.ts";
 /**
  * The single place the backlog gate is computed.
  *
- * A quest inside a `planned` epic keeps `status: "new"` and
+ * A quest inside a `draft` epic keeps `status: "new"` and
  * `shelvedAt: undefined` — the gate NEVER writes to a quest row.
  * Activating an epic is one write that releases all of its quests.
  *
@@ -25,9 +25,9 @@ import { quests } from "../entities/quests.ts";
  *    `epic_id NOT IN (1,2)` evaluates to SQL NULL when `epic_id` is NULL,
  *    and a NULL predicate excludes the row — so a bare `notInArray` hides
  *    every quest that has no epic, i.e. the entire backlog.
- * 2. An empty planned set must produce NO clause. `notInArray: []` throws,
+ * 2. An empty draft set must produce NO clause. `notInArray: []` throws,
  *    and `NOT IN ()` is a SQL syntax error rather than an empty match. A
- *    project with zero planned epics is the normal case.
+ *    project with zero draft epics is the normal case.
  */
 export class EpicVisibilityService {
   protected readonly epics = $repository(epics);
@@ -39,19 +39,19 @@ export class EpicVisibilityService {
   protected readonly quests = $repository(quests);
 
   /**
-   * Ids of the project's epics that are still `planned`. Typically empty
+   * Ids of the project's epics that are still `draft`. Typically empty
    * or a handful, which is why the gate can be a two-step lookup rather
    * than a join.
    */
-  async plannedEpicIds(projectId: number): Promise<number[]> {
-    const planned = await this.epics.findMany({
+  async draftEpicIds(projectId: number): Promise<number[]> {
+    const drafts = await this.epics.findMany({
       where: {
         projectId: { eq: projectId },
-        status: { eq: "planned" },
+        status: { eq: "draft" },
       },
       columns: ["id"],
     });
-    return planned.map((epic) => epic.id);
+    return drafts.map((epic) => epic.id);
   }
 
   /**
@@ -66,15 +66,15 @@ export class EpicVisibilityService {
     where: PgQueryWhere<typeof quests.schema>,
     projectId: number,
   ): Promise<void> {
-    const plannedIds = await this.plannedEpicIds(projectId);
+    const draftIds = await this.draftEpicIds(projectId);
 
-    if (plannedIds.length === 0) {
+    if (draftIds.length === 0) {
       return;
     }
 
     where.or = [
       { epicId: { isNull: true } },
-      { epicId: { notInArray: plannedIds } },
+      { epicId: { notInArray: draftIds } },
     ];
   }
 
@@ -85,12 +85,12 @@ export class EpicVisibilityService {
    * comment are about the SHAPE of one clause, and a per-project loop would
    * have to invent an AND/OR nesting that the where-object cannot express.
    * Epic ids are globally unique, so the union of every scoped project's
-   * planned epics is a single correct exclusion list.
+   * draft epics is a single correct exclusion list.
    *
    * Exists for the dashboard, whose cards routinely span every project the
    * caller belongs to. Same two traps, same encoding: the `isNull` branch is
    * mandatory (`epic_id NOT IN (…)` is NULL for a quest with no epic, and a
-   * NULL predicate excludes the row), and an empty planned set must produce
+   * NULL predicate excludes the row), and an empty draft set must produce
    * no clause at all.
    */
   async applyBacklogGateAcross(
@@ -101,21 +101,21 @@ export class EpicVisibilityService {
       return;
     }
 
-    const planned = await this.epics.findMany({
+    const drafts = await this.epics.findMany({
       where: {
         projectId: { inArray: projectIds },
-        status: { eq: "planned" },
+        status: { eq: "draft" },
       },
       columns: ["id"],
     });
 
-    if (planned.length === 0) {
+    if (drafts.length === 0) {
       return;
     }
 
     where.or = [
       { epicId: { isNull: true } },
-      { epicId: { notInArray: planned.map((epic) => epic.id) } },
+      { epicId: { notInArray: drafts.map((epic) => epic.id) } },
     ];
   }
 
@@ -123,24 +123,24 @@ export class EpicVisibilityService {
    * The same membership test as a raw SQL fragment, for callers that
    * hand-write their predicates instead of using a repository where-object.
    *
-   * Returns `undefined` when the project has no planned epic — trap 2 — and
+   * Returns `undefined` when the project has no draft epic — trap 2 — and
    * the caller must then omit the clause entirely rather than substitute
    * anything for it.
    *
-   * This answers only "is this quest outside every planned epic". Whether
+   * This answers only "is this quest outside every draft epic". Whether
    * that is the right question for a given aggregate is the caller's policy
    * decision, not this method's: see `ProjectReportsController.questInScope`,
    * which exempts completed quests from it.
    */
-  plannedEpicSqlPredicate(plannedEpicIds: number[]) {
-    if (plannedEpicIds.length === 0) {
+  draftEpicSqlPredicate(draftEpicIds: number[]) {
+    if (draftEpicIds.length === 0) {
       return undefined;
     }
 
     const column = this.quests.table.epicId;
 
     return sql`(${column} IS NULL OR ${column} NOT IN (${sql.join(
-      plannedEpicIds.map((id) => sql`${id}`),
+      draftEpicIds.map((id) => sql`${id}`),
       sql`, `,
     )}))`;
   }

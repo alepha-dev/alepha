@@ -18,8 +18,8 @@ import { OpenQuestScope } from "./OpenQuestScope.ts";
  *
  * ⚠️ The where-shape comes from `OpenQuestScope`, the same service the Active
  * Quests tile, the sidebar badge and the dashboard rail count through. That
- * service excludes completed and shelved quests and applies the planned-epic
- * backlog gate, so quests parked inside a planned epic are out of both
+ * service excludes completed and shelved quests and applies the draft-epic
+ * backlog gate, so quests parked inside a draft epic are out of both
  * numbers. Counting held quests without it would put a figure on the board
  * larger than the card beside it can account for, and "Quests 12 / On hold 3"
  * only reads as "three of the twelve are stuck" while that containment holds.
@@ -51,7 +51,7 @@ export class HeldQuestsMetric implements DashboardMetricResolver {
    * The same shape `ActiveQuestsMetric` uses, and for the same reason: a
    * board with two of these cards must not cost two round trips. The backlog
    * gate survives the union because an epic belongs to exactly one project,
-   * so the union's planned set is the union of each project's own.
+   * so the union's draft set is the union of each project's own.
    */
   async resolveAll(
     cards: DashboardResolvable[],

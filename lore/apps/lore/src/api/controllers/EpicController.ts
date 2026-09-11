@@ -57,7 +57,7 @@ import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
  * existed.
  *
  * Deliberately does NOT inject `EpicVisibilityService`. The backlog gate
- * it owns (`applyBacklogGate` / `plannedEpicSqlPredicate`) governs the
+ * it owns (`applyBacklogGate` / `draftEpicSqlPredicate`) governs the
  * PROJECT's listing surfaces (quest list, Kanban, Reports denominators) —
  * never an epic's own view of itself. See `computeProgressOf` below.
  */
@@ -71,7 +71,7 @@ export class EpicController {
   dependencies = $inject(EpicDependencyService);
   /**
    * The epic phase gate: the quest set can change only while the epic is
-   * `planned` or `ready`, and only those two statuses are set by hand. Every
+   * `draft` or `ready`, and only those two statuses are set by hand. Every
    * refusal and its wording is written on the service, once, beside the two
    * automatic transitions the quest actions trigger.
    */
@@ -195,7 +195,7 @@ export class EpicController {
   /**
    * Every epic in the project, reduced to the four fields another list needs
    * in order to NAME one. Feeds the project route, which turns it into both
-   * the sidebar's planned-epic badge and the map the quests table's Epic
+   * the sidebar's draft-epic badge and the map the quests table's Epic
    * column resolves against.
    *
    * Deliberately not `getEpics`. `epicResourceSchema` is `epics.schema`
@@ -211,9 +211,9 @@ export class EpicController {
    * ⚠️ The badge this replaces had its own `countPlannedEpics` action, and
    * its reasoning survives the swap: the badge counts the GATE rather than
    * the work behind it. `countOpenQuests` runs `applyBacklogGate`, so every
-   * quest inside a planned epic is absent from the Quests badge by design,
+   * quest inside a draft epic is absent from the Quests badge by design,
    * and with no badge here at all that work had no representation in the
-   * sidebar whatsoever. `planned` alone, because the quests of a ready or
+   * sidebar whatsoever. `draft` alone, because the quests of a ready or
    * in-progress epic are already counted next to Quests and badging them
    * would double-report them. The count is now derived client-side from this
    * list, the same way `ProjectEpics` already derives it.
@@ -294,7 +294,7 @@ export class EpicController {
         number,
         title: body.title,
         description: body.description ?? "",
-        status: "planned",
+        status: "draft",
         ...(dependsOn !== null ? { dependsOn } : {}),
       });
       // A brand-new id has no links to clear, so the delete is skipped.
@@ -410,7 +410,7 @@ export class EpicController {
   });
 
   /**
-   * The only status moves a person makes: `planned` to `ready`, and back.
+   * The only status moves a person makes: `draft` to `ready`, and back.
    *
    * `ready` is the one decision left in the lifecycle ("the spec is done,
    * release it to the backlog"). The other two statuses are facts, written by
@@ -431,7 +431,7 @@ export class EpicController {
    * ⚠️ **Status is never written to a quest row.** Marking an epic ready
    * releases its quests because the backlog gate (`EpicVisibilityService`)
    * stops matching them, not because anything about them changed, and moving
-   * it back to `planned` hides them the same way. Nothing here touches a
+   * it back to `draft` hides them the same way. Nothing here touches a
    * quest, on either edge.
    */
   setEpicStatus = $action({
@@ -529,7 +529,7 @@ export class EpicController {
       let cascade: ReleaseCascade | undefined;
       if (quest.epicId !== epic.id) {
         // The plan freeze (epic #31). A quest enters an epic only while
-        // that epic is planned or ready, and a MOVE has to satisfy both
+        // that epic is draft or ready, and a MOVE has to satisfy both
         // ends: the quest cannot be pulled out of a frozen plan any more
         // than pushed into one. The target is checked first, since it is
         // what the caller asked for; the source only when there is one.
@@ -579,7 +579,7 @@ export class EpicController {
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
         // The plan freeze (epic #31): a quest leaves an epic only while the
-        // epic is planned or ready. Shelve is the route for one that will
+        // epic is draft or ready. Shelve is the route for one that will
         // not be done, and the message says so.
         this.workflow.assertPlanEditable(epic, { kind: "remove", quest });
 
@@ -659,9 +659,9 @@ export class EpicController {
   /**
    * Attaches the server-computed rollup to an epic row. Counts EVERY
    * quest belonging to the epic — deliberately NOT gated through
-   * `EpicVisibilityService`. That gate hides a `planned` epic's quests
+   * `EpicVisibilityService`. That gate hides a `draft` epic's quests
    * from the PROJECT's own listing surfaces; inside the epic's own view
-   * every quest counts, planned-gated ones included. An epic reporting
+   * every quest counts, draft-gated ones included. An epic reporting
    * 0/13 is telling the truth, one reporting 0/0 because its own quests
    * are hidden from it is not (design §5.3).
    */

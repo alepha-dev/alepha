@@ -307,12 +307,12 @@ describe("ProjectReportsController", () => {
         title: "Released Quest",
       });
 
-      const plannedEpic = await ctx.repos.epics.create({
+      const draftEpic = await ctx.repos.epics.create({
         projectId: project.id,
         number: 1,
-        title: "Planned Epic",
+        title: "Draft Epic",
         description: "",
-        status: "planned",
+        status: "draft",
       });
       const activeEpic = await ctx.repos.epics.create({
         projectId: project.id,
@@ -322,13 +322,13 @@ describe("ProjectReportsController", () => {
         status: "ready",
       });
 
-      await ctx.repos.quests.updateById(parked.id, { epicId: plannedEpic.id });
+      await ctx.repos.quests.updateById(parked.id, { epicId: draftEpic.id });
       await ctx.repos.quests.updateById(released.id, { epicId: activeEpic.id });
 
       return { projectId: project.id, owner, unfiled, released };
     };
 
-    it("excludes planned-epic quests from the KPI totals without hiding unfiled ones", async ({
+    it("excludes draft-epic quests from the KPI totals without hiding unfiled ones", async ({
       expect,
     }) => {
       const c = await setupEpicProject();
@@ -338,24 +338,24 @@ describe("ProjectReportsController", () => {
         { user: c.owner },
       );
 
-      // Three quests exist; exactly one sits in a planned epic. The unfiled
+      // Three quests exist; exactly one sits in a draft epic. The unfiled
       // one is the trap: `epic_id NOT IN (1)` is SQL NULL for it, and a NULL
       // predicate excludes the row — a bare NOT IN would report 1, not 2.
       expect(res.data.kpis.totalQuests).toBe(2);
     });
 
-    it("still counts a completed quest whose epic was parked back to planned", async ({
+    it("still counts a completed quest whose epic was parked back to draft", async ({
       expect,
     }) => {
       // Completed work is history. Nothing stops an owner flipping a `done`
-      // epic back to `planned`, and if the gate applied to finished quests
+      // epic back to `draft`, and if the gate applied to finished quests
       // that flip would retroactively erase them from member credit and from
       // the burn-up — rewriting the record of work that actually happened.
       //
       // The shelved-quest exemption `liveQuest` relies on does NOT carry
       // over here: only a `new` quest can be shelved, so a shelved quest is
       // never a completed one, whereas a completed quest can sit in a
-      // planned epic quite happily.
+      // draft epic quite happily.
       const owner = await createTestUser(ctx);
       const project = await createTestProject(ctx, owner);
 
@@ -374,9 +374,9 @@ describe("ProjectReportsController", () => {
       const parkedEpic = await ctx.repos.epics.create({
         projectId: project.id,
         number: 1,
-        title: "Re-planned Epic",
+        title: "Redrafted Epic",
         description: "",
-        status: "planned",
+        status: "draft",
       });
       await ctx.repos.quests.updateById(done.id, { epicId: parkedEpic.id });
 

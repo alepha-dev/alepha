@@ -87,13 +87,13 @@ export class QuestTagTallyService {
    *
    * - soft-deleted and shelved quests are out, so a declined quest leaves both
    *   the numerator and the denominator,
-   * - and an OPEN quest inside a `planned` epic is out too, because it is
+   * - and an OPEN quest inside a `draft` epic is out too, because it is
    *   specified rather than released.
    *
    * ⚠️ **Completed quests are exempt from the backlog gate**, exactly as
    * `ProjectReportsController.questInScope` exempts them, and for its stated
-   * reason: nothing stops an owner flipping a `done` epic back to `planned`,
-   * and gating finished work would retroactively erase it from the numbers.
+   * reason: a `draft` epic can hold completed quests (a finished quest may be
+   * filed into one), and gating finished work would retroactively erase it from the numbers.
    */
   async rowsFor(
     projectIds: number[],
@@ -107,12 +107,12 @@ export class QuestTagTallyService {
       shelvedAt: { isNull: true },
     };
 
-    const planned: number[] = [];
+    const drafts: number[] = [];
     for (const projectId of projectIds) {
-      planned.push(...(await this.epicVisibility.plannedEpicIds(projectId)));
+      drafts.push(...(await this.epicVisibility.draftEpicIds(projectId)));
     }
 
-    if (planned.length > 0) {
+    if (drafts.length > 0) {
       // ⚠️ The `isNull` branch is mandatory, not defensive: `epic_id NOT IN
       // (…)` is SQL NULL for a quest with no epic, and a NULL predicate
       // excludes the row - which would hide the entire backlog. The third
@@ -120,7 +120,7 @@ export class QuestTagTallyService {
       where.or = [
         { completedAt: { isNotNull: true } },
         { epicId: { isNull: true } },
-        { epicId: { notInArray: planned } },
+        { epicId: { notInArray: drafts } },
       ];
     }
 

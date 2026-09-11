@@ -6,7 +6,7 @@
  * epic to `in_progress`, and closing the last quest is what completes it.
  * Until then this prompt told the agent to Begin the epic itself and to
  * Conclude it after the merge, which is exactly why neither click was a
- * decision. Not offered on a planned epic: its quests refuse to be accepted,
+ * decision. Not offered on a draft epic: its quests refuse to be accepted,
  * and whether a spec is done is the owner's call, so the prompt says to stop
  * rather than to flip it. Offered on an in-progress epic too, because a
  * half-worked epic can be handed over.
@@ -40,7 +40,7 @@ The epic: {{url}}
 
 - Work in a git worktree of your own, on a branch named after the epic. Never on main.
 - Read the epic with \`epic_get\` (project_name "{{project}}", number {{number}}) and its quests with \`quest_list\` (\`epic: {{id}}\`, \`detail: "full"\`). Read the folios \`epic_get\` lists: they hold the decisions already taken.
-- The epic must be \`ready\` or \`in_progress\`. If it is still \`planned\`, stop and say so: its plan is not finished, and marking it ready is the owner's call, not yours.
+- The epic must be \`ready\` or \`in_progress\`. If it is still a \`draft\`, stop and say so: its plan is not finished, and marking it ready is the owner's call, not yours.
 - Your first \`quest_accept\` starts the epic, and from then on its quest set is frozen. Anything you discover is an objective on a quest in the epic (\`quest_update\`) or a comment (\`quest_comment_add\`), never a new quest.
 - Order the quests by their dependencies and by the order the epic's description gives.
 

@@ -177,8 +177,8 @@ export const projectContextResultSchema = z.object({
    * subject legible in one round-trip, not to replace `epic_list` /
    * `epic_get`. Without it, a project with thirteen quests parked under one
    * epic shows up as thirteen unrelated quests, with no signal they are one
-   * subject. `completed` joined the four in epic #31: without it "planned,
-   * 9 specified" and "planned, 9 shipped" read the same, and epic #27 was
+   * subject. `completed` joined the four in epic #31: without it "draft,
+   * 9 specified" and "draft, 9 shipped" read the same, and epic #27 was
    * the second for a day before anyone noticed.
    */
   epics: z

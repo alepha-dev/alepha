@@ -99,7 +99,7 @@ describe("EpicDependencyService", () => {
       // Resolved to the `#N` every human-facing surface names an epic by,
       // with the predecessor's status beside it, since it gates Begin.
       expect(updated.dependsOnNumber).toBe(first.number);
-      expect(updated.dependsOnStatus).toBe("planned");
+      expect(updated.dependsOnStatus).toBe("draft");
     });
 
     /**
@@ -133,7 +133,7 @@ describe("EpicDependencyService", () => {
       expect(predecessor?.dependsOnNumber).toBeUndefined();
       expect(predecessor?.dependsOnStatus).toBeUndefined();
       expect(dependent?.dependsOnNumber).toBe(first.number);
-      expect(dependent?.dependsOnStatus).toBe("planned");
+      expect(dependent?.dependsOnStatus).toBe("draft");
     });
 
     it("refuses an epic in another project", async ({ expect }) => {
@@ -270,7 +270,7 @@ describe("EpicDependencyService", () => {
      * when somebody added the gate without reading the reasoning on the
      * column. Epic #31 added the gate three days later, with the reasoning
      * read and replaced: the advisory channel had measured zero (epic #27
-     * went to 9 of 9 while planned). It went red as designed, and is now its
+     * went to 9 of 9 while `planned`). It went red as designed, and is now its
      * own opposite, not deleted. The column comment holds both decisions.
      *
      * #Q2223 moved the gate from Begin to the START: marking a dependent

@@ -48,7 +48,7 @@ const epicOf = (
  */
 class FakeLinkProvider extends LinkProvider {
   epics: EpicResource[] = [
-    epicOf(1, "Planned epic", "planned"),
+    epicOf(1, "Draft epic", "draft"),
     epicOf(2, "Ready epic", "ready"),
     epicOf(3, "Started epic", "in_progress"),
     epicOf(4, "Completed epic", "completed"),
@@ -138,7 +138,7 @@ describe("ProjectEpics - the status filter", () => {
     );
     await view.findByRole("link", {
       name: `#E${(epics ?? [])[0]?.number ?? 1} - ${
-        (epics ?? [])[0]?.title ?? "Planned epic"
+        (epics ?? [])[0]?.title ?? "Draft epic"
       }`,
     });
     return view;
@@ -149,23 +149,23 @@ describe("ProjectEpics - the status filter", () => {
   it("shows every status while nothing is selected", async () => {
     await mount();
 
-    expect(row("#E1 - Planned epic")).not.toBeNull();
+    expect(row("#E1 - Draft epic")).not.toBeNull();
     expect(row("#E2 - Ready epic")).not.toBeNull();
     expect(row("#E3 - Started epic")).not.toBeNull();
     expect(row("#E4 - Completed epic")).not.toBeNull();
   });
 
-  it("keeps Planned and Ready when both are selected, and hides the rest", async () => {
+  it("keeps Draft and Ready when both are selected, and hides the rest", async () => {
     await mount();
 
     const status = screen.getByRole("combobox", { name: "Status" });
     fireEvent.keyDown(status, { key: "ArrowDown" });
-    fireEvent.click(await screen.findByRole("option", { name: /Planned/ }));
+    fireEvent.click(await screen.findByRole("option", { name: /Draft/ }));
     fireEvent.click(await screen.findByRole("option", { name: /Ready/ }));
 
     await waitFor(() => expect(row("#E4 - Completed epic")).toBeNull());
     expect(row("#E3 - Started epic")).toBeNull();
-    expect(row("#E1 - Planned epic")).not.toBeNull();
+    expect(row("#E1 - Draft epic")).not.toBeNull();
     expect(row("#E2 - Ready epic")).not.toBeNull();
     // The trigger says how many, the way the Quests list's does.
     expect(status.textContent).toContain("2 status");
@@ -204,7 +204,7 @@ describe("ProjectEpics - the status filter", () => {
     const EPICS = [
       epicOf(1, "Shipped epic", "completed", 7),
       epicOf(2, "Next epic", "in_progress", 8),
-      epicOf(3, "Unassigned epic", "planned"),
+      epicOf(3, "Unassigned epic", "draft"),
     ];
 
     const openFilter = async () => {
@@ -318,7 +318,7 @@ describe("ProjectEpics - the status filter", () => {
       // so its presence is the first half of the assertion.
       expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
 
-      selectRow("#E1 - Planned epic");
+      selectRow("#E1 - Draft epic");
 
       await waitFor(() =>
         expect(screen.queryByRole("button", { name: "Delete" })).not.toBeNull(),
@@ -334,7 +334,7 @@ describe("ProjectEpics - the status filter", () => {
         aRelease(8, "0.29.0"),
       ]);
 
-      selectRow("#E1 - Planned epic");
+      selectRow("#E1 - Draft epic");
 
       fireEvent.click(
         await screen.findByRole("button", { name: /Add to release/ }),
@@ -426,7 +426,7 @@ describe("ProjectEpics - the status filter", () => {
       });
     };
 
-    it("offers Review but not Work on it on a planned epic, beside Mark as ready", async () => {
+    it("offers Review but not Work on it on a draft epic, beside Mark as ready", async () => {
       await mount();
 
       // The top level carries the group and Mark as ready. Review is one
@@ -434,7 +434,7 @@ describe("ProjectEpics - the status filter", () => {
       //
       // ⚠️ The row menu is opened ONCE and the list reused: the three-dots
       // trigger toggles, so opening it again to read the submenu closes it.
-      const opened = await openRowMenu("#E1 - Planned epic");
+      const opened = await openRowMenu("#E1 - Draft epic");
       const top = opened.map((item) => item.textContent);
       expect(top.join(" ")).toContain("Agent Prompts");
       expect(top.join(" ")).toContain("Mark as ready");
@@ -447,19 +447,19 @@ describe("ProjectEpics - the status filter", () => {
       // (feedback #P2182): "Review Epic", and "Work on it" for epicActivate.
       // The list also holds the row menu's own entries, hence contains.
       expect(inside).toContain("Review Epic");
-      // A planned epic's quests refuse to be accepted, and whether its spec
+      // A draft epic's quests refuse to be accepted, and whether its spec
       // is done is the owner's call, not the agent's (#Q2223).
       expect(inside).not.toContain("Work on it");
     });
 
-    it("offers both on a ready epic, beside Back to planning", async () => {
+    it("offers both on a ready epic, beside Back to draft", async () => {
       await mount();
 
       // Ready: the plan is still open, so Review stays, and its quests can
       // be accepted, so Work on it appears. Its first accept starts it.
       const opened = await openRowMenu("#E2 - Ready epic");
       const top = opened.map((item) => item.textContent);
-      expect(top.join(" ")).toContain("Back to planning");
+      expect(top.join(" ")).toContain("Back to draft");
       expect(top.join(" ")).not.toContain("Mark as ready");
 
       const inside = (await openAgentPrompts(opened)).map(
@@ -480,7 +480,7 @@ describe("ProjectEpics - the status filter", () => {
       const top = opened.map((item) => item.textContent);
       expect(top.join(" ")).toContain("Agent Prompts");
       expect(top.join(" ")).not.toContain("Mark as ready");
-      expect(top.join(" ")).not.toContain("Back to planning");
+      expect(top.join(" ")).not.toContain("Back to draft");
 
       const inside = (await openAgentPrompts(opened)).map(
         (item) => item.textContent,
@@ -516,7 +516,7 @@ describe("ProjectEpics - the status filter", () => {
       await mount();
 
       const items = await openAgentPrompts(
-        await openRowMenu("#E1 - Planned epic"),
+        await openRowMenu("#E1 - Draft epic"),
       );
       const review = items.find((item) => item.textContent?.includes("Review"));
       expect(review).toBeTruthy();
@@ -525,7 +525,7 @@ describe("ProjectEpics - the status filter", () => {
       await waitFor(() => expect(written).toHaveLength(1));
       const prompt = written[0];
       expect(prompt).toContain("#E1");
-      expect(prompt).toContain("Planned epic");
+      expect(prompt).toContain("Draft epic");
       expect(prompt).toContain("/epics/1");
       expect(prompt).toContain("epic_get");
       expect(prompt).toContain('detail: "full"');
@@ -550,7 +550,7 @@ describe("ProjectEpics - the status filter", () => {
       });
 
       const items = await openAgentPrompts(
-        await openRowMenu("#E1 - Planned epic"),
+        await openRowMenu("#E1 - Draft epic"),
       );
       fireEvent.click(
         items.find((item) => item.textContent?.includes("Review"))!,
@@ -575,7 +575,7 @@ describe("ProjectEpics - the status filter", () => {
         projectFixture({ options: { work: { agentPrompts: false } } }),
       );
 
-      const items = (await openRowMenu("#E1 - Planned epic")).map(
+      const items = (await openRowMenu("#E1 - Draft epic")).map(
         (item) => item.textContent,
       );
       expect(items.join(" ")).not.toContain("Agent Prompts");
@@ -649,10 +649,10 @@ describe("ProjectEpics - the status filter", () => {
     };
 
     it("offers the open releases and No release, never a published one", async () => {
-      await mount(RELEASES, [epicOf(1, "Planned epic", "planned")]);
+      await mount(RELEASES, [epicOf(1, "Draft epic", "draft")]);
 
       const entries = await openReleases(
-        await openRowMenu("#E1 - Planned epic"),
+        await openRowMenu("#E1 - Draft epic"),
       );
       const labels = entries.map((entry) => entry.textContent ?? "");
       expect(labels.join(" ")).toContain("0.29.0");
@@ -664,10 +664,10 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     it("marks the release the epic is already in", async () => {
-      await mount(RELEASES, [epicOf(1, "Planned epic", "planned", 9)]);
+      await mount(RELEASES, [epicOf(1, "Draft epic", "draft", 9)]);
 
       const entries = await openReleases(
-        await openRowMenu("#E1 - Planned epic"),
+        await openRowMenu("#E1 - Draft epic"),
       );
       const checked = entries.filter(
         (entry) => entry.getAttribute("aria-checked") === "true",
@@ -677,10 +677,10 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     it("marks No release when the epic is in none", async () => {
-      await mount(RELEASES, [epicOf(1, "Planned epic", "planned")]);
+      await mount(RELEASES, [epicOf(1, "Draft epic", "draft")]);
 
       const entries = await openReleases(
-        await openRowMenu("#E1 - Planned epic"),
+        await openRowMenu("#E1 - Draft epic"),
       );
       const checked = entries.filter(
         (entry) => entry.getAttribute("aria-checked") === "true",
@@ -697,10 +697,10 @@ describe("ProjectEpics - the status filter", () => {
      * been lost.
      */
     it("shows a published attachment and refuses to move it", async () => {
-      await mount(RELEASES, [epicOf(1, "Planned epic", "planned", 7)]);
+      await mount(RELEASES, [epicOf(1, "Draft epic", "draft", 7)]);
 
       const entries = await openReleases(
-        await openRowMenu("#E1 - Planned epic"),
+        await openRowMenu("#E1 - Draft epic"),
       );
       const labels = entries.map((entry) => entry.textContent ?? "");
       expect(labels.join(" ")).toContain("0.28.0");
@@ -723,10 +723,10 @@ describe("ProjectEpics - the status filter", () => {
     it("offers no submenu while the project has no open release", async () => {
       await mount(
         [aRelease(7, "0.28.0", "2026-09-03T00:00:00.000Z")],
-        [epicOf(1, "Planned epic", "planned")],
+        [epicOf(1, "Draft epic", "draft")],
       );
 
-      const items = (await openRowMenu("#E1 - Planned epic")).map(
+      const items = (await openRowMenu("#E1 - Draft epic")).map(
         (item) => item.textContent,
       );
       expect(items.join(" ")).not.toContain("Set Release");

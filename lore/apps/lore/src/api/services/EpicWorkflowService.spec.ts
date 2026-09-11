@@ -75,21 +75,21 @@ describe("EpicWorkflowService", () => {
       }
     });
 
-    it("refuses a planned epic's quest without telling the agent to flip it", async ({
+    it("refuses a draft epic's quest without telling the agent to flip it", async ({
       expect,
     }) => {
       // Whether a spec is done is the owner's call. The refusal used to say
       // "Begin it first", and an agent read that as an instruction.
       const { alepha, app, project } = await setup();
       const epic = await createTestEpic(alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       await expect(
         app.workflow.assertQuestWorkable(quest, "accept"),
       ).rejects.toThrow(
-        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is a draft, and not ready for development yet.`,
       );
     });
 
@@ -131,13 +131,13 @@ describe("EpicWorkflowService", () => {
       }
     });
 
-    it("lets a planned or ready epic's quest be unshelved or unheld, since that edits an open plan", async ({
+    it("lets a draft or ready epic's quest be unshelved or unheld, since that edits an open plan", async ({
       expect,
     }) => {
       // Shelve and hold are allowed while the plan is open, so their
       // reversals have to be too.
       const { alepha, app, project } = await setup();
-      for (const status of ["planned", "ready"] as const) {
+      for (const status of ["draft", "ready"] as const) {
         const epic = await createTestEpic(alepha, project, { status });
         const quest = await createTestQuest(alepha, project, {
           epicId: epic.id,
@@ -200,7 +200,7 @@ describe("EpicWorkflowService", () => {
         dependsOn: completed.id,
       });
       const deleted = await createTestEpic(alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const afterDeleted = await createTestEpic(alepha, project, {
         status: "ready",
@@ -225,7 +225,7 @@ describe("EpicWorkflowService", () => {
       // the epic started is an ordering statement, not a constraint.
       const { alepha, app, project } = await setup();
       const first = await createTestEpic(alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const second = await createTestEpic(alepha, project, {
         status: "in_progress",
@@ -261,11 +261,11 @@ describe("EpicWorkflowService", () => {
   });
 
   describe("assertPlanEditable", () => {
-    it("allows every edit while the epic is planned or ready", async ({
+    it("allows every edit while the epic is draft or ready", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      for (const status of ["planned", "ready"] as const) {
+      for (const status of ["draft", "ready"] as const) {
         const epic = await createTestEpic(alepha, project, { status });
         const quest = await createTestQuest(alepha, project, {
           epicId: epic.id,
@@ -383,18 +383,18 @@ describe("EpicWorkflowService", () => {
   });
 
   describe("assertQuestDeletable", () => {
-    it("allows a loose quest and a planned or ready epic's quest", async ({
+    it("allows a loose quest and a draft or ready epic's quest", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const planned = await createTestEpic(alepha, project, {
-        status: "planned",
+      const draft = await createTestEpic(alepha, project, {
+        status: "draft",
       });
       const ready = await createTestEpic(alepha, project, { status: "ready" });
 
       for (const quest of [
         await createTestQuest(alepha, project),
-        await createTestQuest(alepha, project, { epicId: planned.id }),
+        await createTestQuest(alepha, project, { epicId: draft.id }),
         await createTestQuest(alepha, project, { epicId: ready.id }),
       ]) {
         await expect(
@@ -419,12 +419,12 @@ describe("EpicWorkflowService", () => {
   });
 
   describe("assertManualEdge", () => {
-    it("allows planned to ready and back, and nothing else", async ({
+    it("allows draft to ready and back, and nothing else", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const planned = await createTestEpic(alepha, project, {
-        status: "planned",
+      const draft = await createTestEpic(alepha, project, {
+        status: "draft",
       });
       const ready = await createTestEpic(alepha, project, { status: "ready" });
       const started = await createTestEpic(alepha, project, {
@@ -435,16 +435,16 @@ describe("EpicWorkflowService", () => {
       });
 
       expect(() =>
-        app.workflow.assertManualEdge(planned, "ready"),
+        app.workflow.assertManualEdge(draft, "ready"),
       ).not.toThrow();
       expect(() =>
-        app.workflow.assertManualEdge(ready, "planned"),
+        app.workflow.assertManualEdge(ready, "draft"),
       ).not.toThrow();
       expect(() => app.workflow.assertManualEdge(started, "ready")).toThrow(
         `Cannot move Epic #E${started.number} from in_progress to ready. Work has started and its plan is frozen. Shelve what will not be done, or create a new epic.`,
       );
-      expect(() => app.workflow.assertManualEdge(completed, "planned")).toThrow(
-        `Cannot move Epic #E${completed.number} from completed to planned. It is completed. Create a new epic that depends on it.`,
+      expect(() => app.workflow.assertManualEdge(completed, "draft")).toThrow(
+        `Cannot move Epic #E${completed.number} from completed to draft. It is completed. Create a new epic that depends on it.`,
       );
     });
   });
@@ -476,10 +476,10 @@ describe("EpicWorkflowService", () => {
         undefined,
       );
 
-      for (const status of ["planned", "in_progress", "completed"] as const) {
+      for (const status of ["draft", "in_progress", "completed"] as const) {
         const epic = await createTestEpic(alepha, project, {
           status,
-          startedAt: status === "planned" ? undefined : STAMP,
+          startedAt: status === "draft" ? undefined : STAMP,
         });
         const quest = await createTestQuest(alepha, project, {
           epicId: epic.id,

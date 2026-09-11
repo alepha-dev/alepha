@@ -885,7 +885,7 @@ const ProjectQuestsTable = () => {
           // Two gates. The `agentPrompts` option, off by default. And the
           // epic phase, which is the same condition that decides whether
           // Accept is withheld: the prompt's second step is `quest_accept`,
-          // and a planned or completed epic refuses it.
+          // and a draft or completed epic refuses it.
           ...(agentPrompt.enabled &&
           !quest.completedAt &&
           questAgentGate(quest, epics) === undefined

@@ -7,7 +7,7 @@ import { releases } from "../entities/releases.ts";
  * release worth opening.
  *
  * ⚠️ `progress` counts EVERY quest in the release, including the quests of a
- * `planned` epic that `EpicVisibilityService` keeps out of the project's own
+ * `draft` epic that `EpicVisibilityService` keeps out of the project's own
  * backlog. Same reasoning as `epicResourceSchema`: a release reporting 0/23 is
  * telling the truth, one reporting 0/0 because its own work is gated out of a
  * listing surface is not.

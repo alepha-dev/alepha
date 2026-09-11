@@ -173,7 +173,7 @@ describe("useQuestMutations", () => {
 
     expect(ctx.assigned()).toEqual([6]);
     // Re-derived, not decremented: 4 is what the server says, and a local
-    // `99 - 1` would be wrong for any quest behind the planned-epic gate,
+    // `99 - 1` would be wrong for any quest behind the draft-epic gate,
     // which was never in the number to begin with.
     expect(ctx.count()).toBe(4);
     expect(ctx.fake.counted).toBe(1);

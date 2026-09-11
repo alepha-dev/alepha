@@ -236,7 +236,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     // `quests.epicId` (42) and must render and link the `number` (7); with
     // the two equal, printing the raw id would pass every assertion.
     alepha.store.set(currentEpicsAtom, [
-      { id: 42, number: 7, title: "Epic Workflow", status: "planned" },
+      { id: 42, number: 7, title: "Epic Workflow", status: "draft" },
     ] as never);
 
     const view = render(
@@ -462,7 +462,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
    */
   /**
    * ⚠️ `currentEpicsAtom` in this file's `mount` carries ONE epic, id 42,
-   * status `planned`. So a quest with `epicId: 42` is inside an epic whose
+   * status `draft`. So a quest with `epicId: 42` is inside an epic whose
    * plan is still open, which is exactly the phase that refuses
    * `quest_accept` and therefore the phase where the prompt is withheld.
    * A quest with no epic is never withheld.
@@ -494,13 +494,13 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       expect(group).toBeLessThan(edit);
     });
 
-    it("is withheld while the quest's epic is still planned", async () => {
+    it("is withheld while the quest's epic is still a draft", async () => {
       await mount([questOf(1, "Filed quest", false, 42)]);
 
       const joined = (await openRowMenu())
         .map((it) => it.textContent ?? "")
         .join(" ");
-      // The prompt's second step is `quest_accept`, which a planned epic
+      // The prompt's second step is `quest_accept`, which a draft epic
       // refuses. The other entries are unaffected.
       expect(joined).not.toContain("Agent Prompts");
       expect(joined).toContain("Copy ID");

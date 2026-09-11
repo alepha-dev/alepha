@@ -162,7 +162,7 @@ export class QuestController {
   epicVisibility = $inject(EpicVisibilityService);
   /**
    * The epic phase gate (epic #31): a quest can be worked only while its
-   * epic is `ready` or `in_progress`, and deleted only while it is `planned`
+   * epic is `ready` or `in_progress`, and deleted only while it is `draft`
    * or `ready`. Every refusal and its wording is written on the service,
    * once; the handlers below only say which verb they are. The service also
    * performs the epic's two automatic moves (#Q2223), which the accept,
@@ -1219,7 +1219,7 @@ export class QuestController {
          */
         releaseId: z.string().optional(),
         epic: z.integer().optional(),
-        includePlanned: z.boolean().optional(),
+        includeDrafts: z.boolean().optional(),
         area: z.string().optional(),
         tag: z.string().optional(),
         /**
@@ -1335,24 +1335,24 @@ export class QuestController {
         where.and = groups as any;
       }
 
-      // Quests of a `planned` epic are specified but not released into the
+      // Quests of a `draft` epic are specified but not released into the
       // backlog. This FILTERS; it never mutates a quest row.
       //
-      // Two ways past it, and both are deliberate. `includePlanned` is the
+      // Two ways past it, and both are deliberate. `includeDrafts` is the
       // explicit opt-out, set by the pickers that need the whole project
       // (`EpicQuestPicker`, `QuestDependencyPicker`) and, since epic #31,
       // offered by MCP `quest_list` as an optional parameter that defaults
       // OFF, so the tool and the UI list the same backlog unless asked
       // otherwise. `epic` is the implicit one: a caller addressing one epic
-      // is looking at that epic's own quests, planned or not, which is what
-      // lets an agent that just filed a quest into a planned epic read it
+      // is looking at that epic's own quests, draft or not, which is what
+      // lets an agent that just filed a quest into a draft epic read it
       // back without any flag.
       //
-      // `includePlanned` is client-settable and that is fine — every caller
+      // `includeDrafts` is client-settable and that is fine — every caller
       // has already passed the membership gate, so it exposes nothing the
       // caller could not already read. This is a backlog-organisation
       // affordance, NOT an authorization control. Do not "harden" it into one.
-      if (!query.includePlanned && !query.epic) {
+      if (!query.includeDrafts && !query.epic) {
         await this.epicVisibility.applyBacklogGate(where, params.projectId);
       }
 
@@ -1764,7 +1764,7 @@ export class QuestController {
     handler: async ({ params, user }) => {
       const { quest } = this.getQuestForTransition("unshelve", ["shelved"]);
       // Re-opening work inside a completed epic is refused; unshelving
-      // inside a planned or ready one is allowed, since that edits an open
+      // inside a draft or ready one is allowed, since that edits an open
       // plan, and it starts nothing.
       await this.epicWorkflow.assertQuestWorkable(quest, "unshelve");
 
@@ -2983,7 +2983,7 @@ export class QuestController {
 
       // The plan freeze (epic #31): a quest leaves a frozen plan by being
       // shelved, never by being deleted, or "no quest leaves the plan" would
-      // hold against detach and not against delete. Free while planned or
+      // hold against detach and not against delete. Free while a draft or
       // ready.
       await this.epicWorkflow.assertQuestDeletable(quest);
 

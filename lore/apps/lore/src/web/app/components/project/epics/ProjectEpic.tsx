@@ -75,29 +75,29 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const [editOpen, setEditOpen] = useState(false);
 
   /**
-   * Keep the sidebar's planned-epic badge honest when the status changes
+   * Keep the sidebar's draft-epic badge honest when the status changes
    * here rather than on the list.
    *
    * Marking an epic ready takes it off that badge and sending it back to
-   * planning puts it on again, and both happen on this page. `ProjectEpics`
+   * draft puts it on again, and both happen on this page. `ProjectEpics`
    * recounts from `getEpics` on every fetch, but that only helps once the
    * user navigates back to the list.
    *
    * A delta, not a count: this page knows one epic, never the project total.
    * Read through `store.get` instead of `useStore` so the badge stays
    * write-only here, exactly as it is in the list. The only edges that cross
-   * `planned` are the two hand-set ones (#Q2223), so the delta is minus one
+   * `draft` are the two hand-set ones (#Q2223), so the delta is minus one
    * leaving it, plus one entering it, and nothing otherwise. Kept as a
    * comparison rather than a literal so a response that echoes the same
    * status moves the badge by nothing.
    */
   const applyStatusChange = (updated: EpicResource) => {
-    const wasPlanned = epic.status === "planned";
-    const isPlanned = updated.status === "planned";
-    if (wasPlanned !== isPlanned) {
+    const wasDraft = epic.status === "draft";
+    const isDraft = updated.status === "draft";
+    if (wasDraft !== isDraft) {
       const current = alepha.store.get(currentEpicCountAtom)?.count ?? 0;
       alepha.store.set(currentEpicCountAtom, {
-        count: Math.max(0, current + (isPlanned ? 1 : -1)),
+        count: Math.max(0, current + (isDraft ? 1 : -1)),
       });
     }
     setEpic(updated);
@@ -109,7 +109,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const [quests, setQuests] = useState<QuestResource[] | null>(null);
   const [folios, setFolios] = useState<Folio[] | null>(null);
 
-  // The epic's own quest set: shelved and planned-gated quests included.
+  // The epic's own quest set: shelved and draft-gated quests included.
   // `epic: epic.id` on `getQuests` both scopes to this epic AND bypasses
   // the backlog gate (see `QuestController.getQuests`) — the default
   // status filter still excludes shelved quests, so a second call with
@@ -303,11 +303,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               come to call the actions different things. `AgentPromptsMenu`
               renders nothing when the option is off or the list is empty,
               which is what a completed epic produces. Review while the plan
-              is open, Work on it once the epic is ready: a planned epic's
+              is open, Work on it once the epic is ready: a draft epic's
               quests refuse to be accepted. */}
           <AgentPromptsMenu
             items={[
-              ...(epic.status === "planned" || epic.status === "ready"
+              ...(epic.status === "draft" || epic.status === "ready"
                 ? [
                     {
                       kind: "epicReview" as const,

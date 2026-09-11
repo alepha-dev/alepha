@@ -214,7 +214,7 @@ export const createTestEpic = async (
     number: overrides.number ?? epicSeq,
     title: overrides.title ?? `Test Epic ${epicSeq}`,
     description: overrides.description ?? "",
-    status: overrides.status ?? "planned",
+    status: overrides.status ?? "draft",
   });
 };
 

@@ -50,7 +50,7 @@ const questOf = (
 
 /**
  * The epic the tab belongs to. Only its status matters here: the quest set
- * is editable while `planned` or `ready`, and frozen once the epic is in
+ * is editable while `draft` or `ready`, and frozen once the epic is in
  * progress (epic #31, #Q2223).
  */
 const epicOf = (status: EpicResource["status"]): EpicResource =>
@@ -132,7 +132,7 @@ describe("ProjectEpicQuests - columns", () => {
 
   const mount = async (
     quests: QuestResource[],
-    status: EpicResource["status"] = "planned",
+    status: EpicResource["status"] = "draft",
     project: unknown = projectFixture(),
   ) => {
     alepha = Alepha.create()
