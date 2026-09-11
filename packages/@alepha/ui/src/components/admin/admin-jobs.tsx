@@ -6,6 +6,7 @@ import { AdminJobsExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
   Sheet,
@@ -134,16 +135,21 @@ export const AdminJobs = () => {
           schema: jobFiltersSchema,
           render: (form) => (
             <div className="flex items-center gap-2">
-              <div className="w-72">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
                   icon={Search}
                   placeholder={String(
-                    tr("admin.jobs.searchPlaceholder", { default: "Search…" }),
+                    tr("admin.search", { default: "Search" }),
                   )}
+                  inputProps={{
+                    "aria-label": String(
+                      tr("admin.search", { default: "Search" }),
+                    ),
+                  }}
                 />
-              </div>
+              </FilterSlot>
               <Control
                 input={form.input.type}
                 label=""

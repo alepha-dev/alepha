@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
@@ -26,7 +27,6 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 
 /**
  * One artifact, flattened out of the endpoint's groups.

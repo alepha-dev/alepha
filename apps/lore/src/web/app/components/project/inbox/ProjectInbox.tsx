@@ -1,6 +1,7 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Button } from "@alepha/ui/components/ui/button";
 import { z } from "alepha";
@@ -15,7 +16,6 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 
 const filtersSchema = z.object({
   /**

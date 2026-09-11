@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -15,7 +16,6 @@ import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
-import FilterSlot from "../../shared/FilterSlot.tsx";
 import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
 
 /**

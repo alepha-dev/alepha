@@ -5,6 +5,7 @@ import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
@@ -263,21 +264,29 @@ export const AdminNotifications = () => {
           }),
           render: (form) => (
             <>
-              <div className="w-52">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder={tr("admin.notifications.filterSearch", {
-                    default: "Recipient",
-                  })}
+                  placeholder={String(
+                    tr("admin.search", { default: "Search" }),
+                  )}
                   inputProps={{
-                    "aria-label": tr("admin.notifications.filterSearch", {
-                      default: "Recipient",
-                    }),
+                    "aria-label": String(
+                      tr("admin.search", { default: "Search" }),
+                    ),
+                    // What the box matches, as a hover hint and the field's
+                    // accessible description, now that it reads "Search"
+                    // like every other filter bar (#Q2231).
+                    title: String(
+                      tr("admin.notifications.filterSearch", {
+                        default: "Recipient",
+                      }),
+                    ),
                   }}
                 />
-              </div>
+              </FilterSlot>
               <div className="w-44">
                 <Control
                   input={form.input.status}

@@ -9,6 +9,7 @@ import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
@@ -166,25 +167,32 @@ export const AdminSessions = () => {
           schema: filtersSchema,
           render: (form) => (
             <div className="flex items-center gap-2">
-              <div className="w-72">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
                   icon={Search}
                   placeholder={String(
-                    tr("admin.sessions.searchPlaceholder", {
-                      default: "Email, username or IP…",
-                    }),
+                    tr("admin.search", { default: "Search" }),
                   )}
                   inputProps={{
                     "aria-label": String(
-                      tr("admin.sessions.search", {
-                        default: "Search sessions",
+                      tr("admin.search", { default: "Search" }),
+                    ),
+                    // "Search" like every other filter bar (#Q2231), and
+                    // what this box matches moves here: it is the one
+                    // search that also takes an IP, which nobody guesses.
+                    // A title is a hover hint and the field's accessible
+                    // description, where a placeholder was both the hint
+                    // and the only label a sighted reader got.
+                    title: String(
+                      tr("admin.sessions.searchHint", {
+                        default: "Email, username or IP",
                       }),
                     ),
                   }}
                 />
-              </div>
+              </FilterSlot>
               <Control
                 input={form.input.status}
                 label=""

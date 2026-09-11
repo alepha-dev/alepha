@@ -1952,8 +1952,6 @@ export default {
   "admin.users.colRoles": "Roles",
   "admin.users.colStatus": "Status",
   "admin.users.colJoined": "Joined",
-  "admin.users.search": "Search users",
-  "admin.users.searchPlaceholder": "Search…",
   "admin.users.statusAll": "All status",
   "admin.users.statusVerified": "Verified",
   "admin.users.statusActive": "Active",

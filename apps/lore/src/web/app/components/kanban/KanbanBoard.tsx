@@ -1,4 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import {
@@ -42,7 +43,6 @@ import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { AREA_DOT_CLASS, AreaDotColor } from "../shared/areaColor.ts";
-import FilterSlot from "../shared/FilterSlot.tsx";
 import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";

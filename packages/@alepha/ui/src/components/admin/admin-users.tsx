@@ -10,6 +10,7 @@ import { AdminUsersStatusBadge } from "@alepha/ui/components/admin/admin-users-s
 import { AdminUsersStatusFilter } from "@alepha/ui/components/admin/admin-users-status-filter";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
@@ -304,23 +305,21 @@ export const AdminUsers = (props: AdminUsersProps) => {
           schema: filtersSchema,
           render: (form) => (
             <div className="flex items-center gap-2">
-              <div className="w-72">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
                   icon={Search}
                   placeholder={String(
-                    tr("admin.users.searchPlaceholder", {
-                      default: "Search…",
-                    }),
+                    tr("admin.search", { default: "Search" }),
                   )}
                   inputProps={{
                     "aria-label": String(
-                      tr("admin.users.search", { default: "Search users" }),
+                      tr("admin.search", { default: "Search" }),
                     ),
                   }}
                 />
-              </div>
+              </FilterSlot>
               <AdminUsersStatusFilter input={form.input.status} />
             </div>
           ),

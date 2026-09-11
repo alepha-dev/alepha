@@ -9,6 +9,7 @@ import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
   HoverCard,
@@ -202,18 +203,21 @@ export const AdminFiles = () => {
           schema: filtersSchema,
           render: (form) => (
             <div className="flex items-center gap-2">
-              <div className="w-64">
+              <FilterSlot>
                 <Control
                   input={form.input.name}
                   label=""
                   icon={Search}
                   placeholder={String(
-                    tr("admin.files.searchPlaceholder", {
-                      default: "Search by name…",
-                    }),
+                    tr("admin.search", { default: "Search" }),
                   )}
+                  inputProps={{
+                    "aria-label": String(
+                      tr("admin.search", { default: "Search" }),
+                    ),
+                  }}
                 />
-              </div>
+              </FilterSlot>
               <Control
                 input={form.input.bucket}
                 label=""
