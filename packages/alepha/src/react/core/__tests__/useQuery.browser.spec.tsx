@@ -363,6 +363,38 @@ describe("useQuery keyed cache", () => {
   });
 
   /**
+   * The cache atom declared its record keys as `z.text()`, which caps at 255
+   * characters, so a key that serialized past that failed every write with
+   * "Invalid key in record" and the query settled on that error instead of
+   * its data. A file viewer keyed on a long worktree path hit it.
+   */
+  test("resolves a key that serializes past 255 characters", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+
+    const worktree = `/Users/someone/git/project/.claude/worktrees/${"w".repeat(120)}`;
+    const key = ["file", 42, worktree, `${worktree}/src/index.ts`, 1];
+    expect(alepha.inject(QueryCache).serialize(key).length).toBeGreaterThan(
+      255,
+    );
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result } = renderHook(
+      () => useQuery({ key, handler: async () => "contents" }, []),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe(undefined);
+    expect(result.current.data).toBe("contents");
+  });
+
+  /**
    * A second run started on a KEYED query while the first is still in flight.
    *
    * The second run SUPERSEDES: it aborts the first's controller before

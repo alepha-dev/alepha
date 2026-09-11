@@ -10,11 +10,15 @@ import { $atom, z } from "alepha";
  *
  * Per-key subscription scoping is recovered by reading through `useSelector`,
  * so a write to one key does not re-render subscribers of another.
+ *
+ * Record keys are `z.string()`, not `z.text()`: a key is the serialized query
+ * key, never user-facing text, and `z.text()` caps at 255 characters, which a
+ * key holding a long path or a few ids passes easily.
  */
 export const queryCacheAtom = $atom({
   name: "alepha.react.queryCache",
   schema: z.record(
-    z.text(),
+    z.string(),
     z.object({
       data: z.any(),
       updatedAt: z.number(),
