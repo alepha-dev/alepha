@@ -18,12 +18,16 @@ export default {
   "spotlight.description.projects": "Jump to one of your projects.",
   "spotlight.placeholder": "Search quests and folios…",
   "spotlight.placeholder.projects": "Jump to a project…",
-  "spotlight.hint": "Type to search quests and folios.",
+  "spotlight.hint":
+    "Type to search quests and folios, or a number such as #E12.",
   "spotlight.empty": "Nothing matched.",
   "spotlight.empty.projects": "No project matched.",
   "spotlight.group.pages": "Pages",
   "spotlight.group.apps": "app",
   "spotlight.group.quests": "Quests",
+  "spotlight.group.epics": "Epics",
+  "spotlight.group.releases": "Releases",
+  "spotlight.group.feedback": "Feedback",
   "spotlight.group.folios": "Folios",
   "spotlight.group.projects": "Projects",
 

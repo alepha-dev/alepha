@@ -103,6 +103,18 @@ export interface CapabilityDescriptor {
    */
   searchKinds: string[];
   /**
+   * The option each search kind's surface hangs off, for the kinds that hang
+   * off one: the palette offers such a kind only while that option is on,
+   * exactly as {@link activityKindOptions} does for the feed and the sidebar
+   * does for the entry. Read through
+   * {@link CapabilityRegistry.isSearchKindEnabled}.
+   *
+   * ⚠️ The ROUTE stays unguarded (an option never guards a route), so a
+   * saved `/epics/52` link keeps resolving; what an off option removes is
+   * the palette offering it, the same thing it removes from the sidebar.
+   */
+  searchKindOptions?: Record<string, string>;
+  /**
    * The audit `type` values the activity feed may show.
    */
   activityKinds: string[];
@@ -252,7 +264,10 @@ export class CapabilityRegistry {
         "release_changelog",
         "release_delete",
       ],
-      searchKinds: ["quest"],
+      // Epics and releases are found by their number only (#Q2228), and
+      // like their sidebar entries they hang off their Work options.
+      searchKinds: ["quest", "epic", "release"],
+      searchKindOptions: { epic: "epics", release: "releases" },
       activityKinds: ["quest", "epic", "release"],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Work's baseline.
@@ -383,7 +398,9 @@ export class CapabilityRegistry {
         "feedback_comment_add",
         "feedback_attachment_get",
       ],
-      searchKinds: [],
+      // By number only, and only for a caller holding `feedback:read`
+      // (#Q2228): see `SearchController`.
+      searchKinds: ["feedback"],
       activityKinds: ["feedback"],
       dashboardCards: ["untriagedFeedback"],
       permissionGroups: ["feedback"],
@@ -491,6 +508,27 @@ export class CapabilityRegistry {
     const options = enabled[owner];
     if (!options) return false;
     const option = this.get(owner).activityKindOptions?.[type];
+    return option === undefined || options[option] === true;
+  }
+
+  /**
+   * Whether the command palette may offer a `searchHitSchema` kind, given a
+   * project's enabled capabilities and their options.
+   *
+   * The same rule as {@link isActivityKindEnabled}: its capability must be
+   * on, and so must the option its surface hangs off when
+   * {@link CapabilityDescriptor.searchKindOptions} names one, so a Work
+   * project with `epics` off finds no epic by number either (#Q2228).
+   */
+  isSearchKindEnabled(
+    kind: string,
+    enabled: Partial<Record<CapabilityKey, Record<string, boolean>>>,
+  ): boolean {
+    const owner = this.ownerOfSearchKind(kind);
+    if (!owner) return true;
+    const options = enabled[owner];
+    if (!options) return false;
+    const option = this.get(owner).searchKindOptions?.[kind];
     return option === undefined || options[option] === true;
   }
 

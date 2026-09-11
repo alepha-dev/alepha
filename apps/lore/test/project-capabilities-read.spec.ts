@@ -239,6 +239,42 @@ describe("CapabilityRegistry", () => {
     // No option can bring back a kind whose capability is off.
     expect(ctx.registry.isActivityKindEnabled("epic", {})).toBe(false);
   });
+
+  it("hangs a search kind only off a kind and an option its capability declares", ({
+    expect,
+  }) => {
+    // The same typo guard as the activity kinds': an undeclared option is
+    // never `true`, so the kind would vanish from every palette (#Q2228).
+    for (const capability of ctx.registry.all()) {
+      const options = capability.options.map((option) => option.key);
+      for (const [kind, option] of Object.entries(
+        capability.searchKindOptions ?? {},
+      )) {
+        expect(capability.searchKinds, `${capability.key}: ${kind}`).toContain(
+          kind,
+        );
+        expect(options, `${capability.key}: ${kind}`).toContain(option);
+      }
+    }
+  });
+
+  it("searches Epic and Release only while their Work options are on", ({
+    expect,
+  }) => {
+    const on = { work: { epics: true, releases: true } };
+    const off = { work: { epics: false, releases: false } };
+
+    expect(ctx.registry.isSearchKindEnabled("epic", on)).toBe(true);
+    expect(ctx.registry.isSearchKindEnabled("release", on)).toBe(true);
+    expect(ctx.registry.isSearchKindEnabled("epic", off)).toBe(false);
+    expect(ctx.registry.isSearchKindEnabled("release", off)).toBe(false);
+    // Quests need only Work; feedback needs Support and no option.
+    expect(ctx.registry.isSearchKindEnabled("quest", off)).toBe(true);
+    expect(ctx.registry.isSearchKindEnabled("feedback", { support: {} })).toBe(
+      true,
+    );
+    expect(ctx.registry.isSearchKindEnabled("feedback", off)).toBe(false);
+  });
 });
 
 describe("ProjectSecurityService.capabilitiesOf", () => {

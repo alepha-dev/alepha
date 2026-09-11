@@ -6,10 +6,26 @@ import { z } from "alepha";
  * for why the palette does not reuse the full quest / folio resources.
  */
 export const searchHitSchema = z.object({
-  kind: z.enum(["quest", "folio", "directory"]),
+  /**
+   * `epic`, `release` and `feedback` are found by their number only (#Q2228):
+   * a typed `#E52` or a bare `52`, never by title.
+   */
+  kind: z.enum(["quest", "folio", "directory", "epic", "release", "feedback"]),
   id: z.string(),
+  /**
+   * The per-project number the kind is addressed by: a quest's, folio's,
+   * directory's or feedback item's `shortId`, an epic's or release's
+   * `number`. It is what an id query pins on, whatever the column is called.
+   */
   shortId: z.integer(),
   title: z.string(),
+  /**
+   * A release's tag, set only on a release hit: the release page is
+   * addressed by its TAG (`/releases/0.28.0`), never by its number, so the
+   * palette cannot open one without it. Absent only on a release from before
+   * tags were required, which the palette opens the release list for.
+   */
+  tag: z.string().optional(),
   /**
    * One line of context under the title in the palette — a quest's
    * description, a folio's summary. Absent for a directory, which has no
