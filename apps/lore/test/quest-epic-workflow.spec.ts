@@ -37,7 +37,7 @@ import {
  * order of the gates, and the epic ending up where the rule says.
  *
  * Rows are seeded through the fixtures rather than the controllers on
- * purpose: an accepted quest inside a planned epic cannot be produced
+ * purpose: an accepted quest inside a draft epic cannot be produced
  * through the API once this gate exists.
  */
 
@@ -101,12 +101,12 @@ describe("the epic phase gate on quest transitions", () => {
       expect(accepted.acceptedAt).toBeDefined();
     });
 
-    it("refuses a planned epic's quest and leaves it untouched", async ({
+    it("refuses a draft epic's quest and leaves it untouched", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const quest = await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
@@ -118,12 +118,12 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is a draft, and not ready for development yet.`,
       );
       expect(
         (await ctx.repos.quests.getById(quest.id)).acceptedAt,
       ).toBeUndefined();
-      expect(await statusOf(epic)).toBe("planned");
+      expect(await statusOf(epic)).toBe("draft");
     });
 
     it("starts a ready epic with its first accepted quest", async ({
@@ -215,11 +215,11 @@ describe("the epic phase gate on quest transitions", () => {
     it("reports the epic reason before the questline reason", async ({
       expect,
     }) => {
-      // Both gates apply: the epic is planned AND the predecessor quest is
+      // Both gates apply: the epic is a draft AND the predecessor quest is
       // still open. The epic reason wins.
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const predecessor = await createTestQuest(ctx.alepha, project);
       const quest = await createTestQuest(ctx.alepha, project, {
@@ -232,7 +232,7 @@ describe("the epic phase gate on quest transitions", () => {
           { params: { id: quest.id } },
           { user: ownerToken(project) },
         ),
-      ).rejects.toThrow(/is planned, and not ready for development yet/);
+      ).rejects.toThrow(/is a draft, and not ready for development yet/);
     });
 
     it("does not start the epic when a later gate refuses the accept", async ({
@@ -261,12 +261,12 @@ describe("the epic phase gate on quest transitions", () => {
   });
 
   describe("assign", () => {
-    it("refuses inside a planned epic before it looks at the assignee", async ({
+    it("refuses inside a draft epic before it looks at the assignee", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const quest = await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
@@ -280,7 +280,7 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot assign quest #Q${quest.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+        `Cannot assign quest #Q${quest.shortId}: Epic #E${epic.number} is a draft, and not ready for development yet.`,
       );
     });
 
@@ -303,11 +303,11 @@ describe("the epic phase gate on quest transitions", () => {
   });
 
   describe("complete", () => {
-    it("refuses inside a planned epic", async ({ expect }) => {
-      // A row that pre-dates the gate: accepted while the epic was planned.
+    it("refuses inside a draft epic", async ({ expect }) => {
+      // A row that pre-dates the gate: accepted while the epic was a draft.
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const parked = await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
@@ -321,7 +321,7 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot complete quest #Q${parked.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+        `Cannot complete quest #Q${parked.shortId}: Epic #E${epic.number} is a draft, and not ready for development yet.`,
       );
     });
 
@@ -463,7 +463,7 @@ describe("the epic phase gate on quest transitions", () => {
       expect(after.kanbanColumn).toBeUndefined();
     });
 
-    it("keeps a quest that named its own release while the epic was planned", async ({
+    it("keeps a quest that named its own release while the epic was a draft", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
@@ -596,7 +596,7 @@ describe("the epic phase gate on quest transitions", () => {
 
     // Bringing a quest back into an open plan is an edit to it, and starts
     // nothing: a ready epic stays ready.
-    for (const status of ["planned", "ready", "in_progress"] as const) {
+    for (const status of ["draft", "ready", "in_progress"] as const) {
       const epic = await createTestEpic(ctx.alepha, project, { status });
       const quest = await shelvedIn(epic.id);
       const back = await ctx.controller.unshelveQuest(
@@ -609,12 +609,12 @@ describe("the epic phase gate on quest transitions", () => {
   });
 
   describe("delete", () => {
-    it("deletes a loose quest and a planned or ready epic's quest", async ({
+    it("deletes a loose quest and a draft or ready epic's quest", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
-      const planned = await createTestEpic(ctx.alepha, project, {
-        status: "planned",
+      const draft = await createTestEpic(ctx.alepha, project, {
+        status: "draft",
       });
       const ready = await createTestEpic(ctx.alepha, project, {
         status: "ready",
@@ -623,7 +623,7 @@ describe("the epic phase gate on quest transitions", () => {
 
       for (const quest of [
         await createTestQuest(ctx.alepha, project),
-        await createTestQuest(ctx.alepha, project, { epicId: planned.id }),
+        await createTestQuest(ctx.alepha, project, { epicId: draft.id }),
         await createTestQuest(ctx.alepha, project, { epicId: ready.id }),
       ]) {
         const result = await ctx.controller.deleteQuest(

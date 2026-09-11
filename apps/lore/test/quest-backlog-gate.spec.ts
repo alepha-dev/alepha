@@ -71,7 +71,7 @@ describe("the backlog gate on the listing surfaces", () => {
   });
 
   /**
-   * Three quests: one with no epic at all, one parked in a `planned` epic,
+   * Three quests: one with no epic at all, one parked in a `draft` epic,
    * one released through an `active` epic. Only the parked one is gated.
    */
   const setupProject = async () => {
@@ -109,12 +109,12 @@ describe("the backlog gate on the listing surfaces", () => {
     const parked = await makeQuest("Parked Quest");
     const released = await makeQuest("Released Quest");
 
-    const plannedEpic = await ctx.repos.epics.create({
+    const draftEpic = await ctx.repos.epics.create({
       projectId,
       number: 1,
-      title: "Planned Epic",
+      title: "Draft Epic",
       description: "",
-      status: "planned",
+      status: "draft",
     });
     const activeEpic = await ctx.repos.epics.create({
       projectId,
@@ -124,7 +124,7 @@ describe("the backlog gate on the listing surfaces", () => {
       status: "ready",
     });
 
-    await ctx.repos.quests.updateById(parked.id, { epicId: plannedEpic.id });
+    await ctx.repos.quests.updateById(parked.id, { epicId: draftEpic.id });
     await ctx.repos.quests.updateById(released.id, { epicId: activeEpic.id });
 
     return {
@@ -133,14 +133,14 @@ describe("the backlog gate on the listing surfaces", () => {
       unfiled,
       parked,
       released,
-      plannedEpic,
+      draftEpic,
     };
   };
 
   const titlesOf = (quests: Array<{ title: string }>) =>
     quests.map((quest) => quest.title).sort();
 
-  it("hides planned-epic quests from the quest list and keeps unfiled ones", async ({
+  it("hides draft-epic quests from the quest list and keeps unfiled ones", async ({
     expect,
   }) => {
     const c = await setupProject();
@@ -165,7 +165,7 @@ describe("the backlog gate on the listing surfaces", () => {
     const c = await setupProject();
 
     const res = await ctx.quests.getQuests.fetch(
-      { params: { projectId: c.projectId }, query: { includePlanned: true } },
+      { params: { projectId: c.projectId }, query: { includeDrafts: true } },
       { user: c.owner },
     );
 
@@ -183,11 +183,11 @@ describe("the backlog gate on the listing surfaces", () => {
     const c = await setupProject();
 
     const res = await ctx.quests.getQuests.fetch(
-      { params: { projectId: c.projectId }, query: { epic: c.plannedEpic.id } },
+      { params: { projectId: c.projectId }, query: { epic: c.draftEpic.id } },
       { user: c.owner },
     );
 
-    // Opening a planned epic must show its contents — hidden never means
+    // Opening a draft epic must show its contents — hidden never means
     // unreachable (spec §5.3).
     expect(titlesOf(res.data.content)).toEqual(["Parked Quest"]);
   });
@@ -208,12 +208,12 @@ describe("the backlog gate on the listing surfaces", () => {
     ]);
   });
 
-  it("does not gate a project with no planned epic", async ({ expect }) => {
-    // The zero-planned-epics path is the normal case and the one that
+  it("does not gate a project with no draft epic", async ({ expect }) => {
+    // The zero-draft-epics path is the normal case and the one that
     // throws on `notInArray: []`, so it is asserted through the real
     // controller and not only through the service.
     const c = await setupProject();
-    await ctx.repos.epics.updateById(c.plannedEpic.id, {
+    await ctx.repos.epics.updateById(c.draftEpic.id, {
       status: "in_progress",
     });
 

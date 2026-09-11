@@ -22,15 +22,15 @@ interface FakeQuest {
  *
  * `getQuests` mirrors the real backlog gate
  * (`EpicVisibilityService.applyBacklogGate`, applied by
- * `QuestController.getQuests`): a quest filed under a `planned` epic is
- * dropped UNLESS the caller passes `includePlanned: true`. Wiki-links are
+ * `QuestController.getQuests`): a quest filed under a `draft` epic is
+ * dropped UNLESS the caller passes `includeDrafts: true`. Wiki-links are
  * direct addressing and must stay "never gated" (design §5.3) — this fake is
  * what proves the hook actually sets the flag rather than merely compiling.
  */
 class FakeLinkProvider extends LinkProvider {
   quests: FakeQuest[] = [];
   epics: Array<{ id: number; number: number; title: string }> = [];
-  plannedEpicIds = new Set<number>();
+  draftEpicIds = new Set<number>();
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -38,12 +38,12 @@ class FakeLinkProvider extends LinkProvider {
       list: async () => [],
       listAttachments: async () => [],
       getEpics: async () => this.epics,
-      getQuests: async (config: { query?: { includePlanned?: boolean } }) => {
-        const includePlanned = config?.query?.includePlanned === true;
-        const visible = includePlanned
+      getQuests: async (config: { query?: { includeDrafts?: boolean } }) => {
+        const includeDrafts = config?.query?.includeDrafts === true;
+        const visible = includeDrafts
           ? this.quests
           : this.quests.filter(
-              (q) => q.epicId == null || !this.plannedEpicIds.has(q.epicId),
+              (q) => q.epicId == null || !this.draftEpicIds.has(q.epicId),
             );
         return { content: visible };
       },
@@ -68,13 +68,13 @@ const setup = () => {
  * pinned the same gate invariant from its own side. One hook now serves
  * both, so one spec asserts both.
  */
-describe("useElementLinks — a planned epic's quest is direct addressing", () => {
-  it("resolves [[#Q<n>]] into a real link even when the epic is planned", async ({
+describe("useElementLinks — a draft epic's quest is direct addressing", () => {
+  it("resolves [[#Q<n>]] into a real link even when the epic is a draft", async ({
     expect,
   }) => {
     const { fake, wrapper } = setup();
     fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
-    fake.plannedEpicIds = new Set([99]);
+    fake.draftEpicIds = new Set([99]);
 
     const { result } = renderHook(
       () =>
@@ -85,7 +85,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
       { wrapper },
     );
 
-    // Without `includePlanned: true` the gate hides the quest, the resolver
+    // Without `includeDrafts: true` the gate hides the quest, the resolver
     // cannot find it, and the token is rewritten into a broken-link marker
     // instead of an href.
     await waitFor(() => {
@@ -99,7 +99,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
   it("resolves the typed [[#Q<n>]] form the same way", async ({ expect }) => {
     const { fake, wrapper } = setup();
     fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
-    fake.plannedEpicIds = new Set([99]);
+    fake.draftEpicIds = new Set([99]);
 
     const { result } = renderHook(
       () =>
@@ -118,7 +118,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
   it("offers that same quest in the [[ picker", async ({ expect }) => {
     const { fake, wrapper } = setup();
     fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
-    fake.plannedEpicIds = new Set([99]);
+    fake.draftEpicIds = new Set([99]);
 
     const { result } = renderHook(
       () =>

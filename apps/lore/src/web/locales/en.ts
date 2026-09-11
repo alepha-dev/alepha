@@ -1989,7 +1989,7 @@ export default {
 
   // Epics
   "project.menu.epics": "Epics",
-  "epic.status.planned": "Planned",
+  "epic.status.draft": "Draft",
   "epic.status.ready": "Ready",
   "epic.status.inProgress": "In progress",
   "epic.status.completed": "Completed",
@@ -2045,7 +2045,7 @@ export default {
   "agentPrompts.settings.wasReset": "Prompt reset to its default.",
   "agentPrompts.settings.epicReview.title": "Epic: Review",
   "agentPrompts.settings.epicReview.description":
-    "Offered on an epic nobody has started, planned or ready. Asks an agent to sharpen the plan before anyone works it.",
+    "Offered on an epic nobody has started, whether a draft or ready. Asks an agent to sharpen the plan before anyone works it.",
   "agentPrompts.settings.epicActivate.title": "Epic: Work on it",
   "agentPrompts.settings.epicActivate.description":
     "Offered on a ready or in-progress epic. Hands the whole epic over, quest by quest.",
@@ -2084,13 +2084,13 @@ export default {
     "Marking $1 as ready puts its quests in the backlog, where the rest of the project can pick them up. The first one accepted starts the epic and freezes its list of quests.",
   "epic.start.blocked": "Blocked by Epic $1",
   "epic.status.actions.markReady": "Mark as ready",
-  "epic.status.actions.backToPlanning": "Back to planning",
+  "epic.status.actions.backToDraft": "Back to draft",
   "epic.aside.predecessor": "Depends on",
   "epic.aside.predecessor.after": "After Epic $1",
   "epic.aside.predecessor.blocked": "Blocked by Epic $1",
-  // The quest page's Accept, withheld while the quest's epic is planned or
+  // The quest page's Accept, withheld while the quest's epic is a draft or
   // completed.
-  "quest.view.accept.epicPlanned": "Epic $1 is not ready for development yet.",
+  "quest.view.accept.epicDraft": "Epic $1 is not ready for development yet.",
   "quest.view.accept.epicCompleted":
     "Epic $1 is completed. File this in a new epic.",
   "epic.tab.overview": "Overview",
@@ -2104,8 +2104,8 @@ export default {
   "epic.list.column.release": "Release",
   "epic.aside.progress": "Progress",
   "epic.aside.progress.value": "$1 / $2 quests",
-  "epic.aside.ready": "Ready to work",
-  "epic.aside.ready.value": "$1 roots, $2 downstream",
+  "epic.aside.upNext": "Up next",
+  "epic.aside.upNext.value": "$1 roots, $2 downstream",
   "epic.aside.areas": "Areas",
   "epic.aside.lastActivity": "Last activity",
   "epic.aside.created": "Created",

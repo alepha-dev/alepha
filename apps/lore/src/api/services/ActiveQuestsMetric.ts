@@ -51,8 +51,8 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
    *
    * ⚠️ The backlog gate survives the union, and that is the load-bearing
    * detail. `applyBacklogGateAcross` excludes quests whose `epicId` is in
-   * the planned set of the projects it was given; an epic belongs to
-   * exactly one project, so the union's planned set is precisely the union
+   * the draft set of the projects it was given; an epic belongs to
+   * exactly one project, so the union's draft set is precisely the union
    * of each project's own. Intersecting the rows with a card's scope
    * afterwards therefore gives the same answer as gating that scope alone.
    */

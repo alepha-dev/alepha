@@ -89,7 +89,7 @@ test.describe("Roadmap", () => {
     await registerAndVerify(page, `roadmap${t}@example.com`, "RoadTest123!");
 
     /**
-     * A project at a given visibility, with one open release, one PLANNED
+     * A project at a given visibility, with one open release, one DRAFT
      * epic attached to it, and one quest inside that epic.
      *
      * Over the API rather than the wizard: this spec is about what the
@@ -117,7 +117,7 @@ test.describe("Roadmap", () => {
         },
       );
 
-      // Left `planned`, which is the state the roadmap exists to show: an
+      // Left `draft`, which is the state the roadmap exists to show: an
       // epic that is specified and not started.
       const epic = await post<{ id: number }>(
         page,
@@ -279,10 +279,10 @@ test.describe("Roadmap", () => {
         timeout: 10_000,
       });
 
-      // ⚠️ The planned epic renders WITH its status. Without the chip its
+      // ⚠️ The draft epic renders WITH its status. Without the chip its
       // empty bar reads as stalled rather than as not begun, which is the
       // most misleading thing a roadmap can say.
-      await expect(page.getByText("Planned").first()).toBeVisible({
+      await expect(page.getByText("Draft").first()).toBeVisible({
         timeout: 10_000,
       });
 

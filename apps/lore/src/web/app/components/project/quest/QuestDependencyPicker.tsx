@@ -56,12 +56,12 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
         params: { projectId: props.projectId },
         // `size` is capped at 100 server-side; for larger projects the
         // combobox search narrows the list (a future enhancement could push
-        // the query server-side). `includePlanned: true` so a quest filed
-        // under a planned epic is still offered as a predecessor — this is
+        // the query server-side). `includeDrafts: true` so a quest filed
+        // under a draft epic is still offered as a predecessor — this is
         // the only surface that sets `dependsOn` from the UI, and it must
-        // work inside a planned epic too (design §5.3, direct addressing is
+        // work inside a draft epic too (design §5.3, direct addressing is
         // never gated). Mirrors `EpicQuestPicker`.
-        query: { size: 100, includePlanned: true },
+        query: { size: 100, includeDrafts: true },
       })
       .then((res) => {
         if (!alive) return;

@@ -160,7 +160,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       order: 30,
       option: "epics",
       activeOn: (name) => name === "projectEpics" || name === "projectEpic",
-      // Planned epics only. A planned epic is a gate holding its quests out
+      // Draft epics only. A draft epic is a gate holding its quests out
       // of the Quests count beside it, so this is the sidebar's only trace of
       // that work.
       badge: (ctx) => ctx.epicCount || undefined,

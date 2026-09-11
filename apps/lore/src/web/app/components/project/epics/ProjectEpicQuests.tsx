@@ -38,7 +38,7 @@ export interface ProjectEpicQuestsProps {
   projectId: number;
   /**
    * The epic these quests belong to, for its status: the quest set can be
-   * edited only while the epic is `planned` (epic #31), and the server
+   * edited only while the epic is `draft` (epic #31), and the server
    * refuses attach, detach and create-into once it is not. The affordances
    * disappear with the permission rather than answering 400.
    */
@@ -61,7 +61,7 @@ export interface ProjectEpicQuestsProps {
 
 /**
  * The Quests tab of the Epic page: the full quest set — shelved and
- * planned-gated quests included, since `EpicController`'s rollup and the
+ * draft-gated quests included, since `EpicController`'s rollup and the
  * `epic`-filtered `QuestController.getQuests` call that feeds this component
  * both bypass the backlog gate on purpose.
  *
@@ -99,7 +99,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   // `epic:manage` at all. The table, its rows and the counts stay readable
   // under either.
   const planEditable =
-    (props.epic.status === "planned" || props.epic.status === "ready") &&
+    (props.epic.status === "draft" || props.epic.status === "ready") &&
     epicApi.attachQuest.can();
 
   return (
@@ -293,7 +293,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                 // out one at a time.
                 //
                 // Offered wherever accepting works: a ready epic (whose
-                // first accept starts it) and one in progress. A planned
+                // first accept starts it) and one in progress. A draft
                 // epic gets Detach and no group, a ready one gets both, an
                 // in-progress one the group and no Detach, a completed one
                 // neither. The group is OMITTED rather than handed over

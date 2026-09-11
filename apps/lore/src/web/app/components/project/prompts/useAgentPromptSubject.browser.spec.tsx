@@ -83,7 +83,7 @@ describe("useAgentPromptSubject", () => {
     id: 67,
     number: 41,
     title: "Lore Agent Prompts",
-    status: "planned",
+    status: "draft",
   };
 
   it("carries the seven fields and no eighth", async () => {

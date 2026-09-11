@@ -20,10 +20,10 @@ export interface RoadmapEpicRowProps {
  * One epic inside a release card: what it is called, how far along it is, and
  * whether it has started.
  *
- * **The status chip is not decoration.** A `planned` epic has 0 completed by
+ * **The status chip is not decoration.** A `draft` epic has 0 completed by
  * definition, and without the chip its empty bar reads as stalled rather than
  * as not begun - which is the single most misleading thing a roadmap can say.
- * That is also why planned epics are shown at all: an epic that is specified
+ * That is also why draft epics are shown at all: an epic that is specified
  * and not started is exactly what a roadmap is for.
  *
  * ⚠️ The denominator here is the EPIC one, where `shelved` sits INSIDE

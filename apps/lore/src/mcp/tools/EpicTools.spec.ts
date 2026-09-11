@@ -72,8 +72,8 @@ class FailingAttachEpicController extends EpicController {
  *
  * `quest_list` and the backlog gate have a history here. This file used to
  * pin that MCP `quest_list` was NEVER gated, so an agent filing a quest into
- * a planned epic would see it on its next call; epic #31 reversed that (the
- * default matches the UI's backlog, `includePlanned: true` and `epic:` are
+ * a draft epic would see it on its next call; epic #31 reversed that (the
+ * default matches the UI's backlog, `includeDrafts: true` and `epic:` are
  * the two ways past it) and the cases below pin the new contract.
  *
  * Pinned, like every other lore spec: the ROOT vitest config — the one CI
@@ -230,17 +230,17 @@ describe("Lore MCP — epics", () => {
 
   /**
    * ⚠️ This used to assert the opposite: that `quest_list` is never gated,
-   * so an agent filing into a planned epic sees its quest on the next call.
+   * so an agent filing into a draft epic sees its quest on the next call.
    * That default made the tool disagree with the backlog a member looks at
    * (84 rows here against 5 in the UI on this project), with no parameter to
    * reconcile the two. Epic #31 flipped it: the default matches the UI, and
    * the two escape hatches below are what keep the original requirement.
    */
-  it("quest_list hides a planned epic's quests by default, like the UI", async ({
+  it("quest_list hides a draft epic's quests by default, like the UI", async ({
     expect,
   }) => {
     const { alepha, project, questTools, call } = await setup();
-    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const epic = await createTestEpic(alepha, project, { status: "draft" });
     const parked = await createTestQuest(alepha, project, { epicId: epic.id });
     const loose = await createTestQuest(alepha, project);
 
@@ -251,16 +251,16 @@ describe("Lore MCP — epics", () => {
     expect(listed).not.toContain(parked.shortId);
   });
 
-  it("quest_list shows them again with includePlanned: true", async ({
+  it("quest_list shows them again with includeDrafts: true", async ({
     expect,
   }) => {
     const { alepha, project, questTools, call } = await setup();
-    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const epic = await createTestEpic(alepha, project, { status: "draft" });
     const parked = await createTestQuest(alepha, project, { epicId: epic.id });
 
     const result = await call(questTools.quest_list, {
       project: project.id,
-      includePlanned: true,
+      includeDrafts: true,
     });
 
     expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
@@ -270,9 +270,9 @@ describe("Lore MCP — epics", () => {
     expect,
   }) => {
     // The case the old default existed for: an agent that just filed a quest
-    // into a planned epic reads it back by addressing the epic.
+    // into a draft epic reads it back by addressing the epic.
     const { alepha, project, questTools, call } = await setup();
-    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const epic = await createTestEpic(alepha, project, { status: "draft" });
     const parked = await createTestQuest(alepha, project, { epicId: epic.id });
 
     const result = await call(questTools.quest_list, {
@@ -283,7 +283,7 @@ describe("Lore MCP — epics", () => {
     expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
   });
 
-  it("quest_create with accept: true into a planned epic creates the quest and reports the refusal", async ({
+  it("quest_create with accept: true into a draft epic creates the quest and reports the refusal", async ({
     expect,
   }) => {
     // The common `acceptNote` case since epic #31: the quest is filed, the
@@ -291,7 +291,7 @@ describe("Lore MCP — epics", () => {
     // own message. It says the epic is not ready and stops there: whether a
     // spec is done is the owner's call, not the agent's (#Q2223).
     const { alepha, repos, project, questTools, call } = await setup();
-    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const epic = await createTestEpic(alepha, project, { status: "draft" });
 
     const created = await call(questTools.quest_create, {
       project: project.id,
@@ -305,7 +305,7 @@ describe("Lore MCP — epics", () => {
 
     expect(created.acceptedAt).toBeUndefined();
     expect(created.acceptNote).toBe(
-      `Cannot accept quest #Q${created.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
+      `Cannot accept quest #Q${created.shortId}: Epic #E${epic.number} is a draft, and not ready for development yet.`,
     );
     const row = await repos.quests.getById(created.id);
     expect(row.epicId).toBe(epic.id);
@@ -316,7 +316,7 @@ describe("Lore MCP — epics", () => {
     expect,
   }) => {
     const { alepha, repos, project, questTools, call } = await setup();
-    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const epic = await createTestEpic(alepha, project, { status: "draft" });
 
     const created = await call(questTools.quest_create, {
       project: project.id,
@@ -337,7 +337,7 @@ describe("Lore MCP — epics", () => {
       const { alepha, project, epicTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
         title: "Lore Deploy",
-        status: "planned",
+        status: "draft",
       });
       await createTestQuest(alepha, project, { epicId: epic.id });
 
@@ -347,7 +347,7 @@ describe("Lore MCP — epics", () => {
       expect(result.epics[0]).toMatchObject({
         number: epic.number,
         title: "Lore Deploy",
-        status: "planned",
+        status: "draft",
         questCount: 1,
         progress: { completed: 0, total: 1 },
       });
@@ -383,7 +383,7 @@ describe("Lore MCP — epics", () => {
   });
 
   describe("epic_create", () => {
-    it("creates an epic in 'planned'", async ({ expect }) => {
+    it("creates an epic in 'draft'", async ({ expect }) => {
       const { project, epicTools, call } = await setup();
 
       const created = await call(epicTools.epic_create, {
@@ -391,7 +391,7 @@ describe("Lore MCP — epics", () => {
         title: "Lore Deploy",
       });
 
-      expect(created.status).toBe("planned");
+      expect(created.status).toBe("draft");
       expect(created.title).toBe("Lore Deploy");
       expect(created.number).toBe(1);
     });
@@ -418,7 +418,7 @@ describe("Lore MCP — epics", () => {
     }) => {
       const { alepha, repos, project, epicTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
-        status: "planned",
+        status: "draft",
       });
       const quest = await createTestQuest(alepha, project, {
         epicId: epic.id,
@@ -448,7 +448,7 @@ describe("Lore MCP — epics", () => {
 
       expect(
         epicTools.epic_set_status.options.schema?.params.shape.status.options,
-      ).toEqual(["planned", "ready"]);
+      ).toEqual(["draft", "ready"]);
     });
   });
 
@@ -538,14 +538,14 @@ describe("Lore MCP — epics", () => {
     it("lists every epic with number, title, status, questCount and completed", async ({
       expect,
     }) => {
-      // Without this index a project with a planned epic's worth of quests
+      // Without this index a project with a draft epic's worth of quests
       // shows up as unrelated noise — no signal they're one parked subject.
-      // `completed` is what tells "planned, 2 specified" from "planned, 2
+      // `completed` is what tells "draft, 2 specified" from "draft, 2
       // shipped" at orientation (epic #27 was the second and nobody saw).
       const { alepha, project, projectTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
         title: "Lore Deploy",
-        status: "planned",
+        status: "draft",
       });
       await createTestQuest(alepha, project, { epicId: epic.id });
       await createTestQuest(alepha, project, {
@@ -561,7 +561,7 @@ describe("Lore MCP — epics", () => {
         {
           number: epic.number,
           title: "Lore Deploy",
-          status: "planned",
+          status: "draft",
           questCount: 2,
           completed: 1,
         },
@@ -697,7 +697,7 @@ describe("Lore MCP — epics", () => {
       const { alepha, repos, project, folioTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
         title: "Lore Deploy",
-        status: "planned",
+        status: "draft",
       });
 
       const created = await call(folioTools.folio_create, {
@@ -711,7 +711,7 @@ describe("Lore MCP — epics", () => {
       expect(created.epic).toEqual({
         number: epic.number,
         title: "Lore Deploy",
-        status: "planned",
+        status: "draft",
       });
     });
 
@@ -818,7 +818,7 @@ describe("Lore MCP — epics", () => {
       expect(a.epic).toEqual({
         number: epic.number,
         title: "Deploy",
-        status: "planned",
+        status: "draft",
       });
       expect(b.epic).toBeUndefined();
     });

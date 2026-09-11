@@ -3,7 +3,7 @@ import { z } from "alepha";
 /**
  * The two fields a person fills in for an epic. Everything else about one
  * is derived or transitioned: `number` comes from `$sequence`, `status`
- * always starts `planned` (see `EpicController.createEpic`) and moves only
+ * always starts `draft` (see `EpicController.createEpic`) and moves only
  * through the lifecycle verbs, and the quest/folio membership is attached
  * afterwards.
  *

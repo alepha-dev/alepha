@@ -674,7 +674,7 @@ export class AppRouter {
           .catch(() => 0),
 
         // Every epic as a ref, which serves two readers at once: the sidebar's
-        // planned-epic badge, counted locally below, and the quests table's
+        // draft-epic badge, counted locally below, and the quests table's
         // Epic column, which resolves `quests.epicId` against it exactly as
         // the Release column resolves `releaseId` against `currentReleasesAtom`.
         //
@@ -687,12 +687,12 @@ export class AppRouter {
         // Epics entry renders at all, so a project with epics off pays nothing.
         //
         // The badge is the counterweight to the quest count above: that one
-        // runs the backlog gate, so quests parked inside a planned epic are
+        // runs the backlog gate, so quests parked inside a draft epic are
         // excluded from it on purpose. Without this number the sidebar
         // reported none of that work.
         //
         // `undefined` on failure and NOT `[]`, like `currentInstancesAtom`: the
-        // badge must read "could not count" rather than "none planned".
+        // badge must read "could not count" rather than "no drafts".
         capabilityOption(project, "work", "epics")
           ? this.epicApi
               .getEpicRefs({ params: { projectId: project.id } })
@@ -799,7 +799,7 @@ export class AppRouter {
       // counts it off the list it already holds. `undefined` means the read
       // failed, and 0 is the honest answer for a badge that can only hide.
       this.alepha.store.set(currentEpicCountAtom, {
-        count: (epicRefs ?? []).filter((epic) => epic.status === "planned")
+        count: (epicRefs ?? []).filter((epic) => epic.status === "draft")
           .length,
       });
       this.alepha.store.set(currentInstancesAtom, instances);

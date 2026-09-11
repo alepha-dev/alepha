@@ -32,7 +32,7 @@ export interface EpicCreateProps {
  * shape as `QuestCreate` inside the same `Sheet`.
  *
  * Only title and description. Status is not offered: a new epic always
- * starts `planned` (`EpicController.createEpic`), and moving it is the
+ * starts `draft` (`EpicController.createEpic`), and moving it is the
  * lifecycle verbs' job on the detail page, never a dropdown on a form.
  */
 const EpicCreate = (props: EpicCreateProps) => {

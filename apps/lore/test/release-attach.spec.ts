@@ -492,7 +492,7 @@ describe("Attaching an epic to a release", () => {
      * first, which proves both the old and the new release open, and a
      * follower is by definition in one of those or in none. The case that
      * CAN refuse is a quest joining an epic whose release has since been
-     * published - legal, because the epic can still be `planned` and
+     * published - legal, because the epic can still be `draft` and
      * `publishRelease` runs no completeness check. The attach succeeds, the
      * quest keeps no release, and the refusal is reported rather than thrown
      * away or turned into a failed attach.

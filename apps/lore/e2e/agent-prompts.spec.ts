@@ -213,7 +213,7 @@ test.describe("agent prompts", () => {
     });
 
     await test.step("Work on it waits for the epic to be ready, then sits beside Review Epic", async () => {
-      // A planned epic's quests refuse to be accepted, and whether its spec
+      // A draft epic's quests refuse to be accepted, and whether its spec
       // is done is the owner's call (#Q2223), so the hand-over is not on
       // offer yet: Review Epic alone.
       await page.getByRole("button", { name: "Open row actions" }).click();

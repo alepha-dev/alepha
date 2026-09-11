@@ -87,7 +87,7 @@ export class RoadmapService {
       targetDate: release.targetDate,
       releasedAt: release.releasedAt,
       progress: this.contents.progressOf(release, contents.get(release.id)),
-      // Planned epics are included, on both audiences. An epic that is
+      // Draft epics are included, on both audiences. An epic that is
       // specified and not started is exactly what a roadmap is for, and
       // `EpicVisibilityService`'s backlog gate is about the project's own
       // lists rather than about intent. Empty for a released release; see

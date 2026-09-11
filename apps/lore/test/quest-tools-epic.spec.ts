@@ -17,12 +17,12 @@ import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 /**
  * Finding 3 of the whole-branch review: `quest_list` and `quest_get` used to
  * be silent about WHICH epic a quest belongs to and whether that epic is
- * planned. A result mixing a planned epic's quests with released ones read
+ * a draft. A result mixing a draft epic's quests with released ones read
  * as undifferentiated noise. This guards that both tools carry
  * `{ number, title, status }` for the quest's epic.
  *
- * Since epic #31, `quest_list` hides a planned epic's quests by default,
- * like the UI does; the stamping is asserted through `includePlanned: true`,
+ * Since epic #31, `quest_list` hides a draft epic's quests by default,
+ * like the UI does; the stamping is asserted through `includeDrafts: true`,
  * which is what brings them back. `quest_get` is direct addressing and
  * always resolves.
  */
@@ -68,7 +68,7 @@ const setup = async () => {
     projectApi.createProject({ body: { title: "Test" } } as any),
   );
 
-  const plannedEpic = await asUser(OWNER, () =>
+  const draftEpic = await asUser(OWNER, () =>
     epicController.createEpic({
       params: { projectId: project.id },
       body: { title: "Deploy pipeline" },
@@ -81,15 +81,15 @@ const setup = async () => {
     description: "x",
     area: "core",
     priority: "medium",
-    epic_number: plannedEpic.number,
+    epic_number: draftEpic.number,
   });
 
-  return { questTools, project, plannedEpic, quest, call };
+  return { questTools, project, draftEpic, quest, call };
 };
 
 describe("Lore MCP — quest_list / quest_get carry the quest's epic", () => {
-  it("quest_list stamps a planned-epic quest with its epic and that epic's status", async () => {
-    const { questTools, project, plannedEpic, quest, call } = await setup();
+  it("quest_list stamps a draft-epic quest with its epic and that epic's status", async () => {
+    const { questTools, project, draftEpic, quest, call } = await setup();
 
     // Hidden by default, present once asked for: the default is the UI's.
     const gated = await call(questTools.quest_list, { project: project.id });
@@ -97,27 +97,27 @@ describe("Lore MCP — quest_list / quest_get carry the quest's epic", () => {
 
     const res = await call(questTools.quest_list, {
       project: project.id,
-      includePlanned: true,
+      includeDrafts: true,
     });
 
     const listed = res.quests.find((q: any) => q.id === quest.id);
     expect(listed).toBeDefined();
     expect(listed.epic).toEqual({
-      number: plannedEpic.number,
+      number: draftEpic.number,
       title: "Deploy pipeline",
-      status: "planned",
+      status: "draft",
     });
   });
 
   it("quest_get resolves the quest's epic regardless of the epic's status", async () => {
-    const { questTools, plannedEpic, quest, call } = await setup();
+    const { questTools, draftEpic, quest, call } = await setup();
 
     const res = await call(questTools.quest_get, { id: quest.id });
 
     expect(res.epic).toEqual({
-      number: plannedEpic.number,
+      number: draftEpic.number,
       title: "Deploy pipeline",
-      status: "planned",
+      status: "draft",
     });
   });
 

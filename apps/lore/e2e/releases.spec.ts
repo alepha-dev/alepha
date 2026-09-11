@@ -152,11 +152,11 @@ test.describe("Releases", () => {
     // The same quest reachable BOTH ways: in the release's epic AND named
     // directly. It must still count once.
     const both = await createQuest(page, projectId, `Both${t}`);
-    // Every quest goes in while the epic is planned, then the epic is marked
+    // Every quest goes in while the epic is a draft, then the epic is marked
     // ready, then one of them is worked: a quest can be accepted only inside
     // a ready or in-progress epic, and that first accept is what starts the
     // epic and freezes its quest set (#Q2223). This seed used to accept
-    // inside a planned epic, which is refused as not ready.
+    // inside a draft epic, which is refused as not ready.
     for (const quest of [inEpicDone, inEpicOpen, both]) {
       await post(page, `/api/attachQuest/${epic.id}`, { questId: quest.id });
     }

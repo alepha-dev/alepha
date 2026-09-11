@@ -18,7 +18,7 @@ what you pasted.
 
 | Prompt                 | Where                                                              | Offered when                                                                         |
 | ---------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **Review**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is `planned` or `ready`                              |
+| **Review**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                              |
 | **Work on it** (epic)  | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
 | **Work on it** (quest) | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
 | **Work on it**         | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
@@ -30,7 +30,7 @@ it cannot answer alone.
 **Work on it** on an epic hands the whole epic over, quest by quest: accept,
 work, verify, commit and complete each quest in turn. It sets no status. The
 first quest the agent accepts is what moves a ready epic to in progress, and
-the last one it closes is what completes it. It is not offered on a planned
+the last one it closes is what completes it. It is not offered on a draft
 epic: that one's quests refuse to be accepted, and whether its spec is done
 is your call, not the agent's. Copying it changes nothing about the epic.
 

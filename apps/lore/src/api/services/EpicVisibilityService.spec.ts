@@ -42,8 +42,8 @@ class TestApp {
 }
 
 describe("EpicVisibilityService", () => {
-  it("is a no-op when the project has no planned epic", async ({ expect }) => {
-    // Trap 2: `notInArray: []` THROWS. A project with zero planned epics is
+  it("is a no-op when the project has no draft epic", async ({ expect }) => {
+    // Trap 2: `notInArray: []` THROWS. A project with zero draft epics is
     // the normal case, so the clause must be omitted, never passed empty.
     const alepha = Alepha.create({
       // Pinned, like every other lore spec: the ROOT vitest config — the one
@@ -87,18 +87,18 @@ describe("EpicVisibilityService", () => {
     await alepha.start();
 
     const project = await createTestProject(alepha);
-    const planned = await createTestEpic(alepha, project, {
-      status: "planned",
+    const draft = await createTestEpic(alepha, project, {
+      status: "draft",
     });
     const loose = await createTestQuest(alepha, project); // epicId undefined
-    await createTestQuest(alepha, project, { epicId: planned.id });
+    await createTestQuest(alepha, project, { epicId: draft.id });
 
     const visible = await app.listVisibleQuests(project.id);
 
     expect(visible.map((q) => q.id)).toEqual([loose.id]);
   });
 
-  it("shows quests of a ready epic and hides those of a planned one", async ({
+  it("shows quests of a ready epic and hides those of a draft one", async ({
     expect,
   }) => {
     const alepha = Alepha.create({
@@ -115,13 +115,13 @@ describe("EpicVisibilityService", () => {
     // `ready` and not `in_progress`: the backlog opens the moment an epic is
     // marked ready, before anyone has accepted a quest of it (#Q2223).
     const ready = await createTestEpic(alepha, project, { status: "ready" });
-    const planned = await createTestEpic(alepha, project, {
-      status: "planned",
+    const draft = await createTestEpic(alepha, project, {
+      status: "draft",
     });
     const shown = await createTestQuest(alepha, project, {
       epicId: ready.id,
     });
-    await createTestQuest(alepha, project, { epicId: planned.id });
+    await createTestQuest(alepha, project, { epicId: draft.id });
 
     const visible = await app.listVisibleQuests(project.id);
 
@@ -146,7 +146,7 @@ describe("EpicVisibilityService", () => {
 
     const mine = await createTestProject(alepha);
     const other = await createTestProject(alepha);
-    await createTestEpic(alepha, mine, { status: "planned" });
+    await createTestEpic(alepha, mine, { status: "draft" });
     const ours = await createTestQuest(alepha, mine);
     await createTestQuest(alepha, other);
 
@@ -155,8 +155,8 @@ describe("EpicVisibilityService", () => {
     expect(visible.map((q) => q.id)).toEqual([ours.id]);
   });
 
-  it("scopes the planned set to the project", async ({ expect }) => {
-    // `plannedEpicIds` feeds a `notInArray` that is NOT project-scoped on
+  it("scopes the draft set to the project", async ({ expect }) => {
+    // `draftEpicIds` feeds a `notInArray` that is NOT project-scoped on
     // its own, so a leak here would hide another project's quests by id.
     const alepha = Alepha.create({
       // Pinned, like every other lore spec: the ROOT vitest config — the one
@@ -171,11 +171,11 @@ describe("EpicVisibilityService", () => {
     const mine = await createTestProject(alepha);
     const other = await createTestProject(alepha);
     const minePlanned = await createTestEpic(alepha, mine, {
-      status: "planned",
+      status: "draft",
     });
-    await createTestEpic(alepha, other, { status: "planned" });
+    await createTestEpic(alepha, other, { status: "draft" });
 
-    expect(await app.epicVisibility.plannedEpicIds(mine.id)).toEqual([
+    expect(await app.epicVisibility.draftEpicIds(mine.id)).toEqual([
       minePlanned.id,
     ]);
   });

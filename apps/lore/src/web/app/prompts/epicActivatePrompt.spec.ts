@@ -39,11 +39,11 @@ describe("epicActivatePromptDefault", () => {
     expect(prompt).toContain("Never on main");
   });
 
-  it("stops on a planned epic and states the frozen-plan rule", () => {
+  it("stops on a draft epic and states the frozen-plan rule", () => {
     // Whether a spec is done is the owner's call (#Q2223). The prompt used
     // to tell the agent to Begin the epic itself, which is why the click
     // never carried a decision.
-    expect(prompt).toContain("If it is still `planned`, stop and say so");
+    expect(prompt).toContain("If it is still a `draft`, stop and say so");
     expect(prompt).toContain("Your first `quest_accept` starts the epic");
     expect(prompt).toContain("its quest set is frozen");
     // What a discovery becomes once the set is frozen: an objective or a

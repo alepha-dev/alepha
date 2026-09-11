@@ -75,7 +75,7 @@ export const epicGetResultSchema = z.object({
   status: epicStatusSchema,
   projectId: z.integer(),
   questCount: z.integer(),
-  // Counts EVERY quest in the epic, planned-gated ones included — an epic's
+  // Counts EVERY quest in the epic, draft-gated ones included — an epic's
   // own view of itself is never gated (design §5.3).
   progress: epicProgressSchema,
   createdAt: z.datetime(),
@@ -132,7 +132,7 @@ export const epicCreateResultSchema = z.object({
   id: z.integer(),
   number: z.integer(),
   title: z.string(),
-  // Always "planned" — every epic is created there (see EpicController).
+  // Always "draft" — every epic is created there (see EpicController).
   status: epicStatusSchema,
   createdAt: z.datetime(),
   ...diagramWarningsShape,
@@ -170,7 +170,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicManualStatusSchema.describe(
-    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `planned` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. The same status again is a no-op.",
+    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `draft` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. The same status again is a no-op.",
   ),
 });
 

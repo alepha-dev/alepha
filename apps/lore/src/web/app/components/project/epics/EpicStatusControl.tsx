@@ -17,8 +17,8 @@ export interface EpicStatusControlProps {
 }
 
 /**
- * The one lifecycle decision a person makes: `planned` offers "Mark as
- * ready", `ready` offers "Back to planning", and an epic that has started or
+ * The one lifecycle decision a person makes: `draft` offers "Mark as
+ * ready", `ready` offers "Back to draft", and an epic that has started or
  * completed offers nothing.
  *
  * Two verbs because there are only two hand-set statuses (#Q2223). The epic
@@ -36,16 +36,16 @@ export interface EpicStatusControlProps {
  * `setEpicStatus` calls, the same way `ProjectEpics.tsx`'s `submitCreate`
  * guards its own in-flight request.
  *
- * ## Mark as ready confirms, Back to planning does not
+ * ## Mark as ready confirms, Back to draft does not
  *
- * **Ready moves the backlog gate.** A `planned` epic hides its quests from
+ * **Ready moves the backlog gate.** A `draft` epic hides its quests from
  * the project's backlog (`EpicVisibilityService`), so marking it ready
  * releases them for everybody: it changes what other people see on a page
  * they are not looking at, and the first of them to accept a quest freezes
  * the plan. That is worth a confirmation, and the copy says both. Same copy
  * as the Epics list's row menu, from the same keys.
  *
- * **Back to planning is the safe direction.** It hides quests nobody has
+ * **Back to draft is the safe direction.** It hides quests nobody has
  * started yet (a ready epic with an accepted quest is already in progress),
  * and the next click undoes it.
  *
@@ -65,7 +65,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
   const [submitting, setSubmitting] = useState(false);
   const blockedBy = epicBlockedBy(props.epic);
 
-  const changeStatus = async (status: "planned" | "ready") => {
+  const changeStatus = async (status: "draft" | "ready") => {
     if (submitting) return;
     if (
       status === "ready" &&
@@ -94,7 +94,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
     }
   };
 
-  if (props.epic.status !== "planned" && props.epic.status !== "ready") {
+  if (props.epic.status !== "draft" && props.epic.status !== "ready") {
     return null;
   }
 
@@ -114,7 +114,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
       {blockedLabel !== undefined && (
         <span className="text-muted-foreground text-xs">{blockedLabel}</span>
       )}
-      {props.epic.status === "planned" ? (
+      {props.epic.status === "draft" ? (
         <Button
           type="button"
           size="lg"
@@ -129,9 +129,9 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
           size="lg"
           variant="outline"
           disabled={submitting}
-          onClick={() => void changeStatus("planned")}
+          onClick={() => void changeStatus("draft")}
         >
-          {tr("epic.status.actions.backToPlanning")}
+          {tr("epic.status.actions.backToDraft")}
         </Button>
       )}
     </div>

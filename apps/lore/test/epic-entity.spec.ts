@@ -33,7 +33,7 @@ describe("epics entity", () => {
       number: 1,
       title: "Lore Deploy",
       description: "",
-      status: "planned",
+      status: "draft",
     });
     const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 

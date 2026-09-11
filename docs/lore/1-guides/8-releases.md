@@ -77,7 +77,7 @@ changelog and a unit from its progress bar.
 An epic that names no release takes the default **when it starts**, which is
 the moment its first quest is accepted, and carries that release down to
 every quest of it that named none. A quest that was given its own release
-while the epic was still being planned keeps it.
+while the epic was still a draft keeps it.
 
 Starting is deliberately the moment, rather than completing: where an epic
 ships is a question answered when work begins, and an epic that only learned

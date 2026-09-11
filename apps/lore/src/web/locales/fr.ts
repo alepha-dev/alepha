@@ -1976,7 +1976,7 @@ export default {
 
   // Epics
   "project.menu.epics": "Épopées",
-  "epic.status.planned": "Planifiée",
+  "epic.status.draft": "Brouillon",
   "epic.status.ready": "Prête",
   "epic.status.inProgress": "En cours",
   "epic.status.completed": "Terminée",
@@ -2030,7 +2030,7 @@ export default {
   "agentPrompts.settings.wasReset": "Invite rétablie par défaut.",
   "agentPrompts.settings.epicReview.title": "Épopée : relire",
   "agentPrompts.settings.epicReview.description":
-    "Proposée sur une épopée que personne n’a commencée, planifiée ou prête. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
+    "Proposée sur une épopée que personne n’a commencée, en brouillon ou prête. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
   "agentPrompts.settings.epicActivate.title": "Épopée : s’en charger",
   "agentPrompts.settings.epicActivate.description":
     "Proposée sur une épopée prête ou en cours. Confie l’épopée entière, quête par quête.",
@@ -2069,13 +2069,13 @@ export default {
     "Marquer $1 comme prête place ses quêtes dans le backlog, où le reste du projet peut les prendre. La première quête acceptée démarre l'épopée et fige sa liste de quêtes.",
   "epic.start.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
-  "epic.status.actions.backToPlanning": "Revenir à la planification",
+  "epic.status.actions.backToDraft": "Repasser en brouillon",
   "epic.aside.predecessor": "Dépend de",
   "epic.aside.predecessor.after": "Après l'épopée $1",
   "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
-  // The quest page's Accept, withheld while the quest's epic is planned or
+  // The quest page's Accept, withheld while the quest's epic is a draft or
   // completed.
-  "quest.view.accept.epicPlanned":
+  "quest.view.accept.epicDraft":
     "L'épopée $1 n'est pas encore prête pour le développement.",
   "quest.view.accept.epicCompleted":
     "L'épopée $1 est terminée. Créez une nouvelle épopée pour cette quête.",
@@ -2090,8 +2090,8 @@ export default {
   "epic.list.column.release": "Version",
   "epic.aside.progress": "Progression",
   "epic.aside.progress.value": "$1 / $2 quêtes",
-  "epic.aside.ready": "Prêt à travailler",
-  "epic.aside.ready.value": "$1 racines, $2 en aval",
+  "epic.aside.upNext": "À faire ensuite",
+  "epic.aside.upNext.value": "$1 racines, $2 en aval",
   "epic.aside.areas": "Domaines",
   "epic.aside.lastActivity": "Dernière activité",
   "epic.aside.created": "Créée le",

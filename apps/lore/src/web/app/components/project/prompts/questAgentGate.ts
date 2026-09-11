@@ -8,12 +8,12 @@ import type { EpicRefResource } from "@/api/schemas/epicRefResourceSchema.ts";
  * cannot make a localized string. `QuestView` maps the code to its key and
  * keeps its tooltip; the tables only test for `undefined`.
  */
-export type QuestAgentGateReason = "epicPlanned" | "epicCompleted";
+export type QuestAgentGateReason = "epicDraft" | "epicCompleted";
 
 /**
  * Whether a quest's epic is in a status that would refuse the work.
  *
- * The prompt's second step is `quest_accept`, which a `planned` epic refuses
+ * The prompt's second step is `quest_accept`, which a `draft` epic refuses
  * (it is not ready for development) and a `completed` one refuses with "File
  * this in a new epic". A `ready` epic accepts, and that accept is what starts
  * it (#Q2223). So the gate on offering the prompt is the gate on accepting
@@ -40,7 +40,7 @@ export const questAgentGate = (
   if (quest.epicId == null) return undefined;
   const epic = epics?.find((it) => it.id === quest.epicId);
   if (!epic) return undefined;
-  if (epic.status === "planned") return "epicPlanned";
+  if (epic.status === "draft") return "epicDraft";
   if (epic.status === "completed") return "epicCompleted";
   return undefined;
 };

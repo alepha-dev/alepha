@@ -85,12 +85,12 @@ import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
  * the next release open, and a follower is by definition in one of those two
  * or in none. The reachable case is `toQuest` - a quest joining an epic whose
  * release has since been PUBLISHED, which is legal because the epic can still
- * be `planned` and `publishRelease` runs no completeness check. So the guard
+ * be `draft` and `publishRelease` runs no completeness check. So the guard
  * here is not decoration, and it is also not the common path.
  *
  * **5. Beginning an epic is a release move like any other.** An epic that
- * names no release takes the project's DEFAULT one on the `planned -> active`
- * edge (#E48), and that release reaches its quests through this service, on
+ * names no release takes the project's DEFAULT one when it starts, on the
+ * `ready -> in_progress` edge (#E48, moved to the start by #Q2223), and that release reaches its quests through this service, on
  * that edge, exactly as it would through `updateEpic`. One shape for "an epic
  * has a release": the epic's row and its quests' rows both name it.
  *

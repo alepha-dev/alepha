@@ -11,18 +11,18 @@ import { releases } from "./releases.ts";
  * Orthogonal to `quests.area`, which labels the module the work happens
  * in. A quest carries both, independently.
  *
- * `planned` is the reason this entity exists. It means "this work is
+ * `draft` is the reason this entity exists. It means "this work is
  * being specified and is not released into the backlog yet" — a fact Lore
  * previously had no word for, so `quests.shelvedAt` ("deliberately out of
  * scope") was misused for it. Nothing about a quest row changes when its
- * epic is planned; the backlog gate is a read filter. See
+ * epic is a draft; the backlog gate is a read filter. See
  * `EpicVisibilityService`.
  *
  * ## Four statuses, and only the first two are set by hand (#Q2223)
  *
  * | status        | meaning                                   | reached by                           |
  * | ------------- | ----------------------------------------- | ------------------------------------ |
- * | `planned`     | being specified, quests hidden, no work   | creation; `ready` can move back      |
+ * | `draft`     | being specified, quests hidden, no work   | creation; `ready` can move back      |
  * | `ready`       | specified, quests in the backlog, editable | `setEpicStatus`, by hand             |
  * | `in_progress` | the plan is frozen, quests are worked      | the first quest accepted or assigned |
  * | `completed`   | the record, terminal                       | the last open quest resolved         |
@@ -70,9 +70,9 @@ export const epics = $entity({
      */
     status: db.default(
       z
-        .enum(["planned", "ready", "in_progress", "completed"])
+        .enum(["draft", "ready", "in_progress", "completed"])
         .meta({ mode: "text" }),
-      "planned",
+      "draft",
     ),
     /**
      * When the first quest was accepted or assigned, which is what moves an
@@ -142,8 +142,8 @@ export const epics = $entity({
      * **What changed the answer is evidence, not taste.** The advisory channel
      * already existed elsewhere and measured zero: `quest_list` and `quest_get`
      * stamp the epic's status on every quest, with a description spelling out
-     * that a planned epic's quests are not released, and epic #27 was worked
-     * to 9 of 9 quests completed while still `planned`, by an agent told that
+     * that a draft epic's quests are not released, and epic #27 was worked
+     * to 9 of 9 quests completed while still `planned` (today's `draft`), by an agent told that
      * status on every single call. A note is decoration; a refusal is
      * information. The second reason fell with it: the epic workflow refuses
      * several transitions now, so this gate is one refusal among several

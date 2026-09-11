@@ -34,8 +34,8 @@ export interface EpicQuestPickerProps {
 
 /**
  * Searchable popover that attaches a project quest to the epic. Lists every
- * project quest, `includePlanned: true` so a quest filed under a different
- * (possibly planned) epic still shows up — attaching moves it here, mirroring
+ * project quest, `includeDrafts: true` so a quest filed under a different
+ * (possibly draft) epic still shows up — attaching moves it here, mirroring
  * `EpicController.attachQuest`, which reassigns `epicId` unconditionally
  * rather than refusing an already-attached quest.
  */
@@ -54,7 +54,7 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
         // `size` is capped at 100 server-side; for larger projects the
         // combobox search narrows the list (same known limitation as
         // `QuestDependencyPicker`).
-        query: { size: 100, includePlanned: true },
+        query: { size: 100, includeDrafts: true },
       })
       .then((res) => {
         if (alive) setQuests(res.content);

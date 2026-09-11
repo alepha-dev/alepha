@@ -8,7 +8,7 @@ import { epicStatusSchema } from "./epicStatusSchema.ts";
 /**
  * The epic a folio is filed under. Same shape as the `epic` on quest rows
  * (`EpicRefService`): `number` is how an agent addresses the epic, and
- * `status` is what tells a planned epic's folios from released ones, since
+ * `status` is what tells a draft epic's folios from released ones, since
  * no folio list is gated over MCP.
  */
 export const folioEpicRefSchema = z.object({

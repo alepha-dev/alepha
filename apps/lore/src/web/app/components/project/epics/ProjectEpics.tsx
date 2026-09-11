@@ -102,8 +102,8 @@ const epicsFiltersSchema = z.object({
  * reason neither needed a paginated endpoint.
  *
  * Status is a read-only CHIP here, but the row menu carries the one
- * lifecycle decision a person makes: **Mark as ready** on a `planned` epic,
- * **Back to planning** on a `ready` one (#Q2223). The other two statuses
+ * lifecycle decision a person makes: **Mark as ready** on a `draft` epic,
+ * **Back to draft** on a `ready` one (#Q2223). The other two statuses
  * happen on their own (the first accepted quest starts an epic, the last
  * resolved one completes it), so an epic that has started offers nothing.
  * Marking a whole chain ready from the list is the point: `dependsOn` gates
@@ -181,12 +181,12 @@ const ProjectEpics = () => {
   /**
    * The row menu's one lifecycle write, the same `setEpicStatus` the epic
    * page's control makes. `refresh` is what repaints the status chip AND
-   * recomputes the sidebar's planned-epic badge, since `fetchEpics` pushes
+   * recomputes the sidebar's draft-epic badge, since `fetchEpics` pushes
    * that count on every fetch.
    */
   const setStatus = async (
     epic: EpicResource,
-    status: "planned" | "ready",
+    status: "draft" | "ready",
     refresh: () => void,
   ) => {
     try {
@@ -217,7 +217,7 @@ const ProjectEpics = () => {
   }): Promise<Page<EpicResource>> => {
     const all = await epicApi.getEpics({ params: { projectId: project.id } });
 
-    // Push the freshest planned count to the sidebar badge, the same way
+    // Push the freshest draft count to the sidebar badge, the same way
     // `ProjectBlights` pushes `openCount`. Free: `getEpics` already returns
     // the project's whole list, so no second request is needed, and counting
     // `all` rather than `rows` keeps the badge project-wide when the toolbar
@@ -230,7 +230,7 @@ const ProjectEpics = () => {
     // This is what refreshes the badge after a create or a delete: both bump
     // the table, and the table lands back here.
     alepha.store.set(currentEpicCountAtom, {
-      count: all.filter((epic) => epic.status === "planned").length,
+      count: all.filter((epic) => epic.status === "draft").length,
     });
 
     const statuses =
@@ -299,12 +299,12 @@ const ProjectEpics = () => {
   //
   // ⚠️ No bulk Mark as ready. The row menu keeps it because deciding that a
   // spec is done is a per-epic decision with a per-epic confirmation, and a
-  // selection mixing planned, ready and started epics would have to refuse
+  // selection mixing draft, ready and started epics would have to refuse
   // most of what it held.
   //
   // Every entry refreshes and then clears, in that order: a selection that
   // survives a delete points at rows that no longer exist. `ctx.refresh()`
-  // is also what repaints the sidebar's planned-epic badge, since
+  // is also what repaints the sidebar's draft-epic badge, since
   // `fetchEpics` pushes that count on every fetch.
   /**
    * Every release, published included, led by a sentinel.
@@ -595,12 +595,12 @@ const ProjectEpics = () => {
           // two different status gates, and the whole group behind the
           // project's `agentPrompts` option, which is off by default.
           //
-          // Review is offered while the plan is still open (planned or
+          // Review is offered while the plan is still open (draft or
           // ready): once the epic is in progress its quest set is what is
           // being worked, not what is being written. Work on it is offered
           // on a ready epic, whose first accepted quest starts it, and on
           // one in progress, because a half-worked epic can be handed over.
-          // NOT on a planned one: its quests refuse to be accepted, and
+          // NOT on a draft one: its quests refuse to be accepted, and
           // whether the spec is done is the owner's call, not the agent's.
           // A completed epic gets neither, so the group has no children and
           // `AlephaTable` renders nothing for it.
@@ -612,7 +612,7 @@ const ProjectEpics = () => {
                   icon: Bot,
                   label: tr("agentPrompts.menu"),
                   children: [
-                    ...(epic.status === "planned" || epic.status === "ready"
+                    ...(epic.status === "draft" || epic.status === "ready"
                       ? [
                           {
                             icon: ClipboardCheck,
@@ -696,10 +696,10 @@ const ProjectEpics = () => {
               ]
             : []),
           // The one lifecycle decision, gated on the row's own status: a
-          // planned epic can be marked ready, a ready one sent back to
-          // planning, and an epic that has started offers nothing, because
+          // draft epic can be marked ready, a ready one sent back to
+          // draft, and an epic that has started offers nothing, because
           // its other two moves happen on their own (#Q2223).
-          ...(epic.status === "planned" && epicApi.setEpicStatus.can()
+          ...(epic.status === "draft" && epicApi.setEpicStatus.can()
             ? [
                 {
                   icon: Play,
@@ -731,11 +731,11 @@ const ProjectEpics = () => {
             ? [
                 {
                   icon: Undo2,
-                  label: tr("epic.status.actions.backToPlanning"),
+                  label: tr("epic.status.actions.backToDraft"),
                   onClick: (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },
-                  ) => setStatus(row, "planned", refresh),
+                  ) => setStatus(row, "draft", refresh),
                 },
               ]
             : []),

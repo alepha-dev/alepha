@@ -97,7 +97,7 @@ describe("RoadmapController.getPublicRoadmap", () => {
   });
 
   /**
-   * A project with one open release carrying a planned epic and a quest, plus
+   * A project with one open release carrying a draft epic and a quest, plus
    * one published release beside it.
    *
    * Both carry a `targetDate`, and only the second a `releasedAt`, which is
@@ -135,7 +135,7 @@ describe("RoadmapController.getPublicRoadmap", () => {
     // ran or not. Numbered this way, only the dependency sort produces
     // "Draw the map" before "Name the roads".
     //
-    // Both are left `planned`: a planned epic must appear on the roadmap, and
+    // Both are left `draft`: a draft epic must appear on the roadmap, and
     // its status must travel with it so an empty bar reads as "not begun"
     // rather than "stalled".
     const follower = (
@@ -368,7 +368,7 @@ describe("RoadmapController.getPublicRoadmap", () => {
     expect(body).not.toContain(project.createdBy);
   });
 
-  it("includes a planned epic, with its status", async ({ expect }) => {
+  it("includes a draft epic, with its status", async ({ expect }) => {
     const { project } = await seed("public");
     const res = await read(project.slug);
 
@@ -376,13 +376,13 @@ describe("RoadmapController.getPublicRoadmap", () => {
     // Predecessor first, and the dependent naming it - the order DRAWN
     // rather than described, which is the whole point of `epics.dependsOn`.
     expect(epics.map((epic) => [epic.title, epic.status])).toEqual([
-      ["Draw the map", "planned"],
-      ["Name the roads", "planned"],
+      ["Draw the map", "draft"],
+      ["Name the roads", "draft"],
     ]);
     expect(epics[0].dependsOnNumber).toBeUndefined();
     expect(epics[1].dependsOnNumber).toBe(epics[0].number);
     // The quest inside it counts, even though `EpicVisibilityService` keeps a
-    // planned epic's quests out of the project's own backlog. An epic
+    // draft epic's quests out of the project's own backlog. An epic
     // reporting 0/0 because its work is gated out of a listing surface is not
     // telling the truth about itself.
     expect(epics[0].progress.total).toBe(1);

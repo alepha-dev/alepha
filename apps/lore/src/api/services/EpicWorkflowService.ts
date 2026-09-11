@@ -42,7 +42,7 @@ export type EpicPlanEdit =
  *
  * ## Four statuses, two of them automatic (#Q2223)
  *
- * `planned` and `ready` are set by hand, both ways, and they are the whole
+ * `draft` and `ready` are set by hand, both ways, and they are the whole
  * of the manual surface. `in_progress` is written by the first quest of a
  * `ready` epic to be accepted or assigned ({@link startIfReady}), and
  * `completed` by the request that resolves its last open quest
@@ -52,7 +52,7 @@ export type EpicPlanEdit =
  *
  * The status is still the permission, which is what epic #31 established and
  * this keeps: an agent told the status on every call worked epic #27 to 9 of
- * 9 while `planned`, so a note is decoration and a refusal is information.
+ * 9 while `planned` (today's `draft`), so a note is decoration and a refusal is information.
  * One service, so `QuestController`, `EpicController` and the MCP layer
  * cannot drift on the rules. Same reduction, same recorded reason as
  * `EpicVisibilityService`: duplicating a precondition across endpoints is how
@@ -60,14 +60,14 @@ export type EpicPlanEdit =
  *
  * A refusal is a product surface. An agent reads it and has to know what to
  * do next, so every message names the epic by its per-project number and
- * names the fix, except where the fix is somebody else's call: a `planned`
+ * names the fix, except where the fix is somebody else's call: a `draft`
  * epic's refusal says it is not ready, and deliberately does not tell the
  * agent how to make it ready. All of them are `BadRequestError`, the same
  * 400 the questline gate in `acceptQuest` throws, so the wording reaches the
  * caller on every transport, MCP included.
  *
  * ⚠️ **No status is ever written to a quest row.** Moving an epic out of
- * `planned` releases its quests because the backlog gate stops matching them,
+ * `draft` releases its quests because the backlog gate stops matching them,
  * not because anything about them changed. The one carve-out is the default
  * release on {@link startIfReady}, which writes `releaseId` and nothing else.
  */
@@ -111,7 +111,7 @@ export class EpicWorkflowService {
    * toward resolution or away from work, and shelving is the only exit for a
    * `new` quest sitting in a `completed` epic from before this rule existed.
    *
-   * Unshelve and unhold are also allowed while `planned` or `ready`.
+   * Unshelve and unhold are also allowed while `draft` or `ready`.
    * Shelving, holding and their reversals there are edits to an open plan
    * ("out of scope" and "back in scope", "blocked" and "unblocked"), and a
    * plan that lets a quest be set aside but never brought back would be
@@ -138,10 +138,10 @@ export class EpicWorkflowService {
 
     const reopensPlan = verb === "unshelve" || verb === "unhold";
 
-    if (epic.status === "planned") {
+    if (epic.status === "draft") {
       if (reopensPlan) return;
       throw new BadRequestError(
-        `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is planned, and not ready for development yet.`,
+        `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is a draft, and not ready for development yet.`,
       );
     }
 
@@ -187,7 +187,7 @@ export class EpicWorkflowService {
   }
 
   /**
-   * A quest enters or leaves an epic only while the epic is `planned` or
+   * A quest enters or leaves an epic only while the epic is `draft` or
    * `ready`.
    *
    * Once the epic is `in_progress` the quest set is what was committed, and
@@ -205,7 +205,7 @@ export class EpicWorkflowService {
     epic: Pick<Epic, "number" | "status">,
     edit: EpicPlanEdit,
   ): void {
-    if (epic.status === "planned" || epic.status === "ready") return;
+    if (epic.status === "draft" || epic.status === "ready") return;
 
     const frozen = epic.status === "in_progress";
     const phase = frozen
@@ -240,9 +240,9 @@ export class EpicWorkflowService {
   }
 
   /**
-   * The only status moves a person makes: `planned` to `ready` and back.
+   * The only status moves a person makes: `draft` to `ready` and back.
    *
-   * `ready` to `planned` stays open because nothing has started: the epic
+   * `ready` to `draft` stays open because nothing has started: the epic
    * leaves `ready` on its own the moment a quest is accepted, so a ready
    * epic is by construction one nobody is working. Anything else is refused.
    * `in_progress` and `completed` are never a request's to ask for (the body
@@ -254,10 +254,10 @@ export class EpicWorkflowService {
    */
   assertManualEdge(
     epic: Pick<Epic, "number" | "status">,
-    to: "planned" | "ready",
+    to: "draft" | "ready",
   ): void {
-    if (epic.status === "planned" && to === "ready") return;
-    if (epic.status === "ready" && to === "planned") return;
+    if (epic.status === "draft" && to === "ready") return;
+    if (epic.status === "ready" && to === "draft") return;
 
     const move = `Cannot move Epic ${formatReference("epic", epic.number)} from ${epic.status} to ${to}.`;
     if (epic.status === "completed") {
@@ -297,7 +297,7 @@ export class EpicWorkflowService {
    * so the other order can leave quests pointing at a release the epic is
    * not in. `previous` is `null`, and that is load-bearing: the follower test
    * selects exactly the quests that name nothing, and a quest given an
-   * explicit release while the epic was being planned keeps its own.
+   * explicit release while the epic was a draft keeps its own.
    */
   async startIfReady(
     quest: Pick<Quest, "shortId" | "epicId">,

@@ -642,10 +642,10 @@ test.describe("Project dashboard", () => {
         }),
       );
     }
-    // ⚠️ Both attached while the epic is PLANNED, then it is marked ready: a
+    // ⚠️ Both attached while the epic is a DRAFT, then it is marked ready: a
     // quest is acceptable only inside a ready or in-progress epic, and the
     // first accept below is what starts it and freezes its quest set
-    // (#Q2223). Accepting while planned is refused as not ready.
+    // (#Q2223). Accepting while a draft is refused as not ready.
     for (const quest of made) {
       await post(`/api/attachQuest/${epic.id}`, { questId: quest.id });
     }

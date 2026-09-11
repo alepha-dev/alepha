@@ -13,7 +13,7 @@ import {
  * The backlog gate, end to end.
  *
  * This is the behaviour the whole Epics feature exists for: a quest inside a
- * `planned` epic is specified but not released into the backlog, and it is
+ * `draft` epic is specified but not released into the backlog, and it is
  * hidden by FILTERING reads rather than by mutating the quest. Unit tests pin
  * the SQL; this pins the thing a person actually sees.
  *
@@ -23,11 +23,11 @@ import {
  * being expressed with that same word. So the test finishes by driving both
  * mechanisms at once and asserting they stay independent. If marking an
  * epic ready ever un-shelved a quest, or shelving one ever leaked it back into a
- * planned epic's hidden set, that is the regression that would make the
+ * draft epic's hidden set, that is the regression that would make the
  * feature pointless, and only this assertion catches it.
  */
 test.describe("Epics — the backlog gate", () => {
-  test("a planned epic hides its quests, and shelving stays independent", async ({
+  test("a draft epic hides its quests, and shelving stays independent", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -78,7 +78,7 @@ test.describe("Epics — the backlog gate", () => {
       },
       { projectId, title: `Deploy${t}` },
     );
-    expect(epic.status).toBe("planned");
+    expect(epic.status).toBe("draft");
 
     const questIds: number[] = [];
     for (const title of [gatedTitle, releasedTitle]) {
@@ -107,7 +107,7 @@ test.describe("Epics — the backlog gate", () => {
       );
     }
 
-    await test.step("a planned epic's quests are absent from the backlog", async () => {
+    await test.step("a draft epic's quests are absent from the backlog", async () => {
       // The quest list is the project ROOT, not `/quests` — `/quests/:shortId`
       // is a single quest. An earlier draft of this test pointed at
       // `/<slug>/quests` and its "the quests are absent" assertion passed
@@ -122,7 +122,7 @@ test.describe("Epics — the backlog gate", () => {
       // This assertion exists because the first run of this test caught it
       // disagreeing: the badge counted both gated quests and read "2" beside
       // a visibly empty list. `countOpenQuests` already excludes shelved
-      // quests for exactly this reason, and a planned epic is the same class
+      // quests for exactly this reason, and a draft epic is the same class
       // of hidden.
       //
       // Asserted against the count endpoint rather than the rendered badge:
@@ -293,7 +293,7 @@ test.describe("Epics — the backlog gate", () => {
 
     await test.step("shelving hides one quest for the other reason, and only that one", async () => {
       // The two mechanisms must not interfere. `shelvedAt` means "decided out
-      // of scope"; a planned epic means "not released yet". Both hide a quest
+      // of scope"; a draft epic means "not released yet". Both hide a quest
       // from the backlog, and neither may imply the other.
       // `shelveQuest` has no body schema, so it is GET at the canonical
       // /api/shelveQuest/:id.
@@ -417,16 +417,16 @@ test.describe("Epics — the list", () => {
       });
       await expect(page.getByRole("link", { name: empty })).toBeVisible();
 
-      // Freshly created epics are `planned`, so the one holding a quest
+      // Freshly created epics are `draft`, so the one holding a quest
       // reports it as specified-not-released and the other as having none.
       await expect(page.getByText("1 specified, none released")).toBeVisible();
       await expect(page.getByText("No quests yet")).toBeVisible();
     });
 
-    await test.step("the sidebar badges the planned epics", async () => {
-      // Both seeded epics are `planned`, and the badge counts exactly that.
+    await test.step("the sidebar badges the draft epics", async () => {
+      // Both seeded epics are `draft`, and the badge counts exactly that.
       // It matters because `countOpenQuests` runs the backlog gate: the quest
-      // attached above is inside a planned epic, so it is absent from the
+      // attached above is inside a draft epic, so it is absent from the
       // Quests badge on purpose. This number is the sidebar's only trace of
       // it. Read off the nav link so a stray "2" elsewhere cannot satisfy it.
       await expect(epicsBadge(page)).toHaveText("2", { timeout: 15_000 });
@@ -531,12 +531,12 @@ test.describe("Epics — the list", () => {
       });
 
       // And the sidebar badge follows, without a reload. A new epic is born
-      // `planned`, so the count has to move 2 -> 3: the table's own refresh
+      // `draft`, so the count has to move 2 -> 3: the table's own refresh
       // lands back in `fetchEpics`, which recounts and pushes the atom.
       await expect(epicsBadge(page)).toHaveText("3", { timeout: 15_000 });
     });
 
-    await test.step("marking an epic ready takes it off the badge, and back to planning puts it on", async () => {
+    await test.step("marking an epic ready takes it off the badge, and back to draft puts it on", async () => {
       // The direction the list alone can never cover: status changes on the
       // DETAIL page, which knows one epic and so applies a delta instead of
       // a count. Marking ready is also the main way this badge goes down.
@@ -552,7 +552,7 @@ test.describe("Epics — the list", () => {
       await expect(epicsBadge(page)).toHaveText("2", { timeout: 15_000 });
 
       // The other hand-set move (#Q2223) goes the other way, unconfirmed.
-      await page.getByRole("button", { name: "Back to planning" }).click();
+      await page.getByRole("button", { name: "Back to draft" }).click();
       await expect(epicsBadge(page)).toHaveText("3", { timeout: 15_000 });
     });
   });
@@ -842,7 +842,7 @@ test.describe("Epics — a member, not just the owner", () => {
           number: number;
           status: string;
         }>(`/api/createEpic/${projectId}`, { title: `MemberEpic${t}` });
-        expect(created.status).toBe("planned");
+        expect(created.status).toBe("draft");
         return created;
       });
 
@@ -892,7 +892,7 @@ test.describe("Epics — a member, not just the owner", () => {
  * An epic's four statuses, from the list's row menu (#Q2223).
  *
  * Two of them are set by hand, from here: Mark as ready and Back to
- * planning. The confirmation on Ready is the point, not decoration: it
+ * draft. The confirmation on Ready is the point, not decoration: it
  * releases the epic's quests into the project backlog
  * (`EpicVisibilityService`), so it changes what other people see on a page
  * they are not looking at. The test drives the cancel path too, since a
@@ -958,17 +958,17 @@ test.describe("Epics — the lifecycle from the list", () => {
     await page.goto(`/${slug}/epics`);
     const row = page.locator("tbody tr", { hasText: title });
     await expect(row).toBeVisible({ timeout: 15_000 });
-    await expect(row).toContainText("Planned");
+    await expect(row).toContainText("Draft");
 
     const openMenu = async () => {
       await row.getByRole("button").last().click();
     };
 
-    await test.step("cancelling leaves the epic planned", async () => {
+    await test.step("cancelling leaves the epic a draft", async () => {
       await openMenu();
       await page.getByRole("menuitem", { name: "Mark as ready" }).click();
       await page.getByRole("button", { name: "Cancel" }).click();
-      await expect(row).toContainText("Planned");
+      await expect(row).toContainText("Draft");
     });
 
     await test.step("confirming marks it ready and the chip repaints", async () => {
@@ -980,13 +980,13 @@ test.describe("Epics — the lifecycle from the list", () => {
       await expect(row).toContainText("Ready", { timeout: 15_000 });
     });
 
-    await test.step("back to planning is offered, unconfirmed, and returns it", async () => {
+    await test.step("back to draft is offered, unconfirmed, and returns it", async () => {
       await openMenu();
       await expect(
         page.getByRole("menuitem", { name: "Mark as ready" }),
       ).toHaveCount(0);
-      await page.getByRole("menuitem", { name: "Back to planning" }).click();
-      await expect(row).toContainText("Planned", { timeout: 15_000 });
+      await page.getByRole("menuitem", { name: "Back to draft" }).click();
+      await expect(row).toContainText("Draft", { timeout: 15_000 });
 
       // And ready again, for the automatic half below.
       await openMenu();
@@ -1009,7 +1009,7 @@ test.describe("Epics — the lifecycle from the list", () => {
       // No status move is offered once it has started.
       await openMenu();
       await expect(
-        page.getByRole("menuitem", { name: /Mark as ready|Back to planning/ }),
+        page.getByRole("menuitem", { name: /Mark as ready|Back to draft/ }),
       ).toHaveCount(0);
       await page.keyboard.press("Escape");
     });
@@ -1329,7 +1329,7 @@ test.describe("Epics — the release control", () => {
  * each, and the predecessor gate at the start.
  *
  * The refused moves and their wording are unit-tested. What this drives is
- * the surface: the Accept a planned epic's quest does not get, the caption
+ * the surface: the Accept a draft epic's quest does not get, the caption
  * on an epic waiting for its predecessor, the Create and Attach affordances
  * that stay while the epic is ready and vanish once its first quest is
  * accepted, and the two automatic moves reaching the page. Two API probes pin
@@ -1411,7 +1411,7 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       await page.getByRole("button", { name: "Mark as ready" }).click();
       await page.getByRole("button", { name: "Mark as ready" }).last().click();
       await expect(
-        page.getByRole("button", { name: "Back to planning" }),
+        page.getByRole("button", { name: "Back to draft" }),
       ).toBeVisible({ timeout: 15_000 });
     };
 
@@ -1422,7 +1422,7 @@ test.describe("Epics — the lifecycle on the epic page", () => {
     expect((await attach(first.id, quest.id)).status).toBe(200);
     expect((await attach(second.id, next.id)).status).toBe(200);
 
-    await test.step("a planned epic's quest cannot be accepted, and the button says why", async () => {
+    await test.step("a draft epic's quest cannot be accepted, and the button says why", async () => {
       await page.goto(`/${slug}/quests/${quest.shortId}`);
       const button = page.getByRole("button", { name: /accept the quest/i });
       await expect(button).toBeVisible({ timeout: 15_000 });
@@ -1477,7 +1477,7 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       // No status move is offered once it has started, and nothing enters
       // the plan from here.
       await expect(
-        page.getByRole("button", { name: /Mark as ready|Back to planning/ }),
+        page.getByRole("button", { name: /Mark as ready|Back to draft/ }),
       ).toHaveCount(0);
       await expect(page.getByRole("button", { name: "New Quest" })).toHaveCount(
         0,
@@ -1510,7 +1510,7 @@ test.describe("Epics — the lifecycle on the epic page", () => {
         timeout: 15_000,
       });
       await expect(
-        page.getByRole("button", { name: /Mark as ready|Back to planning/ }),
+        page.getByRole("button", { name: /Mark as ready|Back to draft/ }),
       ).toHaveCount(0);
     });
 

@@ -15,7 +15,7 @@ import { epicResourceSchema } from "./epicResourceSchema.ts";
  * to an epic by, and it is per-project rather than global, so it identifies
  * nothing outside the project whose roadmap this is.
  *
- * ⚠️ `progress` counts EVERY quest of the epic, planned-gated ones included -
+ * ⚠️ `progress` counts EVERY quest of the epic, draft-gated ones included -
  * the same convention `epicResourceSchema` documents. An epic reporting 0/13
  * is telling the truth; one reporting 0/0 because its own quests are gated out
  * of the project's backlog is not.

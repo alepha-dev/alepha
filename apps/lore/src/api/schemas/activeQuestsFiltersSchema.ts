@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  *
  * `statuses` is a list rather than a single value because the tile's whole
  * point is the sum of two of them: the mockup's chip reads `new + accepted`.
- * Shelved quests are neither, and quests inside a `planned` epic are outside
+ * Shelved quests are neither, and quests inside a `draft` epic are outside
  * the human-facing backlog — neither is expressible here, and neither should
  * be: they are gates, not filters.
  */

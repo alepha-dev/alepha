@@ -12,7 +12,7 @@ export interface ProjectEpicsProgressProps {
  * plus one line of prose saying what the ticks mean.
  *
  * The prose is status-dependent because "3 of 13 done" answers a different
- * question depending on the status. A `planned` epic reports how much is
+ * question depending on the status. A `draft` epic reports how much is
  * *specified* and that none of it is released — the backlog gate
  * (`EpicVisibilityService`) is exactly what "not released" means, and quest
  * counts alone never say it. A `completed` epic reports when it completed,
@@ -46,7 +46,7 @@ const ProjectEpicsProgress = (props: ProjectEpicsProgressProps) => {
       ? tr("epic.progress.completedOn", {
           args: [String(i18n.l(props.epic.completedAt, { date: "ll" }))],
         })
-      : props.epic.status === "planned" && completed === 0 && inProgress === 0
+      : props.epic.status === "draft" && completed === 0 && inProgress === 0
         ? tr("epic.progress.specified", { args: [String(total)] })
         : [
             completed > 0 &&

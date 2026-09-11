@@ -58,7 +58,7 @@ export class ProjectReportsController {
 
   /**
    * `liveQuest`, additionally gated on the backlog: an **open** quest inside
-   * a `planned` epic is specified and not released yet, so it leaves both
+   * a `draft` epic is specified and not released yet, so it leaves both
    * the numerator and the denominator the way a shelved one does. Every
    * aggregate below filters on this rather than on `liveQuest` directly, so
    * the KPI tiles, the burn-up and the per-area breakdown cannot disagree
@@ -67,10 +67,9 @@ export class ProjectReportsController {
    * ⚠️ **Completed quests are exempt, and the exemption is the point.**
    * `liveQuest` needs no such carve-out because shelving carries an
    * invariant that makes one unnecessary: only a `new` quest can be
-   * shelved, so a shelved quest is never a completed one. Planned epics
-   * carry no equivalent invariant — nothing stops an owner flipping a
-   * `done` epic back to `planned` while its finished quests keep their
-   * `epicId`. Gating those would retroactively erase real work from member
+   * shelved, so a shelved quest is never a completed one. Draft epics
+   * carry no equivalent invariant: a completed quest may be filed into a
+   * `draft` epic, and it keeps its `epicId` there. Gating those would retroactively erase real work from member
    * credit, the burn-up and the weekly contribution series. Completed work
    * is history; the gate answers "is this open to work on", which is not a
    * question a finished quest has.
@@ -81,12 +80,12 @@ export class ProjectReportsController {
    * gate could get them both right.
    *
    * The epic-membership test itself — and both of its traps — lives in
-   * `EpicVisibilityService.plannedEpicSqlPredicate`, which returns
-   * `undefined` when there is no planned epic so no clause is emitted.
+   * `EpicVisibilityService.draftEpicSqlPredicate`, which returns
+   * `undefined` when there is no draft epic so no clause is emitted.
    */
-  protected questInScope(plannedEpicIds: number[]) {
+  protected questInScope(draftEpicIds: number[]) {
     const outsidePlannedEpic =
-      this.epicVisibility.plannedEpicSqlPredicate(plannedEpicIds);
+      this.epicVisibility.draftEpicSqlPredicate(draftEpicIds);
 
     if (!outsidePlannedEpic) {
       return this.liveQuest;
@@ -119,7 +118,7 @@ export class ProjectReportsController {
     },
     handler: async ({ params, user }) => {
       const inScope = this.questInScope(
-        await this.epicVisibility.plannedEpicIds(params.id),
+        await this.epicVisibility.draftEpicIds(params.id),
       );
 
       const daysAgo = (days: number) => this.sqlx.ago(days, "days");
@@ -331,7 +330,7 @@ export class ProjectReportsController {
     },
     handler: async ({ params, user }) => {
       const inScope = this.questInScope(
-        await this.epicVisibility.plannedEpicIds(params.id),
+        await this.epicVisibility.draftEpicIds(params.id),
       );
 
       const cycleHours = sql`COALESCE(AVG(${this.sqlx.dateDiff(
@@ -582,7 +581,7 @@ export class ProjectReportsController {
     },
     handler: async ({ params, user }) => {
       const inScope = this.questInScope(
-        await this.epicVisibility.plannedEpicIds(params.id),
+        await this.epicVisibility.draftEpicIds(params.id),
       );
 
       // Compose a user's display name: "first last" trimmed, else username,

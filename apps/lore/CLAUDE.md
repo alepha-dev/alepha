@@ -353,7 +353,7 @@ Live in `src/web/app/atoms/` (29 files). The project route loader fills the `cur
 - `currentFeedbackCountAtom` — pending-feedback badge for the project header
 - `currentBlightCountAtom` — open-blights badge for the project header
 - `currentQuestCountAtom` — open-quests badge for the project header (new: Quests has no feature gate, unlike Blights/Feedback, so this badge is always on)
-- `currentEpicCountAtom` — planned-epics badge. It exists because `countOpenQuests` applies the backlog gate, so quests inside a planned epic are left out of the Quests count and would otherwise be invisible in the sidebar
+- `currentEpicCountAtom` — draft-epics badge. It exists because `countOpenQuests` applies the backlog gate, so quests inside a draft epic are left out of the Quests count and would otherwise be invisible in the sidebar
 - `currentAreasAtom` — every area of the project, and the ONLY list the area pickers read. They used to read `project.areas`, a stored JSON array, which left ten production areas visible on the board and yet unselectable
 - `currentInstancesAtom` - every deployed copy in the project, the list the Apps page renders and Spotlight offers. Fetched behind `.catch(() => undefined)`: reads are member-gated but a transient failure must cost the list, not the page. Re-seeded by the `projectApp` loader too, so a deep link into one instance leaves the others readable. It was `currentSigilsAtom` until epic #30, and the rename is the model inversion in one line: the list is of copies, and a sigil is one thing a copy may have
 
@@ -546,8 +546,8 @@ numbers (`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
 `quest_*` makes.
 
 **An epic's status is the permission (epic #31), and only two of its four
-statuses are set by hand (#Q2223).** `planned | ready | in_progress |
-completed`: `setEpicStatus` moves between `planned` and `ready`, both ways,
+statuses are set by hand (#Q2223).** `draft | ready | in_progress |
+completed`: `setEpicStatus` moves between `draft` and `ready`, both ways,
 and takes no other value; the first quest of a ready epic accepted or
 assigned moves it to `in_progress` (`EpicWorkflowService.startIfReady`, which
 also attaches the default release), and the request that completes or
@@ -555,11 +555,11 @@ shelves its last open quest moves it to `completed`
 (`completeIfResolved`), which is terminal. Every rule lives on
 `EpicWorkflowService`, once: a quest is accepted, assigned or completed only
 while its epic is `ready` or `in_progress`; it enters, leaves or is deleted
-only while the epic is `planned` or `ready` (no carve-out for completed
+only while the epic is `draft` or `ready` (no carve-out for completed
 quests, by decision); a ready epic whose quests are all shelved stays ready.
 Shelve and unassign are never refused by status, and unshelve is refused
 only under `completed`. Folios attach in every status. The refusal strings
-are the interface an agent reads, so they name the epic; a planned epic's
+are the interface an agent reads, so they name the epic; a draft epic's
 refusal deliberately does NOT tell the agent to mark it ready, since whether
 a spec is done is the owner's call.
 
@@ -573,8 +573,18 @@ read, so a row left holding a retired value fails every epic query, the
 migration to seeded rows. The pinned vocabulary folio (#1002) carries the
 matrix in its first section.
 
+⚠️ **`planned` became `draft` on 2026-09-11 (#Q2269)**, migrated rather than
+relabelled, by `20260911141454_epic_draft_status`. That migration is
+hand-written: drizzle generated a rebuild of `epics` to move the column
+DEFAULT, and on D1 its `DROP TABLE` would have detached every quest and folio
+from its epic. So the physical DEFAULT stays `'planned'` while the snapshot
+says `'draft'`, accepted drift like the `projects.features` one below:
+`EpicController.createEpic` is the only insert path and writes the status
+itself. `test/epic-draft-migration.spec.ts` applies it to seeded rows. Why
+the name: folio #1290.
+
 ⚠️ **Publishing a roadmap publishes the titles of epics nobody has
-announced.** Planned epics are shown on purpose: an epic that is specified and
+announced.** Draft epics are shown on purpose: an epic that is specified and
 not started is exactly what a roadmap is for, and hiding it would make the
 page useless for the one question it exists to answer. The safeguard is the
 confirmation naming that outcome before the switch applies, not a filter in

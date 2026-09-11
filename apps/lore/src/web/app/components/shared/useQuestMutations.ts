@@ -33,7 +33,7 @@ import { type BulkOutcome, settleBulk } from "./bulkOutcome.ts";
  * next navigation fetches.
  *
  * `currentQuestCountAtom` is `OpenQuestScope`: not completed, not shelved,
- * and past the planned-epic backlog gate. So complete, shelve, unshelve and
+ * and past the draft-epic backlog gate. So complete, shelve, unshelve and
  * delete move it, and accept and unassign do not.
  *
  * ## Why the count is refetched rather than adjusted

@@ -24,26 +24,26 @@ interface FakeQuest {
  *
  * Records the exact query the component sends, and mirrors the real
  * backlog gate (`EpicVisibilityService.applyBacklogGate`): a quest filed
- * under a `planned` epic is dropped UNLESS the caller passes
- * `includePlanned: true`. `QuestDependencyPicker` is the only surface that
- * sets `dependsOn` from the UI, and it must keep offering a planned epic's
+ * under a `draft` epic is dropped UNLESS the caller passes
+ * `includeDrafts: true`. `QuestDependencyPicker` is the only surface that
+ * sets `dependsOn` from the UI, and it must keep offering a draft epic's
  * quest as a predecessor (design §5.3, direct addressing is never gated).
  */
 class FakeLinkProvider extends LinkProvider {
   quests: FakeQuest[] = [];
-  plannedEpicIds = new Set<number>();
-  calls: Array<{ query?: { includePlanned?: boolean } }> = [];
+  draftEpicIds = new Set<number>();
+  calls: Array<{ query?: { includeDrafts?: boolean } }> = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return {
-      getQuests: async (config: { query?: { includePlanned?: boolean } }) => {
+      getQuests: async (config: { query?: { includeDrafts?: boolean } }) => {
         this.calls.push({ query: config.query });
-        const includePlanned = config?.query?.includePlanned === true;
-        const visible = includePlanned
+        const includeDrafts = config?.query?.includeDrafts === true;
+        const visible = includeDrafts
           ? this.quests
           : this.quests.filter(
-              (q) => q.epicId == null || !this.plannedEpicIds.has(q.epicId),
+              (q) => q.epicId == null || !this.draftEpicIds.has(q.epicId),
             );
         return { content: visible };
       },
@@ -51,8 +51,8 @@ class FakeLinkProvider extends LinkProvider {
   }
 }
 
-describe("QuestDependencyPicker — offers a planned epic's quest as a predecessor", () => {
-  it("fetches with includePlanned: true so a planned-epic quest is in the candidate list", async ({
+describe("QuestDependencyPicker — offers a draft epic's quest as a predecessor", () => {
+  it("fetches with includeDrafts: true so a draft-epic quest is in the candidate list", async ({
     expect,
   }) => {
     const alepha = Alepha.create()
@@ -67,7 +67,7 @@ describe("QuestDependencyPicker — offers a planned epic's quest as a predecess
     fakeLinks.quests = [
       { id: 5, shortId: 5, title: "Setup pipeline", epicId: 7 },
     ];
-    fakeLinks.plannedEpicIds = new Set([7]);
+    fakeLinks.draftEpicIds = new Set([7]);
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -76,11 +76,11 @@ describe("QuestDependencyPicker — offers a planned epic's quest as a predecess
     );
 
     await waitFor(() => expect(fakeLinks.calls.length).toBe(1));
-    // Before the fix, this query omitted `includePlanned`, so the gate
-    // dropped the planned-epic quest from the candidate list — the
-    // dependency flow was unusable inside a planned epic.
+    // Before the fix, this query omitted `includeDrafts`, so the gate
+    // dropped the draft-epic quest from the candidate list — the
+    // dependency flow was unusable inside a draft epic.
     expect(fakeLinks.calls[0]?.query).toMatchObject({
-      includePlanned: true,
+      includeDrafts: true,
     });
   });
 });
