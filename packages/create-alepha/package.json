@@ -1,6 +1,6 @@
 {
   "name": "create-alepha",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "description": "Create a new Alepha project with a single command.",
   "keywords": [
     "alepha",
@@ -36,7 +36,7 @@
     "build": "tsdown"
   },
   "devDependencies": {
-    "alepha": "0.28.0",
+    "alepha": "0.29.0",
     "tsdown": "^0.23.0",
     "vite": "^8.2.2",
     "vitest": "^5.0.0"

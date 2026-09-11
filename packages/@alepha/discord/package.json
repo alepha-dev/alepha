@@ -48,13 +48,13 @@
     "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "devDependencies": {
-    "alepha": "0.28.0",
+    "alepha": "0.29.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^5.0.0"
   },
   "peerDependencies": {
-    "alepha": "^0.28.0"
+    "alepha": "^0.29.0"
   },
   "engines": {
     "node": ">=22.0.0"

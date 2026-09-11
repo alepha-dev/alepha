@@ -1,6 +1,6 @@
 {
   "name": "@alepha/lore",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "description": "The Lore client for Alepha apps: the sigil reporter, and the CLI that talks to a Lore instance.",
   "keywords": [
     "alepha",
@@ -75,7 +75,7 @@
     "build": "tsdown && node scripts/check-dts.ts"
   },
   "dependencies": {
-    "alepha": "^0.28.0"
+    "alepha": "^0.29.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

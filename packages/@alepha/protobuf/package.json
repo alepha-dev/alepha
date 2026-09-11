@@ -1,6 +1,6 @@
 {
   "name": "@alepha/protobuf",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
   "keywords": [
     "alepha",
@@ -53,7 +53,7 @@
     "protobufjs": "^8.8.0"
   },
   "devDependencies": {
-    "alepha": "0.28.0",
+    "alepha": "0.29.0",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
@@ -65,7 +65,7 @@
     }
   },
   "peerDependencies": {
-    "alepha": "^0.28.0"
+    "alepha": "^0.29.0"
   },
   "engines": {
     "node": ">=22.0.0"

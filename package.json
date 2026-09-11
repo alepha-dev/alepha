@@ -40,7 +40,7 @@
     "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^5.0.0",
     "@vitest/ui": "^5.0.0",
-    "alepha": "^0.28.0",
+    "alepha": "^0.29.0",
     "depcheck": "^1.4.7",
     "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
