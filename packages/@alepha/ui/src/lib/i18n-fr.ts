@@ -567,7 +567,9 @@ export const uiFr: Record<string, string> = {
   "admin.parameters.fieldNote": "Note",
   "admin.parameters.fieldTags": "Étiquettes",
   "admin.parameters.fieldVersion": "Version",
+  "admin.parameters.historyCollapse": "Masquer l'historique",
   "admin.parameters.historyEmpty": "Aucune version enregistrée",
+  "admin.parameters.historyExpand": "Afficher l'historique",
   "admin.parameters.historyHint":
     "Sélectionnez un paramètre pour voir ses versions.",
   "admin.parameters.historyTitle": "Historique",

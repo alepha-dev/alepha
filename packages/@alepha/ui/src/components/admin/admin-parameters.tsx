@@ -4,6 +4,7 @@ void React;
 
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import type { ControlProps } from "@alepha/ui/components/control/control";
+import { PaneRail } from "@alepha/ui/components/pane-rail/pane-rail";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
@@ -30,6 +31,7 @@ import {
   EyeOff,
   FileCog,
   History as HistoryIcon,
+  PanelRightClose,
   Settings2,
   Trash2,
   Upload,
@@ -37,6 +39,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 
 import { ParameterDiffDialog } from "./parameter-diff-dialog.tsx";
+import { useParameterHistoryCollapsed } from "./parameter-history-collapsed.ts";
 import { ParameterHistoryItem } from "./parameter-history-item.tsx";
 import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
 
@@ -99,6 +102,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
   // leftover from a rename or a module this process did not load, which is
   // also why nothing here deletes one on its own.
   const [showOrphans, setShowOrphans] = useState(false);
+  const [historyCollapsed, toggleHistory] = useParameterHistoryCollapsed();
 
   const { data: treeNodes } = useQuery(
     { handler: () => client.getParameterTree() as Promise<ParamNode[]> },
@@ -284,10 +288,13 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
         // Desktop-first 3-pane (tree | editor | history). Columns narrow on
         // laptops (lg) and reach full width at xl; below lg the panes stack
         // into a single scrollable column. The history pane only appears once
-        // a parameter is selected, so the grid drops a column until then.
-        selected
-          ? "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_260px] xl:grid-cols-[280px_minmax(0,1fr)_300px]"
-          : "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]",
+        // a parameter is selected, so the grid drops a column until then, and
+        // collapsed it is a 36px rail, so the form takes the rest.
+        !selected
+          ? "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]"
+          : historyCollapsed
+            ? "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_36px] xl:grid-cols-[280px_minmax(0,1fr)_36px]"
+            : "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_260px] xl:grid-cols-[280px_minmax(0,1fr)_300px]",
       )}
     >
       <ParameterTreePane
@@ -317,12 +324,28 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
           );
         }}
       />
+      {selected &&
+        historyCollapsed && (
+          // The rail exists only where the pane is a column (lg and up). Below
+          // that the panes stack, the history sits under the form and frees no
+          // width by closing, so it stays open there whatever was stored.
+          <PaneRail
+            side="right"
+            label={tr("admin.parameters.historyExpand", {
+              default: "Show history",
+            })}
+            onExpand={toggleHistory}
+            className="bg-card hidden rounded-r-lg border lg:flex"
+          />
+        )}
       {selected && (
         <ParameterHistoryPane
           key={`history-${selected}`}
           name={selected}
           reloadKey={reloadKey}
           onRollback={rollback.run}
+          onCollapse={toggleHistory}
+          className={historyCollapsed ? "lg:hidden" : undefined}
         />
       )}
     </div>
@@ -887,6 +910,8 @@ interface ParameterHistoryPaneProps {
   name: string | undefined;
   reloadKey: number;
   onRollback: (version: number) => Promise<void>;
+  onCollapse: () => void;
+  className?: string;
 }
 
 const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
@@ -906,10 +931,31 @@ const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
   );
 
   return (
-    <div className="bg-card flex min-h-0 flex-col overflow-hidden rounded-r-lg border">
+    <div
+      className={cn(
+        "bg-card flex min-h-0 flex-col overflow-hidden rounded-r-lg border",
+        props.className,
+      )}
+    >
       <div className="text-muted-foreground flex items-center gap-1.5 px-3 py-2 text-xs font-medium tracking-wide uppercase">
         <HistoryIcon className="size-3.5" />
         {tr("admin.parameters.historyTitle", { default: "History" })}
+        {/* Closing the pane from inside it, the way Lore's folio inspector
+            does. Offered only where the pane is a column: stacked under the
+            form, closing it would free no width. */}
+        <button
+          type="button"
+          onClick={props.onCollapse}
+          aria-label={tr("admin.parameters.historyCollapse", {
+            default: "Hide history",
+          })}
+          title={tr("admin.parameters.historyCollapse", {
+            default: "Hide history",
+          })}
+          className="text-muted-foreground hover:text-foreground hover:bg-accent ml-auto hidden size-6.5 items-center justify-center rounded-md transition-colors lg:flex"
+        >
+          <PanelRightClose className="size-3.5" />
+        </button>
       </div>
       {!props.name ? (
         <span className="text-muted-foreground px-3 py-2 text-xs">
