@@ -1,5 +1,5 @@
+import { PaneRail } from "@alepha/ui/components/pane-rail/pane-rail";
 import { useI18n } from "alepha/react/i18n";
-import { PanelLeftOpen } from "lucide-react";
 import type { ReactElement } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -9,7 +9,7 @@ export interface FolioTreeRailProps {
 }
 
 /**
- * The way back once the tree is collapsed: a 36px strip with one button,
+ * The way back once the tree is collapsed: the kit's 36px `PaneRail`,
  * mirroring `FolioInspectorRail` on the other side of the document.
  *
  * It exists because the collapse button in the tree's own header
@@ -28,17 +28,11 @@ const FolioTreeRail = (props: FolioTreeRailProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <div className="border-border flex w-9 flex-none flex-col items-center border-r pt-1.5">
-      <button
-        type="button"
-        onClick={props.onExpand}
-        aria-label={String(tr("folios.editor.tree.expand"))}
-        title={String(tr("folios.editor.tree.expand"))}
-        className="text-muted-foreground hover:text-foreground hover:bg-accent flex size-7 items-center justify-center rounded-md transition-colors"
-      >
-        <PanelLeftOpen className="size-4" />
-      </button>
-    </div>
+    <PaneRail
+      side="left"
+      label={String(tr("folios.editor.tree.expand"))}
+      onExpand={props.onExpand}
+    />
   );
 };
 
