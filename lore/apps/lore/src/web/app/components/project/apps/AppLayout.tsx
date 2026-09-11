@@ -239,8 +239,9 @@ const AppLayout = () => {
           (#1747, feedback #2078): it used to be a shared `p-4` here, which
           Explore had no way to opt out of, so the query builder sat in a
           gutter with a strip of plate showing underneath it. Overview,
-          Analytics, Vitals, Artifacts and Settings each carry their own `p-4`
-          now and render identically; Explore carries none. */}
+          Analytics, Vitals, Artifacts and Settings each carry their own `p-2`
+          now (the page frame since #Q2266) and render identically; Explore
+          carries none. */}
       <NestedView />
     </PlateLayout>
   );

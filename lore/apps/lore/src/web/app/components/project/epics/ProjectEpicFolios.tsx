@@ -46,7 +46,7 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   const canAttach = epicApi.attachFolio.can();
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-4">
+    <div className="min-h-0 flex-1 overflow-auto p-2">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>{tr("epic.folios.title")}</CardTitle>

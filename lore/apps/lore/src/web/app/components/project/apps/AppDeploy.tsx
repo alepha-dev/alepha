@@ -68,7 +68,7 @@ const AppDeploy = () => {
 
   if (!instance.estateId) {
     return (
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4 p-2">
         <Card data-testid="app-deploy-no-estate">
           <CardHeader>
             <CardTitle className="text-base">{tr("app.deploy")}</CardTitle>
@@ -125,7 +125,7 @@ const AppDeploy = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-2">
       <AppDeployRuns
         projectId={project.id}
         instanceId={instance.id}
