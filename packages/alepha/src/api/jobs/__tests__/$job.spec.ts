@@ -1278,11 +1278,16 @@ describe("$job — cron + retry (outbox path)", () => {
     expect(attempts).toBe(1);
 
     // The row exists in the outbox after the cron tick (unlike inline crons,
-    // which only persist on error).
+    // which only persist on error). Poll it to `scheduled` rather than read it
+    // once: `attempts` moves inside the handler, BEFORE the runner's failure
+    // path writes the row back from `running`, so a single read right after
+    // the counter lost that race on a loaded runner.
     const provider = alepha.inject(JobProvider);
-    const rows1 = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
-    });
+    const rows1 = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.tick" } } }),
+      (r) => r.length === 1 && r[0].status === "scheduled",
+      { label: "row rescheduled after the first attempt" },
+    );
     expect(rows1).toHaveLength(1);
     expect(rows1[0].status).toBe("scheduled");
 
