@@ -57,7 +57,7 @@ const setup = async (): Promise<Ctx> => {
 
 const root: UserAccountToken = {
   id: "00000000-0000-4000-8000-0000000000ff",
-  realm: "default",
+  realm: "users",
   ownership: false,
 };
 
