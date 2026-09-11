@@ -891,6 +891,26 @@ class WebhookController {
 
 Uses timing-safe comparison to prevent timing attacks. Returns 401 with `WWW-Authenticate` header on failure.
 
+An empty password is refused when the middleware is declared, so an app whose secret is unset fails to start rather than letting in anyone who sends the username with no password. Declare the variable as required, as above, rather than reading an optional one as `?? ""`.
+
+To put a whole path family behind the same credentials (pages and static files included, not only actions), hand it to `$middleware`:
+
+```typescript
+import { $env, z } from "alepha";
+import { $basicAuth } from "alepha/security";
+import { $middleware } from "alepha/server";
+
+class SiteAuth {
+  protected readonly env = $env(z.object({ SITE_PASSWORD: z.text() }));
+
+  site = $middleware({
+    path: "/",
+    exclude: ["/health"],
+    use: [$basicAuth({ username: "admin", password: this.env.SITE_PASSWORD })],
+  });
+}
+```
+
 ## Service Accounts
 
 `$serviceAccount` manages tokens for service-to-service communication:

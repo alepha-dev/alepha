@@ -22,9 +22,16 @@ class DevToolsController {
 }
 ```
 
+**An empty password is refused when the middleware is declared**, with an
+`AlephaError`. It would admit anyone who sends the username with no
+password, and the usual way to get one is an unset variable read as
+`password: this.env.SECRET ?? ""`: the gate then fails open, silently,
+exactly when its configuration is missing. Refusing at declaration makes
+that app fail to start instead.
+
 ## Options
 
-| Option     | Type     | Required | Description |
-| ---------- | -------- | -------- | ----------- |
-| `username` | `string` | Yes      |             |
-| `password` | `string` | Yes      |             |
+| Option     | Type     | Required | Description                          |
+| ---------- | -------- | -------- | ------------------------------------ |
+| `username` | `string` | Yes      |                                      |
+| `password` | `string` | Yes      | Must not be empty: see `$basicAuth`. |

@@ -164,31 +164,30 @@ describe("Basic Authentication", () => {
       await edgeAlepha.stop();
     });
 
-    it("should handle empty password", async () => {
-      class EmptyPasswordApp {
-        emptyPasswordAction = $action({
-          use: [$basicAuth({ username: "user", password: "" })],
+    it("should refuse an empty password when it is declared", () => {
+      // An empty password admitted `user:` with no password at all: an unset
+      // variable read as `?? ""` turned the gate into an open door (#Q2281).
+      expect(() => $basicAuth({ username: "user", password: "" })).toThrow(
+        /non-empty password/,
+      );
+    });
+
+    it("should refuse to build an app whose basic auth has an empty password", () => {
+      const env: { SECRET?: string } = {};
+      class UnsetSecretApp {
+        protectedAction = $action({
+          use: [$basicAuth({ username: "user", password: env.SECRET ?? "" })],
           handler: () => "success",
         });
       }
 
-      const emptyAlepha = Alepha.create()
-        .with(AlephaServer)
-        .with(AlephaSecurity)
-        .with(EmptyPasswordApp);
-
-      await emptyAlepha.start();
-
-      const app = emptyAlepha.inject(EmptyPasswordApp);
-
-      const result = await app.emptyPasswordAction.fetch({
-        headers: {
-          authorization: `Basic ${Buffer.from("user:").toString("base64")}`,
-        },
-      });
-      expect(result.data).toBe("success");
-
-      await emptyAlepha.stop();
+      expect(() =>
+        Alepha.create()
+          .with(AlephaServer)
+          .with(AlephaSecurity)
+          .with(UnsetSecretApp)
+          .inject(UnsetSecretApp),
+      ).toThrow(/non-empty password/);
     });
 
     it("should handle special characters in credentials", async () => {

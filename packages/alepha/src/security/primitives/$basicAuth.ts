@@ -1,10 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 
-import { createMiddleware, type Middleware } from "alepha";
+import { AlephaError, createMiddleware, type Middleware } from "alepha";
 import { HttpError, type ServerRequest } from "alepha/server";
 
 export interface BasicAuthOptions {
   username: string;
+  /**
+   * Must not be empty: see {@link $basicAuth}.
+   */
   password: string;
 }
 
@@ -22,8 +25,22 @@ export interface BasicAuthOptions {
  *   });
  * }
  * ```
+ *
+ * **An empty password is refused when the middleware is declared**, with an
+ * `AlephaError`. It would admit anyone who sends the username with no
+ * password, and the usual way to get one is an unset variable read as
+ * `password: this.env.SECRET ?? ""`: the gate then fails open, silently,
+ * exactly when its configuration is missing. Refusing at declaration makes
+ * that app fail to start instead.
  */
 export function $basicAuth(options: BasicAuthOptions): Middleware {
+  if (!options.password) {
+    throw new AlephaError(
+      "$basicAuth needs a non-empty password: an empty one admits anyone who " +
+        "sends the username with no password. If it comes from an environment " +
+        "variable, that variable is unset or empty.",
+    );
+  }
   return createMiddleware({
     name: "$basicAuth",
     options: options as unknown as Record<string, unknown>,
