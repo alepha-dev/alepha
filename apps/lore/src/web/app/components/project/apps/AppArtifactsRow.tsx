@@ -8,6 +8,7 @@ import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
+import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 
 export interface AppArtifactsRowProps {
   group: ArtifactGroup;
@@ -111,8 +112,8 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
               <Server className="size-3 shrink-0" aria-hidden />
             )}
             {variant.format === "image"
-              ? `${variant.runtime} image`
-              : variant.runtime}
+              ? `${artifactRuntimeLabel(variant.runtime)} image`
+              : artifactRuntimeLabel(variant.runtime)}
           </Badge>
         ))}
       </span>
