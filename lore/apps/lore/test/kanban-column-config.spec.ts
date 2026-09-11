@@ -124,7 +124,11 @@ describe("KanbanColumnConfig", () => {
         project(["Doing"], { Deleted: { status: "completed", wipLimit: 9 } }),
         LABELS,
       );
-      expect(columns.map((c) => c.name)).toEqual(["To do", "Doing", "Completed"]);
+      expect(columns.map((c) => c.name)).toEqual([
+        "To do",
+        "Doing",
+        "Completed",
+      ]);
     });
   });
 

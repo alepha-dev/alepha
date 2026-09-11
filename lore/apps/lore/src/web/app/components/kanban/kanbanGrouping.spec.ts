@@ -168,7 +168,10 @@ describe("KanbanGrouping", () => {
       // A frame with no done lane at all is legal: some boards never keep
       // finished work on screen. A completed quest must then be absent,
       // not silently parked in an in-progress column.
-      const noDone = [column("Backlog", "todo"), column("Doing", "in_progress")];
+      const noDone = [
+        column("Backlog", "todo"),
+        column("Doing", "in_progress"),
+      ];
       const byKey = grouping.group([quest(1, { status: "completed" })], noDone);
 
       expect(Object.values(byKey).flat()).toEqual([]);

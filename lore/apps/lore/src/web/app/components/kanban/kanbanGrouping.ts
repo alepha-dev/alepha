@@ -51,7 +51,11 @@ export class KanbanGrouping {
       // `heldAt` sits directly above `acceptedAt`: lift the hold and this
       // is exactly the status that comes back.
       const lane =
-        status === "on_hold" ? (quest.acceptedAt ? "in_progress" : "todo") : status;
+        status === "on_hold"
+          ? quest.acceptedAt
+            ? "in_progress"
+            : "todo"
+          : status;
 
       const candidates = columns.filter((col) => col.kind === lane);
       if (candidates.length === 0) continue;

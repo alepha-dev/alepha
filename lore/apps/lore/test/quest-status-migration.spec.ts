@@ -42,7 +42,9 @@ describe("quest status names migration", () => {
       .join("\n");
 
   const target = migrations.find((name) =>
-    statementsOf(name).includes("UPDATE `projects`\nSET `kanban_column_config`"),
+    statementsOf(name).includes(
+      "UPDATE `projects`\nSET `kanban_column_config`",
+    ),
   );
 
   it("exists", ({ expect }) => {
@@ -154,7 +156,9 @@ describe("quest status names migration", () => {
     ]);
 
     expect(
-      JSON.parse(db.prepare("SELECT filters FROM dashboard_cards").get().filters),
+      JSON.parse(
+        db.prepare("SELECT filters FROM dashboard_cards").get().filters,
+      ),
     ).toEqual({ statuses: ["in_progress"], extra: 1 });
 
     db.close();

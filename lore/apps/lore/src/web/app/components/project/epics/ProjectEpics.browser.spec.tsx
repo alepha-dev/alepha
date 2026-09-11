@@ -651,9 +651,7 @@ describe("ProjectEpics - the status filter", () => {
     it("offers the open releases and No release, never a published one", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft")]);
 
-      const entries = await openReleases(
-        await openRowMenu("#E1 - Draft epic"),
-      );
+      const entries = await openReleases(await openRowMenu("#E1 - Draft epic"));
       const labels = entries.map((entry) => entry.textContent ?? "");
       expect(labels.join(" ")).toContain("0.29.0");
       expect(labels.join(" ")).toContain("0.30.0");
@@ -666,9 +664,7 @@ describe("ProjectEpics - the status filter", () => {
     it("marks the release the epic is already in", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft", 9)]);
 
-      const entries = await openReleases(
-        await openRowMenu("#E1 - Draft epic"),
-      );
+      const entries = await openReleases(await openRowMenu("#E1 - Draft epic"));
       const checked = entries.filter(
         (entry) => entry.getAttribute("aria-checked") === "true",
       );
@@ -679,9 +675,7 @@ describe("ProjectEpics - the status filter", () => {
     it("marks No release when the epic is in none", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft")]);
 
-      const entries = await openReleases(
-        await openRowMenu("#E1 - Draft epic"),
-      );
+      const entries = await openReleases(await openRowMenu("#E1 - Draft epic"));
       const checked = entries.filter(
         (entry) => entry.getAttribute("aria-checked") === "true",
       );
@@ -699,9 +693,7 @@ describe("ProjectEpics - the status filter", () => {
     it("shows a published attachment and refuses to move it", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft", 7)]);
 
-      const entries = await openReleases(
-        await openRowMenu("#E1 - Draft epic"),
-      );
+      const entries = await openReleases(await openRowMenu("#E1 - Draft epic"));
       const labels = entries.map((entry) => entry.textContent ?? "");
       expect(labels.join(" ")).toContain("0.28.0");
       expect(

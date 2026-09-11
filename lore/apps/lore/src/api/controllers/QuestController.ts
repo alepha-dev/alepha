@@ -474,8 +474,8 @@ export class QuestController {
    *
    * ⚠️ **`on_hold` is EXCLUSIVE with `todo` and `in_progress`, and it has to be.**
    * A held quest still has its `acceptedAt` (or its absence) underneath, so
-   * without the `heldAt: isNull` conjunct below, filtering "New" would
-   * return rows the table renders with a **Held** badge — a filter
+   * without the `heldAt: isNull` conjunct below, filtering "To do" would
+   * return rows the table renders with an **On hold** badge, a filter
    * disagreeing with the label on its own results. This mirrors the
    * precedence in `QuestResourceMapper.questStatus`: whatever that returns
    * for a row is the one bucket the filter puts it in.

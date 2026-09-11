@@ -28,8 +28,8 @@ import { formatReference } from "../../shared/element/typedReference.ts";
 import { useRank } from "../../shared/useRank.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
-import QuestCreate from "../quest/QuestCreate.tsx";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
+import QuestCreate from "../quest/QuestCreate.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 
 export interface ProjectFeedbackDetailProps {

@@ -112,8 +112,9 @@ describe("epic draft-status migration", () => {
     expect(statusOf(3)).toBe("in_progress");
     expect(statusOf(4)).toBe("completed");
     expect(
-      db.prepare("SELECT epic_id AS epicId FROM quests WHERE short_id = 1").get()
-        .epicId,
+      db
+        .prepare("SELECT epic_id AS epicId FROM quests WHERE short_id = 1")
+        .get().epicId,
     ).toBe(1);
 
     // The property the whole migration exists for: nothing left that the

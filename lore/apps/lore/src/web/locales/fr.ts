@@ -2203,8 +2203,7 @@ export default {
 
   "dashboard.metric.unknown": "Carte inconnue",
   "dashboard.metric.activeQuests": "Quetes actives",
-  "dashboard.metric.activeQuests.hint":
-    "à faire + en cours, un projet ou tous",
+  "dashboard.metric.activeQuests.hint": "à faire + en cours, un projet ou tous",
   "dashboard.metric.heldQuests": "En pause",
   "dashboard.metric.heldQuests.hint":
     "quetes ouvertes en pause, en attente de quelque chose",

@@ -405,9 +405,7 @@ describe("ProjectEpicQuests - columns", () => {
     const area = within(sheet).getAllByRole("combobox")[0]!;
     fireEvent.keyDown(area, { key: "ArrowDown" });
     fireEvent.click(await screen.findByRole("option", { name: /General/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create quest" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Create quest" }));
 
     await waitFor(() => expect(links.created).toEqual(["Quest for the epic"]));
     // The page, not the sheet, files it: `onCreated` carries the quest and
