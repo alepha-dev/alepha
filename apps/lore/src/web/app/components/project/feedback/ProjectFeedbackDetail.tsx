@@ -29,6 +29,7 @@ import { useRank } from "../../shared/useRank.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
+import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import FeedbackThread from "./FeedbackThread.tsx";
 
 export interface ProjectFeedbackDetailProps {
@@ -178,8 +179,8 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const tags = feedback.tags ?? [];
 
   const questStatusColor: Record<string, string> = {
-    new: "bg-slate-500/20 text-slate-300",
-    accepted: "bg-amber-500/20 text-amber-300",
+    todo: "bg-slate-500/20 text-slate-300",
+    in_progress: "bg-amber-500/20 text-amber-300",
     completed: "bg-emerald-500/20 text-emerald-300",
     shelved: "bg-muted text-muted-foreground",
   };
@@ -318,7 +319,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                           questStatusColor[q.status] ?? ""
                         }`}
                       >
-                        {tr(`quest.status.${q.status}` as never)}
+                        {tr(QUEST_STATUS_LABEL_KEYS[q.status])}
                       </span>
                     </a>
                   </li>

@@ -184,9 +184,9 @@ export class KanbanController {
     const status = this.questMapper.questStatus(quest);
     return this.orderForBoard(rows).filter((row) => {
       if (this.questMapper.questStatus(row) !== status) return false;
-      // Within `accepted`, the sub-column is part of the identity: two
+      // Within `in_progress`, the sub-column is part of the identity: two
       // lanes side by side are two independent orderings.
-      if (status !== "accepted") return true;
+      if (status !== "in_progress") return true;
       return (
         (row.kanbanColumn ?? undefined) === (quest.kanbanColumn ?? undefined)
       );

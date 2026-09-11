@@ -6,7 +6,7 @@ import { quests } from "../entities/quests.ts";
 /**
  * The single place the backlog gate is computed.
  *
- * A quest inside a `draft` epic keeps `status: "new"` and
+ * A quest inside a `draft` epic keeps `status: "todo"` and
  * `shelvedAt: undefined` — the gate NEVER writes to a quest row.
  * Activating an epic is one write that releases all of its quests.
  *

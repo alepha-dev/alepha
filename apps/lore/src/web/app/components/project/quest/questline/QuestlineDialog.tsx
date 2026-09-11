@@ -49,7 +49,7 @@ export interface QuestlineDialogProps {
  * ### Why `context="dialog"` and not `card`
  *
  * It mounted as `card` first, which was wrong in four ways at once: a back
- * arrow where a popup wants an X, a lifecycle verb ("Accept the Quest") on a
+ * arrow where a popup wants an X, a lifecycle verb ("Accept the quest") on a
  * surface you opened to glance at, a title that went nowhere though its page
  * is one click away, and a rail that scrolled off with the body. `QuestView`
  * carries three of the four as its own `dialog` branch, so this file stays

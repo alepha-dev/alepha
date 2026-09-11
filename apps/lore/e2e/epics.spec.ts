@@ -1453,15 +1453,15 @@ test.describe("Epics — the lifecycle on the epic page", () => {
 
     await test.step("a ready epic keeps its plan open", async () => {
       await page.goto(`/${slug}/epics/${first.number}?tab=quests`);
-      await expect(page.getByRole("button", { name: "New Quest" })).toBeVisible(
+      await expect(page.getByRole("button", { name: "New quest" })).toBeVisible(
         { timeout: 15_000 },
       );
       await markReady();
       await expect(
-        page.getByRole("button", { name: "New Quest" }),
+        page.getByRole("button", { name: "New quest" }),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Attach Quest" }),
+        page.getByRole("button", { name: "Attach quest" }),
       ).toBeVisible();
     });
 
@@ -1479,11 +1479,11 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       await expect(
         page.getByRole("button", { name: /Mark as ready|Back to draft/ }),
       ).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "New Quest" })).toHaveCount(
+      await expect(page.getByRole("button", { name: "New quest" })).toHaveCount(
         0,
       );
       await expect(
-        page.getByRole("button", { name: "Attach Quest" }),
+        page.getByRole("button", { name: "Attach quest" }),
       ).toHaveCount(0);
 
       const late = await newQuest(`Late${t}`);

@@ -25,7 +25,7 @@ const quest = (
     title: `Quest ${id}`,
     kanbanColumn: options.kanbanColumn,
     updatedAt: options.updatedAt ?? "2026-08-01T00:00:00.000Z",
-    metadata: { status: options.status ?? "new" },
+    metadata: { status: options.status ?? "todo" },
   }) as unknown as QuestResource;
 
 const column = (
@@ -43,8 +43,8 @@ const column = (
  * The frame a project with no column config resolves to.
  */
 const defaultFrame = (...accepted: string[]): ColumnDescriptor[] => [
-  column("New", "new"),
-  ...accepted.map((name) => column(name, "accepted")),
+  column("To do", "todo"),
+  ...accepted.map((name) => column(name, "in_progress")),
   column("Completed", "completed"),
 ];
 
@@ -56,7 +56,7 @@ describe("KanbanGrouping", () => {
       const byKey = grouping.group([], defaultFrame("In progress", "Review"));
 
       expect(Object.keys(byKey)).toEqual([
-        "column:New",
+        "column:To do",
         "column:In progress",
         "column:Review",
         "column:Completed",
@@ -64,19 +64,19 @@ describe("KanbanGrouping", () => {
       expect(Object.values(byKey).every((b) => b.length === 0)).toBe(true);
     });
 
-    it("puts a new quest in New and a completed one in Completed", () => {
+    it("puts a to-do quest in To do and a completed one in Completed", () => {
       const byKey = grouping.group(
         [quest(1), quest(2, { status: "completed" })],
         defaultFrame("In progress"),
       );
 
-      expect(byKey["column:New"].map((q) => q.id)).toEqual([1]);
+      expect(byKey["column:To do"].map((q) => q.id)).toEqual([1]);
       expect(byKey["column:Completed"].map((q) => q.id)).toEqual([2]);
     });
 
     it("puts an accepted quest in the column it names", () => {
       const byKey = grouping.group(
-        [quest(1, { status: "accepted", kanbanColumn: "Review" })],
+        [quest(1, { status: "in_progress", kanbanColumn: "Review" })],
         defaultFrame("In progress", "Review"),
       );
 
@@ -86,7 +86,7 @@ describe("KanbanGrouping", () => {
 
     it("falls back to the first lane of its status when the column is gone", () => {
       const byKey = grouping.group(
-        [quest(1, { status: "accepted", kanbanColumn: "Deleted lane" })],
+        [quest(1, { status: "in_progress", kanbanColumn: "Deleted lane" })],
         defaultFrame("In progress", "Review"),
       );
 
@@ -114,8 +114,8 @@ describe("KanbanGrouping", () => {
    */
   describe("a configurable frame", () => {
     const twoDone: ColumnDescriptor[] = [
-      column("Backlog", "new"),
-      column("Doing", "accepted"),
+      column("Backlog", "todo"),
+      column("Doing", "in_progress"),
       column("Shipped", "completed"),
       column("Archived", "completed"),
     ];
@@ -140,7 +140,7 @@ describe("KanbanGrouping", () => {
     });
 
     it("uses a project's own not-started lane instead of a synthesized one", () => {
-      const byKey = grouping.group([quest(1, { status: "new" })], twoDone);
+      const byKey = grouping.group([quest(1, { status: "todo" })], twoDone);
       expect(byKey["column:Backlog"].map((q) => q.id)).toEqual([1]);
     });
 
@@ -168,7 +168,7 @@ describe("KanbanGrouping", () => {
       // A frame with no done lane at all is legal: some boards never keep
       // finished work on screen. A completed quest must then be absent,
       // not silently parked in an in-progress column.
-      const noDone = [column("Backlog", "new"), column("Doing", "accepted")];
+      const noDone = [column("Backlog", "todo"), column("Doing", "in_progress")];
       const byKey = grouping.group([quest(1, { status: "completed" })], noDone);
 
       expect(Object.values(byKey).flat()).toEqual([]);
@@ -178,7 +178,7 @@ describe("KanbanGrouping", () => {
   /**
    * The bug this class was extracted for. Shelving is the gesture that means
    * "I am not doing this"; before the guard, a shelved quest missed both the
-   * `new` and `completed` branches and landed in the accepted fallback, so
+   * `todo` and `completed` branches and landed in the accepted fallback, so
    * the card visibly moved FORWARD into In progress.
    */
   describe("shelved quests", () => {
@@ -193,7 +193,7 @@ describe("KanbanGrouping", () => {
 
     it("does not move a shelved quest into the first accepted lane", () => {
       const byKey = grouping.group(
-        [quest(1, { status: "shelved" }), quest(2, { status: "accepted" })],
+        [quest(1, { status: "shelved" }), quest(2, { status: "in_progress" })],
         defaultFrame("In progress"),
       );
 

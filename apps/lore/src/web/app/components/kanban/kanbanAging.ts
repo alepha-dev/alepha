@@ -28,7 +28,7 @@ export type AgingLevel = "fresh" | "aging" | "stale";
  */
 export class KanbanAging {
   levelOf(quest: QuestResource, dt: DateTimeProvider): AgingLevel {
-    if (quest.metadata.status !== "accepted") return "fresh";
+    if (quest.metadata.status !== "in_progress") return "fresh";
 
     const since = this.enteredAt(quest);
     if (!since) return "fresh";

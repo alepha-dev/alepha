@@ -129,7 +129,7 @@ describe("assignQuest", () => {
 
       expect(res.data.acceptedBy).toBe(other.id);
       expect(res.data.acceptedAt).toBeTruthy();
-      expect(res.data.metadata.status).toBe("accepted");
+      expect(res.data.metadata.status).toBe("in_progress");
     });
 
     it("records who received it, so the history is not just 'assigned'", async () => {

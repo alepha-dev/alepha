@@ -45,9 +45,9 @@ export const dashboardFilterChipKeys = (
 
   if (card.metric === "activeQuests") {
     const statuses = (filters.statuses as string[]) ?? [];
-    if (statuses.length === 2) return ["dashboard.filter.newAccepted"];
-    if (statuses[0] === "new") return ["dashboard.filter.new"];
-    if (statuses[0] === "accepted") return ["dashboard.filter.accepted"];
+    if (statuses.length === 2) return ["dashboard.filter.todoInProgress"];
+    if (statuses[0] === "todo") return ["dashboard.filter.todo"];
+    if (statuses[0] === "in_progress") return ["dashboard.filter.inProgress"];
     return [];
   }
 

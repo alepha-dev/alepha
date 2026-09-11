@@ -34,8 +34,8 @@ export const reportsOverviewSchema = z.object({
 
 export const reportsQuestsSchema = z.object({
   funnel: z.object({
-    new: z.integer(),
-    accepted: z.integer(),
+    todo: z.integer(),
+    inProgress: z.integer(),
     completed: z.integer(),
   }),
   byArea: z.array(

@@ -109,7 +109,7 @@ export class EpicWorkflowService {
    *
    * Shelve, hold and unassign are deliberately NOT gated: they move a quest
    * toward resolution or away from work, and shelving is the only exit for a
-   * `new` quest sitting in a `completed` epic from before this rule existed.
+   * `todo` quest sitting in a `completed` epic from before this rule existed.
    *
    * Unshelve and unhold are also allowed while `draft` or `ready`.
    * Shelving, holding and their reversals there are edits to an open plan

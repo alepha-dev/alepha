@@ -90,7 +90,7 @@ const ProjectActionsCreateButton = () => {
   // required keys take production down when one goes missing, and moving the
   // storage is what let the name move with it.
   //
-  // ⚠️ New Quest was the one item gated on the PERMISSION alone. It reads as
+  // ⚠️ New quest was the one item gated on the PERMISSION alone. It reads as
   // an oversight rather than a decision because every other item here already
   // named its capability, and it left a Knowledge-only project offering the
   // one create that answers 400 - the first thing a reader would try.
@@ -146,7 +146,7 @@ const ProjectActionsCreateButton = () => {
   return (
     <>
       {/* One ghost "+" like the header's other icon buttons, and the whole
-          create vocabulary behind it, New Quest first (feedback #2058).
+          create vocabulary behind it, New quest first (feedback #2058).
           It replaced a green split button whose main half was Create Quest:
           the lists carry their own labelled create action now (quest
           #1682), so the header no longer has to shout. Icon-only, so it

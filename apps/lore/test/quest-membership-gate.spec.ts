@@ -207,7 +207,7 @@ describe("QuestController membership gate", () => {
     // it; a 404 would mean the row lookup came back empty, which is the
     // failure the helper was written to stop reporting.
     await expect(
-      ctx.controller.abandonQuest({ params: { id: quest.id } }, { user }),
+      ctx.controller.unassignQuest({ params: { id: quest.id } }, { user }),
     ).rejects.toThrow(BadRequestError);
   });
 

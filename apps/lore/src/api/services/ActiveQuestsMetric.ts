@@ -26,7 +26,7 @@ import { OpenQuestScope } from "./OpenQuestScope.ts";
  *
  * ## The link deliberately disagrees with the count
  *
- * ⚠️ The tile counts `new + accepted`; clicking opens `status=new` only. The
+ * ⚠️ The tile counts `todo + in_progress`; clicking opens `status=todo` only. The
  * questlog rail down the left of the quests page already shows the accepted
  * ones, so the useful half of the number to open is the half that is not
  * already on screen. This is the concrete case the registry's separate
@@ -98,7 +98,7 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
     const projectIds = entry.scope.projectIds;
 
     if (projectIds.length === 0) {
-      return { value: 0, detail: { newCount: 0, acceptedCount: 0 } };
+      return { value: 0, detail: { todoCount: 0, inProgressCount: 0 } };
     }
 
     const scoped = new Set(projectIds);
@@ -106,15 +106,15 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
     const counted = rows.filter(
       (row) =>
         scoped.has(row.projectId) &&
-        wanted.has(row.acceptedAt ? "accepted" : "new"),
+        wanted.has(row.acceptedAt ? "in_progress" : "todo"),
     );
 
-    const newCount = counted.filter((row) => !row.acceptedAt).length;
-    const acceptedCount = counted.length - newCount;
+    const todoCount = counted.filter((row) => !row.acceptedAt).length;
+    const inProgressCount = counted.length - todoCount;
 
     return {
       value: counted.length,
-      detail: { newCount, acceptedCount },
+      detail: { todoCount, inProgressCount },
       link: this.catalog.get(this.metric).link(entry.card.scope, {
         projectSlug: this.busiestProject(entry.scope.projects, counted)?.slug,
       }),

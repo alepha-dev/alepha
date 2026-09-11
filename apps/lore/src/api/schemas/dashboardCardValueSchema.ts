@@ -31,7 +31,7 @@ export const dashboardCardValueSchema = z.object({
    * The footer facts, per metric. Keys are documented on each metric's
    * resolver and rendered by that metric's footer:
    *
-   * - `activeQuests` — `newCount`, `acceptedCount`
+   * - `activeQuests` — `todoCount`, `inProgressCount`
    * - `openBlights` — `occurrences`, `apps`
    * - `untriagedFeedback` — `oldestWaitingDays`
    * - `uniqueVisitors` — `previous`

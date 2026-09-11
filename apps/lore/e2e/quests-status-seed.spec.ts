@@ -77,7 +77,7 @@ test.describe("Quests — the URL seeds the filters", () => {
      * An accepted quest is also listed in the questlog rail down the left of
      * this page, so a page-wide text matcher finds it whatever the filter
      * says — and that rail is precisely why a dashboard drill-through targets
-     * `status=new`.
+     * `status=todo`.
      */
     const table = page.locator("[data-testid=quests-table]");
 
@@ -101,8 +101,8 @@ test.describe("Quests — the URL seeds the filters", () => {
       await expect(table.getByText(acceptedTitle)).toHaveCount(1);
     });
 
-    await test.step("?status=new narrows the list", async () => {
-      await page.goto(`/${slug}/quests?status=new`);
+    await test.step("?status=todo narrows the list", async () => {
+      await page.goto(`/${slug}/quests?status=todo`);
       await page.waitForLoadState("networkidle");
       await expect(table.getByText(newTitle)).toHaveCount(1, {
         timeout: 15_000,
@@ -141,8 +141,8 @@ test.describe("Quests — the URL seeds the filters", () => {
     await test.step("a link carries more than one filter", async () => {
       // `?status=` was hand-mapped for its own sake once. Every key of the
       // table's filter schema is read now, which is what makes a link like
-      // `?status=new&tag=need-answer` mean something.
-      await page.goto(`/${slug}/quests?status=new&search=${newTitle}`);
+      // `?status=todo&tag=need-answer` mean something.
+      await page.goto(`/${slug}/quests?status=todo&search=${newTitle}`);
       await page.waitForLoadState("networkidle");
       await expect(table.getByText(newTitle)).toHaveCount(1, {
         timeout: 15_000,
@@ -157,7 +157,7 @@ test.describe("Quests — the URL seeds the filters", () => {
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       const shared = new URL(copied);
       expect(shared.pathname).toBe(`/${slug}/quests`);
-      expect(shared.searchParams.get("status")).toBe("new");
+      expect(shared.searchParams.get("status")).toBe("todo");
       expect(shared.searchParams.get("search")).toBe(newTitle);
 
       // The round trip is the claim worth testing: a link nobody can open

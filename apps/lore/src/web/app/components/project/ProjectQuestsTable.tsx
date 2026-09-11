@@ -72,6 +72,7 @@ import { useAgentPromptSubject } from "./prompts/useAgentPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_TONE,
+  QUEST_STATUS_LABEL_KEYS,
 } from "./quest/questChips.ts";
 import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
@@ -102,7 +103,7 @@ const boardFiltersSchema = z.object({
   /**
    * ⚠️ `questStatusSchema` rather than a hand-written enum, and that is a
    * fix rather than tidying. This listed four values while the filter's own
-   * dropdown offered five: `held` reached the control and was refused here,
+   * dropdown offered five: `on_hold` reached the control and was refused here,
    * so `?status=held` decoded to nothing and was DROPPED - `queryToFilters`
    * degrades a value the schema refuses to the unfiltered list rather than
    * to an error, which is right and is why nobody saw it: nothing linked to
@@ -261,7 +262,7 @@ const ProjectQuestsTable = () => {
       // selection of shelved rows has nothing for it to do (feedback #2063).
       visible: (selected) => selected.some((quest) => !quest.shelvedAt),
       onClick: async (selected, ctx) => {
-        // Only a `new` quest can be shelved, and the server refuses the
+        // Only a `todo` quest can be shelved, and the server refuses the
         // rest one by one. They are counted here and never sent, so an
         // accepted row in the selection costs a note, not the batch.
         const eligible = selected.filter(
@@ -417,7 +418,7 @@ const ProjectQuestsTable = () => {
         filters={{
           schema: boardFiltersSchema,
           /**
-           * Every filter on this table is linkable: `?status=new,accepted`,
+           * Every filter on this table is linkable: `?status=todo,in_progress`,
            * `?tag=need-answer`, `?search=auth`. The five keys are the ones
            * `boardFiltersSchema` declares, and AlephaTable reads them once on
            * arrival — a value the schema refuses is dropped, so a stale
@@ -464,14 +465,14 @@ const ProjectQuestsTable = () => {
                     // option than the table can render.
                     (
                       [
-                        "new",
-                        "accepted",
-                        "held",
+                        "todo",
+                        "in_progress",
+                        "on_hold",
                         "completed",
                         "shelved",
                       ] as const
                     ).map((status) => ({
-                      label: String(tr(`quest.status.${status}`)),
+                      label: String(tr(QUEST_STATUS_LABEL_KEYS[status])),
                       value: status,
                     }))
                   }
@@ -578,8 +579,8 @@ const ProjectQuestsTable = () => {
             className: "pl-4",
             cell: (quest: QuestResource) => {
               const colors: Record<string, string> = {
-                new: "bg-blue-500",
-                accepted: "bg-orange-500",
+                todo: "bg-blue-500",
+                in_progress: "bg-orange-500",
                 completed: "bg-green-500",
                 shelved: "bg-muted-foreground/50",
               };

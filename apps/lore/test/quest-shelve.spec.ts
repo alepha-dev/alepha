@@ -157,7 +157,7 @@ describe("QuestController — shelving", () => {
     );
 
     expect(res.data.shelvedAt).toBeUndefined();
-    expect(res.data.metadata.status).toBe("new");
+    expect(res.data.metadata.status).toBe("todo");
     expect(res.data.history.at(-1)?.action).toBe("unshelved");
   });
 
@@ -173,10 +173,10 @@ describe("QuestController — shelving", () => {
     );
 
     expect(res.data.shelvedAt).toBeUndefined();
-    expect(res.data.metadata.status).toBe("accepted");
+    expect(res.data.metadata.status).toBe("in_progress");
   });
 
-  it("hides shelved quests from the default list and from status=new", async ({
+  it("hides shelved quests from the default list and from status=todo", async ({
     expect,
   }) => {
     const user = await createUser(ctx);
@@ -192,7 +192,7 @@ describe("QuestController — shelving", () => {
     expect(all.data.content.map((q) => q.id)).toEqual([keep.id]);
 
     const news = await ctx.quests.getQuests.fetch(
-      { params: { projectId: cid }, query: { status: "new" } },
+      { params: { projectId: cid }, query: { status: "todo" } },
       { user },
     );
     expect(news.data.content.map((q) => q.id)).toEqual([keep.id]);

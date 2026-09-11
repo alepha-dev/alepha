@@ -45,7 +45,7 @@ describe("dashboard filter fields", () => {
     const fields = dashboardFilterFields(metric.filters, metric.filterSources);
 
     expect(fields).toEqual([
-      { name: "statuses", options: ["new", "accepted"], multiple: true },
+      { name: "statuses", options: ["todo", "in_progress"], multiple: true },
     ]);
   });
 

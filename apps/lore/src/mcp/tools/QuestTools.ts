@@ -214,7 +214,7 @@ export class QuestTools {
    * optional on `Quest`, so an object type that omits one is still assignable
    * to the mapper's `Pick` and typecheck stays green — the status simply
    * comes back as whatever the missing column would have overridden. Leaving
-   * `heldAt` out reported every held quest as `accepted` or `new`, across
+   * `heldAt` out reported every held quest as `in_progress` or `todo`, across
    * `quest_list`, `quest_get` and every transition result at once.
    */
   protected getQuestStatus(quest: {
@@ -562,7 +562,7 @@ export class QuestTools {
    */
   quest_shelve = $tool({
     description:
-      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; call `quest_unassign` first on an accepted one. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now. Shelving the last open quest of an in-progress epic completes the epic.",
+      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'todo' status can be shelved; call `quest_unassign` first on an accepted one. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now. Shelving the last open quest of an in-progress epic completes the epic.",
     title: "Shelve quest",
     annotations: {
       readOnlyHint: false,
@@ -593,7 +593,7 @@ export class QuestTools {
    */
   quest_unshelve = $tool({
     description:
-      "Bring a shelved quest back into the backlog as 'new'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a completed epic, where nothing reopens; allowed while the epic is draft or ready (that edits an open plan) or in progress.",
+      "Bring a shelved quest back into the backlog as 'todo'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a completed epic, where nothing reopens; allowed while the epic is draft or ready (that edits an open plan) or in progress.",
     title: "Unshelve quest",
     annotations: {
       readOnlyHint: false,
@@ -625,9 +625,9 @@ export class QuestTools {
   quest_hold = $tool({
     description:
       "Put a quest on hold: it is blocked on something outside itself and cannot move until that resolves. Use it when work is waiting on an answer, a credential, a decision or a deploy window — for waiting on ANOTHER QUEST use `dependsOn` on `quest_update` instead, which draws the questline. " +
-      "A held quest keeps everything it had (its assignee, its objectives, its kanban column) and reads as `held` rather than as `new` or `accepted`; `quest_unhold` gives the previous status back with nothing to restore by hand. While held, `quest_accept` and `quest_complete` are both refused and say so. " +
+      "A held quest keeps everything it had (its assignee, its objectives, its kanban column) and reads as `on_hold` rather than as `todo` or `in_progress`; `quest_unhold` gives the previous status back with nothing to restore by hand. While held, `quest_accept` and `quest_complete` are both refused and say so. " +
       "`reason` is REQUIRED and is posted as a comment on the quest's discussion, so an `@handle` in it reaches that project member's inbox — mention whoever you are waiting on rather than hoping they look. " +
-      "Reachable from 'new' and 'accepted' only, and NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
+      "Reachable from 'todo' and 'in_progress' only, and NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
     title: "Hold quest",
     annotations: {
       readOnlyHint: false,
@@ -661,7 +661,7 @@ export class QuestTools {
   quest_unhold = $tool({
     description:
       "Lift a quest's hold. No reason and no conditions: whatever it was waiting for either arrived or stopped mattering. " +
-      'The quest goes back to whatever it was before the hold — `accepted` and still assigned to the same person if somebody had it, `new` otherwise — so read `status` in the result rather than assuming. Use `quest_list` with `status: "held"` to see what is currently blocked. ' +
+      'The quest goes back to whatever it was before the hold — `in_progress` and still assigned to the same person if somebody had it, `todo` otherwise — so read `status` in the result rather than assuming. Use `quest_list` with `status: "on_hold"` to see what is currently blocked. ' +
       "Refused inside a completed epic, where nothing reopens; allowed while the epic is draft or ready (that edits an open plan) or in progress.",
     title: "Unhold quest",
     annotations: {
@@ -693,8 +693,8 @@ export class QuestTools {
    */
   quest_unassign = $tool({
     description:
-      "Send an accepted quest back to the backlog as 'new': clears the assignee and any reminders, and keeps everything written on it (description, objectives, comments, history). Use it when you took a quest you are not going to work, or when handing one back. " +
-      "It is also the step before `quest_shelve` on an accepted quest, which only accepts quests in 'new'. Nothing is deleted; `quest_delete` is the destructive one.",
+      "Send an accepted quest back to the backlog as 'todo': clears the assignee and any reminders, and keeps everything written on it (description, objectives, comments, history). Use it when you took a quest you are not going to work, or when handing one back. " +
+      "It is also the step before `quest_shelve` on an accepted quest, which only accepts quests in 'todo'. Nothing is deleted; `quest_delete` is the destructive one.",
     title: "Unassign quest",
     annotations: {
       readOnlyHint: false,
@@ -707,11 +707,10 @@ export class QuestTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveQuestId(params);
-      // The controller method is still named `abandonQuest`. The UI renamed
-      // the action to Unassign on 2026-08-20 because it never deleted
-      // anything, and the tool follows the vocabulary rather than the
-      // method name.
-      const quest = await this.questController.abandonQuest({
+      // The UI renamed the action to Unassign on 2026-08-20 because it never
+      // deleted anything; the controller method, which had stayed
+      // `abandonQuest`, followed as `unassignQuest` with #Q2269.
+      const quest = await this.questController.unassignQuest({
         params: { id },
       });
 

@@ -256,7 +256,7 @@ export class QuestlineLayout<T extends QuestlineItem> {
   protected stateOf(quest: T, byId: Map<number, T>): QuestlineState {
     const status = this.statusOf(quest);
     if (status === "completed") return "done";
-    if (status === "accepted") return "running";
+    if (status === "in_progress") return "running";
     if (status === "shelved") return "shelved";
     if (quest.dependsOn == null) return "ready";
     const parent = byId.get(quest.dependsOn);

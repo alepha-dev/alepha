@@ -465,7 +465,7 @@ test.describe("Releases", () => {
       const item = page.getByRole("menuitem", { name: "New Release" });
       await expect(item).toBeVisible({ timeout: 10_000 });
       // The neighbours really are off, so this entry is the only create
-      // beside New Quest.
+      // beside New quest.
       await expect(
         page.getByRole("menuitem", { name: "New Epic" }),
       ).toHaveCount(0);

@@ -55,7 +55,7 @@ import { KanbanGrouping } from "./kanbanGrouping.ts";
 import { KanbanLanes, type LaneMode } from "./kanbanLanes.ts";
 import { useKanbanColumnOps } from "./useKanbanColumnOps.ts";
 
-type QuestStatus = "new" | "accepted" | "completed";
+type QuestStatus = "todo" | "in_progress" | "completed";
 
 /**
  * Stateless, so one instance serves every mount.
@@ -300,7 +300,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    */
   const columns: ColumnDescriptor[] = useMemo(() => {
     const resolved = columnConfig.resolve(project, {
-      new: String(tr("kanban.column.new")),
+      todo: String(tr("kanban.column.todo")),
       completed: String(tr("kanban.column.completed")),
     });
     let acceptedSeen = 0;
@@ -323,7 +323,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       // an area tinted the same read the same.
       dotClass: column.color
         ? AREA_DOT_CLASS[column.color]
-        : column.status === "new"
+        : column.status === "todo"
           ? "bg-blue-500"
           : column.status === "completed"
             ? "bg-green-500"
@@ -374,7 +374,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
 
   /**
    * Quests whose predecessor is not complete, by the questline map's own
-   * `waiting` rule: a `new` quest whose `dependsOn` is unfinished, or is
+   * `waiting` rule: a `todo` quest whose `dependsOn` is unfinished, or is
    * outside the set we can see — the blocker exists either way.
    *
    * Derived from the UNFILTERED board, not `filteredQuests`: a tag filter
@@ -385,7 +385,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     const byId = new Map(quests.map((q) => [q.id, q]));
     const blocked = new Set<number>();
     for (const quest of quests) {
-      if (quest.metadata.status !== "new" || quest.dependsOn == null) continue;
+      if (quest.metadata.status !== "todo" || quest.dependsOn == null) continue;
       const parent = byId.get(quest.dependsOn);
       if (!parent || parent.metadata.status !== "completed") {
         blocked.add(quest.id);
@@ -468,9 +468,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       },
     });
 
-    // A quest is born `new`. Landing it in an accepted lane is a second
+    // A quest is born `todo`. Landing it in an accepted lane is a second
     // call, the same two-step the drag handler makes.
-    if (descriptor.kind === "accepted") {
+    if (descriptor.kind === "in_progress") {
       await questMutations.accept(created.id);
       if (descriptor.subColumn && descriptor.subColumn !== acceptLandsIn) {
         await questApi.setQuestKanbanColumn({
@@ -597,7 +597,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
 
     // No-op if the card was dropped onto its current column.
     if (fromStatus === toKind) {
-      if (toKind !== "accepted") return;
+      if (toKind !== "in_progress") return;
       if (quest.kanbanColumn === toSubColumn) return;
     }
 
@@ -637,7 +637,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       return;
     }
 
-    if (fromStatus === "new" && toKind === "completed") {
+    if (fromStatus === "todo" && toKind === "completed") {
       toaster.show(tr("kanban.error.acceptFirst"), "warning");
       return;
     }
@@ -655,7 +655,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           ? {
               ...row,
               metadata: { ...row.metadata, status: toKind },
-              kanbanColumn: toKind === "accepted" ? toSubColumn : undefined,
+              kanbanColumn: toKind === "in_progress" ? toSubColumn : undefined,
             }
           : row,
       ),
@@ -667,7 +667,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       // the surface where that mattered most and was answered least: a
       // board accept never reached the assigned list at all, and a board
       // completion never refreshed the count.
-      if (fromStatus === "new" && toKind === "accepted") {
+      if (fromStatus === "todo" && toKind === "in_progress") {
         // Accept the quest then (if needed) move it to the chosen sub-column;
         // acceptQuest drops it in the first column by default.
         await questMutations.accept(quest.id);
@@ -677,15 +677,15 @@ const KanbanBoard = (props: KanbanBoardProps) => {
             body: { kanbanColumn: toSubColumn },
           });
         }
-      } else if (fromStatus === "accepted" && toKind === "new") {
+      } else if (fromStatus === "in_progress" && toKind === "todo") {
         await questMutations.unassign(quest.id);
-      } else if (fromStatus === "accepted" && toKind === "accepted") {
+      } else if (fromStatus === "in_progress" && toKind === "in_progress") {
         if (!toSubColumn) return;
         await questApi.setQuestKanbanColumn({
           params: { id: quest.id },
           body: { kanbanColumn: toSubColumn },
         });
-      } else if (fromStatus === "accepted" && toKind === "completed") {
+      } else if (fromStatus === "in_progress" && toKind === "completed") {
         await questMutations.complete(quest.id, {});
       }
       await reload();

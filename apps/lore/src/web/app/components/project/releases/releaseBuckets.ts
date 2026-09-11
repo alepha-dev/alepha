@@ -148,7 +148,7 @@ export const BUCKET_ICON_CLASS: Record<ReleaseBucket, string> = {
  *
  * The same partition `ReleaseController.progressOf` counts, written once so a
  * row's glyph and the segment it was counted into cannot disagree. Order
- * matters: `shelvedAt` is only ever set on a quest still in `new` status, but
+ * matters: `shelvedAt` is only ever set on a quest still in `todo` status, but
  * testing it first means a row can never be read as two things at once even
  * if that invariant is ever relaxed.
  */
@@ -169,8 +169,8 @@ export const questBucket = (quest: {
  * The same three timestamps read as the quest status enum, for the surface
  * the release page shares with the epic's questline: `QuestlineLayout` asks
  * each row for its status, and a `QuestResource` answers from `metadata`
- * while a release row answers from here. `open` is `new` and `inProgress`
- * is `accepted`; the other two are spelled the same on both sides.
+ * while a release row answers from here. `open` is `todo` and `inProgress`
+ * is `in_progress`; the other two are spelled the same on both sides.
  */
 export const questStatus = (quest: {
   completedAt?: string;
@@ -178,7 +178,7 @@ export const questStatus = (quest: {
   shelvedAt?: string;
 }): QuestStatus => {
   const bucket = questBucket(quest);
-  if (bucket === "open") return "new";
-  if (bucket === "inProgress") return "accepted";
+  if (bucket === "open") return "todo";
+  if (bucket === "inProgress") return "in_progress";
   return bucket;
 };

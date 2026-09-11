@@ -209,7 +209,7 @@ export interface DashboardMetricDescriptor {
    *
    * ⚠️ **Drill-through is configuration, not derivation.** `link()` is
    * deliberately allowed to disagree with the count — see `activeQuests`
-   * below, which counts `new + accepted` and navigates to `status=new`. A
+   * below, which counts `todo + in_progress` and navigates to `status=todo`. A
    * generic filter-to-query-string translation would land on the wrong list.
    */
   link: (
@@ -259,7 +259,7 @@ export class DashboardMetricCatalog {
       needs: { capability: "work" },
       /**
        * ⚠️ Deliberately disagrees with the count. The tile counts
-       * `new + accepted`, but clicking opens `status=new` only, because the
+       * `todo + in_progress`, but clicking opens `status=todo` only, because the
        * questlog rail on the left of the quests page already shows the
        * accepted ones — so the useful thing to open is the half of the
        * number that is not already on screen. Do not "fix" this to match
@@ -270,7 +270,7 @@ export class DashboardMetricCatalog {
           ? {
               route: "projectQuests",
               params: { projectSlug: target.projectSlug },
-              query: { status: "new" },
+              query: { status: "todo" },
             }
           : undefined,
     },
@@ -291,7 +291,7 @@ export class DashboardMetricCatalog {
       filters: heldQuestsFiltersSchema,
       needs: { capability: "work" },
       /**
-       * ⚠️ `?status=held`, and it only decodes because
+       * ⚠️ `?status=on_hold`, and it only decodes because
        * `boardFiltersSchema.status` is derived from `questStatusSchema`
        * (#Q2082). Before that fix the value was silently dropped and the link
        * degraded to the unfiltered list, which is the failure this drill-
@@ -302,7 +302,7 @@ export class DashboardMetricCatalog {
           ? {
               route: "projectQuests",
               params: { projectSlug: target.projectSlug },
-              query: { status: "held" },
+              query: { status: "on_hold" },
             }
           : undefined,
     },
@@ -395,7 +395,7 @@ export class DashboardMetricCatalog {
       needs: { capability: "work" },
       /**
        * ⚠️ `?tag=` AND `?status=`, both of which the quests page's query
-       * schema already takes. The status is `new,accepted` - the OPEN half -
+       * schema already takes. The status is `todo,in_progress` - the OPEN half -
        * because the card's number is a completion ratio and the useful thing
        * to open is what is left, not what is finished.
        */
@@ -404,7 +404,7 @@ export class DashboardMetricCatalog {
           ? {
               route: "projectQuests",
               params: { projectSlug: target.projectSlug },
-              query: { tag: target.tag, status: "new,accepted" },
+              query: { tag: target.tag, status: "todo,in_progress" },
             }
           : undefined,
     },

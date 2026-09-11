@@ -691,7 +691,7 @@ describe("the epic phase gate on quest transitions", () => {
     );
     expect(shelved.shelvedAt).toBeDefined();
 
-    const released = await ctx.controller.abandonQuest(
+    const released = await ctx.controller.unassignQuest(
       { params: { id: held.id } },
       { user },
     );

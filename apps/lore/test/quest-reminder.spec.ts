@@ -188,7 +188,7 @@ describe("QuestController setQuestReminder", () => {
       { user },
     );
 
-    const abandoned = await ctx.quests.abandonQuest.fetch(
+    const abandoned = await ctx.quests.unassignQuest.fetch(
       { params: { id } },
       { user },
     );

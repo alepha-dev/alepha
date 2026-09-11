@@ -27,7 +27,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * rearrange-the-workspace act rather than an in-flight one.
  *
  * **Only in-progress columns are editable.** The lifecycle triple is
- * authoritative (folio #1125): a synthesized `new` or `completed` lane has
+ * authoritative (folio #1125): a synthesized `todo` or `completed` lane has
  * no entry in `kanbanColumns`, so there is nothing to rename or delete, and
  * the caller is expected not to offer it.
  */

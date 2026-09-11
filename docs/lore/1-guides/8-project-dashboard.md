@@ -46,7 +46,7 @@ your own rank matrix rather than something Lore decides for you.
 
 | Card                 | What it counts                                     |
 | -------------------- | -------------------------------------------------- |
-| **Active quests**    | Open quests in the project - new plus accepted     |
+| **Active quests**    | Open quests in the project - to do plus in progress |
 | **On hold**          | How many of those are parked, waiting on something |
 | **Epic progress**    | How far one epic has got                           |
 | **Release progress** | How far one release has got                        |

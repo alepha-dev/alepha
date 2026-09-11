@@ -69,7 +69,7 @@ class FakeLinkProvider extends LinkProvider {
     };
     const named: Record<string, unknown> = {
       acceptQuest: record("accept"),
-      abandonQuest: record("abandon"),
+      unassignQuest: record("abandon"),
       completeQuest: record("complete"),
       shelveQuest: record("shelve"),
       unshelveQuest: record("unshelve"),

@@ -126,7 +126,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("complete quest", async () => {
-      // Toolbar's "Complete Quest" now opens a summary dialog; the dialog has
+      // Toolbar's "Complete quest" now opens a summary dialog; the dialog has
       // its own "Complete without summary" / "Complete with summary" buttons.
       // Pick the no-summary path for the golden flow.
       await page
@@ -1026,7 +1026,7 @@ test.describe("Quest", () => {
 
     const openRowActions = async () => {
       await page.getByRole("button", { name: "Open row actions" }).click();
-      await page.getByRole("menuitem", { name: "Delete Quest" }).click();
+      await page.getByRole("menuitem", { name: "Delete quest" }).click();
     };
 
     await test.step("cancel branch keeps the quest", async () => {
@@ -1077,9 +1077,9 @@ test.describe("Quest", () => {
       // the table's own primary action. This test waits for the navigation
       // to the new quest, which only the header's path does: the table's
       // keeps the reader on the list by design. The header is one "+"
-      // (#1684) whose menu leads with New Quest.
+      // (#1684) whose menu leads with New quest.
       await page.getByTestId("project-create-menu").click();
-      await page.getByRole("menuitem", { name: "New Quest" }).click();
+      await page.getByRole("menuitem", { name: "New quest" }).click();
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 
@@ -1457,7 +1457,7 @@ test.describe("Quest", () => {
 
     await test.step("rows the data can fill are stated; the rest render nothing", async () => {
       const rail = page.getByRole("complementary");
-      await expect(rail.getByText("New")).toBeVisible({ timeout: 10_000 });
+      await expect(rail.getByText("To do")).toBeVisible({ timeout: 10_000 });
       await expect(rail.getByText("high")).toBeVisible();
       await expect(rail.getByText("lore/quests")).toBeVisible();
       // No epic module, no estimate module, no questline: the rail shows no
@@ -2545,7 +2545,7 @@ test.describe("Quest hold", () => {
    * nothing on a project with nothing held spends a permanent nav slot on a
    * state most projects are never in, and the filter already answers it.
    *
-   * So `?status=held` has to survive a load, which it did not until that
+   * So `?status=on_hold` has to survive a load, which it did not until that
    * quest. `boardFiltersSchema.status` listed four values while the filter's
    * own dropdown offered five, and `queryToFilters` degrades a value the
    * schema refuses to the unfiltered list rather than to an error - silently
@@ -2603,7 +2603,7 @@ test.describe("Quest hold", () => {
       page.getByRole("button", { name: /lift hold/i }).first(),
     ).toBeVisible({ timeout: 15_000 });
 
-    await page.goto(`/${projectSlug}/quests?status=held`);
+    await page.goto(`/${projectSlug}/quests?status=on_hold`);
 
     await expect(page.getByText(heldTitle).first()).toBeVisible({
       timeout: 15_000,

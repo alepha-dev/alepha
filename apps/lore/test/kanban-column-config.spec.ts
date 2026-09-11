@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Project } from "../src/api/entities/projects.ts";
 import { KanbanColumnConfig } from "../src/api/services/KanbanColumnConfig.ts";
 
-const LABELS = { new: "New", completed: "Completed" };
+const LABELS = { todo: "To do", completed: "Completed" };
 
 const project = (
   kanbanColumns: string[],
@@ -25,15 +25,15 @@ describe("KanbanColumnConfig", () => {
     it("resolves to the frame the board has always had", () => {
       const columns = config.resolve(project(["In Progress"]), LABELS);
       expect(columns.map((c) => [c.name, c.status, c.synthesized])).toEqual([
-        ["New", "new", true],
-        ["In Progress", "accepted", false],
+        ["To do", "todo", true],
+        ["In Progress", "in_progress", false],
         ["Completed", "completed", true],
       ]);
     });
 
     it("treats every configured column as accepted", () => {
       const columns = config.resolve(project(["Doing", "Review"]), LABELS);
-      expect(columns.filter((c) => c.status === "accepted")).toHaveLength(2);
+      expect(columns.filter((c) => c.status === "in_progress")).toHaveLength(2);
       expect(columns).toHaveLength(4);
     });
   });
@@ -59,19 +59,19 @@ describe("KanbanColumnConfig", () => {
 
     it("lets a project replace the synthesized New lane", () => {
       const columns = config.resolve(
-        project(["Backlog", "Doing"], { Backlog: { status: "new" } }),
+        project(["Backlog", "Doing"], { Backlog: { status: "todo" } }),
         LABELS,
       );
       expect(columns[0].name).toBe("Backlog");
       expect(columns[0].synthesized).toBe(false);
-      expect(columns.some((c) => c.synthesized && c.name === "New")).toBe(
+      expect(columns.some((c) => c.synthesized && c.name === "To do")).toBe(
         false,
       );
     });
 
     it("still synthesizes the end a project has not named", () => {
       const columns = config.resolve(
-        project(["Backlog", "Doing"], { Backlog: { status: "new" } }),
+        project(["Backlog", "Doing"], { Backlog: { status: "todo" } }),
         LABELS,
       );
       const last = columns[columns.length - 1];
@@ -87,7 +87,7 @@ describe("KanbanColumnConfig", () => {
         LABELS,
       );
       expect(columns.map((c) => c.name)).toEqual([
-        "New",
+        "To do",
         "Doing",
         "Review",
         "Shipped",
@@ -124,7 +124,7 @@ describe("KanbanColumnConfig", () => {
         project(["Doing"], { Deleted: { status: "completed", wipLimit: 9 } }),
         LABELS,
       );
-      expect(columns.map((c) => c.name)).toEqual(["New", "Doing", "Completed"]);
+      expect(columns.map((c) => c.name)).toEqual(["To do", "Doing", "Completed"]);
     });
   });
 
@@ -156,7 +156,7 @@ describe("KanbanColumnConfig", () => {
         LABELS,
       );
       expect(columns.find((c) => c.name === "Review")?.color).toBeUndefined();
-      expect(columns.find((c) => c.name === "New")?.color).toBeUndefined();
+      expect(columns.find((c) => c.name === "To do")?.color).toBeUndefined();
     });
 
     it("is independent of status and wipLimit", () => {

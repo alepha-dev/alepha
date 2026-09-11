@@ -34,7 +34,7 @@ import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { questAgentGate } from "../prompts/questAgentGate.ts";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
-import { QUEST_STATUS_TONE } from "./questChips.ts";
+import { QUEST_STATUS_LABEL_KEYS, QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
@@ -172,13 +172,7 @@ const QuestView = (props: QuestViewProps) => {
 
   // The status chip. Same four colours the quest table's dot uses, so a
   // status reads identically in the list and on the quest.
-  const statusLabel = {
-    new: tr("quest.status.new"),
-    accepted: tr("quest.status.accepted"),
-    held: tr("quest.status.held"),
-    completed: tr("quest.status.completed"),
-    shelved: tr("quest.status.shelved"),
-  }[quest.metadata.status];
+  const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
   // Tone rather than classes: the hue now lives in `@alepha/ui`'s Badge and
   // the meaning-to-tone map is shared with the quest table, so a status
   // cannot look like one thing in the list and another here.
@@ -267,14 +261,14 @@ const QuestView = (props: QuestViewProps) => {
   const titleText = `${formatReference("quest", quest.shortId)} - ${quest.title}`;
 
   /**
-   * Unassign. The server method is still called `abandonQuest`, but it
+   * Unassign (`unassignQuest`, called `abandonQuest` until #Q2269). It
    * clears `acceptedAt` / `acceptedBy` / the kanban column / the reminders
    * and pushes an `unassigned` history event — it has never deleted
    * anything, so the label and the trash icon both promised the wrong
    * thing. Deletion lives in the quest table's row actions.
    */
   const unassignQuest = {
-    disabled: !questApi.abandonQuest.can(),
+    disabled: !questApi.unassignQuest.can(),
     onClick: async () => {
       const ok = await dialog.confirm({
         title: tr("quest.view.unassign.title"),
@@ -568,7 +562,7 @@ const QuestView = (props: QuestViewProps) => {
                 line worth pinning while the body scrolls.
 
                 ⚠️ The same holds for HELD, which is why there is no badge
-                for it here either. `held` is a derived status like the
+                for it here either. `on_hold` is a derived status like the
                 other four, so `statusLabel` / `statusTone` above already
                 render it as an "On hold" chip in the destructive tone. The
                 one thing the header does carry for a hold is the WAY OUT:
@@ -579,7 +573,7 @@ const QuestView = (props: QuestViewProps) => {
                 Abandon; the mockup has no bar, so the two lifecycle verbs
                 come up here — where the reader already is — and the rest
                 moves into the rail. The primary slot is state-dependent:
-                Accept on a `new` quest, Complete on an accepted one, nothing
+                Accept on a `todo` quest, Complete on an accepted one, nothing
                 once it is done. */}
             {!quest.completedAt && project && (
               <div className="flex shrink-0 items-center gap-1">

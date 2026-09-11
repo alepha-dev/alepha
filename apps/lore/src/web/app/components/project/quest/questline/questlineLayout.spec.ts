@@ -25,7 +25,7 @@ const quest = (
     shortId: id,
     title: `Quest ${id}`,
     dependsOn: options.dependsOn,
-    metadata: { status: options.status ?? "new" },
+    metadata: { status: options.status ?? "todo" },
   }) as unknown as QuestResource;
 
 describe("QuestlineLayout", () => {
@@ -139,7 +139,7 @@ describe("QuestlineLayout", () => {
 
     it("reads lifecycle states straight off the quest", () => {
       const tracks = layout.build([
-        quest(1, { status: "accepted" }),
+        quest(1, { status: "in_progress" }),
         quest(2, { status: "completed" }),
         quest(3, { status: "shelved" }),
       ]);

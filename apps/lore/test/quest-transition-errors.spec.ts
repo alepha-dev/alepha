@@ -117,7 +117,7 @@ describe("QuestController — transition preconditions", () => {
       { user },
     );
 
-    await expect(call).rejects.toThrow(/accepted/i);
+    await expect(call).rejects.toThrow(/in_progress/i);
     await expect(call).rejects.not.toThrow(/was not found/i);
   });
 
@@ -155,23 +155,23 @@ describe("QuestController — transition preconditions", () => {
       { user },
     );
 
-    await expect(call).rejects.toThrow(/accepted/i);
+    await expect(call).rejects.toThrow(/in_progress/i);
     await expect(call).rejects.not.toThrow(/was not found/i);
   });
 
-  it("refuses to abandon a quest nobody accepted, saying so", async ({
+  it("refuses to unassign a quest nobody accepted, saying so", async ({
     expect,
   }) => {
     const user = await createUser(ctx);
     const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Untouched");
 
-    const call = ctx.quests.abandonQuest.fetch(
+    const call = ctx.quests.unassignQuest.fetch(
       { params: { id: quest.id } },
       { user },
     );
 
-    await expect(call).rejects.toThrow(/new/i);
+    await expect(call).rejects.toThrow(/todo/i);
     await expect(call).rejects.not.toThrow(/was not found/i);
   });
 
@@ -203,7 +203,7 @@ describe("QuestController — transition preconditions", () => {
       { user },
     );
 
-    await expect(call).rejects.toThrow(/accepted/i);
+    await expect(call).rejects.toThrow(/in_progress/i);
     await expect(call).rejects.not.toThrow(/was not found/i);
   });
 

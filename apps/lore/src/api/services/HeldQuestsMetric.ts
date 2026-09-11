@@ -30,7 +30,7 @@ import { OpenQuestScope } from "./OpenQuestScope.ts";
  * it was reverted the same day (`bcbf2c06b`), taking that number with it.
  * What survives from it and is now load-bearing is `boardFiltersSchema.status`
  * being derived from `questStatusSchema`, which is the only reason the card's
- * `?status=held` link decodes at all rather than degrading to the whole list.
+ * `?status=on_hold` link decodes at all rather than degrading to the whole list.
  *
  * ## "On hold", never "Waiting on you"
  *

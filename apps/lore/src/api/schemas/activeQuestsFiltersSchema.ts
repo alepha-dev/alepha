@@ -11,9 +11,9 @@ import { type Infer, z } from "alepha";
  */
 export const activeQuestsFiltersSchema = z.object({
   statuses: z
-    .array(z.enum(["new", "accepted"]).meta({ mode: "text" }))
+    .array(z.enum(["todo", "in_progress"]).meta({ mode: "text" }))
     .min(1)
-    .default(["new", "accepted"]),
+    .default(["todo", "in_progress"]),
 });
 
 export type ActiveQuestsFilters = Infer<typeof activeQuestsFiltersSchema>;

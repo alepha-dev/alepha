@@ -45,7 +45,7 @@ test.describe("Kanban", () => {
   });
 
   /**
-   * #1222. `KanbanBoard`'s grouping only branched on "new" and "completed",
+   * #1222. `KanbanBoard`'s grouping only branched on "todo" and "completed",
    * so a shelved quest fell through to the accepted fallback: pressing
    * Shelve — the gesture meaning "I am not doing this" — visibly moved the
    * card FORWARD into In progress, and the drawer stayed open over it.

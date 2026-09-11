@@ -7,7 +7,7 @@ import type { KanbanColumnSettings } from "../schemas/kanbanColumnSchema.ts";
  */
 export interface ResolvedKanbanColumn {
   name: string;
-  status: "new" | "accepted" | "completed";
+  status: "todo" | "in_progress" | "completed";
   wipLimit?: number;
   /**
    * The operator's chosen dot colour, when they chose one. Absent leaves the
@@ -29,7 +29,7 @@ export interface ResolvedKanbanColumn {
  *
  * **The lifecycle triple remains the source of truth** (quest #1227,
  * decided by the owner). A column does not carry a status of its own; it
- * declares which of `new` / `accepted` / `completed` a card dropped in it
+ * declares which of `todo` / `in_progress` / `completed` a card dropped in it
  * collapses to. Everything downstream — the quest log, releases,
  * reports, MCP, the Discussion feed, `QuestlineLayout.stateOf` — keeps
  * reading the three timestamps and never learns that columns exist.
@@ -38,9 +38,9 @@ export interface ResolvedKanbanColumn {
  * board was always `New | <every configured column> | Completed`. Now:
  *
  * - every configured column takes its status from the config, defaulting
- *   to `accepted`, which is what a configured column has always meant;
+ *   to `in_progress`, which is what a configured column has always meant;
  * - a "New" column is synthesized ONLY when no configured column carries
- *   `new`, and likewise for "Completed".
+ *   `todo`, and likewise for "Completed".
  *
  * So a project can have two done-ish columns, or replace the synthesized
  * ends with its own, or keep the old frame by configuring nothing. A
@@ -49,7 +49,7 @@ export interface ResolvedKanbanColumn {
 export class KanbanColumnConfig {
   resolve(
     project: Pick<Project, "kanbanColumns" | "kanbanColumnConfig">,
-    labels: { new: string; completed: string },
+    labels: { todo: string; completed: string },
   ): ResolvedKanbanColumn[] {
     const names = project.kanbanColumns ?? [];
     const config = project.kanbanColumnConfig ?? {};
@@ -58,7 +58,7 @@ export class KanbanColumnConfig {
       const settings: KanbanColumnSettings = config[name] ?? {};
       return {
         name,
-        status: settings.status ?? "accepted",
+        status: settings.status ?? "in_progress",
         wipLimit: settings.wipLimit,
         color: settings.color,
         synthesized: false,
@@ -69,12 +69,12 @@ export class KanbanColumnConfig {
       configured.some((column) => column.status === status);
 
     return [
-      ...(has("new")
+      ...(has("todo")
         ? []
         : [
             {
-              name: labels.new,
-              status: "new" as const,
+              name: labels.todo,
+              status: "todo" as const,
               synthesized: true,
             },
           ]),

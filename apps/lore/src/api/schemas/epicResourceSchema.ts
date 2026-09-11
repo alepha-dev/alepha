@@ -21,7 +21,7 @@ export const epicResourceSchema = epics.schema.extend({
     completed: z.integer(),
     /**
      * Accepted but not yet completed. Disjoint from `completed` and from
-     * `shelved` — a shelved quest is by definition still `new` (see
+     * `shelved` — a shelved quest is by definition still `todo` (see
      * `quests.shelvedAt`), so the three buckets never overlap and
      * `total - completed - inProgress - shelved` is the count still open
      * and untouched.

@@ -49,7 +49,7 @@ export class ProjectReportsController {
    * denominator of every chart — a release can hit 100% with shelved
    * quests left over.
    *
-   * Completed-based metrics are unaffected by construction: only a "new"
+   * Completed-based metrics are unaffected by construction: only a "todo"
    * quest can be shelved, so a shelved quest is never a completed one.
    */
   protected get liveQuest() {
@@ -66,7 +66,7 @@ export class ProjectReportsController {
    *
    * ⚠️ **Completed quests are exempt, and the exemption is the point.**
    * `liveQuest` needs no such carve-out because shelving carries an
-   * invariant that makes one unnecessary: only a `new` quest can be
+   * invariant that makes one unnecessary: only a `todo` quest can be
    * shelved, so a shelved quest is never a completed one. Draft epics
    * carry no equivalent invariant: a completed quest may be filed into a
    * `draft` epic, and it keeps its `epicId` there. Gating those would retroactively erase real work from member
@@ -307,7 +307,7 @@ export class ProjectReportsController {
   });
 
   /**
-   * Reports "Quests" tab: a lifecycle funnel (new → accepted → completed),
+   * Reports "Quests" tab: a lifecycle funnel (to do → in progress → completed),
    * completed-vs-remaining breakdowns by area and by priority, average cycle
    * time per priority, and an actionable list of the oldest still-open quests.
    *
@@ -355,23 +355,23 @@ export class ProjectReportsController {
       const [funnelAgg] = await this.database.run(
         sql`
 					SELECT
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as new_count,
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NOT NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as accepted_count,
+						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as todo_count,
+						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NOT NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as in_progress_count,
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed_count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
 						AND ${inScope}
 				`,
         z.object({
-          new_count: z.coerce.number(),
-          accepted_count: z.coerce.number(),
+          todo_count: z.coerce.number(),
+          in_progress_count: z.coerce.number(),
           completed_count: z.coerce.number(),
         }),
       );
 
       const funnel = {
-        new: Number(funnelAgg?.new_count) || 0,
-        accepted: Number(funnelAgg?.accepted_count) || 0,
+        todo: Number(funnelAgg?.todo_count) || 0,
+        inProgress: Number(funnelAgg?.in_progress_count) || 0,
         completed: Number(funnelAgg?.completed_count) || 0,
       };
 

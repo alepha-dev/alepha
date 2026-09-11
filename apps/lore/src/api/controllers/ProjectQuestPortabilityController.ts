@@ -65,8 +65,8 @@ export class ProjectQuestPortabilityController {
 
       const status = (
         q: (typeof projectQuests)[number],
-      ): "new" | "accepted" | "completed" =>
-        q.completedAt ? "completed" : q.acceptedAt ? "accepted" : "new";
+      ): "todo" | "in_progress" | "completed" =>
+        q.completedAt ? "completed" : q.acceptedAt ? "in_progress" : "todo";
 
       const text = this.formatter.format(
         projectQuests.map((q) => ({
