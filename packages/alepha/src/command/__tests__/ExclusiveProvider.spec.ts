@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -13,14 +13,32 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Alepha, AlephaError } from "alepha";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { ExclusiveTicket } from "../index.ts";
 import { ExclusiveProvider, exclusiveOptions } from "../index.ts";
 
 describe("ExclusiveProvider", () => {
-  const scratch = (): string =>
-    mkdtempSync(join(tmpdir(), "alepha-exclusive-test-"));
+  /**
+   * Every directory `scratch()` handed out during the current case.
+   *
+   * Removed once the case is over: they sit at the root of the system temp
+   * directory, where nothing else ever sweeps them, so each run of this file
+   * used to leave about twenty behind.
+   */
+  const scratchDirs: string[] = [];
+
+  const scratch = (): string => {
+    const dir = mkdtempSync(join(tmpdir(), "alepha-exclusive-test-"));
+    scratchDirs.push(dir);
+    return dir;
+  };
+
+  afterEach(() => {
+    for (const dir of scratchDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   /**
    * A pid that provably names nothing.
@@ -593,13 +611,24 @@ describe("ExclusiveProvider", () => {
       }
     }
 
-    const gated = (): GatedExclusiveProvider =>
-      Alepha.create().inject(GatedExclusiveProvider);
+    const gated = (dir: string): GatedExclusiveProvider => {
+      const alepha = Alepha.create();
+      // A base of its own, never the default one under the system temp
+      // directory: that is where real runs queue, so a test must not leave
+      // anything there. `store.mut` runs before the injection, as above.
+      alepha.store.mut(exclusiveOptions, (old) => ({
+        ...old,
+        dir,
+        pollIntervalMs: 10,
+      }));
+      return alepha.inject(GatedExclusiveProvider);
+    };
 
     it("lets exactly one in", async () => {
-      const key = `alepha-exclusive-race-${randomUUID()}`;
-      const a = gated();
-      const b = gated();
+      const base = scratch();
+      const key = "k";
+      const a = gated(base);
+      const b = gated(base);
       const dir = a.queueDir(key);
       await mkdir(dir, { recursive: true });
 
@@ -631,36 +660,45 @@ describe("ExclusiveProvider", () => {
       });
       a.arm(gate);
 
-      // A arrives alone and starts claiming.
-      writeFileSync(aFile, JSON.stringify(aTicket), "utf8");
-      let aEntered = false;
-      const aTurn = a.testWaitForTurn(dir, aFile, aName, aTicket).then(() => {
-        aEntered = true;
-        return undefined;
-      });
-      await a.reached;
+      try {
+        // A arrives alone and starts claiming.
+        writeFileSync(aFile, JSON.stringify(aTicket), "utf8");
+        let aEntered = false;
+        const aTurn = a.testWaitForTurn(dir, aFile, aName, aTicket).then(() => {
+          aEntered = true;
+          return undefined;
+        });
+        await a.reached;
 
-      // B lands and reads INSIDE A's window, so it sees A not yet holding.
-      writeFileSync(bFile, JSON.stringify(bTicket), "utf8");
-      let bEntered = false;
-      const bTurn = b.testWaitForTurn(dir, bFile, bName, bTicket).then(() => {
-        bEntered = true;
-        return undefined;
-      });
-      await bTurn;
+        // B lands and reads INSIDE A's window, so it sees A not yet holding.
+        writeFileSync(bFile, JSON.stringify(bTicket), "utf8");
+        let bEntered = false;
+        const bTurn = b.testWaitForTurn(dir, bFile, bName, bTicket).then(() => {
+          bEntered = true;
+          return undefined;
+        });
+        await bTurn;
 
-      release();
-      // A either returns (having verified) or goes back to waiting. Give it
-      // room to do whichever, then read the outcome.
-      await Promise.race([
-        aTurn,
-        new Promise((resolve) => setTimeout(resolve, 500)),
-      ]);
+        release();
+        // A either returns (having verified) or goes back to waiting. Give it
+        // room to do whichever, then read the outcome.
+        await Promise.race([
+          aTurn,
+          new Promise((resolve) => setTimeout(resolve, 500)),
+        ]);
 
-      // Both assertions matter. "not two" alone would also be satisfied by a
-      // deadlock in which neither side ever enters.
-      expect([aEntered, bEntered].filter(Boolean)).toHaveLength(1);
-      expect(bEntered).toBe(true);
+        // Both assertions matter. "not two" alone would also be satisfied by a
+        // deadlock in which neither side ever enters.
+        expect([aEntered, bEntered].filter(Boolean)).toHaveLength(1);
+        expect(bEntered).toBe(true);
+
+        // B never releases, so A would poll for the rest of the run and meet
+        // the queue removed underneath it. Hand it the slot so it stops first.
+        unlinkSync(bFile);
+        await aTurn;
+      } finally {
+        rmSync(base, { recursive: true, force: true });
+      }
     });
   });
 });
