@@ -22,7 +22,7 @@ import { LoreApi } from "../src/api/index.ts";
 const adminUser = {
   id: crypto.randomUUID(),
   roles: ["admin"],
-  realm: "default",
+  realm: "users",
 };
 
 const userDataSchema = z.object({

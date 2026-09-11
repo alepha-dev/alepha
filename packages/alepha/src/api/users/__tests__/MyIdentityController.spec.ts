@@ -21,7 +21,7 @@ const setup = async (username: string) => {
   await alepha.start();
 
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("default", {
+  realmProvider.register("users", {
     settings: { username: "required" } as never,
   });
   await realmProvider.userRepository().deleteMany({});
@@ -35,7 +35,7 @@ const setup = async (username: string) => {
     crypto: alepha.inject(CryptoProvider),
     realmProvider,
     user,
-    caller: { id: user.id, realm: "default", sessionId: "s-1" },
+    caller: { id: user.id, realm: "users", sessionId: "s-1" },
   };
 };
 

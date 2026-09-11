@@ -86,7 +86,7 @@ alepha.with({ provide: FileAccessProvider, use: LoreFileAccessProvider });
 // Lore's actual login route; the OAuth `authorize` endpoint redirects
 // unauthenticated users there.
 alepha.set(oauthOptions, {
-  realm: "default",
+  realm: "users",
   resource: "/mcp",
   loginPath: "/auth/login",
   // The consent screen is the first page a third party ever sees from Lore -

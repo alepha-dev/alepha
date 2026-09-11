@@ -71,7 +71,7 @@ const setup = async (options: { hook?: any; withPassword?: boolean } = {}) => {
     controller: alepha.inject(MyAccountController),
     realmProvider,
     user,
-    caller: { id: user.id, realm: "default", sessionId: "s-1" },
+    caller: { id: user.id, realm: "users", sessionId: "s-1" },
   };
 };
 

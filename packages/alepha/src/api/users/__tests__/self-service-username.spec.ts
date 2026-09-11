@@ -19,12 +19,12 @@ const boot = async (settings: Record<string, unknown>) => {
   alepha.with(AlephaApiUsers);
   await alepha.start();
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("default", { settings: settings as never });
+  realmProvider.register("users", { settings: settings as never });
   return alepha;
 };
 
 const caller = (id: string) => ({
-  user: { id, realm: "default", sessionId: "s" } as never,
+  user: { id, realm: "users", sessionId: "s" } as never,
 });
 
 describe("PATCH /users/me username", () => {

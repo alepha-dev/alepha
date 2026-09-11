@@ -51,7 +51,7 @@ describe("AppSecurityProvider", () => {
     const { alepha, realm } = await boot();
 
     expect(realm.settingsParameter).toBeDefined();
-    expect(realm.settingsParameter!.name).toBe("api.realms.default");
+    expect(realm.settingsParameter!.name).toBe("api.realms.users");
 
     await alepha.stop();
   });
@@ -261,7 +261,7 @@ describe("AppSecurityProvider", () => {
     };
 
     const result = await controller.getCurrent.run(
-      { params: { name: "api.realms.default" } },
+      { params: { name: "api.realms.users" } },
       { user: admin },
     );
 

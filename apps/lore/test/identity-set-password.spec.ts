@@ -64,7 +64,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaMcp);
 
   alepha.set(oauthOptions, {
-    realm: "default",
+    realm: "users",
     resource: "/mcp",
     loginPath: "/auth/login",
   });

@@ -1062,7 +1062,7 @@ const downloadJson = (data: unknown, fileName: string) => {
  * entry, so a parameters tree always renders, localized or not.
  *
  * ⚠️ A label, never a rename. `$parameter` stores overrides under the exact
- * name, so renaming `api.realms.default` to read better would orphan the row
+ * name, so renaming `lore.campaign.limits` to read better would orphan the row
  * an admin saved and fall back to the code default without a word.
  *
  * `api` is the framework's own namespace (`api.notifications`,

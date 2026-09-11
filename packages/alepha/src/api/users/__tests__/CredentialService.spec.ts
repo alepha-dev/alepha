@@ -33,7 +33,7 @@ const setup = async () => {
 
   // Enable notifications for the default realm
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("default", {
+  realmProvider.register("users", {
     features: {
       notifications: true,
     },

@@ -107,7 +107,7 @@ const setup = async (options?: {
   // Configure realm settings if provided
   if (options?.username) {
     const realmProvider = alepha.inject(RealmProvider);
-    realmProvider.register("default", {
+    realmProvider.register("users", {
       settings: {
         username: options.username,
       } as never,

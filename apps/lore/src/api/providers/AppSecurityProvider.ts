@@ -85,7 +85,9 @@ export class AppSecurityProvider {
       // to `/mcp` via Dynamic Client Registration instead of a pasted
       // `?api_key=` query string. The legacy api-key path stays working.
       oauth: true,
-      // Mints a `$parameter` named `api.realms.default` over the whole
+      // Mints a `$parameter` named `api.realms.users` (`api.realms.default`
+      // until #Q2264 renamed the default realm; the migration carried the
+      // stored override across) over the whole
       // settings object below, which `RealmProvider.getSettings()` then reads
       // in preference to the literal. An owner flips `registrationAllowed`
       // from the admin Parameters page with no redeploy.

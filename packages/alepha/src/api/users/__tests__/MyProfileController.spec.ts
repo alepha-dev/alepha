@@ -32,7 +32,7 @@ const setup = async (username: string) => {
     controller: alepha.inject(MyProfileController),
     realmProvider,
     user,
-    caller: { id: user.id, realm: "default", sessionId: "s-1" },
+    caller: { id: user.id, realm: "users", sessionId: "s-1" },
   };
 };
 

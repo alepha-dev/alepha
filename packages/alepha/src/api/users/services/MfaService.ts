@@ -458,9 +458,12 @@ export class MfaService {
     code: string,
     realm?: string,
   ): Promise<boolean> {
-    const settings = await this.realmProvider.getRealm(realm).getSettings();
+    const resolved = this.realmProvider.getRealm(realm);
+    const settings = await resolved.getSettings();
     const { accountMaxAttempts, windowMs } = settings.loginRateLimit;
-    const key = `mfa:${realm ?? "default"}:${userId}`;
+    // The resolved realm's name, not a literal: an omitted realm is the
+    // default one, whatever it is called (it was `default` until #Q2264).
+    const key = `mfa:${resolved.name}:${userId}`;
 
     // A six-digit code is a one-in-a-million guess, which is only tolerable
     // while the number of guesses is bounded. Its own counter, separate from

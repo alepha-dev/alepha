@@ -108,7 +108,7 @@ The scanned entry is labelled `<issuer>: <account>`, and both come from the real
 - **issuer** is `settings.displayName`, falling back to the realm's internal name.
 - **account** is the user's email, or their username, or their id, in that order.
 
-Set `displayName`. Without it the issuer is the realm name, which for every single-realm application is `default`, so the phone lists the entry as "default". That identifies nothing, and it collides with the next application that skips it too.
+Set `displayName`. Without it the issuer is the realm name, which for every single-realm application is `users`, so the phone lists the entry as "users". That identifies nothing, and it collides with the next application that skips it too.
 
 ```typescript
 realm = $realm({

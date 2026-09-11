@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, ConflictError } from "alepha/server";
 
-import type { UserEntity } from "../entities/users.ts";
+import { DEFAULT_USER_REALM_NAME, type UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { myProfileSchema } from "../schemas/myProfileSchema.ts";
 import { updateMyProfileBodySchema } from "../schemas/updateMyProfileBodySchema.ts";
@@ -101,7 +101,7 @@ export class MyProfileController {
 
         const taken = await repo.findOne({
           where: {
-            realm: { eq: user.realm ?? "default" },
+            realm: { eq: user.realm ?? DEFAULT_USER_REALM_NAME },
             // Case-insensitive, like the unique index it mirrors.
             username: { eqInsensitive: body.username },
           },

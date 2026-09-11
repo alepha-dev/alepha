@@ -59,7 +59,7 @@ const setup = async (): Promise<TestContext> => {
   // Mirror `main.server.ts`: configure the OAuth server before `LoreApi`
   // (which holds the `$realm` that merges this value).
   alepha.set(oauthOptions, {
-    realm: "default",
+    realm: "users",
     resource: "/mcp",
     loginPath: "/auth/login",
   });

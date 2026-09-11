@@ -58,9 +58,9 @@ export class SecurityProvider {
    * indistinguishable from it: declaring a second realm silently threw the
    * first one away, and the failure surfaced far from its cause as a 500 at
    * token minting reading `No secret key found in the keystore`, because the
-   * discarded realm never had its signing key registered. `default` is the
-   * natural name to pick, since `DEFAULT_USER_REALM_NAME` is what every
-   * realm-less `UserService` call falls back to. A name is not an identity.
+   * discarded realm never had its signing key registered. `default` is a
+   * natural name to pick (it was `DEFAULT_USER_REALM_NAME` itself until
+   * #Q2264 renamed that to `users`). A name is not an identity.
    */
   protected placeholderRealm: Realm | undefined = this.alepha.isTest()
     ? {

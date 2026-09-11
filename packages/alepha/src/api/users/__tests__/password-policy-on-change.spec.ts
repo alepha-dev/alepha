@@ -28,11 +28,11 @@ describe("password policy on change", () => {
       email: `pwd-${tag}@example.com`,
     });
     const userService = alepha.inject(UserService);
-    await userService.setPassword(user.id, "Valid1Pass!", "default");
+    await userService.setPassword(user.id, "Valid1Pass!", "users");
 
     const controller = alepha.inject(MyPasswordController);
     const session = {
-      user: { id: user.id, realm: "default", sessionId: "s" } as never,
+      user: { id: user.id, realm: "users", sessionId: "s" } as never,
     };
 
     // The default policy requires upper case, lower case and digits;

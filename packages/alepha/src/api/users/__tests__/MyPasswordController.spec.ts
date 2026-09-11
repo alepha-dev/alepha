@@ -26,7 +26,7 @@ const setup = async (username: string) => {
   // Username sign-in: the realm this is most needed in has no email at all —
   // an infrastructure panel, an internal tool — so that is what the tests
   // exercise.
-  realmProvider.register("default", {
+  realmProvider.register("users", {
     settings: { username: "required" } as never,
   });
   const userService = alepha.inject(UserService);
@@ -66,7 +66,7 @@ const setup = async (username: string) => {
     sessionService: alepha.inject(SessionService),
     realmProvider,
     user,
-    caller: { id: user.id, realm: "default", sessionId: current.id },
+    caller: { id: user.id, realm: "users", sessionId: current.id },
   };
 };
 

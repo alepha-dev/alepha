@@ -13,14 +13,15 @@ import { signInAsAdmin } from "./_helpers.ts";
  *
  * Base UI supplies exactly such a descendant: every named form control renders
  * a 1×1 hidden `<input>` styled `position: absolute` with no offsets. On
- * `api.realms.default` — the one parameter with a schema big enough to overflow
- * its card — those inputs escaped `main`, resolved against the positioned
+ * the realm's settings parameter (`api.realms.users`, named
+ * `api.realms.default` until #Q2264), the one with a schema big enough to
+ * overflow its card, those inputs escaped `main`, resolved against the positioned
  * `SidebarInset`, and each pinned the document open at its own static offset.
  * The document grew to 1991px against a 720px viewport and the shell scrolled
  * 1271px into empty background.
  *
  * The regression is therefore invisible to any assertion about the page's
- * content: it is measured, not looked at. `api.realms.default` is named here
+ * content: it is measured, not looked at. `api.realms.users` is named here
  * rather than any parameter because a small schema does not reach past the
  * fold and cannot reproduce it.
  */
@@ -59,7 +60,7 @@ test.describe("admin shell scrolling", () => {
   }) => {
     await signInAsAdmin(page);
 
-    await page.goto("/admin/parameters?param=api.realms.default");
+    await page.goto("/admin/parameters?param=api.realms.users");
     await page.waitForLoadState("domcontentloaded");
     // The form is built from the parameter's runtime schema, fetched after the
     // page mounts, so the fields that produce the hidden inputs do not exist

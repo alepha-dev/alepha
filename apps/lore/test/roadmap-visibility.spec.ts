@@ -24,7 +24,7 @@ import { ProjectSecurityService } from "../src/api/services/ProjectSecurityServi
 const adminUser = {
   id: crypto.randomUUID(),
   roles: ["admin"],
-  realm: "default",
+  realm: "users",
 };
 
 const userDataSchema = z.object({

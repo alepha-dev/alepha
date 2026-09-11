@@ -17,9 +17,9 @@ import { $issuer, AlephaSecurity, SecurityProvider } from "../index.ts";
  * keystore`, because the discarded realm never had its signing key
  * registered.
  *
- * `default` is the natural name for an application to pick, since
- * `DEFAULT_USER_REALM_NAME` is what every realm-less `UserService` call falls
- * back to.
+ * `default` is a natural name for an application to pick, and it was
+ * `DEFAULT_USER_REALM_NAME` itself until #Q2264 renamed that to `users`, so
+ * every app upgraded with `issuer: { name: "default" }` pinned declares one.
  */
 describe("a realm named `default` is not the provider's placeholder", () => {
   const roles = [{ name: "user", permissions: [{ name: "*" }] }];

@@ -197,11 +197,12 @@ export class ServerAuthProvider {
       let resolved = user;
       if (!resolved) {
         const tokens = this.getTokens(cookies);
-        if (tokens) {
-          const provider = this.provider(tokens);
-          if (!("issuer" in provider.options)) {
-            resolved = await provider.user(tokens);
-          }
+        // `findProvider`: a cookie whose provider is gone has no user behind
+        // it. The request hook already dropped it; this read still sees the
+        // request's copy.
+        const provider = tokens && this.findProvider(tokens);
+        if (tokens && provider && !("issuer" in provider.options)) {
+          resolved = await provider.user(tokens);
         }
       }
 
@@ -985,9 +986,15 @@ export class ServerAuthProvider {
         return;
       }
 
-      const provider = this.provider(tokens);
-
       this.tokens.del({ cookies });
+
+      // A cookie whose provider is gone (see `findProvider`) has no session
+      // or IdP to end: deleting it is the whole logout.
+      const provider = this.findProvider(tokens);
+      if (!provider) {
+        reply.redirect(redirect, 302);
+        return;
+      }
 
       // for internal providers, we can delete the session - if available
       if (provider.issuer && tokens.refresh_token) {
@@ -1086,10 +1093,34 @@ export class ServerAuthProvider {
   protected provider(
     opts: string | { provider: string; realm?: string },
   ): AuthPrimitive {
+    const identity = this.findProvider(opts);
+
+    if (!identity) {
+      const name = typeof opts === "string" ? opts : opts.provider;
+      const realmName = typeof opts === "string" ? undefined : opts.realm;
+      const realmInfo = realmName ? ` for realm '${realmName}'` : "";
+      throw new SecurityError(`Auth provider '${name}'${realmInfo} not found`);
+    }
+
+    return identity;
+  }
+
+  /**
+   * {@link provider} without the throw, for the paths that read a `tokens`
+   * cookie. A cookie outlives the code that minted it by up to 30 days, so
+   * the provider or realm it names can be gone by the time it comes back:
+   * the default realm was renamed from `default` to `users` (#Q2264), and a
+   * browser still holding a `realm: "default"` cookie used to fail EVERY
+   * request, logout included, until its access token expired. Such a cookie
+   * can never verify or refresh, so its holder is a signed-out visitor.
+   */
+  protected findProvider(
+    opts: string | { provider: string; realm?: string },
+  ): AuthPrimitive | undefined {
     const name = typeof opts === "string" ? opts : opts.provider;
     const realmName = typeof opts === "string" ? undefined : opts.realm;
 
-    const identity = this.identities.find((identity) => {
+    return this.identities.find((identity) => {
       if (identity.name !== name) {
         return false;
       }
@@ -1101,13 +1132,6 @@ export class ServerAuthProvider {
 
       return true;
     });
-
-    if (!identity) {
-      const realmInfo = realmName ? ` for realm '${realmName}'` : "";
-      throw new SecurityError(`Auth provider '${name}'${realmInfo} not found`);
-    }
-
-    return identity;
   }
 
   /**
@@ -1153,6 +1177,18 @@ export class ServerAuthProvider {
       expires_in: tokens.expires_in,
       issued_at: tokens.issued_at,
     });
+
+    // Minted by a provider or realm this app no longer has (see
+    // `findProvider`): drop the cookie and carry on anonymous, rather than
+    // failing the request in `extractAccessToken` below.
+    if (!this.findProvider(tokens)) {
+      this.log.info("Signing out a session whose auth provider is gone", {
+        provider: tokens.provider,
+        realm: tokens.realm,
+      });
+      this.tokens.del({ cookies });
+      return;
+    }
 
     // check if tokens are expired
     const refreshedTokens = await this.refreshTokens(tokens);

@@ -1,7 +1,22 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-export const DEFAULT_USER_REALM_NAME = "default";
+/**
+ * The name of a realm `$realm()` declares without `issuer.name`.
+ *
+ * It was `"default"` until #Q2264, and it is persisted: every user row
+ * carries it in `realm`, every OAuth client in `oauth_clients.realm`, and the
+ * realm's settings live in the `$parameter` `api.realms.<name>`. An app that
+ * upgrades across the rename migrates those three (see the `users_realm`
+ * migrations in this repo's apps), or pins `issuer: { name: "default" }` to
+ * keep its old name.
+ *
+ * ⚠️ It is also the `users.realm` column DEFAULT, and on SQLite a changed
+ * default is a table rebuild: the migration that moved it is hand-written as
+ * UPDATEs, and the physical default on an upgraded database stays
+ * `'default'`. Harmless, because every insert path writes `realm` itself.
+ */
+export const DEFAULT_USER_REALM_NAME = "users";
 
 export const users = $entity({
   name: "users",
