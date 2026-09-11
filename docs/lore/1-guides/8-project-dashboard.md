@@ -44,13 +44,13 @@ your own rank matrix rather than something Lore decides for you.
 
 ## The cards
 
-| Card                 | What it counts                                     |
-| -------------------- | -------------------------------------------------- |
+| Card                 | What it counts                                      |
+| -------------------- | --------------------------------------------------- |
 | **Active quests**    | Open quests in the project - to do plus in progress |
-| **On hold**          | How many of those are parked, waiting on something |
-| **Epic progress**    | How far one epic has got                           |
-| **Release progress** | How far one release has got                        |
-| **Tag completion**   | Completed over total for one quest tag             |
+| **On hold**          | How many of those are parked, waiting on something  |
+| **Epic progress**    | How far one epic has got                            |
+| **Release progress** | How far one release has got                         |
+| **Tag completion**   | Completed over total for one quest tag              |
 
 **On hold is a subset of Active quests.** Both count the same set of open
 quests, so "Quests 12 / On hold 3" reads as three of the twelve being stuck.

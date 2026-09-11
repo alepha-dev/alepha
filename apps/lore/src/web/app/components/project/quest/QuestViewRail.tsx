@@ -35,12 +35,12 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { capabilityOption } from "../../../services/projectCapabilities.ts";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
+import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import { formatEstimate } from "./questEstimate.ts";
 import QuestReleaseControl from "./QuestReleaseControl.tsx";
 import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailEpicLink from "./QuestViewRailEpicLink.tsx";
-import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";

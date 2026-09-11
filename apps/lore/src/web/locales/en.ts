@@ -316,7 +316,8 @@ export default {
   "board.bulk.failed": "$1 could not be updated.",
   "board.bulk.shelve.none":
     "None of the selected quests can be shelved: only a quest still to do can be.",
-  "board.bulk.shelve.skipped": "$1 skipped: only a quest still to do can be shelved.",
+  "board.bulk.shelve.skipped":
+    "$1 skipped: only a quest still to do can be shelved.",
   "board.bulk.unshelve.none": "None of the selected quests is shelved.",
   "board.bulk.unshelve.skipped": "$1 skipped: not shelved.",
 

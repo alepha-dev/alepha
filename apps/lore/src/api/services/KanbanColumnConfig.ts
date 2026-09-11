@@ -39,7 +39,7 @@ export interface ResolvedKanbanColumn {
  *
  * - every configured column takes its status from the config, defaulting
  *   to `in_progress`, which is what a configured column has always meant;
- * - a "New" column is synthesized ONLY when no configured column carries
+ * - a "To do" column is synthesized ONLY when no configured column carries
  *   `todo`, and likewise for "Completed".
  *
  * So a project can have two done-ish columns, or replace the synthesized

@@ -434,12 +434,8 @@ describe("EpicWorkflowService", () => {
         status: "completed",
       });
 
-      expect(() =>
-        app.workflow.assertManualEdge(draft, "ready"),
-      ).not.toThrow();
-      expect(() =>
-        app.workflow.assertManualEdge(ready, "draft"),
-      ).not.toThrow();
+      expect(() => app.workflow.assertManualEdge(draft, "ready")).not.toThrow();
+      expect(() => app.workflow.assertManualEdge(ready, "draft")).not.toThrow();
       expect(() => app.workflow.assertManualEdge(started, "ready")).toThrow(
         `Cannot move Epic #E${started.number} from in_progress to ready. Work has started and its plan is frozen. Shelve what will not be done, or create a new epic.`,
       );

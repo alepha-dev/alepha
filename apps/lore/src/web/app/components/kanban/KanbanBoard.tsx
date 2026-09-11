@@ -307,7 +307,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     return resolved.map((column) => ({
       // Keyed by name, which is unique among configured columns; the
       // synthesized ends carry their translated label, which cannot
-      // collide because a column named "New" would be a configured one and
+      // collide because a column named "To do" would be a configured one and
       // would suppress the synthesized lane.
       key: `column:${column.name}`,
       kind: column.status,

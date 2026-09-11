@@ -18,7 +18,7 @@ what you pasted.
 
 | Prompt                 | Where                                                              | Offered when                                                                         |
 | ---------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **Review**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                              |
+| **Review**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                                |
 | **Work on it** (epic)  | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
 | **Work on it** (quest) | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
 | **Work on it**         | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |

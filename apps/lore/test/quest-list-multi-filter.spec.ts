@@ -175,20 +175,16 @@ describe("getQuests with multi-value filters", () => {
     expect,
   }) => {
     const { titles } = await setupProject();
-    expect(await titles({ status: "todo,in_progress,completed,shelved" })).toEqual([
-      "Done",
-      "Fresh",
-      "Parked",
-      "Running",
-    ]);
+    expect(
+      await titles({ status: "todo,in_progress,completed,shelved" }),
+    ).toEqual(["Done", "Fresh", "Parked", "Running"]);
   });
 
   it("unions areas and unions tags", async ({ expect }) => {
     const { titles } = await setupProject();
-    expect(await titles({ area: "core,ui", status: "todo,in_progress" })).toEqual([
-      "Fresh",
-      "Running",
-    ]);
+    expect(
+      await titles({ area: "core,ui", status: "todo,in_progress" }),
+    ).toEqual(["Fresh", "Running"]);
     expect(
       await titles({ area: "ui", status: "todo,in_progress,completed" }),
     ).toEqual(["Done"]);
