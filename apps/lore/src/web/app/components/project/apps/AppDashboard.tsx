@@ -41,7 +41,7 @@ const AppDashboard = () => {
   const bare = !instance.sigil && !instance.url && !instance.estateId;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-2">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {bare ? (
           <AppDashboardNextSteps />

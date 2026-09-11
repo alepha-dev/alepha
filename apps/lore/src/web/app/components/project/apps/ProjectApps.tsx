@@ -219,12 +219,13 @@ const ProjectApps = () => {
   return (
     <div
       data-testid="apps-table"
-      // `p-4` and nothing more, matching Epics, Releases and Blights. The
+      // `p-2` and nothing more, matching Epics, Releases and Blights (the
+      // frame every project and admin page shares since #Q2266). The
       // extra `md:pt-10` existed to give the page heading room above the
       // table; the heading is gone (feedback #2081 - the breadcrumb already
       // says "Apps" two lines up, and no other project list carries one), so
       // the inset went with it and this page starts where its siblings do.
-      className="flex min-h-0 flex-1 flex-col overflow-hidden p-4"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden p-2"
     >
       <AlephaTable<AppInstanceResource>
         className="min-h-0 flex-1"

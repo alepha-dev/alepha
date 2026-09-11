@@ -64,7 +64,7 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
       // carries what the breadcrumb leaf cannot. A plate that names the
       // section is the leaf, drawn twice.
     >
-      <div className="flex flex-col gap-8 p-4">
+      <div className="flex flex-col gap-8 p-2">
         <NestedView />
       </div>
     </PlateLayout>

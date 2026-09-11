@@ -201,7 +201,7 @@ const ProjectArtifacts = () => {
   return (
     <div
       data-testid="artifacts-table"
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4"
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-2"
     >
       {/*
         The error state is still the page's own, and the empty one is not it -
