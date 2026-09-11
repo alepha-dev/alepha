@@ -8,6 +8,7 @@ import {
   AvatarImage,
 } from "@alepha/ui/components/ui/avatar";
 import { Button } from "@alepha/ui/components/ui/button";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -34,9 +35,19 @@ export interface DetailAsideProps {
    */
   title?: string;
   /**
-   * Thumbnail or avatar source. Falls back to {@link fallback}.
+   * Thumbnail or avatar source, as a URL. Falls back to {@link fallback}.
    */
   image?: string;
+  /**
+   * The same picture as a file id served by `alepha/api/files` - a
+   * `user.picture`, say - drawn through {@link UserAvatar} on the
+   * authenticated file route. Wins over {@link image}.
+   *
+   * A separate prop because a file id is not a URL: handed to `image`, the
+   * browser requested the bare id relative to the page and the fallback
+   * letter was all anyone saw (#Q2246).
+   */
+  imageFileId?: string;
   /**
    * Shown in place of a missing image. Defaults to the title's initial.
    */
@@ -105,7 +116,14 @@ export const DetailAside = (props: DetailAsideProps) => {
     <div className="flex flex-col gap-4">
       {header ? (
         <div className="flex items-center gap-3">
-          {showAvatar && (
+          {showAvatar && props.imageFileId ? (
+            <UserAvatar
+              fileId={props.imageFileId}
+              alt={props.title ?? ""}
+              className="size-10 rounded-md"
+              fallback={<span className="text-sm">{initial}</span>}
+            />
+          ) : showAvatar ? (
             <Avatar className="size-10 rounded-md after:rounded-md">
               {props.image && (
                 <AvatarImage
@@ -116,7 +134,7 @@ export const DetailAside = (props: DetailAsideProps) => {
               )}
               <AvatarFallback className="rounded-md">{initial}</AvatarFallback>
             </Avatar>
-          )}
+          ) : null}
           {props.title ? (
             <span
               className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight"

@@ -133,7 +133,7 @@ export const AdminUserDetailIdentityAside = (
   return (
     <DetailAside
       title={String(displayName)}
-      image={user.picture}
+      imageFileId={user.picture}
       fallback={user.email || user.username || user.firstName || "?"}
       rows={rows}
     />

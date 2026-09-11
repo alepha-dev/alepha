@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
@@ -106,6 +106,37 @@ describe("DetailAside", () => {
     await mount(<DetailAside title="bague aurore" rows={[]} />);
 
     expect(screen.getByText("B")).toBeTruthy();
+  });
+
+  it("serves a file-id image through the authenticated file route", async () => {
+    // A `user.picture` is a file id, not a URL. Handed to `image` it was
+    // requested relative to the page and never loaded (#Q2246).
+    const { container } = await mount(
+      <DetailAside
+        title="ada@example.com"
+        imageFileId="00000000-0000-4000-8000-00000000000a"
+        rows={[]}
+      />,
+    );
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "/api/files/00000000-0000-4000-8000-00000000000a",
+    );
+  });
+
+  it("falls back to the initial when a file-id image fails to load", async () => {
+    const { container } = await mount(
+      <DetailAside
+        title="ada@example.com"
+        imageFileId="00000000-0000-4000-8000-00000000000b"
+        rows={[]}
+      />,
+    );
+
+    fireEvent.error(container.querySelector("img")!);
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText("A")).toBeTruthy();
   });
 
   it("renders no header at all with neither title nor avatar", async () => {

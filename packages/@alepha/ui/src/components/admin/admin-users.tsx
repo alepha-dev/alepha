@@ -9,10 +9,10 @@ import { AdminUsersRolesPicker } from "@alepha/ui/components/admin/admin-users-r
 import { AdminUsersStatusFilter } from "@alepha/ui/components/admin/admin-users-status-filter";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { type Infer, z } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
@@ -366,9 +366,14 @@ export const AdminUsers = (props: AdminUsersProps) => {
                 .toUpperCase();
               return (
                 <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback>{initial}</AvatarFallback>
-                  </Avatar>
+                  {/* The picture when there is one, the initial when there
+                      is none or it fails to load. The authenticated route
+                      serves an admin every user's picture, where the public
+                      one depends on the app opening the bucket. */}
+                  <UserAvatar
+                    fileId={u.picture}
+                    fallback={<span className="text-sm">{initial}</span>}
+                  />
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/users/${u.id}`)}
