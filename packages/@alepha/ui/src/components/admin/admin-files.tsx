@@ -246,8 +246,12 @@ export const AdminFiles = () => {
           },
         ]}
         columns={{
+          // Every column but the preview sorts SERVER-side: `findFiles` takes
+          // `pageQuerySchema`'s `sort`, and the repository orders on the
+          // column of that name (feedback #2190, #Q2232).
           name: {
             label: tr("admin.files.colName", { default: "Name" }),
+            sortable: true,
             cell: (f) => {
               const trigger = (
                 <button
@@ -276,6 +280,15 @@ export const AdminFiles = () => {
           },
           user: {
             label: tr("admin.files.colUser", { default: "Uploaded by" }),
+            sortable: true,
+            // ⚠️ Sorts on `creator`, the uploader's id, and so orders the
+            // uploaders by uuid rather than by name: each one's files come
+            // together, but which uploader comes first reads as arbitrary.
+            // Ordering by name or email would mean ordering on the joined
+            // `users` row, and the repository resolves a sort column on the
+            // files table only. System uploads (no creator) sort together
+            // at one end.
+            sortKey: "creator",
             cell: (f) => (
               <AdminUserCell
                 userId={f.creator}
@@ -287,6 +300,7 @@ export const AdminFiles = () => {
           size: {
             label: tr("admin.files.colSize", { default: "Size" }),
             align: "right",
+            sortable: true,
             cell: (f) => (
               <span className="text-muted-foreground text-xs">
                 {formatBytes(f.size ?? 0)}
@@ -295,6 +309,7 @@ export const AdminFiles = () => {
           },
           mimeType: {
             label: tr("admin.files.colType", { default: "Type" }),
+            sortable: true,
             cell: (f) => (
               <Badge variant="secondary">
                 {f.mimeType ??
@@ -304,6 +319,7 @@ export const AdminFiles = () => {
           },
           bucket: {
             label: tr("admin.files.colBucket", { default: "Bucket" }),
+            sortable: true,
             cell: (f) => <code className="text-xs">{f.bucket ?? "—"}</code>,
           },
           createdAt: {
