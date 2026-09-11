@@ -13,7 +13,10 @@ import { useRouter } from "alepha/react/router";
 import {
   AppWindow,
   FileText,
+  Flag,
   Folder,
+  Inbox,
+  Layers,
   LayoutGrid,
   Lock,
   PanelsTopLeft,
@@ -36,10 +39,14 @@ import { formatReference } from "../element/typedReference.ts";
 import { matchProjectNav } from "./matchProjectNav.ts";
 
 interface SpotlightHit {
-  kind: "quest" | "folio" | "directory";
+  kind: "quest" | "folio" | "directory" | "epic" | "release" | "feedback";
   id: string;
   shortId: number;
   title: string;
+  /**
+   * A release's tag: its page is addressed by tag, never by number.
+   */
+  tag?: string;
   /**
    * One line of context — a quest's description, a folio's summary. Already
    * flattened and truncated by `SearchController`; render it as-is.
@@ -196,20 +203,56 @@ const Spotlight = (): ReactElement => {
       });
       return;
     }
+    // Epics, releases and feedback are found by number only (#Q2228), and
+    // each opens where its own list would open it.
+    if (hit.kind === "epic") {
+      await router.push("projectEpic", {
+        params: { ...params, epicNumber: String(hit.shortId) },
+      });
+      return;
+    }
+    if (hit.kind === "release") {
+      // A release page is addressed by its TAG. A release from before tags
+      // were required has none, and the list is the one place it can open.
+      await (hit.tag
+        ? router.push("projectRelease", {
+            params: { ...params, releaseTag: hit.tag },
+          })
+        : router.push("projectReleases", { params }));
+      return;
+    }
+    if (hit.kind === "feedback") {
+      // `?feedback=`, the address every `[[#P12]]` link already uses.
+      await router.push("projectFeedback", {
+        params,
+        query: { feedback: String(hit.shortId) },
+      });
+      return;
+    }
     // A directory has no route of its own — the workspace is where it is
     // reachable, through the tree.
     await router.push("projectFolios", { params });
   };
 
+  // The epic, release and feedback glyphs are their sidebar entries' own
+  // (`capabilityNav.ts`), so a row reads as the page it opens.
   const iconFor = (hit: SpotlightHit) => {
     if (hit.kind === "quest") return <Swords />;
+    if (hit.kind === "epic") return <Layers />;
+    if (hit.kind === "release") return <Flag />;
+    if (hit.kind === "feedback") return <Inbox />;
     if (hit.kind === "directory") return <Folder />;
     if (hit.protected) return <Lock />;
     return <FileText />;
   };
 
   const quests = hits.filter((h) => h.kind === "quest");
-  const folios = hits.filter((h) => h.kind !== "quest");
+  const epics = hits.filter((h) => h.kind === "epic");
+  const releases = hits.filter((h) => h.kind === "release");
+  const feedback = hits.filter((h) => h.kind === "feedback");
+  const folios = hits.filter(
+    (h) => h.kind === "folio" || h.kind === "directory",
+  );
 
   const row = (hit: SpotlightHit) => (
     <CommandItem
@@ -331,6 +374,21 @@ const Spotlight = (): ReactElement => {
               {quests.length > 0 && (
                 <CommandGroup heading={String(tr("spotlight.group.quests"))}>
                   {quests.map(row)}
+                </CommandGroup>
+              )}
+              {epics.length > 0 && (
+                <CommandGroup heading={String(tr("spotlight.group.epics"))}>
+                  {epics.map(row)}
+                </CommandGroup>
+              )}
+              {releases.length > 0 && (
+                <CommandGroup heading={String(tr("spotlight.group.releases"))}>
+                  {releases.map(row)}
+                </CommandGroup>
+              )}
+              {feedback.length > 0 && (
+                <CommandGroup heading={String(tr("spotlight.group.feedback"))}>
+                  {feedback.map(row)}
                 </CommandGroup>
               )}
               {folios.length > 0 && (
