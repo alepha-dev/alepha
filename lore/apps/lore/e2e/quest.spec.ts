@@ -1317,9 +1317,15 @@ test.describe("Quest", () => {
       // not. The class itself is the only observable fact left, and it is
       // the one the step was really about - the lazy face was just what made
       // the miss visible.
-      await expect(page.getByText("Seeded for the back arrow")).toHaveClass(
-        /folio-prose/,
-      );
+      //
+      // Asserted on the prose ROOT, not via `getByText`: that resolves to the
+      // innermost node holding the text, which is the markdown paragraph
+      // (`my-3`), while `folio-prose` sits on the viewer wrapping it. `hasText`
+      // is what ties the class to THIS description rather than to any other
+      // prose root the page might grow later.
+      await expect(
+        page.locator(".folio-prose", { hasText: "Seeded for the back arrow" }),
+      ).toBeVisible();
     });
 
     await test.step("the breadcrumb reads Project > Quests > #shortId", async () => {
