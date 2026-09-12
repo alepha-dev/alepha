@@ -2,13 +2,17 @@ import * as React from "react";
 
 void React;
 
+import {
+  ControlClearButton,
+  TRIGGER_CLASSES,
+  TRIGGER_SIZES,
+} from "@alepha/ui/components/control-base/field-trigger";
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import {
   DATE_ONLY,
   formatDateOnly,
   parseDateOnly,
 } from "@alepha/ui/components/control-date/date-only.ts";
-import { Button } from "@alepha/ui/components/ui/button";
 import { Calendar } from "@alepha/ui/components/ui/calendar";
 import { Input } from "@alepha/ui/components/ui/input";
 import {
@@ -27,7 +31,6 @@ import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
   Clock,
-  X,
 } from "lucide-react";
 import { useState } from "react";
 import type { DayPickerProps } from "react-day-picker";
@@ -70,7 +73,8 @@ export interface ControlDateProps {
    *
    * A calendar has no "none" cell, so without this an optional date field is
    * one-way: pick a day and there is no gesture that unsets it. Every other
-   * control in the kit spells this `clearable`, so this one does too.
+   * control in the kit spells this `clearable`, so this one does too - and
+   * draws it the same way, as the kit's `x` on the trigger.
    */
   clearable?: boolean;
   /**
@@ -228,99 +232,75 @@ const DatePopover = (props: DatePopoverProps) => {
       ? `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
       : "";
 
-  const showClear = props.clearable && !!date && !props.disabled;
+  const showClear = Boolean(props.clearable && date && !props.disabled);
+  const size = TRIGGER_SIZES.default;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {/* The clear button sits BESIDE the trigger, not inside it: a button
-          nested in a button is invalid, and Base UI's popover trigger would
-          swallow its click anyway. */}
-      <div className="flex w-full items-center gap-1">
+      {/* The kit's field trigger, and the kit's clear button positioned on it
+          - `control-base/field-trigger`, the same two a select draws. The
+          clear sits BESIDE the trigger rather than inside it: a button nested
+          in a button is invalid, and Base UI's popover trigger would swallow
+          its click anyway. */}
+      <div className="relative w-full">
         <PopoverTrigger
-          render={
-            <Button
-              id={props.id}
-              // A FIELD trigger, not a button, and the distinction is load
-              // bearing: `styles.css` gives the `--input-hover` border to a
-              // list of `data-slot`s, and this one was not on it, so the date
-              // control was the only field in the kit that did not darken its
-              // border under the pointer. Overriding Base UI's own
-              // `data-slot="button"` is safe - nothing selects on it.
-              data-slot="date-trigger"
-              variant="outline"
-              disabled={props.disabled}
-              className={cn(
-                "flex-1 justify-start text-left font-normal",
-                // ⚠️ **`border-input`, overriding the outline variant's
-                // `border-border`.** Both tokens hold the same value today,
-                // so this changes nothing on screen - and that is exactly why
-                // it is written down. Rendering as a Button means inheriting
-                // `buttonVariants.outline`, which reaches for `--border`;
-                // right for a BUTTON, whose edge is decoration beside a fill
-                // and a label, and wrong for a FIELD, whose edge is the only
-                // thing saying where it is.
-                //
-                // The alias is what makes the mistake invisible. It was split
-                // once (#Q2149) and this control was immediately the only one
-                // of the six field slots on the wrong side of it, while
-                // `input`, `textarea`, `select-trigger`, `input-group` and
-                // `combobox-trigger` all followed `--input` on their own.
-                // Same reason the comment above claims
-                // `data-slot="date-trigger"` rather than leaving it a button.
-                "border-input",
-                // Undo the outline variant's hover fill AND its open-state
-                // fill. A select trigger shades for neither: the border is the
-                // affordance in both cases, and a field that greys out while
-                // its own popover is open reads as disabled at the moment it
-                // is most active. Neither `select-trigger` nor
-                // `combobox-trigger` carries an `aria-expanded:bg-*` rule at
-                // all, which is the behaviour being matched.
-                //
-                // ⚠️ Each modifier has to match the variant's own EXACTLY -
-                // `hover:` and `aria-expanded:` - or tailwind-merge keeps both
-                // rules and the winner is down to specificity, which the
-                // longer modifier chain wins.
-                "hover:bg-background aria-expanded:bg-background",
-                // Same reasoning for the placeholder: a select leaves it muted
-                // under the pointer. With a value the text is already
-                // `foreground`, so this only matters while empty.
-                !date &&
-                  "text-muted-foreground hover:text-muted-foreground aria-expanded:text-muted-foreground",
-              )}
-            />
-          }
+          id={props.id}
+          // A FIELD trigger, not a button, and the distinction is load
+          // bearing: `styles.css` gives the `--input-hover` border to a
+          // list of `data-slot`s, and this one was not on it, so the date
+          // control was the only field in the kit that did not darken its
+          // border under the pointer.
+          //
+          // ⚠️ It used to render `Button variant="outline"` and then undo
+          // the button-ness of it in four overrides - the border token, the
+          // hover fill, the open-state fill, the placeholder colour - which
+          // is a fair description of why it still did not look like the
+          // selects beside it (feedback #2197). The shared trigger is a
+          // field to begin with, so there is nothing left to undo.
+          data-slot="date-trigger"
+          disabled={props.disabled}
+          className={cn(
+            TRIGGER_CLASSES,
+            size.trigger,
+            size.chevron,
+            // Muted means "nothing picked yet", exactly as on a select. With
+            // a value the text is already `foreground`, so this only matters
+            // while empty.
+            !date && "text-muted-foreground",
+          )}
         >
-          {/*
-            Muted whatever the field holds, matching `InputGroupAddon`, which
-            paints every other leading icon in the kit `text-muted-foreground`
-            on the container.
+          {/* The room for the clear button - see `clearGap` in TRIGGER_SIZES
+              for why it is a margin here and not padding on the trigger. */}
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-2",
+              showClear && size.clearGap,
+            )}
+          >
+            {/*
+              Muted whatever the field holds, matching `InputGroupAddon`, which
+              paints every other leading icon in the kit `text-muted-foreground`
+              on the container.
 
-            Without the class this icon simply inherits the trigger's `color`,
-            which the control swaps between muted and foreground to grey the
-            PLACEHOLDER - so the icon brightened when a date was picked. That
-            looked deliberate and was not: an icon says what kind of field this
-            is, which does not change when you fill it, and the text beside it
-            already carries filled-versus-empty.
-          */}
-          <CalendarIcon className="text-muted-foreground mr-2 size-4" />
-          {formatted || "Pick a date"}
+              Without the class this icon simply inherits the trigger's `color`,
+              which the control swaps between muted and foreground to grey the
+              PLACEHOLDER - so the icon brightened when a date was picked. That
+              looked deliberate and was not: an icon says what kind of field this
+              is, which does not change when you fill it, and the text beside it
+              already carries filled-versus-empty.
+            */}
+            <CalendarIcon
+              className={cn("text-muted-foreground shrink-0", size.icon)}
+            />
+            <span className="truncate">{formatted || "Pick a date"}</span>
+          </span>
           {/* Same trailing caret a select trigger carries, for the same
               reason: this opens a popover, and without it the control reads
-              as a text field that happens to have a calendar glyph. `ml-auto`
-              rather than `justify-between` so the calendar icon and the text
-              stay together on the left. */}
-          <ChevronDownIcon className="text-muted-foreground pointer-events-none ml-auto size-4 shrink-0" />
+              as a text field that happens to have a calendar glyph. */}
+          <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0" />
         </PopoverTrigger>
         {showClear && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Clear date"
-            onClick={() => props.onChange(undefined)}
-          >
-            <X className="size-4" />
-          </Button>
+          <ControlClearButton onClick={() => props.onChange(undefined)} />
         )}
       </div>
       <PopoverContent className="w-auto p-0" align="start">

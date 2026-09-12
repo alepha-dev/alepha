@@ -2,6 +2,13 @@ import * as React from "react";
 
 void React;
 
+import {
+  ControlClearButton,
+  type ControlTriggerSize,
+  TRIGGER_CLASSES,
+  TRIGGER_MINIMAL_CLASSES,
+  TRIGGER_SIZES,
+} from "@alepha/ui/components/control-base/field-trigger";
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
 import {
@@ -24,7 +31,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { ListChecks, Loader2, X } from "lucide-react";
+import { ListChecks, Loader2 } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
@@ -59,89 +66,12 @@ type LoaderMode = "static" | "short" | "long";
 /**
  * How tall and how loud a select trigger is.
  *
- * `xs` exists for a control that sits ON a row of text rather than in a form:
- * the quest rail's Release field beside its Assigned picker, where a
- * default-height boxed select reads as heavier than every line around it.
+ * The kit's own scale, kept under this name because `Control` and a long tail
+ * of callers already spell it `size="xs"` on a select. The table behind it,
+ * and the trigger box it sizes, are `control-base/field-trigger`'s - shared
+ * with the two calendar controls, which used to draw a button instead.
  */
-export type ControlSelectSize = "xs" | "sm" | "default";
-
-/**
- * Per-size trigger geometry. Kept as one table rather than scattered
- * conditionals so a new size is one row and the axes cannot drift.
- *
- * `chevron` targets the trigger's own last SVG - the one `ComboboxTrigger`
- * appends at a hardcoded `size-4`. That file is stock shadcn, refreshed
- * wholesale by `yarn sync`, so it is sized from here rather than edited.
- *
- * ⚠️ `clear` and `clearGap` are in this table for the reason feedback #2113
- * exists: they used to be the constants `right-8` and `mr-6`, tuned for the
- * default size. `right-8` is the default's right padding (8px) plus its
- * chevron (16px) plus a gap, so at `sm` and `xs` - where both shrink - the
- * `x` stayed 32px from the edge while the chevron moved left, and it landed
- * on the value. Anything positioned against the chevron belongs beside the
- * chevron's own size.
- *
- * - `clear` is the button's offset from the trigger's right edge.
- * - `clearGap` is the margin that stops the LABEL running under it. On the
- *   label rather than in the trigger's padding: the chevron is the trigger's
- *   last flex child under `justify-between`, so padding the trigger walks
- *   the chevron inwards and leaves the button hanging off its right.
- */
-const SIZE_CLASSES: Record<
-  ControlSelectSize,
-  {
-    trigger: string;
-    icon: string;
-    chevron: string;
-    clear: string;
-    clearGap: string;
-  }
-> = {
-  default: {
-    trigger: "h-8 gap-1.5 py-2 pr-2 pl-2.5 text-sm",
-    icon: "size-4",
-    chevron: "[&>svg]:size-4",
-    clear: "right-8",
-    clearGap: "mr-6",
-  },
-  sm: {
-    trigger: "h-7 gap-1.5 py-1 pr-1.5 pl-2 text-sm",
-    icon: "size-3.5",
-    chevron: "[&>svg]:size-3.5",
-    clear: "right-7",
-    clearGap: "mr-5",
-  },
-  xs: {
-    trigger: "h-6 gap-1 px-1 text-xs",
-    icon: "size-3",
-    chevron: "[&>svg]:size-3",
-    clear: "right-5",
-    clearGap: "mr-4",
-  },
-};
-
-/**
- * What `minimal` does to the clear button's offset.
- *
- * `MINIMAL_CLASSES` carries `-mx-1`, so the trigger's right edge sits 4px
- * PAST the wrapper the button is positioned against, taking the chevron with
- * it. The button has to follow by the same 4px or it drifts left of where it
- * belongs - a second copy of the bug this quest is about, one variant down.
- *
- * A translate rather than a second `right-*` per size, so the table stays one
- * number per size and this stays one rule.
- */
-const MINIMAL_CLEAR_SHIFT = "translate-x-1";
-
-/**
- * The bordered box, or nothing at all.
- *
- * `minimal` drops the border, the background and the shadow, and pulls the
- * trigger left by its own padding so its text aligns with plain rows beside
- * it. The hover tint is what keeps it discoverable as a control.
- */
-const MINIMAL_CLASSES =
-  "-mx-1 border-transparent bg-transparent shadow-none hover:bg-muted dark:bg-transparent dark:hover:bg-input/50";
+export type ControlSelectSize = ControlTriggerSize;
 
 export interface ControlSelectProps {
   /**
@@ -651,7 +581,7 @@ interface ComboOption {
  */
 function Combobox(props: ComboboxProps) {
   const { tr } = useI18n();
-  const sizeClasses = SIZE_CLASSES[props.size ?? "default"];
+  const sizeClasses = TRIGGER_SIZES[props.size ?? "default"];
   const [query, setQuery] = useState("");
   // Remembers labels for values the user has picked, so the trigger/chips keep
   // a human label even after the source option drops out of a server-filtered
@@ -1073,10 +1003,10 @@ function Combobox(props: ComboboxProps) {
           disabled={props.disabled}
           {...props.triggerProps}
           className={cn(
-            "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between rounded-lg border bg-transparent whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+            TRIGGER_CLASSES,
             sizeClasses.trigger,
             sizeClasses.chevron,
-            props.minimal && MINIMAL_CLASSES,
+            props.minimal && TRIGGER_MINIMAL_CLASSES,
             // Muted means "nothing chosen yet", and now that is simply
             // "nothing selected" for every shape.
             //
@@ -1090,7 +1020,7 @@ function Combobox(props: ComboboxProps) {
           )}
         >
           {/* The room for the clear button, per size - see `clearGap` in
-              SIZE_CLASSES for why it is a margin here and not padding on the
+              TRIGGER_SIZES for why it is a margin here and not padding on the
               trigger. */}
           <span
             className={cn(
@@ -1110,42 +1040,11 @@ function Combobox(props: ComboboxProps) {
           </span>
         </ComboboxTrigger>
         {showClear && (
-          <button
-            type="button"
-            aria-label={String(
-              tr("controlSelect.clear", { default: "Clear selection" }),
-            )}
-            className={cn(
-              // ⚠️ Lighter than the chevron at rest, and it sharpens when
-              // reached for. They are not peers: the chevron is decoration,
-              // since the whole trigger opens the popup and nobody aims at
-              // it, while this is the only element here with its own hit
-              // target and its own action. Two equal grey glyphs side by
-              // side make the eye separate them every time, and on a filter
-              // rail with three filters set that is paid three times.
-              //
-              // Alpha on the TEXT COLOR, deliberately, and three things this
-              // is not:
-              //
-              // - not a hover reveal. It must stay visible at rest: it is
-              //   the only discoverable way to clear, there is no hover on
-              //   touch, and an element appearing under the arriving pointer
-              //   makes the control feel twitchy.
-              // - not `opacity` on the button, which would fade the focus
-              //   ring with it and weaken the keyboard state exactly when it
-              //   needs to be strongest.
-              // - not a background. `styles.css` defines a single muted
-              //   tier, and alpha fades toward the trigger's own surface, so
-              //   it lightens in light mode and darkens in dark with no
-              //   per-theme override.
-              "text-muted-foreground/60 hover:text-foreground focus-visible:text-foreground focus-visible:ring-ring/50 absolute top-1/2 -translate-y-1/2 rounded p-0.5 transition-colors outline-none focus-visible:ring-2",
-              sizeClasses.clear,
-              props.minimal && MINIMAL_CLEAR_SHIFT,
-            )}
+          <ControlClearButton
+            size={props.size}
+            minimal={props.minimal}
             onClick={() => props.onChange(props.multi ? [] : undefined)}
-          >
-            <X className="size-3.5" />
-          </button>
+          />
         )}
       </div>
       <ComboboxContent>

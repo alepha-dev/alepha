@@ -49,6 +49,15 @@ const schema = z.object({
     .meta({ format: "date", title: "Starts on" })
     .describe("A second date, for comparing two in a row.")
     .optional(),
+  // ⚠️ Neither of these carries a `.describe()`, and that is not an
+  // oversight. `FormField` is as wide as the widest thing in it, the clear
+  // `x` is positioned against that box, and a description longer than a
+  // `triggerClassName`-narrowed trigger therefore pushes the `x` off the
+  // trigger's right edge - for a select exactly as much as for a range, which
+  // is why it is not this quest's to fix. A filter row is the shape being
+  // shown here, and a filter has no description.
+  period: z.dateRange().meta({ title: "Period" }).optional(),
+  status: z.enum(["open", "closed"]).meta({ title: "Status" }).optional(),
 });
 
 const DatePage = () => {
@@ -93,6 +102,38 @@ const DatePage = () => {
 
             <Group title="Side by side">
               <Control input={form.input.startsOn} {...shared} />
+            </Group>
+
+            {/*
+              ⚠️ A select sits in this row on purpose. Feedback #2197 was that
+              the range picker read as a different kit from the controls beside
+              it - a different box, and a clear button hanging off its right
+              rather than the `x` a select wears on its trigger. All three draw
+              `control-base/field-trigger` now, so the row is the check: same
+              height, same border, same `x` in the same place.
+            */}
+            <Group title="Clearable, the same way">
+              <p className="text-muted-foreground text-xs">
+                A range, and a select, as a filter row draws them.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Control
+                  input={form.input.period}
+                  label=""
+                  clearable
+                  disabled={v.disabled}
+                  triggerClassName="w-64"
+                  placeholder="Any date"
+                />
+                <Control
+                  input={form.input.status}
+                  label=""
+                  clearable
+                  disabled={v.disabled}
+                  clearLabel="Any status"
+                  triggerClassName="w-40"
+                />
+              </div>
             </Group>
           </div>
         );

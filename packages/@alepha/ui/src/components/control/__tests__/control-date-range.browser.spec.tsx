@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
@@ -62,6 +62,21 @@ describe("Control (date range)", () => {
   const trigger = () =>
     document.querySelector('[data-slot="date-trigger"]') as HTMLElement;
 
+  /**
+   * The clear `x`, found the way the kit arranges it: the trigger's adjacent
+   * sibling, inside the `relative` wrapper that positions it ON the trigger.
+   *
+   * ⚠️ Named by SHAPE rather than by its accessible name, because the name is
+   * shared with every select on the page (`controlSelect.clear`), and a filter
+   * bar routinely has three. That sharing is the point - feedback #2197 was
+   * that this control looked and behaved like a different kit - so the locator
+   * is the thing that had to become specific.
+   */
+  const clearButton = () =>
+    document.querySelector(
+      '[data-slot="date-trigger"] + [data-slot="control-clear"]',
+    ) as HTMLElement | null;
+
   it("renders the range trigger, not a combobox", async () => {
     const { container } = await mount();
 
@@ -95,13 +110,21 @@ describe("Control (date range)", () => {
     );
     // A calendar has no "none" cell, so `clearable` is the only way back to
     // empty - and there is nothing to clear before something is picked.
-    expect(screen.queryByLabelText("Clear date range")).toBeNull();
+    expect(clearButton()).toBeNull();
   });
 
-  it("clears back to no filter", async () => {
+  it("clears back to no filter, with the kit's own x", async () => {
     await mount(["2026-01-01", "2026-01-31"]);
 
-    const clear = await screen.findByLabelText("Clear date range");
+    const clear = await waitFor(() => {
+      const found = clearButton();
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    // The same accessible name every clearable control in the kit carries,
+    // translated. It used to be a hardcoded English "Clear date range", on a
+    // ghost icon BUTTON sitting outside the trigger.
+    expect(clear.getAttribute("aria-label")).toBe("Clear selection");
     fireEvent.click(clear);
 
     await waitFor(() => expect(written).toBeUndefined());

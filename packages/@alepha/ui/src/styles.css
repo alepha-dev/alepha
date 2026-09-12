@@ -452,8 +452,9 @@
  *
  * Unlayered, because `border-input` is a utility and `@layer base` loses to
  * it. All six slots carry `transition-colors` already, so the change eases in
- * and out on its own; `combobox-trigger` gets both the border and the
- * transition from `control-select`, which is the one that is not obvious.
+ * and out on its own; `combobox-trigger` and `date-trigger` get both the
+ * border and the transition from `control-base/field-trigger`, which is the
+ * part that is not obvious - neither primitive carries them itself.
  *
  * SPLIT IN TWO, because the primitives disagree about which pseudo-class earns
  * the focus border, and this rule outranks all of them. Whatever is excluded

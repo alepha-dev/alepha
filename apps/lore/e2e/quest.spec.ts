@@ -1756,7 +1756,15 @@ test.describe("Quest", () => {
     await test.step("clearing it actually clears it", async () => {
       await page.reload();
       await page.getByRole("button", { name: /edit/i }).first().click();
-      const clear = page.getByRole("button", { name: /clear date/i }).first();
+      // ⚠️ By SHAPE, not by accessible name. The date control's clear `x` is
+      // the kit's own since #Q2282, so its name is the shared, translated
+      // "Clear selection" that every clearable select on this form carries
+      // too - and a `/clear date/i` match now finds nothing while a bare
+      // "Clear selection" match finds several. The `x` is positioned on the
+      // trigger by being its adjacent sibling, which is what this selects.
+      const clear = page
+        .locator('[data-slot="date-trigger"] + [data-slot="control-clear"]')
+        .first();
       await expect(clear).toBeVisible({ timeout: 15_000 });
       await clear.click();
       await page

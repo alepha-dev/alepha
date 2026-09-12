@@ -2,13 +2,17 @@ import * as React from "react";
 
 void React;
 
+import {
+  ControlClearButton,
+  TRIGGER_CLASSES,
+  TRIGGER_SIZES,
+} from "@alepha/ui/components/control-base/field-trigger";
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import {
   DATE_ONLY,
   formatDateOnly,
   parseDateOnly,
 } from "@alepha/ui/components/control-date/date-only.ts";
-import { Button } from "@alepha/ui/components/ui/button";
 import { Calendar } from "@alepha/ui/components/ui/calendar";
 import {
   Popover,
@@ -25,7 +29,6 @@ import {
 import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
-  X,
 } from "lucide-react";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
@@ -43,7 +46,8 @@ export interface ControlDateRangeProps {
    * Offer a way back to empty once a range is picked.
    *
    * A calendar has no "none" cell, so without this an optional range field is
-   * one-way. Spelled `clearable` like every other control in the kit.
+   * one-way. Spelled `clearable` like every other control in the kit, and
+   * drawn like one: the kit's `x` on the trigger, not a button beside it.
    */
   clearable?: boolean;
   /**
@@ -150,7 +154,8 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
     setOpen(false);
   };
 
-  const showClear = props.clearable && !!stored?.from && !props.disabled;
+  const showClear = Boolean(props.clearable && stored?.from && !props.disabled);
+  const size = TRIGGER_SIZES.default;
 
   return (
     <FormField
@@ -167,58 +172,71 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
           if (next) setPending(false);
         }}
       >
-        {/* The clear button sits BESIDE the trigger, not inside it: a button
-            nested in a button is invalid, and Base UI's popover trigger would
-            swallow its click anyway. Same arrangement as `ControlDate`. */}
-        <div className="flex w-full items-center gap-1">
+        {/* The kit's field trigger, and the kit's clear button positioned on
+            it - `control-base/field-trigger`, the same two the selects on the
+            filter bar beside this one draw (feedback #2197). The clear sits
+            BESIDE the trigger rather than inside it because a button nested
+            in a button is invalid, and Base UI's popover trigger would
+            swallow its click anyway. */}
+        <div className="relative w-full">
           <PopoverTrigger
-            render={
-              <Button
-                id={meta.id}
-                // `date-trigger`, the same slot `ControlDate` claims, so this
-                // control gets the kit's `--input-hover` border rule rather
-                // than being the one field that does not darken.
-                data-slot="date-trigger"
-                variant="outline"
-                disabled={props.disabled}
-                // `name` only, never the whole `input.props` spread: those
-                // are an `<input>`'s props and this is a button, so their
-                // `onChange` signature is genuinely incompatible. The name is
-                // what `AutoForm`'s scroll-to-first-error looks a field up by.
-                name={props.input.props.name}
-                className={cn(
-                  "flex-1 justify-start text-left font-normal",
-                  // `border-input`, for the reason `ControlDate` spells out:
-                  // rendering as a Button means inheriting the outline
-                  // variant's `border-border`, which is right for a button
-                  // and wrong for a field. A no-op while the two tokens are
-                  // aliased, which is why it is worth stating.
-                  "border-input",
-                  "hover:bg-background aria-expanded:bg-background",
-                  !formatted &&
-                    "text-muted-foreground hover:text-muted-foreground aria-expanded:text-muted-foreground",
-                  props.triggerClassName,
-                )}
-              />
-            }
+            id={meta.id}
+            // `date-trigger`, the same slot `ControlDate` claims: `styles.css`
+            // gives the `--input-hover` border to a list of `data-slot`s, and
+            // this is how the two calendars are on it.
+            data-slot="date-trigger"
+            disabled={props.disabled}
+            // `name` only, never the whole `input.props` spread: those
+            // are an `<input>`'s props and this is a button, so their
+            // `onChange` signature is genuinely incompatible. The name is
+            // what `AutoForm`'s scroll-to-first-error looks a field up by.
+            name={props.input.props.name}
+            className={cn(
+              TRIGGER_CLASSES,
+              size.trigger,
+              size.chevron,
+              // Muted means "nothing picked yet", exactly as on a select.
+              !formatted && "text-muted-foreground",
+              props.triggerClassName,
+            )}
           >
-            <CalendarIcon className="text-muted-foreground mr-2 size-4" />
-            {formatted || props.placeholder || "Pick a date range"}
-            <ChevronDownIcon className="text-muted-foreground pointer-events-none ml-auto size-4 shrink-0" />
+            {/* The room for the clear button - see `clearGap` in
+                TRIGGER_SIZES for why it is a margin here and not padding on
+                the trigger. */}
+            <span
+              className={cn(
+                "flex min-w-0 items-center gap-2",
+                showClear && size.clearGap,
+              )}
+            >
+              {/*
+                Muted whatever the field holds, matching every other leading
+                icon in the kit. Without the class it inherits the trigger's
+                own `color`, which swaps between muted and foreground to grey
+                the PLACEHOLDER - so the icon brightened when a range was
+                picked. An icon says what kind of field this is, which does
+                not change when you fill it.
+              */}
+              <CalendarIcon
+                className={cn("text-muted-foreground shrink-0", size.icon)}
+              />
+              <span className="truncate">
+                {formatted || props.placeholder || "Pick a date range"}
+              </span>
+            </span>
+            {/* The same trailing caret a select trigger carries, appended by
+                `ComboboxTrigger` there and written out here: this opens a
+                popover, and without it the control reads as a text field that
+                happens to have a calendar glyph. */}
+            <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0" />
           </PopoverTrigger>
           {showClear && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Clear date range"
+            <ControlClearButton
               onClick={() => {
                 setDraft(undefined);
                 setValue(undefined);
               }}
-            >
-              <X className="size-4" />
-            </Button>
+            />
           )}
         </div>
         <PopoverContent className="w-auto p-0" align="start">
