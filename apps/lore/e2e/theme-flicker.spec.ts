@@ -36,7 +36,7 @@ const cookieValue = (mode: string, theme: string) =>
   );
 
 test.describe("theme no-flash", () => {
-  test("dark mode + theme-arcane applied before paint via boot script", async ({
+  test("dark mode + theme-lavandula applied before paint via boot script", async ({
     context,
     page,
     baseURL,
@@ -44,7 +44,7 @@ test.describe("theme no-flash", () => {
     await context.addCookies([
       {
         name: "alepha-ui",
-        value: cookieValue("dark", "arcane"),
+        value: cookieValue("dark", "lavandula"),
         url: String(baseURL),
       },
     ]);
@@ -53,7 +53,7 @@ test.describe("theme no-flash", () => {
 
     const klass = await page.evaluate(() => document.documentElement.className);
     expect(klass).toContain("dark");
-    expect(klass).toContain("theme-arcane");
+    expect(klass).toContain("theme-lavandula");
   });
 
   test("no dark class without cookie + system=light", async ({
@@ -128,7 +128,7 @@ test.describe("theme no-flash", () => {
  * only mounts where a theme picker renders. Nearly every Lore page carries
  * `PageHeader` and therefore a picker, which is why this hid for so long -
  * the roadmap is the one page that renders no header at all. It got
- * `theme-arcane`'s colors while `--font-display` resolved to Cinzel with
+ * `theme-lavandula`'s colors while `--font-heading` resolved to Cinzel with
  * Cinzel never loaded, falling silently down to Times New Roman. Measured
  * before the fix: `document.fonts` held Inter and JetBrains Mono and nothing
  * else. `<ColorScheme/>` owns the link now, and Lore mounts that at the root
@@ -160,7 +160,7 @@ test.describe("theme fonts", () => {
     await context.addCookies([
       {
         name: "alepha-ui",
-        value: cookieValue("light", "arcane"),
+        value: cookieValue("light", "lavandula"),
         url: String(baseURL),
       },
     ]);
@@ -176,7 +176,7 @@ test.describe("theme fonts", () => {
     // reading the DOM once and racing hydration.
     await expect(page.locator("link#alepha-theme-fonts")).toHaveAttribute(
       "href",
-      "/fonts/arcane.css",
+      "/fonts/lavandula.css",
     );
 
     // The link is the mechanism; the loaded face is the outcome. Asserting
@@ -192,8 +192,26 @@ test.describe("theme fonts", () => {
               ).fonts,
             ].some((f) => f.family === "Cinzel"),
           ),
-        { message: "the arcane theme's display face never loaded" },
+        { message: "the lavandula theme's display face never loaded" },
       )
       .toBe(true);
+
+    // ⚠️ And loaded is still not DRAWN. `document.fonts` lists REGISTERED
+    // faces, so the assertion above passes on a stylesheet that was fetched
+    // and applied to nothing - which is precisely what shipped for months,
+    // green, while `--font-display` was read by no rule in the app. Only a
+    // computed style can tell the two apart.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const heading = document.querySelector("h1, h2, h3");
+            return heading
+              ? getComputedStyle(heading).fontFamily
+              : "(no heading on the page)";
+          }),
+        { message: "the heading face is loaded but nothing renders in it" },
+      )
+      .toContain("Cinzel");
   });
 });

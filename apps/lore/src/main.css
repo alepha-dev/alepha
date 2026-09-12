@@ -148,12 +148,60 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Display font — used on h1/h2/h3 + .display utility.
- * Each theme overrides --font-display via the theme class. The fonts are
- * self-hosted under public/fonts, one stylesheet per theme.
+ * Heading typography.
+ *
+ * Four tokens, set per theme: the face (`--font-heading`, declared by
+ * `@alepha/ui` and defaulting to the text face) plus the three treatments
+ * below. `@alepha/ui` carries the `font-family` half in its own base layer;
+ * this rule is the rest, and it is Lore's because the treatments are.
+ *
+ * ⚠️ All four of these were DEAD until 2026-09-12, and a rule like this one
+ * is the only thing that makes any of them real. They were `--font-display`,
+ * `--display-tracking`, `--display-weight` and `--display-transform`: four
+ * themes declared them, a comment here claimed they were "used on h1/h2/h3 +
+ * .display utility", and neither that rule nor that utility existed. Cinzel,
+ * Marcellus and Source Serif 4 were fetched, self-hosted and link-swapped on
+ * every theme change without ever being drawn, and three of the five themes
+ * were typographically identical as a result. Declaring a token is half a
+ * feature; grep for a consumer before believing the other half.
+ *
+ * In `@layer base` so every utility beats it - a `font-bold` or `tracking-
+ * tight` on a heading still wins, which is what keeps the shadcn primitives
+ * that render an `<h2>` looking the way they were built to.
  * ──────────────────────────────────────────────────────────────────────── */
 
+@layer base {
+  :is(h1, h2, h3, h4, h5, h6),
+  .font-heading,
+  .cn-font-heading {
+    letter-spacing: var(--heading-tracking, normal);
+    font-weight: var(--heading-weight, inherit);
+    text-transform: var(--heading-transform, none);
+  }
+}
+
+/*
+ * The folio document's headings are the theme's heading face like every
+ * other heading in the app. There is no folio carve-out: a reading surface
+ * that opted out of the theme is what this pass removed.
+ */
+
 :root {
+  /* Geist is what `public/fonts/default.css` has always carried. It was
+   * registered on every page and applied to nothing. */
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  /* The default mono, overridden by the two themes that want a warmer one.
+   * ⚠️ "JetBrains Mono", not the "JetBrains Mono Variable" that
+   * `@alepha/ui` imports from `@fontsource`: naming the variable one here
+   * rendered `default` in a different FILE of the same typeface than
+   * `lavandula` and `winter`, which self-host it through their own theme
+   * stylesheet. The variable copy stays at the end of the stack as the
+   * fallback it is for apps that have no theme stylesheet at all. */
+  --font-mono:
+    "JetBrains Mono", "JetBrains Mono Variable", ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
   --shadow-color: 0 0 0;
   --shadow-alpha: 0.08;
 }
@@ -164,7 +212,7 @@ body::before {
  * A semantic pair, defined once per theme, warm for a directory and cool
  * for a folio. Feedback #2089 asked for the colour of `apps/docs`'s file
  * explorer, which spells its amber and cyan as literal hexes in a single
- * dark theme; Lore has six themes and a literal pair is wrong in five of
+ * dark theme; Lore has five themes and a literal pair is wrong in four of
  * them.
  *
  * ⚠️ `--chart-1..5` was the obvious candidate and does NOT work: it is
@@ -173,7 +221,7 @@ body::before {
  * same five. Verified before choosing this route.
  *
  * These two sit BEFORE the theme blocks on purpose. `:root` and
- * `.theme-sylvan` both score (0,1,0) against `<html>`, so on a tie the
+ * `.theme-forest` both score (0,1,0) against `<html>`, so on a tie the
  * later rule wins - putting the defaults after the themes would silently
  * override all six.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -201,96 +249,18 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Twilight — GitHub Primer-inspired. Cool blue-grey canvas, accent blue.
- * Light maps to canvas-default/subtle/muted; dark to #0d1117/#161b22/#21262d.
+ * Forest — druid grove, moss & old oak.
  * ──────────────────────────────────────────────────────────────────────── */
 
-.theme-twilight {
-  --radius: 0.375rem;
-  --display-tracking: -0.01em;
-  --display-weight: 600;
-  --shadow-color: 31 35 40;
-  --shadow-alpha: 0.08;
-  /* GitHub Primer: canvas-subtle as page bg, white cards on top.
-   * page (0.965) < sidebar (0.95) < card/popover (1.0) — visible stepping. */
-  --background: oklch(0.965 0.005 240);
-  --foreground: oklch(0.27 0.012 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.27 0.012 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.27 0.012 250);
-  --primary: oklch(0.55 0.18 250);
-  --primary-foreground: oklch(0.99 0.003 240);
-  --secondary: oklch(0.94 0.006 240);
-  --secondary-foreground: oklch(0.27 0.012 250);
-  --muted: oklch(0.94 0.006 240);
-  --muted-foreground: oklch(0.55 0.012 245);
-  --accent: oklch(0.92 0.008 240);
-  --accent-foreground: oklch(0.27 0.012 250);
-  --destructive: oklch(0.55 0.21 25);
-  --destructive-foreground: oklch(0.99 0.003 240);
-  --border: oklch(0.87 0.012 240);
-  --input: oklch(0.87 0.012 240);
-  --ring: oklch(0.55 0.18 250);
-  --sidebar: oklch(0.95 0.006 240);
-  --sidebar-foreground: oklch(0.27 0.012 250);
-  --sidebar-primary: oklch(0.55 0.18 250);
-  --sidebar-primary-foreground: oklch(0.99 0.003 240);
-  --sidebar-accent: oklch(0.85 0.01 240);
-  --sidebar-accent-foreground: oklch(0.27 0.012 250);
-  --sidebar-border: oklch(0.87 0.012 240);
-  --sidebar-ring: oklch(0.55 0.18 250);
-  --folio-tree-directory: oklch(0.65 0.14 68);
-  --folio-tree-folio: oklch(0.58 0.12 250);
-}
-
-.dark.theme-twilight,
-.theme-twilight.dark {
-  --shadow-color: 1 4 9;
-  --shadow-alpha: 0.3;
-  --background: oklch(0.18 0.015 250);
-  --foreground: oklch(0.96 0.012 240);
-  --card: oklch(0.22 0.015 250);
-  --card-foreground: oklch(0.96 0.012 240);
-  --popover: oklch(0.22 0.015 250);
-  --popover-foreground: oklch(0.96 0.012 240);
-  --primary: oklch(0.68 0.16 245);
-  --primary-foreground: oklch(0.18 0.015 250);
-  --secondary: oklch(0.27 0.015 250);
-  --secondary-foreground: oklch(0.96 0.012 240);
-  --muted: oklch(0.27 0.015 250);
-  --muted-foreground: oklch(0.66 0.015 245);
-  --accent: oklch(0.33 0.015 250);
-  --accent-foreground: oklch(0.96 0.012 240);
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.96 0.012 240);
-  --border: oklch(0.33 0.015 250);
-  --input: oklch(0.27 0.015 250);
-  --ring: oklch(0.68 0.16 245);
-  --sidebar: oklch(0.22 0.015 250);
-  --sidebar-foreground: oklch(0.96 0.012 240);
-  --sidebar-primary: oklch(0.68 0.16 245);
-  --sidebar-primary-foreground: oklch(0.18 0.015 250);
-  --sidebar-accent: oklch(0.33 0.015 250);
-  --sidebar-accent-foreground: oklch(0.96 0.012 240);
-  --sidebar-border: oklch(0.33 0.015 250);
-  --sidebar-ring: oklch(0.68 0.16 245);
-  --folio-tree-directory: oklch(0.8 0.13 74);
-  --folio-tree-folio: oklch(0.74 0.12 248);
-}
-
-/* ────────────────────────────────────────────────────────────────────────
- * Sylvan — druid grove, moss & old oak.
- * ──────────────────────────────────────────────────────────────────────── */
-
-.theme-sylvan {
+.theme-forest {
   --font-sans:
     "Spectral", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-display:
-    "Spectral", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  /* No `--font-heading`: it defaults to the text face, and a grove that
+   * reads in Spectral wants its headings in Spectral too. */
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --radius: 1rem;
-  --display-tracking: 0;
-  --display-weight: 600;
+  --heading-tracking: 0;
+  --heading-weight: 600;
   --shadow-color: 35 80 40;
   --shadow-alpha: 0.14;
   --background: oklch(0.955 0.025 150);
@@ -324,8 +294,8 @@ body::before {
   --folio-tree-folio: oklch(0.52 0.1 195);
 }
 
-.dark.theme-sylvan,
-.theme-sylvan.dark {
+.dark.theme-forest,
+.theme-forest.dark {
   --background: oklch(0.18 0.035 150);
   --foreground: oklch(0.9 0.04 130);
   --card: oklch(0.23 0.045 148);
@@ -358,15 +328,18 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Arcane — mage's tower, candleflame and starlight on violet.
+ * Lavandula — mage's tower, candleflame and starlight on violet.
  * ──────────────────────────────────────────────────────────────────────── */
 
-.theme-arcane {
-  --font-display: "Cinzel", "Trajan Pro", "Times New Roman", serif;
+.theme-lavandula {
+  /* Text stays the neutral Geist: this theme's voice is the heading, and
+   * setting the body in a display face as well would make it unreadable.
+   * The mono is the default JetBrains Mono, inherited rather than restated. */
+  --font-heading: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --radius: 0.25rem;
-  --display-tracking: 0.08em;
-  --display-weight: 700;
-  --display-transform: uppercase;
+  --heading-tracking: 0.08em;
+  --heading-weight: 700;
+  --heading-transform: uppercase;
   --shadow-color: 60 30 130;
   --shadow-alpha: 0.22;
   --background: oklch(0.955 0.02 295);
@@ -400,8 +373,8 @@ body::before {
   --folio-tree-folio: oklch(0.58 0.16 300);
 }
 
-.dark.theme-arcane,
-.theme-arcane.dark {
+.dark.theme-lavandula,
+.theme-lavandula.dark {
   --background: oklch(0.16 0.04 290);
   --foreground: oklch(0.92 0.03 290);
   --card: oklch(0.21 0.055 288);
@@ -434,15 +407,25 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Frostfell — northern reaches, ice and steel under a pale sky.
+ * Winter — northern reaches, ice and steel under a pale sky.
  * ──────────────────────────────────────────────────────────────────────── */
 
-.theme-frost {
-  --font-display:
-    "Marcellus", "Spectral", "Trajan Pro", "Times New Roman", serif;
+.theme-winter {
+  /* IBM Plex Sans for the text: a cool, technical humanist, which is this
+   * palette's own register and the one thing Geist could not say for it.
+   *
+   * ⚠️ The heading is Cinzel, shared with `lavandula`, and it replaced
+   * Marcellus. The two are both Roman inscriptional capitals and were
+   * near-indistinguishable at the sizes a UI heading actually renders at -
+   * a whole extra family for a difference nobody could see. What separates
+   * the two themes is the treatment below, which is where it always was:
+   * +0.03em at weight 500 here against +0.08em at 700 and uppercase there.
+   */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --radius: 0.375rem;
-  --display-tracking: 0.03em;
-  --display-weight: 500;
+  --heading-tracking: 0.03em;
+  --heading-weight: 500;
   --shadow-color: 30 60 110;
   --shadow-alpha: 0.16;
   --background: oklch(0.97 0.012 235);
@@ -476,8 +459,8 @@ body::before {
   --folio-tree-folio: oklch(0.55 0.12 235);
 }
 
-.dark.theme-frost,
-.theme-frost.dark {
+.dark.theme-winter,
+.theme-winter.dark {
   --background: oklch(0.18 0.03 245);
   --foreground: oklch(0.92 0.025 235);
   --card: oklch(0.23 0.04 245);
@@ -510,14 +493,18 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Claude — Anthropic's own surfaces: warm paper, book-cloth terracotta.
+ * Tangor — warm paper, book-cloth terracotta.
  *
- * The only theme here named after something real, so it is the only one
- * where the values are a transcription rather than an invention. The anchors
- * are Anthropic's: ivory #F0EEE6, paper #FAF9F5, slate #262624, and the
- * book-cloth orange the Claude mark is drawn in.
+ * ⚠️ Named `claude` until 2026-09-12, and the rename is the NAME only: not
+ * one token moved. The values stay a transcription rather than an
+ * invention, because they are still Anthropic's — ivory #F0EEE6, paper
+ * #FAF9F5, slate #262624, and the book-cloth orange the Claude mark is
+ * drawn in. Knowing that is what the rest of this block is for; renaming it
+ * to the citrus hybrid its orange reads as does not make the provenance go
+ * away, and a future edit that treats these numbers as free choices will
+ * drift the palette away from the thing it is a transcription of.
  *
- * Two of those anchors are transcribed with a correction. Claude's own
+ * Two of those anchors are transcribed with a correction. The source
  * orange, #D97757, carries white at 3.9:1 and sits at 4.2:1 on a dark card,
  * both under 4.5 — fine on claude.ai, where it is mostly a large button, and
  * not fine in Lore, where `--primary` is also link text in a quest list. So
@@ -525,7 +512,7 @@ body::before {
  * (4.5:1 on a card). The hue and chroma are untouched: it still reads as the
  * same orange, one step either side of it.
  *
- * The light stepping is Anthropic's and inverts the usual one: sidebar
+ * The light stepping is the source's and inverts the usual one: sidebar
  * (0.948) is the DARKEST surface, page (0.982) sits above it, and cards go
  * to pure white. Every other theme here steps the other way. The chrome
  * recedes and the content floats, which is the whole gesture of the app it
@@ -535,7 +522,7 @@ body::before {
  * so the ivory stays ivory instead of drifting to a cool grey next to the
  * orange.
  *
- * `--destructive` is the one token pushed AWAY from Anthropic's palette on
+ * `--destructive` is the one token pushed AWAY from the source palette on
  * purpose. A warm-red destructive at hue 31 sat seven degrees from a
  * terracotta primary at hue 38, and in dark mode Delete and the primary
  * action rendered as the same swatch: #E0705C beside #DF7C5C. Both are now
@@ -545,16 +532,23 @@ body::before {
  * enough to stay legible as error text on a card" lands anyway.
  * ──────────────────────────────────────────────────────────────────────── */
 
-.theme-claude {
-  /* Copernicus, Anthropic's display serif, is proprietary. Source Serif 4 is
+.theme-tangor {
+  /* Copernicus, the source's display serif, is proprietary. Source Serif 4 is
    * the nearest free face by construction: transitional, moderate contrast,
-   * the same sturdy text-weight roman. Body stays on Geist, which is close
-   * enough to Styrene's neutrality to leave alone. */
-  --font-display:
+   * the same sturdy text-weight roman. The text is Source Sans 3, its own
+   * superfamily sibling, so the two agree without being tuned to.
+   *
+   * The mono is IBM Plex Mono rather than the superfamily's Source Code Pro,
+   * and that is the one deliberate break: holding the whole app to two
+   * monospace faces is worth more than a third family completing a set, and
+   * Plex's humanist warmth sits closer to this paper than JetBrains' would. */
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-heading:
     "Source Serif 4", "Iowan Old Style", "Charter", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --radius: 0.75rem;
-  --display-tracking: -0.015em;
-  --display-weight: 600;
+  --heading-tracking: -0.015em;
+  --heading-weight: 600;
   --shadow-color: 31 30 28;
   --shadow-alpha: 0.06;
   --background: oklch(0.982 0.005 95);
@@ -594,8 +588,8 @@ body::before {
  * card is the lit surface in both modes, which is the one structural idea
  * the theme has to carry across.
  */
-.dark.theme-claude,
-.theme-claude.dark {
+.dark.theme-tangor,
+.theme-tangor.dark {
   --shadow-color: 13 12 11;
   --shadow-alpha: 0.35;
   --background: oklch(0.268 0.004 106);
@@ -631,23 +625,28 @@ body::before {
 
 /* ────────────────────────────────────────────────────────────────────────
  * Folio workspace typography + find highlighting.
- * The font files are lazy-loaded by `useReadingFonts`; these vars always
- * resolve thanks to the fallback stacks, so a failed load degrades
- * silently instead of leaving the document unstyled.
+ *
+ * ⚠️ The folio surfaces have NO faces of their own. They had two - a
+ * `--font-folio-serif` (Literata) and a `--font-folio-mono`, lazy-loaded by
+ * a `useReadingFonts` hook from a hand-placed `/fonts/folio.css` - and both
+ * are gone, along with the hook and the stylesheet. There are exactly three
+ * faces in this app now: the text, the heading and the mono, all three set
+ * per theme. A reading face that ignored the active theme meant a folio
+ * looked the same in all five of them, and it was a second, parallel font
+ * pipeline (its own link injector, its own stylesheet, its own token pair)
+ * to maintain beside the theme one.
+ *
+ * So the prose is the theme's text face and the code is the theme's mono,
+ * and a theme that wants a serif reading face says so once, in its own
+ * `--font-sans`, which is what `forest` does.
  * ──────────────────────────────────────────────────────────────────────── */
 
-:root {
-  --font-folio-serif: "Literata", "Iowan Old Style", Georgia, serif;
-  --font-folio-mono:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
 .folio-prose {
-  font-family: var(--font-folio-serif);
+  font-family: var(--font-sans);
 }
 
 .folio-mono {
-  font-family: var(--font-folio-mono);
+  font-family: var(--font-mono);
 }
 
 /*
@@ -656,15 +655,14 @@ body::before {
  * The design runs the prose straight on under the summary divider rather
  * than boxing it in a form field, which is what every other caller of the
  * shared editor (quest descriptions, quest notes) still wants — so `bare`
- * drops the frame and sets the body in the reading face at the design's own
- * size.
+ * drops the frame and sets the body at the design's own size.
  *
  * Applied to the VIEW face only. Edit mode is raw markdown in a monospace
- * editor: setting source text in a serif reading face would make the markup
+ * editor: setting source text in the reading face would make the markup
  * harder to scan, which is the one thing that mode exists for.
  */
 .lore-md-view {
-  font-family: var(--font-folio-serif);
+  font-family: var(--font-sans);
   font-size: 16.5px;
   line-height: 1.8;
 }
@@ -733,8 +731,8 @@ body::before {
 /*
  * The lattice follows the sidebar's idiom exactly: `background-color:
  * var(--primary)` shown through a `mask-image` SVG, so the shape is fixed
- * and the colour is whatever the active theme's primary is. Twilight gets a
- * blue quilt, sylvan a green one, and none of them need a rule here. Doing
+ * and the colour is whatever the active theme's primary is. Winter gets a
+ * blue quilt, forest a green one, and none of them need a rule here. Doing
  * it the other way round, with the colour inside the SVG, would have meant
  * one encoded data URI per theme.
  *
@@ -850,12 +848,12 @@ body::before {
  * Scoped to the folio document: quest and epic description fields keep the
  * monospace face they were designed against.
  *
- * ⚠️ Code fences inherit the serif here, which is wrong and stays wrong
+ * ⚠️ Code fences inherit the text face here, which is wrong and stays wrong
  * until the live-preview decorations give fence contents a mono face of
  * their own.
  */
 [data-slot="folio-document"] .cm-content {
-  font-family: var(--font-folio-serif);
+  font-family: var(--font-sans);
 }
 
 /*
@@ -885,8 +883,11 @@ body::before {
  * a box around the text without changing how the text itself reads, and
  * the chrome fought the content. The measure does the work.
  *
- * 18px because Literata's x-height is modest; it sets smaller than a
- * geometric sans at the same nominal size.
+ * 18px because the reading measure was tuned against Literata, whose
+ * x-height is modest; it set smaller than a geometric sans at the same
+ * nominal size. The face is the theme's `--font-sans` now, so the size is
+ * inherited from that tuning rather than derived from the current face -
+ * worth re-measuring if the reading pane is ever revisited.
  */
 /*
  * The reading size, three steps, chosen from View ▸ Text size and stored in
@@ -966,11 +967,11 @@ body::before {
  * prose face.
  *
  * The mono face here is not a preference, it is a repair: the folio
- * document now sets `.cm-content` in Literata, and code in a serif with
- * proportional digits does not line up.
+ * document sets `.cm-content` in the theme's text face, and code in a
+ * proportional face does not line up.
  */
 .lore-cm-code-line {
-  font-family: var(--font-folio-mono);
+  font-family: var(--font-mono);
   font-size: 0.82em;
   line-height: 1.55;
   background-color: var(--color-muted);
@@ -1065,7 +1066,7 @@ body::before {
   border-radius: var(--radius-md);
   background-color: var(--color-muted);
   padding: 0.7rem 0.85rem;
-  font-family: var(--font-folio-mono);
+  font-family: var(--font-mono);
   font-size: 0.82em;
   line-height: 1.55;
 }

@@ -26,21 +26,19 @@ describe("folio tree theme tokens", () => {
 
   /**
    * Every selector block that establishes a palette: the two defaults, plus
-   * light and dark for each of the five named themes.
+   * light and dark for each of the four named themes.
    */
   const BLOCKS = [
     ":root",
     ".dark",
-    ".theme-twilight",
-    ".dark.theme-twilight",
-    ".theme-sylvan",
-    ".dark.theme-sylvan",
-    ".theme-arcane",
-    ".dark.theme-arcane",
-    ".theme-frost",
-    ".dark.theme-frost",
-    ".theme-claude",
-    ".dark.theme-claude",
+    ".theme-forest",
+    ".dark.theme-forest",
+    ".theme-lavandula",
+    ".dark.theme-lavandula",
+    ".theme-winter",
+    ".dark.theme-winter",
+    ".theme-tangor",
+    ".dark.theme-tangor",
   ];
 
   /**
@@ -89,11 +87,15 @@ describe("folio tree theme tokens", () => {
   });
 
   it("declares the defaults before the themes, or they would win the tie", () => {
-    // `:root` and `.theme-sylvan` both score (0,1,0) against <html>, so the
+    // `:root` and `.theme-forest` both score (0,1,0) against <html>, so the
     // later rule wins. Defaults placed after the themes would override all
-    // six of them, silently.
+    // four of them, silently.
+    //
+    // ⚠️ The probe is the block OPENER, brace included: the comment above
+    // the defaults names `.theme-forest` too, and matching that instead
+    // makes this assertion fail on a file that is correctly ordered.
     const defaultsAt = css.indexOf("--folio-tree-directory");
-    const firstThemeAt = css.indexOf(".theme-twilight");
+    const firstThemeAt = css.indexOf(".theme-forest {");
     expect(defaultsAt).toBeGreaterThanOrEqual(0);
     expect(defaultsAt).toBeLessThan(firstThemeAt);
   });

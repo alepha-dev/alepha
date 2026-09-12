@@ -14,9 +14,10 @@ import {
  *
  * This is the smallest possible piece of the live-preview work, and it is
  * here first because the reading face made it load-bearing rather than
- * cosmetic: the folio document sets `.cm-content` in Literata, so without a
- * mono face of its own a ```tsx fence renders in a serif and its indentation
- * stops lining up.
+ * cosmetic: the folio document sets `.cm-content` in the theme's text face,
+ * so without a mono face of its own a ```tsx fence renders proportionally
+ * and its indentation stops lining up. A theme whose text face is a serif
+ * (`forest`) is the worst case, and the case this was written against.
  *
  * Line decorations, not mark decorations, on purpose. A mark only covers the
  * tokens the grammar produced, so leading indentation and blank lines inside

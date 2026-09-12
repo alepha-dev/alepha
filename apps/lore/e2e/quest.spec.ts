@@ -1305,17 +1305,21 @@ test.describe("Quest", () => {
       },
     );
 
-    await test.step("the description is set in the reading face", async () => {
+    await test.step("the description is set in the prose face", async () => {
       await page.goto(`/${projectSlug}/quests/${shortId}`);
       await page.waitForLoadState("networkidle");
 
-      // Literata is lazy-loaded and the stack falls back silently, so the
-      // failure mode this guards is the class never reaching the prose root
-      // — which looks like "close enough" rather than like a bug.
-      const family = await page
-        .getByText("Seeded for the back arrow")
-        .evaluate((el) => getComputedStyle(el).fontFamily);
-      expect(family).toContain("Literata");
+      // ⚠️ This asserted `toContain("Literata")` until the fonts were
+      // standardized on the theme's three faces. It cannot any more, and
+      // not because the name changed: `.folio-prose` now resolves to
+      // `--font-sans`, which is also what the body inherits, so a computed
+      // font-family is identical whether the class reached the prose root or
+      // not. The class itself is the only observable fact left, and it is
+      // the one the step was really about - the lazy face was just what made
+      // the miss visible.
+      await expect(page.getByText("Seeded for the back arrow")).toHaveClass(
+        /folio-prose/,
+      );
     });
 
     await test.step("the breadcrumb reads Project > Quests > #shortId", async () => {

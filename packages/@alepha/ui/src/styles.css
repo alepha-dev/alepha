@@ -52,6 +52,28 @@
 
 :root {
   --radius: 0.625rem;
+  /*
+   * Typography. Three faces, and a theme moves any of them independently:
+   * `--font-sans` is the text, `--font-heading` the headings, `--font-mono`
+   * code. Only the middle one is ours - the other two are Tailwind's own
+   * theme variables, which its utilities and Preflight already reference by
+   * `var()`, so a theme class redefining either is picked up at runtime with
+   * nothing else to wire (Preflight sets `html` from `--font-sans` and
+   * `code`/`pre` from `--font-mono`).
+   *
+   * ⚠️ `--font-heading` has no such machinery behind it, which is exactly how
+   * its predecessor died. `apps/lore` carried a `--font-display` token that
+   * four themes set and NOTHING read: it was declared in a plain `:root`
+   * rather than in `@theme`, so Tailwind generated no utility for it, and no
+   * hand-written rule consumed it either. Three display faces were
+   * downloaded, self-hosted and link-swapped on every theme change without
+   * ever being drawn. The base rule below is what makes this one real - do
+   * not remove it and leave the token, which is the same failure again.
+   *
+   * Defaults to `--font-sans` so a heading is the text face until an app
+   * says otherwise, and so apps that never set it are unaffected.
+   */
+  --font-heading: var(--font-sans);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -169,6 +191,19 @@
   }
 
   /*
+   * The heading face. This rule is the whole of what makes `--font-heading`
+   * exist - see the token's own note in `:root` for the dead one it replaces.
+   *
+   * In `@layer base` so any utility class beats it: a heading that wants the
+   * text face asks for `font-sans` and gets it, and a prose surface with its
+   * own reading face (Lore's folio document) overrides it by inheritance
+   * with a plain unlayered rule.
+   */
+  :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-heading);
+  }
+
+  /*
    * The pointer cursor on anything clickable.
    *
    * Tailwind v3's Preflight carried `button, [role="button"] { cursor: pointer }`
@@ -218,6 +253,31 @@
     textarea
   ) {
     cursor: pointer;
+  }
+}
+
+/*
+ * `font-heading` as a utility, hand-written because Tailwind cannot generate
+ * it: a `--font-heading` entry in `@theme` would have to read
+ * `var(--font-heading)`, which is circular, and the `inline` variant would
+ * freeze the value at build time and make it theme-blind - the one property
+ * this face needs. In `@layer utilities` so it beats the base rule and loses
+ * to nothing, like every other font utility.
+ *
+ * `cn-font-heading` is the same declaration under shadcn's own name, and it
+ * is not ours to rename: the Base Nova registry ships it on `CardTitle`,
+ * `SheetTitle`, `DrawerTitle`, `AlertDialogTitle`, `DialogTitle` and
+ * `Empty`, and `yarn w @alepha/ui sync` rewrites those files wholesale, so
+ * the class comes back on every refresh whatever we call ours. It arrives
+ * DEFINED BY NOBODY - the registry names the hook and leaves the theme to
+ * fill it, which nothing here did, so six primitives asked for a heading
+ * face and got the text face. Pointing it at the same token is what makes a
+ * dialog title and an `<h2>` agree.
+ */
+@layer utilities {
+  .font-heading,
+  .cn-font-heading {
+    font-family: var(--font-heading);
   }
 }
 
