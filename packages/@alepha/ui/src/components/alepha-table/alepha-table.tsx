@@ -1695,11 +1695,31 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           // WHITE wash that leaves the field lighter than the bar. Only the
           // dark-scoped rule (0,3,0) outranks it, and without it the two
           // controls disagreed: the trigger went dark, the input stayed light.
+          //
+          // ⚠️ **`date-trigger` is named, and it is not a third spelling of
+          // the same thing.** `:is(input,[role=combobox])` describes the two
+          // shapes a field happened to have when this was written, and a
+          // calendar is neither: `ControlDate` and `ControlDateRange` open a
+          // POPOVER, so their trigger is a plain button with no combobox role
+          // to match on. It therefore kept the primitives' own
+          // `dark:bg-input/30` and sat LIGHTER than the bar while every select
+          // beside it sat darker - measured on Admin > Audit log, `oklab(1 0 0
+          // / 0.045)` against the selects' opaque `oklch(0.145 0 0)`. Light
+          // mode had it the other way round, the calendar taking the muted
+          // grey. That is what #Q2295 reported, and what #Q2282 and #Q2283
+          // could not reach: they made the date controls draw the kit's
+          // trigger, and this bar was still addressing fields by tag and role
+          // rather than by what they are.
+          //
+          // The canonical list of field surfaces is the hover-border rule in
+          // `styles.css`, which enumerates the same slots. Add a field shape
+          // there and it belongs here too.
+          //
           // The `--bevel` line, laid just inside the bar's own top border,
           // the same fold the header and the footer carry. This one is the
           // top edge of the whole table block, so it is the one that decides
           // whether the block sits ON the page or IN it.
-          <div className="bg-muted [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
+          <div className="bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
             {props.filters && form && !isMobile ? (
               <form
                 {...form.props}
