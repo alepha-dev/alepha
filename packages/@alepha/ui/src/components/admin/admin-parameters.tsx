@@ -284,7 +284,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
   return (
     <div
       className={cn(
-        "grid min-h-0 flex-1 p-2",
+        "grid min-h-0 flex-1 p-6",
         // Desktop-first 3-pane (tree | editor | history). Columns narrow on
         // laptops (lg) and reach full width at xl; below lg the panes stack
         // into a single scrollable column. The history pane only appears once

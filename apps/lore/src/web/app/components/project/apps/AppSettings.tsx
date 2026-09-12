@@ -48,7 +48,7 @@ const AppSettings = () => {
     // `max-w-6xl` so this one would not read badly at full width, which also
     // denied the width to Analytics and Vitals, which want it. Each tab
     // answers for itself now: this one at `max-w-3xl`, the rest full width.
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-2">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
       <SettingsSection title={tr("app.settings.general")}>
         {/*
           Keyed by the instance, and all three must be. Moving between two

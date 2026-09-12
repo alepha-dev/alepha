@@ -239,9 +239,11 @@ const AppLayout = () => {
           (#1747, feedback #2078): it used to be a shared `p-4` here, which
           Explore had no way to opt out of, so the query builder sat in a
           gutter with a strip of plate showing underneath it. Overview,
-          Analytics, Vitals, Artifacts and Settings each carry their own `p-2`
-          now (the page frame since #Q2266) and render identically; Explore
-          carries none. */}
+          Analytics, Vitals, Artifacts and Settings each carry their own `p-4`
+          and render identically; Explore carries none. ⚠️ These tabs are card
+          and chart surfaces, not tables, so the 8px frame #Q2266 gave the
+          table pages is not theirs: it was applied here too and reverted by
+          #Q2291. */}
       <NestedView />
     </PlateLayout>
   );

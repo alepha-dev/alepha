@@ -94,7 +94,7 @@ const AppErrors = () => {
   const total = totals.client + totals.server;
 
   return (
-    <div className="flex flex-col gap-4 p-2">
+    <div className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Bug className="size-4" />

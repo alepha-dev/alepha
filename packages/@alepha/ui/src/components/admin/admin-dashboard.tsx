@@ -33,7 +33,11 @@ const AdminDashboard = (props: AdminDashboardProps) => {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
-    <AdminPage>
+    // `p-6`, not the shell's `p-2`. That 8px frame is for the table pages,
+    // whose table draws its own edge; this page is a grid of cards, and cards
+    // sitting 8px off the layout read as unframed (#Q2291). The one call site
+    // of `AdminPage` that is not a table, hence the only one that overrides.
+    <AdminPage className="p-6">
       {cards.length === 0 ? (
         <Empty>
           <EmptyHeader>

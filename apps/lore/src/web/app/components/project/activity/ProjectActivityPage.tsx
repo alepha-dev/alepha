@@ -207,8 +207,12 @@ const ProjectActivityPage = () => {
     // above `md` it sat 8px further from the edge than Epics, Releases,
     // Blights and Apps, which is what made it read as random rather than as a
     // rule (feedback #2099). The shared value then went from `p-4` to `p-2`
-    // with #Q2266, for every project page and the admin console at once:
-    // change it everywhere or nowhere.
+    // with #Q2266: change it everywhere or nowhere.
+    // ⚠️ "Everywhere" is the TABLE pages, and only those: Epics, Releases,
+    // Blights, Apps, Artifacts, Inbox, the epic's quests, and the admin
+    // console's lists. #Q2266 took it to every project page and the card
+    // pages lost their gutter, which #Q2291 undid. A page whose body is
+    // cards, a form or prose stays at `p-4`.
     <div className="flex min-h-0 flex-1 flex-col p-2">
       <AlephaTable<ProjectActivityRow>
         className="min-h-0 flex-1"

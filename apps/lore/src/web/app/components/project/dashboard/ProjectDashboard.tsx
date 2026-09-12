@@ -309,7 +309,7 @@ const ProjectDashboard = () => {
   return (
     <div
       className={cn(
-        "@container flex min-h-0 w-full flex-col p-2",
+        "@container flex min-h-0 w-full flex-col px-8 pt-6 pb-10",
         empty && "flex-1",
       )}
     >

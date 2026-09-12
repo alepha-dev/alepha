@@ -220,7 +220,8 @@ const ProjectApps = () => {
     <div
       data-testid="apps-table"
       // `p-2` and nothing more, matching Epics, Releases and Blights (the
-      // frame every project and admin page shares since #Q2266). The
+      // frame the TABLE pages share since #Q2266, and only those: the card
+      // pages and tabs kept their `p-4`, see #Q2291). The
       // extra `md:pt-10` existed to give the page heading room above the
       // table; the heading is gone (feedback #2081 - the breadcrumb already
       // says "Apps" two lines up, and no other project list carries one), so
