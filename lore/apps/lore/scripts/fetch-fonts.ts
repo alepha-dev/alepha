@@ -31,26 +31,36 @@ interface Theme {
   url: string;
 }
 
+/**
+ * One stylesheet per theme, carrying every face that theme names: text,
+ * heading and mono.
+ *
+ * ⚠️ All three, even when a face repeats across themes. `ColorScheme` swaps
+ * a SINGLE `<link>` to the active theme's stylesheet, so a theme whose
+ * stylesheet omits its text face has no text face - nothing else is loaded
+ * alongside it. Before 2026-09-12 only the heading was fetched here, which
+ * was survivable purely because nothing rendered the heading either.
+ */
 const THEMES: Theme[] = [
   {
     id: "default",
-    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap",
+    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap",
   },
   {
-    id: "sylvan",
-    url: "https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&display=swap",
+    id: "forest",
+    url: "https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap",
   },
   {
-    id: "arcane",
-    url: "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap",
+    id: "lavandula",
+    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Cinzel:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap",
   },
   {
-    id: "frost",
-    url: "https://fonts.googleapis.com/css2?family=Marcellus&family=Spectral:wght@400;500&display=swap",
+    id: "winter",
+    url: "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Cinzel:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap",
   },
   {
-    id: "claude",
-    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Source+Serif+4:wght@400;600;700&display=swap",
+    id: "tangor",
+    url: "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap",
   },
 ];
 
@@ -63,9 +73,11 @@ const THEMES_PROVIDER = join(
   "src/web/app/services/ThemesProvider.ts",
 );
 
-// Only the theme stylesheets are regenerated here. `public/fonts/` also
-// holds `folio.css` and the Literata / JetBrains Mono files behind it, which
-// are hand-placed: a recursive wipe used to delete them on every run.
+// Only the theme stylesheets are regenerated here, one per theme and
+// nothing else. `public/fonts/` used to also hold a hand-placed `folio.css`
+// with Literata behind it, which a recursive wipe kept deleting; that
+// stylesheet and its faces are gone - the folio surfaces read the theme's
+// own three faces now, so there is no second font pipeline to protect.
 for (const theme of THEMES) {
   await rm(join(OUT_DIR, `${theme.id}.css`), { force: true });
 }
