@@ -19,28 +19,138 @@ const DEVTOOLS_OVERLAY_SCRIPT = `
 
   const STORAGE_KEY = "alepha-devtools-open";
 
-  // Button
+  // Button: a machined dial, a conic-gradient bezel around a hatched face.
+  //
+  // A stylesheet rather than inline styles, because the effect needs pseudo
+  // states, a media query and layered gradients. The button is fixed to the
+  // page bottom-left and owns the "alepha-dt-" prefix so it cannot collide
+  // with the application's own class names.
+  //
+  // The three layers stack in one grid cell, and every one of them carries
+  // position:relative. A transformed element paints in the positioned
+  // layer group, so a rotating bezel with a static face covers the face
+  // outright. Giving all three a position puts them back in DOM order.
+  const style = document.createElement("style");
+  style.textContent = \`
+#alepha-devtools-btn {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 99998;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 0;
+  -webkit-tap-highlight-color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18))
+    drop-shadow(0 6px 14px rgba(0, 0, 0, 0.22));
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1),
+    filter 0.28s ease;
+}
+#alepha-devtools-btn > * {
+  grid-area: 1 / 1;
+  position: relative;
+}
+#alepha-devtools-btn:hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2))
+    drop-shadow(0 12px 26px rgba(0, 0, 0, 0.28));
+}
+#alepha-devtools-btn:active {
+  transform: translateY(0) scale(0.96);
+  transition-duration: 0.08s;
+}
+#alepha-devtools-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+}
+
+/* The bezel. The repeating layer is the machined facets, 16 of them; the
+ * sweep underneath is the light, darkest at 12 o'clock and brightest at
+ * 7. It stops short of white so the ring still reads as a full circle on a
+ * light page instead of dissolving into it along the bottom. */
+#alepha-devtools-btn .alepha-dt-bezel {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.17) 0deg 0.6deg, rgba(0, 0, 0, 0) 0.6deg 22.5deg),
+    conic-gradient(from 0deg, #101013, #35353c 55deg, #7c7c86 130deg, #b4b4bb 200deg, #8a8a93 250deg, #3c3c43 310deg, #101013);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.28);
+  transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+#alepha-devtools-btn:hover .alepha-dt-bezel {
+  transform: rotate(-72deg);
+}
+
+/* The face stays light in both colour schemes: it is a dial, and a dark
+ * face inside a dark bezel loses the ring entirely. */
+#alepha-devtools-btn .alepha-dt-face {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(45deg, rgba(24, 24, 27, 0.075) 0 1px, rgba(0, 0, 0, 0) 1px 6px),
+    repeating-linear-gradient(-45deg, rgba(24, 24, 27, 0.075) 0 1px, rgba(0, 0, 0, 0) 1px 6px),
+    radial-gradient(125% 125% at 34% 26%, #fdfdfc, #efeeec 58%, #dcdbd8);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+    inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Bezel and gear turn against each other: the one mechanical flourish. */
+#alepha-devtools-btn .alepha-dt-glyph {
+  display: grid;
+  place-items: center;
+  /* The bezel's own darkest value, so the cog reads as the same metal. */
+  color: #27272a;
+  transition:
+    transform 0.5s cubic-bezier(0.2, 0.7, 0.3, 1),
+    color 0.28s ease;
+}
+/* 72deg is not a multiple of the 45deg tooth pitch, so the turn is visible. */
+#alepha-devtools-btn:hover .alepha-dt-glyph {
+  transform: rotate(72deg);
+  color: #101013;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alepha-devtools-btn,
+  #alepha-devtools-btn .alepha-dt-bezel,
+  #alepha-devtools-btn .alepha-dt-glyph {
+    transition-duration: 0s;
+  }
+  #alepha-devtools-btn:hover .alepha-dt-bezel,
+  #alepha-devtools-btn:hover .alepha-dt-glyph {
+    transform: none;
+  }
+}
+\`;
+  document.head.appendChild(style);
+
   const btn = document.createElement("button");
   btn.id = "alepha-devtools-btn";
-  btn.innerHTML = \`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>\`;
-  Object.assign(btn.style, {
-    position: "fixed", bottom: "16px", left: "16px", zIndex: "99998",
-    width: "36px", height: "36px", borderRadius: "50%",
-    background: "rgba(255,255,255,0.85)", color: "#3f3f46",
-    border: "none", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
-    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08)",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    padding: "0", fontSize: "0",
-  });
-  btn.addEventListener("mouseenter", () => {
-    btn.style.transform = "translateY(-1px) rotate(45deg)";
-    btn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.12)";
-  });
-  btn.addEventListener("mouseleave", () => {
-    btn.style.transform = "translateY(0) rotate(0deg)";
-    btn.style.boxShadow = "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08)";
-  });
+  btn.type = "button";
+  btn.title = "Alepha DevTools";
+  btn.setAttribute("aria-label", "Open Alepha DevTools");
+  // A SOLID cog, not the lucide outline one. The bezel is a heavy machined
+  // form, and next to it a 2px stroke scaled down to 16px renders at 1.33px
+  // and reads as a hairline pencil drawing sitting on a metal part. A filled
+  // silhouette carries the same mass as the bezel, so the two read as one
+  // object. Eight teeth is the most this survives at 44px: ten merge into a
+  // rosette. The tooth is a trapezoid from the root radius (7.9) to the tip
+  // (10.6), flared at the base, and the corners are rounded by stroking the
+  // fill colour with round joins rather than by an arc at every corner.
+  // The evenodd fill rule is what opens the 3.7 hub hole, and the hole is
+  // what keeps it legible as a cog rather than a blob.
+  btn.innerHTML = \`<span class="alepha-dt-bezel"></span><span class="alepha-dt-face"></span><span class="alepha-dt-glyph"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" fill-rule="evenodd" xmlns="http://www.w3.org/2000/svg"><path d="M9.975 4.364L10.096 1.572L13.904 1.572L14.025 4.364A7.9 7.9 0 0 1 15.968 5.169L18.027 3.28L20.72 5.973L18.831 8.032A7.9 7.9 0 0 1 19.636 9.975L22.428 10.096L22.428 13.904L19.636 14.025A7.9 7.9 0 0 1 18.831 15.968L20.72 18.027L18.027 20.72L15.968 18.831A7.9 7.9 0 0 1 14.025 19.636L13.904 22.428L10.096 22.428L9.975 19.636A7.9 7.9 0 0 1 8.032 18.831L5.973 20.72L3.28 18.027L5.169 15.968A7.9 7.9 0 0 1 4.364 14.025L1.572 13.904L1.572 10.096L4.364 9.975A7.9 7.9 0 0 1 5.169 8.032L3.28 5.973L5.973 3.28L8.032 5.169A7.9 7.9 0 0 1 9.975 4.364ZM12 8.3A3.7 3.7 0 0 0 12 15.7A3.7 3.7 0 0 0 12 8.3Z"/></svg></span>\`;
 
   // Overlay
   const overlay = document.createElement("div");
@@ -77,7 +187,9 @@ const DEVTOOLS_OVERLAY_SCRIPT = `
 
   function close() {
     overlay.style.display = "none";
-    btn.style.display = "flex";
+    // Empty string, not "flex": the stylesheet lays the dial out as a grid,
+    // and an inline display would flatten its three stacked layers.
+    btn.style.display = "";
     sessionStorage.removeItem(STORAGE_KEY);
   }
 
