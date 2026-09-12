@@ -8,6 +8,7 @@ import {
   TRIGGER_CLASSES,
   TRIGGER_MINIMAL_CLASSES,
   TRIGGER_SIZES,
+  TRIGGER_WRAPPER_CLASSES,
 } from "@alepha/ui/components/control-base/field-trigger";
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
@@ -997,7 +998,7 @@ function Combobox(props: ComboboxProps) {
           Wrapped so the clear button below can sit ON the trigger without
           being INSIDE it: a button nested in a button is invalid, and Base
           UI renders this trigger as a real `<button>`. */}
-      <div className="relative w-full">
+      <div className={TRIGGER_WRAPPER_CLASSES}>
         <ComboboxTrigger
           id={props.id}
           disabled={props.disabled}
@@ -1042,7 +1043,6 @@ function Combobox(props: ComboboxProps) {
         {showClear && (
           <ControlClearButton
             size={props.size}
-            minimal={props.minimal}
             onClick={() => props.onChange(props.multi ? [] : undefined)}
           />
         )}

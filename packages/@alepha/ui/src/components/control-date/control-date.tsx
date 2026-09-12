@@ -6,6 +6,7 @@ import {
   ControlClearButton,
   TRIGGER_CLASSES,
   TRIGGER_SIZES,
+  TRIGGER_WRAPPER_CLASSES,
 } from "@alepha/ui/components/control-base/field-trigger";
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import {
@@ -242,7 +243,7 @@ const DatePopover = (props: DatePopoverProps) => {
           clear sits BESIDE the trigger rather than inside it: a button nested
           in a button is invalid, and Base UI's popover trigger would swallow
           its click anyway. */}
-      <div className="relative w-full">
+      <div className={TRIGGER_WRAPPER_CLASSES}>
         <PopoverTrigger
           id={props.id}
           // A FIELD trigger, not a button, and the distinction is load
