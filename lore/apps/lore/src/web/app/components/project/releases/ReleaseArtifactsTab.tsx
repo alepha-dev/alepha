@@ -94,7 +94,7 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
   );
 
   return (
-    <div className="flex flex-col gap-4 p-2">
+    <div className="flex flex-col gap-4 px-6 pt-[22px] pb-8">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.09em] uppercase">
           {tr("release.artifacts.title")}

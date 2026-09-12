@@ -72,7 +72,7 @@ const AppEnvironment = () => {
   const canDeploy = can("deploy:manage");
 
   return (
-    <div className="flex flex-col gap-4 p-2">
+    <div className="flex flex-col gap-4 p-4">
       <Card data-testid="app-environment">
         <CardHeader>
           <CardTitle className="text-base">{tr("app.environment")}</CardTitle>

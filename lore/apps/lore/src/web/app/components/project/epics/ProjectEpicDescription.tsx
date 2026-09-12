@@ -32,7 +32,7 @@ const ProjectEpicDescription = (props: ProjectEpicDescriptionProps) => {
   const [project] = useStore(currentProjectAtom);
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-2">
+    <div className="min-h-0 flex-1 overflow-auto p-4">
       <Card>
         <CardHeader>
           <CardTitle>{tr("epic.description.title")}</CardTitle>
