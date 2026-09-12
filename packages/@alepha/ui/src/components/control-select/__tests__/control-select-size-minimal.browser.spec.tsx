@@ -138,6 +138,14 @@ describe("Control size and minimal on a select", () => {
    * from the size TABLE and not from a constant. Whether 20px is the right
    * number at `xs` is a question for a browser, and the quest answered it
    * there.
+   *
+   * ⚠️ And that is the limit of this file, demonstrated the hard way. The
+   * offsets below were `right-*` until #Q2283, positioning the `x` against the
+   * WRAPPER - which is the `FormField`'s full width, not the trigger's - so a
+   * narrowed trigger left its `x` hundreds of pixels outside itself while
+   * every case here stayed green. A class is not a position. The assertion
+   * that the `x` lands ON the trigger lives in `apps/ui/e2e/blocks.spec.ts`,
+   * where a browser lays the page out.
    */
   describe("the clear button's placement", () => {
     it("takes its offset from the size, not from a constant", async () => {
@@ -151,30 +159,41 @@ describe("Control size and minimal on a select", () => {
         return found;
       };
 
-      expect(offsetAt(mount(alepha, <Probe clearable />))).toContain("right-8");
+      // A negative left MARGIN, because the button is in flow as the
+      // trigger's next flex sibling and walks back over it from the trigger's
+      // own right edge. The numbers are the ones feedback #2113 tuned; what
+      // changed with #Q2283 is what they are measured from.
+      expect(offsetAt(mount(alepha, <Probe clearable />))).toContain("-ml-8");
       expect(offsetAt(mount(alepha, <Probe size="sm" clearable />))).toContain(
-        "right-7",
+        "-ml-7",
       );
       expect(offsetAt(mount(alepha, <Probe size="xs" clearable />))).toContain(
-        "right-5",
+        "-ml-5",
       );
     });
 
-    it("follows the trigger's negative margin under minimal", async () => {
+    it("needs no correction under minimal, and carries none", async () => {
       const alepha = await start();
-      // `MINIMAL_CLASSES` carries `-mx-1`, so the trigger's right edge - and
-      // its chevron - sit 4px past the wrapper this button is positioned
-      // against. Without the shift the button drifts left of where it
-      // belongs, which is the same bug one variant down.
+      // `MINIMAL_CLASSES` carries `-mx-1`, and in flow that margin moves where
+      // the next sibling starts - so the `x` follows the trigger's edge on its
+      // own. The `translate-x-1` that used to be added here was correcting for
+      // the absolute positioning AND pointing the wrong way: it read `-mx-1`
+      // as pushing the trigger's right edge 4px past the wrapper, when an
+      // over-constrained block drops that margin and the edge falls 4px short.
+      // The `x` ended up overlapping the chevron by 5px, measured.
       const shifted = clearOf(
         mount(alepha, <Probe size="xs" minimal clearable />),
       ).className;
       cleanup();
 
-      expect(shifted).toContain("translate-x-1");
+      expect(shifted).not.toContain("translate-x-1");
+      // The one translate it does carry is its own width, at every size and
+      // variant: a flex item's margin places its LEFT edge, and the offset
+      // above describes its right one.
+      expect(shifted).toContain("-translate-x-full");
       expect(
         clearOf(mount(alepha, <Probe size="xs" clearable />)).className,
-      ).not.toContain("translate-x-1");
+      ).toContain("-translate-x-full");
     });
 
     it("reads lighter than the chevron at rest, and sharpens when reached for", async () => {

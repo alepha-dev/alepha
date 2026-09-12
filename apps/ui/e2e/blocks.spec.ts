@@ -432,6 +432,65 @@ test.describe("blocks", () => {
     await expect(page.getByLabel("Alarm")).toBeVisible();
   });
 
+  /**
+   * ⚠️ **A LAYOUT assertion, and it has to live here.** The clear `x` is
+   * positioned, so the only thing that can catch it in the wrong place is a
+   * browser that lays the page out. The kit's own `*.browser.spec.tsx` files
+   * run under jsdom, where every `getBoundingClientRect()` is zeros and a
+   * control with its `x` 480px outside itself passes every one of them - which
+   * is how #Q2283 shipped and sat there.
+   *
+   * The bug: the `x` used to be `absolute right-8` inside a `w-full` wrapper,
+   * so it was placed against the FIELD rather than against the trigger. A
+   * `triggerClassName`-narrowed trigger in an ordinary stacked form therefore
+   * left it floating in the field's empty half. The showcase's "Narrowed,
+   * inside a full-width form" group is that exact shape, filled on load.
+   */
+  test("the clear x is placed on its own trigger, not on the field", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/control/date");
+
+    for (const field of ["window", "zone"]) {
+      // By id suffix: `FormField` wires `label[for]` to the trigger's `id`,
+      // and React generates the prefix fresh on every render.
+      const trigger = page.locator(`[id$="-${field}"]`);
+      // The trigger's ADJACENT SIBLING, which is how the kit arranges the two
+      // and the locator the rest of the suite uses. Named by shape rather than
+      // by its accessible name: every clearable control in the kit says
+      // "Clear selection", so a name would match both fields here.
+      const clear = page.locator(
+        `[id$="-${field}"] + [data-slot="control-clear"]`,
+      );
+      await expect(trigger).toBeVisible();
+      await expect(clear).toBeVisible();
+
+      const t = (await trigger.boundingBox())!;
+      const c = (await clear.boundingBox())!;
+      // The field around the trigger: wrapper, then `FormField`.
+      const box = (await trigger.locator("xpath=../..").boundingBox())!;
+
+      // Guard the guard. If this page ever stops narrowing these triggers,
+      // the field and the trigger coincide, and everything below passes
+      // whatever the `x` does.
+      expect(box.width).toBeGreaterThan(t.width + 100);
+
+      expect(c.x).toBeGreaterThanOrEqual(t.x);
+      expect(c.x + c.width).toBeLessThanOrEqual(t.x + t.width);
+      // Centred on the trigger, not merely inside it: the `x` sits in a flex
+      // row with it, and `items-center` is the only thing centring it.
+      expect(Math.abs(c.y + c.height / 2 - (t.y + t.height / 2))).toBeLessThan(
+        1.5,
+      );
+
+      // Clear of the chevron, which is the trigger's last svg. The two glyphs
+      // are the whole right end of the control, and "inside the trigger" is
+      // satisfied just as well by one printed on top of the other.
+      const chevron = (await trigger.locator("svg").last().boundingBox())!;
+      expect(chevron.x).toBeGreaterThan(c.x + c.width);
+    }
+  });
+
   test("a scalar-array control can actually be given a value", async ({
     page,
   }) => {

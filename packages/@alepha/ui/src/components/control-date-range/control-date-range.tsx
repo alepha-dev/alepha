@@ -6,6 +6,7 @@ import {
   ControlClearButton,
   TRIGGER_CLASSES,
   TRIGGER_SIZES,
+  TRIGGER_WRAPPER_CLASSES,
 } from "@alepha/ui/components/control-base/field-trigger";
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import {
@@ -178,7 +179,7 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
             BESIDE the trigger rather than inside it because a button nested
             in a button is invalid, and Base UI's popover trigger would
             swallow its click anyway. */}
-        <div className="relative w-full">
+        <div className={TRIGGER_WRAPPER_CLASSES}>
           <PopoverTrigger
             id={meta.id}
             // `date-trigger`, the same slot `ControlDate` claims: `styles.css`

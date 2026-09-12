@@ -49,19 +49,38 @@ const schema = z.object({
     .meta({ format: "date", title: "Starts on" })
     .describe("A second date, for comparing two in a row.")
     .optional(),
-  // ⚠️ Neither of these carries a `.describe()`, and that is not an
-  // oversight. `FormField` is as wide as the widest thing in it, the clear
-  // `x` is positioned against that box, and a description longer than a
-  // `triggerClassName`-narrowed trigger therefore pushes the `x` off the
-  // trigger's right edge - for a select exactly as much as for a range, which
-  // is why it is not this quest's to fix. A filter row is the shape being
-  // shown here, and a filter has no description.
+  // Neither of these carries a `.describe()`, and that is not an oversight: a
+  // filter row is the shape being shown, and a filter has no description.
   period: z.dateRange().meta({ title: "Period" }).optional(),
   status: z.enum(["open", "closed"]).meta({ title: "Status" }).optional(),
+  // The pair below is the regression guard for the clear `x`'s position - see
+  // the group that renders them.
+  window: z
+    .dateRange()
+    .meta({ title: "Window" })
+    .describe("A narrowed trigger in a field that is the whole form wide.")
+    .optional(),
+  zone: z
+    .enum(["eu-west", "us-east"])
+    .meta({ title: "Zone" })
+    .describe("The same shape, for a select rather than a calendar.")
+    .optional(),
 });
 
 const DatePage = () => {
-  const form = useForm({ schema, handler: () => {} }, [schema]);
+  const form = useForm(
+    {
+      schema,
+      handler: () => {},
+      // The two guard fields start FILLED, because the thing they exist to
+      // show - the clear `x` - is only drawn once a field has a value, and a
+      // showcase that needs a two-click gesture before it shows anything is a
+      // showcase nobody checks. Literal days rather than ones derived from
+      // today: a fixture that moves with the clock reads differently tomorrow.
+      initialValues: { window: ["2026-01-05", "2026-01-19"], zone: "eu-west" },
+    },
+    [schema],
+  );
 
   return (
     <Showcase
@@ -134,6 +153,33 @@ const DatePage = () => {
                   triggerClassName="w-40"
                 />
               </div>
+            </Group>
+
+            {/*
+              ⚠️ The regression guard for #Q2283, and it has to be a FORM row
+              rather than the filter row above it. A `FormField` is as wide as
+              the box it sits in: on the filter row that box shrinks to the
+              trigger, so nothing shows there, while here it is the form's own
+              672px and the trigger is 256px of it.
+
+              The clear `x` used to be positioned against the FIELD, so on
+              this row it sat some 400px right of the control it belongs to.
+              It follows the trigger's own right edge now, whatever the field
+              around it measures.
+            */}
+            <Group title="Narrowed, inside a full-width form">
+              <Control
+                input={form.input.window}
+                clearable
+                disabled={v.disabled}
+                triggerClassName="w-64"
+              />
+              <Control
+                input={form.input.zone}
+                clearable
+                disabled={v.disabled}
+                triggerClassName="w-40"
+              />
             </Group>
           </div>
         );
