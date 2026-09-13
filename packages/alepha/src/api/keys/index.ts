@@ -1,7 +1,9 @@
 import { $module } from "alepha";
+import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaBackground } from "alepha/background";
 
+import { ApiKeyAudits } from "./audits/ApiKeyAudits.ts";
 import { AdminApiKeyController } from "./controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "./controllers/ApiKeyController.ts";
 import { ApiKeyJobs } from "./jobs/ApiKeyJobs.ts";
@@ -9,6 +11,7 @@ import { ApiKeyNotifications } from "./notifications/ApiKeyNotifications.ts";
 import { ApiKeyParameters } from "./parameters/ApiKeyParameters.ts";
 import { ApiKeyService } from "./services/ApiKeyService.ts";
 
+export * from "./audits/ApiKeyAudits.ts";
 export * from "./controllers/AdminApiKeyController.ts";
 export * from "./controllers/ApiKeyController.ts";
 export * from "./entities/apiKeyEntity.ts";
@@ -57,7 +60,7 @@ export * from "./services/ApiKeyService.ts";
  */
 export const AlephaApiKeys = $module({
   name: "alepha.api.keys",
-  imports: [AlephaBackground, AlephaApiJobs],
+  imports: [AlephaBackground, AlephaApiJobs, AlephaApiAudits],
   services: [
     ApiKeyParameters,
     ApiKeyService,
@@ -69,6 +72,9 @@ export const AlephaApiKeys = $module({
     // standalone against a plain `$issuer` therefore gains the jobs module's
     // `job_executions` table, exactly as `alepha/api/audits` already gives it.
     ApiKeyJobs,
+    // Ungated for the same reason: an audit trail of credential events is a
+    // security baseline, not a feature to switch on.
+    ApiKeyAudits,
   ],
   // Registered by `$realm` when a realm has notifications too, never here:
   // this module does not pull the notifications module in.

@@ -24,6 +24,7 @@ import {
   type ServerRequest,
 } from "alepha/server";
 
+import { ApiKeyAudits } from "../audits/ApiKeyAudits.ts";
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
 import { ApiKeyNotifications } from "../notifications/ApiKeyNotifications.ts";
 import { ApiKeyParameters } from "../parameters/ApiKeyParameters.ts";
@@ -37,6 +38,7 @@ import type { ApiKeyStatus } from "../schemas/apiKeyStatusSchema.ts";
 
 export class ApiKeyService {
   protected readonly alepha = $inject(Alepha);
+  protected readonly audits = $inject(ApiKeyAudits);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
@@ -448,6 +450,17 @@ export class ApiKeyService {
       name: options.name,
     });
 
+    await this.audits.apiKey.log("create", {
+      userId: options.userId,
+      resourceType: "api-key",
+      resourceId: apiKey.id,
+      description: `API key '${apiKey.name}' created`,
+      metadata: this.auditMetadata(apiKey, "owner", {
+        permissions: apiKey.permissions,
+        expiresAt: apiKey.expiresAt,
+      }),
+    });
+
     return { apiKey, token };
   }
 
@@ -658,8 +671,10 @@ export class ApiKeyService {
 
   /**
    * Revoke any API key (admin only).
+   *
+   * @param actorId - The admin revoking it, recorded on the audit row.
    */
-  public async revokeByAdmin(id: string): Promise<void> {
+  public async revokeByAdmin(id: string, actorId?: string): Promise<void> {
     const apiKey = await this.repo.getById(id);
 
     if (apiKey.revokedAt) {
@@ -680,18 +695,29 @@ export class ApiKeyService {
       apiKeyId: id,
       userId: apiKey.userId,
     });
+
+    await this.audits.apiKey.log("revoke", {
+      userId: actorId,
+      resourceType: "api-key",
+      resourceId: id,
+      description: `API key '${apiKey.name}' revoked by an admin`,
+      metadata: this.auditMetadata(apiKey, "admin"),
+    });
   }
 
   /**
    * Revoke many API keys in one repository call (admin only). Already-revoked
    * keys are silently skipped. Returns the ids that were actually revoked.
    */
-  public async revokeManyByAdmin(ids: string[]): Promise<string[]> {
+  public async revokeManyByAdmin(
+    ids: string[],
+    actorId?: string,
+  ): Promise<string[]> {
     if (ids.length === 0) return [];
 
     const keys = await this.repo.findMany({
       where: { id: { inArray: ids } },
-      columns: ["id", "tokenHash", "revokedAt"],
+      columns: ["id", "tokenHash", "revokedAt", "name", "userId"],
     });
     const toRevoke = keys.filter((k) => !k.revokedAt);
     if (toRevoke.length === 0) return [];
@@ -714,6 +740,16 @@ export class ApiKeyService {
     );
 
     this.log.info("API keys revoked by admin", { count: toRevoke.length });
+
+    for (const key of toRevoke) {
+      await this.audits.apiKey.log("revoke", {
+        userId: actorId,
+        resourceType: "api-key",
+        resourceId: key.id,
+        description: `API key '${key.name}' revoked by an admin`,
+        metadata: this.auditMetadata(key, "admin"),
+      });
+    }
     return toRevoke.map((k) => k.id);
   }
 
@@ -750,6 +786,14 @@ export class ApiKeyService {
     this.log.info("API key revoked", {
       apiKeyId: id,
       userId,
+    });
+
+    await this.audits.apiKey.log("revoke", {
+      userId,
+      resourceType: "api-key",
+      resourceId: id,
+      description: `API key '${apiKey.name}' revoked`,
+      metadata: this.auditMetadata(apiKey, "owner"),
     });
   }
 
@@ -817,6 +861,16 @@ export class ApiKeyService {
     this.usageScheduledAt.delete(id);
 
     this.log.info("API key rotated", { apiKeyId: id, userId });
+
+    await this.audits.apiKey.log("rotate", {
+      userId,
+      resourceType: "api-key",
+      resourceId: id,
+      description: `API key '${apiKey.name}' rotated`,
+      metadata: this.auditMetadata(apiKey, "owner", {
+        expiresAt: updated.expiresAt,
+      }),
+    });
 
     return { apiKey: updated, token };
   }
@@ -1045,6 +1099,14 @@ export class ApiKeyService {
 
     if (revoked + expired > 0) {
       this.log.info("Dead API keys purged", { expired, revoked });
+
+      // One row per run, not per key: each key already has its create and
+      // revoke rows, in the table kept longest.
+      await this.audits.apiKey.log("purge", {
+        resourceType: "api-key",
+        description: `${revoked + expired} API key(s) past their retention window purged`,
+        metadata: { expired, revoked },
+      });
     }
 
     return { expired, revoked };
@@ -1204,6 +1266,19 @@ export class ApiKeyService {
     const random = randomBytes(24).toString("base64url");
     const token = `${prefix}_${random}`;
     return { token, hash: this.hashToken(token), suffix: token.slice(-8) };
+  }
+
+  /**
+   * What an audit row says about a key: which one, whose, and who acted.
+   * Built from an explicit list so neither the token nor its hash can ride
+   * along.
+   */
+  protected auditMetadata(
+    apiKey: Pick<ApiKeyEntity, "name" | "userId">,
+    actor: "owner" | "admin",
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return { name: apiKey.name, ownerId: apiKey.userId, actor, ...extra };
   }
 
   /**

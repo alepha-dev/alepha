@@ -69,8 +69,8 @@ export class AdminApiKeyController {
       }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
-      await this.apiKeyService.revokeByAdmin(params.id);
+    handler: async ({ params, user }) => {
+      await this.apiKeyService.revokeByAdmin(params.id, user.id);
       return { ok: true, id: params.id };
     },
   });
@@ -92,8 +92,11 @@ export class AdminApiKeyController {
         revoked: z.array(z.uuid()),
       }),
     },
-    handler: async ({ body }) => {
-      const revoked = await this.apiKeyService.revokeManyByAdmin(body.ids);
+    handler: async ({ body, user }) => {
+      const revoked = await this.apiKeyService.revokeManyByAdmin(
+        body.ids,
+        user.id,
+      );
       return { revoked };
     },
   });
