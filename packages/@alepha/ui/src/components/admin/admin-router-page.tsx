@@ -25,6 +25,12 @@ import { AdminRouter } from "./admin-router.tsx";
  * step: `useNavEntries` walks the parent chain and reads each page's own
  * `nav`, the same as any other page hung off `AdminRouter.layout`.
  *
+ * **Its tab reads `Admin - <title>`**, the way every built-in page's does: a
+ * static `head.title` or the title a `head` function returns is prefixed.
+ * When the page names no `nav.label` and no `label`, its unprefixed static
+ * title becomes the `label`, so its sidebar entry and breadcrumb do not carry
+ * the prefix.
+ *
  * **Calling this registers `AdminRouter`.** Declaring even one page this way
  * mounts the whole `/admin` shell, including its thirteen built-in pages (Users,
  * Sessions, Jobs, …) — an admin page without the admin shell around it is
@@ -70,8 +76,32 @@ export const $pageAdmin = <
 ): PagePrimitive<TConfig, TProps, TPropsParent> => {
   const { alepha } = $context();
   const admin = alepha.inject(AdminRouter);
+
+  // "Admin - <Page>" in the tab, like the built-ins. A static title also
+  // stands in for the label when the page names none, since the sidebar and
+  // the breadcrumb fall back to `head.title`: keeping the unprefixed one there
+  // is what keeps a crumb reading "Produit" rather than "Admin - Produit".
+  const head = options.head;
+  let label = options.label;
+  let prefixed = head;
+  if (typeof head === "function") {
+    prefixed = (props: TProps, previous?: Parameters<typeof head>[1]) => {
+      const resolved = head(props, previous);
+      return resolved.title
+        ? { ...resolved, title: `${admin.adminTitlePrefix}${resolved.title}` }
+        : resolved;
+    };
+  } else if (head?.title) {
+    if (options.nav?.label == null && label == null) {
+      label = head.title;
+    }
+    prefixed = { ...head, ...admin.adminHead(head.title) };
+  }
+
   return $pageNav<TConfig, TProps, TPropsParent>({
     ...options,
+    ...(label !== undefined ? { label } : {}),
+    ...(prefixed !== undefined ? { head: prefixed } : {}),
     parent: admin.layout,
   } as PageNavOptions<TConfig, TProps, TPropsParent>);
 };
