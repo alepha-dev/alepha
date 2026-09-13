@@ -8,6 +8,7 @@ import {
   $inject,
   $store,
   Alepha,
+  AlephaError,
   type Infer,
   SchemaValidationError,
   type ZObject,
@@ -15,6 +16,7 @@ import {
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 
 import { CommandError } from "../errors/CommandError.ts";
 import { UsageError } from "../errors/UsageError.ts";
@@ -26,6 +28,7 @@ import {
   type CommandHandlerArgs,
   type CommandPrimitive,
 } from "../primitives/$command.ts";
+import { ConsoleInputProvider } from "./ConsoleInputProvider.ts";
 import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
 import { ExclusiveProvider } from "./ExclusiveProvider.ts";
 
@@ -76,6 +79,31 @@ declare module "alepha" {
   }
 }
 
+/**
+ * One `@path` or `@-` flag value waiting to be read.
+ *
+ * `index` is the argv slot the value came from: the flag token itself for
+ * `--flag=@x`, the slot after it for `--flag @x`. It is unique per
+ * occurrence, which is what lets a repeated array flag keep its order.
+ */
+export interface FlagFileRequest {
+  index: number;
+  rawKey: string;
+  /**
+   * What follows the `@`: a path, or `-` for stdin.
+   */
+  source: string;
+}
+
+/**
+ * The `@file` state of one flag parse: the reads the first pass found, and
+ * the contents the second pass substitutes.
+ */
+export interface FlagFileReads {
+  requests: FlagFileRequest[];
+  resolved: Map<number, string>;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -116,6 +144,8 @@ export class CliProvider {
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
   protected readonly output = $inject(ConsoleOutputProvider);
+  protected readonly input = $inject(ConsoleInputProvider);
+  protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly exclusive = $inject(ExclusiveProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly options = $store(cliOptions);
@@ -418,8 +448,9 @@ export class CliProvider {
       await this.loadModeEnv(root, modeValue);
     }
 
-    const commandFlags = this.parseCommandFlags(argv, command.flags, {
+    const commandFlags = await this.parseCommandFlags(argv, command.flags, {
       modeEnabled: !!command.options.mode,
+      root,
     });
     const commandArgs = this.parseCommandArgs(
       argv,
@@ -707,8 +738,9 @@ export class CliProvider {
         : (opts.argv ?? []);
     const root = opts.root ?? process.cwd();
 
-    const commandFlags = this.parseCommandFlags(args, command.flags, {
+    const commandFlags = await this.parseCommandFlags(args, command.flags, {
       modeEnabled: !!command.options.mode,
+      root,
     });
     const commandArgs = this.parseCommandArgs(
       args,
@@ -830,14 +862,21 @@ export class CliProvider {
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Parse command flags from argv using the command's flag schema
+   * Parse command flags from argv using the command's flag schema.
+   *
+   * Async because a flag that declares `atFile` may name a file or stdin, and
+   * {@link parseFlags} is synchronous. So it runs twice when it has to: the
+   * first pass binds every token exactly as the second will and collects the
+   * `@` values it could not cast, they are read, and the second pass casts the
+   * contents in their place. Binding first is the point. A body read into argv
+   * before parsing would start with `- ` often enough to be taken for a flag.
    */
-  protected parseCommandFlags(
+  protected async parseCommandFlags(
     argv: string[],
     schema: ZObject,
-    options: { modeEnabled?: boolean } = {},
-  ): Record<string, any> {
-    const { modeEnabled = false } = options;
+    options: { modeEnabled?: boolean; root?: string } = {},
+  ): Promise<Record<string, any>> {
+    const { modeEnabled = false, root = process.cwd() } = options;
     const flagDefs = this.extractFlagDefs(schema);
 
     // Add mode flags if mode is enabled (they're parsed elsewhere by parseModeFlag)
@@ -865,7 +904,13 @@ export class CliProvider {
       });
     }
 
-    const parsed = this.parseFlags(argv, flagDefs);
+    const files: FlagFileReads = { requests: [], resolved: new Map() };
+    let parsed = this.parseFlags(argv, flagDefs, { files });
+    if (files.requests.length > 0) {
+      files.resolved = await this.readFlagFiles(files.requests, root);
+      files.requests = [];
+      parsed = this.parseFlags(argv, flagDefs, { files });
+    }
 
     // Remove the mode + global flags from parsed result (handled separately)
     parsed.__mode__ = undefined;
@@ -996,15 +1041,24 @@ export class CliProvider {
   }
 
   /**
-   * Low-level flag parser - extracts flag values from argv based on definitions
+   * Low-level flag parser - extracts flag values from argv based on definitions.
+   *
+   * A repeated array flag accumulates (see {@link castArrayOccurrence}); a
+   * repeated scalar is last-wins. A flag declaring `atFile` binds an `@path`
+   * or `@-` value into `options.files` instead of casting it, and casts the
+   * content once the caller has filled `files.resolved` (see
+   * {@link parseCommandFlags}).
    */
   protected parseFlags(
     argv: string[],
     flagDefs: { key: string; aliases: string[]; schema: ZType }[],
-    options: { strict?: boolean } = {},
+    options: { strict?: boolean; files?: FlagFileReads } = {},
   ): Record<string, any> {
-    const { strict = true } = options;
+    const { strict = true, files } = options;
     const result: Record<string, any> = {};
+    // The array flags seen so far in THIS argv: the first occurrence starts
+    // the list, a later one appends to it.
+    const started = new Set<string>();
     const end = this.terminatorIndex(argv);
 
     for (let i = 0; i < end; i++) {
@@ -1062,21 +1116,201 @@ export class CliProvider {
           // No value: --flag → true
           result[def.key] = true;
         }
-      } else if (value) {
-        // Value provided via --flag=value syntax
-        result[def.key] = this.castFlagValue(value, base, rawKey);
       } else {
-        // Check for space-separated value: --flag value
-        const nextArg = argv[i + 1];
-        if (nextArg && !this.isFlagToken(nextArg)) {
-          result[def.key] = this.castFlagValue(nextArg, base, rawKey);
+        // --flag=value, or the space-separated --flag value.
+        //
+        // An empty value is a value: `--flag=` and `--flag ""` both bind "".
+        // Testing the value for truthiness used to send `--flag=` on to take
+        // the NEXT token (which `getFlagConsumedIndices` meanwhile left as a
+        // positional), and refuse `--flag ""` as missing its value.
+        let raw = value;
+        let index = i;
+        if (valueParts.length === 0) {
+          const nextArg = argv[i + 1];
+          if (nextArg === undefined || this.isFlagToken(nextArg)) {
+            throw new UsageError(`Flag --${rawKey} requires a value.`);
+          }
+          raw = nextArg;
+          index = i + 1;
+        }
+
+        const bound = this.bindFlagValue(raw, index, def, rawKey, files);
+        if (bound === undefined) {
+          // An `@` value waiting to be read: the second pass casts it.
+          continue;
+        }
+
+        if (z.schema.isArray(base)) {
+          const items = this.castArrayOccurrence(bound, base, rawKey);
+          result[def.key] = started.has(def.key)
+            ? [...result[def.key], ...items]
+            : items;
+          started.add(def.key);
         } else {
-          throw new UsageError(`Flag --${rawKey} requires a value.`);
+          result[def.key] = this.castFlagValue(bound, base, rawKey);
         }
       }
     }
 
     return result;
+  }
+
+  /**
+   * Whether a flag reads `@path` and `@-` as a file and stdin.
+   *
+   * Opt-in, through `atFile: true` in the flag's schema metadata, and never
+   * implied by the flag being a string. `alepha test --project` is a string
+   * whose values are package names, and `--project '@alepha/ui*'` would
+   * otherwise read a file called `alepha/ui*`.
+   */
+  protected acceptsAtFile(schema: ZType | undefined): boolean {
+    return this.schemaMeta(schema).atFile === true;
+  }
+
+  /**
+   * The string a bound flag value casts from.
+   *
+   * On a flag that does not declare `atFile`, the token itself, `@` or not. On
+   * one that does: `@@x` is the literal `@x`; `@path` and `@-` are the
+   * content already read by an earlier pass, or `undefined` after recording
+   * the read in `files` for that pass to make.
+   */
+  protected bindFlagValue(
+    raw: string,
+    index: number,
+    def: { schema: ZType },
+    rawKey: string,
+    files: FlagFileReads | undefined,
+  ): string | undefined {
+    if (!raw.startsWith("@") || !this.acceptsAtFile(def.schema)) {
+      return raw;
+    }
+    if (raw.startsWith("@@")) {
+      return raw.slice(1);
+    }
+
+    const content = files?.resolved.get(index);
+    if (content !== undefined) {
+      return content;
+    }
+    if (!files) {
+      throw new AlephaError(
+        `Flag --${rawKey} reads '${raw}', and this parse cannot read files: go through parseCommandFlags.`,
+      );
+    }
+
+    files.requests.push({ index, rawKey, source: raw.slice(1) });
+    return undefined;
+  }
+
+  /**
+   * Read every `@` value a flag parse asked for, keyed by argv slot.
+   *
+   * Stdin can be read once per invocation, so a second `@-` is refused before
+   * anything is read.
+   */
+  protected async readFlagFiles(
+    requests: FlagFileRequest[],
+    root: string,
+  ): Promise<Map<number, string>> {
+    const stdin = requests.filter((request) => request.source === "-");
+    if (stdin.length > 1) {
+      throw new UsageError(
+        `Only one flag value can read stdin, and ${stdin.map((request) => `--${request.rawKey}`).join(", ")} all use @-.`,
+      );
+    }
+
+    const resolved = new Map<number, string>();
+    for (const request of requests) {
+      resolved.set(
+        request.index,
+        request.source === "-"
+          ? await this.readFlagStdin(request.rawKey)
+          : await this.readFlagFile(request.rawKey, request.source, root),
+      );
+    }
+    return resolved;
+  }
+
+  /**
+   * The value of a flag given as `@-`.
+   *
+   * Refused on a terminal, because a command waiting on a keyboard nobody is
+   * at is a hang, and a hang is the worst failure an agent can meet. Refused
+   * on an empty read too: an agent's shell tool with nothing piped in has an
+   * empty stdin, and sending an empty body without a word is how that goes
+   * unnoticed. Somebody who means empty passes `""`.
+   */
+  protected async readFlagStdin(rawKey: string): Promise<string> {
+    if (this.input.isTTY()) {
+      throw new UsageError(
+        `Flag --${rawKey} reads stdin (@-), and stdin is a terminal. Pipe the value in, or pass @<file>.`,
+      );
+    }
+
+    const content = await this.input.readAll();
+    if (content === "") {
+      throw new UsageError(
+        `Flag --${rawKey} read nothing from stdin (@-). Pipe the value in, or pass "" for an empty value.`,
+      );
+    }
+    return content;
+  }
+
+  /**
+   * The value of a flag given as `@path`, resolved against the command's
+   * root. An empty file is allowed: it was named explicitly.
+   */
+  protected async readFlagFile(
+    rawKey: string,
+    path: string,
+    root: string,
+  ): Promise<string> {
+    if (path === "") {
+      throw new UsageError(
+        `Flag --${rawKey}: '@' names no file. Pass @<file>, @- for stdin, or @@ for a literal '@'.`,
+      );
+    }
+
+    const full = this.fileSystem.resolve(root, path);
+    try {
+      return await this.fileSystem.readTextFile(full);
+    } catch (error) {
+      throw new UsageError(
+        `Flag --${rawKey}: cannot read '${path}' (${full}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Cast one occurrence of an array flag into the items it adds.
+   *
+   * `--tag a --tag b` is `["a", "b"]`: each occurrence is cast against the
+   * ELEMENT schema. An occurrence starting with `[` is a JSON array and is
+   * spread, which keeps `--tag '["a","b"]'` working; a malformed one is
+   * refused rather than taken for an element. When the element is itself an
+   * array, an occurrence is one element and nothing is spread.
+   */
+  protected castArrayOccurrence(
+    value: string,
+    schema: ZType,
+    rawKey: string,
+  ): any[] {
+    const element = z.schema.unwrap(z.schema.element(schema));
+
+    if (!z.schema.isArray(element) && value.trimStart().startsWith("[")) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        throw new UsageError(`Invalid JSON value for flag --${rawKey}`);
+      }
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+
+    return [this.castFlagValue(value, element, rawKey)];
   }
 
   /**
@@ -1207,8 +1441,9 @@ export class CliProvider {
       // If not a boolean flag and no = value, the next arg is consumed as the value
       // Exception: union with boolean can work without a value
       if (!z.schema.isBoolean(base) && !isUnionWithBoolean && !hasEqualValue) {
+        // `""` is a value too, the same as in parseFlags.
         const nextArg = argv[i + 1];
-        if (nextArg && !this.isFlagToken(nextArg)) {
+        if (nextArg !== undefined && !this.isFlagToken(nextArg)) {
           consumed.add(i + 1);
         }
       } else if (isUnionWithBoolean && !hasEqualValue) {
@@ -1770,7 +2005,13 @@ export class CliProvider {
   }
 
   /**
-   * Format flag description with enum values if applicable.
+   * Format a flag's description with what its schema implies: the enum
+   * values, that an array flag repeats, and that an `atFile` flag reads
+   * `@file` and `@-`.
+   *
+   * Printed here, by the framework, rather than left to every description to
+   * remember: a convention one flag's author forgot to mention is a
+   * convention its reader never learns.
    */
   protected formatFlagDescription(
     description: string | undefined,
@@ -1780,14 +2021,22 @@ export class CliProvider {
 
     if (!schema) return baseDesc;
 
+    const hints: string[] = [];
+
     const enumValues = this.getEnumValues(schema);
     if (enumValues && enumValues.length > 0) {
-      const valuesStr = enumValues.join(", ");
-      const c = this.color;
-      const enumHint = c.set("GREY_DARK", `[${valuesStr}]`);
-      return baseDesc ? `${baseDesc} ${enumHint}` : enumHint;
+      hints.push(`[${enumValues.join(", ")}]`);
+    }
+    if (z.schema.isArray(z.schema.unwrap(schema))) {
+      hints.push("(repeatable)");
+    }
+    if (this.acceptsAtFile(schema)) {
+      hints.push("(takes @file, or @- for stdin; @@ for a literal @)");
     }
 
-    return baseDesc;
+    if (hints.length === 0) return baseDesc;
+
+    const hint = this.color.set("GREY_DARK", hints.join(" "));
+    return baseDesc ? `${baseDesc} ${hint}` : hint;
   }
 }

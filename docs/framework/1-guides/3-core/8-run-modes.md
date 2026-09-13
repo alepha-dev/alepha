@@ -117,7 +117,79 @@ runs, so a missing token is a clear failure at second zero rather than a
 `--name value` and `--name=value` are equivalent. A boolean flag needs no value:
 `--compile` turns it on, and `--no-compile` or `--compile=false` turns it off. A
 bare `--` ends flag parsing, so everything after it is an argument even when it
-starts with a dash.
+starts with a dash. An empty value is a value: `--summary ""` and `--summary=`
+both pass `""`.
+
+**An array flag repeats.** `--tag a --tag b` is `["a", "b"]`: each occurrence is
+cast against the element schema, so `--count 1 --count 2` on a
+`z.array(z.integer())` is `[1, 2]`. An occurrence written as a JSON array is
+spread, so `--tag '["a","b"]'` keeps working and `--tag '["a","b"]' --tag c` is
+`["a", "b", "c"]`. A scalar flag given twice keeps the last value. The help line
+of an array flag says `(repeatable)`.
+
+### Reading a value from a file or stdin
+
+A shell cannot pass a Markdown body as a flag value: `--body "## H\nBody"` is the
+two characters `\` and `n`, not a newline. A flag that declares `atFile: true`
+reads it from a file instead:
+
+```typescript check
+import { z } from "alepha";
+import { $command } from "alepha/command";
+
+class NoteCommands {
+  create = $command({
+    name: "create",
+    description: "Create a note",
+    flags: z.object({
+      title: z.text({ description: "The note's title" }),
+      body: z.text({
+        size: "rich",
+        atFile: true,
+        description: "The note, in Markdown",
+      }),
+      tag: z.array(z.text()).describe("A tag").optional(),
+    }),
+    handler: async ({ flags, print }) => {
+      print(
+        `${flags.title}: ${flags.body.length} chars, ${flags.tag?.length ?? 0} tags`,
+      );
+    },
+  });
+}
+```
+
+```bash
+alepha create --title "Plan" --body @plan.md --tag cli --tag docs
+git log -1 --format=%B | alepha create --title "Last commit" --body @-
+```
+
+| Value    | On a flag with `atFile: true`                                  |
+| -------- | -------------------------------------------------------------- |
+| `@path`  | The content of the file, resolved against the command's `root` |
+| `@-`     | The whole of stdin                                             |
+| `@@text` | The literal `@text`                                            |
+| anything | Itself                                                         |
+
+The file is read after the token is bound to its flag and before it is cast, so
+a body that starts with `- ` is still a value, and a file holding JSON reaches a
+string flag as that string. On an array flag, the content goes through the
+repeat rule once. An empty file is accepted, since it was named on purpose.
+
+`@-` is stricter, because the failure it guards against is silent. It may be
+used once per invocation. It is refused when stdin is a terminal, since waiting
+on a keyboard nobody is at is a hang. And it is refused when stdin is empty,
+since an agent's shell tool with nothing piped in has an empty stdin, and
+sending an empty body without a word is how that goes unnoticed: pass `""` to
+mean empty.
+
+**`atFile` is opt-in, never implied by a string.** `alepha test --project` takes
+package names, and `--project '@alepha/ui*'` has to reach Vitest as typed. On a
+flag without `atFile`, `@` is just a character. The help line of a flag that
+declares it says `(takes @file, or @- for stdin; @@ for a literal @)`.
+
+Stdin is read through `ConsoleInputProvider`; substitute `MemoryInputProvider`
+in a spec, and `MemoryFileSystemProvider` for the files.
 
 ### What the handler gets
 
