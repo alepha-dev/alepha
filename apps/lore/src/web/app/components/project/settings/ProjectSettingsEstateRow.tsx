@@ -1,6 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { CardContent } from "@alepha/ui/components/ui/card";
+import { Badge, Button, CardContent } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Unlink } from "lucide-react";

@@ -1,4 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
+import { Badge } from "@alepha/ui";
 import { Handle, Position } from "@xyflow/react";
 
 import { getModuleColor } from "./constants.ts";

@@ -1,7 +1,4 @@
-import {
-  AdminAnalytics,
-  type AnalyticsTransport,
-} from "@alepha/ui/components/admin/admin-analytics";
+import { AdminAnalytics, type AnalyticsTransport } from "@alepha/ui/admin";
 import { useClient, useStore } from "alepha/react";
 import { useMemo } from "react";
 

@@ -1,15 +1,13 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { SettingsDangerSection } from "@alepha/ui/components/settings/settings-danger-section";
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import { SettingsLayout } from "@alepha/ui/components/settings/settings-layout";
-import { SettingsNav } from "@alepha/ui/components/settings/settings-nav";
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Switch } from "@alepha/ui/components/ui/switch";
-import { cn } from "@alepha/ui/lib/utils";
+import { Badge, Button, Input, Switch, cn } from "@alepha/ui";
+import {
+  settingsCardEdge,
+  SettingsDangerSection,
+  SettingsHeading,
+  SettingsLayout,
+  SettingsNav,
+  SettingsRow,
+  SettingsSection,
+} from "@alepha/ui/settings";
 import { z } from "alepha";
 import {
   CreditCard,

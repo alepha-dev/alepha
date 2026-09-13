@@ -4,7 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Copy, Crosshair, MoreVertical, Trash2 } from "lucide-react";
 

@@ -1,14 +1,15 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import {
+  TimeAgo,
+  Badge,
+  Button,
+  Card,
+  CardContent,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
+} from "@alepha/ui";
+import { AlephaTable } from "@alepha/ui/table";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";

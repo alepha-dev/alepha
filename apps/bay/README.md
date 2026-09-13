@@ -19,17 +19,18 @@ The full design lives in the **bay** directory of the Alepha project in Lore.
 
 ## The shape of it
 
-|                   |                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------- |
-| **Artifact**      | the `tar.gz` `alepha pack` already produces - no Bay-specific format, no manifest to hand-write |
-| **Deployment**    | untar under guard, provision, atomic `current` switch, health-gated rollback watch              |
-| **Supervision**   | a systemd unit per instance, each running as its own unix user, in its own sandbox              |
-| **Reverse proxy** | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`        |
-| **TLS**           | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)               |
-| **Provisioning**  | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`              |
-| **Backups**       | scheduled snapshot of the database, verified, compressed, uploaded, pruned                      |
-| **Control API**   | HTTP over a **unix socket**, authorized by the file mode. No port, no token                     |
-| **CLI**           | every command except `serve` is a thin client of that same API - one contract                   |
+|                    |                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| **Artifact**       | the `tar.gz` `alepha pack` already produces - no Bay-specific format, no manifest to hand-write |
+| **Deployment**     | untar under guard, provision, atomic `current` switch, health-gated rollback watch              |
+| **Supervision**    | a systemd unit per instance, each running as its own unix user, in its own sandbox              |
+| **Reverse proxy**  | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`        |
+| **Static headers** | the release's `dist/public/_headers` applied to every file served from disk, Cloudflare's way   |
+| **TLS**            | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)               |
+| **Provisioning**   | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`              |
+| **Backups**        | scheduled snapshot of the database, verified, compressed, uploaded, pruned                      |
+| **Control API**    | HTTP over a **unix socket**, authorized by the file mode. No port, no token                     |
+| **CLI**            | every command except `serve` is a thin client of that same API - one contract                   |
 
 `bay` with no arguments prints the full command list, and that usage text is
 the reference for flags - this table is the map, not the manual.
@@ -103,6 +104,7 @@ internal/
   backup/         snapshot, verify, upload, prune
   control/        the unix socket the control API is reached through
   deploy/         untar, provisioning, release switch, rollback
+  headers/        the _headers reader, shared with the TS one through testdata/
   health/         "is this app serving?", which is not "is a port open?"
   manifest/       manifest.json reading and validation
   proxy/          host routing, statics, reverse proxy

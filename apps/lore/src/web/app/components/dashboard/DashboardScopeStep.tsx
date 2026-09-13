@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "@alepha/ui";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check } from "lucide-react";

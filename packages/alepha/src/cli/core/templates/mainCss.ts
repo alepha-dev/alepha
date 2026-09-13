@@ -3,7 +3,7 @@ export interface MainCssOptions {
    * Import `@alepha/ui`'s stylesheet instead of Tailwind directly.
    *
    * The two are not additive: `@alepha/ui/styles.css` opens with
-   * `@import "tailwindcss"` and follows it with the shadcn layer, the font
+   * `@import "tailwindcss"` and follows it with the data-attribute variants, the font
    * faces, the `@source` glob that makes Tailwind scan the component sources,
    * and the theme tokens the components read. Importing `tailwindcss` again
    * beside it is a duplicate, not a safety net.

@@ -1,4 +1,4 @@
-import type { AdminRouterOptions } from "@alepha/ui/components/admin/admin-router-options";
+import type { AdminRouterOptions } from "@alepha/ui/admin";
 import { Tr } from "alepha/react/i18n";
 
 import { AdminCarteCommandes } from "./components/AdminCarteCommandes.tsx";

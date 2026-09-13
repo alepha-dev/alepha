@@ -2,13 +2,10 @@ import * as React from "react";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Badge, Button, useToast } from "@alepha/ui";
+import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
+import { Control } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

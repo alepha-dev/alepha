@@ -328,7 +328,7 @@ test.describe("AlephaTable", () => {
 
     // The first row's three-dots trigger. A submenu is the one shape a jsdom
     // spec cannot prove lays out, which is why this case is here and not
-    // only in `alepha-table-row-action-group.browser.spec.tsx`.
+    // only in `AlephaTableRowActionGroup.browser.spec.tsx`.
     await page
       .getByRole("button", { name: "Open row actions" })
       .first()

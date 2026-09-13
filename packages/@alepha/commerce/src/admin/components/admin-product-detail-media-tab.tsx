@@ -2,15 +2,15 @@ import * as React from "react";
 
 void React;
 
-import { ControlUpload } from "@alepha/ui/components/control-upload/control-upload";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
+} from "@alepha/ui";
+import { ControlUpload } from "@alepha/ui/form";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowLeft, ArrowRight, Star } from "lucide-react";

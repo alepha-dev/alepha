@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { Card, CardContent } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

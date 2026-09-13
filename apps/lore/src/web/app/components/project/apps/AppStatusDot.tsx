@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 
 import type { I18n } from "../../../services/I18n.ts";

@@ -1,4 +1,4 @@
-import { AuthMfaStep } from "@alepha/ui/components/auth/auth-mfa-step";
+import { AuthMfaStep } from "@alepha/ui/auth";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

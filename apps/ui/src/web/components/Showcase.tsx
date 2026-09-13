@@ -1,7 +1,5 @@
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { cn } from "@alepha/ui/lib/utils";
+import { Button, Segmented, cn } from "@alepha/ui";
+import { AutoForm } from "@alepha/ui/form";
 import type { Infer, ZObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useForm } from "alepha/react/form";

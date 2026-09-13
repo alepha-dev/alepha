@@ -1,4 +1,4 @@
-import { AuthResetPassword } from "@alepha/ui/components/auth/auth-reset-password";
+import { AuthResetPassword } from "@alepha/ui/auth";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

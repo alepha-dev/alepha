@@ -1,13 +1,13 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Drawer,
   DrawerClose,
   DrawerContent,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-} from "@alepha/ui/components/ui/drawer";
-import { Input } from "@alepha/ui/components/ui/input";
+  Input,
+} from "@alepha/ui";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowLeft, Search, X } from "lucide-react";

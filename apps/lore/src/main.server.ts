@@ -1,5 +1,5 @@
 import { SigilSinkProvider } from "@alepha/lore/sigil";
-import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
+import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import {

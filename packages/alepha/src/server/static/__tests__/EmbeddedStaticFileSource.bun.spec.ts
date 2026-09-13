@@ -34,6 +34,11 @@ beforeAll(async () => {
   dir = await mkdtemp(join(tmpdir(), "alepha-embedded-source-"));
   await writeFile(join(dir, "app.css"), css);
   await writeFile(join(dir, "app.css.br"), brotli);
+  await writeFile(join(dir, "chunk.AbCd1234.js"), "export {};");
+  await writeFile(
+    join(dir, "_headers"),
+    "/chunk.*\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n",
+  );
   files = {
     "/app.css": join(dir, "app.css"),
     "/app.css.br": join(dir, "app.css.br"),
@@ -80,6 +85,57 @@ describe("EmbeddedStaticFileSource behind the static server", () => {
 
   afterAll(async () => {
     await alepha?.stop().catch(() => {});
+  });
+
+  /**
+   * A compiled binary's `_headers` is embedded like every other file of
+   * `dist/public`, so it is read through the source, never off a disk that
+   * holds nothing.
+   */
+  it("applies an embedded _headers, and never serves it", async () => {
+    const embedded = {
+      ...files,
+      "/chunk.AbCd1234.js": join(dir, "chunk.AbCd1234.js"),
+      "/_headers": join(dir, "_headers"),
+    };
+    class TestApp {
+      protected readonly staticProvider = $inject(ServerStaticProvider);
+
+      protected readonly mount = $hook({
+        on: "configure",
+        handler: async () => {
+          await this.staticProvider.createStaticServer(
+            { headersFile: true },
+            new EmbeddedStaticFileSource(embedded, builtAt),
+          );
+        },
+      });
+    }
+
+    const app = Alepha.create({
+      env: { NODE_ENV: "test", LOG_LEVEL: "error" },
+    })
+      .with(AlephaServer)
+      .with(AlephaServerStatic)
+      .with(TestApp);
+    await app.start();
+    try {
+      const hostname = app.inject(ServerProvider).hostname;
+
+      const chunk = await fetch(`${hostname}/chunk.AbCd1234.js`);
+      expect(chunk.status).toBe(200);
+      expect(chunk.headers.get("cache-control")).toBe(
+        "public, max-age=31536000, immutable",
+      );
+      const css = await fetch(`${hostname}/app.css`);
+      expect(css.headers.get("cache-control")).toBe(
+        "public, max-age=0, must-revalidate",
+      );
+      const file = await fetch(`${hostname}/_headers`);
+      expect(file.status).toBe(404);
+    } finally {
+      await app.stop();
+    }
   });
 
   it("serves an embedded file, and its brotli sibling to a client that accepts it", async () => {

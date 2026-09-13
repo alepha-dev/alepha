@@ -1,4 +1,4 @@
-import { AuthLogin } from "@alepha/ui/components/auth/auth-login";
+import { AuthLogin } from "@alepha/ui/auth";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

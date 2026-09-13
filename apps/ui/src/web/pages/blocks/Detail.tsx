@@ -1,8 +1,5 @@
-import { DetailAside } from "@alepha/ui/components/detail/detail-aside";
-import { DetailLayout } from "@alepha/ui/components/detail/detail-layout";
-import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Badge, Button } from "@alepha/ui";
+import { DetailAside, DetailLayout, useDetailTab } from "@alepha/ui/shell";
 import { z } from "alepha";
 import { useRouter } from "alepha/react/router";
 import {

@@ -1,5 +1,5 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useDialog } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";

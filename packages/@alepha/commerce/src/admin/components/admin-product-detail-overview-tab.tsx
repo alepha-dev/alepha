@@ -2,7 +2,7 @@ import * as React from "react";
 
 void React;
 
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { AutoForm } from "@alepha/ui/form";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 

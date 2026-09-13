@@ -1,5 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Badge, Button } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked, Copy, Download, ScrollText } from "lucide-react";
 

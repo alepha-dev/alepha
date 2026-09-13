@@ -1,4 +1,4 @@
-import type { NavGroup } from "@alepha/ui/components/app-shell/app-shell";
+import type { NavGroup } from "@alepha/ui/shell";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

@@ -1,0 +1,890 @@
+import * as React from "react";
+
+void React;
+
+import { z } from "alepha";
+import { useAlepha } from "alepha/react";
+import {
+  type BaseInputField,
+  parseField,
+  useFieldValue,
+  useFormState,
+} from "alepha/react/form";
+import { resolveSchemaControl, type SchemaControl } from "alepha/react/ui";
+import { Check, X } from "lucide-react";
+import {
+  type ComponentType,
+  type HTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
+
+import { Input } from "../core/Input.tsx";
+import { Switch } from "../core/Switch.tsx";
+import { Textarea } from "../core/Textarea.tsx";
+import { cn } from "../core/utils.ts";
+import { ControlArray, type ControlArrayProps } from "./ControlArray.tsx";
+import { ControlDate, type ControlDateProps } from "./ControlDate.tsx";
+import { ControlDateRange } from "./ControlDateRange.tsx";
+import { ControlNumber } from "./ControlNumber.tsx";
+import { ControlObject } from "./ControlObject.tsx";
+import { ControlPassword } from "./ControlPassword.tsx";
+import {
+  ControlSelect,
+  type ControlSelectSize,
+  type SelectOption,
+} from "./ControlSelect.tsx";
+import { ControlUpload, type ControlUploadProps } from "./ControlUpload.tsx";
+import {
+  FormField,
+  formFieldAriaProps,
+  useFormFieldAutoSave,
+  useFormFieldLayout,
+} from "./FormField.tsx";
+import { type IconComponent, iconFor } from "./iconHint.tsx";
+
+export interface ControlProps {
+  /**
+   * Bound `InputField` from `useForm`. Carries value, schema, and error state.
+   */
+  input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title` or the field name.
+   */
+  label?: string;
+  /**
+   * Helper text shown below the control. Falls back to schema `description`.
+   */
+  description?: string;
+  /**
+   * Force a specific input variant — renders a single-line text input.
+   */
+  text?: boolean;
+  /**
+   * Force a textarea.
+   */
+  area?: boolean;
+  /**
+   * Force a masked password input.
+   */
+  password?: boolean;
+  /**
+   * Force a `<Switch>` (boolean toggle).
+   */
+  switch?: boolean;
+  /**
+   * Force a numeric input.
+   */
+  number?: boolean;
+  /**
+   * Force the file-upload control (alias for `upload`).
+   */
+  file?: boolean;
+  /**
+   * Force a date picker.
+   */
+  date?: boolean;
+  /**
+   * Force a date-time picker.
+   */
+  datetime?: boolean;
+  /**
+   * Force a date-range picker, regardless of the schema's format.
+   *
+   * Rarely needed: `z.dateRange()` tags the array itself, so the control
+   * selects itself. Here for the same reason `date` and `datetime` are - a
+   * field whose schema is a plain pair of strings can still ask for it.
+   */
+  dateRange?: boolean;
+  /**
+   * Force a time picker.
+   */
+  time?: boolean;
+  /**
+   * Date picker caption style — `"dropdown"` swaps the month arrows for
+   * month/year selects. See {@link ControlDateProps.captionLayout}.
+   */
+  captionLayout?: ControlDateProps["captionLayout"];
+  /** First selectable month of a date picker. */
+  startMonth?: Date;
+  /** Last selectable month of a date picker. */
+  endMonth?: Date;
+  /**
+   * Date-of-birth shorthand: a year dropdown covering the last 120 years.
+   * See {@link ControlDateProps.birthdate}.
+   */
+  birthdate?: boolean;
+  /**
+   * Force a `<Select>`.
+   */
+  select?: boolean;
+  /**
+   * Force a combobox (searchable select). Alias for `searchable: true`.
+   */
+  combobox?: boolean;
+  /**
+   * Force the select's search input on or off. Defaults to "auto" — on for an
+   * async list, when `createNewEntry` is set, or above ~50 options.
+   */
+  searchable?: boolean;
+  /**
+   * Force a `<Segmented>` control (one option visible at a time).
+   */
+  segmented?: boolean;
+  /**
+   * Force a slider (numeric only).
+   */
+  slider?: boolean;
+  /**
+   * Force a nested `<ControlObject>` for object-typed schemas.
+   */
+  object?: boolean;
+  /**
+   * Force a nested `<ControlArray>` for array-typed schemas.
+   */
+  array?: boolean;
+  /**
+   * Props forwarded to the nested `<ControlObject>`, keyed by child field name.
+   * This is the only way to reach INSIDE an object field — without it a caller
+   * can style/override the object as a whole but never one of its children
+   * (e.g. attaching a `custom` widget to `payg.zoneFareCents`).
+   */
+  /**
+   * Dictionary prefix for schema-generated labels/help: this field reads
+   * `<prefix>.<name>` and `<prefix>.<name>.desc`, and passes the extended
+   * prefix down into nested objects and array items.
+   */
+  i18nPrefix?: string;
+  objectProps?: {
+    controlProps?: Record<string, Partial<Omit<ControlProps, "input">>>;
+    variant?: "fieldset" | "plain";
+    defaultExpanded?: boolean;
+  };
+  /**
+   * Custom render component receiving `{value, onChange}`.
+   */
+  custom?: ComponentType<{ value: unknown; onChange: (v: unknown) => void }>;
+  /**
+   * Override icon — pass `null` to remove the schema-inferred icon.
+   */
+  icon?: IconComponent | string | null;
+  /**
+   * Disable the control.
+   */
+  disabled?: boolean;
+  /**
+   * Render slot before the control.
+   */
+  top?: ReactNode;
+  /**
+   * Render slot after the control.
+   */
+  bottom?: ReactNode;
+  /**
+   * Width slot inside an `<AutoForm>` group (mapped to a CSS grid column
+   * span). Read by the parent group; ignored when rendering standalone.
+   */
+  width?: 100 | 75 | 66 | 50 | 33 | 25;
+  /**
+   * HTML `autocomplete` hint passed to the underlying input.
+   */
+  autoComplete?: string;
+  /**
+   * Placeholder text. On a text-shaped control this is the HTML
+   * `placeholder`; on a select it is the trigger text shown while nothing is
+   * picked.
+   */
+  placeholder?: string;
+  /**
+   * Autofocus the control on mount. Forwarded to the text, number, password
+   * or textarea input the control renders. Ignored by the variants that are
+   * not a single focusable field (select, date, upload, array, object).
+   *
+   * Every forward site carries an `oxlint-disable-next-line
+   * jsx-a11y/no-autofocus`. That rule is right about a page that grabs focus
+   * unbidden and wrong here: nothing focuses unless a caller passed this prop,
+   * and it is the caller the rule should be asking. Left to fire, it did real
+   * damage once - a lint pass deleted the forwarding and left the prop
+   * declared, so login and dialog forms silently stopped focusing their first
+   * field and two components grew `getElementById(...).focus()` workarounds.
+   */
+  autoFocus?: boolean;
+  /**
+   * Visible row count for the textarea variant. Overrides the value
+   * auto-derived from the schema's `maxLength`. Ignored by other variants.
+   */
+  rows?: number;
+  /**
+   * Escape hatch — extra native attributes (event handlers, `className`,
+   * `aria-*`, `data-*`, `style`, …) forwarded to whichever element the
+   * control actually renders (text input / textarea / password input). The
+   * form bindings (`value`, `onChange`, `id`, `name`) always win and cannot
+   * be overridden here.
+   *
+   * `data-*` is spelled out because `HTMLAttributes` does not carry it:
+   * TypeScript special-cases dashed attributes in JSX only, so an object
+   * literal `{ "data-testid": … }` is an excess property and fails to
+   * compile. Without this a control cannot carry a test hook, which meant a
+   * surface with an e2e had to keep a raw `<input>` rather than adopt the
+   * shared control.
+   *
+   * ⚠️ **`autoComplete` does not go here.** `Control` takes it as a
+   * first-class prop, and `ControlPassword` writes its own after spreading
+   * this object - so a value passed through `inputProps` is silently
+   * replaced by `"current-password"`, which on a field holding a deploy
+   * token is the password-manager prompt the masking exists to avoid.
+   */
+  inputProps?: HTMLAttributes<HTMLElement> & {
+    [attribute: `data-${string}`]: string | number | boolean | undefined;
+  };
+  /**
+   * Allow user to create new entries in select / multi-select.
+   */
+  createNewEntry?: boolean | ((query: string) => unknown);
+  /**
+   * Inline option list for select / combobox controls. Infer array or
+   * async loader. Overrides schema-derived `enum` when present.
+   */
+  items?:
+    | SelectOption[]
+    | ((query: string) => SelectOption[] | Promise<SelectOption[]>);
+  /**
+   * Whether the field offers a way back to empty.
+   *
+   * On a `ControlSelect`, `true` adds a synthetic "none" row that resets the
+   * field to `undefined` — use it for optional filter chips.
+   *
+   * On a text field the affordance is the opposite way round: an optional
+   * field already shows a clear (×) button whenever it holds a value, and
+   * `false` takes it away. Pass `false` when emptying the field is not
+   * something the API can honour — a username has no "unset" on the server,
+   * so offering the button would promise an edit that silently does nothing.
+   */
+  clearable?: boolean;
+  /**
+   * Forwarded to `ControlSelect` — label of the `clearable` row, also
+   * used as the empty-state trigger placeholder. Defaults to "None".
+   */
+  clearLabel?: string;
+  /**
+   * Trigger text for a multi-select holding two or more values, e.g.
+   * `(n) => \`${n} status\``. One selection always shows the value itself, so
+   * this is only ever asked for the collapsed case. Defaults to
+   * `"{n} selected"`.
+   */
+  countLabel?: (count: number) => string;
+  /**
+   * Forwarded to `ControlSelect` — extra className on the trigger.
+   * Useful for sizing filter chips inline.
+   */
+  triggerClassName?: string;
+  /**
+   * Trigger height and type scale, for the select-shaped controls. Defaults
+   * to `default`; `xs` is for a control that sits ON a row of text rather
+   * than in a form.
+   */
+  size?: ControlSelectSize;
+  /**
+   * Render the select trigger borderless and transparent, so it reads as the
+   * row it sits on rather than as a form field. Pairs with `size="xs"`.
+   */
+  minimal?: boolean;
+  /**
+   * Forwarded to `ControlSelect`: drawn at the top of a select's popup, for
+   * a setting that changes what the choice means (a filter's "is / is not").
+   */
+  popupHeader?: ReactNode;
+  /**
+   * Forwarded to `ControlSelect`: a short qualifier drawn before the
+   * selected label on the trigger ("not Active").
+   */
+  triggerPrefix?: ReactNode;
+  /**
+   * Forwarded to `ControlSelect`: extra className on a select's popup, e.g.
+   * `w-max min-w-48` to size it from its content rather than its trigger.
+   */
+  popupClassName?: string;
+  /**
+   * Render a managed upload control (image preview, multi, drag-drop)
+   * that calls `FileController.uploadFile` and stores the file ID(s) in
+   * the form value. Pass `true` for defaults or an options object.
+   */
+  upload?:
+    | boolean
+    | Pick<
+        ControlUploadProps,
+        "multi" | "accept" | "maxSize" | "bucket" | "image"
+      >;
+}
+
+/**
+ * Schema-driven form field renderer. Inspects the bound `InputField` from
+ * `useForm`, evaluates `schema.$control` (object or function), merges the
+ * result with explicit props, and dispatches to the right sub-control.
+ */
+export const Control = (props: ControlProps) => {
+  const form = useFormState(props.input, ["error", "dirty"]);
+  const autoSaveEnabled = useFormFieldAutoSave();
+  const rowLayout = useFormFieldLayout() === "row";
+  const [value, setValue] = useFieldValue(props.input);
+
+  // Function-form `$control` reads other fields → re-render on any
+  // change. Infer `$control` (object) does not need this subscription.
+  useDynamicControlRefresh(props.input);
+
+  if (!props.input?.props) return null;
+
+  const meta = parseField(props.input, {
+    label: props.label,
+    description: props.description,
+    error: form.error,
+  });
+
+  // ── Resolve $control (object | function | false) ─────────────────
+  const resolved = resolveSchemaControl(meta.control, {
+    form: props.input.form,
+    value,
+  });
+  // `null` is gone, `hidden` is present-but-invisible. A control renders
+  // nothing for either; only the LAYOUT tells them apart.
+  if (resolved === null || resolved.hidden) return null;
+
+  const merged = {
+    ...props,
+    ...(resolved as Partial<ControlProps>),
+  } as ControlProps & Partial<SchemaControl>;
+
+  // ── Custom escape hatch ──────────────────────────────────────────
+  if (merged.custom) {
+    const Custom = merged.custom;
+    return wrapWithSlots(
+      merged,
+      <FormField
+        id={meta.id}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <Custom value={value} onChange={(v) => setValue(v)} />
+      </FormField>,
+    );
+  }
+
+  // ── Recursive: object / array of objects ─────────────────────────
+  if (merged.object || meta.isObject) {
+    return wrapWithSlots(
+      merged,
+      <ControlObject
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        i18nPrefix={merged.i18nPrefix}
+        controlProps={merged.objectProps?.controlProps}
+        variant={merged.objectProps?.variant}
+        defaultExpanded={merged.objectProps?.defaultExpanded}
+        clearable={merged.clearable}
+      />,
+    );
+  }
+  if (merged.array || meta.isArrayOfObjects) {
+    const arrayProps = (merged as { arrayProps?: Record<string, unknown> })
+      .arrayProps;
+    return wrapWithSlots(
+      merged,
+      <ControlArray
+        input={props.input}
+        i18nPrefix={merged.i18nPrefix}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        confirmDelete={
+          arrayProps?.confirmDelete as ControlArrayProps["confirmDelete"]
+        }
+        renderTabName={
+          arrayProps?.renderTabName as ControlArrayProps["renderTabName"]
+        }
+        forceTabs={arrayProps?.forceTabs as boolean | undefined}
+      />,
+    );
+  }
+
+  // ── File: managed upload (image preview, multi, drag-drop) ──────
+  // Checked early so it wins over the array→combobox branch below
+  // when the schema is `z.array(z.string())` with $control.upload.
+  if (merged.upload) {
+    const uploadOpts =
+      typeof merged.upload === "object"
+        ? (merged.upload as Partial<ControlUploadProps>)
+        : {};
+    return wrapWithSlots(
+      merged,
+      <ControlUpload
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        {...uploadOpts}
+      />,
+    );
+  }
+
+  // ── Items provided → select / multi / combobox ───────────────────
+  // Read before the numeric branch, because that branch owns every numeric
+  // schema by default and `ControlNumber` has nowhere to put an option list:
+  // a `z.number()` field handed `items` used to render a bare spinner and drop
+  // the rows on the floor, silently. An explicit list is an explicit request
+  // for a select, so it wins - `slider` / `number` still override it below.
+  const items = (merged as Record<string, unknown>).items as
+    | undefined
+    | unknown[]
+    | ((q: string) => unknown);
+
+  // ── Number / slider ──────────────────────────────────────────────
+  if (
+    merged.slider ||
+    merged.number ||
+    (!merged.select &&
+      !merged.segmented &&
+      !merged.combobox &&
+      items == null &&
+      (meta.type === "number" || meta.type === "integer"))
+  ) {
+    return wrapWithSlots(
+      merged,
+      <ControlNumber
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        slider={merged.slider}
+        disabled={merged.disabled}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={merged.autoFocus}
+      />,
+    );
+  }
+
+  // ── Date range ───────────────────────────────────────────────────
+  //
+  // ⚠️ ABOVE the array branch below, and that placement is the whole of it.
+  // `z.dateRange()` IS an array, so the `meta.isArray` test twenty lines down
+  // matches it first and renders a range as a multi-select combobox - which
+  // looks like a deliberate control and is silently the wrong one. Sitting
+  // this beside the date branch further down, where it reads as though it
+  // belongs, is exactly the mistake.
+  //
+  // Keyed on the format LITERAL, never on "array whose items are dates": that
+  // second test cannot tell a range from an ordinary list of two days, and it
+  // is what would make a later `date-time-range` a rewrite rather than one
+  // more literal plus a `withTime` prop.
+  if (merged.dateRange || meta.format === "date-range") {
+    return wrapWithSlots(
+      merged,
+      <ControlDateRange
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        clearable={merged.clearable}
+        placeholder={merged.placeholder}
+        triggerClassName={merged.triggerClassName}
+      />,
+    );
+  }
+
+  if (
+    merged.select ||
+    merged.combobox ||
+    merged.segmented ||
+    meta.isEnum ||
+    (meta.isArray && !meta.isArrayOfObjects) ||
+    items != null
+  ) {
+    return wrapWithSlots(
+      merged,
+      <ControlSelect
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        segmented={merged.segmented}
+        combobox={merged.combobox}
+        searchable={merged.searchable}
+        items={items as never}
+        icon={resolveIcon(merged.icon)}
+        disabled={merged.disabled}
+        createNewEntry={
+          merged.createNewEntry as boolean | ((q: string) => never) | undefined
+        }
+        clearable={merged.clearable}
+        clearLabel={merged.clearLabel}
+        countLabel={merged.countLabel}
+        // Dropped here until now, so a picker that needed to name its own
+        // empty state ("Pick an epic…") could not be a `Control` at all.
+        placeholder={merged.placeholder}
+        triggerClassName={merged.triggerClassName}
+        size={merged.size}
+        minimal={merged.minimal}
+        // Used to be dropped here, silently: every `inputProps={{ "aria-label"
+        // }}` on a select-shaped Control (the epics and quests status filters
+        // among them) named nothing at all, because the trigger is a button
+        // with no visible label to borrow a name from.
+        triggerProps={merged.inputProps}
+        // From `props`, not `merged`: a node has no business in a schema's
+        // `$control`, so there is nothing for the merge to contribute.
+        popupHeader={props.popupHeader}
+        triggerPrefix={props.triggerPrefix}
+        popupClassName={merged.popupClassName}
+      />,
+    );
+  }
+
+  // ── Boolean → switch ─────────────────────────────────────────────
+  if (meta.type === "boolean" && merged.switch !== false) {
+    return wrapWithSlots(
+      merged,
+      <FormField
+        id={meta.id}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <div className="flex h-9 items-center">
+          <Switch
+            id={meta.id}
+            // Same omission as the numeric control had: without a name the
+            // toggle is invisible to `[name="…"]` lookups, including
+            // `AutoForm`'s scroll-to-first-error.
+            name={props.input.props.name}
+            disabled={merged.disabled}
+            checked={Boolean(value)}
+            onCheckedChange={(v) => setValue(v)}
+          />
+        </div>
+      </FormField>,
+    );
+  }
+
+  // ── Date / time ──────────────────────────────────────────────────
+  if (
+    merged.date ||
+    merged.datetime ||
+    merged.time ||
+    meta.format === "date" ||
+    meta.format === "date-time" ||
+    meta.format === "time"
+  ) {
+    return wrapWithSlots(
+      merged,
+      <ControlDate
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        date={merged.date}
+        datetime={merged.datetime}
+        time={merged.time}
+        disabled={merged.disabled}
+        clearable={merged.clearable}
+        captionLayout={merged.captionLayout}
+        startMonth={merged.startMonth}
+        endMonth={merged.endMonth}
+        birthdate={merged.birthdate}
+      />,
+    );
+  }
+
+  // ── File (raw) ───────────────────────────────────────────────────
+  if (merged.file) {
+    return wrapWithSlots(
+      merged,
+      <FormField
+        id={meta.id}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <Input
+          id={meta.id}
+          name={props.input.props.name}
+          type="file"
+          disabled={merged.disabled}
+          onChange={(e) => setValue(e.target.files?.[0])}
+        />
+      </FormField>,
+    );
+  }
+
+  // ── Auto-textarea: explicit `area` or maxLength > 256 ────────────
+  const maxLength = meta.constraints.maxLength ?? 0;
+  if (merged.area || maxLength > 256) {
+    const rows =
+      merged.rows ?? (maxLength > 1024 ? 6 : maxLength > 512 ? 4 : 2);
+    return wrapWithSlots(
+      merged,
+      <FormField
+        id={meta.id}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <Textarea
+          {...merged.inputProps}
+          {...formFieldAriaProps({
+            id: meta.id,
+            error: meta.error,
+            description: merged.description ?? meta.description,
+            required: meta.required,
+          })}
+          id={meta.id}
+          name={props.input.props.name}
+          rows={rows}
+          disabled={merged.disabled}
+          maxLength={maxLength || undefined}
+          autoComplete={merged.autoComplete}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={merged.autoFocus}
+          placeholder={merged.placeholder}
+          value={String(value ?? "")}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </FormField>,
+    );
+  }
+
+  // ── Password ─────────────────────────────────────────────────────
+  const isPassword =
+    merged.password ||
+    meta.iconHint === "password" ||
+    meta.format === "password";
+  if (isPassword) {
+    return wrapWithSlots(
+      merged,
+      <ControlPassword
+        id={meta.id}
+        name={props.input.props.name}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
+        error={meta.error}
+        required={meta.required}
+        disabled={merged.disabled}
+        autoComplete={merged.autoComplete}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={merged.autoFocus}
+        inputProps={merged.inputProps}
+        icon={resolveIcon(merged.icon, "password")}
+        value={String(value ?? "")}
+        onChange={(v) => setValue(v)}
+      />,
+    );
+  }
+
+  // ── Default text input with format-driven HTML5 type + icon ──────
+  const Icon = resolveIcon(merged.icon, meta.iconHint);
+  const htmlType =
+    meta.format === "email"
+      ? "email"
+      : meta.format === "url" || meta.format === "uri"
+        ? "url"
+        : meta.format === "tel" || meta.format === "phone"
+          ? "tel"
+          : "text";
+
+  // Derive a sensible HTML `autocomplete` hint from the schema format so
+  // password managers and browser autofill behave correctly out of the box.
+  // Explicit `autoComplete` prop always wins.
+  const autoCompleteFromFormat =
+    meta.format === "email"
+      ? "email"
+      : meta.format === "tel" || meta.format === "phone"
+        ? "tel"
+        : meta.format === "url" || meta.format === "uri"
+          ? "url"
+          : undefined;
+  const autoComplete = merged.autoComplete ?? autoCompleteFromFormat;
+
+  // ── Right-side affordance: tick (when dirty) or clear (when nullable) ─
+  // Tick only renders inside an `<AutoForm autoSave>` tree (or any caller
+  // that explicitly wraps with `<FormFieldAutoSaveProvider value>`).
+  const showSave = autoSaveEnabled && !!form.dirty && !merged.disabled;
+  const isNullable =
+    !meta.required && value != null && value !== "" && !merged.disabled;
+  // `clearable !== false`, not `clearable === true`: an optional text field
+  // offers the button by default and a caller opts *out* of it. See the prop.
+  const showClear = !showSave && isNullable && merged.clearable !== false;
+  // Reserve a fixed right gutter for any editable field so the tick/clear
+  // can swap in without nudging the input width.
+  const reserveGutter = !merged.disabled;
+
+  return wrapWithSlots(
+    merged,
+    <FormField
+      id={meta.id}
+      label={merged.label ?? meta.label}
+      description={merged.description ?? meta.description}
+      error={meta.error}
+      required={meta.required}
+    >
+      <div className="relative">
+        {Icon && (
+          <Icon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        )}
+        <Input
+          {...merged.inputProps}
+          {...formFieldAriaProps({
+            id: meta.id,
+            error: meta.error,
+            description: merged.description ?? meta.description,
+            required: meta.required,
+          })}
+          id={meta.id}
+          name={props.input.props.name}
+          type={htmlType}
+          disabled={merged.disabled}
+          autoComplete={autoComplete}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={merged.autoFocus}
+          placeholder={merged.placeholder}
+          value={String(value ?? "")}
+          minLength={meta.constraints.minLength}
+          maxLength={meta.constraints.maxLength}
+          pattern={meta.constraints.pattern}
+          // `cn`, not a plain join: the settings width below has to be
+          // overridable by the caller, and only `cn`'s merge can decide
+          // that `sm:w-96` beats `sm:w-64` rather than both landing on the
+          // element. Order is precedence — later wins.
+          className={cn(
+            // Row layout is the settings-card shape, whose right-hand cell is
+            // an `auto` grid column: `w-full` there resolves against the
+            // input's own intrinsic size (~172px), so every card would get a
+            // slightly different control column. 256px is the width every
+            // hand-written `SettingsRow` already passes; encoded once here.
+            // Below `sm` the row stacks, and `w-full` from `<Input>` is right.
+            rowLayout && "sm:w-64",
+            merged.inputProps?.className,
+            Icon && "pl-9",
+            reserveGutter && "pr-9",
+          )}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            merged.inputProps?.onKeyDown?.(e);
+            if (e.defaultPrevented || e.key !== "Enter") return;
+            // The commit the auto-save effect deliberately withholds from a
+            // text field on every keystroke. Its comment offers "Enter or the
+            // inline tick button" as the two ways to commit - and only the
+            // tick ever existed. `AutoForm` in auto-save mode renders no
+            // submit button, so the browser's implicit submission never fires
+            // and Enter did nothing at all, on every text field in every
+            // auto-saving form.
+            //
+            // Guarded on `showSave` so it is inert outside auto-save mode and
+            // on a pristine field, where a normal form's own Enter handling
+            // must keep working.
+            if (!showSave) return;
+            e.preventDefault();
+            // `props.input.form`, the same handle the tick button submits
+            // through. The local `form` is only the `dirty` / `error` slice.
+            void props.input.form.submit();
+          }}
+        />
+        {showSave && (
+          <button
+            type="button"
+            onClick={() => props.input.form.submit()}
+            aria-label="Save"
+            className="text-primary hover:text-primary/80 absolute top-1/2 right-2 -translate-y-1/2 p-1"
+          >
+            <Check className="size-3.5" />
+          </button>
+        )}
+        {showClear && (
+          <button
+            type="button"
+            onClick={() => setValue(undefined)}
+            aria-label="Clear"
+            // `data-slot` like every other clear in the kit
+            // (`combobox-clear`, and `control-clear` on the field trigger).
+            // It was the only one without a hook, so the only way to address
+            // it was its `aria-label` - which is translated, so a French UI
+            // would have matched nothing. Purely an identification hook: no
+            // style and no behaviour rides on it here.
+            data-slot="control-clear"
+            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+    </FormField>,
+  );
+};
+
+/**
+ * The raw `$control` a field declares, object form or function form.
+ *
+ * It rides on zod's `.meta()` registry rather than being a plain schema
+ * property, and the field may be wrapped (optional / nullable / default), so
+ * the wrapper has to be peeled before the meta is readable.
+ *
+ * Exported because the LAYOUT needs it too: `AutoForm` sizes a grid cell from
+ * the width `$control` asks for, and a function-form `$control` has no `.width`
+ * to read off the function itself. Pair it with {@link resolveSchemaControl}.
+ */
+export const readSchemaControl = (
+  input: BaseInputField | undefined,
+): unknown => {
+  const base = input?.schema ? z.schema.unwrap(input.schema) : undefined;
+  return (base as { meta?: () => { $control?: unknown } } | undefined)?.meta?.()
+    ?.$control;
+};
+
+/**
+ * Re-render when a function-form `$control` may have changed its mind, which
+ * is on any change to a field OTHER than this one. An object-form `$control`
+ * is static and needs no subscription.
+ *
+ * Exported alongside {@link readSchemaControl}, and for the same reason: a
+ * consumer that resolves `$control` itself has to re-resolve on the same
+ * events, or it renders a stale answer.
+ */
+export const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
+  const alepha = useAlepha();
+  const [, bump] = useState(0);
+  const isDynamic = typeof readSchemaControl(input) === "function";
+  useEffect(() => {
+    if (!isDynamic || !input?.form) return;
+    const formId = input.form.id;
+    return alepha.events.on("form:change", (e) => {
+      if (e.id === formId && e.path !== input.path) bump((n) => n + 1);
+    });
+  }, [alepha, input?.form, input?.path, isDynamic]);
+};
+
+const resolveIcon = (
+  icon: ControlProps["icon"],
+  fallback?: string | null,
+): IconComponent | undefined => {
+  if (icon === null) return undefined;
+  if (typeof icon === "string") return iconFor(icon);
+  if (icon) return icon;
+  return iconFor(fallback);
+};
+
+const wrapWithSlots = (
+  props: ControlProps & Partial<SchemaControl>,
+  body: ReactNode,
+): ReactNode => {
+  const top = (props.top as ReactNode) ?? null;
+  const bottom = (props.bottom as ReactNode) ?? null;
+  if (!top && !bottom) return body;
+  return (
+    <div className="flex flex-col gap-1">
+      {top}
+      {body}
+      {bottom}
+    </div>
+  );
+};

@@ -64,6 +64,29 @@ runs:
         key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
         restore-keys: ${{ runner.os }}-yarn-
 
+    # Retried on exactly one failure: Yarn dying with "The `onCancel` handler
+    # was attached after the promise settled". That is got's retry path inside
+    # Yarn, not our lockfile. A registry request that errors after its promise
+    # already settled schedules a retry on a timer, the retry attaches a cancel
+    # handler to the settled promise, and the throw from inside the timer kills
+    # the process. `enableHardenedMode` sends every job to the registry for the
+    # whole lockfile, so each Verify run gives the race seventeen chances; it
+    # cost five jobs in three days, two of them on main, and a red job on main
+    # skips the Lore deploy.
+    #
+    # Any other failure still fails on the first attempt. A blanket retry would
+    # turn a real resolution error into three slow identical ones.
     - name: Install Dependencies
-      run: yarn
+      run: |
+        log="$RUNNER_TEMP/yarn-install.log"
+        for attempt in 1 2 3; do
+          if yarn 2>&1 | tee "$log"; then
+            exit 0
+          fi
+          if ! grep -qF 'handler was attached after the promise settled' "$log"; then
+            exit 1
+          fi
+          echo "::warning title=Yarn onCancel crash::yarn crashed in its HTTP retry path (attempt $attempt of 3)"
+        done
+        exit 1
       shell: bash

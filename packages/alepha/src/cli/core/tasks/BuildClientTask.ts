@@ -15,10 +15,39 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * This task wraps only the actual Vite client build call.
  */
 export class BuildClientTask extends BuildTask {
+  /**
+   * The prefixes of every content-hashed name the client build writes, at the
+   * root of `dist/public`: `entry.<hash>.js`, `chunk.<hash>.js` and
+   * `asset.<hash>.<ext>`.
+   *
+   * ⚠️ A promise other code keeps: `BuildHeadersTask` caches exactly these
+   * names for a year as immutable, and refuses a file of the app's own public
+   * directory named like one. Rename one here and those rules follow.
+   */
+  public static readonly HASHED_PREFIXES = {
+    entry: "entry.",
+    chunk: "chunk.",
+    asset: "asset.",
+  } as const;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
+
+  /**
+   * The public directory Vite resolved for the last client build: the app's
+   * own `publicDir` when its vite config sets one, `<root>/public` otherwise,
+   * `undefined` when there was no build or the app turned it off.
+   */
+  protected publicDir?: string;
+
+  /**
+   * See {@link publicDir}.
+   */
+  public getPublicDir(): string | undefined {
+    return this.publicDir;
+  }
 
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.flags?.prebuilt) {
@@ -78,6 +107,14 @@ export class BuildClientTask extends BuildTask {
 
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
+    // Read from the RESOLVED config, never assumed to be `public/`: the key
+    // is deliberately left to the app's own vite config (see below).
+    plugins.push({
+      name: "alepha:public-dir",
+      configResolved: (config: { publicDir: string }) => {
+        this.publicDir = config.publicDir || undefined;
+      },
+    });
 
     if (opts.stats) {
       const viteAnalyzer = await this.viteUtils.importAnalyzer();
@@ -126,9 +163,9 @@ export class BuildClientTask extends BuildTask {
         rolldownOptions: {
           input: "node_modules/.alepha/index.html",
           output: {
-            entryFileNames: "entry.[hash].js",
-            chunkFileNames: "chunk.[hash].js",
-            assetFileNames: "asset.[hash][extname]",
+            entryFileNames: `${BuildClientTask.HASHED_PREFIXES.entry}[hash].js`,
+            chunkFileNames: `${BuildClientTask.HASHED_PREFIXES.chunk}[hash].js`,
+            assetFileNames: `${BuildClientTask.HASHED_PREFIXES.asset}[hash][extname]`,
           },
         },
       },

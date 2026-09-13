@@ -1,8 +1,5 @@
-import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
-import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
-import { Toaster } from "@alepha/ui/components/ui/sonner";
-import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
+import { ButtonTheme, ButtonUser } from "@alepha/ui/shell";
 import { Link, NestedView } from "alepha/react/router";
 import { ShieldCheck } from "lucide-react";
 
