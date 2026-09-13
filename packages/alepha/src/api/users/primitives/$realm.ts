@@ -5,6 +5,7 @@ import {
   OAuthClientService,
   OAuthJobs,
   oauthOptions,
+  OAuthScopeResolver,
 } from "alepha/api/oauth";
 import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
 import { AlephaApiVerification } from "alepha/api/verifications";
@@ -168,6 +169,9 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     );
   }
 
+  // Filled in below when the oauth feature is on; read lazily by the issuer.
+  let scopeResolver: OAuthScopeResolver | undefined;
+
   const realm: RealmPrimitive = $issuer({
     ...options.issuer,
     name,
@@ -211,6 +215,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
           config.expiresIn,
           name,
           config.clientId,
+          config.scopes,
         );
       },
       onRefreshSession: async (refreshToken) => {
@@ -219,6 +224,12 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       onDeleteSession: async (refreshToken) => {
         await sessionService.deleteSession(refreshToken, name);
       },
+      // An OAuth grant's scopes, turned into the permission list its tokens
+      // are limited to. The resolver reads `oauthOptions` at every mint: the
+      // application sets its scope declarations after the realm is created,
+      // and a changed declaration must apply at the next refresh. Without the
+      // oauth feature there is no resolver and a grant narrows nothing.
+      resolveScopePermissions: (scopes) => scopeResolver?.resolve(scopes),
       ...options.issuer?.settings,
     },
   });
@@ -236,6 +247,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   if (features.oauth) {
     alepha.with(AlephaOAuth);
     const oauthService = alepha.inject(OAuthClientService);
+    scopeResolver = alepha.inject(OAuthScopeResolver);
 
     // Point the OAuth controller at this realm so its endpoints mint tokens
     // through the issuer we register below. Merge with the current value so a

@@ -179,9 +179,12 @@ export class OAuthClientService {
     }
     const user = await entry.loadUser(grant.userId);
     // Tag the session the issuer creates with the OAuth client, so it can
-    // later be surfaced as a "connected app" and revoked individually.
+    // later be surfaced as a "connected app" and revoked individually, and
+    // with the grant's scopes, which the issuer resolves into what the token
+    // may do (and resolves again on every refresh, from the session row).
     const tokens = await entry.issuer.createToken(user, undefined, {
       clientId: grant.clientId,
+      scopes: grant.scopes,
     });
     return {
       access_token: tokens.access_token,

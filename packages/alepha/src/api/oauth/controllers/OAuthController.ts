@@ -24,7 +24,7 @@ import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
 import { deviceAuthorizationBodySchema } from "../schemas/deviceAuthorizationBodySchema.ts";
 import { deviceDecisionBodySchema } from "../schemas/deviceDecisionBodySchema.ts";
 import { deviceVerificationQuerySchema } from "../schemas/deviceVerificationQuerySchema.ts";
-import { oauthScopeCopySchema } from "../schemas/oauthScopeCopySchema.ts";
+import { oauthScopeSchema } from "../schemas/oauthScopeSchema.ts";
 import { registerClientBodySchema } from "../schemas/registerClientBodySchema.ts";
 import { tokenRequestBodySchema } from "../schemas/tokenRequestBodySchema.ts";
 import {
@@ -85,16 +85,17 @@ export const oauthOptions = $atom({
      */
     connectionsPath: z.text().optional(),
     /**
-     * What each scope MEANS, keyed by scope identifier.
+     * What each scope MEANS, keyed by scope identifier: its consent copy, and
+     * the `permissions` a token granted it may use (see `oauthScopeSchema`).
      *
      * A scope id is a wire token, and printing it at somebody about to grant
      * it tells them nothing - Lore's screen listed one bullet reading `mcp`.
      * Only the app knows what its own scopes reach, so the copy is declared
      * here rather than shipped with the framework. An undeclared scope falls
      * back to its raw identifier, which is what the screen did for all of
-     * them before.
+     * them before, and leaves any grant containing it unrestricted.
      */
-    scopes: z.record(z.string(), oauthScopeCopySchema).optional(),
+    scopes: z.record(z.string(), oauthScopeSchema).optional(),
   }),
   default: {
     realm: "users",

@@ -532,6 +532,7 @@ export class SessionService {
     expiresIn: number,
     userRealmName?: string,
     clientId?: string,
+    scopes?: string[],
   ) {
     this.log.trace("Creating session", { userId: user.id, expiresIn });
 
@@ -554,6 +555,7 @@ export class SessionService {
       userAgent: request?.userAgent,
       refreshToken,
       clientId,
+      scopes,
     });
 
     await this.users(userRealmName).updateById(user.id, {
@@ -667,6 +669,9 @@ export class SessionService {
       // Carried so the OAuth token endpoint can bind a refresh to the client
       // the session was issued to. Undefined for ordinary password logins.
       clientId: session.clientId,
+      // The grant's scope ids, resolved to a permission list by the issuer
+      // on this very refresh.
+      scopes: session.scopes,
     };
   }
 

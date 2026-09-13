@@ -606,6 +606,9 @@ export class SecurityProvider {
     const credential = realmName
       ? this.getCredentialFromPayload(payload)
       : undefined;
+    const permissionScope = realmName
+      ? this.getPermissionScopeFromPayload(payload)
+      : undefined;
     const rolesFromSystem = this.getRoles(realmName);
     const roles = rolesFromPayload
       .reduce<Role[]>(
@@ -621,7 +624,11 @@ export class SecurityProvider {
       // written before the marker existed would otherwise turn a connected
       // app's token back into a session.
       const account = realm.profile(payload);
-      return credential ? { ...account, credential } : account;
+      return {
+        ...account,
+        ...(credential ? { credential } : {}),
+        ...(permissionScope ? { permissionScope } : {}),
+      };
     }
 
     return {
@@ -636,7 +643,30 @@ export class SecurityProvider {
       organization,
       sessionId,
       credential,
+      permissionScope,
     };
+  }
+
+  /**
+   * The permission scope an access token of this realm carries, if any: the
+   * `permission_scope` claim `$issuer` signs from an OAuth grant's declared
+   * scopes. Absent is unrestricted; `[]` is a grant that reaches nothing,
+   * and must stay distinguishable from absent.
+   *
+   * Only read from a realm's own tokens, for the reason given on
+   * {@link getCredentialFromPayload}.
+   */
+  protected getPermissionScopeFromPayload(
+    payload: Record<string, any>,
+  ): string[] | undefined {
+    const claim = payload.permission_scope;
+    if (
+      Array.isArray(claim) &&
+      claim.every((it): it is string => typeof it === "string")
+    ) {
+      return claim;
+    }
+    return undefined;
   }
 
   /**

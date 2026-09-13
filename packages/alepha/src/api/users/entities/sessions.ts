@@ -20,6 +20,16 @@ export const sessions = $entity({
      * OAuth module's table; the join to `oauth_clients` is done at query time.
      */
     clientId: z.text({ maxLength: 64 }).optional(),
+    /**
+     * The scope ids an OAuth grant was given, when the session came from one.
+     * Null for first-party logins, and for OAuth sessions created before the
+     * column existed (which stay unrestricted).
+     *
+     * Ids and not the permissions they resolve to: the issuer resolves them
+     * each time it mints an access token, so a changed scope declaration
+     * applies at the next refresh instead of never.
+     */
+    scopes: z.array(z.text()).optional(),
     expiresAt: z.datetime(),
     /**
      * Last time the session was used to refresh an access token.
