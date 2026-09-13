@@ -98,7 +98,7 @@ export * from "./services/FileService.ts";
  * - `$storage` primitive with MIME/size constraints and default TTL
  * - Upload/download HTTP endpoints, ETag-aware
  * - Paginated, filterable file queries
- * - TTL-based expiration swept by `api:files:purgeFiles`
+ * - TTL-based expiration swept by `system.files.purge-deleted`
  * - Storage statistics for the admin UI
  *
  * Blobs *without* a database are a `FileStorageProvider` concern - see

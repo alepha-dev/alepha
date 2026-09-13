@@ -24,8 +24,9 @@ export class CartRecoveryJobs {
   protected readonly recovery = $inject(CartRecoveryService);
 
   public readonly cartRecovery = $job({
+    name: "system.commerce.recover-cart",
     description:
-      "Two reminders and an abandoned mark for a cart whose checkout captured an email.",
+      "Sends up to two reminders for an abandoned cart with a known email, then marks it abandoned.",
     schema: z.object({
       cartId: z.uuid(),
       stage: z

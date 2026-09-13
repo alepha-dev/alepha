@@ -51,9 +51,9 @@ export class NotificationJobs {
   protected readonly settings = $inject(NotificationSettings);
 
   public readonly sendNotification = $job({
-    name: "api:notifications:sendNotification",
+    name: "system.notifications.send",
     description:
-      "Sends a notification (email/SMS) and keeps every execution for audit.",
+      "Sends one notification by email or SMS, retrying up to three times.",
     schema: notificationPayloadSchema,
     retry: {
       retries: 3,
@@ -75,7 +75,7 @@ export class NotificationJobs {
   });
 
   public readonly purgeOldNotifications = $job({
-    name: "api:notifications:purgeOldNotifications",
+    name: "system.notifications.purge-old",
     description:
       "Hourly sweep that deletes delivery receipts and read inbox messages older than their retention windows.",
     cron: "0 * * * *",

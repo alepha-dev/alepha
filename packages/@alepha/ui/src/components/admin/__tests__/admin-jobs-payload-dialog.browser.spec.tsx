@@ -28,7 +28,7 @@ describe("AdminJobsPayloadDialog", () => {
 
   const parked: JobExecutionResource = {
     id: "0192aaaa-0000-7000-8000-000000000001",
-    jobName: "CartRecoveryJobs.cartRecovery",
+    jobName: "system.commerce.recover-cart",
     status: "scheduled",
     attempt: 0,
     maxAttempts: 4,

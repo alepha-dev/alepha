@@ -42,7 +42,9 @@ export class PaymentService {
    * here; the tick only decides how far past it an intent may drift.
    */
   protected readonly expireStaleIntents = $job({
-    name: "api:payments:expireStaleIntents",
+    name: "system.payments.expire-stale-intents",
+    description:
+      "Asks the payment provider about intents processing for over 30 minutes, and expires those still stuck.",
     cron: this.config.expireStaleIntentsCron,
     handler: async () => {
       const cutoff = this.dateTime.now().subtract(30, "minutes").toISOString();
