@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Textarea } from "@alepha/ui/components/ui/textarea";

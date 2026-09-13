@@ -1,12 +1,96 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @import "@fontsource-variable/inter/index.css";
 @import "@fontsource-variable/jetbrains-mono/index.css";
 
 @source "../**/*.{ts,tsx}";
 @custom-variant dark (&:is(.dark *));
+
+/*
+ * The data-attribute variants and `no-scrollbar`, carried here verbatim from
+ * `shadcn/tailwind.css` (4.21.0, lines 27-95), which the primitives were
+ * written against. Each variant is wrapped in `:where()`, so it adds no
+ * specificity to the utility it prefixes.
+ *
+ * ⚠️ Three of them must never be swapped for Tailwind's built-in variants of
+ * the same name, which match a different thing:
+ *
+ * - `data-selected` matches only `[data-selected="true"]`. cmdk writes
+ *   `data-selected="false"` on every row it has not selected, so the built-in
+ *   (any `[data-selected]`) highlights every row at once. `46e23a885` fixed
+ *   exactly that once, and a later copy of the upstream file undid it.
+ * - `data-horizontal` and `data-vertical` read `[data-orientation=...]`. No
+ *   element carries a bare `data-horizontal`, so the built-ins match nothing.
+ */
+@custom-variant data-open {
+  &:where([data-state="open"]),
+  &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state="closed"]),
+  &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state="checked"]),
+  &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state="unchecked"]),
+  &:where([data-unchecked]:not([data-unchecked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected="true"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled="true"]),
+  &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state="active"]),
+  &:where([data-active]:not([data-active="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation="horizontal"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation="vertical"]) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -215,11 +299,11 @@
    * text, with the split falling on an implementation detail they cannot see.
    * Measured on the Table showcase before this rule: 37 controls, 8 pointers.
    *
-   * Here rather than on the components: `yarn w @alepha/ui sync` overwrites
-   * every `src/components/ui/*.tsx` wholesale, so a per-component `cursor-pointer`
-   * survives only as a `LOCAL_PATCHES` entry, one per primitive, forever. The
-   * fifteen hand-written `cursor-pointer` classes already scattered through the
-   * repo are what that approach looks like halfway through.
+   * Here rather than on the components: one rule reaches every control, where
+   * a per-component `cursor-pointer` is one class per primitive, forever, and
+   * a new primitive that forgets it. The fifteen hand-written `cursor-pointer`
+   * classes already scattered through the repo are what that approach looks
+   * like halfway through.
    *
    * Roles as well as tags, because Base UI renders several controls as a
    * `<span>` carrying the role. Disabled is excluded three ways: `:disabled`
@@ -264,19 +348,12 @@
  * this face needs. In `@layer utilities` so it beats the base rule and loses
  * to nothing, like every other font utility.
  *
- * `cn-font-heading` is the same declaration under shadcn's own name, and it
- * is not ours to rename: the Base Nova registry ships it on `CardTitle`,
- * `SheetTitle`, `DrawerTitle`, `AlertDialogTitle`, `DialogTitle` and
- * `Empty`, and `yarn w @alepha/ui sync` rewrites those files wholesale, so
- * the class comes back on every refresh whatever we call ours. It arrives
- * DEFINED BY NOBODY - the registry names the hook and leaves the theme to
- * fill it, which nothing here did, so six primitives asked for a heading
- * face and got the text face. Pointing it at the same token is what makes a
- * dialog title and an `<h2>` agree.
+ * `CardTitle`, `SheetTitle`, `DrawerTitle`, `AlertDialogTitle`, `DialogTitle`
+ * and `Empty` carry it, which is what makes a dialog title and an `<h2>`
+ * agree.
  */
 @layer utilities {
-  .font-heading,
-  .cn-font-heading {
+  .font-heading {
     font-family: var(--font-heading);
   }
 }
@@ -311,10 +388,9 @@
  * background. Same idiom the stock `secondary` button variant already uses
  * (`color-mix(in oklch, var(--secondary), var(--foreground) 5%)`).
  *
- * ⚠️ This file is the durable place for it. `src/components/ui/` is
- * overwritten wholesale by `yarn w @alepha/ui sync`, so the same fix written
- * into a primitive's classes would not survive the next sync. This file is not
- * sync-managed.
+ * ⚠️ This file is the place for it. The same fix written into each
+ * primitive's classes is one edit per primitive, and a new primitive that
+ * forgets it; the token reaches all of them at once.
  * ──────────────────────────────────────────────────────────────────────── */
 
 :root:not(.dark) {
@@ -406,8 +482,8 @@
  * to render both at `oklch(0.308 0 0)` instead of both at a 10% wash.
  *
  * `--sidebar-primary` rather than a fixed color, so every Lore theme carries
- * its own hue with no per-theme values. Lives here rather than in
- * `sidebar.tsx`, which `yarn w @alepha/ui sync` overwrites wholesale.
+ * its own hue with no per-theme values. Lives here, beside the state layer it
+ * compensates for, rather than in `sidebar.tsx`.
  * ──────────────────────────────────────────────────────────────────────── */
 
 [data-slot="sidebar-menu-button"][data-active],
@@ -433,8 +509,8 @@
  * `Button` nudges down one pixel with
  * `not-disabled:active:not-aria-[haspopup]:translate-y-px` under
  * `transition-all`; this is the same nudge, with the same exclusions, on
- * `SidebarMenuButton`. Here rather than in `sidebar.tsx` for the reason the
- * active bar above is: `yarn w @alepha/ui sync` overwrites that file.
+ * `SidebarMenuButton`. Here rather than in `sidebar.tsx`, beside the active
+ * bar above, which styles the same slot.
  *
  * - `aria-haspopup` is excluded as Button excludes it: a trigger that sinks
  *   reads as a button that did something rather than one that opened. Lore's
@@ -480,7 +556,7 @@
  * Tailwind's `utilities`, which is what the sidebar rules below already rely
  * on. Targeted by ROLE rather than by `data-slot` so it covers the checkbox
  * and radio variants of a menu item without naming five primitives, each of
- * which `yarn w @alepha/ui sync` would happily rename.
+ * which could rename its slot.
  *
  * This is a deliberate departure from shadcn, whose `cursor-default` copies
  * the macOS convention that native menus do not show a hand. The convention
@@ -505,10 +581,8 @@
  * The hover border on a field.
  *
  * Every bordered surface a `Control` can render, addressed by `data-slot`
- * rather than patched into each primitive: `yarn w @alepha/ui sync` overwrites
- * `src/components/ui/*.tsx` wholesale, so a class added there survives only as
- * a `LOCAL_PATCHES` entry per primitive. Same reasoning as the cursor rules
- * above.
+ * rather than patched into each primitive: one rule instead of a class per
+ * primitive. Same reasoning as the cursor rules above.
  *
  * Unlayered, because `border-input` is a utility and `@layer base` loses to
  * it. All six slots carry `transition-colors` already, so the change eases in
@@ -530,7 +604,7 @@
  * painting `border-ring` in that state either, since it keys on
  * `:focus-visible`, so the exclusion was protecting nothing at all.
  *
- * Hence: `:focus-visible` for the five slots whose focus border keys on it,
+ * Hence: `:focus-visible` for the four slots whose focus border keys on it,
  * and `:focus-within` only for `combobox-chips`, which really does use
  * `focus-within:border-ring`. `input-group` keys on a `:has()` of the first,
  * so it needs the `:has(:focus-visible)` spelling.
@@ -542,7 +616,6 @@
 :is(
     [data-slot="input"],
     [data-slot="textarea"],
-    [data-slot="select-trigger"],
     [data-slot="input-group"],
     [data-slot="combobox-trigger"],
     [data-slot="date-trigger"]

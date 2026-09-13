@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@alepha/ui/lib/utils";
 import * as React from "react";
 
@@ -22,8 +20,9 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      // The permanent header tint is local. Re-applied by `scripts/sync.ts`,
-      // which carries the reasoning; this file is overwritten wholesale.
+      // The header keeps as a permanent fill the tint a row only borrows on
+      // hover: a header is not actionable, so lighting up under the cursor
+      // promised an interaction it does not have.
       className={cn("bg-muted/50 [&_tr]:border-b", className)}
       {...props}
     />

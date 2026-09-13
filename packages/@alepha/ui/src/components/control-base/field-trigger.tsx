@@ -20,8 +20,9 @@ export type ControlTriggerSize = "xs" | "sm" | "default";
  * conditionals so a new size is one row and the axes cannot drift.
  *
  * `chevron` targets the trigger's own last SVG - the one `ComboboxTrigger`
- * appends at a hardcoded `size-4`. That file is stock shadcn, refreshed
- * wholesale by `yarn sync`, so it is sized from here rather than edited. A
+ * appends at a hardcoded `size-4`. It is sized from here rather than edited
+ * there, because the size follows the trigger's size, which only this table
+ * knows. A
  * date trigger writes its own chevron and lands on the same rule, since it is
  * that trigger's last SVG too.
  *

@@ -102,7 +102,7 @@ Alepha uses a hybrid monorepo structure:
 
 **Specialized Packages**
 
-- `@alepha/ui` - Shared shadcn Base UI Nova components. Edit `src/components/` directly. Stock shadcn primitives can be refreshed with `yarn w @alepha/ui sync`, which fetches them from the public `ui.shadcn.com/r/styles/base-nova` registry. Our own blocks (controls, admin, auth, app-shell, alepha-table, …) are not touched by `sync` — they're hand-maintained.
+- `@alepha/ui` - Shared Base UI + Tailwind components. The package owns every file in it: edit `src/components/` directly, primitives and blocks alike. There is no registry and no sync; a new primitive is written by hand.
 - `@alepha/devtools` - Development tools and inspection UI
 - `@alepha/lore` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
 - `@alepha/payments-stripe` - Stripe payments backend

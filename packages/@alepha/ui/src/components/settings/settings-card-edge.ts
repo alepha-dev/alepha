@@ -17,8 +17,7 @@
  * the other way. Every historical variant here got that wrong in one direction
  * or the other.
  *
- * `Card` itself cannot carry this: it lives in `components/ui/`, which
- * `yarn w @alepha/ui sync` overwrites wholesale from the upstream registry, so
- * a patch there vanishes on the next refresh.
+ * `Card` itself does not carry this: its ring edge is right for every other
+ * card in every app, and only a settings surface asks for the bordered one.
  */
 export const settingsCardEdge = "bg-card rounded-lg border shadow-sm ring-0";

@@ -172,8 +172,7 @@ body::before {
 
 @layer base {
   :is(h1, h2, h3, h4, h5, h6),
-  .font-heading,
-  .cn-font-heading {
+  .font-heading {
     letter-spacing: var(--heading-tracking, normal);
     font-weight: var(--heading-weight, inherit);
     text-transform: var(--heading-transform, none);

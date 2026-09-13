@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@alepha/ui/lib/utils";
 import * as React from "react";
 import type { TooltipValueType } from "recharts";
@@ -58,7 +56,8 @@ function ChartContainer({
   const uniqueId = React.useId();
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
   // Memoised so every consumer of the context does not re-render on each
-  // render of this provider. Re-apply after `yarn w @alepha/ui sync`.
+  // render of this provider, which is also what the repo's lint rules ask of
+  // a context value.
   const contextValue = React.useMemo(() => ({ config }), [config]);
 
   return (

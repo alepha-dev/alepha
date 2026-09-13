@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@alepha/ui/components/ui/button";
 import { cn } from "@alepha/ui/lib/utils";
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
@@ -103,7 +101,7 @@ function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
     <SheetPrimitive.Title
       data-slot="sheet-title"
       className={cn(
-        "cn-font-heading text-foreground text-base font-medium",
+        "font-heading text-foreground text-base font-medium",
         className,
       )}
       {...props}

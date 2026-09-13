@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@alepha/ui/lib/utils";
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
 import * as React from "react";
@@ -191,7 +189,7 @@ function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props) {
     <DrawerPrimitive.Title
       data-slot="drawer-title"
       className={cn(
-        "cn-font-heading text-foreground text-base font-medium",
+        "font-heading text-foreground text-base font-medium",
         className,
       )}
       {...props}

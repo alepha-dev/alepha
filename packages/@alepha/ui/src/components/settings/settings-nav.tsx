@@ -84,10 +84,10 @@ export interface SettingsNavProps {
  *   registers a global ⌘B handler and starts writing the sidebar cookie. On a
  *   page that already sits inside `AppShell` that is a *second* provider, so
  *   ⌘B would toggle the wrong sidebar.
- * - Making `useSidebar` tolerate a missing provider, or exporting the button's
- *   `cva` to share it, both mean editing `components/ui/sidebar.tsx` — which
- *   `yarn w @alepha/ui sync` overwrites wholesale from the upstream registry.
- *   The patch would vanish on the next refresh, silently.
+ * - Making `useSidebar` tolerate a missing provider would hide the mistake it
+ *   exists to report for every other caller, and exporting the button's
+ *   `cva` to share it would couple a static rail to the sidebar's collapse
+ *   states it never has.
  *
  * So the metrics are shared by being written the same, and the coupling is
  * not. If the sizes below ever drift from `sidebarMenuButtonVariants`, that is

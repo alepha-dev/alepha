@@ -1,5 +1,3 @@
-"use client";
-
 import { useColorMode } from "alepha/react/ui";
 import {
   CircleCheckIcon,
@@ -11,12 +9,16 @@ import {
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  // The colour scheme comes from `alepha/react/ui`, not from `next-themes`,
+  // which is not a dependency here.
   const { mode } = useColorMode();
 
   return (
     <Sonner
       theme={mode as ToasterProps["theme"]}
       className="toaster group"
+      // A toast that carries an error is worth reading twice, so it can be
+      // dismissed by hand rather than only timing out.
       closeButton
       icons={{
         success: <CircleCheckIcon className="size-4" />,
@@ -33,11 +35,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
-      toastOptions={{
-        classNames: {
-          toast: "cn-toast",
-        },
-      }}
       {...props}
     />
   );

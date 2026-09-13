@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@alepha/ui/lib/utils";
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { CheckIcon } from "lucide-react";

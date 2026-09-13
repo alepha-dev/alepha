@@ -117,10 +117,9 @@ describe("Control size and minimal on a select", () => {
   });
 
   it("sizes the chevron from the trigger, not from the stock primitive", async () => {
-    // `ComboboxTrigger` appends its chevron at a hardcoded `size-4` and lives
-    // in `ui/`, which `yarn sync` overwrites wholesale - so the size has to
-    // come from here, via a descendant selector, or it comes back on the next
-    // refresh.
+    // `ComboboxTrigger` appends its chevron at a hardcoded `size-4`, and only
+    // the control knows its own size - so the size has to come from here, via
+    // a descendant selector.
     const alepha = await start();
     const trigger = triggerOf(mount(alepha, <Probe size="xs" />));
 

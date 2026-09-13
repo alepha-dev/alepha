@@ -105,11 +105,9 @@ export const PermissionMatrixGroupRows = (
                 // editable one, and the owner column read as if someone had
                 // ticked all of it by hand.
                 //
-                // Fixed here rather than in `components/ui/checkbox.tsx`,
-                // which `yarn w @alepha/ui sync` overwrites wholesale. The
-                // durable package-wide home is `styles.css`, but that is a
-                // change to every checkbox in every app and not this
-                // component's call to make.
+                // Fixed here rather than in `components/ui/checkbox.tsx` or
+                // `styles.css`: either is a change to every checkbox in every
+                // app, and not this component's call to make.
                 //
                 // `mx-auto` because the cell's `text-center` does not reach
                 // it: Base UI renders the box as a `display:flex` element,

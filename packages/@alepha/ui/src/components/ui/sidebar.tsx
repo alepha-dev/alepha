@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Separator } from "@alepha/ui/components/ui/separator";
@@ -81,8 +79,9 @@ function SidebarProvider({
         _setOpen(openState);
       }
 
-      // This sets the cookie to keep the sidebar state.
-      // persist sidebar open-state via cookie (shadcn pattern)
+      // Persist the open state in a cookie, for an application that reads it
+      // back when it renders. Nothing in this repo does: `AppShell` keeps its
+      // own collapsed flag through `useSidebarState`.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
     [setOpenProp, open],
@@ -271,7 +270,7 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <PanelLeftIcon className="cn-rtl-flip" />
+      <PanelLeftIcon />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

@@ -1,8 +1,7 @@
 ## Overview
 
-`@alepha/ui` is the shared component library for Alepha applications: a
-[shadcn](https://ui.shadcn.com) collection in the `base-nova` style, built on
-Base UI and Tailwind, with [lucide](https://lucide.dev) icons.
+`@alepha/ui` is the shared component library for Alepha applications, built
+on Base UI and Tailwind, with [lucide](https://lucide.dev) icons.
 
 Unlike the rest of the framework, these components are **meant to be edited
 directly**: `src/` ships alongside the built `dist/`, so you can copy a
@@ -29,9 +28,9 @@ import "@alepha/ui/styles.css";
 
 ## What's inside
 
-**`components/ui/*`** - the shadcn primitives, unmodified in spirit: `button`,
-`input`, `card`, `badge`, `dialog`, `sheet`, `tooltip`, `label`, `accordion`,
-`avatar`, and the rest. Reach for these first.
+**`components/ui/*`** - the primitives: `button`, `input`, `card`, `badge`,
+`dialog`, `sheet`, `tooltip`, `label`, `avatar`, and the rest. Reach for these
+first.
 
 **Schema-driven forms** - `auto-form` renders a complete form from a `z.object()`
 schema, driven by the `$control` metadata on each field. `control`,
@@ -65,7 +64,7 @@ under `components/`; `use-mobile` lives under `hooks/`.
 > toast twice - so a standalone mount (or `app-shell` with `embedded`) has to
 > wrap them itself.
 
-**`lib/*`** - `utils` re-exports `cn()` from shadcn's `cn` package, the
+**`lib/*`** - `utils` re-exports `cn()` from the `cn` package, the
 zero-dependency class merger every component uses. Also `resize-image` and
 `i18n-fr`.
 
@@ -252,21 +251,11 @@ place anything, and node width comes from a generated per-character width table
 measured against Inter at one size; inheriting the surrounding face would make
 text and box disagree, differently on every surface.
 
-## Adding a shadcn component
+## Adding a component
 
-`components.json` is configured for this package, so the shadcn CLI drops new
-components in the right place with the right aliases:
-
-```bash
-npx shadcn@latest add <component>
-```
-
-## Refreshing stock primitives
-
-`yarn w @alepha/ui sync` re-fetches the stock `components/ui/*` primitives from
-the public `ui.shadcn.com/r/styles/base-nova` registry and rewrites their
-`@/registry/...` imports to `@alepha/ui/...`. It touches only the stock
-primitives - the hand-maintained blocks (controls, admin, auth, app-shell,
-alepha-table, …) are never overwritten. After a sync, diff for removed
-`from "alepha/` imports before committing: the registry copy does not know
-about local patches.
+The package owns every file in it: there is no registry to pull from and no
+generator to run. A new primitive is written by hand in `components/ui/`, next
+to the ones it resembles. An upstream component (shadcn's, Base UI's own
+examples) is a fine starting point, copied in and then edited like any other
+file here: imports go through `@alepha/ui/lib/utils` for `cn`, and a
+`data-slot` attribute on each part keeps it addressable from `styles.css`.

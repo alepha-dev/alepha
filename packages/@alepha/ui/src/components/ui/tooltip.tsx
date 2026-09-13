@@ -1,11 +1,10 @@
-"use client";
-
 import { cn } from "@alepha/ui/lib/utils";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 
 function TooltipProvider({
-  // 600ms rather than the registry's 0. Re-applied by `scripts/sync.ts`,
-  // which carries the reasoning; this file is overwritten wholesale.
+  // 600ms rather than 0, which fired a tooltip the instant the pointer touched
+  // a trigger. 600ms is Base UI's own default, and the provider's grouping
+  // still makes adjacent tooltips instant once one has opened.
   delay = 600,
   ...props
 }: TooltipPrimitive.Provider.Props) {

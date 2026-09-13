@@ -133,7 +133,8 @@ function Button({
      * centered spinner in its place, disables the button, and marks it
      * `aria-busy`. The hidden content stays in the layout, so the button keeps
      * its natural width and doesn't resize while busy. Use for form submits and
-     * async actions so the click can't be double-fired.
+     * async actions so the click can't be double-fired: every submit in the
+     * kit relies on it.
      */
     loading?: boolean;
   }) {

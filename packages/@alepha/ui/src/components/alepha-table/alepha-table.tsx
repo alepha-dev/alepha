@@ -1686,7 +1686,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           // page, where transparent already reads as a white field. On this bar
           // it does not: they would take the muted grey and the border alone
           // would have to say "input". Scoped here rather than to the
-          // primitives, which `yarn w @alepha/ui sync` overwrites.
+          // primitives, whose transparent light fill is right everywhere
+          // else.
           //
           // `bg-background` suits both modes: white against the muted bar in
           // light, near-black in dark, so the control reads as a well sunk
@@ -1972,10 +1973,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
             showToolbar && "-mt-2 rounded-t-none border-t-0",
             "rounded-b-none border-b-0",
-            // shadcn's `<Table>` wraps the table in a container div whose
-            // classes it hardcodes, and `scripts/sync.ts` overwrites that file
-            // wholesale - so the one class it needs is set from out here
-            // instead, where sync cannot reach.
+            // `<Table>` wraps the table in a container div whose classes it
+            // hardcodes, and only this table needs that container to grow,
+            // so the one class it needs is set from out here instead.
             //
             // `grow`, NOT `flex-1`: `flex-1` sets the basis to 0, and in the
             // ordinary case this wrapper has no height of its own, so a 0

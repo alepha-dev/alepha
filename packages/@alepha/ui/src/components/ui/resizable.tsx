@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@alepha/ui/lib/utils";
 import * as ResizablePrimitive from "react-resizable-panels";
 
