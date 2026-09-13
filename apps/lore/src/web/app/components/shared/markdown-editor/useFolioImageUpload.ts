@@ -1,4 +1,4 @@
-import { resizeImage } from "@alepha/ui/lib/resize-image";
+import { resizeImage } from "@alepha/ui/form";
 import { AlephaError } from "alepha";
 import { useClient } from "alepha/react";
 import { useCallback } from "react";

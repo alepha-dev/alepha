@@ -1,5 +1,5 @@
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useToast } from "@alepha/ui";
+import { AutoForm } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 import type { SchemaControlFn } from "alepha/react/ui";

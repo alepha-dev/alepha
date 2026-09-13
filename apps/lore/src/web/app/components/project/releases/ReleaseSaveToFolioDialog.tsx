@@ -1,6 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
+import { Button, Input, Label } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked } from "lucide-react";
 import { useState } from "react";

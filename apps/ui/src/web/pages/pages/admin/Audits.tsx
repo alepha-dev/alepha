@@ -1,4 +1,4 @@
-import { AdminAudits } from "@alepha/ui/components/admin/admin-audits";
+import { AdminAudits } from "@alepha/ui/admin";
 
 import { Showcase } from "@/web/components/Showcase.tsx";
 

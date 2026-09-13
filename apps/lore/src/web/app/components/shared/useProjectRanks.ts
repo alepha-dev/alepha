@@ -1,4 +1,4 @@
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useToast } from "@alepha/ui";
 import type { RankController, RankResource } from "alepha/api/ranks";
 import { useClient, useStore } from "alepha/react";
 import { useEffect, useState } from "react";

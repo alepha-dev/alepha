@@ -1,6 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { formatBytes } from "@alepha/ui/lib/utils";
+import { Badge, Card, CardContent, formatBytes } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 

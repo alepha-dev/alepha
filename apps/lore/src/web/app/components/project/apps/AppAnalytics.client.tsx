@@ -3,18 +3,16 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
+  TooltipContent,
+  TooltipTrigger,
+  Tooltip as UiTooltip,
+} from "@alepha/ui";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@alepha/ui/components/ui/chart";
-import {
-  TooltipContent,
-  TooltipTrigger,
-  Tooltip as UiTooltip,
-} from "@alepha/ui/components/ui/tooltip";
+} from "@alepha/ui/chart";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

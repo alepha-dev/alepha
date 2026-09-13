@@ -1,6 +1,5 @@
 import type { PublicProduct } from "@alepha/commerce";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useToast } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { useState } from "react";

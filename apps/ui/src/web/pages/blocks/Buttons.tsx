@@ -1,5 +1,5 @@
-import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
+import { ButtonDark } from "@alepha/ui/shell";
 import { z } from "alepha";
 import { Download, Plus, Trash2 } from "lucide-react";
 

@@ -1,4 +1,4 @@
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
+import { TimeAgo } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {

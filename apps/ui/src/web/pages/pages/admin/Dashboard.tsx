@@ -1,6 +1,8 @@
-import AdminDashboard from "@alepha/ui/components/admin/admin-dashboard";
-import type { AdminDashboardCard } from "@alepha/ui/components/admin/admin-dashboard-card";
-import { AdminDashboardCountCard } from "@alepha/ui/components/admin/admin-dashboard-count-card";
+import {
+  AdminDashboard,
+  type AdminDashboardCard,
+  AdminDashboardCountCard,
+} from "@alepha/ui/admin";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { FileSearch, Files, KeyRound, UsersIcon } from "lucide-react";

@@ -1,4 +1,4 @@
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
+import { SettingsSection } from "@alepha/ui/settings";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 

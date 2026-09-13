@@ -1,10 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

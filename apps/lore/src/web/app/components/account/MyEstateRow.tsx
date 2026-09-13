@@ -1,4 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
+import { Badge } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronRight } from "lucide-react";
 

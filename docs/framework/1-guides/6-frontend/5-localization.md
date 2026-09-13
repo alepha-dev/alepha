@@ -72,7 +72,7 @@ The components in `@alepha/ui` call `tr()` with English defaults - dialogs say "
 `@alepha/ui` ships a French record you spread into your own catalogue:
 
 ```typescript
-import { uiFr } from "@alepha/ui/lib/i18n-fr";
+import { uiFr } from "@alepha/ui/i18n/fr";
 
 class AppI18n {
   fr = $dictionary({
@@ -89,7 +89,7 @@ class AppI18n {
 
 It is a plain object rather than a `$dictionary` because `@alepha/ui` is a component library with no module of its own - nothing to register into.
 
-`uiFr` covers **every** key the package asks for - `tr()` calls and the `labelKey` / `groupKey` declarations below - across dialogs, tables, generated forms and controls, the auth screens, the account kit, and the whole `@alepha/ui/components/admin/*` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
+`uiFr` covers **every** key the package asks for - `tr()` calls and the `labelKey` / `groupKey` declarations below - across dialogs, tables, generated forms and controls, the auth screens, the account kit, and the whole `@alepha/ui/admin` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
 
 There is no `uiEn`, since the components already default to English. For any other language, copy `uiFr` as a starting point.
 

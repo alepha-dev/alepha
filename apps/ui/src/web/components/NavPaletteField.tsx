@@ -1,5 +1,4 @@
-import { Kbd, KbdGroup } from "@alepha/ui/components/ui/kbd";
-import { cn } from "@alepha/ui/lib/utils";
+import { Kbd, KbdGroup, cn } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { SearchIcon } from "lucide-react";
 

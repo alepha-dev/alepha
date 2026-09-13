@@ -1,14 +1,14 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useDialog,
+  useToast,
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import type { RankResource } from "alepha/api/ranks";
 import { useClient } from "alepha/react";

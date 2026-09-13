@@ -1,6 +1,5 @@
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Switch } from "@alepha/ui/components/ui/switch";
+import { Switch } from "@alepha/ui";
+import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import { useI18n } from "alepha/react/i18n";
 
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";

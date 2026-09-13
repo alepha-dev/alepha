@@ -1,4 +1,4 @@
-import { AccountRouter } from "@alepha/ui/components/account/account-router";
+import { AccountRouter } from "@alepha/ui/account";
 import { $inject } from "alepha";
 import { $page } from "alepha/react/router";
 

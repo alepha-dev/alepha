@@ -2,11 +2,8 @@ import * as React from "react";
 
 void React;
 
-import {
-  AlephaTable,
-  type TableFetcher,
-} from "@alepha/ui/components/alepha-table/alepha-table";
-import { Badge } from "@alepha/ui/components/ui/badge";
+import { Badge } from "@alepha/ui";
+import { AlephaTable, type TableFetcher } from "@alepha/ui/table";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AdminProductOrderLine } from "../controllers/AdminProductController.ts";

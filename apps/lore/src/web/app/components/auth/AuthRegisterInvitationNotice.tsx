@@ -1,6 +1,4 @@
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { Alert, AlertDescription, Button, Card, CardContent } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { AlertCircle } from "lucide-react";

@@ -1,4 +1,4 @@
-import AdminUserDetail from "@alepha/ui/components/admin/admin-user-detail";
+import { AdminUserDetail } from "@alepha/ui/admin";
 
 /**
  * Mounted at `/admin/users/:userId`, NOT under `/pages`.

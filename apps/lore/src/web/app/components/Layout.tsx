@@ -1,7 +1,5 @@
-import { NavigationProgress } from "@alepha/ui/components/app-shell/navigation-progress";
-import { Toaster } from "@alepha/ui/components/ui/sonner";
-import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
+import { NavigationProgress } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";

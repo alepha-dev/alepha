@@ -1,5 +1,5 @@
-import { AccountRouter } from "@alepha/ui/components/account/account-router";
-import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
+import { AccountRouter } from "@alepha/ui/account";
+import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { $hook, $inject, Alepha, z } from "alepha";
 import type { AdminInvitationController } from "alepha/api/invitations";
 import type { NotificationInboxController } from "alepha/api/notifications";
