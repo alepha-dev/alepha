@@ -15,7 +15,7 @@ describe("payments cron configuration", () => {
     alepha
       .inject(CronProvider)
       .getCronJobs()
-      .find((job) => job.name === "api:payments:expireStaleIntents")
+      .find((job) => job.name === "system.payments.expire-stale-intents")
       ?.expression;
 
   it("should default the stale-intent sweep to a quarter-hour tick", () => {

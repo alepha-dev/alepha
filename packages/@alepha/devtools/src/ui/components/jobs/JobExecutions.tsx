@@ -1,3 +1,4 @@
+import type { JobRetention } from "alepha/api/jobs";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { RotateCcw } from "lucide-react";
@@ -5,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { JobExecution } from "../../hooks/useJobs.ts";
 import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
+import { describeRetention } from "./describeRetention.ts";
 
 const STATUS_COLOR: Record<string, string> = {
   ok: "var(--dt-get)",
@@ -48,10 +50,10 @@ const duration = (row: JobExecution): string => {
 export interface JobExecutionsProps {
   jobName: string;
   /**
-   * Whether the job persists executions at all — `record: "none"` means this
-   * table is empty by design, not because nothing ran.
+   * What the job keeps. A job that records neither successes nor failures
+   * has an empty table by design, not because nothing ran.
    */
-  record?: string;
+  retention?: JobRetention;
 }
 
 export const JobExecutions = (props: JobExecutionsProps) => {
@@ -59,6 +61,8 @@ export const JobExecutions = (props: JobExecutionsProps) => {
   const relative = useRelativeTime();
   const [rows, setRows] = useState<JobExecution[]>([]);
   const [selected, setSelected] = useState<JobExecution | null>(null);
+  // A list row has no payload and no logs: the detail is read on selection.
+  const [detail, setDetail] = useState<JobExecution | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -87,6 +91,28 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     return () => clearInterval(id);
   }, [load]);
 
+  useEffect(() => {
+    if (!selected) {
+      // oxlint-disable-next-line react/set-state-in-effect
+      setDetail(null);
+      return;
+    }
+    let live = true;
+    void http
+      .fetch(
+        `/__devtools/api/jobs/executions/${encodeURIComponent(selected.id)}`,
+      )
+      .then((res) => {
+        if (live) setDetail(res.data as JobExecution);
+      })
+      .catch(() => {
+        if (live) setDetail(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [http, selected]);
+
   const retry = async (row: JobExecution) => {
     setBusy(true);
     try {
@@ -102,15 +128,15 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     }
   };
 
-  const logs = Array.isArray(selected?.logs) ? (selected?.logs as any[]) : [];
+  const logs = Array.isArray(detail?.logs) ? (detail?.logs as any[]) : [];
 
   return (
     <div>
       <div className="dt-section-label">
         Recent executions
-        {props.record && (
+        {props.retention && (
           <span style={{ textTransform: "none", letterSpacing: 0 }}>
-            record: {props.record}
+            keeps {describeRetention(props.retention)}
           </span>
         )}
       </div>
@@ -131,9 +157,9 @@ export const JobExecutions = (props: JobExecutionsProps) => {
         <div
           style={{ padding: "14px", fontSize: 11, color: "var(--dt-fg-faint)" }}
         >
-          {props.record === "none"
-            ? "This job records no executions (record: none)."
-            : "No executions recorded yet."}
+          {props.retention?.ok === false && props.retention?.error === false
+            ? "This job records no executions."
+            : "No executions kept yet."}
         </div>
       ) : (
         <table className="dt-table">
@@ -215,11 +241,11 @@ export const JobExecutions = (props: JobExecutionsProps) => {
             )}
           </div>
 
-          {selected.payload !== undefined && selected.payload !== null && (
+          {detail?.payload !== undefined && detail?.payload !== null && (
             <>
               <div className="dt-section-label">Payload</div>
               <pre className="dt-pre">
-                {JSON.stringify(selected.payload, null, 2)}
+                {JSON.stringify(detail.payload, null, 2)}
               </pre>
             </>
           )}

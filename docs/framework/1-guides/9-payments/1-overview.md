@@ -47,7 +47,7 @@ Out of the box this gives you:
 - `GET/POST/DELETE/PATCH /api/payments/payment-methods/...`: list, add, remove, set default.
 - `POST /api/payments/webhook`: PSP webhook ingress (no `$secure` middleware; the provider verifies authenticity).
 - `/api/admin/payments/...`: capture, void, refund, cancel, list intents, record cash payments.
-- A cron running every 15 minutes (`api:payments:expireStaleIntents`, configurable via the `paymentsConfig` atom's `expireStaleIntentsCron`) that expires intents stuck in `processing` for more than 30 minutes.
+- A cron running every 15 minutes (`system.payments.expire-stale-intents`, configurable via the `paymentsConfig` atom's `expireStaleIntentsCron`) that expires intents stuck in `processing` for more than 30 minutes.
 
 `AlephaApiPayments` registers `MemoryPaymentProvider` as the default provider - you can boot the module with no PSP configured and exercise the full flow end-to-end via the mock checkout page at `/payments/mock-checkout/:id`. The page is gated on `MemoryPaymentProvider` outside production; `mockCheckoutOptions.allowInProduction` is the documented escape hatch if you truly need it live.
 

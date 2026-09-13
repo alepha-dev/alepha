@@ -87,10 +87,10 @@ export class AnalyticsRollupJobs {
    * time-critical to the hour.
    */
   public readonly sweep = $job({
-    name: "analytics:rollup:sweep",
+    name: "system.analytics.rollup",
     cron: "0 * * * *",
     description:
-      "Fold hour buckets past retention.hot into day buckets, then delete rolled rows past retention.cold.",
+      "Folds hourly analytics buckets past the hot window into daily ones, then deletes rolled rows past the cold window.",
     handler: () => this.sweepNow(),
   });
 

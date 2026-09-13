@@ -34,7 +34,7 @@ import { AdminDashboardCountCard } from "./AdminDashboardCountCard.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 
 /**
- * The whole `/admin` surface — twelve pages and their shell — mounted and wired.
+ * The whole `/admin` surface, thirteen pages and their shell, mounted and wired.
  *
  * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
  * them back to JSX.** This module is evaluated *eagerly* in the server graph:
@@ -141,20 +141,20 @@ import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
  * groups by their smallest member, so only an `order` of 1000 or more sinks a
  * page in among them.
  *
- * ### These twelve route names are claimed globally
+ * ### These thirteen route names are claimed globally
  *
  * `dashboard`, `users`, `userDetail`, `sessions`, `keys`, `jobs`,
- * `notifications`, `audits`, `files`, `parameters`, `payments` and
- * `analytics` each carry an explicit `name:` so a future rename of the
+ * `jobDetail`, `notifications`, `audits`, `files`, `parameters`, `payments`
+ * and `analytics` each carry an explicit `name:` so a future rename of the
  * field itself (done for readability, without touching the string) never
  * silently changes the public route name — the same reason `AuthRouter`'s
  * pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
- * registers its own page named `files` (or any of the other eleven) either
+ * registers its own page named `files` (or any of the other twelve) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
- * Treat these twelve names as reserved when hanging pages off `layout`.
+ * Treat these thirteen names as reserved when hanging pages off `layout`.
  *
  * ### It needs `<DialogProvider>` and `<Toaster />` above it
  *
@@ -176,6 +176,30 @@ export class AdminRouter {
   protected readonly parameterApi = $client<AdminParameterController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
+
+  /**
+   * The head of an admin page: `Admin - <Page>` in the browser tab, so an
+   * admin page never reads like an application page of the same name.
+   *
+   * A static object on purpose. The layout cannot add the prefix itself:
+   * `HeadProvider` joins a parent and a child title as child, separator,
+   * parent, which would read "Jobs - Admin". With no separator anywhere the
+   * page's title replaces the application's, which is what this relies on,
+   * and only a static `head.title` feeds the sidebar and breadcrumb fallbacks.
+   * Every built-in page carries a `nav.label`, so the prefix never reaches a
+   * label; {@link $pageAdmin} keeps an unprefixed one for the pages that do
+   * not.
+   *
+   * The title stays English, like every `head.title` here.
+   */
+  public adminHead(title: string): { title: string } {
+    return { title: `${this.adminTitlePrefix}${title}` };
+  }
+
+  /**
+   * What {@link adminHead} puts before a page title.
+   */
+  public readonly adminTitlePrefix = "Admin - ";
 
   /**
    * Anchors the shell and the first breadcrumb. Not itself a nav entry — a
@@ -219,7 +243,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/",
     name: "dashboard",
-    head: { title: "Dashboard" },
+    head: this.adminHead("Dashboard"),
     nav: {
       label: "Dashboard",
       labelKey: "admin.nav.dashboard",
@@ -276,7 +300,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/users",
     name: "users",
-    head: { title: "Users" },
+    head: this.adminHead("Users"),
     permission: "admin:user:read",
     can: () => this.userApi.findUsers.can(),
     nav: {
@@ -301,7 +325,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/users/:userId",
     name: "userDetail",
-    head: { title: "User" },
+    head: this.adminHead("User"),
     nav: { hidden: true, label: "User", labelKey: "admin.nav.userDetail" },
     permission: "admin:user:read",
     can: () => this.userApi.getUser.can(),
@@ -318,7 +342,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/sessions",
     name: "sessions",
-    head: { title: "Sessions" },
+    head: this.adminHead("Sessions"),
     permission: "admin:session:read",
     can: () => this.sessionApi.findSessions.can(),
     nav: {
@@ -336,7 +360,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/keys",
     name: "keys",
-    head: { title: "API keys" },
+    head: this.adminHead("API keys"),
     permission: "admin:api-key:read",
     can: () => this.apiKeyApi.findApiKeys.can(),
     nav: {
@@ -355,7 +379,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/jobs",
     name: "jobs",
-    head: { title: "Jobs" },
+    head: this.adminHead("Jobs"),
     permission: "admin:job:read",
     can: () => this.jobApi.listJobs.can(),
     nav: {
@@ -369,11 +393,35 @@ export class AdminRouter {
     lazy: () => import("./AdminJobs.tsx"),
   });
 
+  /**
+   * One job: its executions, and a drawer for one run's logs, error and
+   * payload. `nav.hidden` like `userDetail`: a breadcrumb, not a sidebar
+   * entry, with a `labelKey` so the crumb follows the language.
+   *
+   * `:jobName`, not `:name`: param names are unique across the whole route
+   * table, and `name` is the one an application most likely uses.
+   */
+  jobDetail = $pageNav({
+    parent: this.layout,
+    path: "/jobs/:jobName",
+    name: "jobDetail",
+    head: this.adminHead("Job"),
+    nav: { hidden: true, label: "Job", labelKey: "admin.nav.jobDetail" },
+    permission: "admin:job:read",
+    can: () => this.jobApi.listExecutions.can(),
+    schema: {
+      params: z.object({
+        jobName: z.text(),
+      }),
+    },
+    lazy: () => import("./AdminJobDetail.tsx"),
+  });
+
   notifications = $pageNav({
     parent: this.layout,
     path: "/notifications",
     name: "notifications",
-    head: { title: "Notifications" },
+    head: this.adminHead("Notifications"),
     permission: "admin:notification:read",
     can: () => this.notificationApi.findNotifications.can(),
     nav: {
@@ -391,7 +439,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/audits",
     name: "audits",
-    head: { title: "Audit log" },
+    head: this.adminHead("Audit log"),
     permission: "admin:audit:read",
     can: () => this.auditApi.findAudits.can(),
     nav: {
@@ -409,7 +457,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/files",
     name: "files",
-    head: { title: "Files" },
+    head: this.adminHead("Files"),
     permission: "admin:file:read",
     can: () => this.fileApi.findFiles.can(),
     nav: {
@@ -427,7 +475,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/parameters",
     name: "parameters",
-    head: { title: "Parameters" },
+    head: this.adminHead("Parameters"),
     permission: "admin:parameter:read",
     can: () => this.parameterApi.getParameterTree.can(),
     nav: {
@@ -452,7 +500,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/payments",
     name: "payments",
-    head: { title: "Payments" },
+    head: this.adminHead("Payments"),
     permission: ["admin:payment:read", "payments:read"],
     can: () => this.paymentApi.listIntents.can(),
     nav: {
@@ -470,7 +518,7 @@ export class AdminRouter {
     parent: this.layout,
     path: "/analytics",
     name: "analytics",
-    head: { title: "Analytics" },
+    head: this.adminHead("Analytics"),
     permission: "admin:analytics:read",
     can: () => this.analyticsApi.listDatasets.can(),
     nav: {

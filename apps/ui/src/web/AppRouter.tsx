@@ -49,6 +49,7 @@ export class AppRouter {
       this.adminSessions,
       this.adminKeys,
       this.adminJobs,
+      this.jobDetail,
       this.adminFiles,
       this.adminNotifications,
       this.adminParameters,
@@ -351,6 +352,19 @@ export class AppRouter {
     static: true,
     head: { title: "Admin jobs - Alepha UI" },
     lazy: () => import("./pages/pages/admin/Jobs.tsx"),
+  });
+
+  /**
+   * ⚠️ Named `jobDetail` and NOT under `/pages`. `AdminJobs` navigates with
+   * `router.push("jobDetail", ...)`, the route name `AdminRouter` gives the
+   * page, so the name is what has to match; the path follows the admin's own.
+   *
+   * Not `static`: the job name is a route param.
+   */
+  jobDetail = $page({
+    path: "/admin/jobs/:jobName",
+    head: { title: "Job - Alepha UI" },
+    lazy: () => import("./pages/pages/admin/JobDetail.tsx"),
   });
 
   adminFiles = $page({

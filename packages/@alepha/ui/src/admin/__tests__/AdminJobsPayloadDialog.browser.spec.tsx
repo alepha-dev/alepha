@@ -28,9 +28,8 @@ describe("AdminJobsPayloadDialog", () => {
 
   const parked: JobExecutionResource = {
     id: "0192aaaa-0000-7000-8000-000000000001",
-    jobName: "CartRecoveryJobs.cartRecovery",
+    jobName: "system.commerce.recover-cart",
     status: "scheduled",
-    priority: "normal",
     attempt: 0,
     maxAttempts: 4,
     redispatchCount: 0,
@@ -39,7 +38,7 @@ describe("AdminJobsPayloadDialog", () => {
     scheduledAt: "2026-09-05T20:00:00.000Z",
     createdAt: "2026-09-04T20:00:00.000Z",
     updatedAt: "2026-09-04T20:00:00.000Z",
-    can: { retry: false, cancel: true },
+    can: { retry: false, cancel: true, delete: false },
   } as JobExecutionResource;
 
   const mount = async (execution: JobExecutionResource | null) => {

@@ -95,7 +95,7 @@ export interface StoragePrimitiveOptions {
 
   /**
    * Default lifetime for files placed here. The expiry is stored per row as
-   * `expirationDate`; a cron job (`api:files:purgeFiles`) deletes rows and
+   * `expirationDate`; a cron job (`system.files.purge-deleted`) deletes rows and
    * blobs once they are past it.
    *
    * Override per upload with `upload(file, { ttl })`.

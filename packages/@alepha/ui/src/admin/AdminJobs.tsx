@@ -2,105 +2,69 @@ import * as React from "react";
 
 void React;
 
-import { type Infer, type Page, z } from "alepha";
+import { z } from "alepha";
 import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Play, Search, Shapes, SignalHigh, Timer } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useRouter } from "alepha/react/router";
+import {
+  Boxes,
+  FolderTree,
+  HeartPulse,
+  Play,
+  Search,
+  Shapes,
+  Timer,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { FilterSlot } from "../core/FilterSlot.tsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "../core/Sheet.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { Control } from "../form/Control.tsx";
 import { AlephaTable } from "../table/AlephaTable.tsx";
-import { AdminJobsExecutionsPanel } from "./AdminJobsExecutionsPanel.tsx";
+import { AdminJobsTypeIcon } from "./AdminJobsTypeIcon.tsx";
 import { AdminPage } from "./AdminPage.tsx";
+import { useJobRetentionLabels } from "./useJobRetentionLabels.ts";
 
 const POLL_MS = 30_000;
 
 const jobFiltersSchema = z.object({
   search: z.string().optional(),
   type: z.string().optional(),
-  priority: z.string().optional(),
+  origin: z.string().optional(),
+  domain: z.string().optional(),
+  health: z.string().optional(),
 });
-type JobFilters = Infer<typeof jobFiltersSchema>;
 
 /**
- * Wrap an in-memory array as a `Page<T>` so it can feed `AlephaTable`'s
- * fetcher without server-side pagination — appropriate for bounded
- * datasets like the job registry (usually <50 entries).
+ * The job registry: every registered job, what it is, when it last ran and
+ * what it keeps.
+ *
+ * The registry is a few dozen rows the server answers in one call, so the
+ * table holds them as `data` and filters, sorts and pages them itself; the
+ * list is re-read every 30 seconds.
  */
-function asPage<T>(items: T[]): Page<T> {
-  return {
-    content: items,
-    page: {
-      number: 0,
-      size: items.length,
-      offset: 0,
-      numberOfElements: items.length,
-      totalElements: items.length,
-      totalPages: 1,
-      isEmpty: items.length === 0,
-      isFirst: true,
-      isLast: true,
-    },
-  };
-}
-
-function applyJobFilters(
-  jobs: JobRegistration[],
-  filters?: JobFilters,
-  sort?: string,
-): JobRegistration[] {
-  let out = jobs;
-  const q = filters?.search?.trim().toLowerCase();
-  if (q) {
-    out = out.filter(
-      (j) =>
-        j.name.toLowerCase().includes(q) ||
-        (j.description?.toLowerCase().includes(q) ?? false),
-    );
-  }
-  if (filters?.type) out = out.filter((j) => j.type === filters.type);
-  if (filters?.priority) {
-    out = out.filter((j) => j.priority === filters.priority);
-  }
-  if (sort) {
-    const desc = sort.startsWith("-");
-    const field = (desc ? sort.slice(1) : sort) as keyof JobRegistration;
-    out = [...out].sort((a, b) => {
-      const av = (a as any)[field] ?? "";
-      const bv = (b as any)[field] ?? "";
-      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-      return desc ? -cmp : cmp;
-    });
-  }
-  return out;
-}
-
 export const AdminJobs = () => {
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
   const toast = useToast();
-  const [openJob, setOpenJob] = useState<JobRegistration | null>(null);
+  const retention = useJobRetentionLabels();
+  const router = useRouter();
+  const [jobs, setJobs] = useState<JobRegistration[]>([]);
 
-  const fetcher = useCallback(
-    async (params: { sort?: string; filters?: JobFilters }) => {
-      const jobs = await client.listJobs();
-      return asPage(applyJobFilters(jobs, params.filters, params.sort));
+  const load = useAction(
+    {
+      handler: async () => {
+        setJobs(await client.listJobs());
+      },
+      runOnInit: true,
+      runEvery: POLL_MS,
     },
     [client],
   );
 
-  const triggerAction = useAction<[JobRegistration], void>(
+  const trigger = useAction<[JobRegistration], void>(
     {
       handler: async (job) => {
         await client.triggerJob({ params: { name: job.name }, body: {} });
@@ -110,28 +74,36 @@ export const AdminJobs = () => {
             args: [job.name],
           }),
         );
+        await load.run();
       },
     },
     [client, toast, tr],
   );
 
-  const trigger = useCallback(
-    async (job: JobRegistration, refresh: () => void) => {
-      await triggerAction.run(job);
-      refresh();
-    },
-    [triggerAction.run],
+  const domainItems = useMemo(
+    () =>
+      [...new Set(jobs.map((j) => jobDomain(j.name)))]
+        .sort()
+        .map((domain) => ({ value: domain, label: domain })),
+    [jobs],
   );
+
+  const canTrigger = client.triggerJob.can();
+
+  // By route name: `jobDetail` is `/admin/jobs/:jobName` under `AdminRouter`,
+  // and whatever path an application gave a page of that name elsewhere.
+  const open = (job: JobRegistration) =>
+    void router.push("jobDetail", { params: { jobName: job.name } });
 
   return (
     <AdminPage>
       <AlephaTable<JobRegistration>
         className="min-h-0 flex-1"
         persistenceKey="admin.jobs"
-        pollMs={POLL_MS}
         rowKey={(j) => j.name}
-        fetch={fetcher}
-        onRowClick={(j) => setOpenJob(j)}
+        data={jobs}
+        filter={matchesJobFilters}
+        onRowClick={(j) => open(j)}
         filters={{
           schema: jobFiltersSchema,
           render: (form) => (
@@ -161,25 +133,81 @@ export const AdminJobs = () => {
                 )}
                 triggerClassName="w-36"
                 items={[
-                  { value: "cron", label: "cron" },
-                  { value: "queue", label: "queue" },
-                  { value: "direct", label: "direct" },
+                  {
+                    value: "cron",
+                    label: tr("admin.jobs.typeCron", { default: "Cron" }),
+                  },
+                  {
+                    value: "queue",
+                    label: tr("admin.jobs.typeQueue", { default: "Queue" }),
+                  },
+                  {
+                    value: "direct",
+                    label: tr("admin.jobs.typeDirect", { default: "Direct" }),
+                  },
                 ]}
               />
               <Control
-                input={form.input.priority}
+                input={form.input.origin}
                 label=""
                 clearable
-                icon={SignalHigh}
+                icon={Boxes}
                 clearLabel={String(
-                  tr("admin.jobs.priorityAll", { default: "All priorities" }),
+                  tr("admin.jobs.originAll", { default: "All origins" }),
+                )}
+                triggerClassName="w-36"
+                items={[
+                  {
+                    value: "system",
+                    label: tr("admin.jobs.originSystem", {
+                      default: "System",
+                    }),
+                  },
+                  {
+                    value: "app",
+                    label: tr("admin.jobs.originApp", { default: "App" }),
+                  },
+                ]}
+              />
+              <Control
+                input={form.input.domain}
+                label=""
+                clearable
+                icon={FolderTree}
+                clearLabel={String(
+                  tr("admin.jobs.domainAll", { default: "All domains" }),
                 )}
                 triggerClassName="w-40"
+                items={domainItems}
+              />
+              <Control
+                input={form.input.health}
+                label=""
+                clearable
+                icon={HeartPulse}
+                clearLabel={String(
+                  tr("admin.jobs.healthAll", { default: "Any health" }),
+                )}
+                triggerClassName="w-44"
                 items={[
-                  { value: "critical", label: "critical" },
-                  { value: "high", label: "high" },
-                  { value: "normal", label: "normal" },
-                  { value: "low", label: "low" },
+                  {
+                    value: "lastFailed",
+                    label: tr("admin.jobs.healthLastFailed", {
+                      default: "Last run failed",
+                    }),
+                  },
+                  {
+                    value: "hasFailures",
+                    label: tr("admin.jobs.healthHasFailures", {
+                      default: "Has failures",
+                    }),
+                  },
+                  {
+                    value: "noRuns",
+                    label: tr("admin.jobs.healthNoRuns", {
+                      default: "No runs kept",
+                    }),
+                  },
                 ]}
               />
             </div>
@@ -189,42 +217,48 @@ export const AdminJobs = () => {
           name: {
             label: tr("admin.jobs.colName", { default: "Name" }),
             sortable: true,
+            sortValue: (j) => j.name,
             cell: (j) => (
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate font-medium">{j.name}</span>
-                {j.description && (
-                  <span className="text-muted-foreground truncate text-xs">
-                    {j.description}
-                  </span>
-                )}
+              <div className="flex min-w-0 items-center gap-2">
+                <AdminJobsTypeIcon type={j.type} />
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate font-medium">{j.name}</span>
+                  {j.description && (
+                    <span className="text-muted-foreground truncate text-xs">
+                      {j.description}
+                    </span>
+                  )}
+                </div>
               </div>
-            ),
-          },
-          type: {
-            label: tr("admin.jobs.colType", { default: "Type" }),
-            sortable: true,
-            cell: (j) => (
-              <Badge variant={j.type === "cron" ? "default" : "secondary"}>
-                {j.type}
-              </Badge>
             ),
           },
           cron: {
             label: tr("admin.jobs.colSchedule", { default: "Schedule" }),
             cell: (j) =>
-              j.cron ? (
-                <code className="text-xs">{j.cron}</code>
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              ),
+              j.cron ? <code className="text-xs">{j.cron}</code> : null,
           },
-          priority: {
-            label: tr("admin.jobs.colPriority", { default: "Priority" }),
-            sortable: true,
-            cell: (j) => <Badge variant="outline">{j.priority}</Badge>,
+          retention: {
+            label: tr("admin.jobs.colRetention", { default: "Retention" }),
+            cell: (j) => (
+              <span
+                className="text-muted-foreground inline-flex items-center gap-1.5 text-xs"
+                title={retention.sentence(j.retention)}
+              >
+                {retention.short(j.retention)}
+                {retention.isDefault(j.retention) && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {tr("admin.jobs.retention.default", {
+                      default: "default",
+                    })}
+                  </Badge>
+                )}
+              </span>
+            ),
           },
           lastRun: {
             label: tr("admin.jobs.colLastRun", { default: "Last run" }),
+            sortable: true,
+            sortValue: (j) => j.recent.lastRun ?? "",
             cell: (j) => (
               <span className="text-muted-foreground text-xs">
                 {j.recent.lastRun
@@ -235,12 +269,23 @@ export const AdminJobs = () => {
           },
           ok: {
             label: tr("admin.jobs.colOk", { default: "OK" }),
+            hint: tr("admin.jobs.colOkHint", {
+              default:
+                "Successful runs still kept, not every run: see Retention.",
+            }),
             align: "right",
+            sortable: true,
+            sortValue: (j) => j.recent.ok,
             cell: (j) => j.recent.ok,
           },
           errors: {
             label: tr("admin.jobs.colErrors", { default: "Errors" }),
+            hint: tr("admin.jobs.colErrorsHint", {
+              default: "Failed runs still kept, not every run: see Retention.",
+            }),
             align: "right",
+            sortable: true,
+            sortValue: (j) => j.recent.error,
             cell: (j) => (
               <span
                 className={j.recent.error > 0 ? "text-destructive" : undefined}
@@ -251,53 +296,75 @@ export const AdminJobs = () => {
           },
         }}
         rowActions={(j) => [
-          {
-            label: tr("admin.jobs.trigger", { default: "Trigger now" }),
-            icon: Play,
-            onClick: (_j, { refresh }) => trigger(j, refresh),
-          },
+          // A cron only: a pushed job needs a payload this button cannot
+          // send, and the server refuses a trigger without one.
+          ...(j.type === "cron" && canTrigger
+            ? [
+                {
+                  label: tr("admin.jobs.trigger", { default: "Trigger now" }),
+                  icon: Play,
+                  onClick: () => trigger.run(j),
+                },
+              ]
+            : []),
           {
             label: tr("admin.jobs.viewExecutions", {
               default: "View executions",
             }),
             icon: Timer,
-            onClick: () => setOpenJob(j),
+            onClick: () => open(j),
           },
         ]}
         emptyMessage={String(
           tr("admin.jobs.none", { default: "No jobs registered." }),
         )}
       />
-
-      <Sheet
-        open={openJob !== null}
-        onOpenChange={(open) => {
-          if (!open) setOpenJob(null);
-        }}
-      >
-        <SheetContent
-          side="right"
-          className="flex w-full flex-col gap-0 data-[side=right]:sm:max-w-[50vw]"
-        >
-          {openJob && (
-            <>
-              <SheetHeader>
-                <SheetTitle>{openJob.name}</SheetTitle>
-                <SheetDescription>
-                  {tr("admin.jobs.execsDescription", {
-                    default: "Recent executions for this job.",
-                  })}
-                </SheetDescription>
-              </SheetHeader>
-              <div className="flex min-h-0 flex-1 flex-col p-4">
-                <AdminJobsExecutionsPanel jobName={openJob.name} />
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </AdminPage>
   );
 };
 
 export default AdminJobs;
+
+/**
+ * The domain a job belongs to: the segment after `system.` for a framework
+ * job, the first segment otherwise.
+ */
+export const jobDomain = (name: string): string => {
+  const segments = name.split(".");
+  return segments[0] === "system" ? (segments[1] ?? "") : (segments[0] ?? "");
+};
+
+/**
+ * The table's filter predicate over the registry rows.
+ */
+export const matchesJobFilters = (
+  job: JobRegistration,
+  filters: Record<string, any>,
+): boolean => {
+  const search = String(filters.search ?? "")
+    .trim()
+    .toLowerCase();
+  if (
+    search &&
+    !job.name.toLowerCase().includes(search) &&
+    !(job.description?.toLowerCase().includes(search) ?? false)
+  ) {
+    return false;
+  }
+  if (filters.type && job.type !== filters.type) return false;
+  if (filters.origin) {
+    const system = job.name.startsWith("system.");
+    if ((filters.origin === "system") !== system) return false;
+  }
+  if (filters.domain && jobDomain(job.name) !== filters.domain) return false;
+  switch (filters.health) {
+    case "lastFailed":
+      return job.recent.lastStatus === "error";
+    case "hasFailures":
+      return job.recent.error > 0;
+    case "noRuns":
+      return job.recent.ok + job.recent.error === 0;
+    default:
+      return true;
+  }
+};

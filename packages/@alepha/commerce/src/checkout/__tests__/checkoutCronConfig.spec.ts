@@ -15,8 +15,9 @@ describe("checkout cron configuration", () => {
     alepha
       .inject(CronProvider)
       .getCronJobs()
-      .find((job) => job.name === "commerce:stock:releaseExpiredReservations")
-      ?.expression;
+      .find(
+        (job) => job.name === "system.commerce.release-expired-reservations",
+      )?.expression;
 
   it("should default the stock sweep to a quarter-hour tick", () => {
     const alepha = Alepha.create().with(AlephaCommerceCheckout);

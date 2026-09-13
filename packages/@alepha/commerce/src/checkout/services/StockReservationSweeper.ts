@@ -22,7 +22,8 @@ export class StockReservationSweeper {
   protected readonly config = $store(checkoutConfig);
 
   protected readonly releaseExpired = $job({
-    name: "commerce:stock:releaseExpiredReservations",
+    name: "system.commerce.release-expired-reservations",
+    description: "Releases stock held by checkouts whose reservation expired.",
     cron: this.config.stockSweepCron,
     handler: async () => {
       await this.stock.releaseExpiredReservations();

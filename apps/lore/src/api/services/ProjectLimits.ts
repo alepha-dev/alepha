@@ -76,7 +76,7 @@ export class ProjectLimits {
    *
    * 500 is roughly a year of daily pushes on one branch, and the reason there
    * is a cap at all rather than a `$storage` TTL: a TTL would have
-   * `api:files:purgeFiles` delete the raw reports hourly once past expiry,
+   * `system.files.purge-deleted` delete the raw reports hourly once past expiry,
    * destroying exactly the history that justifies keeping them.
    */
   public static readonly DEFAULT_MAX_QUALITY_RUNS = 500;

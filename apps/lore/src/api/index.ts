@@ -158,7 +158,7 @@ export const LoreApi = $module({
     AlephaApiInvitations,
     // ⚠️ **Without this every `$job` runs inside `executionCtx.waitUntil`,
     // which Cloudflare cuts off about 30 seconds after the response.** That
-    // is not a slow path, it is a hard ceiling, and `lore.deploy.run` is the
+    // is not a slow path, it is a hard ceiling, and `deploys.run` is the
     // job that lives past it: a `docs` deploy on 2026-09-09 logged
     // `Uploaded 405 assets` at exactly 30s, the isolate was cancelled
     // mid-upload, and because the run's own timer died with it the row read

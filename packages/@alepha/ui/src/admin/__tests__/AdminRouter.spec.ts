@@ -6,6 +6,8 @@ import {
 } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
+import { $pageAdmin } from "../$pageAdmin.tsx";
+import { AccountRouter } from "../../account/AccountRouter.tsx";
 import type { NavMeta } from "../../shell/navTreeUtil.ts";
 import { AdminRouter } from "../AdminRouter.tsx";
 
@@ -64,7 +66,7 @@ describe("AdminRouter", () => {
       .map((page) => ({ path: page.options.path, name: page.name }));
   };
 
-  it("mounts the shell and its twelve pages", async () => {
+  it("mounts the shell and its thirteen pages", async () => {
     const pages = await mount();
 
     expect(pages).toEqual(
@@ -76,6 +78,7 @@ describe("AdminRouter", () => {
         { path: "/sessions", name: "sessions" },
         { path: "/keys", name: "keys" },
         { path: "/jobs", name: "jobs" },
+        { path: "/jobs/:jobName", name: "jobDetail" },
         { path: "/notifications", name: "notifications" },
         { path: "/audits", name: "audits" },
         { path: "/files", name: "files" },
@@ -97,6 +100,7 @@ describe("AdminRouter", () => {
       [router.sessions, ["admin:session:read"]],
       [router.keys, ["admin:api-key:read"]],
       [router.jobs, ["admin:job:read"]],
+      [router.jobDetail, ["admin:job:read"]],
       [router.notifications, ["admin:notification:read"]],
       [router.audits, ["admin:audit:read"]],
       [router.files, ["admin:file:read"]],
@@ -186,6 +190,7 @@ describe("AdminRouter", () => {
       router.sessions,
       router.keys,
       router.jobs,
+      router.jobDetail,
       router.notifications,
       router.audits,
       router.files,
@@ -287,5 +292,89 @@ describe("AdminRouter", () => {
     // rather than a locked door. Listed here so the exemption reads as a
     // decision rather than an omission.
     expect(router.dashboard.options.can).toBeUndefined();
+  });
+
+  /**
+   * The owner's brief: the Jobs tab reads "Admin - Jobs", and so does every
+   * admin page, so it cannot be mistaken for an application page of the same
+   * name. The account pages share `$pageNav` and must not pick it up.
+   */
+  it("titles every admin page 'Admin - <Page>' and no account page", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const admin = alepha.inject(AdminRouter);
+    const account = alepha.inject(AccountRouter);
+    await alepha.start();
+
+    const titleOf = (page: PagePrimitive) =>
+      (page.options.head as { title?: string } | undefined)?.title;
+
+    const adminPages = alepha
+      .primitives($page)
+      .filter((page) => page.options.parent === admin.layout);
+    expect(adminPages).toHaveLength(13);
+    for (const page of adminPages) {
+      expect(titleOf(page)).toMatch(/^Admin - \S/);
+    }
+    expect(titleOf(admin.jobs)).toBe("Admin - Jobs");
+    expect(titleOf(admin.jobDetail)).toBe("Admin - Job");
+
+    const accountPages = alepha
+      .primitives($page)
+      .filter(
+        (page) =>
+          page.options.parent !== undefined &&
+          page.options.parent !== admin.layout &&
+          titleOf(page) !== undefined,
+      );
+    expect(accountPages.length).toBeGreaterThan(0);
+    expect(account).toBeDefined();
+    for (const page of accountPages) {
+      expect(titleOf(page)).not.toMatch(/^Admin - /);
+    }
+  });
+
+  it("prefixes a $pageAdmin title and keeps its label unprefixed", async () => {
+    class AppAdmin {
+      product = $pageAdmin({
+        path: "/products/:productId",
+        head: { title: "Product" },
+        component: () => "product",
+      });
+
+      labelled = $pageAdmin({
+        path: "/orders",
+        head: { title: "Orders" },
+        nav: { label: "Orders", order: 100 },
+        component: () => "orders",
+      });
+
+      dynamic = $pageAdmin({
+        path: "/reports/:reportId",
+        head: (props: { name?: string }) => ({
+          title: `Report ${props.name ?? ""}`.trim(),
+        }),
+        component: () => "report",
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const app = alepha.inject(AppAdmin);
+    await alepha.start();
+
+    // No nav label and no label: the unprefixed title becomes the label the
+    // sidebar and the breadcrumb fall back to.
+    expect(app.product.options.head).toEqual({ title: "Admin - Product" });
+    expect(app.product.options.label).toBe("Product");
+
+    // A nav label already names it: nothing is invented.
+    expect(app.labelled.options.head).toEqual({ title: "Admin - Orders" });
+    expect(app.labelled.options.label).toBeUndefined();
+
+    // A function head is wrapped, and has no static title to label with.
+    const head = app.dynamic.options.head as (props: { name?: string }) => {
+      title?: string;
+    };
+    expect(head({ name: "Q3" }).title).toBe("Admin - Report Q3");
+    expect(app.dynamic.options.label).toBeUndefined();
   });
 });
