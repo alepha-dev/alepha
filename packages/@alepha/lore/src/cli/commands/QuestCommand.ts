@@ -15,13 +15,15 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore quest list | get | create | update | complete`.
+ * `lore quest list | get | create | update | accept | objective set | complete`.
  *
  * ```bash
  * lore quest list -p alepha --status in_progress --tag bug
  * lore quest get Q12 -p alepha
  * lore quest create -p alepha --title "Fix it" --area alepha/orm --priority high --description @plan.md
- * lore quest complete Q12 -p alepha --message @-
+ * lore quest accept Q12 -p alepha
+ * lore quest objective set Q12 --objective 0 -p alepha
+ * lore quest complete Q12 -p alepha --message @- --commit 1a2b3c4 --waive 1="manual step"
  * ```
  *
  * Every command is one to four EXISTING actions called over `$client`, and no
@@ -481,12 +483,28 @@ export class QuestCommand {
             "What was done, in Markdown: kept on the quest for the next reader.",
         })
         .optional(),
+      waive: z
+        .array(z.text({ size: "long" }))
+        .describe(
+          "Close an objective that was NOT done, as <id>=<reason>. A waiver records work not done: an objective that was done is ticked with lore quest objective set, never waived.",
+        )
+        .optional(),
+      commit: z
+        .array(z.text())
+        .describe(
+          "A commit that shipped the quest, by its sha (7 to 40 hex characters).",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const shortId = this.refs.quest(args);
+        // Both read before any call, so a typo is a usage error rather than
+        // a 400 after the quest was looked up.
+        const waive = (flags.waive ?? []).map((value) => this.waiver(value));
+        const commits = (flags.commit ?? []).map((sha) => this.commitSha(sha));
         const { projectId } = await this.projects.named(flags.project, context);
 
         const quest = await this.questApi.getQuestByShortId({
@@ -494,7 +512,11 @@ export class QuestCommand {
         });
         const completed = await this.questApi.completeQuest({
           params: { id: quest.id },
-          body: { message: flags.message },
+          body: {
+            message: flags.message,
+            ...(waive.length ? { waive } : {}),
+            ...(commits.length ? { commits } : {}),
+          },
         });
 
         this.printWrite(
@@ -507,6 +529,122 @@ export class QuestCommand {
     },
   });
 
+  public readonly accept = $command({
+    name: "accept",
+    description:
+      "Accept a quest, to start working on it: it is assigned to you",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.quest(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const quest = await this.questApi.getQuestByShortId({
+          params: { projectId, shortId },
+        });
+        // No special case for a quest already in progress, or an epic that
+        // is a draft: the server says why, in its own words, and the command
+        // does not guess who accepted it.
+        const accepted = await this.questApi.acceptQuest({
+          params: { id: quest.id },
+        });
+
+        this.printWrite(
+          print,
+          flags.output,
+          accepted,
+          `Accepted Q${quest.shortId} ${quest.title}`,
+        );
+      });
+    },
+  });
+
+  public readonly objectiveSet = $command({
+    name: "set",
+    description:
+      "Tick an objective of a quest in progress, or untick it with --no-completed",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      objective: z
+        .integer()
+        .min(0)
+        .describe(
+          "The objective's id, the number lore quest get prints beside it.",
+        ),
+      completed: z
+        .boolean()
+        .describe(
+          "The state to leave it in: ticked by default, --no-completed to untick. A state it already has changes nothing and exits 0. The quest is read, then the objective flipped only if it differs; a write landing between the two is not detected.",
+        )
+        .default(true),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.quest(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const quest = await this.questApi.getQuestByShortId({
+          params: { projectId, shortId },
+        });
+        const target = quest.objectives.find(
+          (objective) => objective.id === flags.objective,
+        );
+        if (!target) {
+          const ids = quest.objectives.map(
+            (objective) => `${objective.id} (${objective.title})`,
+          );
+          throw new UsageError(
+            `Q${quest.shortId} has no objective ${flags.objective}. ${ids.length ? `Its objectives: ${ids.join(", ")}.` : "It has no objectives."}`,
+          );
+        }
+
+        const word = flags.completed ? "ticked" : "unticked";
+        // ⚠️ `completeObjective` FLIPS; it does not set. Calling it on a state
+        // that already matches would undo the very tick a retry is repeating.
+        if (target.completed === flags.completed) {
+          this.printWrite(
+            print,
+            flags.output,
+            quest,
+            `Objective ${target.id} of Q${quest.shortId} is already ${word}: ${target.title}`,
+          );
+          return;
+        }
+
+        const updated = await this.questApi.completeObjective({
+          params: { id: quest.id },
+          body: { objectiveId: target.id },
+        });
+
+        this.printWrite(
+          print,
+          flags.output,
+          updated,
+          `${flags.completed ? "Ticked" : "Unticked"} objective ${target.id} of Q${quest.shortId}: ${target.title}`,
+        );
+      });
+    },
+  });
+
+  /**
+   * `lore quest objective set`, named by the rule the help teaches:
+   * `quest_objective_set` is `lore quest objective set`. Declared after its
+   * child, like every parent here.
+   */
+  public readonly objective = $command({
+    name: "objective",
+    description: "A quest's objectives: tick or untick one",
+    children: [this.objectiveSet],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
    * `findLast`, so a second class declaring `quest` would shadow this one
@@ -515,12 +653,47 @@ export class QuestCommand {
   public readonly quest = $command({
     name: "quest",
     description:
-      "A project's quests: list, read, create, update and complete them",
-    children: [this.list, this.get, this.create, this.update, this.complete],
+      "A project's quests: list, read, create, update, accept, tick and complete them",
+    children: [
+      this.list,
+      this.get,
+      this.create,
+      this.update,
+      this.accept,
+      this.objective,
+      this.complete,
+    ],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  /**
+   * `--waive <id>=<reason>`, as `completeQuest` takes it.
+   */
+  protected waiver(value: string): { objectiveId: number; reason: string } {
+    const match = /^(\d+)=(.*)$/s.exec(value);
+    const reason = match?.[2].trim() ?? "";
+    if (!match || !reason) {
+      throw new UsageError(
+        `--waive takes <id>=<reason>, an objective id and why it was not done; got '${value}'.`,
+      );
+    }
+    return { objectiveId: Number(match[1]), reason };
+  }
+
+  /**
+   * `--commit <sha>`, validated by the action's own rule, so a typo is a
+   * usage error rather than a 400.
+   */
+  protected commitSha(sha: string): { sha: string } {
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) {
+      throw new UsageError(
+        `--commit takes a sha of 7 to 40 hex characters; got '${sha}'.`,
+      );
+    }
+    return { sha };
+  }
 
   /**
    * A write, in the format asked for: the subject's response as JSON, or one
