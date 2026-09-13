@@ -27,6 +27,7 @@ export interface LoreRefusalContext {
  * | App-scope permission missing | `ForbiddenError` from the registry | 4 |
  * | Project rank missing | `HttpError` 403 from the call | 4 |
  * | Unreachable remote | `AlephaError` from the registry fetch | 1 |
+ * | Any other refusal with a sentence | `HttpError` 4xx from the call | 1 |
  *
  * ## ⚠️ Why every one of them needs translating
  *
@@ -131,6 +132,18 @@ export class LoreRefusals {
           ? `Project ${context.project}: ${error.message}`
           : error.message,
         { cause: error, exitCode: LoreRefusals.EXIT_FORBIDDEN },
+      );
+    }
+
+    if (HttpError.is(error) && error.status >= 400 && error.status < 500) {
+      // Everything else the server refused with a sentence of its own: a
+      // quest that does not exist, an objective still open, a frozen epic.
+      // Exit 1, and the sentence as the server wrote it.
+      return new CommandError(
+        context.project
+          ? `Project ${context.project}: ${error.message}`
+          : error.message,
+        { cause: error, exitCode: LoreRefusals.EXIT_FAILURE },
       );
     }
 
