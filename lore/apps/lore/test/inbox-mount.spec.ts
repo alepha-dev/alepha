@@ -42,14 +42,21 @@ const walk = (dir: string): string[] => {
   return out;
 };
 
-const filesMentioning = (root: string, needle: string): string[] =>
-  walk(root).filter((path) => readFileSync(path, "utf8").includes(needle));
+const filesMentioning = (root: string, needle: string | RegExp): string[] =>
+  walk(root).filter((path) => {
+    const source = readFileSync(path, "utf8");
+    return typeof needle === "string"
+      ? source.includes(needle)
+      : needle.test(source);
+  });
 
 describe("where the inbox bell is mounted", () => {
   it("is imported by exactly one Lore component", ({ expect }) => {
+    // The bell is one name in a module every shell imports, so the needle is
+    // the name inside an import of `@alepha/ui/shell`, not the specifier.
     const importers = filesMentioning(
       SRC,
-      'from "@alepha/ui/components/button-inbox/button-inbox"',
+      /import\s*\{[^}]*\bButtonInbox\b[^}]*\}\s*from\s*"@alepha\/ui\/shell"/,
     ).map((path) => path.slice(SRC.length + 1));
 
     expect(importers).toEqual([
@@ -72,12 +79,9 @@ describe("where the inbox bell is mounted", () => {
    * inside `AppActions` would appear on the account and admin shells too.
    */
   it("is not part of the AppActions cluster", ({ expect }) => {
-    const cluster = readFileSync(
-      join(UI, "components", "app-actions", "app-actions.tsx"),
-      "utf8",
-    );
+    const cluster = readFileSync(join(UI, "shell", "AppActions.tsx"), "utf8");
 
     expect(cluster).not.toContain("ButtonInbox");
-    expect(cluster).not.toContain("button-inbox");
+    expect(cluster).not.toContain("ButtonInbox.tsx");
   });
 });

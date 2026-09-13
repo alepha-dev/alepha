@@ -1,5 +1,4 @@
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { cn } from "@alepha/ui/lib/utils";
+import { TimeAgo, cn } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,

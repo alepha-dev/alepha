@@ -1,11 +1,5 @@
-import {
-  DetailLayout,
-  type DetailTab,
-} from "@alepha/ui/components/detail/detail-layout";
-import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useDialog, useToast } from "@alepha/ui";
+import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";

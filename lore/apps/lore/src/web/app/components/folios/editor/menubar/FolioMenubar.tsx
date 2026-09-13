@@ -1,5 +1,5 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Menubar,
   MenubarContent,
   MenubarItem,
@@ -10,7 +10,7 @@ import {
   MenubarSeparator,
   MenubarShortcut,
   MenubarTrigger,
-} from "@alepha/ui/components/ui/menubar";
+} from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";

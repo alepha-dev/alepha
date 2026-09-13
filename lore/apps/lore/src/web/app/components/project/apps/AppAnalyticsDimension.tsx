@@ -1,5 +1,5 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
+import { AlephaTable } from "@alepha/ui/table";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";

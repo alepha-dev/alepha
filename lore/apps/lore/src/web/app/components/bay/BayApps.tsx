@@ -1,6 +1,5 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { formatBytes } from "@alepha/ui/lib/utils";
+import { Badge, formatBytes } from "@alepha/ui";
+import { AlephaTable } from "@alepha/ui/table";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 

@@ -3,13 +3,11 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@alepha/ui/components/ui/tabs";
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { useState } from "react";

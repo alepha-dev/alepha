@@ -1042,7 +1042,7 @@ body::before {
  *
  * Syntax highlighting was never the problem - `rehype-highlight` emits
  * `hljs-keyword` / `hljs-string` / `hljs-comment` spans and the `--hljs-*`
- * GitHub palette in `markdown-view.css` colours them. What differed was
+ * GitHub palette in `MarkdownView.css` colours them. What differed was
  * the BLOCK around them.
  *
  * `MarkdownView` draws a fence as `bg-transparent` inside a border, at a

@@ -1,10 +1,10 @@
-import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  BrandIcon,
+  Button,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
+} from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { GitBranch } from "lucide-react";

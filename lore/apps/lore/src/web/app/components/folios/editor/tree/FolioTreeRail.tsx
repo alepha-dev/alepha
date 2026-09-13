@@ -1,4 +1,4 @@
-import { PaneRail } from "@alepha/ui/components/pane-rail/pane-rail";
+import { PaneRail } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 

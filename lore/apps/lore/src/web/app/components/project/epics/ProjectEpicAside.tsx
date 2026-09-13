@@ -1,9 +1,5 @@
-import {
-  DetailAside,
-  type DetailAsideRow,
-} from "@alepha/ui/components/detail/detail-aside";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Progress } from "@alepha/ui/components/ui/progress";
+import { Badge, Progress } from "@alepha/ui";
+import { DetailAside, type DetailAsideRow } from "@alepha/ui/shell";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

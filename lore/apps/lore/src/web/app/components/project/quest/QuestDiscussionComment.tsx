@@ -1,5 +1,4 @@
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Badge } from "@alepha/ui/components/ui/badge";
+import { TimeAgo, Badge } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare } from "lucide-react";

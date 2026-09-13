@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
+import { Button, Input } from "@alepha/ui";
 import { ListChecks, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
