@@ -32,7 +32,7 @@ import {
  * its cap.
  *
  * ⚠️ **It used to be lost.** `DeployService.run` threw when no slot was free,
- * `lore.deploy.run` has no retry, so the execution went terminal on the throw
+ * `deploys.run` has no retry, so the execution went terminal on the throw
  * and the row sat `queued` until the sweep failed it fifteen minutes later with
  * a message claiming it had stopped reporting - about a deploy that never
  * started. Only reachable once `4b91bed72` gave each queued job its own
@@ -299,7 +299,7 @@ describe("a deploy that finds no free slot", () => {
   const executionOf = async (deploymentId: string) =>
     (
       await rows().executions.findMany({
-        where: { jobName: { eq: "lore.deploy.run" } },
+        where: { jobName: { eq: "deploys.run" } },
       })
     ).find((it) => it.payload?.deploymentId === deploymentId);
 

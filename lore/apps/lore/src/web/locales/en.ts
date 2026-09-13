@@ -856,6 +856,25 @@ export default {
   "release.default.confirm.description":
     "Finished quests that name no release will land in $1, and an epic begun without one will ship in it. Everything can still be filed by hand. Publishing $1 hands the default on to the next open release, the next minor or else the next major, and clears it if there is none.",
   "release.default.cleared": "$1 is no longer the default release",
+  "release.bump.create": "Create $1",
+  "release.bump.group": "Create release",
+  "release.delete.action": "Delete",
+  "release.delete.title": "Delete release $1?",
+  "release.delete.detached":
+    "This cannot be undone. Its epics and quests stay, detached from it.",
+  "release.delete.published":
+    "It is published: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
+  "release.delete.default":
+    "It is the default release: the project is left with none until another is set.",
+  "release.delete.done": "$1 deleted.",
+  "release.bulk.delete.title": "Delete $1 releases?",
+  "release.bulk.delete.confirm": "Delete $1 releases",
+  "release.bulk.delete.detached":
+    "This cannot be undone. Their epics and quests stay, detached from them.",
+  "release.bulk.delete.published":
+    "The selection includes a published release: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
+  "release.bulk.delete.default":
+    "The selection includes the default release: the project is left with none until another is set.",
   "quest.complete.landedIn": "Completed in $1",
   "release.publish.title": "Publish this release?",
   "release.publish.description":

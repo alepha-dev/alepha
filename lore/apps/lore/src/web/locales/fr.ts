@@ -828,6 +828,25 @@ export default {
   "release.default.confirm.description":
     "Les quêtes terminées qui ne nomment aucune version iront dans $1, et une épopée commencée sans version sera livrée dedans. Tout reste rattachable à la main, et publier $1 retire ce statut.",
   "release.default.cleared": "$1 n'est plus la version par défaut",
+  "release.bump.create": "Créer $1",
+  "release.bump.group": "Créer une version",
+  "release.delete.action": "Supprimer",
+  "release.delete.title": "Supprimer la version $1 ?",
+  "release.delete.detached":
+    "Cette action est irréversible. Ses épopées et ses quêtes sont conservées, détachées de celle-ci.",
+  "release.delete.published":
+    "Elle est publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
+  "release.delete.default":
+    "C'est la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
+  "release.delete.done": "$1 supprimée.",
+  "release.bulk.delete.title": "Supprimer $1 versions ?",
+  "release.bulk.delete.confirm": "Supprimer $1 versions",
+  "release.bulk.delete.detached":
+    "Cette action est irréversible. Leurs épopées et leurs quêtes sont conservées, détachées de celles-ci.",
+  "release.bulk.delete.published":
+    "La sélection contient une version publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
+  "release.bulk.delete.default":
+    "La sélection contient la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
   "quest.complete.landedIn": "Terminée dans $1",
   "release.publish.title": "Publier cette version ?",
   "release.publish.description":

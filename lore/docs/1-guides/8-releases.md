@@ -31,6 +31,44 @@ shipped. Nothing can be attached to a published release or detached from one.
 mistake. It clears everything publishing froze, and the release goes back to
 being computed from what it contains.
 
+## Creating the next version
+
+A row in the Releases table can offer to create the version that follows it,
+labelled with the tag it would create: "Create 0.31.0", never "Create minor".
+The entry opens the create dialog holding that tag, and nothing exists until
+you confirm it there.
+
+A row offers a version only when it is the **frontier** of that line, the
+highest release in it:
+
+- the next **major** from the highest release in the project;
+- the next **minor** from the highest release within its major;
+- the next **patch** from the highest release within its `major.minor`, and
+  only once that release is published: a patch of something that has not
+  shipped means nothing.
+
+Whether a release is open or published decides nothing else. With `0.28.0` and
+`0.29.0` published, and `0.30.0` and `1.0.0` open, the rows offer:
+
+| Row      | Offers           |
+| -------- | ---------------- |
+| `0.28.0` | `0.28.1`         |
+| `0.29.0` | `0.29.1`         |
+| `0.30.0` | `0.31.0`         |
+| `1.0.0`  | `1.1.0`, `2.0.0` |
+
+Publishing `0.30.0` adds `0.30.1` to its row and leaves `0.31.0` where it is: a
+far-future release planned early never stops the current line from moving.
+
+The new tag keeps the row's `v` (`v1.0.0` offers `v1.1.0`), and a short tag is
+completed to three numbers (`1.0` offers `1.1.0`).
+
+**A tag that is not a version offers nothing, and blocks nothing.** `demo-1`
+gets no entry, and it does not take the next major away from `1.0.0`, even
+though the table sorts it after every version. That is deliberate, not an
+oversight. A tag of four numbers or more, such as `2026.9.13.1`, is left out the
+same way, since the next version would have to drop one of them.
+
 ## What is in a release
 
 Two things can be attached to one: **epics** and **quests**.
@@ -120,10 +158,26 @@ with no default keeps none.
 Reopening does **not** restore it. Reopening says the record was wrong, not
 that intake should resume there.
 
+## Deleting a release
+
+A release can be deleted from its row's menu, or several at once from a
+selection in the table. Nothing refuses a delete, published releases and the
+default included, so it is worth knowing what one costs:
+
+- **The epics and quests in it are detached, not deleted.** They stay in the
+  project, and afterwards name no release.
+- **A published release takes its record with it.** Its changelog and the
+  progress counts frozen when it was published exist nowhere else, and cannot
+  be rebuilt once the release is gone.
+- **Deleting the default leaves the project with none.** Unlike publishing, a
+  delete hands the default to nobody: finished quests that name no release land
+  nowhere until somebody sets a new default.
+
 ## Over MCP
 
 `release_list` and `release_get` report `defaultSince` on the release that
 carries it, and `project_context` marks it in `openReleases`.
 `release_set_default` moves it, naming the release by its tag; **omitting the
 tag clears it**. `quest_complete`'s result carries `release` when, and only
-when, the default caught that quest.
+when, the default caught that quest. `release_delete` deletes a release by its
+tag, at the same cost as the table's Delete.
