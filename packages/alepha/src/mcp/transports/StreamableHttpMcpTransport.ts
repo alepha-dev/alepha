@@ -232,12 +232,24 @@ export class StreamableHttpMcpTransport {
           // isolate reset it — so a client that negotiated correctly started
           // getting 400s on its next request.
           if (headerVersion && !isSupportedProtocolVersion(headerVersion)) {
-            this.log.warn("MCP-Protocol-Version header not supported", {
+            // INFO, not WARN: nothing is wrong. A dual-era client (claude.ai)
+            // probes with a modern version on every connection and falls back
+            // on this answer, so at WARN it was the second most frequent line
+            // on Lore and buried the real warnings. INFO still reaches
+            // production, where the shape below is the only record of what a
+            // modern client actually sends.
+            this.log.info("MCP-Protocol-Version header not supported", {
               header: headerVersion,
               supported: SUPPORTED_PROTOCOL_VERSIONS,
+              ...this.describeRequestShape(rpcRequest, headers),
             });
             request.reply.status = 400;
             request.reply.headers["content-type"] = "application/json";
+            // ⚠️ Load-bearing: this body must NOT be a JSON-RPC error. Per the
+            // 2026-07-28 Streamable HTTP backward-compatibility rule, a client
+            // falls back to `initialize` only when a 400's body is not a
+            // recognized modern JSON-RPC error. A `-32022` here would tell
+            // claude.ai this server is modern, and it would stop falling back.
             request.reply.body = JSON.stringify({
               error: `MCP-Protocol-Version not supported: got ${headerVersion}, expected one of ${SUPPORTED_PROTOCOL_VERSIONS.join(", ")}`,
             });
@@ -281,6 +293,50 @@ export class StreamableHttpMcpTransport {
       }
     },
   });
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Diagnostics
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The protocol-level shape of a request, safe to log in production.
+   *
+   * The routing headers and the `_meta` a client attaches: the JSON-RPC
+   * method, `Mcp-Method` and `Mcp-Name`, which `_meta` keys are present, and
+   * the values of the two that identify the client (`protocolVersion`,
+   * `clientInfo`). Never `params.arguments`, and never any other `_meta`
+   * value: this runs on whatever method arrives, and a `tools/call` carries
+   * user data in both places.
+   */
+  protected describeRequestShape(
+    rpcRequest: JsonRpcRequest,
+    headers: Record<string, string | string[] | undefined>,
+  ): Record<string, unknown> {
+    const raw = rpcRequest.params?._meta;
+    const meta =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : undefined;
+    return {
+      method: rpcRequest.method,
+      mcpMethod: this.firstHeader(headers, "mcp-method"),
+      mcpName: this.firstHeader(headers, "mcp-name"),
+      metaKeys: meta ? Object.keys(meta) : undefined,
+      metaProtocolVersion: meta?.["io.modelcontextprotocol/protocolVersion"],
+      metaClientInfo: meta?.["io.modelcontextprotocol/clientInfo"],
+    };
+  }
+
+  /**
+   * One header's value, the first when it was sent several times.
+   */
+  protected firstHeader(
+    headers: Record<string, string | string[] | undefined>,
+    name: string,
+  ): string | undefined {
+    const raw = headers[name];
+    return Array.isArray(raw) ? raw[0] : raw;
+  }
 
   // -------------------------------------------------------------------------------------------------------------
   // SSE response streaming

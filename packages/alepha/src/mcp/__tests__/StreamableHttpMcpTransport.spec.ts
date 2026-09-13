@@ -1,4 +1,8 @@
 import { Alepha, z } from "alepha";
+import {
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
 import { ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
@@ -187,6 +191,161 @@ describe("StreamableHttpMcpTransport — spec compliance", () => {
     });
 
     expect(res.status).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * claude.ai opens every connection with a 2026-07-28 `server/discover` probe.
+ * This server does not speak that revision yet, and the answer it gives is
+ * what makes claude.ai fall back to `initialize` on 2025-11-25.
+ *
+ * The 2026-07-28 Streamable HTTP backward-compatibility rule: on a 400, a
+ * client falls back only when the body is NOT a recognized modern JSON-RPC
+ * error. A spec-looking `-32022` would tell it the server is modern, it would
+ * stop falling back, and its MCP would break. So the body is pinned here as
+ * not being a JSON-RPC error at all (epic #E57, until the modern path is on).
+ */
+describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", () => {
+  const probeHeaders = {
+    "content-type": "application/json",
+    accept: "application/json, text/event-stream",
+    "mcp-method": "server/discover",
+    "mcp-protocol-version": "2026-07-28",
+  };
+
+  const probeBody = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 0,
+    method: "server/discover",
+    params: {
+      _meta: {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {
+          name: "claude-ai",
+          version: "0.1.0",
+        },
+        "io.modelcontextprotocol/clientCapabilities": {},
+      },
+    },
+  });
+
+  const start = async () => {
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "info", SERVER_PORT: 0 },
+    })
+      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
+      .with(AlephaMcp)
+      .with(StreamableHttpMcpTransport)
+      .with(PingTool);
+    await alepha.start();
+    return {
+      alepha,
+      url: `${alepha.inject(ServerProvider).hostname}/mcp`,
+      logs: alepha.inject(MemoryDestinationProvider),
+    };
+  };
+
+  it("answers the probe with HTTP 400", async () => {
+    const { alepha, url } = await start();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: probeHeaders,
+      body: probeBody,
+    });
+
+    expect(res.status).toBe(400);
+    await alepha.stop();
+  });
+
+  it("answers with a body that is not a JSON-RPC error, so the client falls back", async () => {
+    const { alepha, url } = await start();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: probeHeaders,
+      body: probeBody,
+    });
+    const body = (await res.json()) as Record<string, unknown>;
+
+    // A modern client reads `jsonrpc` + `error.code` as "this server is
+    // modern" and retries instead of falling back to `initialize`.
+    expect(body.jsonrpc).toBeUndefined();
+    expect(typeof body.error).toBe("string");
+    expect((body.error as any)?.code).toBeUndefined();
+    await alepha.stop();
+  });
+
+  it("logs the rejection at INFO with the probe's shape, not at WARN", async () => {
+    const { alepha, url, logs } = await start();
+
+    await fetch(url, {
+      method: "POST",
+      headers: probeHeaders,
+      body: probeBody,
+    });
+
+    const message = "MCP-Protocol-Version header not supported";
+    expect(logs.wasLogged(message, "WARN")).toBe(false);
+    const entry = logs.logs.find((it) => it.message === message);
+    expect(entry?.level).toBe("INFO");
+    expect(entry?.data).toMatchObject({
+      header: "2026-07-28",
+      method: "server/discover",
+      mcpMethod: "server/discover",
+      metaKeys: [
+        "io.modelcontextprotocol/protocolVersion",
+        "io.modelcontextprotocol/clientInfo",
+        "io.modelcontextprotocol/clientCapabilities",
+      ],
+      metaProtocolVersion: "2026-07-28",
+      metaClientInfo: { name: "claude-ai", version: "0.1.0" },
+    });
+    await alepha.stop();
+  });
+
+  it("never logs a rejected request's arguments", async () => {
+    const { alepha, url, logs } = await start();
+
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        ...probeHeaders,
+        "mcp-method": "tools/call",
+        "mcp-name": "ping",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "ping",
+          arguments: { secret: "hunter2" },
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "com.example/session": "private-value",
+          },
+        },
+      }),
+    });
+
+    const entry = logs.logs.find(
+      (it) => it.message === "MCP-Protocol-Version header not supported",
+    );
+    expect(entry?.data).toMatchObject({
+      method: "tools/call",
+      mcpName: "ping",
+      metaKeys: [
+        "io.modelcontextprotocol/protocolVersion",
+        "com.example/session",
+      ],
+    });
+    const serialized = JSON.stringify(logs.logs.map((it) => it.data));
+    expect(serialized).not.toContain("hunter2");
+    expect(serialized).not.toContain("private-value");
+    await alepha.stop();
   });
 });
 
