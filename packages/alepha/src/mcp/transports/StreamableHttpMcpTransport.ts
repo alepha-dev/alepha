@@ -3,10 +3,15 @@ import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 
 import {
+  McpHeaderMismatchError,
+  McpMethodNotFoundError,
+} from "../errors/McpError.ts";
+import {
   createErrorResponse,
   createInternalError,
   createNotification,
   createParseError,
+  JsonRpcErrorCodes,
   JsonRpcParseError,
   McpProtocolErrorCodes,
   parseMessage,
@@ -132,14 +137,19 @@ export class StreamableHttpMcpTransport {
   notAllowed = $route({
     method: "GET",
     path: this.options.path,
-    handler: (request) => {
-      request.reply.status = 405;
-      request.reply.headers.allow = "POST";
-      request.reply.headers["content-type"] = "application/json";
-      request.reply.body = JSON.stringify({
-        error: "Method Not Allowed. Use POST for MCP messages.",
-      });
-    },
+    handler: (request) => this.replyNotAllowed(request),
+  });
+
+  /**
+   * DELETE is how a 2025-03-26..2025-11-25 client ends a session. This server
+   * never mints one, and 2026-07-28 says a GET or DELETE on the endpoint
+   * SHOULD get 405, so it gets the same answer as GET instead of a 404 that
+   * reads like a missing endpoint.
+   */
+  notAllowedDelete = $route({
+    method: "DELETE",
+    path: this.options.path,
+    handler: (request) => this.replyNotAllowed(request),
   });
 
   /**
@@ -271,9 +281,16 @@ export class StreamableHttpMcpTransport {
 
         // Modern: a request that cannot be served at all is answered before
         // anything is routed, and before a response stream could open and
-        // commit the status to 200.
+        // commit the status to 200. In the spec's order: headers that
+        // disagree with the body (-32020), then a version this server does
+        // not serve (-32022), then a method it does not implement (-32601).
         if (modern && rpcRequest.id !== undefined) {
-          const rejection = this.mcpServer.checkModernRequest(modern);
+          const rejection =
+            this.validateModernHeaders(rpcRequest, headers) ??
+            this.mcpServer.checkModernRequest(modern) ??
+            (this.mcpServer.handlesMethod(rpcRequest.method, true)
+              ? undefined
+              : new McpMethodNotFoundError(rpcRequest.method));
           if (rejection) {
             this.log.info("MCP modern request rejected", {
               code: rejection.code,
@@ -360,10 +377,153 @@ export class StreamableHttpMcpTransport {
       return 200;
     }
     switch (response.error.code) {
+      case McpProtocolErrorCodes.HEADER_MISMATCH:
       case McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION:
         return 400;
+      case JsonRpcErrorCodes.METHOD_NOT_FOUND:
+        // Distinguishes "this modern endpoint has no such method" from a 404
+        // by a legacy HTTP+SSE server that does not host the endpoint at all:
+        // the JSON-RPC body is what tells a client which one it hit.
+        return 404;
       default:
         return 200;
+    }
+  }
+
+  /**
+   * 405 for a method the endpoint does not accept.
+   */
+  protected replyNotAllowed(request: any): void {
+    request.reply.status = 405;
+    request.reply.headers.allow = "POST";
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify({
+      error: "Method Not Allowed. Use POST for MCP messages.",
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Request metadata headers (2026-07-28)
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Check a modern request's mirrored headers against its body, strictly
+   * (spec 2026-07-28, Streamable HTTP "Server Validation").
+   *
+   * - `MCP-Protocol-Version` is required and must equal `_meta`'s
+   *   `io.modelcontextprotocol/protocolVersion`.
+   * - `Mcp-Method` is required and must equal `method`.
+   * - `Mcp-Name` is required on `tools/call` and `prompts/get` (equal to
+   *   `params.name`) and on `resources/read` (equal to `params.uri`), after
+   *   decoding a `=?base64?...?=` value.
+   *
+   * Header names are case-insensitive (the runtime lower-cases them), values
+   * case-sensitive. Never applied to a legacy request, whatever `Mcp-*`
+   * headers it carries.
+   *
+   * Strict rather than lenient on a missing header on purpose: leniency is
+   * invisible once shipped, and a request that routes one way on its headers
+   * and executes another way on its body is exactly what this check exists to
+   * refuse.
+   */
+  protected validateModernHeaders(
+    rpcRequest: JsonRpcRequest,
+    headers: Record<string, string | string[] | undefined>,
+  ): McpHeaderMismatchError | undefined {
+    const version = this.firstHeader(headers, "mcp-protocol-version");
+    if (version === undefined) {
+      return new McpHeaderMismatchError(
+        "missing required MCP-Protocol-Version header",
+      );
+    }
+    const meta = rpcRequest.params?._meta as
+      | Record<string, unknown>
+      | undefined;
+    const bodyVersion = meta?.["io.modelcontextprotocol/protocolVersion"];
+    if (version !== bodyVersion) {
+      return new McpHeaderMismatchError(
+        `MCP-Protocol-Version header value '${version}' does not match body value '${String(bodyVersion)}'`,
+      );
+    }
+
+    const method = this.firstHeader(headers, "mcp-method");
+    if (method === undefined) {
+      return new McpHeaderMismatchError("missing required Mcp-Method header");
+    }
+    if (method !== rpcRequest.method) {
+      return new McpHeaderMismatchError(
+        `Mcp-Method header value '${method}' does not match body value '${rpcRequest.method}'`,
+      );
+    }
+
+    const nameField = this.mcpNameField(rpcRequest.method);
+    if (nameField === undefined) {
+      return undefined;
+    }
+    const raw = this.firstHeader(headers, "mcp-name");
+    if (raw === undefined) {
+      return new McpHeaderMismatchError(
+        `missing required Mcp-Name header for ${rpcRequest.method}`,
+      );
+    }
+    const name = this.decodeHeaderValue(raw);
+    if (name === undefined) {
+      return new McpHeaderMismatchError("malformed Mcp-Name header value");
+    }
+    const bodyName = rpcRequest.params?.[nameField];
+    if (name !== bodyName) {
+      return new McpHeaderMismatchError(
+        `Mcp-Name header value '${name}' does not match body value '${String(bodyName)}'`,
+      );
+    }
+    return undefined;
+  }
+
+  /**
+   * The body field `Mcp-Name` mirrors for a method, when it requires one.
+   */
+  protected mcpNameField(method: string): "name" | "uri" | undefined {
+    switch (method) {
+      case "tools/call":
+      case "prompts/get":
+        return "name";
+      case "resources/read":
+        return "uri";
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * A mirrored header value as the body holds it: a `=?base64?...?=` sentinel
+   * is decoded (Base64 of UTF-8, case-sensitive markers), anything else is
+   * taken as is. `undefined` when the value is not a valid header value or
+   * the sentinel does not decode.
+   */
+  protected decodeHeaderValue(value: string): string | undefined {
+    // Visible ASCII, space and tab only (RFC 9110). Anything else should
+    // have been sent as a sentinel.
+    if (!/^[\t\x20-\x7e]*$/.test(value)) {
+      return undefined;
+    }
+    const prefix = "=?base64?";
+    const suffix = "?=";
+    if (
+      value.length < prefix.length + suffix.length ||
+      !value.startsWith(prefix) ||
+      !value.endsWith(suffix)
+    ) {
+      return value;
+    }
+    const encoded = value.slice(prefix.length, -suffix.length);
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+      return undefined;
+    }
+    try {
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      return undefined;
     }
   }
 

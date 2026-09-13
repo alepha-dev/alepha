@@ -14,6 +14,7 @@ export {
   McpError,
   McpErrorCodes,
   McpForbiddenError,
+  McpHeaderMismatchError,
   McpInvalidParamsError,
   McpMethodNotFoundError,
   McpPromptNotFoundError,

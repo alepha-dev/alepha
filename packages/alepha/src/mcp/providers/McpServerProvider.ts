@@ -410,6 +410,37 @@ export class McpServerProvider {
   }
 
   /**
+   * Whether this server implements a request method in the given era.
+   *
+   * 2026-07-28 removed `ping` (and `initialize`, which is legacy by
+   * definition) and added `server/discover`; everything else is shared. A
+   * modern request for a method outside this answers `-32601`, which the HTTP
+   * transport sends as 404 and decides before a response stream opens.
+   *
+   * A subclass that adds a method to {@link handleRequest} adds it here too.
+   */
+  public handlesMethod(method: string, modern: boolean): boolean {
+    switch (method) {
+      case "tools/list":
+      case "tools/call":
+      case "resources/list":
+      case "resources/templates/list":
+      case "resources/read":
+      case "prompts/list":
+      case "prompts/get":
+      case "completion/complete":
+        return true;
+      case "server/discover":
+        return modern;
+      case "initialize":
+      case "ping":
+        return !modern;
+      default:
+        return false;
+    }
+  }
+
+  /**
    * A request's `params._meta`, when it is an object.
    */
   protected requestMeta(
@@ -654,16 +685,18 @@ export class McpServerProvider {
   ): Promise<unknown> {
     const { method, params = {} } = request;
 
+    // A method is known per era: `server/discover` only to a modern request
+    // (a legacy one, or any request while the modern path is off, gets -32601,
+    // exactly the answer a dual-era stdio client reads as "this server is
+    // legacy"), `ping` only to a legacy one.
+    if (!this.handlesMethod(method, context?.protocolVersion !== undefined)) {
+      throw new McpMethodNotFoundError(method);
+    }
+
     switch (method) {
       case "initialize":
         return this.handleInitialize(params);
       case "server/discover":
-        // Modern only. A legacy request (or any request while the modern path
-        // is off) gets -32601 like any unknown method, which is exactly the
-        // answer a dual-era stdio client reads as "this server is legacy".
-        if (context?.protocolVersion === undefined) {
-          throw new McpMethodNotFoundError(method);
-        }
         return this.handleDiscover();
       case "ping":
         return this.handlePing();

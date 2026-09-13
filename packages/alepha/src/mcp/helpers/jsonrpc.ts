@@ -93,6 +93,7 @@ export const JsonRpcErrorCodes = {
  * retries or corrects its request instead of falling back to `initialize`.
  */
 export const McpProtocolErrorCodes = {
+  HEADER_MISMATCH: -32020,
   UNSUPPORTED_PROTOCOL_VERSION: -32022,
 } as const;
 

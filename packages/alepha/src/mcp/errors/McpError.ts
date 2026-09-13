@@ -36,6 +36,25 @@ export class McpError extends Error {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
+ * A modern request's HTTP headers are missing, malformed, or disagree with its
+ * body (spec 2026-07-28, Streamable HTTP "Server Validation").
+ *
+ * `-32020` with HTTP 400. The headers exist so an intermediary can route on
+ * them without parsing the body, which is only safe if the server refuses a
+ * request whose headers say something the body does not: otherwise a load
+ * balancer and this server act on two different requests.
+ */
+export class McpHeaderMismatchError extends McpError {
+  name = "McpHeaderMismatchError";
+
+  constructor(detail: string) {
+    super(`Header mismatch: ${detail}`, McpProtocolErrorCodes.HEADER_MISMATCH);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
  * A modern request (2026-07-28 and later) named a protocol version this
  * server does not serve.
  *
