@@ -81,6 +81,7 @@ export class ShowcaseKeys {
       tokenPrefix: `ak_${["ci", "graf", "sync", "tmp"][i]}`,
       tokenSuffix: ["9f2a", "41bd", "77c0", "0e13"][i],
       roles,
+      permissions: [],
       createdAt: this.at(24 * (i + 3)),
       lastUsedAt: revoked ? undefined : this.at(i + 1),
       lastUsedIp: revoked ? undefined : `203.0.113.${20 + i}`,

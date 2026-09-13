@@ -48,6 +48,7 @@ export class ShowcaseKeysController {
         token: "ak_showcase_this_is_not_a_real_credential_0000",
         tokenSuffix: "0000",
         roles: [],
+        permissions: body.permissions ?? [],
         createdAt: new Date(Date.UTC(2026, 8, 5, 9, 0)).toISOString(),
         expiresAt: undefined,
       }) as any,

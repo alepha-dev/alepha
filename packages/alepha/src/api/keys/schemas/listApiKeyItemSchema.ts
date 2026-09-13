@@ -16,6 +16,10 @@ export const listApiKeyItemSchema = z.object({
   tokenPrefix: z.string(),
   tokenSuffix: z.string(),
   roles: z.array(z.string()),
+  /**
+   * The key's permission scope. Empty is everything its roles allow.
+   */
+  permissions: z.array(z.string()),
   createdAt: z.datetime(),
   lastUsedAt: z.datetime().optional(),
   lastUsedIp: z.string().optional(),

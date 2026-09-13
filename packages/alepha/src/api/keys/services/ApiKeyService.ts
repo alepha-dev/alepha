@@ -205,6 +205,71 @@ export class ApiKeyService {
   }
 
   /**
+   * Check a requested permission scope and return what to store: refused,
+   * never narrowed.
+   *
+   * - Every entry is a concrete permission, never a pattern (`project:*`,
+   *   `*`): a pattern would widen the key the day a deploy registers a new
+   *   permission it covers, and a credential whose reach grows untouched is
+   *   what a scope exists to prevent.
+   * - Every entry is registered, so a typo cannot mint a key that reaches
+   *   nothing and says nothing.
+   * - Every entry is within `caller`'s own ceiling, `getPermissions(caller)`,
+   *   which is its roles within its realm narrowed by its own scope. A check
+   *   against roles alone is the one a scoped caller would escape.
+   *
+   * A refusal names the offending permission. Silently dropping it would give
+   * a key that looks right when it is created and 403s in production a week
+   * later.
+   */
+  protected resolvePermissions(
+    requested: string[],
+    caller: Pick<UserAccount, "roles" | "permissionScope"> & {
+      realm?: string;
+    },
+  ): string[] {
+    const permissions = [...new Set(requested)];
+    if (permissions.length === 0) {
+      return [];
+    }
+
+    const registered = new Set(
+      this.securityProvider
+        .getPermissions()
+        .map((it) => this.securityProvider.permissionToString(it)),
+    );
+    const grantable = new Set(
+      this.securityProvider
+        .getPermissions({
+          roles: caller.roles ?? [],
+          realm: caller.realm,
+          permissionScope: caller.permissionScope,
+        })
+        .map((it) => this.securityProvider.permissionToString(it)),
+    );
+
+    for (const permission of permissions) {
+      if (permission === "*" || permission.endsWith(":*")) {
+        throw new BadRequestError(
+          `Permission '${permission}' is a pattern: an API key's scope lists permissions by name`,
+        );
+      }
+      if (!registered.has(permission)) {
+        throw new BadRequestError(
+          `Permission '${permission}' is not a permission this application declares`,
+        );
+      }
+      if (!grantable.has(permission)) {
+        throw new ForbiddenError(
+          `Permission '${permission}' is beyond what you may grant to a key`,
+        );
+      }
+    }
+
+    return permissions;
+  }
+
+  /**
    * The expiry durations the policy admits, in the enum's order: every preset
    * while `maxExpiryDays` is 0, else those within the cap, and never `"never"`.
    */
@@ -333,7 +398,15 @@ export class ApiKeyService {
    * Returns both the API key entity and the plain token (which is only available once).
    *
    * The expiry is `expiresIn` or `expiresAt`, checked against the expiry
-   * policy by {@link resolveExpiresAt}.
+   * policy by {@link resolveExpiresAt}. The permission scope is checked by
+   * {@link resolvePermissions} against `caller`.
+   *
+   * @param options.permissions - Narrow the key below its roles. Empty or
+   * omitted is everything the roles allow.
+   * @param options.caller - The identity asking, whose own ceiling (roles in
+   * its realm, then its permission scope) bounds `permissions`. Pass it
+   * whenever there is one: the controller passes `request.user`. Without it
+   * the ceiling is `roles` alone, which is right only for trusted code.
    */
   public async create(options: {
     userId: string;
@@ -343,8 +416,16 @@ export class ApiKeyService {
     expiresIn?: ApiKeyExpiresIn;
     expiresAt?: Date;
     prefix?: string;
+    permissions?: string[];
+    caller?: Pick<UserAccount, "roles" | "permissionScope"> & {
+      realm?: string;
+    };
   }): Promise<{ apiKey: ApiKeyEntity; token: string }> {
     const expiresAt = this.resolveExpiresAt(options);
+    const permissions = this.resolvePermissions(
+      options.permissions ?? [],
+      options.caller ?? { roles: options.roles },
+    );
     const prefix = options.prefix ?? "ak";
     const { token, hash, suffix } = this.mintToken(prefix);
 
@@ -356,6 +437,7 @@ export class ApiKeyService {
       tokenPrefix: prefix,
       tokenSuffix: suffix,
       roles: options.roles,
+      permissions,
       expiresAt: expiresAt?.toISOString(),
     });
 
@@ -501,6 +583,7 @@ export class ApiKeyService {
       tokenPrefix: apiKey.tokenPrefix,
       tokenSuffix: apiKey.tokenSuffix,
       roles: apiKey.roles,
+      permissions: apiKey.permissions ?? [],
       createdAt: apiKey.createdAt,
       lastUsedAt: apiKey.lastUsedAt,
       lastUsedIp: apiKey.lastUsedIp,
@@ -843,9 +926,18 @@ export class ApiKeyService {
 
     // The marker is what tells every route downstream that this identity is
     // a machine credential and not a signed-in session.
+    // Second, independent cap: the key's own permission scope, applied by
+    // every permission check after the roles above. An EMPTY column is no
+    // scope at all (every key created before scopes existed has one), and
+    // must become `undefined`, never `[]`, which would admit nothing.
+    const permissionScope = apiKey.permissions?.length
+      ? apiKey.permissions
+      : undefined;
+
     return {
       id: apiKey.userId,
       roles,
+      permissionScope,
       credential: { type: "api-key", id: apiKey.id },
     };
   }

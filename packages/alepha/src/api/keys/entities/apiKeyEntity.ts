@@ -24,6 +24,14 @@ export const apiKeyEntity = $entity({
     // Roles (snapshot from user at creation)
     roles: db.default(z.array(z.string()), []),
 
+    /**
+     * The key's own permission scope: registered `group:name` strings, never
+     * patterns. Empty means everything the roles allow, which is what every
+     * key created before scopes existed has, so `validate()` turns an empty
+     * column into no scope at all rather than a scope admitting nothing.
+     */
+    permissions: db.default(z.array(z.string()), []),
+
     // Tracking. All three are APPROXIMATE: a key writes its usage at most once
     // per `apiKeyOptions.usageWriteIntervalMinutes` (5 by default) in each
     // isolate, so they are accurate to that interval and no finer. Do not

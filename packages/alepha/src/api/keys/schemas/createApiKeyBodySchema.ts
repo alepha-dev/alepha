@@ -15,4 +15,12 @@ export const createApiKeyBodySchema = z.object({
    * policy as `expiresIn`; pass one or the other.
    */
   expiresAt: z.datetime().optional(),
+  /**
+   * Narrow the key to these permissions, below what its roles grant: full
+   * `group:name` strings the application registers, never patterns. Omit, or
+   * pass `[]`, for a key with everything its roles allow. Each must be one
+   * the caller may grant (its own roles and scope), or creation is refused
+   * naming it.
+   */
+  permissions: z.array(z.text()).max(500).optional(),
 });
