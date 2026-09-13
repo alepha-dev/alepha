@@ -6,7 +6,16 @@ import { useForm } from "alepha/react/form";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { beforeAll, describe, expect, it } from "vitest";
 
+// ⚠️ The calendar is a lazy chunk (`LazyCalendar`), so nothing the control
+// imports loads it. Imported here, with the file, it is in the module cache
+// before the first popover opens, as it was when the import was static: the
+// gesture cases then wait on the control, not on a cold import of
+// react-day-picker and date-fns, which under a loaded `yarn test` outran a
+// five-second `waitFor`.
+import { Calendar } from "../../calendar/Calendar.tsx";
 import { Control } from "../Control.tsx";
+
+void Calendar;
 
 /**
  * `z.dateRange()` renders as a range picker, and never as anything else.
@@ -147,23 +156,15 @@ describe("Control (date range)", () => {
      * ⚠️ The day BUTTON, not the cell. react-day-picker renders a `gridcell`
      * wrapping a button, and only the button carries the handler - a click on
      * the cell reaches nothing and the case passes for the wrong reason.
-     *
-     * ⚠️ Five seconds, not `waitFor`'s default one. The calendar is a lazy
-     * chunk (`LazyCalendar`), so the first open of the file imports
-     * react-day-picker and date-fns cold, which Node alone takes about 0.9 s to
-     * do on a fast machine. The trigger itself still renders synchronously.
      */
     const days = async () =>
-      await waitFor(
-        () => {
-          const found = [
-            ...document.querySelectorAll('[role="gridcell"] button'),
-          ] as HTMLElement[];
-          expect(found.length).toBeGreaterThan(1);
-          return found;
-        },
-        { timeout: 5000 },
-      );
+      await waitFor(() => {
+        const found = [
+          ...document.querySelectorAll('[role="gridcell"] button'),
+        ] as HTMLElement[];
+        expect(found.length).toBeGreaterThan(1);
+        return found;
+      });
 
     it("writes nothing on the first click, and keeps the popover open", async () => {
       await mount();
