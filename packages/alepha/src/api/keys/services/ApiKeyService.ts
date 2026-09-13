@@ -7,15 +7,22 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page, RepositoryProvider, sql } from "alepha/orm";
 import type { IssuerResolver, UserInfo } from "alepha/security";
-import { ForbiddenError, type ServerRequest } from "alepha/server";
+import {
+  BadRequestError,
+  ForbiddenError,
+  type ServerRequest,
+} from "alepha/server";
 
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
+import { ApiKeyParameters } from "../parameters/ApiKeyParameters.ts";
+import type { ApiKeyExpiresIn } from "../schemas/apiKeyExpiresInSchema.ts";
 
 export class ApiKeyService {
   protected readonly alepha = $inject(Alepha);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
+  protected readonly parameters = $inject(ApiKeyParameters);
   protected readonly repo = $repository(apiKeyEntity);
   protected readonly repositoryProvider = $inject(RepositoryProvider);
 
@@ -85,6 +92,76 @@ export class ApiKeyService {
         on: ["userId", usersEntity.cols.id] as ["userId", { name: string }],
       },
     };
+  }
+
+  /**
+   * Days each expiry preset lives. A year is 365 days, so a cap of 365 admits
+   * `"1y"` whatever the calendar says.
+   */
+  protected readonly expiryPresetDays: Record<
+    Exclude<ApiKeyExpiresIn, "never">,
+    number
+  > = {
+    "7d": 7,
+    "30d": 30,
+    "60d": 60,
+    "90d": 90,
+    "180d": 180,
+    "1y": 365,
+  };
+
+  /**
+   * Resolve the instant a key expires at, and enforce the expiry policy.
+   *
+   * Every path that sets a key's expiry goes through here (creation, and
+   * rotation), and it lives in the service rather than a controller so that
+   * `action.run()` and the MCP transport obey the same rule as HTTP.
+   *
+   * - `expiresIn` is resolved from the current time (`DateTimeProvider`).
+   * - `expiresAt` is taken as given, for programmatic callers.
+   * - Neither, or `"never"`, means no expiry: what every key got before the
+   *   policy existed, so nothing changes while `maxExpiryDays` is `0`.
+   *
+   * Under `maxExpiryDays > 0`, an expiry past the cap, `"never"` and an
+   * omitted expiry are all refused with a message naming the cap. Refused,
+   * never clamped: a key silently shortened looks right when it is created and
+   * stops working on a day nobody chose.
+   */
+  public resolveExpiresAt(input: {
+    expiresIn?: ApiKeyExpiresIn;
+    expiresAt?: Date;
+  }): Date | undefined {
+    if (input.expiresIn && input.expiresAt) {
+      throw new BadRequestError("Pass either expiresIn or expiresAt, not both");
+    }
+
+    const maxDays = this.parameters.get("maxExpiryDays");
+    const now = this.dateTimeProvider.nowMillis();
+    const dayMillis = 24 * 60 * 60 * 1000;
+
+    let expiresAt = input.expiresAt;
+    if (input.expiresIn && input.expiresIn !== "never") {
+      const days = this.expiryPresetDays[input.expiresIn];
+      expiresAt = new Date(now + days * dayMillis);
+    }
+
+    if (maxDays === 0) {
+      return expiresAt;
+    }
+
+    if (!expiresAt) {
+      throw new BadRequestError(
+        `API keys must expire within ${maxDays} days: a key without an expiry is not allowed`,
+      );
+    }
+
+    if (expiresAt.getTime() > now + maxDays * dayMillis) {
+      throw new BadRequestError(
+        `API keys may not live longer than ${maxDays} days`,
+      );
+    }
+
+    return expiresAt;
   }
 
   /**
@@ -162,15 +239,20 @@ export class ApiKeyService {
   /**
    * Create a new API key for a user.
    * Returns both the API key entity and the plain token (which is only available once).
+   *
+   * The expiry is `expiresIn` or `expiresAt`, checked against the expiry
+   * policy by {@link resolveExpiresAt}.
    */
   public async create(options: {
     userId: string;
     name: string;
     roles: string[];
     description?: string;
+    expiresIn?: ApiKeyExpiresIn;
     expiresAt?: Date;
     prefix?: string;
   }): Promise<{ apiKey: ApiKeyEntity; token: string }> {
+    const expiresAt = this.resolveExpiresAt(options);
     const prefix = options.prefix ?? "ak";
     const random = randomBytes(24).toString("base64url");
     const token = `${prefix}_${random}`;
@@ -185,7 +267,7 @@ export class ApiKeyService {
       tokenPrefix: prefix,
       tokenSuffix: suffix,
       roles: options.roles,
-      expiresAt: options.expiresAt?.toISOString(),
+      expiresAt: expiresAt?.toISOString(),
     });
 
     this.log.info("API key created", {

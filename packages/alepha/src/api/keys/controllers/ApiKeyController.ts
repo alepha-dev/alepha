@@ -38,6 +38,7 @@ export class ApiKeyController {
         name: request.body.name,
         description: request.body.description,
         roles: request.user.roles ?? [],
+        expiresIn: request.body.expiresIn,
         expiresAt: request.body.expiresAt
           ? new Date(request.body.expiresAt)
           : undefined,

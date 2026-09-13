@@ -3,14 +3,17 @@ import { AlephaBackground } from "alepha/background";
 
 import { AdminApiKeyController } from "./controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "./controllers/ApiKeyController.ts";
+import { ApiKeyParameters } from "./parameters/ApiKeyParameters.ts";
 import { ApiKeyService } from "./services/ApiKeyService.ts";
 
 export * from "./controllers/AdminApiKeyController.ts";
 export * from "./controllers/ApiKeyController.ts";
 export * from "./entities/apiKeyEntity.ts";
+export * from "./parameters/ApiKeyParameters.ts";
 export * from "./schemas/adminApiKeyOwnerSchema.ts";
 export * from "./schemas/adminApiKeyQuerySchema.ts";
 export * from "./schemas/adminApiKeyResourceSchema.ts";
+export * from "./schemas/apiKeyExpiresInSchema.ts";
 export * from "./schemas/createApiKeyBodySchema.ts";
 export * from "./schemas/createApiKeyResponseSchema.ts";
 export * from "./schemas/listApiKeyResponseSchema.ts";
@@ -45,5 +48,10 @@ export * from "./services/ApiKeyService.ts";
 export const AlephaApiKeys = $module({
   name: "alepha.api.keys",
   imports: [AlephaBackground],
-  services: [ApiKeyService, ApiKeyController, AdminApiKeyController],
+  services: [
+    ApiKeyParameters,
+    ApiKeyService,
+    ApiKeyController,
+    AdminApiKeyController,
+  ],
 });
