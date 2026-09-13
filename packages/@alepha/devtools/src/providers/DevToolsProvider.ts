@@ -479,10 +479,11 @@ export class DevToolsProvider {
     handler: async ({ params, query }) => {
       const service = this.getJobService();
       if (!service) return { executions: [] };
-      const result = await service.getExecutions(
-        params.name,
-        (query.status ? { status: query.status } : {}) as any,
-      );
+      // The newest hundred, the most one page holds.
+      const result = await service.getExecutions(params.name, {
+        size: 100,
+        ...(query.status ? { status: [query.status as any] } : {}),
+      });
       return {
         executions: Array.isArray(result)
           ? result

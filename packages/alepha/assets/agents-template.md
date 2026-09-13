@@ -100,6 +100,9 @@ import { $job } from "alepha/api/jobs";
 class Emails {
   // queue-mode: declare `schema`, then `await this.welcome.push({ ... })`
   welcome = $job({
+    // <domain>.<action>, lowercase kebab-case; the name is the job's identity
+    name: "emails.send-welcome",
+    description: "Sends the welcome email to a new user.",
     schema: z.object({ userId: z.text() }),
     retry: { retries: 3 },
     handler: async ({ payload, attempt }) => {
@@ -109,6 +112,8 @@ class Emails {
 
   // cron-mode: declare `cron` instead. Never both.
   sweep = $job({
+    name: "emails.sweep-bounced",
+    description: "Deletes bounced addresses older than a month.",
     cron: "0 3 * * *",
     handler: async () => {
       /* ... */

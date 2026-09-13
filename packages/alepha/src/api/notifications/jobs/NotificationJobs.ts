@@ -1,8 +1,7 @@
 import { $inject } from "alepha";
-import { $job, jobExecutionEntity } from "alepha/api/jobs";
+import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
 
 import { notificationPayloadSchema } from "../schemas/notificationPayloadSchema.ts";
 import { NotificationDeliveryService } from "../services/NotificationDeliveryService.ts";
@@ -14,18 +13,20 @@ import { NotificationSettings } from "../services/NotificationSettings.ts";
  * Notification jobs + runtime-editable retention.
  *
  * - `settings` - the `$parameter` from {@link NotificationSettings}, holding
- *   both retention windows and the stored-body switch. Admins change them at
+ *   the retention windows and the stored-body switch. Admins change them at
  *   runtime; the values propagate across instances via the parameter pub/sub
- *   and the next sweep picks them up with no restart.
+ *   and the next trim or purge picks them up with no restart.
  * - `sendNotification` - queue-mode, audit-oriented. Every execution is kept
- *   (`record: "all"`, `keep: { ok: 0, error: 0 }` disables the ring-buffer
- *   trim) so the audit trail survives even under heavy volume.
+ *   for `retentionDays`, successes and failures alike, however many there
+ *   are. The job's `retention` reads the parameter through a function, so the
+ *   jobs module's hourly trim applies the window an operator set, and nothing
+ *   else deletes these rows.
  * - `purgeOldNotifications` - hourly sweep that deletes expired delivery
- *   receipts, then read inbox messages, then expired notification execution
- *   rows. Three clocks, on purpose: the outbox is short (7 days) and the
- *   receipts are long (90), because a complaint can arrive after the outbox
- *   row is gone; the inbox has its own because a read message is one the
- *   reader has already dealt with, and an unread one is never swept at all.
+ *   receipts, then read inbox messages. Clocks of their own, on purpose: the
+ *   outbox is short (7 days) and the receipts are long (90), because a
+ *   complaint can arrive after the outbox row is gone; the inbox has its own
+ *   because a read message is one the reader has already dealt with, and an
+ *   unread one is never swept at all.
  *
  * Cron expression note: the purge cron is declared statically (`0 * * * *`)
  * because some runtimes (Cloudflare Workers) freeze cron triggers at deploy
@@ -38,7 +39,6 @@ export class NotificationJobs {
   protected readonly notificationSenderService = $inject(
     NotificationSenderService,
   );
-  protected readonly executions = $repository(jobExecutionEntity);
   protected readonly deliveries = $inject(NotificationDeliveryService);
   protected readonly inbox = $inject(NotificationInboxService);
 
@@ -51,16 +51,21 @@ export class NotificationJobs {
   protected readonly settings = $inject(NotificationSettings);
 
   public readonly sendNotification = $job({
-    name: "api:notifications:sendNotification",
+    name: "system.notifications.send",
     description:
-      "Sends a notification (email/SMS) and keeps every execution for audit.",
+      "Sends one notification by email or SMS, retrying up to three times.",
     schema: notificationPayloadSchema,
     retry: {
       retries: 3,
     },
     timeout: [30, "seconds"],
-    record: "all",
-    keep: { ok: 0, error: 0 },
+    // Read at every trim tick, so an operator's edit applies without a
+    // restart. Declared, so no row cap applies: a busy app legitimately sends
+    // more than a thousand notifications in a week.
+    retention: {
+      ok: { days: () => this.settings.current.retentionDays },
+      error: { days: () => this.settings.current.retentionDays },
+    },
     // `executionId` is one field further out than `payload`, and it is what
     // a delivery receipt is keyed on. Without it the sender cannot record
     // what happened.
@@ -70,12 +75,12 @@ export class NotificationJobs {
   });
 
   public readonly purgeOldNotifications = $job({
-    name: "api:notifications:purgeOldNotifications",
+    name: "system.notifications.purge-old",
     description:
-      "Hourly sweep that deletes notification execution rows older than the configured retention window.",
+      "Hourly sweep that deletes delivery receipts and read inbox messages older than their retention windows.",
     cron: "0 * * * *",
     handler: async ({ now }) => {
-      const { retentionDays, receiptRetentionDays, inboxRetentionDays } =
+      const { receiptRetentionDays, inboxRetentionDays } =
         this.settings.current;
 
       // Receipts have their own, longer clock: a complaint can arrive weeks
@@ -89,7 +94,7 @@ export class NotificationJobs {
         );
       }
 
-      // A third clock, and the only one that looks at read state. An unread
+      // Its own clock, and the only one that looks at read state. An unread
       // message is never swept: it waited for you, which is the feature.
       const staleInbox = await this.inbox.purge(
         now.subtract(inboxRetentionDays, "day").toISOString(),
@@ -99,35 +104,6 @@ export class NotificationJobs {
           `Notification purge: deleted ${staleInbox} read inbox message(s) older than ${inboxRetentionDays} days`,
         );
       }
-
-      const cutoff = now.subtract(retentionDays, "day").toISOString();
-      const jobName = this.sendNotification.name;
-
-      const expired = await this.executions.findMany({
-        where: {
-          jobName: { eq: jobName },
-          status: { inArray: ["ok", "error", "cancelled"] },
-          completedAt: { lt: cutoff },
-        },
-        columns: ["id"] as any,
-        limit: 5_000,
-      });
-
-      if (expired.length === 0) {
-        this.log.debug("Notification purge: nothing to delete", {
-          cutoff,
-          retentionDays,
-        });
-        return;
-      }
-
-      await this.executions.deleteMany({
-        id: { inArray: expired.map((r) => r.id) },
-      });
-      this.log.info(
-        `Notification purge: deleted ${expired.length} row(s) older than ${retentionDays} days`,
-        { cutoff },
-      );
     },
   });
 }

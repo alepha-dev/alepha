@@ -48,7 +48,9 @@ export class OAuthJobs {
    *   client becomes collectable on a later pass once they are gone.
    */
   public readonly purgeAbandonedClients = $job({
-    name: "api:oauth:purgeAbandonedClients",
+    name: "system.oauth.purge-abandoned-clients",
+    description:
+      "Deletes dynamically registered OAuth clients older than a day that no session uses.",
     cron: "20 3 * * *",
     handler: async () => {
       const cutoff = this.dateTime

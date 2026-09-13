@@ -29,37 +29,24 @@ import {
 } from "../entities/jobExecutionEntity.ts";
 import type {
   JobPrimitiveOptions,
-  JobPriority,
   JobRescheduleOptions,
   JobRetryBackoff,
 } from "../primitives/$job.ts";
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
+import type { JobRetention } from "../schemas/jobRetentionSchema.ts";
 import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
 import type { JobDispatcher, JobDispatchOptions } from "./JobDispatcher.ts";
 import { JobQueueProvider } from "./JobQueueProvider.ts";
-
-// -----------------------------------------------------------------------------------------------------------------
-
-const PRIORITY_MAP: Record<JobPriority, number> = {
-  critical: 0,
-  high: 1,
-  normal: 2,
-  low: 3,
-};
-
-const PRIORITY_REVERSE: Record<number, JobPriority> = {
-  0: "critical",
-  1: "high",
-  2: "normal",
-  3: "low",
-};
+import {
+  type EffectiveRetention,
+  JobRetentionProvider,
+} from "./JobRetentionProvider.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
 export interface PushOptions {
   delay?: DurationLike;
   key?: string;
-  priority?: JobPriority;
   scheduledAt?: Date;
   triggeredBy?: string;
   triggeredByName?: string;
@@ -93,7 +80,6 @@ export interface PushManyItem<T extends ZType = ZType> {
   payload: Infer<T>;
   key?: string;
   delay?: DurationLike;
-  priority?: JobPriority;
   scheduledAt?: Date;
   /**
    * Owning tenant for this row, per item.
@@ -129,6 +115,11 @@ export interface JobRuntimeRegistration {
   name: string;
   options: JobPrimitiveOptions;
   kind: "cron" | "queue";
+  /**
+   * The rule each status follows, defaults filled in at registration. Every
+   * write and the trim read it from here, never from `options.retention`.
+   */
+  retention: EffectiveRetention;
 }
 
 export type JobEffectiveMode = "cron" | "queue" | "direct";
@@ -160,7 +151,9 @@ export interface SweepEntry {
   /** Narrow further, in SQL. Mutates the where object in place. */
   where: (where: Record<string, any>, now: DateTime) => void;
 
-  /** Optional ordering, for phases where priority should be respected. */
+  /**
+   * Optional ordering: which rows a phase serves first when its batch fills.
+   */
   orderBy?: {
     column: keyof JobExecutionEntity;
     direction: "asc" | "desc";
@@ -193,8 +186,9 @@ export interface SweepEntry {
  *
  * Push flow:
  *   push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id)
- *   worker  → claim → UPDATE running → handler → DELETE/UPDATE on success
- *           → UPDATE error / scheduled (retry) on failure
+ *   worker  → claim → UPDATE running → handler → UPDATE ok (or DELETE when
+ *             successes are not recorded)
+ *           → UPDATE error (or DELETE) / scheduled (retry) on failure
  *
  * Cron flow:
  *   scheduler tick → claim the instant → acquire lock → executeInline (no retry)
@@ -207,7 +201,10 @@ export interface SweepEntry {
  *   - `running` past its lease → failed, then the retry policy
  *
  * Trim runs on its own cron (`trimCron`, default hourly):
- *   - per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
+ *   - rows of a job name nothing registers are purged first, every status
+ *     (a renamed job loses its rows, see `purgeUnregistered`)
+ *   - then each job's retention: per status, rows past the newest `last` or
+ *     completed more than `days` ago (see `JobRetentionProvider`)
  *   - decoupled from sweep because trim cost scales with job count, not
  *     retry latency - running it every sweep is wasted work for most apps.
  */
@@ -251,6 +248,7 @@ export class JobProvider {
   protected readonly runningCrons = new Set<string>();
   protected readonly abortControllers = new Map<string, AbortController>();
   protected readonly logBuffer = $inject(LogBufferProvider);
+  protected readonly retention = $inject(JobRetentionProvider);
   protected stopping = false;
 
   constructor() {
@@ -263,7 +261,7 @@ export class JobProvider {
     // in `onStart` from CronProvider's POV but visible to build-time
     // introspection.
     this.cronProvider.createCronJob(
-      "api:jobs:sweep",
+      "system.jobs.sweep",
       this.config.sweepCron,
       async () => {
         await this.sweep();
@@ -271,7 +269,7 @@ export class JobProvider {
       true,
     );
     this.cronProvider.createCronJob(
-      "api:jobs:trim",
+      "system.jobs.trim",
       this.config.trimCron,
       async () => {
         if (this.stopping) return;
@@ -287,7 +285,40 @@ export class JobProvider {
 
   // --- Registration -----------------------------------------------------------------------------------------------
 
+  /**
+   * The shape every job name must have: `<domain>.<action>`, or
+   * `system.<domain>.<action>` for a job shipped from `packages/`. Lowercase
+   * kebab-case segments, and no `/`, since the admin routes carry the name in
+   * the path.
+   */
+  public readonly namePattern =
+    /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
+
+  /**
+   * The longest description a job may declare. The registration payload's
+   * `description` is a `z.text()`, which caps there: a longer one would not
+   * fail the boot, it would blank the admin's job list.
+   */
+  public readonly maxDescriptionLength = 255;
+
   public registerJob(name: string, options: JobPrimitiveOptions): void {
+    if (typeof name !== "string" || !this.namePattern.test(name)) {
+      throw new AlephaError(
+        `Job name '${name}' does not follow the convention: <domain>.<action>, or system.<domain>.<action> for a job shipped from packages/, in lowercase kebab-case (${this.namePattern.source}). For example 'estates.sweep-commands'.`,
+      );
+    }
+    const description =
+      typeof options.description === "string" ? options.description.trim() : "";
+    if (description.length === 0) {
+      throw new AlephaError(
+        `Job '${name}' declares no description. Say in one sentence what it does, for the operators who read the admin.`,
+      );
+    }
+    if (options.description.length > this.maxDescriptionLength) {
+      throw new AlephaError(
+        `Job '${name}' declares a description of ${options.description.length} characters; at most ${this.maxDescriptionLength} are allowed.`,
+      );
+    }
     if (this.jobs.has(name)) {
       throw new AlephaError(`Job already registered: ${name}`);
     }
@@ -319,25 +350,11 @@ export class JobProvider {
     }
 
     const kind: "cron" | "queue" = options.cron ? "cron" : "queue";
+    const retention = this.retention.resolve(name, options);
 
-    // Cron jobs keep their last successful run by default, so the admin
-    // "Last run" reflects reality — a routine cron success is otherwise
-    // unrecorded (only failures are), making every healthy cron look like it
-    // "never" ran. Bounded to the latest row (keep.ok=1) to avoid unbounded
-    // growth from recurring ticks. Opt out of recording successes entirely
-    // with `record: "error"` (recommended for very high-frequency crons).
-    if (kind === "cron" && options.record === undefined) {
-      options = {
-        ...options,
-        record: "all",
-        keep: { ...options.keep, ok: options.keep?.ok ?? 1 },
-      };
-    }
-
-    this.jobs.set(name, { name, options, kind });
+    this.jobs.set(name, { name, options, kind, retention });
     this.log.debug(`Registered ${kind} job '${name}'`, {
       cron: options.cron,
-      priority: options.priority ?? "normal",
       retries: options.retry?.retries ?? 0,
     });
 
@@ -357,6 +374,14 @@ export class JobProvider {
 
   public getRegisteredJobs(): Map<string, JobRuntimeRegistration> {
     return this.jobs;
+  }
+
+  /**
+   * A registered job's effective retention, as the admin prints it: a rule
+   * per status, where each came from, and a cron's cadence bucket.
+   */
+  public describeRetention(name: string): JobRetention {
+    return this.retention.describe(this.getRegistration(name).retention);
   }
 
   /**
@@ -394,8 +419,9 @@ export class JobProvider {
    *
    * **Two paths depending on `retry`:**
    *
-   * - **No `retry`** — runs the handler inline. No DB row on success;
-   *   error row only on failure. The "next tick" is the implicit retry.
+   * - **No `retry`**: runs the handler inline, then writes one terminal row
+   *   for the outcome, when the job's retention records that status. The
+   *   "next tick" is the implicit retry.
    * - **`retry` declared** — enqueues a synthetic execution row and hands
    *   it to the dispatcher. The handler then runs through the same path
    *   as a queue/direct push (claim, retry-on-fail, sweep recovery). Use
@@ -509,7 +535,6 @@ export class JobProvider {
       jobName: registration.name,
       payload: undefined,
       status: "pending",
-      priority: PRIORITY_MAP[opts.priority ?? "normal"],
       maxAttempts,
       triggeredBy: ctx.triggeredBy,
       triggeredByName: ctx.triggeredByName,
@@ -518,10 +543,15 @@ export class JobProvider {
   }
 
   /**
-   * Acquire a per-job NX lock keyed by `cron-job:<name>` so that a single
-   * tick across all replicas runs exactly one execution. Auto-expires after
-   * `2 * timeout` (or 5 minutes if no per-job timeout) so a crashed worker
-   * cannot permanently block the cron from firing.
+   * Acquire a per-job NX lock keyed by `alepha.api.jobs.cron:<name>` (see
+   * `cronLockKey`) so that a single tick across all replicas runs exactly one
+   * execution. Auto-expires after `2 * timeout` (or 5 minutes if no per-job
+   * timeout) so a crashed worker cannot permanently block the cron from
+   * firing.
+   *
+   * The key carries the job's name, so renaming a job changes it: during a
+   * rolling deploy, a replica on the old name and one on the new name hold
+   * different locks, and one tick can run twice. That is accepted.
    *
    * **It only tells replicas apart.** The lock value is a per-process holder
    * id, so a second NX set from this same process reads the stored value
@@ -673,8 +703,9 @@ export class JobProvider {
   }
 
   /**
-   * Execute a cron handler inline. Records a row only on error (or always,
-   * when `record: 'all'`). No DB writes on the happy path by default.
+   * Execute a cron handler inline. Nothing is written while it runs; at the
+   * end, one terminal row for the outcome, when the job's retention records
+   * that status.
    */
   protected async executeInline(
     registration: JobRuntimeRegistration,
@@ -688,7 +719,6 @@ export class JobProvider {
   ): Promise<void> {
     const opts = registration.options;
     const name = registration.name;
-    const record = opts.record ?? "error";
     const contextId = this.alepha.context.createContextId();
 
     const abortController = new AbortController();
@@ -723,7 +753,7 @@ export class JobProvider {
             },
           });
 
-          if (record === "all") {
+          if (this.retention.records(registration.retention, "ok")) {
             await this.writeTerminalRow(executionId, name, "ok", {
               payload: ctx.payload,
               attempt: ctx.attempt,
@@ -741,7 +771,7 @@ export class JobProvider {
           );
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
-          if (record !== "none") {
+          if (this.retention.records(registration.retention, "error")) {
             await this.writeTerminalRow(executionId, name, "error", {
               payload: ctx.payload,
               attempt: ctx.attempt,
@@ -785,9 +815,11 @@ export class JobProvider {
   ): Promise<void> {
     try {
       // Called from inside the execution's context, so the buffer of the run
-      // that just finished is the ambient one.
-      const logs = status === "error" ? this.logBuffer.snapshot() : undefined;
-      const row = {
+      // that just finished is the ambient one. Kept whatever the outcome: the
+      // log of a successful tick ("purged 12 sessions") is most of what an
+      // operator reads.
+      await this.executions.create({
+        id: executionId,
         jobName,
         status,
         payload: fields.payload as Record<string, unknown> | undefined,
@@ -796,65 +828,13 @@ export class JobProvider {
         startedAt: fields.startedAt.toISOString(),
         completedAt: this.dt.nowISOString(),
         error: fields.error?.message,
-        logs,
+        logs: this.logBuffer.snapshot(),
         triggeredBy: fields.triggeredBy,
         triggeredByName: fields.triggeredByName,
-      };
-
-      // A cron whose buffer is exactly one row updates that row instead of
-      // inserting a new one for the trim to delete an hour later.
-      //
-      // Cron jobs default to `record: "all"` with `keep.ok = 1` so the admin
-      // "Last run" is accurate, and every success went through a fresh
-      // INSERT. A `*/15` cron therefore wrote 96 rows a day so that trim
-      // could delete 95 of them, purely to keep one timestamp current.
-      //
-      // Only for `keep === 1`: at any higher value the rows ARE the history
-      // and each one has to exist. The admin list is unaffected either way,
-      // because it orders by `startedAt`, which this refreshes — ordering by
-      // `createdAt` would have sunk a healthy cron to the bottom.
-      //
-      // ⚠️ The row keeps the id of the run that created it, so for a
-      // `keep: 1` buffer it is a LAST-RUN record rather than a record of one
-      // execution, and its id stops matching the `executionId` this run's
-      // `job:*` events carry. Nothing in the tree looks a row up that way,
-      // and the admin UI navigates by the row's own id, but a listener that
-      // wanted to would have to key on `name` instead.
-      const existing = await this.singleRetainedRow(jobName, status);
-      if (existing) {
-        await this.executions.updateById(existing, row);
-        return;
-      }
-
-      await this.executions.create({ id: executionId, ...row });
+      });
     } catch (e) {
       this.log.warn(`Failed to write terminal row for ${executionId}`, e);
     }
-  }
-
-  /**
-   * The id of the one row a `keep: 1` buffer is allowed to hold, if it
-   * already exists. `undefined` for every other configuration, which is what
-   * keeps this from touching history it is not allowed to rewrite.
-   */
-  protected async singleRetainedRow(
-    jobName: string,
-    status: "ok" | "error",
-  ): Promise<string | undefined> {
-    const registration = this.jobs.get(jobName);
-    if (!registration) return undefined;
-    const keep =
-      status === "ok"
-        ? (registration.options.keep?.ok ?? this.config.keepLastSuccess)
-        : (registration.options.keep?.error ?? this.config.keepLastError);
-    if (keep !== 1) return undefined;
-    const rows = await this.executions.findMany({
-      where: { jobName: { eq: jobName }, status: { eq: status } },
-      orderBy: { column: "startedAt", direction: "desc" },
-      columns: ["id"],
-      limit: 1,
-    });
-    return rows[0]?.id;
   }
 
   // --- Queue push -------------------------------------------------------------------------------------------------
@@ -873,13 +853,11 @@ export class JobProvider {
     const opts = registration.options;
     const validated = this.alepha.codec.validate(opts.schema!, payload);
 
-    // Same precedence as `priority`: the call site wins, the job's own
-    // declaration is the default. See `PushOptions.inline` for why per-push
-    // is the form that carries the weight.
+    // The call site wins, the job's own declaration is the default. See
+    // `PushOptions.inline` for why per-push is the form that carries the
+    // weight.
     const inline = options?.inline ?? opts.inline ?? false;
 
-    const priority =
-      PRIORITY_MAP[options?.priority ?? opts.priority ?? "normal"];
     // A per-push `inline` on a job that declares `retry` means "not this
     // execution": one attempt, terminal on failure, and the caller is told.
     const maxAttempts = inline ? 1 : (opts.retry?.retries ?? 0) + 1;
@@ -917,7 +895,6 @@ export class JobProvider {
         key: options.key,
         payload: validated as Record<string, unknown>,
         status,
-        priority,
         maxAttempts,
         scheduledAt,
         triggeredBy: options.triggeredBy,
@@ -942,7 +919,6 @@ export class JobProvider {
       jobName: name,
       payload: validated as Record<string, unknown>,
       status,
-      priority,
       maxAttempts,
       scheduledAt,
       triggeredBy: options?.triggeredBy,
@@ -1060,7 +1036,6 @@ export class JobProvider {
     key: string;
     payload?: Record<string, unknown>;
     status: JobStatus;
-    priority: number;
     maxAttempts: number;
     scheduledAt?: string;
     triggeredBy?: string;
@@ -1156,7 +1131,6 @@ export class JobProvider {
       jobName: string;
       payload: Record<string, unknown>;
       status: JobStatus;
-      priority: number;
       maxAttempts: number;
       scheduledAt?: string;
       organizationId?: string;
@@ -1183,7 +1157,6 @@ export class JobProvider {
         jobName: name,
         payload: validated as Record<string, unknown>,
         status,
-        priority: PRIORITY_MAP[item.priority ?? opts.priority ?? "normal"],
         maxAttempts,
         scheduledAt,
         organizationId: item.organizationId,
@@ -1196,7 +1169,6 @@ export class JobProvider {
       const id = await this.push(name, item.payload, {
         key: item.key,
         delay: item.delay,
-        priority: item.priority,
         scheduledAt: item.scheduledAt,
         // The third place. Adding the field to `PushManyItem` and to the
         // bulk builder is not enough: keyed items never touch the bulk
@@ -1422,6 +1394,7 @@ export class JobProvider {
         key,
         cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
       });
+      await this.dropUnrecordedCancel(jobName, row.id);
       return row.id;
     } catch (error) {
       if (error instanceof DbEntityNotFoundError) return null;
@@ -1483,6 +1456,35 @@ export class JobProvider {
       jobName: execution.jobName,
       cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
     });
+
+    // A running row stays `cancelled` for its handler's abort path to read,
+    // which deletes it once it has emitted `job:cancel`; when that handler
+    // runs in another process, the next trim tick does.
+    if (execution.status !== "running") {
+      await this.dropUnrecordedCancel(execution.jobName, executionId);
+    }
+  }
+
+  /**
+   * Cancelled follows a job's failure rule: a job that records no failures
+   * records no cancellations either, so the row goes as soon as nothing is
+   * left to read it.
+   */
+  protected async dropUnrecordedCancel(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    const registration = this.jobs.get(jobName);
+    if (
+      !registration ||
+      this.retention.records(registration.retention, "error")
+    ) {
+      return;
+    }
+    await this.executions.deleteMany({
+      id: { eq: executionId },
+      status: { eq: "cancelled" },
+    });
   }
 
   // --- Queue consumer (called by JobQueueProvider) --------------------------------------------------------------
@@ -1528,7 +1530,6 @@ export class JobProvider {
   ): Promise<void> {
     const jobName = registration.name;
     const opts = registration.options;
-    const record = opts.record ?? "error";
     const inline = mode?.inline === true;
 
     const execution = await this.claim(executionId);
@@ -1588,27 +1589,11 @@ export class JobProvider {
               return;
             }
 
-            // Success: either DELETE (no retention configured, or
-            // record=error) or UPDATE to 'ok'.
-            // Guarded on 'running' — a cancellation that landed while the
-            // handler was finishing must not be stomped to 'ok' or erased.
-            //
-            // The two `0`s mean opposite things, by documented design:
-            //   - per-job `keep.ok: 0`  → "keep forever, never trim"
-            //   - global `keepLastSuccess: 0` → "delete on success"
-            // So an explicit per-job value ALWAYS retains the row (0 =
-            // forever, >0 = ring buffer trimmed later); only when the job is
-            // silent does the global's delete-on-success apply. Reading just
-            // the global here destroyed the audit trail of jobs that
-            // declared `record: "all", keep: { ok: 0 }` — notifications
-            // being the in-tree example.
-            const perJobKeepOk = opts.keep?.ok;
-            const keepSuccess =
-              record === "all" &&
-              (perJobKeepOk !== undefined
-                ? true
-                : this.config.keepLastSuccess > 0);
-            if (keepSuccess) {
+            // Success: UPDATE to 'ok' with the run's logs, or DELETE when the
+            // job does not record successes. Guarded on 'running' either
+            // way: a cancellation that landed while the handler was finishing
+            // must not be stomped to 'ok' or erased.
+            if (this.retention.records(registration.retention, "ok")) {
               await this.guardedUpdate(
                 executionId,
                 ["running"],
@@ -1616,6 +1601,7 @@ export class JobProvider {
                   status: "ok",
                   completedAt: this.dt.nowISOString(),
                   key: null,
+                  logs: this.logBuffer.snapshot(),
                 },
                 "success",
               );
@@ -1643,6 +1629,14 @@ export class JobProvider {
                   { name: jobName, executionId },
                   { catch: true },
                 );
+                // Cancelled follows the job's failure rule. `cancel()` left
+                // the row for this path to read; it goes now.
+                if (!this.retention.records(registration.retention, "error")) {
+                  await this.executions.deleteMany({
+                    id: { eq: executionId },
+                    status: { eq: "cancelled" },
+                  });
+                }
                 // A resolved `push({ inline: true })` claims the handler ran
                 // to completion. A cancelled run did not, so the caller has
                 // to hear about it rather than read success into silence.
@@ -1661,19 +1655,28 @@ export class JobProvider {
               //
               // Written here rather than through `handleFailure`, which
               // derives its budget from `registration.options.retry` and so
-              // cannot see that THIS execution opted out of retrying.
-              await this.guardedUpdate(
-                executionId,
-                ["running"],
-                {
-                  status: "error",
-                  error: err.message,
-                  completedAt: this.dt.nowISOString(),
-                  key: null,
-                  logs: this.logBuffer.snapshot(),
-                },
-                "inline-failure",
-              );
+              // cannot see that THIS execution opted out of retrying. A job
+              // that records no failures loses the row instead; the caller
+              // still gets the error.
+              if (this.retention.records(registration.retention, "error")) {
+                await this.guardedUpdate(
+                  executionId,
+                  ["running"],
+                  {
+                    status: "error",
+                    error: err.message,
+                    completedAt: this.dt.nowISOString(),
+                    key: null,
+                    logs: this.logBuffer.snapshot(),
+                  },
+                  "inline-failure",
+                );
+              } else {
+                await this.executions.deleteMany({
+                  id: { eq: executionId },
+                  status: { eq: "running" },
+                });
+              }
               await this.alepha.events.emit(
                 "job:error",
                 { name: jobName, error: err, executionId },
@@ -1866,18 +1869,27 @@ export class JobProvider {
         `Job '${jobName}' dead after ${currentAttempt} attempt(s)`,
         { executionId, error: error.message },
       );
-      await this.guardedUpdate(
-        executionId,
-        ["running"],
-        {
-          status: "error",
-          error: error.message,
-          completedAt: this.dt.nowISOString(),
-          key: null,
-          logs,
-        },
-        "terminal-failure",
-      );
+      if (this.retention.records(registration.retention, "error")) {
+        await this.guardedUpdate(
+          executionId,
+          ["running"],
+          {
+            status: "error",
+            error: error.message,
+            completedAt: this.dt.nowISOString(),
+            key: null,
+            logs,
+          },
+          "terminal-failure",
+        );
+      } else {
+        // The job records no failures, so its outbox row ends here. Guarded
+        // like the write it replaces: a cancel that won keeps its row.
+        await this.executions.deleteMany({
+          id: { eq: executionId },
+          status: { eq: "running" },
+        });
+      }
     }
 
     await this.alepha.events.emit(
@@ -1927,7 +1939,8 @@ export class JobProvider {
       {
         label: "promote-due",
         status: "scheduled",
-        orderBy: { column: "priority", direction: "asc" },
+        // Oldest due first, so a backlog is served in the order it fell due.
+        orderBy: { column: "scheduledAt", direction: "asc" },
         // Due when its own scheduledAt has arrived.
         where: (where, now) => {
           where.scheduledAt = { lte: now.toISOString() };
@@ -1937,7 +1950,9 @@ export class JobProvider {
       {
         label: "redispatch-stale",
         status: "pending",
-        orderBy: { column: "priority", direction: "asc" },
+        // Longest untouched first, the same clock the phase measures
+        // staleness with, and the ordering `recover-crashed` already uses.
+        orderBy: { column: "updatedAt", direction: "asc" },
         // Pending and untouched for `staleThreshold`: the delivery was lost.
         // `updatedAt` is the clock; the `createdAt` bound is redundant with
         // it (a row is never updated before it is created) and is there only
@@ -2007,11 +2022,8 @@ export class JobProvider {
    * stamps `updatedAt` past the stale window), so a bounded batch always
    * makes progress: next tick reads the next rows, not the same ones.
    *
-   * What DOES repeat is the priority ordering: while a backlog persists,
-   * `promote-due` and `redispatch-stale` keep serving the highest-priority
-   * rows first, so newly arriving `critical` work overtakes `low` work that
-   * has been waiting. That is priority doing its job, not starvation, and it
-   * is the one thing `$job` priority is defined to mean. Do not "fix" it.
+   * Every phase serves its oldest rows first, so under a backlog work is
+   * picked up in the order it has been waiting.
    */
   protected async runSweepEntry(
     entry: SweepEntry,
@@ -2065,17 +2077,28 @@ export class JobProvider {
       this.log.warn(
         `Job '${exec.jobName}' (${exec.id}) was never claimed after ${count} re-dispatch(es), marking it errored`,
       );
-      await this.guardedUpdate(
-        exec.id,
-        ["pending"],
-        {
-          status: "error",
-          error: `Never claimed after ${count} sweep re-dispatch(es) (jobConfig.maxRedispatch)`,
-          completedAt: this.dt.nowISOString(),
-          key: null,
-        },
-        "redispatch-exhausted",
-      );
+      const registration = this.jobs.get(exec.jobName);
+      if (
+        !registration ||
+        this.retention.records(registration.retention, "error")
+      ) {
+        await this.guardedUpdate(
+          exec.id,
+          ["pending"],
+          {
+            status: "error",
+            error: `Never claimed after ${count} sweep re-dispatch(es) (jobConfig.maxRedispatch)`,
+            completedAt: this.dt.nowISOString(),
+            key: null,
+          },
+          "redispatch-exhausted",
+        );
+      } else {
+        await this.executions.deleteMany({
+          id: { eq: exec.id },
+          status: { eq: "pending" },
+        });
+      }
       await this.alepha.events.emit(
         "job:error",
         {
@@ -2257,86 +2280,42 @@ export class JobProvider {
   protected readonly trimMaxPerTick = 5_000;
 
   /**
-   * Trim every ring buffer that is actually over its limit.
+   * The trim's first phase: delete every row whose job name no job in this
+   * container declares, whatever its status.
    *
-   * **One grouped query for the whole tick**, not two per registered job.
-   * The old shape issued a `findMany` per job per status regardless of
-   * activity: about sixteen jobs in Lore meant up to 32 queries an hour,
-   * roughly 770 a day, almost all of them returning nothing. Most of the
-   * hourly cron trigger's 172 ms of CPU was this.
+   * The name is a job's identity in `job_executions`, and every other path
+   * filters on a registered name: rows under a name nothing declares any more
+   * are never swept, trimmed, retried or listed, so without this they stay
+   * forever. **Renaming a job therefore loses its rows**, pending and
+   * scheduled ones included, at the first trim tick after the deploy. That is
+   * accepted: there is no alias and no carry-over.
    *
-   * A count also tells us how far over the limit each buffer is, which is
-   * what lets the trim below stop guessing.
+   * Skipped when no job is registered. A container that declares none (a
+   * script that loaded `AlephaApiJobs` alone) is not an application whose job
+   * set means anything, and would otherwise empty the table.
+   *
+   * ⚠️ Any process pointed at the same database with a different job set
+   * deletes the rows of the jobs it does not declare: two applications
+   * sharing a database, or a script that started a container with only some
+   * of the application's modules. Give each its own database, or its own
+   * schema.
    */
-  protected async trimRingBuffers(): Promise<void> {
-    let counts: Array<{
-      jobName: string;
-      status: string;
-      id: { count: number };
-    }>;
-    try {
-      counts = (await this.executions.aggregate({
-        select: { jobName: true, status: true, id: { count: true } },
-        where: { status: { inArray: ["ok", "error"] } },
-        groupBy: ["jobName", "status"],
-      })) as typeof counts;
-    } catch (e) {
-      this.log.warn("Failed to read execution counts for trim", e);
-      return;
-    }
+  protected async purgeUnregistered(): Promise<void> {
+    const names = [...this.jobs.keys()];
+    if (names.length === 0) return;
 
-    for (const row of counts) {
-      const reg = this.jobs.get(row.jobName);
-      if (!reg) continue;
-      const status = row.status === "ok" ? "ok" : "error";
-      const keep =
-        status === "ok"
-          ? (reg.options.keep?.ok ?? this.config.keepLastSuccess)
-          : (reg.options.keep?.error ?? this.config.keepLastError);
-      // 0 means KEEP FOREVER here, and the two zeros in this module mean
-      // opposite things by documented design: a per-job `keep.ok: 0` retains
-      // the row forever, while the global `keepLastSuccess: 0` means delete
-      // on success — which is enforced at completion, not here. Do not
-      // collapse them.
-      if (keep <= 0) continue;
-      const total = Number(row.id.count ?? 0);
-      if (total <= keep) continue;
-      await this.trimByStatus(reg.name, status, keep, total);
-    }
-  }
-
-  /**
-   * Delete everything past the newest `keep` rows, in chunks.
-   *
-   * It used to read `limit: keep + 50` and delete whatever was beyond
-   * `keep`, which meant a job producing more than 50 rows of a status per
-   * trim tick could **never** be trimmed back: the table grew without bound
-   * and nothing anywhere said so. Silently giving up was the one option to
-   * rule out.
-   */
-  protected async trimByStatus(
-    jobName: string,
-    status: "ok" | "error",
-    keep: number,
-    total: number,
-  ): Promise<void> {
-    const over = total - keep;
     let deleted = 0;
     try {
-      while (deleted < over && deleted < this.trimMaxPerTick) {
+      while (deleted < this.trimMaxPerTick) {
         const chunk = Math.min(
           this.trimChunkSize,
-          over - deleted,
           this.trimMaxPerTick - deleted,
         );
-        // `offset: keep` past a newest-first ordering is the ring buffer's
-        // tail. Re-read each round rather than paging: the previous chunk is
-        // gone, so the same offset lands on the next-oldest rows.
+        // The registered names are a few dozen bound parameters on top of a
+        // chunk of ids, which keeps the delete under D1's 999.
         const rows = await this.executions.findMany({
-          where: { jobName: { eq: jobName }, status: { eq: status } },
-          orderBy: { column: "createdAt", direction: "desc" },
+          where: { jobName: { notInArray: names } },
           columns: ["id"],
-          offset: keep,
           limit: chunk,
         });
         if (rows.length === 0) break;
@@ -2344,14 +2323,211 @@ export class JobProvider {
           id: { inArray: rows.map((r) => r.id) },
         });
         deleted += rows.length;
+        if (rows.length < chunk) break;
       }
+      if (deleted > 0) {
+        this.log.info(
+          `Purged ${deleted} execution row(s) of jobs no longer registered`,
+        );
+      }
+      if (deleted >= this.trimMaxPerTick) {
+        this.log.info(
+          `Purge of unregistered jobs hit its per-tick ceiling (${deleted} removed); the rest waits for the next tick`,
+        );
+      }
+    } catch (e) {
+      this.log.warn("Failed to purge rows of unregistered jobs", e);
+    }
+  }
+
+  /**
+   * Enforce every job's retention.
+   *
+   * **One grouped query for the whole tick**, not two per registered job.
+   * The old shape issued a `findMany` per job per status regardless of
+   * activity: about sixteen jobs in Lore meant up to 32 queries an hour,
+   * roughly 770 a day, almost all of them returning nothing. Most of the
+   * hourly cron trigger's 172 ms of CPU was this.
+   *
+   * The group carries each status's count and its oldest `completedAt`, so a
+   * status that is neither over its `last` nor holding a row older than its
+   * `days` costs nothing more. `cancelled` is trimmed too, by the failure rule.
+   *
+   * **The clock is `completedAt`**, which every terminal write sets. Not
+   * `startedAt`: it is null on a row cancelled before any worker claimed it,
+   * and Postgres sorts that null first under `DESC` where SQLite sorts it
+   * last, so the two databases would delete different rows.
+   */
+  protected async trimRingBuffers(): Promise<void> {
+    await this.purgeUnregistered();
+
+    let groups: Array<{
+      jobName: string;
+      status: string;
+      id: { count: number };
+      completedAt: { min: unknown };
+    }>;
+    try {
+      groups = (await this.executions.aggregate({
+        select: {
+          jobName: true,
+          status: true,
+          id: { count: true },
+          completedAt: { min: true },
+        },
+        where: { status: { inArray: ["ok", "error", "cancelled"] } },
+        groupBy: ["jobName", "status"],
+      })) as typeof groups;
+    } catch (e) {
+      this.log.warn("Failed to read execution counts for trim", e);
+      return;
+    }
+
+    const now = this.dt.now();
+    for (const group of groups) {
+      const reg = this.jobs.get(group.jobName);
+      if (!reg) continue;
+      const status = group.status as "ok" | "error" | "cancelled";
+      const total = Number(group.id.count ?? 0);
+      if (total === 0) continue;
+
+      const limit = this.retention.limitFor(reg.retention, reg.kind, status);
+      if (limit === false) {
+        // Not recorded: whatever is left from before goes.
+        await this.trimByStatus(reg.name, status, {
+          total,
+          last: 0,
+          keepNewest: false,
+        });
+        continue;
+      }
+
+      const overCount = limit.last !== undefined && total > limit.last;
+      const cutoff =
+        limit.days !== undefined
+          ? now.subtract(limit.days * 86_400_000, "millisecond")
+          : undefined;
+      const oldest = new Date(group.completedAt?.min as any).getTime();
+      const holdsOld =
+        cutoff !== undefined &&
+        // An unreadable minimum is left to the SQL comparison to decide.
+        (Number.isNaN(oldest) || oldest < cutoff.valueOf()) &&
+        // A cron's only row is its newest, which outlives the window.
+        !(limit.keepNewest && total <= 1);
+
+      if (!overCount && !holdsOld) continue;
+      await this.trimByStatus(reg.name, status, {
+        total,
+        last: overCount ? limit.last : undefined,
+        cutoff: holdsOld ? cutoff?.toISOString() : undefined,
+        keepNewest: limit.keepNewest,
+      });
+    }
+  }
+
+  /**
+   * Delete one status of one job back to its limits, in chunks: first every
+   * row past the newest `last`, then every row that completed before
+   * `cutoff`, sparing the newest row when `keepNewest`.
+   *
+   * It used to read `limit: keep + 50` and delete whatever was beyond
+   * `keep`, which meant a job producing more than 50 rows of a status per
+   * trim tick could **never** be trimmed back: the table grew without bound
+   * and nothing anywhere said so. Silently giving up was the one option to
+   * rule out, so both phases loop, under one per-tick ceiling that logs when
+   * it binds.
+   */
+  protected async trimByStatus(
+    jobName: string,
+    status: "ok" | "error" | "cancelled",
+    plan: {
+      total: number;
+      last?: number;
+      cutoff?: string;
+      keepNewest: boolean;
+    },
+  ): Promise<void> {
+    const newestFirst = [
+      { column: "completedAt" as const, direction: "desc" as const },
+      { column: "createdAt" as const, direction: "desc" as const },
+    ];
+    let deleted = 0;
+    let unfinished = false;
+    try {
+      if (plan.last !== undefined && plan.total > plan.last) {
+        const over = plan.total - plan.last;
+        let removed = 0;
+        while (removed < over && deleted < this.trimMaxPerTick) {
+          const chunk = Math.min(
+            this.trimChunkSize,
+            over - removed,
+            this.trimMaxPerTick - deleted,
+          );
+          // `offset: last` past a newest-first ordering is the tail. Re-read
+          // each round rather than paging: the previous chunk is gone, so the
+          // same offset lands on the next-oldest rows.
+          const rows = await this.executions.findMany({
+            where: { jobName: { eq: jobName }, status: { eq: status } },
+            orderBy: newestFirst,
+            columns: ["id"],
+            offset: plan.last,
+            limit: chunk,
+          });
+          if (rows.length === 0) break;
+          await this.executions.deleteMany({
+            id: { inArray: rows.map((r) => r.id) },
+          });
+          removed += rows.length;
+          deleted += rows.length;
+        }
+        if (removed < over && deleted >= this.trimMaxPerTick) {
+          unfinished = true;
+        }
+      }
+
+      if (plan.cutoff !== undefined && deleted < this.trimMaxPerTick) {
+        let spare: string | undefined;
+        if (plan.keepNewest) {
+          const newest = await this.executions.findMany({
+            where: { jobName: { eq: jobName }, status: { eq: status } },
+            orderBy: newestFirst,
+            columns: ["id"],
+            limit: 1,
+          });
+          spare = newest[0]?.id;
+        }
+        while (deleted < this.trimMaxPerTick) {
+          const chunk = Math.min(
+            this.trimChunkSize,
+            this.trimMaxPerTick - deleted,
+          );
+          const where = this.executions.createQueryWhere();
+          where.jobName = { eq: jobName };
+          where.status = { eq: status };
+          where.completedAt = { lt: plan.cutoff };
+          if (spare) where.id = { ne: spare };
+          const rows = await this.executions.findMany({
+            where,
+            columns: ["id"],
+            limit: chunk,
+          });
+          if (rows.length === 0) break;
+          await this.executions.deleteMany({
+            id: { inArray: rows.map((r) => r.id) },
+          });
+          deleted += rows.length;
+          if (rows.length < chunk) break;
+          if (deleted >= this.trimMaxPerTick) unfinished = true;
+        }
+      }
+
       if (deleted > 0) {
         this.log.debug(`Trimmed ${deleted} ${status} rows for '${jobName}'`);
       }
-      if (deleted < over) {
+      if (unfinished) {
         // Visible, unlike the cap this replaces. The next tick continues.
         this.log.info(
-          `Trim of '${jobName}' ${status} rows hit its per-tick ceiling: ${deleted}/${over} removed, the rest waits for the next tick`,
+          `Trim of '${jobName}' ${status} rows hit its per-tick ceiling after ${deleted} removed, the rest waits for the next tick`,
         );
       }
     } catch (e) {
@@ -2428,5 +2604,3 @@ export class JobProvider {
     return registration;
   }
 }
-
-export { PRIORITY_MAP, PRIORITY_REVERSE };

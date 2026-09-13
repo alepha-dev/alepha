@@ -77,6 +77,7 @@ describe("$job — reschedule", () => {
         },
       });
       work = $job({
+        description: "A job under test.",
         name: "reschedule.repark",
         schema: stageSchema,
         handler: async ({ payload, reschedule }) => {
@@ -118,7 +119,7 @@ describe("$job — reschedule", () => {
       (n) => n === 2,
       { label: "stage 2 ran" },
     );
-    // `record: "error"` by default, so the finished row is deleted.
+    // A queue job keeps no successes by default, so the finished row is deleted.
     await waitFor(
       () => app.executions.findById(id),
       (r) => r == null,
@@ -153,6 +154,7 @@ describe("$job — reschedule", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "reschedule.cancelled",
         schema: stageSchema,
         handler: async ({ reschedule }) => {
@@ -196,6 +198,7 @@ describe("$job — reschedule", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "reschedule.throws",
         schema: stageSchema,
         retry: {
@@ -231,6 +234,7 @@ describe("$job — reschedule", () => {
     let caught: unknown;
     class App {
       tick = $job({
+        description: "A job under test.",
         name: "reschedule.cron",
         cron: "0 0 * * *",
         handler: async ({ reschedule }) => {
@@ -255,6 +259,7 @@ describe("$job — reschedule", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "reschedule.inline",
         schema: stageSchema,
         handler: async ({ reschedule }) => {
@@ -282,6 +287,7 @@ describe("$job — reschedule", () => {
     let finished = false;
     class App {
       work = $job({
+        description: "A job under test.",
         name: "reschedule.invalid",
         schema: stageSchema,
         handler: async ({ reschedule }) => {
@@ -324,6 +330,7 @@ describe("$job — cancelByKey", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "cancelbykey.parked",
         schema: stageSchema,
         handler: async () => {
@@ -366,6 +373,7 @@ describe("$job — cancelByKey", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "cancelbykey.running",
         schema: stageSchema,
         handler: async () => {
@@ -399,6 +407,7 @@ describe("$job — cancelByKey", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "cancelbykey.context",
         schema: stageSchema,
         handler: async () => {},
@@ -469,6 +478,7 @@ describe("$job — per-job retry backoff", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        description: "A job under test.",
         name: "backoff.own-curve",
         schema: stageSchema,
         retry: {
@@ -498,6 +508,7 @@ describe("$job — per-job retry backoff", () => {
     const alepha = makeApp();
     class App {
       work = $job({
+        description: "A job under test.",
         name: "backoff.bad-factor",
         schema: stageSchema,
         retry: { retries: 1, backoff: { initial: [1, "second"], factor: 0.5 } },

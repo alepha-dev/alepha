@@ -12,6 +12,8 @@ export class InvitationJobs {
    * Expire pending invitations that have passed their expiration date.
    */
   public readonly expireInvitations = $job({
+    name: "system.invitations.expire",
+    description: "Marks pending invitations past their expiry date as expired.",
     cron: "0 * * * *",
     handler: async () => {
       const count = await this.invitationService.expirePending();
@@ -26,6 +28,9 @@ export class InvitationJobs {
    * to keep the Cloudflare cron-trigger count down).
    */
   public readonly purgeInvitations = $job({
+    name: "system.invitations.purge-resolved",
+    description:
+      "Deletes accepted, declined, expired and revoked invitations once past their purge window.",
     cron: "0 * * * *",
     handler: async () => {
       const count = await this.invitationService.purgeResolved();
