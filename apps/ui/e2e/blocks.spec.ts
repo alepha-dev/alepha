@@ -794,3 +794,49 @@ test.describe("page showcases", () => {
     });
   }
 });
+
+test.describe("account API keys", () => {
+  test("badges each key's state and creates one with a chosen expiry", async ({
+    page,
+  }) => {
+    await page.goto("/pages/account/keys");
+
+    // The live keys: one with no expiry, one inside its warning window.
+    await expect(page.getByText("CLI on my laptop")).toBeVisible();
+    await expect(page.getByText("No expiry")).toBeVisible();
+    await expect(page.getByText("CI pipeline")).toBeVisible();
+
+    // The dead ones sit in the collapsed section, each with its badge.
+    await expect(page.getByText("Nightly import")).toHaveCount(0);
+    await page.getByRole("button", { name: "Show", exact: true }).click();
+    await expect(page.getByText("Nightly import")).toBeVisible();
+    // Not the section's own description, "Expired and revoked keys, ...".
+    await expect(page.getByText(/^Expired(?! and)/)).toBeVisible();
+    await expect(page.getByText(/^Revoked/)).toBeVisible();
+
+    await page.getByRole("button", { name: /new key/i }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "New API key" });
+    await dialog.getByLabel("Name").fill("Deploy bot");
+
+    // The presets come from `GET /api-keys/options`, preselected on its
+    // default, and the choice reaches the trigger.
+    const expiry = dialog.getByRole("combobox", { name: "Expires after" });
+    await expect(expiry).toContainText("90 days");
+    await expiry.click();
+    for (const preset of ["7 days", "1 year", "No expiration"]) {
+      await expect(
+        page.getByRole("option", { name: preset, exact: true }),
+      ).toBeVisible();
+    }
+    await page.getByRole("option", { name: "30 days", exact: true }).click();
+    await expect(expiry).toContainText("30 days");
+    // Base UI leaves `pointer-events: none` on the body when the listbox
+    // closes; the next click is Create.
+    await page.evaluate(() => {
+      document.body.style.pointerEvents = "";
+    });
+
+    await dialog.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(page.getByText(/copy your key now/i)).toBeVisible();
+  });
+});

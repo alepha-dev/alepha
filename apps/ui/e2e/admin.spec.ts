@@ -93,6 +93,33 @@ test.describe("admin pages", () => {
     await expect(page.getByText("Expired").first()).toBeVisible();
   });
 
+  test("the key table shows each key's status and filters on it", async ({
+    page,
+  }) => {
+    await page.goto("/pages/admin/keys");
+
+    // Revoked keys are left out by default: today's view, spelled out as a
+    // filter on the other three statuses.
+    const table = page.getByRole("table");
+    await expect(table.getByText("CI pipeline")).toBeVisible();
+    for (const status of ["Active", "Expiring", "Expired"]) {
+      await expect(
+        table.getByRole("cell", { name: status, exact: true }).first(),
+      ).toBeVisible();
+    }
+    await expect(table.getByText("Laptop scratch")).toHaveCount(0);
+
+    // Add Revoked to the filter and the revoked key appears, without a revoke
+    // action of its own.
+    await page.getByRole("combobox").filter({ hasText: "3 selected" }).click();
+    await page.getByRole("option", { name: "Revoked", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(table.getByText("Laptop scratch")).toBeVisible();
+    await expect(
+      table.getByRole("cell", { name: "Revoked", exact: true }),
+    ).toBeVisible();
+  });
+
   test("a user row reaches its detail page", async ({ page }) => {
     await page.goto("/pages/admin/users");
     await page.getByText("ada@alepha.dev").first().click();

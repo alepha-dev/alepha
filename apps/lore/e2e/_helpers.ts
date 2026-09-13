@@ -568,3 +568,37 @@ export async function fillMarkdownEditor(
   await page.keyboard.press("Delete");
   await editor.pressSequentially(text);
 }
+
+/**
+ * Base UI leaves `pointer-events: none` on `<body>` after a dialog or a
+ * listbox closes, and the next click then lands on nothing until React
+ * happens to re-render. The popup is genuinely gone by then; this only clears
+ * the residue it left.
+ */
+export const releasePointerEvents = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    document.body.style.pointerEvents = "";
+  });
+};
+
+/**
+ * Answer the confirmation `useDialog()` opened, by the label on its action
+ * button, and wait for it to close.
+ *
+ * The dialog is found by that button, not as the last dialog on the page: a
+ * confirmation that opens another dialog (Rotate opens the token reveal)
+ * would otherwise be "still visible" forever, as the next one.
+ */
+export const confirmDialog = async (
+  page: Page,
+  label: string,
+): Promise<void> => {
+  const dialog = page
+    .locator('[role="alertdialog"], [role="dialog"]')
+    .filter({ has: page.getByRole("button", { name: label, exact: true }) })
+    .last();
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByRole("button", { name: label, exact: true }).click();
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await releasePointerEvents(page);
+};

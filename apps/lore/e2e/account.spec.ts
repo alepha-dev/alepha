@@ -1,5 +1,10 @@
 import { expect, test } from "./_fixtures.ts";
-import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
+import {
+  confirmDialog,
+  createProjectViaWizard,
+  registerAndVerify,
+  releasePointerEvents,
+} from "./_helpers.ts";
 
 /**
  * The `/account` area — Lore's consumer of `@alepha/ui`'s `AccountRouter`.
@@ -203,42 +208,146 @@ test.describe("Account area", () => {
     await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
   });
 
-  test("creates an API key, shows it once, then revokes it", async ({
+  test("creates an API key with an expiry, rotates it, revokes it, and reuses its name", async ({
     page,
+    request,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
 
     const email = `ak-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
+    /**
+     * The one-time reveal: read the token, dismiss it, and check it is gone.
+     */
+    const takeToken = async (): Promise<string> => {
+      const reveal = page
+        .getByRole("dialog")
+        .filter({ hasText: /copy your key now/i });
+      await expect(reveal).toBeVisible({ timeout: 15_000 });
+      const token = (await reveal.locator("code").innerText()).trim();
+      expect(token).toMatch(/^ak_/);
+      await reveal.getByRole("button", { name: "Done", exact: true }).click();
+      await expect(reveal).toBeHidden();
+      await releasePointerEvents(page);
+      // The token exists in readable form exactly once.
+      await expect(page.getByText(token, { exact: true })).toHaveCount(0);
+      return token;
+    };
+
+    /**
+     * The status an API call made with this token gets back. Straight at the
+     * API, without the page and its cookies: the key alone authenticates it.
+     */
+    const statusWith = async (token: string): Promise<number> =>
+      (
+        await request.get("/api/api-keys", {
+          headers: { authorization: `Bearer ${token}` },
+        })
+      ).status();
+
     await page.goto("/account/keys");
     await page.waitForLoadState("networkidle");
 
+    // Create, with an expiry other than the preselected 90 days.
     await page.getByRole("button", { name: /new key/i }).click();
-    await page.getByLabel("Name").fill("CI pipeline");
-    await page.getByRole("button", { name: "Create", exact: true }).click();
+    const createDialog = page
+      .getByRole("dialog")
+      .filter({ hasText: "New API key" });
+    await createDialog.getByLabel("Name").fill("CI pipeline");
+    const expiry = createDialog.getByRole("combobox", {
+      name: "Expires after",
+    });
+    // Filled from `GET /api-keys/options`, so wait for the preset it names.
+    await expect(expiry).toContainText("90 days", { timeout: 15_000 });
+    await expiry.click();
+    await page.getByRole("option", { name: "30 days", exact: true }).click();
+    await expect(expiry).toContainText("30 days");
+    // Base UI leaves `pointer-events: none` behind when the listbox closes,
+    // and the next click is Create.
+    await releasePointerEvents(page);
 
-    // The token exists in readable form exactly once; the dialog must not
-    // auto-dismiss it.
-    await expect(page.getByText(/copy your key now/i)).toBeVisible();
-    await page.getByRole("button", { name: "Done", exact: true }).click();
+    // Armed before the click: client actions go through `POST /api/_batch`.
+    const created = page.waitForResponse(
+      (response) =>
+        /_batch|api-keys/.test(response.url()) &&
+        response.request().method() === "POST",
+      { timeout: 20_000 },
+    );
+    await createDialog
+      .getByRole("button", { name: "Create", exact: true })
+      .click();
+    expect((await created).ok()).toBe(true);
+    const first = await takeToken();
 
-    await expect(page.getByText("CI pipeline")).toBeVisible();
+    // The row says where the key is in its life: thirty days out.
+    const row = page.getByText("CI pipeline", { exact: true });
+    await expect(row).toBeVisible();
+    await expect(page.getByText("in a month")).toBeVisible();
+    expect(await statusWith(first)).toBe(200);
 
+    // Rotate: a different secret on the same key, and the old one dies at
+    // once, not after the validation cache's fifteen minutes.
+    await page.getByRole("button", { name: "Rotate CI pipeline" }).click();
+    const rotated = page.waitForResponse(
+      (response) =>
+        /_batch|rotate/.test(response.url()) &&
+        response.request().method() === "POST",
+      { timeout: 20_000 },
+    );
+    await confirmDialog(page, "Rotate");
+    expect((await rotated).ok()).toBe(true);
+    const second = await takeToken();
+
+    expect(second).not.toBe(first);
+    expect(await statusWith(first)).toBe(401);
+    expect(await statusWith(second)).toBe(200);
+
+    // Revoke. A revoked key stays listed, in the collapsed "Inactive keys"
+    // section, marked and with nothing left to click: it is the answer to
+    // "why did CI stop working" (#Q2054, #Q2060).
     await page.getByRole("button", { name: "Revoke CI pipeline" }).click();
-    await page.getByRole("button", { name: /^revoke$/i }).click();
-    // A revoked key stays listed, in the collapsed "Inactive keys" section,
-    // marked and with nothing left to click: it is the answer to "why did CI
-    // stop working" (#Q2054, #Q2060).
+    const revoked = page.waitForResponse(
+      (response) =>
+        /_batch|api-keys/.test(response.url()) &&
+        ["POST", "DELETE"].includes(response.request().method()),
+      { timeout: 20_000 },
+    );
+    await confirmDialog(page, "Revoke");
+    expect((await revoked).ok()).toBe(true);
     await expect(
       page.getByRole("button", { name: "Revoke CI pipeline" }),
     ).toHaveCount(0);
+    expect(await statusWith(second)).toBe(401);
+
     await page.getByRole("button", { name: "Show", exact: true }).click();
-    await expect(page.getByText("CI pipeline")).toBeVisible();
+    await expect(page.getByText("CI pipeline", { exact: true })).toBeVisible();
     await expect(page.getByText(/^Revoked/)).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Rotate CI pipeline" }),
     ).toHaveCount(0);
+
+    // Revoking freed the name: a new key takes it at once (#Q2054's partial
+    // unique index, end to end).
+    await page.getByRole("button", { name: /new key/i }).click();
+    await createDialog.getByLabel("Name").fill("CI pipeline");
+    await expect(expiry).toContainText("90 days", { timeout: 15_000 });
+    const recreated = page.waitForResponse(
+      (response) =>
+        /_batch|api-keys/.test(response.url()) &&
+        response.request().method() === "POST",
+      { timeout: 20_000 },
+    );
+    await createDialog
+      .getByRole("button", { name: "Create", exact: true })
+      .click();
+    expect((await recreated).ok()).toBe(true);
+    const third = await takeToken();
+
+    expect(await statusWith(third)).toBe(200);
+    await expect(
+      page.getByRole("button", { name: "Revoke CI pipeline" }),
+    ).toHaveCount(1);
   });
 
   test("refuses to delete the account while a project is still owned", async ({

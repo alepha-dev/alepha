@@ -110,4 +110,36 @@ describe("ApiKeyCreateDialog scope", () => {
     expect(isChecked(cell("api-key:create")!)).toBe(true);
     expect(isChecked(cell("reports:export")!)).toBe(false);
   });
+
+  it("keeps a name typed before the options arrive, and then preselects their default", async () => {
+    // Found by the apps/ui e2e: the form was rebuilt when the options landed,
+    // and a name typed while they were in flight was silently wiped.
+    alepha = Alepha.create().with(AlephaReactI18n).with(AlephaServerLinks);
+    await alepha.start();
+    const tree = (options?: ApiKeyOptionsResponse) => (
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ApiKeyCreateDialog
+            open
+            onOpenChange={() => {}}
+            onCreated={() => {}}
+            options={options}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>
+    );
+
+    const view = render(tree());
+    const name = () =>
+      document.querySelector('input[name="name"]') as HTMLInputElement;
+    fireEvent.change(name(), { target: { value: "CI pipeline" } });
+    expect(name().value).toBe("CI pipeline");
+
+    view.rerender(tree(OPTIONS));
+
+    expect(name().value).toBe("CI pipeline");
+    expect(
+      screen.getByRole("combobox", { name: /Expires after/ }).textContent,
+    ).toContain("90 days");
+  });
 });

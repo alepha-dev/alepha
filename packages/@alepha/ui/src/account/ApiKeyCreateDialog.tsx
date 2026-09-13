@@ -197,9 +197,30 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
         }
       },
     },
-    [props.open, options?.expiry.default],
+    // Not keyed on the options: rebuilt when they arrive, the form dropped
+    // whatever had been typed while `GET /api-keys/options` was in flight,
+    // and a name typed quickly was gone by the time Create was clicked.
+    [props.open],
   );
   const state = useFormState(form, ["loading"]);
+
+  // The server's default reaches the select as a new baseline, keeping every
+  // field the user has already touched.
+  useEffect(() => {
+    if (!props.open || !options) {
+      return;
+    }
+    form.setInitialValues(
+      {
+        name: "",
+        description: "",
+        expiresIn: options.expiry.default,
+        access: "full",
+        permissions: [],
+      },
+      { keepDirty: true },
+    );
+  }, [props.open, options?.expiry.default]);
   const [access] = useFieldValue(form.input.access);
 
   const expiryLabel = (preset: string): string => {
