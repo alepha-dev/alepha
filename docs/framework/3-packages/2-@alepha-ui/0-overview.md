@@ -20,14 +20,15 @@ bugfixes arrive through normal dependency updates.
 
 ## Import paths
 
-Every component lives in its own directory, so the import path repeats the
-name:
+The package is sixteen modules, one subpath each. The primitives are the package
+root; everything heavier is a subpath of its own, so an app loads only what it
+renders:
 
 ```ts
-import { Button } from "@alepha/ui/components/ui/button";
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+import { Button, cn, useToast } from "@alepha/ui";
+import { AutoForm } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
+import { AdminRouter } from "@alepha/ui/admin";
 ```
 
 Load the stylesheet once, at your app's entry point:
@@ -36,47 +37,41 @@ Load the stylesheet once, at your app's entry point:
 import "@alepha/ui/styles.css";
 ```
 
+A module's files are private: import from the subpath, never from a file
+inside it. Inside the package the rule is the opposite - every import is
+relative and names a concrete file - and `check:conventions` enforces both
+the module map and that `@alepha/ui` (the root) imports no other module.
+
 ## What's inside
 
-**`components/ui/*`** - the primitives: `button`, `input`, `card`, `badge`,
-`dialog`, `sheet`, `tooltip`, `label`, `avatar`, and the rest. Reach for these
-first.
+| Subpath                | What it holds                                                                                                                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@alepha/ui`           | The primitives (`Button`, `Input`, `Card`, `Badge`, `Dialog`, `Sheet`, `Tooltip`, `Sidebar`, and the rest), `cn`, `useToast` + `Toaster`, `useDialog` + `DialogProvider`, `useIsMobile`, `TimeAgo`, `UserAvatar` |
+| `@alepha/ui/form`      | `AutoForm`, `Control` and the per-type renderers (`ControlSelect`, `ControlDate`, `ControlUpload`, ...), `FormField`, `resizeImage`                                                                              |
+| `@alepha/ui/settings`  | The settings kit: `SettingsLayout`, `SettingsNav`, `SettingsSection`, `SettingsRow`, `SettingsDangerSection`                                                                                                     |
+| `@alepha/ui/table`     | `AlephaTable` and its parts, `paginateLocal`, `useTableSelection`, `PermissionMatrix`                                                                                                                            |
+| `@alepha/ui/tree`      | `TreeView`, `TreeViewResizer`, `useTreeState`, and the tree model (`buildTree`, `flattenTree`, `resolveDrop`, ...)                                                                                               |
+| `@alepha/ui/markdown`  | `MarkdownView` and the diagram parsers. See the section below                                                                                                                                                    |
+| `@alepha/ui/shell`     | `AppShell`, `NavShell` and its `Spotlight`, `PlateLayout`, `DetailLayout`, `AppActions`, the header buttons, `ActionErrorToaster`                                                                                |
+| `@alepha/ui/auth`      | `AuthRouter` and its pages, `TurnstileWidget`                                                                                                                                                                    |
+| `@alepha/ui/account`   | `AccountRouter`, `$pageAccount`, and the account pages                                                                                                                                                           |
+| `@alepha/ui/admin`     | `AdminRouter`, `$pageAdmin`, the admin pages and `AdminAnalytics`                                                                                                                                                |
+| `@alepha/ui/chart`     | The recharts wrapper (`ChartContainer` and its parts). Opt-in                                                                                                                                                    |
+| `@alepha/ui/command`   | The cmdk wrapper (`Command`, `CommandDialog`). Opt-in                                                                                                                                                            |
+| `@alepha/ui/calendar`  | The react-day-picker wrapper (`Calendar`). Opt-in                                                                                                                                                                |
+| `@alepha/ui/otp`       | The input-otp wrapper (`InputOTP`). Opt-in                                                                                                                                                                       |
+| `@alepha/ui/resizable` | The react-resizable-panels wrapper. Opt-in                                                                                                                                                                       |
+| `@alepha/ui/i18n/fr`   | `uiFr`, the French catalogue for every key the package asks for                                                                                                                                                  |
 
-**Schema-driven forms** - `auto-form` renders a complete form from a `z.object()`
-schema, driven by the `$control` metadata on each field. `control`,
-`control-array`, `control-object`, `control-date`, `control-number`,
-`control-select`, `control-password`, and `control-upload` are the per-type
-field renderers it dispatches to; use them directly when you want to lay a form
-out by hand.
-
-**`alepha-table`** - data table wired for server-side pagination, sorting and
-filtering.
-
-**`tree-view`** - a controlled tree. `tree-model.ts` is the pure half (build,
-flatten, cycle-safe parents, drop resolution), `TreeView` draws the rows with
-their indent guides and ARIA tree roles, and drag and drop, inline rename and a
-context-menu slot are opt-ins. `useTreeState` holds the gesture state, and
-`TreeViewResizer` is the pane handle.
-
-**Application shells** - `app-shell` and `nav-shell` for page scaffolding,
-`app-actions` for toolbars, plus ready-made `auth`, `account`, `settings`, and
-`admin` screens.
-
-**`markdown-view`** - renders markdown as prose, with diagrams. See the section
-below.
-
-**Hooks** - `use-toast` and `use-dialog` (imperative toasts and modals) live
-under `components/`; `use-mobile` lives under `hooks/`.
+The five opt-in wrappers import only the root, so a heavy dependency (recharts,
+cmdk, react-day-picker, input-otp, react-resizable-panels) is loaded by the app
+that imports its subpath and by nothing else.
 
 > `useDialog()` throws without a `<DialogProvider>` above it, and toasts need a
-> `<Toaster />`. `app-shell` mounts both. The `account` and `admin` routers do
+> `<Toaster />`. `AppShell` mounts both. The account and admin routers do
 > **not** - a second `<Toaster />` under an app that already has one shows every
-> toast twice - so a standalone mount (or `app-shell` with `embedded`) has to
+> toast twice - so a standalone mount (or `AppShell` with `embedded`) has to
 > wrap them itself.
-
-**`lib/*`** - `utils` re-exports `cn()` from the `cn` package, the
-zero-dependency class merger every component uses. Also `resize-image` and
-`i18n-fr`.
 
 ## Example
 
@@ -85,7 +80,7 @@ single source of truth - field types, validation, and layout hints all come
 from it:
 
 ```tsx
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { AutoForm } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
@@ -264,8 +259,9 @@ text and box disagree, differently on every surface.
 ## Adding a component
 
 The package owns every file in it: there is no registry to pull from and no
-generator to run. A new primitive is written by hand in `components/ui/`, next
-to the ones it resembles. An upstream component (shadcn's, Base UI's own
-examples) is a fine starting point, copied in and then edited like any other
-file here: imports go through `@alepha/ui/lib/utils` for `cn`, and a
+generator to run. A new primitive is written by hand in `src/core/`, one file
+per family, named after it (`DropdownMenu.tsx` holds the menu and all its
+parts), and re-exported from `src/core/index.ts`. An upstream component
+(shadcn's, Base UI's own examples) is a fine starting point, copied in and then
+edited like any other file here: `cn` comes from `./utils.ts`, and a
 `data-slot` attribute on each part keeps it addressable from `styles.css`.

@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { useIsMobile } from "@alepha/ui/hooks/*";
+import { useIsMobile } from "@alepha/ui";
 ```
 
 ## Overview

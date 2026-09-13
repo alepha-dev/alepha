@@ -102,7 +102,7 @@ Alepha uses a hybrid monorepo structure:
 
 **Specialized Packages**
 
-- `@alepha/ui` - Shared Base UI + Tailwind components. The package owns every file in it: edit `src/components/` directly, primitives and blocks alike. There is no registry and no sync; a new primitive is written by hand.
+- `@alepha/ui` - Shared Base UI + Tailwind components, as sixteen modules: `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core` (the primitives, `cn`, toast, dialog), and the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. The package owns every file in it and is edited in place; there is no registry and no sync, and a new primitive is written by hand. The map is guarded by `check:conventions`: `core` imports no other module, the wrappers and `i18n/fr` import only `core`, and there is no cycle.
 - `@alepha/devtools` - Development tools and inspection UI
 - `@alepha/lore` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
 - `@alepha/payments-stripe` - Stripe payments backend
@@ -407,7 +407,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - **Never destructure props in the parameter list:** use `(props: MyComponentProps)`, not `({ foo }: MyComponentProps)`. Destructure inside the body if you want.
 - **Props interfaces are named `MyComponentProps`** — always a named exported interface, never inline.
 - **No React Context** — use `$atom` + `useStore`, never `createContext` / `useContext`.
-- **`@alepha/ui/components/admin/*` is a separate sub-module** — importing from `@alepha/ui` inside admin code is correct, not a layering violation.
+- **Inside `@alepha/ui`, imports are relative and name a concrete file, never `@alepha/ui` or a module's `index.ts`.** `src/admin/AdminKeysTokenDialog.tsx` imports `../core/Button.tsx`, not `@alepha/ui`: a specifier would go through the package's own barrel, which is how a module ends up importing itself in a cycle. Outside the package it is the reverse: import from the module subpath (`@alepha/ui/admin`), never from a file inside it. `check:conventions` refuses both a self-import and a barrel import.
 - **Always a `Control*`, never a raw `ui/` primitive** — reach for `<Control select …>` / `<ControlSelect>` rather than `<Select>`, and the same for every other field. The raw primitive renders the raw VALUE on its trigger (an opaque id, not the label), and carries no label, no description, no error slot and no form binding, so every surface that used one grew the same three workarounds by hand. `<Select>` is `@deprecated` and going. **It is not a drop-in swap**: `Control` binds to a form field, so a picker with local state becomes a one-field `useForm` — `initialValues` for what the server says, `onChange` for a control that saves on change, and `useFormValues` where a `useState` was read.
 
 ### Router and i18n
@@ -445,7 +445,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - Event names follow pattern: `namespace:action:status`
 - **IMPORTANT**: NEVER use the `private` keyword in class members. Use `protected` instead for all access control
 - **IMPORTANT**: NEVER use `vi.mock()` or `vi.spyOn()` - use Alepha's service substitution with `.with()` and Memory providers instead
-- **IMPORTANT**: NEVER use `window.confirm()` / `window.alert()` / `window.prompt()` in UI code. Use the imperative dialog API from `@alepha/ui/components/use-dialog/use-dialog`: `const dialog = useDialog();` then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (returns `Promise<boolean>`), `dialog.alert(...)`, or `dialog.prompt(...)`. `<DialogProvider>` is already mounted in `apps/lore`'s `Layout.tsx`.
+- **IMPORTANT**: NEVER use `window.confirm()` / `window.alert()` / `window.prompt()` in UI code. Use the imperative dialog API from `@alepha/ui`: `const dialog = useDialog();` then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (returns `Promise<boolean>`), `dialog.alert(...)`, or `dialog.prompt(...)`. `<DialogProvider>` is already mounted in `apps/lore`'s `Layout.tsx`.
 - **IMPORTANT**: NEVER use single-line JSDoc comments. Always use multi-line format:
   ```typescript
   // Bad
