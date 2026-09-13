@@ -8,7 +8,6 @@ import {
 import {
   Command,
   CommandEmpty,
-  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -111,30 +110,28 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
           className="w-(--anchor-width) p-0"
           align="start"
         >
-          <Command>
+          <Command<QuestResource> items={quests} itemToStringValue={labelOf}>
             <CommandInput placeholder={tr("quest.create.dependsOn.search")} />
+            <CommandEmpty>{tr("quest.create.dependsOn.empty")}</CommandEmpty>
             <CommandList>
-              <CommandEmpty>{tr("quest.create.dependsOn.empty")}</CommandEmpty>
-              <CommandGroup>
-                {quests.map((q) => (
-                  <CommandItem
-                    key={q.id}
-                    value={labelOf(q)}
-                    onSelect={() => {
-                      props.onChange(q.id === props.value ? null : q.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "size-4 shrink-0",
-                        q.id === props.value ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    <span className="truncate">{labelOf(q)}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              {(q: QuestResource) => (
+                <CommandItem
+                  key={q.id}
+                  value={q}
+                  onClick={() => {
+                    props.onChange(q.id === props.value ? null : q.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "size-4 shrink-0",
+                      q.id === props.value ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  <span className="truncate">{labelOf(q)}</span>
+                </CommandItem>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>

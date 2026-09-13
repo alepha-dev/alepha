@@ -2,7 +2,6 @@ import { Button, Popover, PopoverContent, PopoverTrigger } from "@alepha/ui";
 import {
   Command,
   CommandEmpty,
-  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -64,27 +63,30 @@ const EpicFolioPicker = (props: EpicFolioPickerProps) => {
         {tr("epic.folios.attach")}
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
-        <Command>
+        <Command<Folio>
+          items={available}
+          itemToStringValue={(folio) =>
+            `${formatReference("folio", folio.shortId)} ${folio.title}`
+          }
+        >
           <CommandInput placeholder={tr("epic.folios.attach.search")} />
+          <CommandEmpty>{tr("common.noResults")}</CommandEmpty>
           <CommandList>
-            <CommandEmpty>{tr("common.noResults")}</CommandEmpty>
-            <CommandGroup>
-              {available.map((folio) => (
-                <CommandItem
-                  key={folio.id}
-                  value={`${formatReference("folio", folio.shortId)} ${folio.title}`}
-                  onSelect={() => {
-                    props.onAttach(folio.id);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                    {formatReference("folio", folio.shortId)}
-                  </span>
-                  <span className="truncate">{folio.title}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {(folio: Folio) => (
+              <CommandItem
+                key={folio.id}
+                value={folio}
+                onClick={() => {
+                  props.onAttach(folio.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                  {formatReference("folio", folio.shortId)}
+                </span>
+                <span className="truncate">{folio.title}</span>
+              </CommandItem>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

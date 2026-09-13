@@ -2,7 +2,6 @@ import { Button, Popover, PopoverContent, PopoverTrigger } from "@alepha/ui";
 import {
   Command,
   CommandEmpty,
-  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -73,27 +72,25 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
         {tr("epic.quests.attach")}
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
-        <Command>
+        <Command<QuestResource> items={available} itemToStringValue={labelOf}>
           <CommandInput placeholder={tr("epic.quests.attach.search")} />
+          <CommandEmpty>{tr("common.noResults")}</CommandEmpty>
           <CommandList>
-            <CommandEmpty>{tr("common.noResults")}</CommandEmpty>
-            <CommandGroup>
-              {available.map((q) => (
-                <CommandItem
-                  key={q.id}
-                  value={labelOf(q)}
-                  onSelect={() => {
-                    props.onAttach(q.id);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                    {formatReference("quest", q.shortId)}
-                  </span>
-                  <span className="truncate">{q.title}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {(q: QuestResource) => (
+              <CommandItem
+                key={q.id}
+                value={q}
+                onClick={() => {
+                  props.onAttach(q.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                  {formatReference("quest", q.shortId)}
+                </span>
+                <span className="truncate">{q.title}</span>
+              </CommandItem>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
