@@ -25,6 +25,9 @@ export class EstateCommandJobs {
   protected readonly limits = $inject(ProjectLimits);
 
   public readonly sweepEstateCommands = $job({
+    name: "estates.sweep-commands",
+    description:
+      "Fails estate commands that stopped reporting, then prunes each estate's command history to its limit.",
     cron: "*/15 * * * *",
     handler: async () => {
       const failed = await this.commands.sweep();
