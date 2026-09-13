@@ -102,6 +102,12 @@ type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface ColumnDef<T> {
   label: string;
+  /**
+   * A sentence explaining what the column holds, shown as the header's
+   * tooltip, for a column whose label alone would be misread: a count that
+   * only counts what is kept, a date in a zone that is not the reader's.
+   */
+  hint?: string;
   cell: (item: T) => ReactNode;
   sortable?: boolean;
   /**
@@ -2043,6 +2049,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                             // touch - which is exactly why the column picker
                             // and not this is the primary path.
                             tabIndex={0}
+                            title={def.hint}
                             className={cn(
                               def.className,
                               "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
@@ -2067,7 +2074,14 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                             onClick={() => toggleSort(key, def)}
                             className="group/sort hover:text-foreground inline-flex items-center gap-1 select-none"
                           >
-                            {def.label}
+                            <span
+                              className={cn(
+                                def.hint &&
+                                  "decoration-muted-foreground/60 underline decoration-dotted underline-offset-4",
+                              )}
+                            >
+                              {def.label}
+                            </span>
                             {/* A sortable column says so at rest. The arrow
                               used to appear only once a column WAS sorted,
                               so an unsorted sortable header and a dead one
@@ -2097,7 +2111,13 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                             )}
                           </button>
                         ) : (
-                          <span className="inline-flex items-center gap-1">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1",
+                              def.hint &&
+                                "decoration-muted-foreground/60 underline decoration-dotted underline-offset-4",
+                            )}
+                          >
                             {def.label}
                           </span>
                         )}

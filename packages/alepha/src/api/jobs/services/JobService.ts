@@ -124,15 +124,23 @@ export class JobService {
 
     const byJob = new Map<
       string,
-      { ok: number; error: number; lastRun?: string }
+      {
+        ok: number;
+        error: number;
+        lastRun?: string;
+        lastStatus?: "ok" | "error";
+      }
     >();
     for (const row of aggRows) {
       const entry = byJob.get(row.job_name) ?? { ok: 0, error: 0 };
       if (row.status === "ok") entry.ok = Number(row.count);
       if (row.status === "error") entry.error = Number(row.count);
+      // The group already carries each status's latest completion, so the
+      // status whose latest is the later one is the last run's outcome.
       const iso = toIso(row.last_run);
       if (iso && (!entry.lastRun || iso > entry.lastRun)) {
         entry.lastRun = iso;
+        entry.lastStatus = row.status === "error" ? "error" : "ok";
       }
       byJob.set(row.job_name, entry);
     }

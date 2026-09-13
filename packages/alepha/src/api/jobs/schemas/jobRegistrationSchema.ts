@@ -18,10 +18,16 @@ export const jobRegistrationSchema = z.object({
     })
     .optional(),
   retention: jobRetentionSchema,
+  /**
+   * Counts of the rows the job still KEEPS, not of every run it made: how
+   * many that is depends on `retention`. `lastRun` and `lastStatus` describe
+   * the most recent kept run.
+   */
   recent: z.object({
     ok: z.integer(),
     error: z.integer(),
     lastRun: z.datetime().optional(),
+    lastStatus: z.enum(["ok", "error"]).optional(),
   }),
 });
 

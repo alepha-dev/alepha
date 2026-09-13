@@ -41,7 +41,7 @@ export class ShowcaseJobs {
           source: { ok: "default", error: "default" },
           cadence: "slower",
         },
-        recent: { ok: 41, error: 1, lastRun: this.at(1) },
+        recent: { ok: 41, error: 1, lastRun: this.at(1), lastStatus: "ok" },
       },
       {
         name: "search.rebuild-index",
@@ -55,7 +55,7 @@ export class ShowcaseJobs {
           source: { ok: "default", error: "default" },
           cadence: "daily",
         },
-        recent: { ok: 12, error: 0, lastRun: this.at(9) },
+        recent: { ok: 12, error: 0, lastRun: this.at(9), lastStatus: "ok" },
       },
       {
         name: "images.make-thumbnail",
@@ -67,7 +67,12 @@ export class ShowcaseJobs {
           error: { days: 30 },
           source: { ok: "default", error: "default" },
         },
-        recent: { ok: 1284, error: 7, lastRun: this.at(0.2) },
+        recent: {
+          ok: 1284,
+          error: 7,
+          lastRun: this.at(0.2),
+          lastStatus: "error",
+        },
       },
       {
         name: "invoices.settle",
@@ -80,7 +85,7 @@ export class ShowcaseJobs {
           error: { days: 90 },
           source: { ok: "job", error: "job" },
         },
-        recent: { ok: 96, error: 3, lastRun: this.at(2) },
+        recent: { ok: 96, error: 3, lastRun: this.at(2), lastStatus: "ok" },
       },
     ];
   }

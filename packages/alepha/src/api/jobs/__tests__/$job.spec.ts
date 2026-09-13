@@ -614,6 +614,59 @@ describe("$job — admin service", () => {
     expect(tick?.recent.ok).toBe(1);
     expect(tick?.recent.error).toBe(0);
     expect(tick?.recent.lastRun).toBeTruthy();
+    expect(tick?.recent.lastStatus).toBe("ok");
+  });
+
+  it("listJobs reports the status of the latest kept run", async ({
+    expect,
+  }) => {
+    const alepha = makeApp();
+    class App {
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        name: "app.flaky",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        handler: async () => {},
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    const at = (minutesAgo: number) =>
+      new Date(Date.now() - minutesAgo * 60_000).toISOString();
+    // Two older successes, then the most recent run failed.
+    for (const [status, minutes] of [
+      ["ok", 30],
+      ["ok", 20],
+      ["error", 10],
+    ] as const) {
+      await app.executions.create({
+        jobName: "app.flaky",
+        status,
+        maxAttempts: 1,
+        completedAt: at(minutes),
+      });
+    }
+
+    const { JobService } = await import("../services/JobService.ts");
+    const svc = alepha.inject(JobService);
+    const flaky = (await svc.listJobs()).find((l) => l.name === "app.flaky");
+    expect(flaky?.recent).toMatchObject({
+      ok: 2,
+      error: 1,
+      lastStatus: "error",
+    });
+
+    await app.executions.create({
+      jobName: "app.flaky",
+      status: "ok",
+      maxAttempts: 1,
+      completedAt: at(1),
+    });
+    const recovered = (await svc.listJobs()).find(
+      (l) => l.name === "app.flaky",
+    );
+    expect(recovered?.recent.lastStatus).toBe("ok");
   });
 
   it("listJobs reports 'direct' when AlephaApiJobsQueue is not loaded", async ({
