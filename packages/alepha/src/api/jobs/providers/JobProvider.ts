@@ -285,7 +285,40 @@ export class JobProvider {
 
   // --- Registration -----------------------------------------------------------------------------------------------
 
+  /**
+   * The shape every job name must have: `<domain>.<action>`, or
+   * `system.<domain>.<action>` for a job shipped from `packages/`. Lowercase
+   * kebab-case segments, and no `/`, since the admin routes carry the name in
+   * the path.
+   */
+  public readonly namePattern =
+    /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
+
+  /**
+   * The longest description a job may declare. The registration payload's
+   * `description` is a `z.text()`, which caps there: a longer one would not
+   * fail the boot, it would blank the admin's job list.
+   */
+  public readonly maxDescriptionLength = 255;
+
   public registerJob(name: string, options: JobPrimitiveOptions): void {
+    if (typeof name !== "string" || !this.namePattern.test(name)) {
+      throw new AlephaError(
+        `Job name '${name}' does not follow the convention: <domain>.<action>, or system.<domain>.<action> for a job shipped from packages/, in lowercase kebab-case (${this.namePattern.source}). For example 'estates.sweep-commands'.`,
+      );
+    }
+    const description =
+      typeof options.description === "string" ? options.description.trim() : "";
+    if (description.length === 0) {
+      throw new AlephaError(
+        `Job '${name}' declares no description. Say in one sentence what it does, for the operators who read the admin.`,
+      );
+    }
+    if (options.description.length > this.maxDescriptionLength) {
+      throw new AlephaError(
+        `Job '${name}' declares a description of ${options.description.length} characters; at most ${this.maxDescriptionLength} are allowed.`,
+      );
+    }
     if (this.jobs.has(name)) {
       throw new AlephaError(`Job already registered: ${name}`);
     }

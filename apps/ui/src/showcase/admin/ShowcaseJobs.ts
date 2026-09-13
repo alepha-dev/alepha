@@ -29,7 +29,7 @@ export class ShowcaseJobs {
   public registrations(): JobRegistration[] {
     return [
       {
-        name: "ShowcaseJobs.sendDigest",
+        name: "digests.send-weekly",
         description: "Emails the weekly digest to every subscriber.",
         type: "cron",
         cron: "0 7 * * 1",
@@ -44,7 +44,7 @@ export class ShowcaseJobs {
         recent: { ok: 41, error: 1, lastRun: this.at(1) },
       },
       {
-        name: "ShowcaseJobs.rebuildSearchIndex",
+        name: "search.rebuild-index",
         description: "Rewrites the search index from scratch.",
         type: "cron",
         cron: "0 3 * * *",
@@ -58,7 +58,7 @@ export class ShowcaseJobs {
         recent: { ok: 12, error: 0, lastRun: this.at(9) },
       },
       {
-        name: "ShowcaseJobs.thumbnail",
+        name: "images.make-thumbnail",
         description: "Generates a thumbnail for an uploaded image.",
         type: "queue",
         retry: { retries: 5 },
@@ -70,7 +70,7 @@ export class ShowcaseJobs {
         recent: { ok: 1284, error: 7, lastRun: this.at(0.2) },
       },
       {
-        name: "ShowcaseJobs.settleInvoice",
+        name: "invoices.settle",
         description: "Charges a due invoice and records the result.",
         type: "direct",
         timeout: "1m",

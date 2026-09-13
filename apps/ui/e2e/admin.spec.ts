@@ -21,7 +21,7 @@ const PAGES = [
   { path: "users", heading: "Admin: users", content: "ada@alepha.dev" },
   { path: "sessions", heading: "Admin: sessions", content: "ada@alepha.dev" },
   { path: "keys", heading: "Admin: API keys", content: "CI pipeline" },
-  { path: "jobs", heading: "Admin: jobs", content: "ShowcaseJobs.sendDigest" },
+  { path: "jobs", heading: "Admin: jobs", content: "digests.send-weekly" },
   { path: "files", heading: "Admin: files", content: "quarterly-report.pdf" },
   {
     path: "notifications",
@@ -62,7 +62,7 @@ test.describe("admin pages", () => {
     page,
   }) => {
     await page.goto("/pages/admin/jobs");
-    await page.getByText("ShowcaseJobs.sendDigest").click();
+    await page.getByText("digests.send-weekly").click();
 
     // `can.retry` / `can.cancel` decide these, so a fixture without a failed
     // and a running row would never show them.

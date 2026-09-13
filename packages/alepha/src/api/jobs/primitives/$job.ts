@@ -147,15 +147,30 @@ export interface JobPrimitiveOptions<
   T extends ZType = ZType,
 > extends PipelinePrimitiveOptions {
   /**
-   * Optional explicit job name. Defaults to `ClassName.propertyKey`.
-   * Recommended convention for framework-internal jobs: `api:module:jobName`.
+   * The job's name: `<domain>.<action>`, lowercase kebab-case segments, such
+   * as `estates.sweep-commands` or `quests.send-due-reminders`. The domain is
+   * the module or business area, a plural noun where natural, and the action
+   * does not repeat it. Everything shipped from `packages/` (alepha and every
+   * `@alepha/*`) is `system.<domain>.<action>`, so a framework job never
+   * collides with an application's; an application never uses `system.`.
+   *
+   * Checked at registration against
+   * `^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$`.
+   *
+   * The name is the job's identity in `job_executions`. **Renaming a job
+   * loses its rows**: history, and any queued or scheduled work under the
+   * old name, are deleted at the next trim tick.
    */
-  name?: string;
+  name: string;
 
   /**
-   * Human-readable description (shown in the admin UI).
+   * What the job does, in one sentence, shown to operators in the admin.
+   * Present tense, what it does and on what: "Deletes sessions past their
+   * expiry date.". Not empty, at most 255 characters.
+   *
+   * Like the name, it is developer text and is not translated.
    */
-  description?: string;
+  description: string;
 
   /**
    * Payload schema (Zod). When set, the job is queue-mode.
@@ -256,6 +271,7 @@ export interface JobPrimitiveOptions<
    * ```ts
    * $job({
    *   name: "quests.send-due-reminders",
+   *   description: "Sends the quest reminders that are due.",
    *   cron: "0 0 * * *",
    *   retention: {
    *     ok: { last: 7 },     // the last 7 successes
@@ -318,10 +334,7 @@ export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
   protected readonly jobProvider = $inject(JobProvider);
 
   public get name(): string {
-    return (
-      this.options.name ??
-      `${this.config.service.name}.${this.config.propertyKey}`
-    );
+    return this.options.name;
   }
 
   protected onInit() {

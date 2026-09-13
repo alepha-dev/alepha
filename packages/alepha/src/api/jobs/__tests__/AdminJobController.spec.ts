@@ -31,6 +31,8 @@ class OpsApp {
   now = $inject(DateTimeProvider);
 
   work = $job({
+    name: "ops-app.work",
+    description: "A job under test.",
     schema: z.object({ v: z.integer() }),
     handler: async () => {},
   });
@@ -51,7 +53,7 @@ type Status =
   | "cancelled";
 
 /**
- * Six rows of `OpsApp.work`, created an hour apart (row 0 oldest), with a
+ * Six rows of `ops-app.work`, created an hour apart (row 0 oldest), with a
  * status, a trigger, a key and an attempt each, so every sort and filter has
  * something to separate.
  */
@@ -115,7 +117,7 @@ const boot = async () => {
     const row = FIXTURE[i];
     const created = now.subtract((FIXTURE.length - i) * 60, "minute");
     const inserted = await app.executions.create({
-      jobName: "OpsApp.work",
+      jobName: "ops-app.work",
       status: row.status,
       attempt: row.attempt,
       maxAttempts: 3,
@@ -164,7 +166,7 @@ describe("AdminJobController — executions page", () => {
   }) => {
     const { service, labelOf } = await boot();
 
-    const page = await service.getExecutions("OpsApp.work", { size: 4 });
+    const page = await service.getExecutions("ops-app.work", { size: 4 });
 
     expect(page.content.map((r) => labelOf(r.id))).toEqual([
       "f",
@@ -178,7 +180,7 @@ describe("AdminJobController — executions page", () => {
       expect(row).not.toHaveProperty("logs");
     }
 
-    const second = await service.getExecutions("OpsApp.work", {
+    const second = await service.getExecutions("ops-app.work", {
       size: 4,
       page: 1,
     });
@@ -188,7 +190,7 @@ describe("AdminJobController — executions page", () => {
   it("sorts by every whitelisted column, both ways", async ({ expect }) => {
     const { service, labelOf } = await boot();
     const order = async (sort: any) =>
-      (await service.getExecutions("OpsApp.work", { sort })).content.map((r) =>
+      (await service.getExecutions("ops-app.work", { sort })).content.map((r) =>
         labelOf(r.id),
       );
 
@@ -221,7 +223,7 @@ describe("AdminJobController — executions page", () => {
     // A second finished row, so one status holds two rows to tie.
     const now = nowIso(app);
     await app.executions.create({
-      jobName: "OpsApp.work",
+      jobName: "ops-app.work",
       status: "ok",
       maxAttempts: 1,
       createdAt: now,
@@ -230,7 +232,7 @@ describe("AdminJobController — executions page", () => {
     });
 
     const rows = (
-      await service.getExecutions("OpsApp.work", { sort: "status" })
+      await service.getExecutions("ops-app.work", { sort: "status" })
     ).content;
     const statuses = rows.map((r) => r.status);
     // Contiguous: a status never reappears after another one started.
@@ -251,7 +253,7 @@ describe("AdminJobController — executions page", () => {
 
     await expect(
       controller.listExecutions.run(
-        { params: { name: "OpsApp.work" }, query: { sort: "payload" } as any },
+        { params: { name: "ops-app.work" }, query: { sort: "payload" } as any },
         { user: user("job-reader") },
       ),
     ).rejects.toThrow();
@@ -260,7 +262,7 @@ describe("AdminJobController — executions page", () => {
   it("filters by a list of statuses", async ({ expect }) => {
     const { service, labelOf } = await boot();
 
-    const page = await service.getExecutions("OpsApp.work", {
+    const page = await service.getExecutions("ops-app.work", {
       status: ["error", "cancelled"],
     });
     expect(page.content.map((r) => labelOf(r.id))).toEqual(["e", "b"]);
@@ -269,7 +271,7 @@ describe("AdminJobController — executions page", () => {
   it("filters by what triggered the run", async ({ expect }) => {
     const { service, labelOf } = await boot();
     const labels = async (trigger: "scheduled" | "manual" | "code") =>
-      (await service.getExecutions("OpsApp.work", { trigger })).content.map(
+      (await service.getExecutions("ops-app.work", { trigger })).content.map(
         (r) => labelOf(r.id),
       );
 
@@ -282,13 +284,13 @@ describe("AdminJobController — executions page", () => {
     const { alepha, service, labelOf } = await boot();
     const now = alepha.inject(DateTimeProvider).now();
 
-    const page = await service.getExecutions("OpsApp.work", {
+    const page = await service.getExecutions("ops-app.work", {
       from: now.subtract(30, "minute").toISOString(),
       to: now.subtract(10, "minute").toISOString(),
     });
     expect(page.content.map((r) => labelOf(r.id))).toEqual(["d", "b"]);
 
-    const fromOnly = await service.getExecutions("OpsApp.work", {
+    const fromOnly = await service.getExecutions("ops-app.work", {
       from: now.subtract(15, "minute").toISOString(),
     });
     expect(fromOnly.content.map((r) => labelOf(r.id))).toEqual(["b", "a"]);
@@ -297,7 +299,7 @@ describe("AdminJobController — executions page", () => {
   it("filters by a key fragment", async ({ expect }) => {
     const { service, labelOf } = await boot();
 
-    const page = await service.getExecutions("OpsApp.work", {
+    const page = await service.getExecutions("ops-app.work", {
       key: "invoice",
     });
     expect(page.content.map((r) => labelOf(r.id))).toEqual(["e", "b"]);
@@ -356,7 +358,7 @@ describe("AdminJobController — deleting executions", () => {
     // does not exist.
     expect(result).toEqual({ deleted: 2, skipped: 3 });
     const left = await app.executions.findMany({
-      where: { jobName: { eq: "OpsApp.work" } },
+      where: { jobName: { eq: "ops-app.work" } },
       columns: ["id"],
     });
     expect(left.map((r) => r.id).sort()).toEqual(

@@ -19,8 +19,8 @@ queue job that handles them.
 
 | Option        | Type                  | Required | Description                                                                                                                                                      |
 | ------------- | --------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | `string`              | No       | Optional explicit job name                                                                                                                                       |
-| `description` | `string`              | No       | Human-readable description (shown in the admin UI).                                                                                                              |
+| `name`        | `string`              | Yes      | The job's name: `&lt;domain&gt;.&lt;action&gt;`, lowercase kebab-case segments, such as `estates.sweep-commands` or `quests.send-due-reminders`                  |
+| `description` | `string`              | Yes      | What the job does, in one sentence, shown to operators in the admin                                                                                              |
 | `schema`      | `T`                   | No       | Payload schema (Zod)                                                                                                                                             |
 | `cron`        | `string`              | No       | Cron expression for recurring execution                                                                                                                          |
 | `retry`       | `JobRetryOptions`     | No       | Retry policy for queue-mode and direct-mode jobs                                                                                                                 |

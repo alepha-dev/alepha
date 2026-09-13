@@ -155,7 +155,7 @@ describe("showcase admin fixtures", () => {
       }) => Promise<{ id: string; payload?: unknown }>;
     };
     const page = await api.listExecutions({
-      params: { name: "ShowcaseJobs.sendDigest" },
+      params: { name: "digests.send-weekly" },
       query: { page: 0, size: 100 },
     });
     const rows = page.content;
@@ -174,7 +174,7 @@ describe("showcase admin fixtures", () => {
     expect(detail.payload).toBeDefined();
 
     const errors = await api.listExecutions({
-      params: { name: "ShowcaseJobs.sendDigest" },
+      params: { name: "digests.send-weekly" },
       query: { status: ["error"] },
     });
     expect(errors.content.length).toBeGreaterThan(0);

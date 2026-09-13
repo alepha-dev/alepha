@@ -69,6 +69,8 @@ describe("$job — long-delay hardening", () => {
     class LongDelayApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "long-delay-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -100,6 +102,8 @@ describe("$job — long-delay hardening", () => {
     class EarlyDispatchApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "early-dispatch-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -113,7 +117,7 @@ describe("$job — long-delay hardening", () => {
     const jobs = alepha.inject(JobProvider) as TestJobProvider;
     // A stray early timer (clock skew, timer overflow) must not run the job
     // an hour ahead of schedule.
-    await jobs.testDispatchScheduled("EarlyDispatchApp.work", id);
+    await jobs.testDispatchScheduled("early-dispatch-app.work", id);
     await sleep(100);
 
     const rows = await app.executions.findMany({ where: { id: { eq: id } } });
@@ -135,6 +139,8 @@ describe("$job — sweep guards", () => {
     class SweepGuardApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "sweep-guard-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -205,6 +211,8 @@ describe("$job — retention", () => {
       // A queue job records no successes by default; a declared rule is what
       // keeps them, however the global defaults are tuned.
       work = $job({
+        name: "audit-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { ok: { days: 7 } },
         handler: async () => {},
@@ -238,6 +246,8 @@ describe("$job — key dedup under concurrency", () => {
     class ConcurrentKeyApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "concurrent-key-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -255,7 +265,7 @@ describe("$job — key dedup under concurrency", () => {
     expect(new Set(ids).size).toBe(1);
 
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "ConcurrentKeyApp.work" } },
+      where: { jobName: { eq: "concurrent-key-app.work" } },
     });
     expect(rows).toHaveLength(1);
   });
@@ -277,7 +287,7 @@ describe("$job — key dedup under concurrency", () => {
     // The winner's row lands after the loser's dedup pre-check saw nothing
     // — exactly the race window the unique index guards.
     const winner = await app.executions.create({
-      jobName: "RaceLoserApp.work",
+      jobName: "race-loser-app.work",
       key: "race-2",
       status: "scheduled",
       maxAttempts: 1,
@@ -285,7 +295,7 @@ describe("$job — key dedup under concurrency", () => {
 
     const jobs = alepha.inject(JobProvider) as TestJobProvider;
     const result = await jobs.testCreateKeyedExecution({
-      jobName: "RaceLoserApp.work",
+      jobName: "race-loser-app.work",
       key: "race-2",
       status: "scheduled",
       maxAttempts: 1,
@@ -305,6 +315,8 @@ describe("$job — lease renewal for long-running jobs", () => {
     class LeaseApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "lease-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -322,7 +334,7 @@ describe("$job — lease renewal for long-running jobs", () => {
     // hours ago (no local abort controller here on B), but A's heartbeat
     // keeps the row's updatedAt fresh — B's sweep must not re-dispatch it.
     const row = await app.executions.create({
-      jobName: "LeaseApp.work",
+      jobName: "lease-app.work",
       status: "running",
       attempt: 1,
       maxAttempts: 1,
@@ -345,7 +357,7 @@ describe("$job — lease renewal for long-running jobs", () => {
     await alepha.start();
 
     const row = await app.executions.create({
-      jobName: "LeaseApp.work",
+      jobName: "lease-app.work",
       status: "running",
       attempt: 1,
       maxAttempts: 1,
@@ -375,6 +387,8 @@ describe("$job — lease renewal for long-running jobs", () => {
       // timeout 1s → crash threshold 2s → heartbeat ~666ms. The handler
       // outlives the first heartbeat tick (it ignores the abort signal).
       work = $job({
+        name: "slow-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         timeout: [1, "second"],
         handler: async () => {
@@ -451,6 +465,8 @@ describe("$job — the sweep table", () => {
     class SweepTableApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "sweep-table-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -478,7 +494,7 @@ describe("$job — the sweep table", () => {
     const rows: Record<string, string> = {};
     for (const status of statuses) {
       const row = await app.executions.create({
-        jobName: "SweepTableApp.work",
+        jobName: "sweep-table-app.work",
         status,
         attempt: 1,
         maxAttempts: 1,
@@ -544,6 +560,8 @@ describe("$job — the sweep is bounded", () => {
     class BacklogApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "backlog-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async ({ payload }) => {
           handled.push(payload.v);
@@ -562,7 +580,7 @@ describe("$job — the sweep is bounded", () => {
     const past = new Date(Date.now() - 60_000).toISOString();
     for (let v = 0; v < 7; v++) {
       await app.executions.create({
-        jobName: "BacklogApp.work",
+        jobName: "backlog-app.work",
         payload: { v },
         status: "scheduled",
         maxAttempts: 1,
@@ -574,7 +592,7 @@ describe("$job — the sweep is bounded", () => {
       (
         await app.executions.findMany({
           where: {
-            jobName: { eq: "BacklogApp.work" },
+            jobName: { eq: "backlog-app.work" },
             status: { eq: "scheduled" },
           },
         })
@@ -634,6 +652,8 @@ describe("$job — the sweep is bounded", () => {
     class LostApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "lost-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         // Never consulted: the row dies before `claim()`, so `attempt` stays
         // 0 and `maxAttempts` never binds. That is exactly why the
@@ -695,6 +715,8 @@ describe("$job — inline", () => {
       class App {
         executions = $repository(jobExecutionEntity);
         work = $job({
+          name: "app.work",
+          description: "A job under test.",
           schema: z.object({ v: z.integer() }),
           retention: { ok: { last: 10 } },
           handler: async () => {
@@ -731,6 +753,8 @@ describe("$job — inline", () => {
       class App {
         executions = $repository(jobExecutionEntity);
         work = $job({
+          name: "app.work",
+          description: "A job under test.",
           schema: z.object({ v: z.integer() }),
           handler: async () => {
             calls++;
@@ -748,7 +772,7 @@ describe("$job — inline", () => {
       );
 
       const rows = await app.executions.findMany({
-        where: { jobName: { eq: "App.work" } },
+        where: { jobName: { eq: "app.work" } },
       });
       expect(rows).toHaveLength(1);
       // `error`, never `scheduled`. This is the whole quest: a `scheduled`
@@ -775,6 +799,8 @@ describe("$job — inline", () => {
     class RetryingApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "retrying-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         // Kept for the asynchronous majority of this job's callers.
         retry: { retries: 3 },
@@ -794,7 +820,7 @@ describe("$job — inline", () => {
     );
 
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "RetryingApp.work" } },
+      where: { jobName: { eq: "retrying-app.work" } },
     });
     expect(rows[0].status).toBe("error");
     expect(rows[0].maxAttempts).toBe(1);
@@ -810,6 +836,8 @@ describe("$job — inline", () => {
     class RetryingApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "retrying-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retry: { retries: 3 },
         handler: async () => {
@@ -839,6 +867,8 @@ describe("$job — inline", () => {
       .with(AlephaApiJobs);
     class CronApp {
       work = $job({
+        name: "cron-app.work",
+        description: "A job under test.",
         cron: "0 * * * *",
         inline: true,
         handler: async () => {},
@@ -853,6 +883,8 @@ describe("$job — inline", () => {
       .with(AlephaApiJobs);
     class RetryApp {
       work = $job({
+        name: "retry-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         inline: true,
         retry: { retries: 2 },
@@ -871,6 +903,8 @@ describe("$job — inline", () => {
 
     class FanOutApp {
       work = $job({
+        name: "fan-out-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         inline: true,
         handler: async () => {},
@@ -947,6 +981,8 @@ describe("$job — retries have real backoff", () => {
       class App {
         executions = $repository(jobExecutionEntity);
         work = $job({
+          name: "app.work",
+          description: "A job under test.",
           schema: z.object({ v: z.integer() }),
           retry: { retries: 1 },
           handler: async () => {
@@ -974,7 +1010,7 @@ describe("$job — retries have real backoff", () => {
 
       const rows = await waitFor(
         () =>
-          app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+          app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
         (r) => r[0]?.status === "error",
         { label: "terminal after the last attempt" },
       );
@@ -994,6 +1030,8 @@ describe("$job — retries have real backoff", () => {
     }));
     class App {
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -1021,6 +1059,8 @@ describe("$job — retries have real backoff", () => {
     alepha.store.mut(jobConfig, (c) => ({ ...c, retryBackoffBase: 100_000 }));
     class App {
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -1053,6 +1093,8 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -1106,6 +1148,8 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -1159,6 +1203,8 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -1177,7 +1223,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     // An EARLY delivery (a clamped Cloudflare delay, clock skew) must not
     // run the job: the claim's own `scheduledAt <= now` guard refuses it and
     // the row is left exactly as it was.
-    await jobs.testProcessExecution("App.work", id);
+    await jobs.testProcessExecution("app.work", id);
     expect(calls).toBe(0);
     const row = await app.executions.findById(id);
     expect(row?.status).toBe("scheduled");
@@ -1192,7 +1238,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
       { scheduledAt: past },
       { now: past },
     );
-    await jobs.testProcessExecution("App.work", id);
+    await jobs.testProcessExecution("app.work", id);
     expect(calls).toBe(1);
   });
 
@@ -1209,6 +1255,8 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -1232,8 +1280,8 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     );
 
     await Promise.all([
-      jobs.testDispatchScheduled("App.work", id),
-      jobs.testDispatchScheduled("App.work", id),
+      jobs.testDispatchScheduled("app.work", id),
+      jobs.testDispatchScheduled("app.work", id),
     ]);
     await waitFor(
       () => calls,
@@ -1263,6 +1311,8 @@ describe("$job — trim is proportional to the work done", () => {
     class NoisyApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "noisy-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: { last: 3 } },
         handler: async () => {},
@@ -1278,7 +1328,7 @@ describe("$job — trim is proportional to the work done", () => {
     // than 50 in a tick and a job at this rate grew without bound forever.
     for (let v = 0; v < 120; v++) {
       await app.executions.create({
-        jobName: "NoisyApp.work",
+        jobName: "noisy-app.work",
         status: "error",
         error: `boom ${v}`,
         maxAttempts: 1,
@@ -1288,7 +1338,7 @@ describe("$job — trim is proportional to the work done", () => {
     await jobs.testTrimRingBuffers();
 
     const left = await app.executions.findMany({
-      where: { jobName: { eq: "NoisyApp.work" }, status: { eq: "error" } },
+      where: { jobName: { eq: "noisy-app.work" }, status: { eq: "error" } },
     });
     expect(left).toHaveLength(3);
   });
@@ -1304,6 +1354,8 @@ describe("$job — trim is proportional to the work done", () => {
     class QuietApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "quiet-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: { last: 3 } },
         handler: async () => {},
@@ -1317,7 +1369,7 @@ describe("$job — trim is proportional to the work done", () => {
     const ids: string[] = [];
     for (let v = 0; v < 3; v++) {
       const row = await app.executions.create({
-        jobName: "QuietApp.work",
+        jobName: "quiet-app.work",
         status: "error",
         error: `boom ${v}`,
         maxAttempts: 1,
@@ -1328,7 +1380,7 @@ describe("$job — trim is proportional to the work done", () => {
     await jobs.testTrimRingBuffers();
 
     const left = await app.executions.findMany({
-      where: { jobName: { eq: "QuietApp.work" }, status: { eq: "error" } },
+      where: { jobName: { eq: "quiet-app.work" }, status: { eq: "error" } },
     });
     expect(left.map((r) => r.id).sort()).toEqual([...ids].sort());
   });
@@ -1349,6 +1401,8 @@ describe("$job — trim is proportional to the work done", () => {
       // broke the row's id against its own job events and overwrote who
       // triggered it.
       beat = $job({
+        name: "tick-app.beat",
+        description: "A job under test.",
         cron: "0 * * * *",
         handler: async () => {
           ticks++;
@@ -1365,7 +1419,7 @@ describe("$job — trim is proportional to the work done", () => {
     expect(ticks).toBe(3);
 
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "TickApp.beat" }, status: { eq: "ok" } },
+      where: { jobName: { eq: "tick-app.beat" }, status: { eq: "ok" } },
     });
     expect(rows).toHaveLength(3);
     expect(new Set(rows.map((r) => r.id)).size).toBe(3);
@@ -1395,6 +1449,8 @@ describe("$job — rows of unregistered jobs are purged", () => {
     class PurgeApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "purge-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { ok: { last: 100 } },
         handler: async () => {},
@@ -1409,12 +1465,12 @@ describe("$job — rows of unregistered jobs are purged", () => {
     for (const status of statuses) {
       // A renamed job's leftovers, one row per status.
       await app.executions.create({
-        jobName: "OldApp.renamedAway",
+        jobName: "old-app.renamed-away",
         status,
         maxAttempts: 1,
       });
       const row = await app.executions.create({
-        jobName: "PurgeApp.work",
+        jobName: "purge-app.work",
         status,
         maxAttempts: 1,
         scheduledAt:
@@ -1428,12 +1484,12 @@ describe("$job — rows of unregistered jobs are purged", () => {
     await jobs.testTrimRingBuffers();
 
     const orphans = await app.executions.findMany({
-      where: { jobName: { eq: "OldApp.renamedAway" } },
+      where: { jobName: { eq: "old-app.renamed-away" } },
     });
     expect(orphans).toHaveLength(0);
 
     const registered = await app.executions.findMany({
-      where: { jobName: { eq: "PurgeApp.work" } },
+      where: { jobName: { eq: "purge-app.work" } },
     });
     expect(registered.map((r) => r.id).sort()).toEqual([...kept].sort());
   });
@@ -1447,6 +1503,8 @@ describe("$job — rows of unregistered jobs are purged", () => {
     class ChunkApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "chunk-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -1459,7 +1517,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
     // More than one 500-row chunk, well under the per-tick ceiling.
     await app.executions.createMany(
       Array.from({ length: 1_203 }, (_, i) => ({
-        jobName: `Gone.job${i % 3}`,
+        jobName: `gone.job-${i % 3}`,
         status: "ok" as const,
         maxAttempts: 1,
       })),
@@ -1468,7 +1526,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
     await jobs.testTrimRingBuffers();
 
     const left = await app.executions.findMany({
-      where: { jobName: { notInArray: ["ChunkApp.work"] } },
+      where: { jobName: { notInArray: ["chunk-app.work"] } },
       columns: ["id"],
     });
     expect(left).toHaveLength(0);
@@ -1486,6 +1544,8 @@ describe("$job — rows of unregistered jobs are purged", () => {
     class StillHereApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "still-here-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -1505,7 +1565,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
       .subtract(1, "day")
       .toISOString();
     const orphan = await app.executions.create({
-      jobName: "RemovedApp.work",
+      jobName: "removed-app.work",
       status: "pending",
       maxAttempts: 1,
       payload: { v: 1 },
@@ -1515,7 +1575,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
     // The control: the same stale row under a registered name IS swept, so
     // the orphan staying put below is the name, not a sweep that saw nothing.
     const twin = await app.executions.create({
-      jobName: "StillHereApp.work",
+      jobName: "still-here-app.work",
       status: "pending",
       maxAttempts: 1,
       payload: { v: 1 },
@@ -1558,7 +1618,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
 
     for (const status of statuses) {
       await app.executions.create({
-        jobName: "SomeApp.work",
+        jobName: "some-app.work",
         status,
         maxAttempts: 1,
       });
@@ -1567,7 +1627,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
     await jobs.testTrimRingBuffers();
 
     const left = await app.executions.findMany({
-      where: { jobName: { eq: "SomeApp.work" } },
+      where: { jobName: { eq: "some-app.work" } },
     });
     expect(left).toHaveLength(statuses.length);
   });

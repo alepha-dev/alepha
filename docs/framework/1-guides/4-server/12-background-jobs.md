@@ -30,6 +30,8 @@ import { $job } from "alepha/api/jobs";
 class Emails {
   // queue-mode - call push() to enqueue work
   welcome = $job({
+    name: "emails.send-welcome",
+    description: "Sends the welcome email to a new user.",
     schema: z.object({ userId: z.text() }),
     retry: { retries: 3 },
     handler: async ({ payload, attempt }) => {
@@ -39,6 +41,8 @@ class Emails {
 
   // cron-mode - fires on a schedule, no payload
   digest = $job({
+    name: "emails.send-digest",
+    description: "Builds and sends the daily digest.",
     cron: "0 8 * * *",
     handler: async () => {
       // build and send the daily digest
@@ -53,6 +57,8 @@ pushes, and a queue job that handles.
 ```typescript
 class Reminders {
   sweep = $job({
+    name: "reminders.sweep",
+    description: "Pushes a reminder for every row that is due.",
     cron: "0 * * * *",
     handler: async () => {
       const due = await this.repository.findMany({ where: { due: true } });
@@ -63,6 +69,8 @@ class Reminders {
   });
 
   remind = $job({
+    name: "reminders.send",
+    description: "Sends one reminder.",
     schema: z.object({ id: z.text() }),
     handler: async ({ payload }) => {
       /* ... */
@@ -70,6 +78,29 @@ class Reminders {
   });
 }
 ```
+
+## Naming
+
+Every job declares a `name` and a `description`.
+
+- The name is `<domain>.<action>` in lowercase kebab-case: `estates.sweep-commands`,
+  `quests.send-due-reminders`. The domain is the module or business area, a
+  plural noun where natural; the action is a verb phrase that does not repeat
+  it.
+- `system.<domain>.<action>` is reserved for jobs shipped from `packages/`
+  (`alepha` and every `@alepha/*`), such as `system.notifications.send`, so a
+  framework job never collides with an application's. An application never
+  uses `system.`.
+- The description is one sentence saying what the job does, shown to operators
+  in the admin, at most 255 characters. Neither is translated.
+
+The name is checked at registration, and `yarn check:conventions` checks that
+`system.` is used exactly where it belongs.
+
+**The name is the job's identity in `job_executions`.** Renaming a job loses its
+rows: its history, and any work queued or scheduled under the old name, are
+deleted at the next trim tick (see [A rename loses the history](#a-rename-loses-the-history)).
+Get the name right when you declare it.
 
 ## Pushing work
 
@@ -118,6 +149,8 @@ a payment provider wants minutes between attempts, not seconds:
 
 ```typescript
 reconcile = $job({
+  name: "checkouts.reconcile",
+  description: "Settles a checkout the payment provider has confirmed.",
   schema: z.object({ sessionId: z.uuid() }),
   retry: {
     retries: 3,
@@ -203,6 +236,9 @@ handler switches on:
 
 ```typescript
 cartRecovery = $job({
+  name: "carts.recover",
+  description:
+    "Reminds a buyer about an abandoned cart, then marks it abandoned.",
   schema: z.object({
     cartId: z.uuid(),
     stage: z.enum(["remind", "remindAgain", "abandon"]).optional(),
@@ -329,6 +365,8 @@ to anything that supports one, since Alepha cannot interrupt synchronous work:
 
 ```typescript
 report = $job({
+  name: "reports.build",
+  description: "Builds one report.",
   schema: z.object({ id: z.text() }),
   timeout: [30, "seconds"],
   handler: async ({ payload, signal }) => {
@@ -380,6 +418,8 @@ import { $job } from "alepha/api/jobs";
 
 class Reminders {
   send = $job({
+    name: "reminders.send-due",
+    description: "Sends the reminders that are due.",
     cron: "0 0 * * *",
     retention: {
       ok: { last: 7 }, // the last 7 successes

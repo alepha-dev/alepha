@@ -105,6 +105,7 @@ describe("$job retention — registration", () => {
       const alepha = boot();
       class BadApp {
         work = $job({
+          description: "A job under test.",
           name: "bad.work",
           schema: z.object({ v: z.integer() }),
           retention: retention as any,
@@ -128,6 +129,8 @@ describe("$job retention — registration", () => {
     const alepha = boot();
     class QuietApp {
       work = $job({
+        name: "quiet-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { ok: false, error: false },
         handler: async () => {},
@@ -156,12 +159,17 @@ describe("$job retention — defaults by cadence", () => {
     }) => {
       const alepha = boot();
       class CronApp {
-        tick = $job({ cron, handler: async () => {} });
+        tick = $job({
+          name: "cron-app.tick",
+          description: "A job under test.",
+          cron,
+          handler: async () => {},
+        });
       }
       alepha.inject(CronApp);
       const retention = alepha
         .inject(JobProvider)
-        .describeRetention("CronApp.tick");
+        .describeRetention("cron-app.tick");
       expect(retention).toEqual({
         ok: { last },
         error: { days: 30 },
@@ -177,13 +185,15 @@ describe("$job retention — defaults by cadence", () => {
     const alepha = boot();
     class QueueApp {
       work = $job({
+        name: "queue-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
     }
     alepha.inject(QueueApp);
     expect(
-      alepha.inject(JobProvider).describeRetention("QueueApp.work"),
+      alepha.inject(JobProvider).describeRetention("queue-app.work"),
     ).toEqual({
       ok: false,
       error: { days: 30 },
@@ -197,6 +207,8 @@ describe("$job retention — defaults by cadence", () => {
     const alepha = boot();
     class MixedApp {
       tick = $job({
+        name: "mixed-app.tick",
+        description: "A job under test.",
         cron: "0 3 * * *",
         retention: { error: { last: 50, days: 90 } },
         handler: async () => {},
@@ -204,7 +216,7 @@ describe("$job retention — defaults by cadence", () => {
     }
     alepha.inject(MixedApp);
     expect(
-      alepha.inject(JobProvider).describeRetention("MixedApp.tick"),
+      alepha.inject(JobProvider).describeRetention("mixed-app.tick"),
     ).toEqual({
       ok: { last: 7 },
       error: { last: 50, days: 90 },
@@ -220,6 +232,8 @@ describe("$job retention — defaults by cadence", () => {
     let window = 12;
     class LiveApp {
       work = $job({
+        name: "live-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { ok: { days: () => window } },
         handler: async () => {},
@@ -230,13 +244,13 @@ describe("$job retention — defaults by cadence", () => {
 
     const service = alepha.inject(JobService);
     const first = (await service.listJobs()).find(
-      (j) => j.name === "LiveApp.work",
+      (j) => j.name === "live-app.work",
     );
     expect(first?.retention.ok).toEqual({ days: 12 });
 
     window = 3;
     const second = (await service.listJobs()).find(
-      (j) => j.name === "LiveApp.work",
+      (j) => j.name === "live-app.work",
     );
     expect(second?.retention).toEqual({
       ok: { days: 3 },
@@ -250,15 +264,20 @@ describe("$job retention — the trim", () => {
   it("a daily cron keeps its last 7 successes", async ({ expect }) => {
     const alepha = boot().with(TestRepo);
     class DailyApp {
-      tick = $job({ cron: "0 3 * * *", handler: async () => {} });
+      tick = $job({
+        name: "daily-app.tick",
+        description: "A job under test.",
+        cron: "0 3 * * *",
+        handler: async () => {},
+      });
     }
     alepha.inject(DailyApp);
     await alepha.start();
 
-    const ids = await seed(alepha, "DailyApp.tick", "ok", 10);
+    const ids = await seed(alepha, "daily-app.tick", "ok", 10);
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
-    expect(await idsOf(alepha, "DailyApp.tick", "ok")).toEqual(
+    expect(await idsOf(alepha, "daily-app.tick", "ok")).toEqual(
       ids.slice(0, 7).sort(),
     );
   });
@@ -266,15 +285,20 @@ describe("$job retention — the trim", () => {
   it("a */5 cron keeps its last 12 successes", async ({ expect }) => {
     const alepha = boot().with(TestRepo);
     class FastApp {
-      tick = $job({ cron: "*/5 * * * *", handler: async () => {} });
+      tick = $job({
+        name: "fast-app.tick",
+        description: "A job under test.",
+        cron: "*/5 * * * *",
+        handler: async () => {},
+      });
     }
     alepha.inject(FastApp);
     await alepha.start();
 
-    const ids = await seed(alepha, "FastApp.tick", "ok", 20);
+    const ids = await seed(alepha, "fast-app.tick", "ok", 20);
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
-    expect(await idsOf(alepha, "FastApp.tick", "ok")).toEqual(
+    expect(await idsOf(alepha, "fast-app.tick", "ok")).toEqual(
       ids.slice(0, 12).sort(),
     );
   });
@@ -285,6 +309,8 @@ describe("$job retention — the trim", () => {
     const alepha = boot().with(TestRepo);
     class FailingApp {
       work = $job({
+        name: "failing-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -295,16 +321,16 @@ describe("$job retention — the trim", () => {
     dt.pause();
 
     // Three failures now, then a month passes and two more arrive.
-    const old = await seed(alepha, "FailingApp.work", "error", 3);
+    const old = await seed(alepha, "failing-app.work", "error", 3);
     await dt.travel(31, "day");
-    const recent = await seed(alepha, "FailingApp.work", "error", 2);
+    const recent = await seed(alepha, "failing-app.work", "error", 2);
 
     // The travel fired the hourly trim once already; run it again now that
     // the recent rows exist, and assert the end state only.
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
     const left = await waitFor(
-      () => idsOf(alepha, "FailingApp.work", "error"),
+      () => idsOf(alepha, "failing-app.work", "error"),
       (ids) => ids.length === 2,
       { label: "old failures trimmed" },
     );
@@ -317,10 +343,17 @@ describe("$job retention — the trim", () => {
   }) => {
     const alepha = boot().with(TestRepo);
     class MonthlyApp {
-      tick = $job({ cron: "0 0 1 * *", handler: async () => {} });
+      tick = $job({
+        name: "monthly-app.tick",
+        description: "A job under test.",
+        cron: "0 0 1 * *",
+        handler: async () => {},
+      });
     }
     class QueueApp {
       work = $job({
+        name: "queue-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -329,21 +362,23 @@ describe("$job retention — the trim", () => {
     alepha.inject(QueueApp);
     await alepha.start();
 
-    const cronIds = await seed(alepha, "MonthlyApp.tick", "error", 3, 24 * 40);
-    await seed(alepha, "QueueApp.work", "error", 3, 24 * 40);
+    const cronIds = await seed(alepha, "monthly-app.tick", "error", 3, 24 * 40);
+    await seed(alepha, "queue-app.work", "error", 3, 24 * 40);
 
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
-    expect(await idsOf(alepha, "MonthlyApp.tick", "error")).toEqual([
+    expect(await idsOf(alepha, "monthly-app.tick", "error")).toEqual([
       cronIds[0],
     ]);
-    expect(await idsOf(alepha, "QueueApp.work", "error")).toEqual([]);
+    expect(await idsOf(alepha, "queue-app.work", "error")).toEqual([]);
   });
 
   it("cancelled rows are trimmed by the failure rule", async ({ expect }) => {
     const alepha = boot().with(TestRepo);
     class CancelApp {
       work = $job({
+        name: "cancel-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: { last: 2 } },
         handler: async () => {},
@@ -352,10 +387,10 @@ describe("$job retention — the trim", () => {
     alepha.inject(CancelApp);
     await alepha.start();
 
-    const ids = await seed(alepha, "CancelApp.work", "cancelled", 5);
+    const ids = await seed(alepha, "cancel-app.work", "cancelled", 5);
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
-    expect(await idsOf(alepha, "CancelApp.work", "cancelled")).toEqual(
+    expect(await idsOf(alepha, "cancel-app.work", "cancelled")).toEqual(
       ids.slice(0, 2).sort(),
     );
   });
@@ -370,12 +405,16 @@ describe("$job retention — the trim", () => {
     }));
     class DefaultApp {
       work = $job({
+        name: "default-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
     }
     class DeclaredApp {
       work = $job({
+        name: "declared-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: { days: 30 } },
         handler: async () => {},
@@ -385,14 +424,14 @@ describe("$job retention — the trim", () => {
     alepha.inject(DeclaredApp);
     await alepha.start();
 
-    const defaults = await seed(alepha, "DefaultApp.work", "error", 6);
-    await seed(alepha, "DeclaredApp.work", "error", 6);
+    const defaults = await seed(alepha, "default-app.work", "error", 6);
+    await seed(alepha, "declared-app.work", "error", 6);
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
-    expect(await idsOf(alepha, "DefaultApp.work", "error")).toEqual(
+    expect(await idsOf(alepha, "default-app.work", "error")).toEqual(
       defaults.slice(0, 3).sort(),
     );
-    expect(await idsOf(alepha, "DeclaredApp.work", "error")).toHaveLength(6);
+    expect(await idsOf(alepha, "declared-app.work", "error")).toHaveLength(6);
   });
 
   it("a status that is not recorded loses whatever rows it had", async ({
@@ -401,6 +440,8 @@ describe("$job retention — the trim", () => {
     const alepha = boot().with(TestRepo);
     class SilentApp {
       tick = $job({
+        name: "silent-app.tick",
+        description: "A job under test.",
         cron: "0 3 * * *",
         retention: { ok: false },
         handler: async () => {},
@@ -409,12 +450,12 @@ describe("$job retention — the trim", () => {
     alepha.inject(SilentApp);
     await alepha.start();
 
-    await seed(alepha, "SilentApp.tick", "ok", 4);
-    const errors = await seed(alepha, "SilentApp.tick", "error", 2);
+    await seed(alepha, "silent-app.tick", "ok", 4);
+    const errors = await seed(alepha, "silent-app.tick", "error", 2);
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 
-    expect(await idsOf(alepha, "SilentApp.tick", "ok")).toEqual([]);
-    expect(await idsOf(alepha, "SilentApp.tick", "error")).toEqual(
+    expect(await idsOf(alepha, "silent-app.tick", "ok")).toEqual([]);
+    expect(await idsOf(alepha, "silent-app.tick", "error")).toEqual(
       [...errors].sort(),
     );
   });
@@ -427,6 +468,8 @@ describe("$job retention — the run paths honour false", () => {
     const alepha = boot().with(TestRepo);
     class DropApp {
       work = $job({
+        name: "drop-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: false },
         handler: async () => {
@@ -455,6 +498,8 @@ describe("$job retention — the run paths honour false", () => {
     const alepha = boot().with(TestRepo);
     class InlineDropApp {
       work = $job({
+        name: "inline-drop-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: false },
         handler: async () => {
@@ -469,7 +514,7 @@ describe("$job retention — the run paths honour false", () => {
       "refused",
     );
     const rows = await alepha.inject(TestRepo).executions.findMany({
-      where: { jobName: { eq: "InlineDropApp.work" } },
+      where: { jobName: { eq: "inline-drop-app.work" } },
     });
     expect(rows).toHaveLength(0);
   });
@@ -480,6 +525,8 @@ describe("$job retention — the run paths honour false", () => {
     const alepha = boot().with(TestRepo);
     class CronDropApp {
       tick = $job({
+        name: "cron-drop-app.tick",
+        description: "A job under test.",
         cron: "0 3 * * *",
         retention: { error: false },
         handler: async () => {
@@ -492,7 +539,7 @@ describe("$job retention — the run paths honour false", () => {
 
     await app.tick.trigger();
     const rows = await alepha.inject(TestRepo).executions.findMany({
-      where: { jobName: { eq: "CronDropApp.tick" } },
+      where: { jobName: { eq: "cron-drop-app.tick" } },
     });
     expect(rows).toHaveLength(0);
   });
@@ -503,6 +550,8 @@ describe("$job retention — the run paths honour false", () => {
     const alepha = boot().with(TestRepo);
     class CancelDropApp {
       work = $job({
+        name: "cancel-drop-app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retention: { error: false },
         handler: async () => {},
@@ -527,6 +576,8 @@ describe("$job retention — the run paths honour false", () => {
     let runs = 0;
     class RetryCronApp {
       tick = $job({
+        name: "retry-cron-app.tick",
+        description: "A job under test.",
         cron: "0 3 * * *",
         retry: { retries: 2 },
         handler: async () => {
@@ -540,14 +591,14 @@ describe("$job retention — the run paths honour false", () => {
     await app.tick.trigger();
     // The tick went through the outbox, which deletes a queue job's success.
     const rows = await waitFor(
-      () => idsOf(alepha, "RetryCronApp.tick", "ok"),
+      () => idsOf(alepha, "retry-cron-app.tick", "ok"),
       (ids) => ids.length === 1,
       { label: "cron+retry success kept" },
     );
     expect(runs).toBe(1);
     expect(rows).toHaveLength(1);
     expect(
-      alepha.inject(JobProvider).describeRetention("RetryCronApp.tick").ok,
+      alepha.inject(JobProvider).describeRetention("retry-cron-app.tick").ok,
     ).toEqual({ last: 7 });
   });
 });

@@ -1062,4 +1062,100 @@ if (projectAtomViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * Every `$job` names itself `[system.]<domain>.<action>`, and `system.` means
+ * shipped from `packages/`.
+ *
+ * ## Why a mechanical rule rather than a comment
+ *
+ * There was a comment: the `name` JSDoc recommended `api:module:jobName`, and
+ * the name was optional with a `ClassName.propertyKey` default. Twenty-four
+ * jobs ended up in four naming styles, and the name is a job's identity in
+ * `job_executions`, so every later fix is a rename that loses history. The
+ * registration checks the shape at boot; what it cannot see is where a job
+ * comes from, which is the half this rule checks: a framework job must never
+ * collide with an application's, so everything under `packages/` is
+ * `system.*` and nothing under `apps/` is.
+ *
+ * The name has to be a string literal inside the `$job({ ... })` call, or this
+ * rule cannot read it. Specs are exempt: they declare jobs for pretend
+ * applications, and the registration check still binds them. Files are read
+ * whole rather than through `grep`, which skips a file holding a NUL byte as
+ * binary (`apps/lore/src/api/jobs/SigilJobs.ts` has one on purpose).
+ */
+const JOB_NAME = /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
+const jobNameViolations: string[] = [];
+
+const jobSources = execFileSync("git", ["ls-files", "packages", "apps"], {
+  encoding: "utf8",
+})
+  .trim()
+  .split("\n")
+  .filter(
+    (file) =>
+      /\.tsx?$/.test(file) &&
+      !file.includes(".spec.") &&
+      !file.includes("/__tests__/") &&
+      !file.includes("/e2e/"),
+  );
+
+for (const file of jobSources) {
+  const source = readFileSync(file, "utf8");
+  // A declaration is an assignment: `work = $job({`. Prose, JSDoc examples
+  // and strings that merely mention `$job({ cron })` never assign it.
+  for (const call of source.matchAll(/=\s*\$job\(\{/g)) {
+    const open = (call.index ?? 0) + call[0].length;
+    let depth = 1;
+    let end = open;
+    while (depth > 0 && end < source.length) {
+      const char = source[end];
+      if (char === "{") depth++;
+      else if (char === "}") depth--;
+      end++;
+    }
+    // Only the call's own properties: blank every nested object first.
+    let top = source.slice(open, end - 1);
+    let previous = "";
+    while (previous !== top) {
+      previous = top;
+      top = top.replace(/\{[^{}]*\}/g, "");
+    }
+    const line = source.slice(0, call.index).split("\n").length;
+    const literal = /(?:^|[\n,])\s*name\s*:\s*(["'])([^"'\n]*)\1/.exec(top);
+    if (!literal) {
+      jobNameViolations.push(
+        `  ${file}:${line}\n    → names its job with no string literal; write \`name: "<domain>.<action>"\``,
+      );
+      continue;
+    }
+    const name = literal[2];
+    const fromPackages = file.startsWith("packages/");
+    if (!JOB_NAME.test(name)) {
+      jobNameViolations.push(
+        `  ${file}:${line}\n    → '${name}' is not <domain>.<action> in lowercase kebab-case`,
+      );
+    } else if (fromPackages && !name.startsWith("system.")) {
+      jobNameViolations.push(
+        `  ${file}:${line}\n    → '${name}' ships from packages/ and must be system.<domain>.<action>`,
+      );
+    } else if (!fromPackages && name.startsWith("system.")) {
+      jobNameViolations.push(
+        `  ${file}:${line}\n    → '${name}' is an application job; system. is reserved for packages/`,
+      );
+    }
+  }
+}
+
+if (jobNameViolations.length > 0) {
+  console.error(
+    `\n${jobNameViolations.length} job name(s) off the convention:\n\n` +
+      `${jobNameViolations.join("\n")}\n\n` +
+      "A job is named [system.]<domain>.<action> in lowercase kebab-case, with\n" +
+      "system. for everything shipped from packages/ and never in an app. The\n" +
+      "name is the job's identity in job_executions: renaming it later loses\n" +
+      "its history, so get it right at declaration.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
