@@ -19,9 +19,9 @@ export class AuditJobs {
    * cleanup for types without a dedicated retention.
    */
   public readonly cleanExpired = $job({
-    name: "api:audits:cleanExpired",
+    name: "system.audits.clean-expired",
     cron: "0 3 * * *", // Daily at 03:00
-    description: "Delete expired audit entries (retention policy)",
+    description: "Deletes audit entries older than the audit retention period.",
     handler: async ({ now }) => {
       const defaultRetentionDays = this.auditParameters.get("retentionDays");
       await this.auditService.deleteExpired(now.toDate(), defaultRetentionDays);

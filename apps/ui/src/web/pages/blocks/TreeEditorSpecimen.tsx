@@ -1,18 +1,18 @@
 import {
+  Badge,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from "@alepha/ui";
+import {
   buildTree,
   findNode,
   flattenTree,
   resolveDrop,
-} from "@alepha/ui/components/tree-view/tree-model.ts";
-import { TreeView } from "@alepha/ui/components/tree-view/tree-view";
-import { TreeViewResizer } from "@alepha/ui/components/tree-view/tree-view-resizer";
-import { useTreeState } from "@alepha/ui/components/tree-view/use-tree-state.ts";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from "@alepha/ui/components/ui/context-menu";
+  TreeView,
+  TreeViewResizer,
+  useTreeState,
+} from "@alepha/ui/tree";
 import { FileText, Folder, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { type ReactElement, useMemo, useState } from "react";
 

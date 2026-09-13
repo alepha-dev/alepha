@@ -1,3 +1,4 @@
+import { Kbd } from "@alepha/ui";
 import {
   Command,
   CommandDialog,
@@ -7,8 +8,7 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@alepha/ui/components/ui/command";
-import { Kbd } from "@alepha/ui/components/ui/kbd";
+} from "@alepha/ui/command";
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useMemo } from "react";

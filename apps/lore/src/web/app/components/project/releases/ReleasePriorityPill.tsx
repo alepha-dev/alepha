@@ -1,4 +1,4 @@
-import { Badge, type BadgeTone } from "@alepha/ui/components/ui/badge";
+import { Badge, type BadgeTone } from "@alepha/ui";
 
 export type ReleasePriority = "optional" | "low" | "medium" | "high";
 

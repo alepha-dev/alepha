@@ -116,21 +116,61 @@ export interface JobRetryBackoff {
   jitter?: boolean;
 }
 
-export type JobPriority = "critical" | "high" | "normal" | "low";
+/**
+ * How long one status of a job's executions is kept. See
+ * {@link JobPrimitiveOptions.retention}.
+ */
+export interface JobRetentionRule {
+  /**
+   * Keep the newest `last` rows. An integer of at least 1.
+   */
+  last?: number;
+
+  /**
+   * Keep rows that completed within this many days. Positive. A function is
+   * read at every trim tick and whenever the admin reads the job, for a window
+   * held in a runtime-editable parameter.
+   */
+  days?: number | (() => number);
+}
+
+/**
+ * A job's retention, per status. `cancelled` follows `error`. `false` means
+ * the status is not recorded. See {@link JobPrimitiveOptions.retention}.
+ */
+export interface JobRetentionOptions {
+  ok?: JobRetentionRule | false;
+  error?: JobRetentionRule | false;
+}
 
 export interface JobPrimitiveOptions<
   T extends ZType = ZType,
 > extends PipelinePrimitiveOptions {
   /**
-   * Optional explicit job name. Defaults to `ClassName.propertyKey`.
-   * Recommended convention for framework-internal jobs: `api:module:jobName`.
+   * The job's name: `<domain>.<action>`, lowercase kebab-case segments, such
+   * as `estates.sweep-commands` or `quests.send-due-reminders`. The domain is
+   * the module or business area, a plural noun where natural, and the action
+   * does not repeat it. Everything shipped from `packages/` (alepha and every
+   * `@alepha/*`) is `system.<domain>.<action>`, so a framework job never
+   * collides with an application's; an application never uses `system.`.
+   *
+   * Checked at registration against
+   * `^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$`.
+   *
+   * The name is the job's identity in `job_executions`. **Renaming a job
+   * loses its rows**: history, and any queued or scheduled work under the
+   * old name, are deleted at the next trim tick.
    */
-  name?: string;
+  name: string;
 
   /**
-   * Human-readable description (shown in the admin UI).
+   * What the job does, in one sentence, shown to operators in the admin.
+   * Present tense, what it does and on what: "Deletes sessions past their
+   * expiry date.". Not empty, at most 255 characters.
+   *
+   * Like the name, it is developer text and is not translated.
    */
-  description?: string;
+  description: string;
 
   /**
    * Payload schema (Zod). When set, the job is queue-mode.
@@ -176,14 +216,6 @@ export interface JobPrimitiveOptions<
    * Max execution time per attempt. Handler receives an `AbortSignal`.
    */
   timeout?: DurationLike;
-
-  /**
-   * Default priority for pushed jobs. Used by the sweep to order
-   * dispatch when there is a backlog. Real-time queue consumption
-   * is FIFO.
-   * @default "normal"
-   */
-  priority?: JobPriority;
 
   /**
    * Run the handler inline and make the caller wait for it.
@@ -234,34 +266,59 @@ export interface JobPrimitiveOptions<
   inline?: boolean;
 
   /**
-   * Whether to record successful executions.
+   * How long the job's executions are kept, per status.
    *
-   * - `"error"` (default for queue): only error/cancelled rows kept
-   * - `"all"`: keep success rows too (bounded by `keepLastSuccess`)
-   * - `"none"`: fire-and-forget, no row even on error
+   * ```ts
+   * $job({
+   *   name: "quests.send-due-reminders",
+   *   description: "Sends the quest reminders that are due.",
+   *   cron: "0 0 * * *",
+   *   retention: {
+   *     ok: { last: 7 },     // the last 7 successes
+   *     error: { days: 30 }, // 30 days of failures
+   *   },
+   * });
+   * ```
    *
-   * **Cron jobs default to keeping their last successful run** (`record: "all"`
-   * with `keep.ok = 1`) so the admin "Last run" is accurate — set
-   * `record: "error"` to opt out (e.g. for very high-frequency crons).
+   * `ok` is the rule for successes, `error` the rule for failures, and
+   * cancelled rows follow `error`. Each takes `{ last?, days? }` or `false`:
    *
-   * Note: queue-mode jobs always write a `pending` row at push time (outbox).
-   * This setting controls whether that row is kept on success.
+   * - `last` keeps the newest `last` rows, an integer of at least 1.
+   * - `days` keeps rows that completed within that many days, a positive
+   *   number, or a function read at every trim tick, for a window an
+   *   operator edits at runtime.
+   * - Both set: a row goes when it breaks **either** limit.
+   * - `false`: the status is not recorded. No row is written, a queue job's
+   *   outbox row is deleted when it ends that way, and the trim deletes any
+   *   row of that status left from before.
+   *
+   * A rule with neither `last` nor `days` is refused at registration: there
+   * is no "forever".
+   *
+   * A status the job does not declare takes the framework's default, decided
+   * by how often the job runs. For a cron, the cadence is the shortest gap
+   * among its next 10 fire dates:
+   *
+   * | Job                             | Successes      | Failures |
+   * | ------------------------------- | -------------- | -------- |
+   * | cron, at least every 15 minutes | last 12        | 30 days  |
+   * | cron, up to hourly              | last 24        | 30 days  |
+   * | cron, up to daily               | last 7         | 30 days  |
+   * | cron, slower                    | last 5         | 30 days  |
+   * | queue                           | not recorded   | 30 days  |
+   *
+   * The failure window is `jobConfig.retention.errorDays`, and a default rule
+   * is also capped at `jobConfig.retention.maxRows` rows. A declared rule is
+   * never capped: it is the author's statement.
+   *
+   * For a cron, the newest row of each status survives its window, so a
+   * monthly job never looks like it never ran. A queue job keeps no such
+   * row: no row in 30 days means it did not run in 30 days.
+   *
+   * A kept run keeps its captured logs (up to `jobConfig.logMaxEntries`
+   * entries), whatever its outcome.
    */
-  record?: "error" | "all" | "none";
-
-  /**
-   * Override the global ring-buffer trim for this job.
-   *
-   * - `{ ok: 0, error: 0 }` — **keep forever** (no sweep trim). Useful for
-   *   audit-heavy jobs where retention is time-based (handled by a separate
-   *   cron) rather than count-based.
-   * - `{ ok: 50 }` — keep last 50 successes; fall back to global default for errors.
-   * - omitted — use global `keepLastSuccess` / `keepLastError` from `jobConfig`.
-   */
-  keep?: {
-    ok?: number;
-    error?: number;
-  };
+  retention?: JobRetentionOptions;
 
   /**
    * Handler function. For cron-mode, `payload` is `undefined`.
@@ -277,10 +334,7 @@ export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
   protected readonly jobProvider = $inject(JobProvider);
 
   public get name(): string {
-    return (
-      this.options.name ??
-      `${this.config.service.name}.${this.config.propertyKey}`
-    );
+    return this.options.name;
   }
 
   protected onInit() {

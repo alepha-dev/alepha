@@ -1,4 +1,4 @@
-import type { BadgeTone } from "@alepha/ui/components/ui/badge";
+import type { BadgeTone } from "@alepha/ui";
 import type { LucideIcon } from "lucide-react";
 import { CircleCheck, CircleDotDashed } from "lucide-react";
 

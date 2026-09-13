@@ -10,7 +10,7 @@ export const jobConfig = $atom({
     }),
     trimCron: z.text({
       description:
-        "Cron expression for the ring-buffer trim tick (per-job keepLastSuccess/keepLastError enforcement). Decoupled from `sweepCron` because trim is bounded by job execution rate, not retry latency — running it every sweep is wasted work for most apps.",
+        "Cron expression for the trim tick, which purges the rows of jobs no longer registered and enforces each job's retention (how many rows and how many days of each status it keeps). Decoupled from `sweepCron` because trim is bounded by job execution rate, not retry latency: running it every sweep is wasted work for most apps.",
     }),
     sweepBatchSize: z
       .integer()
@@ -44,12 +44,24 @@ export const jobConfig = $atom({
       .describe(
         "Running age (ms) before assumed crash (fallback when no per-job timeout).",
       ),
-    keepLastSuccess: z
-      .integer()
+    retention: z
+      .object({
+        errorDays: z
+          .integer()
+          .min(1)
+          .describe(
+            "Days of failures (and cancellations) a job keeps when it declares no `retention.error` of its own.",
+          ),
+        maxRows: z
+          .integer()
+          .min(1)
+          .describe(
+            "Ceiling on the rows one status of one job keeps under a DEFAULT rule. Bounds the framework's own defaults, a failure storm on a queue job in practice; a rule the job declares is never capped.",
+          ),
+      })
       .describe(
-        "Max successful rows to keep per job. Set 0 to disable and delete on success.",
+        "Defaults for job retention. How many successes a cron keeps is decided by how often it runs, per job, and is not configured here.",
       ),
-    keepLastError: z.integer().describe("Max error rows to keep per job."),
     logMaxEntries: z
       .integer()
       .describe("Max log entries captured per execution."),
@@ -72,8 +84,7 @@ export const jobConfig = $atom({
     retryBackoffMax: 1_800_000,
     staleThreshold: 300_000,
     runTimeout: 1_800_000,
-    keepLastSuccess: 10,
-    keepLastError: 10,
+    retention: { errorDays: 30, maxRows: 1000 },
     logMaxEntries: 100,
     drainTimeout: 30_000,
     directMaxConcurrency: 10,

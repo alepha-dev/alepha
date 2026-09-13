@@ -1,11 +1,11 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Badge,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 

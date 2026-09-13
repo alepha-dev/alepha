@@ -1,9 +1,4 @@
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 
 import type { Release } from "@/api/entities/releases.ts";

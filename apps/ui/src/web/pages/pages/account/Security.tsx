@@ -1,4 +1,4 @@
-import AccountSecurity from "@alepha/ui/components/account/account-security";
+import { AccountSecurity } from "@alepha/ui/account";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

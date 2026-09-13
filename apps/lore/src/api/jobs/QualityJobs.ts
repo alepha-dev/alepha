@@ -36,6 +36,8 @@ export class QualityJobs {
    * while a CI job is pushing.
    */
   public readonly pruneQualityRuns = $job({
+    name: "quality.prune-runs",
+    description: "Prunes each project's quality runs down to its limit.",
     cron: "17 3 * * *",
     handler: async () => {
       const cap = await this.limits.maxQualityRunsPerProject();

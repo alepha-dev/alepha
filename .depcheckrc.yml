@@ -73,7 +73,6 @@ ignores:
   - "@fontsource-variable/jetbrains-mono"
   - "date-fns"
   - "tw-animate-css"
-  - "shadcn"
   - "yjs"
 
 ignore-patterns:

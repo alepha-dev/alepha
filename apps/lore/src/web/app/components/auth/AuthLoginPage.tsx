@@ -1,4 +1,4 @@
-import { AuthLogin } from "@alepha/ui/components/auth/auth-login";
+import { AuthLogin } from "@alepha/ui/auth";
 import type { RealmConfig } from "alepha/api/users";
 
 import PageHeader from "../shared/header/PageHeader.tsx";

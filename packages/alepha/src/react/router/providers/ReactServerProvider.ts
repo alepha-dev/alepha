@@ -383,6 +383,12 @@ export class ReactServerProvider {
     await this.serverStaticProvider.createStaticServer(
       {
         root,
+        // `dist/public/_headers`, written by `alepha build`: the rules Cloudflare
+        // and Bay apply to these same files, applied here too, so one artifact
+        // sends the same headers on every host. When the file is present its
+        // rules decide caching and `cacheControl` below is ignored; an artifact
+        // built before it existed keeps exactly the behaviour below.
+        headersFile: true,
         cacheControl: {
           // `[1, "hour"]`, not `3600`. The field is a `DurationLike`, and a bare
           // number there is read as **milliseconds**, so `3600` shipped

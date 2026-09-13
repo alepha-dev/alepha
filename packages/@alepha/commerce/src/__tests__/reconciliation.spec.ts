@@ -21,7 +21,7 @@ import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 import { AlephaCommerceSettlement } from "../settlement/index.ts";
 
-const JOB = "SettlementJobs.checkoutReconciliation";
+const JOB = "system.commerce.reconcile-checkout";
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.

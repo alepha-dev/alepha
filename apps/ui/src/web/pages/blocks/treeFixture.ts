@@ -1,4 +1,4 @@
-import type { TreeItem } from "@alepha/ui/components/tree-view/tree-model.ts";
+import type { TreeItem } from "@alepha/ui/tree";
 
 /**
  * What a node in these specimens carries beyond its name: a count for the

@@ -1,5 +1,5 @@
 import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
-import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
+import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha, run } from "alepha";
 
 import { ShopApi } from "./api/index.ts";

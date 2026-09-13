@@ -5,8 +5,8 @@ import type {
 } from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import type { AdminShippingController } from "@alepha/commerce/shipping";
-import { AccountRouter } from "@alepha/ui/components/account/account-router";
-import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
+import { AccountRouter } from "@alepha/ui/account";
+import { $pageAdmin } from "@alepha/ui/admin";
 import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
 import { $page, Redirection } from "alepha/react/router";
@@ -76,7 +76,7 @@ export class AppRouter {
   // The three commerce screens live in `@alepha/commerce/admin` and
   // `@alepha/commerce/shipping`, deliberately outside `@alepha/ui` so the
   // design system never depends on a domain. They are declared with
-  // `$pageAdmin` (`@alepha/ui/components/admin/admin-router-page`), which
+  // `$pageAdmin` (from `@alepha/ui/admin`), which
   // parents them onto `AdminRouter`'s shell without this router injecting
   // `AdminRouter` or wiring `parent:` itself.
   protected readonly productApi = $client<AdminProductController>();
@@ -267,7 +267,7 @@ export class AppRouter {
 
   adminProduits = $pageAdmin({
     path: "/produits",
-    head: { title: "Produits · gestion" },
+    head: { title: "Produits" },
     nav: {
       label: <Tr k="admin.produits" />,
       icon: <Gem />,
@@ -294,7 +294,7 @@ export class AppRouter {
    */
   adminProduitDetail = $pageAdmin({
     path: "/produits/:productId",
-    head: { title: "Produit · gestion" },
+    head: { title: "Produit" },
     schema: { params: z.object({ productId: z.uuid() }) },
     can: () => this.productApi.commerceAdminProductGet.can(),
     lazy: () => import("./pages/admin/AdminProduitDetail.tsx"),
@@ -302,7 +302,7 @@ export class AppRouter {
 
   adminCommandes = $pageAdmin({
     path: "/commandes",
-    head: { title: "Commandes · gestion" },
+    head: { title: "Commandes" },
     nav: {
       label: <Tr k="admin.orders" />,
       icon: <Package />,
@@ -315,7 +315,7 @@ export class AppRouter {
 
   adminLivraison = $pageAdmin({
     path: "/livraison",
-    head: { title: "Livraison · gestion" },
+    head: { title: "Livraison" },
     nav: {
       label: <Tr k="admin.shipping" />,
       icon: <Truck />,

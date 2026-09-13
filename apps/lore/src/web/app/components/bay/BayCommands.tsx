@@ -1,7 +1,6 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Badge, useToast } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

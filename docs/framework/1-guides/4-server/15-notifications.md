@@ -39,13 +39,13 @@ class Notifications {
 }
 ```
 
-| option         | what it changes at send time                                                        |
-| -------------- | ----------------------------------------------------------------------------------- |
-| `schema`       | validates `variables` on every push                                                 |
-| `category`     | what an unsubscribe link switches off                                               |
-| `critical`     | bypasses `unsubscribed`, carries no unsubscribe header, pushes at critical priority |
-| `sensitive`    | withholds variables, subject and body from the admin view and the receipt           |
-| `translations` | per-language `subject` / `body`, resolved from the recipient's language             |
+| option         | what it changes at send time                                              |
+| -------------- | ------------------------------------------------------------------------- |
+| `schema`       | validates `variables` on every push                                       |
+| `category`     | what an unsubscribe link switches off                                     |
+| `critical`     | bypasses `unsubscribed`, carries no unsubscribe header                    |
+| `sensitive`    | withholds variables, subject and body from the admin view and the receipt |
+| `translations` | per-language `subject` / `body`, resolved from the recipient's language   |
 
 `critical` is for messages the recipient needs in order to use their account:
 a password reset, a sign-in code. It is not a way to make marketing arrive.
@@ -253,10 +253,11 @@ that would never resolve, burning every attempt down to a terminal failure.
 See {@link NotificationChannel.unavailable} in section 12.
 
 **Three retention clocks.** The job outbox keeps `retentionDays` (7 by
-default); receipts keep `receiptRetentionDays` (90), because a complaint can
-arrive weeks after the send; and read inbox messages keep
-`inboxRetentionDays` (90), because a read message is one the reader has
-already dealt with. The admin detail view joins the outbox row when it still
+default), successes and failures alike, enforced by the jobs module's trim,
+which reads the setting at every tick; receipts keep `receiptRetentionDays`
+(90), because a complaint can arrive weeks after the send; and read inbox
+messages keep `inboxRetentionDays` (90), because a read message is one the
+reader has already dealt with. The admin detail view joins the outbox row when it still
 exists and renders correctly when it does not.
 
 `storeRenderedBody` is **off by default**: 90 days of full HTML for every

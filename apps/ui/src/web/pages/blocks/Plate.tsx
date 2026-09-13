@@ -1,7 +1,5 @@
-import { PlateLayout } from "@alepha/ui/components/plate-layout/plate-layout";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
+import { Badge, Button, cn } from "@alepha/ui";
+import { PlateLayout } from "@alepha/ui/shell";
 import { z } from "alepha";
 import { useRouterState } from "alepha/react/router";
 import {

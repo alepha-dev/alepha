@@ -10,6 +10,7 @@ import { $job } from "./primitives/$job.ts";
 import { DirectJobDispatcher } from "./providers/DirectJobDispatcher.ts";
 import { JobProvider } from "./providers/JobProvider.ts";
 import { JobQueueProvider } from "./providers/JobQueueProvider.ts";
+import { JobRetentionProvider } from "./providers/JobRetentionProvider.ts";
 import { JobService } from "./services/JobService.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -21,10 +22,13 @@ export * from "./providers/DirectJobDispatcher.ts";
 export * from "./providers/JobDispatcher.ts";
 export * from "./providers/JobProvider.ts";
 export * from "./providers/JobQueueProvider.ts";
+export * from "./providers/JobRetentionProvider.ts";
 export * from "./schemas/jobConfigAtom.ts";
 export * from "./schemas/jobExecutionQuerySchema.ts";
 export * from "./schemas/jobExecutionResourceSchema.ts";
+export * from "./schemas/jobExecutionRowSchema.ts";
 export * from "./schemas/jobRegistrationSchema.ts";
+export * from "./schemas/jobRetentionSchema.ts";
 export * from "./schemas/triggerJobSchema.ts";
 export * from "./services/JobService.ts";
 
@@ -135,7 +139,13 @@ export const AlephaApiJobs = $module({
   name: "alepha.api.jobs",
   primitives: [$job],
   imports: [AlephaScheduler, AlephaLock, AlephaBackground],
-  services: [JobProvider, JobService, AdminJobController, DirectJobDispatcher],
+  services: [
+    JobProvider,
+    JobRetentionProvider,
+    JobService,
+    AdminJobController,
+    DirectJobDispatcher,
+  ],
 });
 
 /**

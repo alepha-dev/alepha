@@ -2,11 +2,8 @@ import * as React from "react";
 
 void React;
 
-import {
-  DetailAside,
-  type DetailAsideRow,
-} from "@alepha/ui/components/detail/detail-aside";
-import { Badge } from "@alepha/ui/components/ui/badge";
+import { Badge } from "@alepha/ui";
+import { DetailAside, type DetailAsideRow } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AdminProductResource } from "../controllers/AdminProductController.ts";

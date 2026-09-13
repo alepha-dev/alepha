@@ -1,8 +1,5 @@
-import {
-  AppShell,
-  type NavGroup,
-} from "@alepha/ui/components/app-shell/app-shell";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
+import { AppShell, type NavGroup } from "@alepha/ui/shell";
 import { z } from "alepha";
 import { useRouterState } from "alepha/react/router";
 import {

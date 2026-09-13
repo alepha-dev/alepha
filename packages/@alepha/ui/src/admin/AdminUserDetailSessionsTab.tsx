@@ -1,0 +1,104 @@
+import * as React from "react";
+
+import TimeAgo from "../core/TimeAgo.tsx";
+
+void React;
+
+import type { SessionResource } from "alepha/api/users";
+import type { UseActionReturn } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { LogOut } from "lucide-react";
+
+import { AlephaTable, type TableFetcher } from "../table/AlephaTable.tsx";
+
+export interface AdminUserDetailSessionsTabProps {
+  /**
+   * Scopes the table's persisted column/sort state to this user.
+   */
+  userId: string;
+  fetch: TableFetcher<SessionResource>;
+  revokeSession: UseActionReturn<[SessionResource, () => void], void>;
+  bulkRevokeSessions: UseActionReturn<
+    [SessionResource[], { refresh: () => void; clearSelection: () => void }],
+    void
+  >;
+}
+
+/**
+ * Sessions tab: active sessions for the user, revocable one at a time or in
+ * bulk.
+ */
+export const AdminUserDetailSessionsTab = (
+  props: AdminUserDetailSessionsTabProps,
+) => {
+  const { tr } = useI18n();
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+      <AlephaTable<SessionResource>
+        className="min-h-0 flex-1"
+        persistenceKey={`admin.userDetail.${props.userId}.sessions`}
+        fetch={props.fetch}
+        bulkActions={[
+          {
+            label: tr("admin.userDetail.revokeSelected", {
+              default: "Revoke selected",
+            }),
+            icon: LogOut,
+            destructive: true,
+            onClick: (items, ctx) => props.bulkRevokeSessions.run(items, ctx),
+          },
+        ]}
+        columns={{
+          ip: {
+            label: tr("admin.userDetail.colIp", { default: "IP" }),
+            cell: (s) => <code className="text-xs">{s.ip ?? "—"}</code>,
+          },
+          userAgent: {
+            label: tr("admin.userDetail.colDevice", {
+              default: "Device",
+            }),
+            cell: (s) => {
+              const ua = s.userAgent;
+              // "Unknown" is what the parser reports for a client it could
+              // not place (an API caller, an OAuth or MCP agent). Printing it
+              // twice tells an admin less than the placeholder this column
+              // already uses for a session carrying no agent at all.
+              const text =
+                (ua
+                  ? [ua.browser, ua.os]
+                      .filter((part) => part && part !== "Unknown")
+                      .join(" • ")
+                  : "") || "—";
+              return (
+                <span className="text-muted-foreground line-clamp-1 text-xs">
+                  {text}
+                </span>
+              );
+            },
+          },
+          createdAt: {
+            label: tr("admin.userDetail.colStarted", {
+              default: "Started",
+            }),
+            sortable: true,
+            cell: (s) => (
+              <TimeAgo
+                value={s.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+        }}
+        rowActions={(s) => [
+          {
+            label: tr("admin.userDetail.revoke", { default: "Revoke" }),
+            icon: LogOut,
+            destructive: true,
+            onClick: (_s, ctx) => props.revokeSession.run(s, ctx.refresh),
+          },
+        ]}
+      />
+    </div>
+  );
+};

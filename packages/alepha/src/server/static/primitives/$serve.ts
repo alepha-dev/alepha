@@ -62,8 +62,38 @@ export interface ServePrimitiveOptions {
   /**
    * Cache-control configuration. When omitted (or `false`), no cache-control
    * headers are set; pass `{}` to enable with the defaults below.
+   *
+   * Ignored when {@link headersFile} finds a `_headers` file: its rules decide.
    */
   cacheControl?: Partial<CacheControlOptions> | false;
+
+  /**
+   * Apply the `_headers` file at the root of the served files to every
+   * response of this server, the way Cloudflare and Bay apply it to the
+   * files they serve. `alepha build` writes that file into `dist/public`, so
+   * one artifact sends the same headers on every host.
+   *
+   * When the file is present:
+   *
+   * - it is read once at boot, and a file that does not parse fails the boot,
+   *   naming the line;
+   * - after every other `server:onResponse` hook (helmet's included), the
+   *   rules matching the request's percent-encoded path, relative to
+   *   {@link path}, are applied on top of the response's headers: a file, the
+   *   `index.html` alias, the history fallback, a 304;
+   * - a response no rule caches gets `public, max-age=0, must-revalidate`,
+   *   Cloudflare's default, and {@link cacheControl} is ignored.
+   *
+   * Whether or not it is present, `/_headers`, `/_redirects` and
+   * `/.assetsignore` are never served. `_redirects` is applied by Cloudflare
+   * only.
+   *
+   * The app's own public server turns this on (`ReactServerProvider`, from
+   * disk or from a compiled binary); any other `$serve` leaves it off.
+   *
+   * @default false
+   */
+  headersFile?: boolean;
 
   /**
    * Whether to suppress logging for this primitive.

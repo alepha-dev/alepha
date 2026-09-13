@@ -1,7 +1,6 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useToast } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";

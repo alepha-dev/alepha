@@ -1,18 +1,20 @@
-import { PermissionMatrix } from "@alepha/ui/components/permission-matrix/permission-matrix";
-import type { PermissionMatrixColumn } from "@alepha/ui/components/permission-matrix/permission-matrix";
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card } from "@alepha/ui/components/ui/card";
 import {
+  Button,
+  Card,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+  useDialog,
+  useToast,
+  cn,
+} from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
+import {
+  PermissionMatrix,
+  type PermissionMatrixColumn,
+} from "@alepha/ui/table";
 import type { RankController, RankResource } from "alepha/api/ranks";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

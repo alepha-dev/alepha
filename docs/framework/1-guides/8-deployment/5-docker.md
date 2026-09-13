@@ -187,6 +187,13 @@ ENTRYPOINT ["/app/app"]
 
 The result is a minimal image with no shell, no package manager, and no interpreter - a small attack surface and a fast cold start.
 
+## Static File Headers
+
+Both images serve the client's files from the app itself, and both apply `dist/public/_headers` to
+them: the standard image reads it from `/app/public`, the compiled binary from inside itself. The
+headers a browser receives for a chunk, an image or a page are the ones Cloudflare and Bay send for the
+same build. See [Static File Headers](/docs/guides-deployment-headers).
+
 ## Running
 
 ```bash

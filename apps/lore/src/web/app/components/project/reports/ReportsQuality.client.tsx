@@ -3,7 +3,7 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@alepha/ui/components/ui/chart";
+} from "@alepha/ui/chart";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";

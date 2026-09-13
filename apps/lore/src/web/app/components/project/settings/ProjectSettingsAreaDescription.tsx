@@ -1,13 +1,13 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  Textarea,
+  useToast,
+} from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";

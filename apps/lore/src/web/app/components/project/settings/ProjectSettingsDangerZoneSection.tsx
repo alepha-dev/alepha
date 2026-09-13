@@ -1,4 +1,3 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,11 +7,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@alepha/ui/components/ui/alert-dialog";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+  Button,
+  Card,
+  CardContent,
+  useToast,
+  cn,
+} from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

@@ -72,6 +72,8 @@ describe("$job — registration validation", () => {
     const alepha = makeApp();
     class App {
       bad = $job({
+        name: "app.bad",
+        description: "A job under test.",
         cron: "* * * * *",
         schema: z.object({ id: z.text() }),
         handler: async () => {},
@@ -84,6 +86,8 @@ describe("$job — registration validation", () => {
     const alepha = makeApp();
     class App {
       bad = $job({
+        name: "app.bad",
+        description: "A job under test.",
         handler: async () => {},
       });
     }
@@ -102,6 +106,8 @@ describe("$job — cron mode", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {
           calls++;
@@ -114,21 +120,23 @@ describe("$job — cron mode", () => {
     expect(calls).toBe(1);
     // Cron jobs keep their last successful run by default so "Last run" works.
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("ok");
   });
 
-  it("records no row on success when record is 'error' (opt-out)", async ({
+  it("records no row on success when the job keeps no successes (ok: false)", async ({
     expect,
   }) => {
     const alepha = makeApp();
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
-        record: "error",
+        retention: { ok: false },
         handler: async () => {},
       });
     }
@@ -136,7 +144,7 @@ describe("$job — cron mode", () => {
     await alepha.start();
     await app.tick.trigger();
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
     });
     expect(rows).toHaveLength(0);
   });
@@ -146,6 +154,8 @@ describe("$job — cron mode", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {
           throw new Error("boom");
@@ -156,20 +166,22 @@ describe("$job — cron mode", () => {
     await alepha.start();
     await app.tick.trigger();
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("error");
     expect(rows[0].error).toBe("boom");
   });
 
-  it("records a success row when record: 'all'", async ({ expect }) => {
+  it("records a success row under a declared rule", async ({ expect }) => {
     const alepha = makeApp();
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
-        record: "all",
+        retention: { ok: { last: 3 } },
         handler: async () => {},
       });
     }
@@ -177,7 +189,7 @@ describe("$job — cron mode", () => {
     await alepha.start();
     await app.tick.trigger();
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("ok");
@@ -193,6 +205,8 @@ describe("$job — captured logs", () => {
       log = $logger();
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {
           this.log.info("before the failure");
@@ -205,21 +219,22 @@ describe("$job — captured logs", () => {
     await app.tick.trigger();
 
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
     });
     expect(rows[0].logs?.map((entry) => entry.message)).toContain(
       "before the failure",
     );
   });
 
-  it("keeps no logs on a successful row", async ({ expect }) => {
+  it("keeps the logs of a successful run", async ({ expect }) => {
     const alepha = makeApp();
     class App {
       log = $logger();
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
-        record: "all",
         handler: async () => {
           this.log.info("all good");
         },
@@ -230,10 +245,37 @@ describe("$job — captured logs", () => {
     await app.tick.trigger();
 
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
     });
     expect(rows[0].status).toBe("ok");
-    expect(rows[0].logs).toBeUndefined();
+    expect(rows[0].logs?.map((entry) => entry.message)).toContain("all good");
+  });
+
+  it("keeps the logs of a successful queue run", async ({ expect }) => {
+    const alepha = makeApp();
+    class App {
+      log = $logger();
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "app.work",
+        description: "A job under test.",
+        schema: z.object({ n: z.integer() }),
+        retention: { ok: { last: 10 } },
+        handler: async ({ payload }) => {
+          this.log.info(`handled ${payload.n}`);
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    const id = await app.work.push({ n: 3 });
+
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { id: { eq: id } } }),
+      (r) => r[0]?.status === "ok",
+      { label: "row reaches status=ok" },
+    );
+    expect(rows[0].logs?.map((entry) => entry.message)).toContain("handled 3");
   });
 
   it("does not leak one run's logs into the next", async ({ expect }) => {
@@ -242,6 +284,8 @@ describe("$job — captured logs", () => {
       log = $logger();
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {
           this.log.info(`run ${++runs}`);
@@ -256,7 +300,7 @@ describe("$job — captured logs", () => {
     await app.tick.trigger();
 
     const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
+      where: { jobName: { eq: "app.tick" } },
       orderBy: { column: "createdAt", direction: "desc" },
     });
     const messages = rows[0].logs?.map((entry) => entry.message) ?? [];
@@ -276,6 +320,8 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ n: z.integer() }),
         handler: async ({ payload }) => {
           received = payload;
@@ -287,7 +333,7 @@ describe("$job — queue mode (outbox)", () => {
     await app.work.push({ n: 42 });
 
     const rows = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r.length === 0 && received !== undefined,
       { label: "row deleted on success" },
     );
@@ -295,13 +341,17 @@ describe("$job — queue mode (outbox)", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("push keeps the row as 'ok' when record: 'all'", async ({ expect }) => {
+  it("push keeps the row as 'ok' when the job keeps successes", async ({
+    expect,
+  }) => {
     const alepha = makeApp();
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ n: z.integer() }),
-        record: "all",
+        retention: { ok: { last: 10 } },
         handler: async () => {},
       });
     }
@@ -309,7 +359,7 @@ describe("$job — queue mode (outbox)", () => {
     await alepha.start();
     await app.work.push({ n: 1 });
     const rows = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r.length === 1 && r[0].status === "ok",
       { label: "row reaches status=ok" },
     );
@@ -323,6 +373,8 @@ describe("$job — queue mode (outbox)", () => {
     const alepha = makeApp();
     class App {
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -350,6 +402,8 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
@@ -360,7 +414,7 @@ describe("$job — queue mode (outbox)", () => {
     await alepha.start();
     await app.work.push({ v: 1 }, { delay: [1, "hour"] });
     const rows = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r.length === 1 && r[0].status === "scheduled",
       { label: "row reaches status=scheduled" },
     );
@@ -375,6 +429,8 @@ describe("$job — queue mode (outbox)", () => {
     const seen: number[] = [];
     class App {
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ n: z.integer() }),
         handler: async ({ payload }) => {
           seen.push(payload.n);
@@ -405,6 +461,8 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retry: { retries: 2 },
         handler: async () => {
@@ -417,7 +475,7 @@ describe("$job — queue mode (outbox)", () => {
     await alepha.start();
     await app.work.push({ v: 1 });
     const rows = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) =>
         r.length === 1 && r[0].status === "scheduled" && r[0].attempt === 1,
       { label: "row rescheduled after first failure" },
@@ -443,6 +501,8 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         // no retry config → 1 attempt
         handler: async () => {
@@ -454,7 +514,7 @@ describe("$job — queue mode (outbox)", () => {
     await alepha.start();
     await app.work.push({ v: 1 });
     const rows = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r.length === 1 && r[0].status === "error",
       { label: "row reaches terminal status=error" },
     );
@@ -472,6 +532,8 @@ describe("$job — cancel", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -495,11 +557,14 @@ describe("$job — admin service", () => {
     const alepha = makeApp();
     class App {
       cronA = $job({
+        name: "app.cron-a",
         cron: "0 0 * * *",
         description: "Daily A",
         handler: async () => {},
       });
       queueB = $job({
+        name: "app.queue-b",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -512,10 +577,10 @@ describe("$job — admin service", () => {
     const list = await svc.listJobs();
 
     const byName = new Map(list.map((l) => [l.name, l]));
-    expect(byName.get("App.cronA")?.type).toBe("cron");
-    expect(byName.get("App.cronA")?.cron).toBe("0 0 * * *");
-    expect(byName.get("App.queueB")?.type).toBe("queue");
-    expect(byName.get("App.cronA")?.recent.ok).toBe(0);
+    expect(byName.get("app.cron-a")?.type).toBe("cron");
+    expect(byName.get("app.cron-a")?.cron).toBe("0 0 * * *");
+    expect(byName.get("app.queue-b")?.type).toBe("queue");
+    expect(byName.get("app.cron-a")?.recent.ok).toBe(0);
   });
 
   /**
@@ -532,6 +597,8 @@ describe("$job — admin service", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {},
       });
@@ -542,11 +609,64 @@ describe("$job — admin service", () => {
 
     const { JobService } = await import("../services/JobService.ts");
     const list = await alepha.inject(JobService).listJobs();
-    const tick = list.find((l) => l.name === "App.tick");
+    const tick = list.find((l) => l.name === "app.tick");
 
     expect(tick?.recent.ok).toBe(1);
     expect(tick?.recent.error).toBe(0);
     expect(tick?.recent.lastRun).toBeTruthy();
+    expect(tick?.recent.lastStatus).toBe("ok");
+  });
+
+  it("listJobs reports the status of the latest kept run", async ({
+    expect,
+  }) => {
+    const alepha = makeApp();
+    class App {
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        name: "app.flaky",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        handler: async () => {},
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    const at = (minutesAgo: number) =>
+      new Date(Date.now() - minutesAgo * 60_000).toISOString();
+    // Two older successes, then the most recent run failed.
+    for (const [status, minutes] of [
+      ["ok", 30],
+      ["ok", 20],
+      ["error", 10],
+    ] as const) {
+      await app.executions.create({
+        jobName: "app.flaky",
+        status,
+        maxAttempts: 1,
+        completedAt: at(minutes),
+      });
+    }
+
+    const { JobService } = await import("../services/JobService.ts");
+    const svc = alepha.inject(JobService);
+    const flaky = (await svc.listJobs()).find((l) => l.name === "app.flaky");
+    expect(flaky?.recent).toMatchObject({
+      ok: 2,
+      error: 1,
+      lastStatus: "error",
+    });
+
+    await app.executions.create({
+      jobName: "app.flaky",
+      status: "ok",
+      maxAttempts: 1,
+      completedAt: at(1),
+    });
+    const recovered = (await svc.listJobs()).find(
+      (l) => l.name === "app.flaky",
+    );
+    expect(recovered?.recent.lastStatus).toBe("ok");
   });
 
   it("listJobs reports 'direct' when AlephaApiJobsQueue is not loaded", async ({
@@ -555,6 +675,8 @@ describe("$job — admin service", () => {
     const alepha = makeAppDirect();
     class App {
       worker = $job({
+        name: "app.worker",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
@@ -566,7 +688,7 @@ describe("$job — admin service", () => {
     const svc = alepha.inject(JobService);
     const list = await svc.listJobs();
 
-    expect(list.find((j) => j.name === "App.worker")?.type).toBe("direct");
+    expect(list.find((j) => j.name === "app.worker")?.type).toBe("direct");
   });
 });
 
@@ -581,6 +703,8 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ n: z.integer() }),
         handler: async ({ payload }) => {
           received = payload;
@@ -590,7 +714,7 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(alepha.inject(JobProvider).effectiveMode("App.work")).toBe("direct");
+    expect(alepha.inject(JobProvider).effectiveMode("app.work")).toBe("direct");
 
     await app.work.push({ n: 7 });
 
@@ -602,17 +726,17 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
 
     expect(received).toEqual({ n: 7 });
 
-    // Default record: 'error' → success deletes the row. The delete happens
+    // A queue job keeps no successes by default, so success deletes the row. The delete happens
     // AFTER the handler returns, so waiting on `received` alone raced the
     // cleanup and read the row mid-flight on a loaded runner.
     let rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.work" } },
+      where: { jobName: { eq: "app.work" } },
     });
     const rowDeadline = Date.now() + 1500;
     while (rows.length > 0 && Date.now() < rowDeadline) {
       await new Promise((r) => setTimeout(r, 25));
       rows = await app.executions.findMany({
-        where: { jobName: { eq: "App.work" } },
+        where: { jobName: { eq: "app.work" } },
       });
     }
 
@@ -626,6 +750,8 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ n: z.integer() }),
         retry: { retries: 2 },
         handler: async () => {
@@ -643,7 +769,7 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     let row: any;
     while (Date.now() < deadline) {
       const rows = await app.executions.findMany({
-        where: { jobName: { eq: "App.work" } },
+        where: { jobName: { eq: "app.work" } },
       });
       if (rows[0]?.status === "scheduled") {
         row = rows[0];
@@ -686,6 +812,8 @@ describe("$job — cron lock (multi-instance)", () => {
     let fired = 0;
     class App {
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {
           fired++;
@@ -725,6 +853,8 @@ describe("$job — cron lock (multi-instance)", () => {
     let fired = 0;
     class App {
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         lock: false,
         handler: async () => {
@@ -765,6 +895,8 @@ describe("$job — cron lock (multi-instance)", () => {
     const gates: Array<() => void> = [];
     class App {
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: () =>
           new Promise<void>((resolve) => {
@@ -839,6 +971,8 @@ describe("$job — cron lock (multi-instance)", () => {
       // outbox row and hands the lock straight back, so a replica arriving a
       // millisecond later used to find it free and enqueue the tick again.
       instantTick = $job({
+        name: "cron-lease-app.instant-tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         retry: { retries: 2 },
         handler: async () => {
@@ -868,7 +1002,7 @@ describe("$job — cron lock (multi-instance)", () => {
       container
         .inject(CronProvider)
         .getCronJobs()
-        .find((job) => job.name === "CronLeaseApp.instantTick")!;
+        .find((job) => job.name === "cron-lease-app.instant-tick")!;
 
     // Sequential on purpose. Concurrent ticks were always serialised by the
     // run lock; the hole is the replica that arrives a moment LATER, once the
@@ -879,7 +1013,7 @@ describe("$job — cron lock (multi-instance)", () => {
     // Each test container owns a private postgres schema, so count both and
     // add them up: the claim is one execution across the cluster, not one
     // per database.
-    const where = { jobName: { eq: "CronLeaseApp.instantTick" } };
+    const where = { jobName: { eq: "cron-lease-app.instant-tick" } };
     const rowsA = await a.inject(CronLeaseApp).executions.findMany({ where });
     const rowsB = await b.inject(CronLeaseApp).executions.findMany({ where });
     expect(rowsA.length + rowsB.length).toBe(1);
@@ -934,12 +1068,17 @@ describe("$job - cron overlap (same process)", () => {
     const alepha = makeAppDirect();
     const held = heldFirstRun();
     class App {
-      tick = $job({ cron: "0 0 * * *", handler: held.handler });
+      tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        handler: held.handler,
+      });
     }
     const app = alepha.inject(App);
     await alepha.start();
 
-    const tick = scheduledTick(alepha, "App.tick", "2026-01-01T00:00:00.000Z");
+    const tick = scheduledTick(alepha, "app.tick", "2026-01-01T00:00:00.000Z");
     try {
       await waitFor(
         () => held.runs.started,
@@ -969,7 +1108,12 @@ describe("$job - cron overlap (same process)", () => {
     const alepha = makeAppDirect();
     const held = heldFirstRun();
     class App {
-      tick = $job({ cron: "0 0 * * *", handler: held.handler });
+      tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        handler: held.handler,
+      });
     }
     const app = alepha.inject(App);
     await alepha.start();
@@ -981,7 +1125,7 @@ describe("$job - cron overlap (same process)", () => {
         (n) => n === 1,
         { label: "the trigger is running" },
       );
-      await scheduledTick(alepha, "App.tick", "2026-01-01T00:00:00.000Z");
+      await scheduledTick(alepha, "app.tick", "2026-01-01T00:00:00.000Z");
       expect(held.runs.started).toBe(1);
     } finally {
       held.release();
@@ -990,7 +1134,7 @@ describe("$job - cron overlap (same process)", () => {
 
     // The instant it stood down from stays claimed, as it would had another
     // replica held the lock, but that lease is per instant: the next one runs.
-    await scheduledTick(alepha, "App.tick", "2026-01-02T00:00:00.000Z");
+    await scheduledTick(alepha, "app.tick", "2026-01-02T00:00:00.000Z");
     expect(held.runs.started).toBe(2);
   });
 
@@ -1001,7 +1145,12 @@ describe("$job - cron overlap (same process)", () => {
 
     const held = heldFirstRun();
     class App {
-      tick = $job({ cron: "0 0 * * *", handler: held.handler });
+      tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        handler: held.handler,
+      });
     }
     const make = () =>
       Alepha.create()
@@ -1015,7 +1164,7 @@ describe("$job - cron overlap (same process)", () => {
     await a.start();
     await b.start();
 
-    const tick = scheduledTick(a, "App.tick", "2026-01-01T00:00:00.000Z");
+    const tick = scheduledTick(a, "app.tick", "2026-01-01T00:00:00.000Z");
     try {
       await waitFor(
         () => held.runs.started,
@@ -1067,6 +1216,8 @@ describe("$job - cron overlap (same process)", () => {
     let started = 0;
     class App {
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         handler: async () => {
           started++;
@@ -1104,12 +1255,18 @@ describe("$job - cron overlap (same process)", () => {
     const alepha = makeAppDirect();
     const held = heldFirstRun();
     class App {
-      tick = $job({ cron: "0 0 * * *", lock: false, handler: held.handler });
+      tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        lock: false,
+        handler: held.handler,
+      });
     }
     const app = alepha.inject(App);
     await alepha.start();
 
-    const tick = scheduledTick(alepha, "App.tick", "2026-01-01T00:00:00.000Z");
+    const tick = scheduledTick(alepha, "app.tick", "2026-01-01T00:00:00.000Z");
     try {
       await waitFor(
         () => held.runs.started,
@@ -1136,6 +1293,8 @@ describe("$job — retry semantics", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retry: { retries: 2 },
         handler: async () => {
@@ -1152,7 +1311,7 @@ describe("$job — retry semantics", () => {
     // First attempt runs immediately, then the row is rescheduled with attempt=1.
     // Wait for that stable state before sweeping (sweep needs status=scheduled).
     await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r[0]?.status === "scheduled" && r[0]?.attempt === 1,
       { label: "row rescheduled after attempt 1" },
     );
@@ -1163,19 +1322,19 @@ describe("$job — retry semantics", () => {
     // due yet and the sweep would correctly skip it. Age it first: what this
     // test is about is that the SWEEP claims and runs the next attempt, and
     // keeps doing so exactly `retries` times.
-    await forceDue(app.executions, "App.work");
+    await forceDue(app.executions, "app.work");
     await (provider as any).sweep();
     await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r[0]?.status === "scheduled" && r[0]?.attempt === 2,
       { label: "row rescheduled after attempt 2" },
     );
     expect(attempts).toBe(2);
 
-    await forceDue(app.executions, "App.work");
+    await forceDue(app.executions, "app.work");
     await (provider as any).sweep();
     await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.work" } } }),
       (r) => r[0]?.status === "error" && r[0]?.attempt === 3,
       { label: "row terminal after attempt 3" },
     );
@@ -1183,7 +1342,7 @@ describe("$job — retry semantics", () => {
 
     // After 3 attempts the row is terminal — no more retries.
     const finalRow = (
-      await app.executions.findMany({ where: { jobName: { eq: "App.work" } } })
+      await app.executions.findMany({ where: { jobName: { eq: "app.work" } } })
     )[0];
     expect(finalRow.status).toBe("error");
     expect(finalRow.attempt).toBe(3);
@@ -1200,6 +1359,8 @@ describe("$job — cancel race", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       slow = $job({
+        name: "app.slow",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         retry: { retries: 0 },
         handler: async ({ signal }) => {
@@ -1254,6 +1415,8 @@ describe("$job — cron + retry (outbox path)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
+        name: "app.tick",
+        description: "A job under test.",
         cron: "0 0 * * *",
         retry: { retries: 1 },
         handler: async () => {
@@ -1284,7 +1447,7 @@ describe("$job — cron + retry (outbox path)", () => {
     // the counter lost that race on a loaded runner.
     const provider = alepha.inject(JobProvider);
     const rows1 = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.tick" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.tick" } } }),
       (r) => r.length === 1 && r[0].status === "scheduled",
       { label: "row rescheduled after the first attempt" },
     );
@@ -1293,7 +1456,7 @@ describe("$job — cron + retry (outbox path)", () => {
 
     // Sweep picks it up and runs attempt 2 → terminal. Aged first, because
     // the retry now carries a real backoff and is not due yet.
-    await forceDue(app.executions, "App.tick");
+    await forceDue(app.executions, "app.tick");
     await (provider as any).sweep();
     await waitFor(
       () => attempts,
@@ -1301,7 +1464,7 @@ describe("$job — cron + retry (outbox path)", () => {
       { label: "second attempt runs after cron sweep" },
     );
     const rows2 = await waitFor(
-      () => app.executions.findMany({ where: { jobName: { eq: "App.tick" } } }),
+      () => app.executions.findMany({ where: { jobName: { eq: "app.tick" } } }),
       (r) => r[0]?.status === "error",
       { label: "row reaches terminal error" },
     );
@@ -1316,6 +1479,8 @@ describe("$job — dispatchMany (queue mode)", () => {
     const alepha = makeApp();
     class App {
       bulk = $job({
+        name: "app.bulk",
+        description: "A job under test.",
         schema: z.object({ n: z.integer() }),
         handler: async () => {},
       });
@@ -1345,7 +1510,7 @@ describe("$job — dispatchMany (queue mode)", () => {
 
     expect(batched).toHaveLength(3);
     for (const it of batched) {
-      expect(it.jobName).toBe("App.bulk");
+      expect(it.jobName).toBe("app.bulk");
       expect(it.executionId).toBeTruthy();
     }
   });
@@ -1354,15 +1519,16 @@ describe("$job — dispatchMany (queue mode)", () => {
 // ---------------------------------------------------------------------------
 
 describe("$job — admin resource shape", () => {
-  it("execution resource exposes priority as the enum string", async ({
+  it("execution resource derives its admin actions from the status", async ({
     expect,
   }) => {
     const alepha = makeApp();
     class App {
       work = $job({
+        name: "app.work",
+        description: "A job under test.",
         schema: z.object({ v: z.integer() }),
-        priority: "high",
-        record: "all",
+        retention: { ok: { last: 10 } },
         handler: async () => {},
       });
     }
@@ -1372,13 +1538,84 @@ describe("$job — admin resource shape", () => {
     const id = await app.work.push({ v: 1 });
     const { JobService } = await import("../services/JobService.ts");
     const svc = alepha.inject(JobService);
-    // Wait for the handler to finish so the row is `ok` (record: all keeps it).
+    // Wait for the handler to finish so the row is `ok` (the rule keeps it).
     const resource = await waitFor(
       () => svc.getExecution(id),
       (r) => r?.status === "ok",
       { label: "execution reaches status=ok" },
     );
-    expect(resource.priority).toBe("high");
-    expect(typeof resource.priority).toBe("string");
+    expect(resource.can).toEqual({ retry: false, cancel: false, delete: true });
+    expect("priority" in resource).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("$job: naming", () => {
+  const register = (name: string, description: string) => {
+    const alepha = makeAppDirect();
+    class NamingApp {
+      work = $job({
+        name,
+        description,
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {},
+      });
+    }
+    let error: unknown;
+    try {
+      alepha.inject(NamingApp);
+    } catch (e) {
+      error = e;
+    }
+    return error as Error | undefined;
+  };
+
+  for (const name of [
+    "estates.sweep-commands",
+    "quality.prune-runs",
+    "system.notifications.send",
+    "system.commerce.release-expired-reservations",
+    "v2-imports.run",
+  ]) {
+    it(`accepts '${name}'`, ({ expect }) => {
+      expect(register(name, "Does the thing.")).toBeUndefined();
+    });
+  }
+
+  for (const [name, why] of [
+    ["api:users:purgeExpiredSessions", "colons"],
+    ["UserJobs.purgeExpiredSessions", "a class-derived name"],
+    ["estates.sweepCommands", "camelCase"],
+    ["estates", "a single segment"],
+    ["lore.estates.sweep-commands", "three segments without system."],
+    ["estates/sweep", "a slash"],
+    ["estates.-sweep", "a leading hyphen"],
+    ["estates.sweep--commands", "a double hyphen"],
+    ["", "an empty name"],
+  ] as const) {
+    it(`refuses ${why}, quoting the rule`, ({ expect }) => {
+      const error = register(name, "Does the thing.");
+      expect(error).toBeInstanceOf(AlephaError);
+      expect(error?.message).toContain("<domain>.<action>");
+      expect(error?.message).toContain(`'${name}'`);
+    });
+  }
+
+  it("refuses an empty or blank description, naming the job", ({ expect }) => {
+    for (const description of ["", "   "]) {
+      const error = register("reports.build", description);
+      expect(error).toBeInstanceOf(AlephaError);
+      expect(error?.message).toContain("'reports.build'");
+      expect(error?.message).toContain("no description");
+    }
+  });
+
+  it("refuses a description longer than 255 characters", ({ expect }) => {
+    expect(register("reports.build", "x".repeat(255))).toBeUndefined();
+    const error = register("reports.build", "x".repeat(256));
+    expect(error).toBeInstanceOf(AlephaError);
+    expect(error?.message).toContain("256 characters");
+    expect(error?.message).toContain("at most 255");
   });
 });
