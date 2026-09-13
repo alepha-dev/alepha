@@ -11,6 +11,7 @@ export const jobExecutionResourceSchema = jobExecutionEntity.schema
     can: z.object({
       retry: z.boolean(),
       cancel: z.boolean(),
+      delete: z.boolean(),
     }),
   })
   .meta({

@@ -61,6 +61,8 @@ export const JobExecutions = (props: JobExecutionsProps) => {
   const relative = useRelativeTime();
   const [rows, setRows] = useState<JobExecution[]>([]);
   const [selected, setSelected] = useState<JobExecution | null>(null);
+  // A list row has no payload and no logs: the detail is read on selection.
+  const [detail, setDetail] = useState<JobExecution | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -89,6 +91,28 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     return () => clearInterval(id);
   }, [load]);
 
+  useEffect(() => {
+    if (!selected) {
+      // oxlint-disable-next-line react/set-state-in-effect
+      setDetail(null);
+      return;
+    }
+    let live = true;
+    void http
+      .fetch(
+        `/__devtools/api/jobs/executions/${encodeURIComponent(selected.id)}`,
+      )
+      .then((res) => {
+        if (live) setDetail(res.data as JobExecution);
+      })
+      .catch(() => {
+        if (live) setDetail(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [http, selected]);
+
   const retry = async (row: JobExecution) => {
     setBusy(true);
     try {
@@ -104,7 +128,7 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     }
   };
 
-  const logs = Array.isArray(selected?.logs) ? (selected?.logs as any[]) : [];
+  const logs = Array.isArray(detail?.logs) ? (detail?.logs as any[]) : [];
 
   return (
     <div>
@@ -217,11 +241,11 @@ export const JobExecutions = (props: JobExecutionsProps) => {
             )}
           </div>
 
-          {selected.payload !== undefined && selected.payload !== null && (
+          {detail?.payload !== undefined && detail?.payload !== null && (
             <>
               <div className="dt-section-label">Payload</div>
               <pre className="dt-pre">
-                {JSON.stringify(selected.payload, null, 2)}
+                {JSON.stringify(detail.payload, null, 2)}
               </pre>
             </>
           )}

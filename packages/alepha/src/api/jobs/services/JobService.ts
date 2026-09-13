@@ -1,8 +1,8 @@
-import { $inject, Alepha, AlephaError, z } from "alepha";
+import { $inject, Alepha, AlephaError, type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
-import { NotFoundError } from "alepha/server";
+import { ConflictError, NotFoundError } from "alepha/server";
 
 import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
 import { $job } from "../primitives/$job.ts";
@@ -10,15 +10,16 @@ import type { JobTriggerContext } from "../providers/JobProvider.ts";
 import { JobProvider } from "../providers/JobProvider.ts";
 import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 import type { JobExecutionResource } from "../schemas/jobExecutionResourceSchema.ts";
+import type { JobExecutionRow } from "../schemas/jobExecutionRowSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
 
 /**
  * Admin surface for the job system.
  *
- * Six methods: list jobs, list executions, get execution,
- * trigger, retry, cancel. Everything else lives in events — any
- * analytics/observability is an external concern that subscribes
- * to `job:begin` / `job:success` / `job:error`.
+ * List jobs, page a job's executions, read one, trigger, retry, cancel and
+ * delete. Everything else lives in events: any analytics or observability is
+ * an external concern that subscribes to `job:begin` / `job:success` /
+ * `job:error`.
  */
 export class JobService {
   protected readonly alepha = $inject(Alepha);
@@ -27,12 +28,48 @@ export class JobService {
   protected readonly jobProvider = $inject(JobProvider);
   protected readonly executions = $repository(jobExecutionEntity);
 
+  /**
+   * The statuses a run can no longer leave. Only these rows may be deleted:
+   * the others are work the outbox is still responsible for.
+   */
+  protected readonly terminalStatuses = ["ok", "error", "cancelled"] as const;
+
+  /**
+   * What a list row is read with: everything but `payload` and `logs`, which
+   * can be large and which only the detail view shows.
+   */
+  protected readonly rowColumns = [
+    "id",
+    "createdAt",
+    "updatedAt",
+    "jobName",
+    "key",
+    "organizationId",
+    "status",
+    "attempt",
+    "maxAttempts",
+    "redispatchCount",
+    "scheduledAt",
+    "startedAt",
+    "completedAt",
+    "error",
+    "triggeredBy",
+    "triggeredByName",
+    "cancelledBy",
+    "cancelledByName",
+  ] as const;
+
   protected computeCan(status: string) {
     return {
       retry: status === "error" || status === "cancelled",
       cancel:
         status === "pending" || status === "running" || status === "scheduled",
+      delete: this.isTerminal(status),
     };
+  }
+
+  protected isTerminal(status: string): boolean {
+    return (this.terminalStatuses as readonly string[]).includes(status);
   }
 
   /**
@@ -125,24 +162,85 @@ export class JobService {
   }
 
   /**
-   * Recent executions for a single job, ORDER BY startedAt DESC.
+   * One page of a job's executions, newest first unless `sort` says
+   * otherwise, with a total. Rows carry neither `payload` nor `logs`.
+   *
+   * The trigger filter maps onto what every write stores in `triggeredBy`: a
+   * cron tick writes `"system"`, an admin trigger or retry writes the user's
+   * id, and a push from code, `pushMany` or devtools writes nothing.
    */
-  public async getExecutions(jobName: string, query: JobExecutionQuery = {}) {
+  public async getExecutions(
+    jobName: string,
+    query: JobExecutionQuery = {},
+  ): Promise<Page<JobExecutionRow>> {
     const registry = this.jobProvider.getRegisteredJobs();
     if (!registry.has(jobName)) {
       throw new NotFoundError(`Job not found: ${jobName}`);
     }
+
+    // Never an `undefined` inside a filter: every key is set only when used.
     const where = this.executions.createQueryWhere();
     where.jobName = { eq: jobName };
-    if (query.status) {
-      where.status = { eq: query.status };
+    if (query.status?.length) {
+      where.status = { inArray: query.status };
     }
-    const rows = await this.executions.findMany({
-      where,
-      orderBy: { column: "startedAt", direction: "desc" },
-      limit: query.limit ?? 20,
-    });
-    return rows.map((row) => this.toResource(row));
+    if (query.trigger === "scheduled") {
+      where.triggeredBy = { eq: "system" };
+    } else if (query.trigger === "manual") {
+      where.triggeredBy = { isNotNull: true, ne: "system" };
+    } else if (query.trigger === "code") {
+      where.triggeredBy = { isNull: true };
+    }
+    if (query.from && query.to) {
+      where.startedAt = { gte: query.from, lte: query.to };
+    } else if (query.from) {
+      where.startedAt = { gte: query.from };
+    } else if (query.to) {
+      where.startedAt = { lte: query.to };
+    }
+    if (query.key) {
+      where.key = { contains: query.key };
+    }
+
+    const page = await this.executions.paginate(
+      { page: query.page, size: query.size },
+      {
+        where,
+        orderBy: this.executionOrder(query.sort),
+        columns: [...this.rowColumns],
+      },
+      { count: true },
+    );
+    return {
+      ...page,
+      content: page.content.map(
+        (row) => this.toResource(row) as unknown as JobExecutionRow,
+      ),
+    };
+  }
+
+  /**
+   * The ORDER BY of an executions page: the requested column, then
+   * `createdAt` newest first, which is never null and so orders the same on
+   * every database.
+   */
+  protected executionOrder(sort: JobExecutionQuery["sort"] = "-createdAt") {
+    const desc = sort.startsWith("-");
+    const column = (desc ? sort.slice(1) : sort) as
+      | "createdAt"
+      | "startedAt"
+      | "completedAt"
+      | "status"
+      | "attempt";
+    const primary = {
+      column,
+      direction: desc ? ("desc" as const) : ("asc" as const),
+    };
+    if (sort === "-createdAt") return [primary];
+    return [
+      primary,
+      { column: "createdAt" as const, direction: "desc" as const },
+    ];
   }
 
   /**
@@ -221,6 +319,62 @@ export class JobService {
       });
     }
     return { ok: true };
+  }
+
+  /**
+   * Delete one terminal execution. A pending, scheduled or running row is
+   * refused: it is work the outbox still owns, and deleting it would lose it
+   * silently. Cancel it first.
+   */
+  public async deleteExecution(
+    id: string,
+    context?: { deletedBy?: string; deletedByName?: string },
+  ): Promise<{ ok: boolean }> {
+    const execution = await this.executions.findById(id);
+    if (!execution) {
+      throw new NotFoundError(`Execution not found: ${id}`);
+    }
+    const deleted = this.isTerminal(execution.status)
+      ? await this.executions.deleteMany({
+          id: { eq: id },
+          status: { inArray: [...this.terminalStatuses] },
+        })
+      : [];
+    if (deleted.length === 0) {
+      // Not terminal, or it left a terminal status between the read and the
+      // delete (a retry never does; nothing else writes a terminal row back).
+      throw new ConflictError(
+        `Cannot delete execution in '${execution.status}' status: it has not finished. Cancel it first.`,
+      );
+    }
+    this.log.info(`Deleted execution ${id}`, {
+      jobName: execution.jobName,
+      status: execution.status,
+      deletedBy: context?.deletedByName ?? context?.deletedBy,
+    });
+    return { ok: true };
+  }
+
+  /**
+   * Delete the terminal executions among `ids` and skip the rest, reporting
+   * both counts. An id that does not exist counts as skipped.
+   */
+  public async deleteExecutions(
+    ids: string[],
+    context?: { deletedBy?: string; deletedByName?: string },
+  ): Promise<{ deleted: number; skipped: number }> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return { deleted: 0, skipped: 0 };
+    const deleted = await this.executions.deleteMany({
+      id: { inArray: unique },
+      status: { inArray: [...this.terminalStatuses] },
+    });
+    this.log.info(`Deleted ${deleted.length} execution(s)`, {
+      requested: unique.length,
+      skipped: unique.length - deleted.length,
+      deletedBy: context?.deletedByName ?? context?.deletedBy,
+    });
+    return { deleted: deleted.length, skipped: unique.length - deleted.length };
   }
 
   public async cancelExecution(

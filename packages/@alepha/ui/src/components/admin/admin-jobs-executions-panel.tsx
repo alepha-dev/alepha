@@ -3,8 +3,12 @@ import { AdminJobsStatusBadge } from "@alepha/ui/components/admin/admin-jobs-sta
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { type Infer, type Page, z } from "alepha";
-import type { AdminJobController, JobExecutionResource } from "alepha/api/jobs";
+import { type Infer, z } from "alepha";
+import type {
+  AdminJobController,
+  JobExecutionResource,
+  JobExecutionRow,
+} from "alepha/api/jobs";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Braces, CircleDot, RotateCcw } from "lucide-react";
@@ -23,35 +27,13 @@ const execFiltersSchema = z.object({
 });
 type ExecFilters = Infer<typeof execFiltersSchema>;
 
-/**
- * Wrap an in-memory array as a `Page<T>` so it can feed `AlephaTable`'s fetcher
- * without server-side pagination (the executions endpoint returns a bounded
- * window).
- */
-function asPage<T>(items: T[]): Page<T> {
-  return {
-    content: items,
-    page: {
-      number: 0,
-      size: items.length,
-      offset: 0,
-      numberOfElements: items.length,
-      totalElements: items.length,
-      totalPages: 1,
-      isEmpty: items.length === 0,
-      isFirst: true,
-      isLast: true,
-    },
-  };
-}
-
 export interface AdminJobsExecutionsPanelProps {
   jobName: string;
 }
 
 /**
- * Executions table for a single job — a polling `AlephaTable` of
- * `JobExecutionResource` with status filter and retry/cancel row actions
+ * Executions table for a single job: a polling `AlephaTable` of
+ * `JobExecutionRow` pages, with a status filter and retry/cancel row actions
  * (gated server-side via `e.can.*`). Self-contained: resolves its own client,
  * i18n and dialogs rather than receiving them as props.
  */
@@ -65,7 +47,12 @@ export const AdminJobsExecutionsPanel = (
   const [payloadOf, setPayloadOf] = useState<JobExecutionResource | null>(null);
 
   const fetcher = useCallback(
-    async (params: { filters?: ExecFilters }) => {
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: ExecFilters;
+    }) => {
       const status = params.filters?.status as
         | "pending"
         | "running"
@@ -74,16 +61,31 @@ export const AdminJobsExecutionsPanel = (
         | "error"
         | "cancelled"
         | undefined;
-      const rows = await client.listExecutions({
+      return client.listExecutions({
         params: { name: jobName },
-        query: status ? { status, limit: 100 } : { limit: 100 },
+        query: {
+          page: params.page,
+          size: params.size,
+          ...(status ? { status: [status] } : {}),
+        },
       });
-      return asPage(rows as JobExecutionResource[]);
     },
     [client, jobName],
   );
 
-  const retry = useConfirmedAction<[JobExecutionResource, () => void]>(
+  // A list row carries no payload, so the dialog reads the execution itself.
+  const openPayload = useCallback(
+    async (row: JobExecutionRow) => {
+      setPayloadOf(
+        (await client.getExecution({
+          params: { id: row.id },
+        })) as JobExecutionResource,
+      );
+    },
+    [client],
+  );
+
+  const retry = useConfirmedAction<[JobExecutionRow, () => void]>(
     {
       confirm: {
         title: tr("admin.jobs.retryTitle", { default: "Retry execution" }),
@@ -100,7 +102,7 @@ export const AdminJobsExecutionsPanel = (
     [client, tr],
   );
 
-  const cancel = useConfirmedAction<[JobExecutionResource, () => void]>(
+  const cancel = useConfirmedAction<[JobExecutionRow, () => void]>(
     {
       confirm: {
         title: tr("admin.jobs.cancelTitle", { default: "Cancel execution" }),
@@ -120,7 +122,7 @@ export const AdminJobsExecutionsPanel = (
 
   return (
     <>
-      <AlephaTable<JobExecutionResource>
+      <AlephaTable<JobExecutionRow>
         className="min-h-0 flex-1"
         persistenceKey={`admin.jobs.executions.${jobName}`}
         pollMs={EXEC_POLL_MS}
@@ -238,7 +240,7 @@ export const AdminJobsExecutionsPanel = (
             label: string;
             icon: typeof RotateCcw;
             onClick: (
-              _e: JobExecutionResource,
+              _e: JobExecutionRow,
               ctx: { refresh: () => void },
             ) => void;
             destructive?: boolean;
@@ -246,7 +248,7 @@ export const AdminJobsExecutionsPanel = (
           actions.push({
             label: tr("admin.jobs.viewPayload", { default: "View payload" }),
             icon: Braces,
-            onClick: () => setPayloadOf(e),
+            onClick: () => void openPayload(e),
           });
           if (e.can.retry) {
             actions.push({

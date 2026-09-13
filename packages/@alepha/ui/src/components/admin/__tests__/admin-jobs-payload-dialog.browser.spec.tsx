@@ -38,7 +38,7 @@ describe("AdminJobsPayloadDialog", () => {
     scheduledAt: "2026-09-05T20:00:00.000Z",
     createdAt: "2026-09-04T20:00:00.000Z",
     updatedAt: "2026-09-04T20:00:00.000Z",
-    can: { retry: false, cancel: true },
+    can: { retry: false, cancel: true, delete: false },
   } as JobExecutionResource;
 
   const mount = async (execution: JobExecutionResource | null) => {

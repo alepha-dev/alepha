@@ -1403,7 +1403,7 @@ describe("$job — admin resource shape", () => {
       (r) => r?.status === "ok",
       { label: "execution reaches status=ok" },
     );
-    expect(resource.can).toEqual({ retry: false, cancel: false });
+    expect(resource.can).toEqual({ retry: false, cancel: false, delete: true });
     expect("priority" in resource).toBe(false);
   });
 });

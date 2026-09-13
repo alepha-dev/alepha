@@ -1,4 +1,10 @@
-import type { JobExecutionResource, JobRegistration } from "alepha/api/jobs";
+import type { Page } from "alepha";
+import type {
+  JobExecutionQuery,
+  JobExecutionResource,
+  JobExecutionRow,
+  JobRegistration,
+} from "alepha/api/jobs";
 
 /**
  * The execution statuses the entity actually declares. Written out rather than
@@ -126,9 +132,98 @@ export class ShowcaseJobs {
         can: {
           retry: status === "error" || status === "cancelled",
           cancel: status === "running" || pending,
+          delete: settled || status === "cancelled",
         },
       };
     }) as unknown as JobExecutionResource[];
+  }
+
+  /**
+   * One page of a job's executions, filtered and sorted the way the real
+   * endpoint does, without the payload and logs a list row does not carry.
+   */
+  public page(
+    jobName: string,
+    query: JobExecutionQuery,
+  ): Page<JobExecutionRow> {
+    const size = Number(query.size ?? 10);
+    const number = Number(query.page ?? 0);
+
+    let rows = this.executions(jobName);
+    if (query.status?.length) {
+      rows = rows.filter((r) => query.status!.includes(r.status));
+    }
+    if (query.trigger) {
+      rows = rows.filter((r) =>
+        query.trigger === "scheduled"
+          ? r.triggeredBy === "system"
+          : query.trigger === "manual"
+            ? r.triggeredBy !== undefined && r.triggeredBy !== "system"
+            : r.triggeredBy === undefined,
+      );
+    }
+    if (query.key) {
+      const key = query.key.toLowerCase();
+      rows = rows.filter((r) => r.key?.toLowerCase().includes(key));
+    }
+    if (query.from) {
+      rows = rows.filter((r) => !!r.startedAt && r.startedAt >= query.from!);
+    }
+    if (query.to) {
+      rows = rows.filter((r) => !!r.startedAt && r.startedAt <= query.to!);
+    }
+
+    const sort = query.sort ?? "-createdAt";
+    const desc = sort.startsWith("-");
+    const field = (desc ? sort.slice(1) : sort) as
+      | "createdAt"
+      | "startedAt"
+      | "completedAt"
+      | "status"
+      | "attempt";
+    const valueOf = (row: JobExecutionResource): string =>
+      field === "attempt"
+        ? String(row.attempt).padStart(6, "0")
+        : (row[field] ?? "");
+    rows = [...rows].sort((a, b) => {
+      const av = valueOf(a);
+      const bv = valueOf(b);
+      const primary = av < bv ? -1 : av > bv ? 1 : 0;
+      if (primary !== 0) return desc ? -primary : primary;
+      return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
+    });
+
+    const offset = number * size;
+    const content = rows
+      .slice(offset, offset + size)
+      .map(({ payload: _payload, logs: _logs, ...row }) => row);
+    const totalPages = Math.max(1, Math.ceil(rows.length / size));
+
+    return {
+      content,
+      page: {
+        number,
+        size,
+        offset,
+        numberOfElements: content.length,
+        totalElements: rows.length,
+        totalPages,
+        isEmpty: content.length === 0,
+        isFirst: number === 0,
+        isLast: number >= totalPages - 1,
+      },
+    };
+  }
+
+  /**
+   * One execution by id, whatever job it belongs to, or `undefined`.
+   */
+  public execution(id: string): JobExecutionResource | undefined {
+    for (const job of this.registrations()) {
+      const found = this.executions(job.name).find((r) => r.id === id);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   /**
