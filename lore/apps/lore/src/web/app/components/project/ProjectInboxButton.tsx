@@ -1,4 +1,4 @@
-import { ButtonInbox } from "@alepha/ui/components/button-inbox/button-inbox";
+import { ButtonInbox } from "@alepha/ui/shell";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

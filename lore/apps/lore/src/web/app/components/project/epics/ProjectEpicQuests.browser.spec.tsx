@@ -1,4 +1,4 @@
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { DialogProvider } from "@alepha/ui";
 import {
   fireEvent,
   render,

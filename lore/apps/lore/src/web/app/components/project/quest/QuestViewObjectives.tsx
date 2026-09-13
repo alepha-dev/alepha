@@ -1,5 +1,4 @@
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Checkbox, useToast } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { SquareSlash } from "lucide-react";

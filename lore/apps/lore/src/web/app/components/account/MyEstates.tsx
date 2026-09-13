@@ -1,7 +1,5 @@
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useToast } from "@alepha/ui";
+import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -34,7 +32,7 @@ import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
  * ## The shape, and why it changed
  *
  * A list of compact rows, a create dialog, a detail drawer, and the secret in
- * a dialog of its own - the shape `@alepha/ui`'s `account-keys.tsx` already
+ * a dialog of its own - the shape `@alepha/ui`'s `AccountKeys.tsx` already
  * uses, adopted here for feedback #2110 and #2109 together.
  *
  * It was: an always-present create card, then one fully expanded card per
@@ -111,7 +109,7 @@ const MyEstates = () => {
           live INSIDE it (feedback #P2140). The card used to close after the
           last estate and drop a lone button below it, and with no estates at
           all there was no card - so the one control on the page sat on its
-          own against the background. `account-keys.tsx` is the shape being
+          own against the background. `AccountKeys.tsx` is the shape being
           matched, down to the section rather than a hand-rolled `Card`. */}
       <SettingsSection
         title={String(tr("account.estates.title"))}
@@ -157,7 +155,7 @@ const MyEstates = () => {
             <Plus className="size-4" />
             {/* "New estate" here, "Create" on the dialog's submit: the page
                 button opens a form, it does not perform the action. Same split
-                `account-keys.tsx` makes between "New key" and "Create". */}
+                `AccountKeys.tsx` makes between "New key" and "Create". */}
             {tr("account.estates.new")}
           </Button>
         </SettingsRow>

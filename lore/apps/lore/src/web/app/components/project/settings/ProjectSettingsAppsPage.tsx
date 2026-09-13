@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { Button, Card, CardContent } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban } from "lucide-react";

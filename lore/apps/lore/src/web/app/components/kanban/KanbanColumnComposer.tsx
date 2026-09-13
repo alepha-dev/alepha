@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useToast } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

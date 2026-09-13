@@ -1,4 +1,4 @@
-import { AuthResetPassword } from "@alepha/ui/components/auth/auth-reset-password";
+import { AuthResetPassword } from "@alepha/ui/auth";
 import type { RealmConfig } from "alepha/api/users";
 
 import PageHeader from "../shared/header/PageHeader.tsx";

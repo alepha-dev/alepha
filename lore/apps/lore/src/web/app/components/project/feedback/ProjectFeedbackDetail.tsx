@@ -1,13 +1,13 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Badge,
+  Button,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useDialog,
+  useToast,
+} from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

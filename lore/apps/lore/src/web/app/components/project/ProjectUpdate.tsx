@@ -1,6 +1,5 @@
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useDialog, useToast } from "@alepha/ui";
+import { AutoForm } from "@alepha/ui/form";
 import { AlephaError, z } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";

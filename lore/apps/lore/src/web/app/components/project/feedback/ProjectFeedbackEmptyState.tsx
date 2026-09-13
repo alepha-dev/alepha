@@ -1,4 +1,4 @@
-import { buttonVariants } from "@alepha/ui/components/ui/button";
+import { buttonVariants } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

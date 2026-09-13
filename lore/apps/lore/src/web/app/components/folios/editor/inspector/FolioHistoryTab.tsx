@@ -1,14 +1,14 @@
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  TimeAgo,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { cn } from "@alepha/ui/lib/utils";
+  useDialog,
+  cn,
+} from "@alepha/ui";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {

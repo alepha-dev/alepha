@@ -5,7 +5,7 @@ import {
   type TreeDropPosition,
   type TreeNode,
   type TreeRow,
-} from "@alepha/ui/components/tree-view/tree-model.ts";
+} from "@alepha/ui/tree";
 
 /**
  * Lore's adapter over the shared tree model in `@alepha/ui`. The algorithms

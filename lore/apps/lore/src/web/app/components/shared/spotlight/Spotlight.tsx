@@ -6,7 +6,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@alepha/ui/components/ui/command";
+} from "@alepha/ui/command";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -286,8 +286,8 @@ const Spotlight = (): ReactElement => {
       }}
       /* `CommandDialog` sets position and padding but never a width, so it
          inherited `DialogContent`'s `sm:max-w-sm` — 384px. Widened HERE and
-         not in `command.tsx`: that file is stock shadcn and
-         `yarn w @alepha/ui sync` overwrites `components/ui/` wholesale. */
+         not in `command.tsx`: the width is this spotlight's, and every other
+         command dialog keeps its own. */
       className="sm:max-w-2xl"
       title={String(tr("spotlight.title"))}
       description={String(

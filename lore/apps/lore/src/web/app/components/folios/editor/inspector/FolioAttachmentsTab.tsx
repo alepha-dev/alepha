@@ -1,6 +1,5 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { resizeImage } from "@alepha/ui/lib/resize-image";
+import { Button, useDialog } from "@alepha/ui";
+import { resizeImage } from "@alepha/ui/form";
 import { AlephaError } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

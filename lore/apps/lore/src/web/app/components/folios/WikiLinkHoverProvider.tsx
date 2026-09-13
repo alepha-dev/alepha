@@ -1,5 +1,4 @@
-import { FileImage } from "@alepha/ui/components/file-image/file-image";
-import { formatBytes } from "@alepha/ui/lib/utils";
+import { FileImage, formatBytes } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {

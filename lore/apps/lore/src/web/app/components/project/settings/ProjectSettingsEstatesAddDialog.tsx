@@ -1,14 +1,14 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+  useToast,
+  cn,
+} from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, TriangleAlert } from "lucide-react";

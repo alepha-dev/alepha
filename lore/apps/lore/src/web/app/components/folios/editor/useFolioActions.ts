@@ -1,5 +1,4 @@
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useDialog, useToast } from "@alepha/ui";
 import { AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import {

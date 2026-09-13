@@ -99,7 +99,7 @@ const loreHighlightStyle = HighlightStyle.define([
   // fence parses correctly and still renders in the plain foreground, which
   // is exactly how it looked before `codeLanguages` was mounted.
   //
-  // ⚠️ These are the `--hljs-*` tokens from `markdown-view.css`, NOT the
+  // ⚠️ These are the `--hljs-*` tokens from `MarkdownView.css`, NOT the
   // shadcn theme tokens, and that is the whole point: View mode paints
   // fences with highlight.js against that exact palette, so anything else
   // here would mean ⌘E recolours the same code. They are defined on `:root`

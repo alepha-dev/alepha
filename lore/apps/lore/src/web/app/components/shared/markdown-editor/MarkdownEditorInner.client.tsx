@@ -1,4 +1,4 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
+import { MarkdownView } from "@alepha/ui/markdown";
 import type { EditorView } from "@codemirror/view";
 import { useMemo, useRef, useState } from "react";
 

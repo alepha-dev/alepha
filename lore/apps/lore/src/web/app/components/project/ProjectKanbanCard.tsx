@@ -1,4 +1,4 @@
-import { Sheet, SheetContent } from "@alepha/ui/components/ui/sheet";
+import { Sheet, SheetContent } from "@alepha/ui";
 import { useAlepha, useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 

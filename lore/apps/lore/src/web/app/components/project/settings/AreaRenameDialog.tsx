@@ -1,15 +1,15 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  Input,
+  Label,
+  useToast,
+} from "@alepha/ui";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";

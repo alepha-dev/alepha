@@ -28,7 +28,7 @@ All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
 ## Repository layout
 
-Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework is a sibling workspace at `../../packages/alepha`; the shared shadcn UI lives at `../../packages/@alepha/ui`. Yarn workspace links route imports of `alepha` / `@alepha/ui` to those local packages — no vendoring, no sync step.
+Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework is a sibling workspace at `../../packages/alepha`; the shared UI kit lives at `../../packages/@alepha/ui`. Yarn workspace links route imports of `alepha` / `@alepha/ui` to those local packages — no vendoring, no sync step.
 
 **Why this matters for AI:** Alepha is a small framework that LLMs have **near-zero training data on**. Do not guess Alepha APIs from memory — they will be wrong. Read `../../packages/alepha/src/...` and `../../packages/@alepha/ui/src/...` as the authoritative source whenever framework behavior matters. Editing them from inside `apps/lore` is fine — they're the same monorepo. Run `yarn v` from the monorepo root for the inner loop, then push the branch: CI is the gate.
 
@@ -1385,7 +1385,7 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `project-capabilities.spec.ts` / `project-capabilities-read.spec.ts` / `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` / `project-features-frozen.spec.ts` - the capability model: the write path, the cached and memoised read, the backfill, the gate, the route guards, and the guard that keeps `projects.features` unread
 - `project-owns-guard.spec.ts` / `project-relations.spec.ts` — `$owns` gating and relational reads
 - `release-changelog.spec.ts` — the changelog reads what is ATTACHED to a release (`quests.releaseId`), not what completed inside a time window. Its `Probe` writes the FK directly because no user-facing surface sets it yet
-- `quest-csv-*.spec.ts` — generic + format-specific CSV import/export, plus the Trello round-trip
+- `quest-csv-formatter.spec.ts` - the CSV export, read back through a test-only CSV reader (quest import, Trello included, was deleted in #E48)
 - `quest-objective-history.spec.ts` — objective state history tracking
 - `quest-reminder.spec.ts` — quest reminder/notification logic
 - `quest-feedback-link.spec.ts` — feedback-to-quest promotion linkage

@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "@alepha/ui";
 import { Loader2 } from "lucide-react";
 
 export interface ToolbarSpinnerProps {

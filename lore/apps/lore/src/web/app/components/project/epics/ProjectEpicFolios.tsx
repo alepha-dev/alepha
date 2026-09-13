@@ -1,10 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";

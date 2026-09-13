@@ -1,10 +1,10 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Bot } from "lucide-react";
 

@@ -1,7 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, Textarea, useDialog, useToast } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRef, useState } from "react";
 

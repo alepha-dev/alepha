@@ -3,9 +3,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
+  useToast,
+  UserAvatar,
+} from "@alepha/ui";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, UserMinus } from "lucide-react";
