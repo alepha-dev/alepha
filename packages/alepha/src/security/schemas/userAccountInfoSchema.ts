@@ -67,6 +67,18 @@ export const userAccountInfoSchema = z.object({
     })
     .optional(),
 
+  permissionScope: z
+    .array(z.text())
+    .describe(
+      "Caps what this credential may do, below what its roles grant. " +
+        "`undefined` is unrestricted; an entry is a permission or a pattern " +
+        "(`group:*`, `*`) and a permission must match one; `[]` matches " +
+        "nothing, so every permission-checked route refuses. It binds " +
+        "permission checks only: a route that declares no permission still " +
+        "admits a scoped credential.",
+    )
+    .optional(),
+
   ownership: z
     .union([z.text(), z.boolean()])
     .describe(

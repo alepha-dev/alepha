@@ -28,7 +28,7 @@ All provided options must pass (AND). Each option has its own logic:
 1. **Authentication**: Is there a valid user? → `UnauthorizedError` (401)
 2. **Issuers** (OR): Does the user's realm match at least one? → `ForbiddenError` (403)
 3. **Roles** (OR): Does the user have at least one of the listed roles? → `ForbiddenError` (403)
-4. **Permissions** (AND): Does the user's role grant all listed permissions? → `ForbiddenError` (403)
+4. **Permissions** (AND): Does the user's role grant all listed permissions, and does the credential's `permissionScope` admit them? → `ForbiddenError` (403)
 5. **Guard**: Does the custom function return `true`? → `ForbiddenError` (403)
 
 Permissions declared in `$secure()` are auto-created in the permission registry at definition time.
