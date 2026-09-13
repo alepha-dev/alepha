@@ -1,1 +1,0 @@
-ALTER TABLE `api_keys` ADD `permissions` text DEFAULT '[]' NOT NULL;

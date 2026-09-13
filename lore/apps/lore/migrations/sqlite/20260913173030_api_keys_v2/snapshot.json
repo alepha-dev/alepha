@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "ccbd83bf-618f-4218-ac66-5d530cd50ae4",
-  "prevIds": ["d18ce4aa-b4ed-4a90-92ca-3d421de57e01"],
+  "id": "47028525-89af-4131-b66c-87cb7358a5a0",
+  "prevIds": ["fffcba84-616e-48f0-8fe7-620f2f165a15"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -1047,6 +1047,16 @@
       "table": "api_keys"
     },
     {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'[]'",
+      "generated": null,
+      "name": "permissions",
+      "entityType": "columns",
+      "table": "api_keys"
+    },
+    {
       "type": "integer",
       "notNull": false,
       "autoincrement": false,
@@ -1093,6 +1103,26 @@
       "default": null,
       "generated": null,
       "name": "revoked_at",
+      "entityType": "columns",
+      "table": "api_keys"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "rotated_at",
+      "entityType": "columns",
+      "table": "api_keys"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "expiry_notice_sent_at",
       "entityType": "columns",
       "table": "api_keys"
     },
@@ -4173,16 +4203,6 @@
       "default": "'pending'",
       "generated": null,
       "name": "status",
-      "entityType": "columns",
-      "table": "job_executions"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "2",
-      "generated": null,
-      "name": "priority",
       "entityType": "columns",
       "table": "job_executions"
     },
@@ -8882,9 +8902,9 @@
         }
       ],
       "isUnique": true,
-      "where": null,
+      "where": "revoked_at IS NULL",
       "origin": "manual",
-      "name": "api_keys_user_id_name_idx",
+      "name": "api_keys_user_id_name_live_idx",
       "entityType": "indexes",
       "table": "api_keys"
     },
