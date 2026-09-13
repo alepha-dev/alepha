@@ -175,7 +175,7 @@ Fallback behavior: if the key is not found in the current language, the fallback
 
 ### l(value, options?)
 
-Localize a value (date, number, or error) according to the current locale. Its return type is `string | number` - wrap in `String()` when assigning to a string-typed field or TSX attribute.
+Localize a value (date, number, or error) according to the current locale. It always returns a `string`, like `tr()`, so its result goes straight into a string-typed field or a TSX attribute with no `String()` around it.
 
 **Number formatting:**
 

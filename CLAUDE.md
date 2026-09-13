@@ -413,7 +413,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 ### Router and i18n
 
 - **`useRouter<T>()` navigates with `router.push("pageName", { params })`** — there is no `router.navigate()`.
-- **`useI18n().l()` returns `string | number`** — wrap in `String()` for string fields.
+- **`useI18n().tr()` and `l()` both return `string`, so never wrap either in `String()`.** `l()` used to be inferred `string | number` (a compound `typeof` check that did not narrow), and the advice to wrap it spread to `tr()`, which had always returned a string: 721 no-op wrappers were removed in #Q2312. Both now declare `: string`, so a branch returning anything else is a type error rather than a reason to wrap. A helper that takes `tr` as a parameter types it `(key: …) => string`, or `I18nProvider<any, any>["tr"]`.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`** — for date+time pass a dayjs format string such as `"lll"` to `date`.
 - **`$route` never lives under `/api`** — it is the raw level below `$action`, does not prefix `/api`, and the `$action` dispatcher shadows anything under `/api/*` (404s). Root paths only.
 
