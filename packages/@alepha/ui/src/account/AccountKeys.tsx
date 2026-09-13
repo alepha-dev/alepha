@@ -1,10 +1,14 @@
-import type { Infer } from "alepha";
-import type { ApiKeyController, listApiKeyItemSchema } from "alepha/api/keys";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import type { ApiKeyController, ListApiKeyItem } from "alepha/api/keys";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Check, Clipboard, Plus, Trash2 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Clipboard,
+  Plus,
+} from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "../core/Button.tsx";
 import {
@@ -14,70 +18,93 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../core/Dialog.tsx";
-import { Input } from "../core/Input.tsx";
-import { Label } from "../core/Label.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
-
-/**
- * Derived from the framework's own response schema rather than restated, so a
- * field added to the endpoint is available here the day it lands — and a
- * field removed is a compile error rather than a blank cell.
- */
-type ApiKeyRow = Infer<typeof listApiKeyItemSchema>;
+import { AccountKeysRow } from "./AccountKeysRow.tsx";
+import { ApiKeyCreateDialog } from "./ApiKeyCreateDialog.tsx";
 
 export interface AccountKeysProps {
-  apiKeys?: ApiKeyRow[];
+  /**
+   * The rows `GET /api-keys` returns, live and dead: the framework's own
+   * response type, so a field added to the endpoint is available here the
+   * day it lands.
+   */
+  apiKeys?: ListApiKeyItem[];
 }
 
 /**
- * Your own API keys: mint, see, revoke.
+ * Your own API keys: mint, rotate, revoke, and see where each is in its life.
  *
- * The freshly created token is shown **once**, in a dialog that stays open
- * until dismissed, because the server stores only a hash and cannot show it
- * again. That is also why the create form and the reveal are separate steps
- * rather than one inline row — a token that scrolls out of view behind a
+ * The freshly created or rotated token is shown **once**, in a dialog that
+ * stays open until dismissed, because the server stores only a hash and
+ * cannot show it again. That is also why minting and the reveal are separate
+ * steps rather than one inline row - a token that scrolls out of view behind a
  * re-render is gone.
+ *
+ * Live keys come first. Expired and revoked keys follow in a collapsed
+ * "Inactive keys" section: they are listed because a key that stopped working
+ * is the one a user comes looking for, and folded away because a panel that
+ * reads "14 keys" when 11 are dead misleads.
  */
 const AccountKeys = (props: AccountKeysProps) => {
   const api = useClient<ApiKeyController>();
-  const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const toaster = useToast();
   const { tr } = useI18n();
 
-  const [keys, setKeys] = useState<ApiKeyRow[]>(props.apiKeys ?? []);
+  const [keys, setKeys] = useState<ListApiKeyItem[]>(props.apiKeys ?? []);
   const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [freshToken, setFreshToken] = useState<string | undefined>();
   const [copied, setCopied] = useState(false);
 
-  const create = async (event: FormEvent) => {
-    event.preventDefault();
-    setCreating(true);
+  const live = keys.filter(
+    (key) => key.status === "active" || key.status === "expiring",
+  );
+  const inactive = keys.filter(
+    (key) => key.status === "expired" || key.status === "revoked",
+  );
+
+  const reload = async () => {
+    setKeys((await api.listApiKeys()) as ListApiKeyItem[]);
+  };
+
+  const rotate = async (key: ListApiKeyItem) => {
+    const ok = await dialog.confirm({
+      title: tr("account.keys.rotateTitle", {
+        default: "Rotate $1?",
+        args: [key.name],
+      }),
+      description: tr("account.keys.rotateDescription", {
+        default:
+          "The current secret stops working immediately, and a new one is shown once. Update wherever the key is stored.",
+      }),
+      confirmLabel: tr("account.keys.rotate", { default: "Rotate" }),
+    });
+    if (!ok) {
+      return;
+    }
     try {
-      const created: any = await api.createApiKey({ body: { name } });
-      setFreshToken(created.token);
-      setKeys(await (api.listApiKeys() as Promise<any>));
-      setName("");
-      setCreateOpen(false);
+      const rotated: any = await api.rotateMyApiKey({
+        params: { id: key.id },
+        body: {},
+      });
+      setFreshToken(rotated.token);
+      await reload();
     } catch (error: any) {
       toaster.show(
         error?.message ??
-          tr("account.keys.createError", {
-            default: "Could not create that key",
+          tr("account.keys.rotateError", {
+            default: "Could not rotate that key",
           }),
         "danger",
       );
-    } finally {
-      setCreating(false);
     }
   };
 
-  const revoke = async (key: ApiKeyRow) => {
+  const revoke = async (key: ListApiKeyItem) => {
     const ok = await dialog.confirm({
       title: tr("account.keys.revokeTitle", {
         default: "Revoke $1?",
@@ -97,7 +124,7 @@ const AccountKeys = (props: AccountKeysProps) => {
       await api.revokeMyApiKey({ params: { id: key.id } });
       // Re-read rather than drop the row: a revoked key stays listed, with
       // its status, until the retention window purges it.
-      setKeys(await (api.listApiKeys() as Promise<any>));
+      await reload();
     } catch (error: any) {
       toaster.show(
         error?.message ??
@@ -125,53 +152,14 @@ const AccountKeys = (props: AccountKeysProps) => {
           default: "Keys act as you. Revoke any you no longer recognise.",
         })}
       >
-        {keys.map((key) => {
-          // Expired and revoked keys are listed too: the key that stopped
-          // working is the one a user comes here looking for. A dead key is
-          // dimmed and offers nothing to click, since revoking it again would
-          // do nothing.
-          const dead = key.status === "revoked" || key.status === "expired";
-          return (
-            <SettingsRow
-              key={key.id}
-              label={key.name}
-              className={dead ? "opacity-60" : undefined}
-              description={
-                tr("account.keys.createdAt", {
-                  default: "…$1 · created $2",
-                  args: [key.tokenSuffix, dt.of(key.createdAt).fromNow()],
-                }) +
-                (key.lastUsedAt
-                  ? tr("account.keys.lastUsedAt", {
-                      default: " · last used $1",
-                      args: [dt.of(key.lastUsedAt).fromNow()],
-                    })
-                  : tr("account.keys.neverUsed", {
-                      default: " · never used",
-                    })) +
-                (key.status === "revoked"
-                  ? tr("account.keys.revoked", { default: " · revoked" })
-                  : key.status === "expired"
-                    ? tr("account.keys.expired", { default: " · expired" })
-                    : "")
-              }
-            >
-              {dead ? null : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => revoke(key)}
-                  aria-label={tr("account.keys.revokeAria", {
-                    default: "Revoke $1",
-                    args: [key.name],
-                  })}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              )}
-            </SettingsRow>
-          );
-        })}
+        {live.map((key) => (
+          <AccountKeysRow
+            key={key.id}
+            apiKey={key}
+            onRotate={rotate}
+            onRevoke={revoke}
+          />
+        ))}
 
         <SettingsRow
           label={tr("account.keys.create", { default: "Create a key" })}
@@ -191,49 +179,60 @@ const AccountKeys = (props: AccountKeysProps) => {
         </SettingsRow>
       </SettingsSection>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {tr("account.keys.newTitle", { default: "New API key" })}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={create} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="apiKeyName">
-                {tr("account.keys.name", { default: "Name" })}
-              </Label>
-              <Input
-                id="apiKeyName"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={tr("account.keys.namePlaceholder", {
-                  default: "CI pipeline",
-                })}
-                required
-              />
-            </div>
-            {/* `DialogFooter`, not a hand-rolled row: the border-top, the
-                tinted band and the rounded bottom live there, and they are
-                what every imperative dialog (`useDialog`'s confirm and
-                prompt) already looks like. These floated their buttons on
-                the body surface instead (feedback #P2143 asked for it
-                generically, from Lore's estate dialog). */}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setCreateOpen(false)}
-              >
-                {tr("account.keys.cancel", { default: "Cancel" })}
-              </Button>
-              <Button type="submit" disabled={creating}>
-                {tr("account.keys.submit", { default: "Create" })}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {inactive.length > 0 ? (
+        <SettingsSection
+          title={tr("account.keys.inactiveTitle", {
+            default: "Inactive keys",
+          })}
+          description={tr("account.keys.inactiveDescription", {
+            default:
+              "Expired and revoked keys, kept for a while so you can tell what stopped working. An expired key can be rotated to renew it.",
+          })}
+        >
+          <SettingsRow
+            label={tr("account.keys.inactiveCount", {
+              default: "$1 inactive key(s)",
+              args: [String(inactive.length)],
+            })}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={showInactive}
+              onClick={() => setShowInactive((open) => !open)}
+            >
+              {showInactive ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+              {showInactive
+                ? tr("account.keys.hideInactive", { default: "Hide" })
+                : tr("account.keys.showInactive", { default: "Show" })}
+            </Button>
+          </SettingsRow>
+          {showInactive
+            ? inactive.map((key) => (
+                <AccountKeysRow
+                  key={key.id}
+                  apiKey={key}
+                  onRotate={rotate}
+                  onRevoke={revoke}
+                />
+              ))
+            : null}
+        </SettingsSection>
+      ) : null}
+
+      <ApiKeyCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        existingKeys={keys}
+        onCreated={async (token) => {
+          setFreshToken(token);
+          await reload();
+        }}
+      />
 
       {/* Deliberately not auto-dismissed: this is the only time the token
           exists in a readable form. */}
