@@ -828,6 +828,8 @@ export default {
   "release.default.confirm.description":
     "Les quêtes terminées qui ne nomment aucune version iront dans $1, et une épopée commencée sans version sera livrée dedans. Tout reste rattachable à la main, et publier $1 retire ce statut.",
   "release.default.cleared": "$1 n'est plus la version par défaut",
+  "release.bump.create": "Créer $1",
+  "release.bump.group": "Créer une version",
   "release.delete.action": "Supprimer",
   "release.delete.title": "Supprimer la version $1 ?",
   "release.delete.detached":

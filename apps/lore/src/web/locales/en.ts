@@ -856,6 +856,8 @@ export default {
   "release.default.confirm.description":
     "Finished quests that name no release will land in $1, and an epic begun without one will ship in it. Everything can still be filed by hand. Publishing $1 hands the default on to the next open release, the next minor or else the next major, and clears it if there is none.",
   "release.default.cleared": "$1 is no longer the default release",
+  "release.bump.create": "Create $1",
+  "release.bump.group": "Create release",
   "release.delete.action": "Delete",
   "release.delete.title": "Delete release $1?",
   "release.delete.detached":
