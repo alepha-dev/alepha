@@ -1,9 +1,5 @@
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, Segmented, useDialog, useToast } from "@alepha/ui";
+import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy } from "lucide-react";

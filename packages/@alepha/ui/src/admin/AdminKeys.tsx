@@ -1,0 +1,219 @@
+import * as React from "react";
+
+import TimeAgo from "../core/TimeAgo.tsx";
+
+void React;
+
+import type {
+  AdminApiKeyController,
+  AdminApiKeyResource,
+  ApiKeyController,
+} from "alepha/api/keys";
+import { useAction, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { Plus, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminKeysTokenDialog } from "./AdminKeysTokenDialog.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
+
+export const AdminKeys = () => {
+  const client = useClient<AdminApiKeyController>();
+  const userClient = useClient<ApiKeyController>();
+  const toast = useToast();
+  const dialog = useDialog();
+  const { tr } = useI18n();
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  const createKey = useAction(
+    {
+      handler: async () => {
+        const name = await dialog.prompt({
+          title: tr("admin.keys.createTitle", { default: "Add API key" }),
+          description: tr("admin.keys.createDescription", {
+            default:
+              "The key is created for your account and carries your current roles.",
+          }),
+          label: tr("admin.keys.createNameLabel", { default: "Name" }),
+          placeholder: tr("admin.keys.createNamePlaceholder", {
+            default: "e.g. CI pipeline",
+          }),
+          confirmLabel: tr("admin.keys.createConfirm", { default: "Create" }),
+          validate: (value) =>
+            value.trim().length === 0
+              ? tr("admin.keys.createNameRequired", {
+                  default: "Name is required",
+                })
+              : null,
+        });
+        if (name === null) return;
+        const created = await userClient.createApiKey({
+          body: { name: name.trim() },
+        });
+        setCreatedToken(created.token);
+        setRefreshSignal((n) => n + 1);
+      },
+    },
+    [userClient, dialog, tr],
+  );
+
+  const fetcher = useCallback(
+    async (params: { page: number; size: number; sort?: string }) => {
+      return client.findApiKeys({ query: params });
+    },
+    [client],
+  );
+
+  const revoke = useConfirmedAction<[AdminApiKeyResource, () => void]>(
+    {
+      confirm: (k) => ({
+        title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
+        description: tr("admin.keys.revokeConfirm", {
+          default: `Revoke "${k.name}"? Any apps using this key will lose access.`,
+          args: [k.name],
+        }),
+        destructive: true,
+      }),
+      handler: async (k, refresh) => {
+        await client.revokeApiKey({ params: { id: k.id } });
+        refresh();
+      },
+      success: tr("admin.keys.revoked", { default: "API key revoked" }),
+    },
+    [client, tr],
+  );
+
+  const bulkRevoke = useAction<
+    [AdminApiKeyResource[], { clearSelection: () => void; refresh: () => void }]
+  >(
+    {
+      handler: async (items, ctx) => {
+        const targets = items.filter((k) => !k.revokedAt);
+        if (targets.length === 0) {
+          toast.error(
+            tr("admin.keys.noneSelected", {
+              default: "No active API keys in selection",
+            }),
+          );
+          return;
+        }
+        const ok = await dialog.confirm({
+          title: tr("admin.keys.bulkRevokeTitle", {
+            default: "Revoke API keys",
+          }),
+          description: tr("admin.keys.bulkRevokeConfirm", {
+            default: `Revoke ${targets.length} API key(s)? Any apps using these keys will lose access.`,
+            args: [String(targets.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.revokeApiKeys({
+          body: { ids: targets.map((k) => k.id) },
+        });
+        toast.success(
+          tr("admin.keys.bulkRevoked", {
+            default: `${res.revoked.length} API key(s) revoked`,
+            args: [String(res.revoked.length)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
+
+  return (
+    <AdminPage>
+      <AlephaTable<AdminApiKeyResource>
+        className="min-h-0 flex-1"
+        persistenceKey="admin.keys"
+        fetch={fetcher}
+        refreshSignal={refreshSignal}
+        actions={[
+          {
+            icon: Plus,
+            label: tr("admin.keys.create", { default: "Add API key" }),
+            // The page's one create control.
+            primary: true,
+            disabled: createKey.loading,
+            onClick: () => createKey.run(),
+          },
+        ]}
+        bulkActions={[
+          {
+            label: tr("admin.keys.bulkRevoke", {
+              default: "Revoke selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: (items, ctx) => bulkRevoke.run(items, ctx),
+          },
+        ]}
+        columns={{
+          name: {
+            label: tr("admin.keys.colName", { default: "Name" }),
+            cell: (k) => <span className="font-medium">{k.name}</span>,
+          },
+          tokenPrefix: {
+            label: tr("admin.keys.colPrefix", { default: "Prefix" }),
+            cell: (k) => (
+              <code className="text-xs">{k.tokenPrefix ?? "—"}</code>
+            ),
+          },
+          owner: {
+            label: tr("admin.keys.colOwner", { default: "Owner" }),
+            cell: (k) => <AdminUserCell userId={k.userId} user={k.user} />,
+          },
+          roles: {
+            label: tr("admin.keys.colScopes", { default: "Roles" }),
+            cell: (k) =>
+              Array.isArray(k.roles) && k.roles.length ? (
+                <div className="flex flex-wrap gap-1">
+                  {k.roles.map((s: string) => (
+                    <Badge key={s} variant="secondary">
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              ),
+          },
+          createdAt: {
+            label: tr("admin.keys.colCreated", { default: "Created" }),
+            sortable: true,
+            cell: (k) => (
+              <TimeAgo
+                value={k.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+        }}
+        rowActions={(k) => [
+          {
+            label: tr("admin.keys.revoke", { default: "Revoke" }),
+            icon: Trash2,
+            destructive: true,
+            onClick: (_k, { refresh }) => revoke.run(k, refresh),
+          },
+        ]}
+      />
+      <AdminKeysTokenDialog
+        token={createdToken}
+        onClose={() => setCreatedToken(null)}
+      />
+    </AdminPage>
+  );
+};
+
+export default AdminKeys;

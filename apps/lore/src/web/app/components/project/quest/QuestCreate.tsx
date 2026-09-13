@@ -1,11 +1,11 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";

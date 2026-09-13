@@ -1,6 +1,4 @@
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Alert, AlertDescription, Button, useToast } from "@alepha/ui";
 import { AlertCircle, Copy } from "lucide-react";
 
 export interface TokenRevealProps {

@@ -1,11 +1,11 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
 import {
+  Button,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";

@@ -1,12 +1,12 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
+} from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Folder } from "lucide-react";

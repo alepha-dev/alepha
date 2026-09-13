@@ -94,6 +94,7 @@ const CLI = join(
 async function run(
   command: string,
   cwd: string,
+  timeoutMs = isWindows ? 180_000 : 120_000,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     const proc = spawn(command, [], {
@@ -123,13 +124,10 @@ async function run(
       stderr += data.toString();
     });
 
-    const timeout = setTimeout(
-      () => {
-        proc.kill();
-        reject(new Error(`Command timed out: ${command}`));
-      },
-      isWindows ? 180_000 : 120_000,
-    );
+    const timeout = setTimeout(() => {
+      proc.kill();
+      reject(new Error(`Command timed out: ${command}`));
+    }, timeoutMs);
 
     proc.on("close", (code) => {
       clearTimeout(timeout);
@@ -434,6 +432,116 @@ describe("Alepha CLI E2E", () => {
       expect(lock.packages["node_modules/alepha"].resolved).toContain(
         "alepha.tgz",
       );
+    });
+  });
+
+  /**
+   * `alepha init --preset=saas` against a packed `@alepha/ui`.
+   *
+   * The preset writes imports of `@alepha/ui/account`, `/admin` and `/auth`
+   * into every new project, and the default preset above adds no `@alepha/ui`
+   * at all, so without this nothing anywhere compiled what a saas scaffold is
+   * made of. `init-preset.spec.ts` resolves those specifiers against the
+   * workspace's DEV exports map; only a tarball carries the PUBLISH map, and a
+   * subpath missing from that one is invisible in the monorepo (it is how the
+   * `.ts` subpaths went missing from the package for weeks).
+   *
+   * Its own project, beside the default one rather than on top of it: the
+   * suites below drive the default scaffold and must not inherit three routers.
+   */
+  describe("init --preset=saas", () => {
+    const SAAS_DIR = join(WORK_DIR, "saas");
+    const SAAS_CLI = join(
+      SAAS_DIR,
+      "node_modules",
+      ".bin",
+      isWindows ? "alepha.cmd" : "alepha",
+    );
+    const uiTarball = join(TARBALL_DIR, "alepha-ui.tgz");
+
+    beforeAll(async () => {
+      if (!existsSync(join(ROOT, "packages/@alepha/ui/dist/core/index.js"))) {
+        throw new Error(
+          "packages/@alepha/ui/dist is missing — run `yarn build` before `yarn e2e-cli`.\n" +
+            "The saas case installs a packed @alepha/ui, and the tarball carries dist/.",
+        );
+      }
+
+      const packed = await run(
+        `yarn workspace @alepha/ui pack -o "${uiTarball}"`,
+        ROOT,
+      );
+      if (packed.exitCode !== 0 || !existsSync(uiTarball)) {
+        throw new Error(
+          `Failed to pack @alepha/ui:\n${packed.stdout}\n${packed.stderr}`,
+        );
+      }
+
+      await mkdir(SAAS_DIR, { recursive: true });
+      await writeFile(
+        join(SAAS_DIR, "package.json"),
+        `${JSON.stringify({ name: "e2e-saas", version: "1.0.0", private: true }, null, 2)}\n`,
+      );
+
+      // Both tarballs in one install, so npm never has to reach the registry
+      // for `@alepha/ui`'s `alepha` peer.
+      const installed = await run(
+        `npm install "${join(TARBALL_DIR, "alepha.tgz")}" "${uiTarball}"`,
+        SAAS_DIR,
+        300_000,
+      );
+      if (installed.exitCode !== 0) {
+        throw new Error(
+          `Failed to install the packed tarballs:\n${installed.stdout}\n${installed.stderr}`,
+        );
+      }
+    }, 600_000);
+
+    it("scaffolds the three routers from their module subpaths", async () => {
+      const result = await run(
+        `"${SAAS_CLI}" init --preset=saas`,
+        SAAS_DIR,
+        300_000,
+      );
+
+      if (result.exitCode !== 0) {
+        console.log("SAAS INIT FAILED:");
+        console.log("stdout:", result.stdout.slice(-2000));
+        console.log("stderr:", result.stderr);
+      }
+
+      expect(result.exitCode).toBe(0);
+      const web = await readFile(join(SAAS_DIR, "src/web/index.ts"), "utf-8");
+      expect(web).toContain('from "@alepha/ui/account"');
+      expect(web).toContain('from "@alepha/ui/admin"');
+      expect(web).toContain('from "@alepha/ui/auth"');
+    });
+
+    it("keeps both locally packed packages rather than the published ones", async () => {
+      // init adds `@alepha/ui@^<version>` and runs its own `npm install`; had
+      // that swapped in the registry copy, the build below would prove the
+      // previous release instead of this tree.
+      const lock = JSON.parse(
+        await readFile(join(SAAS_DIR, "package-lock.json"), "utf-8"),
+      );
+      expect(lock.packages["node_modules/alepha"].resolved).toContain(
+        "alepha.tgz",
+      );
+      expect(lock.packages["node_modules/@alepha/ui"].resolved).toContain(
+        "alepha-ui.tgz",
+      );
+    });
+
+    it("builds", async () => {
+      const result = await run(`"${SAAS_CLI}" build`, SAAS_DIR, 300_000);
+
+      if (result.exitCode !== 0) {
+        console.log("SAAS BUILD OUTPUT:", result.stdout.slice(-3000));
+        console.log("SAAS BUILD STDERR:", result.stderr.slice(-3000));
+      }
+
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(join(SAAS_DIR, "dist/index.js"))).toBe(true);
     });
   });
 

@@ -1,7 +1,6 @@
 import type { CheckoutController } from "@alepha/commerce/checkout";
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useToast } from "@alepha/ui";
+import { AutoForm } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";

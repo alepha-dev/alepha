@@ -1,12 +1,12 @@
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
 import {
+  Button,
+  Input,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useToast,
+} from "@alepha/ui";
+import { SettingsRow } from "@alepha/ui/settings";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";

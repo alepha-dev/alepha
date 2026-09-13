@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { Button, useDialog } from "@alepha/ui";
 import { z } from "alepha";
 import { useState } from "react";
 

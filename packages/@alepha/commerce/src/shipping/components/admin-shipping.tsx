@@ -2,19 +2,20 @@ import * as React from "react";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Badge,
+  Button,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import { Tabs, TabsList, TabsTrigger } from "@alepha/ui/components/ui/tabs";
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@alepha/ui";
+import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
+import { AutoForm } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";

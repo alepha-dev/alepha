@@ -1,4 +1,4 @@
-import { $pageAccount } from "@alepha/ui/components/account/account-router-page";
+import { $pageAccount } from "@alepha/ui/account";
 import { $client } from "alepha/server/links";
 import {
   Bell,

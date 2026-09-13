@@ -1,10 +1,6 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Input } from "@alepha/ui/components/ui/input";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+import { Button, Card, CardContent, Input, useToast, cn } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import {
   DndContext,
   type DragEndEvent,

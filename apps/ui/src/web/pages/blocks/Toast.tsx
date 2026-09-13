@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useToast } from "@alepha/ui";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

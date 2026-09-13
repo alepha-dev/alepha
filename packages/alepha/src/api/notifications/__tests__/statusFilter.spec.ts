@@ -69,7 +69,7 @@ describe("admin notification list — status filter", () => {
     //
     // This is also the first half of a chain: the admin UI derives its own
     // status vocabulary from this query schema (the entity itself is not
-    // exported to the browser), and `admin-status-labels.browser.spec.tsx`
+    // exported to the browser), and `AdminStatusLabels.browser.spec.tsx`
     // asserts the second half.
     const entityValues = (notificationDeliveryEntity.schema.shape.status as any)
       .options as string[];

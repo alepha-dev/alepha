@@ -1,5 +1,5 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
+import { MarkdownView } from "@alepha/ui/markdown";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

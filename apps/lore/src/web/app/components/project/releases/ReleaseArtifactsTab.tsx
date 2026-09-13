@@ -1,4 +1,4 @@
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
+import { TimeAgo } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Archive, Cloud, Container, Link2, Server } from "lucide-react";
 import { useMemo } from "react";

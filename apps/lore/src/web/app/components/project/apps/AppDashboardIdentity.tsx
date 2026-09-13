@@ -1,10 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

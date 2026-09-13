@@ -1,5 +1,5 @@
-import { TreeView } from "@alepha/ui/components/tree-view/tree-view";
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
+import { TreeView } from "@alepha/ui/tree";
 import { useI18n } from "alepha/react/i18n";
 import {
   FilePlus,

@@ -1,10 +1,10 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
+} from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy } from "lucide-react";

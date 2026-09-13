@@ -1,7 +1,5 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { FilterSlot, Button, useToast } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import {
   DndContext,
   type DragEndEvent,
