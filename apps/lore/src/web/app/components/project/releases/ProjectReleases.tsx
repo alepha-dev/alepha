@@ -7,7 +7,7 @@ import { type Page, z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Flag, Inbox, Plus, Search, X } from "lucide-react";
+import { CircleDot, Flag, Inbox, Plus, Search, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
@@ -30,6 +30,7 @@ import {
   STATE_LABEL_KEYS,
   STATE_TONE,
 } from "./releaseState.ts";
+import { useDeleteRelease } from "./useDeleteRelease.ts";
 import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
 
 const releasesFiltersSchema = z.object({
@@ -113,6 +114,7 @@ const ProjectReleases = () => {
   const [, setReleases] = useStore(currentReleasesAtom);
   const releaseApi = useClient<ReleaseController>();
   const defaultRelease = useSetDefaultRelease();
+  const deleteRelease = useDeleteRelease();
 
   const [creating, setCreating] = useState(false);
   // The list, its rows and the empty state all stay; only the two doors into
@@ -296,13 +298,21 @@ const ProjectReleases = () => {
               ]
             : []
         }
-        rowActions={(release) =>
-          // Hidden without `release:manage`, and never offered on a published
-          // release: the server refuses it, and an affordance that always
-          // fails is worse than no affordance.
-          !defaultRelease.can || release.releasedAt
-            ? []
-            : [
+        // Built in pieces, each under its own condition. It was one ternary
+        // that emptied the whole menu on a published row, which could stand
+        // only while every entry was a default entry: Delete is offered on a
+        // published row too.
+        //
+        // `createRelease`, `setDefaultRelease` and `deleteRelease` all need
+        // `release:manage` today, so the split between the pieces is about
+        // the row's STATE, not about permission. Each piece still asks its
+        // own action, so a later change to one permission cannot silently
+        // gate the others.
+        rowActions={(release) => [
+          // Never offered on a published release: the server refuses it, and
+          // an affordance that always fails is worse than no affordance.
+          ...(defaultRelease.can && !release.releasedAt
+            ? [
                 release.defaultSince
                   ? {
                       icon: X,
@@ -325,7 +335,27 @@ const ProjectReleases = () => {
                           .then((done) => done && setReload((n) => n + 1)),
                     },
               ]
-        }
+            : []),
+          // Last, and on every row, published included. The confirm inside
+          // the hook is where a published release's frozen record and the
+          // default are named, since neither shows on the row.
+          ...(deleteRelease.can
+            ? [
+                {
+                  icon: Trash2,
+                  label: tr("release.delete.action"),
+                  destructive: true,
+                  onClick: (
+                    row: ReleaseResource,
+                    { refresh }: { refresh: () => void },
+                  ) =>
+                    void deleteRelease
+                      .remove(row)
+                      .then((done) => done && refresh()),
+                },
+              ]
+            : []),
+        ]}
         columns={{
           // First on the row, like the epic status chip and the Quests
           // table's status dot.
