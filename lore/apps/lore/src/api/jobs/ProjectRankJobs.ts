@@ -71,6 +71,9 @@ export class ProjectRankJobs {
    * it lands, so a French project renames "Admin" once and keeps it.
    */
   public readonly seedMissingPresetRanks = $job({
+    name: "ranks.seed-missing-presets",
+    description:
+      "Seeds the Admin, Contributor and Viewer ranks into projects that have none.",
     // Daily, an hour off `QuestJobs.sendDueReminders` so the two nightly
     // sweeps do not start together. It fires once with work to do and is two
     // queries every night after that.
