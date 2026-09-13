@@ -24,7 +24,7 @@ const FolioInspectorRail = (props: FolioInspectorRailProps): ReactElement => {
   return (
     <PaneRail
       side="right"
-      label={String(tr("folios.editor.inspector.expand"))}
+      label={tr("folios.editor.inspector.expand")}
       onExpand={props.onExpand}
     />
   );

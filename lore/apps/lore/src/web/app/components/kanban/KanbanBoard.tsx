@@ -298,8 +298,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    */
   const columns: ColumnDescriptor[] = useMemo(() => {
     const resolved = columnConfig.resolve(project, {
-      todo: String(tr("kanban.column.todo")),
-      completed: String(tr("kanban.column.completed")),
+      todo: tr("kanban.column.todo"),
+      completed: tr("kanban.column.completed"),
     });
     let acceptedSeen = 0;
     return resolved.map((column) => ({
@@ -613,11 +613,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       !grouped[targetColumn.key]?.some((row) => row.id === quest.id)
     ) {
       toaster.show(
-        String(
-          tr("kanban.wip.exceeded", {
-            args: [targetColumn.label, String(targetColumn.wipLimit)],
-          }),
-        ),
+        tr("kanban.wip.exceeded", {
+          args: [targetColumn.label, String(targetColumn.wipLimit)],
+        }),
         "warning",
       );
     }
@@ -748,9 +746,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               input={filterForm.input.search}
               label=""
               icon={Search}
-              placeholder={String(tr("kanban.filter.search"))}
+              placeholder={tr("kanban.filter.search")}
               inputProps={{
-                "aria-label": String(tr("kanban.filter.search")),
+                "aria-label": tr("kanban.filter.search"),
                 "data-testid": "kanban-search",
               }}
             />
@@ -766,7 +764,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 triggerClassName="w-full"
                 items={areaOptions}
                 inputProps={{
-                  "aria-label": String(tr("kanban.filter.allAreas")),
+                  "aria-label": tr("kanban.filter.allAreas"),
                 }}
               />
             </FilterSlot>
@@ -782,7 +780,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 triggerClassName="w-full"
                 items={knownTags.map((t) => ({ value: t, label: t }))}
                 inputProps={{
-                  "aria-label": String(tr("kanban.filter.allTags")),
+                  "aria-label": tr("kanban.filter.allTags"),
                 }}
               />
             </FilterSlot>
@@ -1074,16 +1072,14 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                           disabled={columnOps.pending === "add"}
                           onClick={() =>
                             void columnOps.add(
-                              String(
-                                tr("kanban.column.addDefault", {
-                                  args: [
-                                    String(
-                                      columns.filter((c) => c.editable).length +
-                                        1,
-                                    ),
-                                  ],
-                                }),
-                              ),
+                              tr("kanban.column.addDefault", {
+                                args: [
+                                  String(
+                                    columns.filter((c) => c.editable).length +
+                                      1,
+                                  ),
+                                ],
+                              }),
                             )
                           }
                           className="text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"

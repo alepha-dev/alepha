@@ -62,14 +62,12 @@ const MyEstateRow = (props: MyEstateRowProps) => {
           {estate.type === "cloudflare"
             ? estate.credentialCheckedAt
               ? tr("estates.credential.checked", {
-                  args: [
-                    String(l(estate.credentialCheckedAt, { date: "lll" })),
-                  ],
+                  args: [l(estate.credentialCheckedAt, { date: "lll" })],
                 })
               : tr("estates.credential.neverChecked")
             : estate.lastSeenAt
               ? tr("estates.lastSeen", {
-                  args: [String(l(estate.lastSeenAt, { date: "lll" }))],
+                  args: [l(estate.lastSeenAt, { date: "lll" })],
                 })
               : tr("estates.neverSeen")}
           {/* Only a `bay` estate reports an inventory, so only one says so.
@@ -83,9 +81,7 @@ const MyEstateRow = (props: MyEstateRowProps) => {
                 ? tr("account.estates.inventory", {
                     args: [
                       String(estate.inventory.appCount),
-                      String(
-                        l(estate.inventory.reportedAt, { date: "fromNow" }),
-                      ),
+                      l(estate.inventory.reportedAt, { date: "fromNow" }),
                     ],
                   })
                 : tr("account.estates.inventory.none")}

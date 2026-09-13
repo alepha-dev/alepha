@@ -105,7 +105,7 @@ const BayInstance = () => {
             <>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
                 <Fact
-                  label={String(tr("bay.instance.memory"))}
+                  label={tr("bay.instance.memory")}
                   value={
                     reported.memoryBytes === undefined
                       ? undefined
@@ -113,7 +113,7 @@ const BayInstance = () => {
                   }
                 />
                 <Fact
-                  label={String(tr("bay.instance.cpuSeconds"))}
+                  label={tr("bay.instance.cpuSeconds")}
                   value={
                     reported.cpuSeconds === undefined
                       ? undefined
@@ -121,7 +121,7 @@ const BayInstance = () => {
                   }
                 />
                 <Fact
-                  label={String(tr("bay.instance.tasks"))}
+                  label={tr("bay.instance.tasks")}
                   value={
                     reported.tasks === undefined
                       ? undefined
@@ -129,7 +129,7 @@ const BayInstance = () => {
                   }
                 />
                 <Fact
-                  label={String(tr("bay.instance.restarts"))}
+                  label={tr("bay.instance.restarts")}
                   value={
                     reported.restarts === undefined
                       ? undefined
@@ -137,23 +137,23 @@ const BayInstance = () => {
                   }
                 />
                 <Fact
-                  label={String(tr("bay.instance.started"))}
+                  label={tr("bay.instance.started")}
                   value={
                     reported.startedAt
-                      ? String(l(reported.startedAt, { date: "fromNow" }))
+                      ? l(reported.startedAt, { date: "fromNow" })
                       : undefined
                   }
                 />
                 <Fact
-                  label={String(tr("bay.instance.release"))}
+                  label={tr("bay.instance.release")}
                   value={reported.release}
                 />
                 <Fact
-                  label={String(tr("bay.instance.runtime"))}
+                  label={tr("bay.instance.runtime")}
                   value={reported.runtime}
                 />
                 <Fact
-                  label={String(tr("bay.instance.port"))}
+                  label={tr("bay.instance.port")}
                   value={
                     reported.port === undefined
                       ? undefined
@@ -195,9 +195,7 @@ const BayInstance = () => {
             <p className="text-sm">
               {reported.lastRequestAt
                 ? tr("bay.instance.lastRequest", {
-                    args: [
-                      String(l(reported.lastRequestAt, { date: "fromNow" })),
-                    ],
+                    args: [l(reported.lastRequestAt, { date: "fromNow" })],
                   })
                 : tr("bay.instance.neverAnswered")}
               {reported.crons
@@ -215,9 +213,7 @@ const BayInstance = () => {
                   tr("bay.instance.noDatabase")
                 : reported.lastBackupAt
                   ? tr("bay.instance.lastBackup", {
-                      args: [
-                        String(l(reported.lastBackupAt, { date: "fromNow" })),
-                      ],
+                      args: [l(reported.lastBackupAt, { date: "fromNow" })],
                     })
                   : tr("bay.instance.neverBackedUp")}
               {reported.backupStale ? ` ${tr("bay.instance.backupStale")}` : ""}

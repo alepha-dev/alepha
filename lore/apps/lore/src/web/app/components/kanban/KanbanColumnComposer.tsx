@@ -88,7 +88,7 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
         value={title}
         disabled={pending}
         data-testid={`kanban-composer-input-${props.position}`}
-        placeholder={String(tr("kanban.composer.placeholder"))}
+        placeholder={tr("kanban.composer.placeholder")}
         className="border-border bg-card focus-visible:ring-ring w-full resize-none rounded-md border px-2 py-1.5 text-sm shadow-sm focus-visible:ring-2 focus-visible:outline-none"
         onChange={(e) => setTitle(e.currentTarget.value)}
         onKeyDown={(e) => {

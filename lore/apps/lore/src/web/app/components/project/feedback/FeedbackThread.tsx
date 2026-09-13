@@ -96,8 +96,8 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
 
   const remove = async (comment: FeedbackCommentResource) => {
     const confirmed = await dialog.confirm({
-      title: String(tr("feedback.thread.deleteTitle")),
-      confirmLabel: String(tr("feedback.thread.delete")),
+      title: tr("feedback.thread.deleteTitle"),
+      confirmLabel: tr("feedback.thread.delete"),
       destructive: true,
     });
     if (!confirmed) return;
@@ -149,7 +149,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                   <button
                     type="button"
                     className="text-muted-foreground hover:text-destructive"
-                    aria-label={String(tr("feedback.thread.delete"))}
+                    aria-label={tr("feedback.thread.delete")}
                     onClick={() => remove(comment)}
                   >
                     <Trash2 className="size-3.5" />
@@ -187,7 +187,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={String(tr("feedback.thread.placeholder"))}
+          placeholder={tr("feedback.thread.placeholder")}
           rows={3}
           disabled={busy}
         />

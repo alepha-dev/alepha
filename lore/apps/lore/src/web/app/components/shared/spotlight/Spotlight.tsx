@@ -289,13 +289,11 @@ const Spotlight = (): ReactElement => {
          not in `command.tsx`: the width is this spotlight's, and every other
          command dialog keeps its own. */
       className="sm:max-w-2xl"
-      title={String(tr("spotlight.title"))}
-      description={String(
-        tr(
-          projectId === undefined
-            ? "spotlight.description.projects"
-            : "spotlight.description",
-        ),
+      title={tr("spotlight.title")}
+      description={tr(
+        projectId === undefined
+          ? "spotlight.description.projects"
+          : "spotlight.description",
       )}
     >
       {/* `CommandDialog` drops its children straight into the dialog
@@ -310,12 +308,10 @@ const Spotlight = (): ReactElement => {
         <CommandInput
           value={query}
           onValueChange={onQueryChange}
-          placeholder={String(
-            tr(
-              projectId === undefined
-                ? "spotlight.placeholder.projects"
-                : "spotlight.placeholder",
-            ),
+          placeholder={tr(
+            projectId === undefined
+              ? "spotlight.placeholder.projects"
+              : "spotlight.placeholder",
           )}
         />
         <CommandList>
@@ -333,7 +329,7 @@ const Spotlight = (): ReactElement => {
               // The heading is the mode indicator. Without it, typing a quest
               // name here and getting nothing reads as broken search rather
               // than as the wrong surface.
-              <CommandGroup heading={String(tr("spotlight.group.projects"))}>
+              <CommandGroup heading={tr("spotlight.group.projects")}>
                 {projectMatches.map((it) => (
                   <CommandItem
                     key={it.id}
@@ -353,7 +349,7 @@ const Spotlight = (): ReactElement => {
                   query is really a folio title it matches no page at all, so
                   this group simply does not render. */}
               {navMatches.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.pages"))}>
+                <CommandGroup heading={tr("spotlight.group.pages")}>
                   {navMatches.map((entry) => (
                     <CommandItem
                       key={`nav:${entry.href}`}
@@ -372,27 +368,27 @@ const Spotlight = (): ReactElement => {
                 </CommandGroup>
               )}
               {quests.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.quests"))}>
+                <CommandGroup heading={tr("spotlight.group.quests")}>
                   {quests.map(row)}
                 </CommandGroup>
               )}
               {epics.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.epics"))}>
+                <CommandGroup heading={tr("spotlight.group.epics")}>
                   {epics.map(row)}
                 </CommandGroup>
               )}
               {releases.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.releases"))}>
+                <CommandGroup heading={tr("spotlight.group.releases")}>
                   {releases.map(row)}
                 </CommandGroup>
               )}
               {feedback.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.feedback"))}>
+                <CommandGroup heading={tr("spotlight.group.feedback")}>
                   {feedback.map(row)}
                 </CommandGroup>
               )}
               {folios.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.folios"))}>
+                <CommandGroup heading={tr("spotlight.group.folios")}>
                   {folios.map(row)}
                 </CommandGroup>
               )}

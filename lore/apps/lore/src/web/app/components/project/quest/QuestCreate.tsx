@@ -395,7 +395,7 @@ const QuestCreate = (props: QuestCreateProps) => {
                 items={knownTags}
                 clearLabel={tr("quest.create.tags.empty")}
                 countLabel={(n) =>
-                  String(tr("quest.create.tagCount", { args: [String(n)] }))
+                  tr("quest.create.tagCount", { args: [String(n)] })
                 }
               />
 

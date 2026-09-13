@@ -142,7 +142,7 @@ const ProjectActionsCreateButton = () => {
   };
 
   const mainLabel = tr("project.menu.create-quest");
-  const menuLabel = String(tr("project.menu.create"));
+  const menuLabel = tr("project.menu.create");
 
   return (
     <>

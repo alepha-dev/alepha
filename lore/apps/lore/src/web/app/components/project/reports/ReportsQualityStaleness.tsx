@@ -37,7 +37,7 @@ const ReportsQualityStaleness = (props: ReportsQualityStalenessProps) => {
           // `I18nLocalizeOptions` has `date` and `number` only: a
           // date-and-time reading is a dayjs format string passed to `date`,
           // not a `time` key.
-          String(l(latest.updatedAt, { date: "lll" })),
+          l(latest.updatedAt, { date: "lll" }),
           latest.branch,
           latest.commitSha.slice(0, 7),
         ],

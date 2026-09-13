@@ -44,7 +44,7 @@ const ProjectEpicsProgress = (props: ProjectEpicsProgressProps) => {
   const caption =
     props.epic.status === "completed" && props.epic.completedAt
       ? tr("epic.progress.completedOn", {
-          args: [String(i18n.l(props.epic.completedAt, { date: "ll" }))],
+          args: [i18n.l(props.epic.completedAt, { date: "ll" })],
         })
       : props.epic.status === "draft" && completed === 0 && inProgress === 0
         ? tr("epic.progress.specified", { args: [String(total)] })

@@ -619,7 +619,7 @@ export const useFolioTreeModel = (
         const created = await folioApi.create({
           body: {
             projectId: input.projectId,
-            title: String(tr("folios.editor.tree.untitled-folio")),
+            title: tr("folios.editor.tree.untitled-folio"),
             directoryId: parentId,
           },
         });
@@ -663,7 +663,7 @@ export const useFolioTreeModel = (
         const created = await directoryApi.createDirectory({
           params: { projectId: input.projectId },
           body: {
-            name: String(tr("folios.editor.tree.untitled-directory")),
+            name: tr("folios.editor.tree.untitled-directory"),
             parentId,
           },
         });

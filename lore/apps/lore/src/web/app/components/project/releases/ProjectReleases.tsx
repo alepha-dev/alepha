@@ -549,17 +549,13 @@ const ProjectReleases = () => {
               release.releasedAt ? (
                 <span className="whitespace-nowrap">
                   {tr("release.list.releasedOn", {
-                    args: [
-                      String(l(release.releasedAt as string, { date: "ll" })),
-                    ],
+                    args: [l(release.releasedAt as string, { date: "ll" })],
                   })}
                 </span>
               ) : release.targetDate ? (
                 <span className="text-muted-foreground whitespace-nowrap">
                   {tr("release.list.target", {
-                    args: [
-                      String(l(release.targetDate as string, { date: "ll" })),
-                    ],
+                    args: [l(release.targetDate as string, { date: "ll" })],
                   })}
                 </span>
               ) : (

@@ -128,7 +128,7 @@ const ProjectSettingsRanksPage = () => {
     catalogue,
     enabled,
     held,
-    label: (key, fallback) => (key ? String(tr(key as never)) : fallback),
+    label: (key, fallback) => (key ? tr(key as never) : fallback),
   });
 
   const holdersOf = (key: string) =>
@@ -142,11 +142,9 @@ const ProjectSettingsRanksPage = () => {
     readOnly: !rank.editable,
     // The count the matrix prints beside its own coverage ratio. A string, not
     // a node: it shares a line with "8/11" and has to wrap with it.
-    description: String(
-      tr("project.settings.ranks.holders", {
-        args: [String(holdersOf(rank.key))],
-      }),
-    ),
+    description: tr("project.settings.ranks.holders", {
+      args: [String(holdersOf(rank.key))],
+    }),
     label: (
       <ProjectRankColumnHeader
         name={rank.name}
@@ -204,9 +202,9 @@ const ProjectSettingsRanksPage = () => {
 
   const create = async (preset?: RankPreset) => {
     const name = await dialog.prompt({
-      title: String(tr("project.settings.ranks.create.title")),
-      description: String(tr("project.settings.ranks.create.description")),
-      confirmLabel: String(tr("project.settings.ranks.create.confirm")),
+      title: tr("project.settings.ranks.create.title"),
+      description: tr("project.settings.ranks.create.description"),
+      confirmLabel: tr("project.settings.ranks.create.confirm"),
       defaultValue: preset?.name ?? "",
     });
     if (!name?.trim()) return;
@@ -237,8 +235,8 @@ const ProjectSettingsRanksPage = () => {
 
   const rename = async (rank: RankResource) => {
     const name = await dialog.prompt({
-      title: String(tr("project.settings.ranks.rename.title")),
-      confirmLabel: String(tr("project.settings.ranks.rename.confirm")),
+      title: tr("project.settings.ranks.rename.title"),
+      confirmLabel: tr("project.settings.ranks.rename.confirm"),
       defaultValue: rank.name,
     });
     if (!name?.trim() || name.trim() === rank.name) return;
@@ -262,31 +260,25 @@ const ProjectSettingsRanksPage = () => {
       // refuses this too, and the page has the one thing its message cannot
       // carry: where to go and fix it.
       await dialog.alert({
-        title: String(
-          tr("project.settings.ranks.delete.held.title", {
-            args: [rank.name],
-          }),
-        ),
-        description: String(
-          tr("project.settings.ranks.delete.held.description", {
-            args: [
-              members
-                .filter((it) => (it.rank ?? "member") === rank.key)
-                .map((it) => displayName(it.user))
-                .join(", "),
-            ],
-          }),
-        ),
+        title: tr("project.settings.ranks.delete.held.title", {
+          args: [rank.name],
+        }),
+        description: tr("project.settings.ranks.delete.held.description", {
+          args: [
+            members
+              .filter((it) => (it.rank ?? "member") === rank.key)
+              .map((it) => displayName(it.user))
+              .join(", "),
+          ],
+        }),
       });
       return;
     }
 
     const ok = await dialog.confirm({
-      title: String(
-        tr("project.settings.ranks.delete.title", { args: [rank.name] }),
-      ),
-      description: String(tr("project.settings.ranks.delete.description")),
-      confirmLabel: String(tr("project.settings.ranks.delete.confirm")),
+      title: tr("project.settings.ranks.delete.title", { args: [rank.name] }),
+      description: tr("project.settings.ranks.delete.description"),
+      confirmLabel: tr("project.settings.ranks.delete.confirm"),
       destructive: true,
     });
     if (!ok) return;

@@ -73,7 +73,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
 
   const remove = async (area: AreaResource) => {
     const ok = await dialog.confirm({
-      title: String(tr("project.settings.areas.delete.confirm")),
+      title: tr("project.settings.areas.delete.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -88,7 +88,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
       // instead of the raw `BadRequestError` message.
       toaster.error(
         HttpError.is(error, 400)
-          ? String(tr("project.settings.areas.delete.blocked"))
+          ? tr("project.settings.areas.delete.blocked")
           : error instanceof Error
             ? error.message
             : String(error),

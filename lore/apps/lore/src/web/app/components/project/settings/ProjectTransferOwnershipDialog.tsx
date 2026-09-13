@@ -84,17 +84,13 @@ const ProjectTransferOwnershipDialog = (
     if (!target) return;
 
     const ok = await dialog.confirm({
-      title: String(
-        tr("project.settings.members.transfer.confirmTitle", {
-          args: [target.name],
-        }),
-      ),
-      description: String(
-        tr("project.settings.members.transfer.confirmDescription", {
-          args: [target.name, keptName],
-        }),
-      ),
-      confirmLabel: String(tr("project.settings.members.transfer.confirm")),
+      title: tr("project.settings.members.transfer.confirmTitle", {
+        args: [target.name],
+      }),
+      description: tr("project.settings.members.transfer.confirmDescription", {
+        args: [target.name, keptName],
+      }),
+      confirmLabel: tr("project.settings.members.transfer.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -134,7 +130,7 @@ const ProjectTransferOwnershipDialog = (
           <Control
             select
             input={form.input.keep}
-            label={String(tr("project.settings.members.transfer.keep"))}
+            label={tr("project.settings.members.transfer.keep")}
             disabled={busy}
             // The resolved NAME comes for free: `Control` looks the label up
             // in `items`, where the raw select rendered the value - a rank's
@@ -146,9 +142,7 @@ const ProjectTransferOwnershipDialog = (
             }))}
             inputProps={{
               "data-testid": "transfer-keep",
-              "aria-label": String(
-                tr("project.settings.members.transfer.keep"),
-              ),
+              "aria-label": tr("project.settings.members.transfer.keep"),
             }}
             // For a rank list that has not loaded: with no matching item the
             // trigger would be blank.

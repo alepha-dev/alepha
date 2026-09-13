@@ -109,7 +109,7 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
         </DialogHeader>
         <Control
           input={form.input.targetId}
-          label={String(tr("project.settings.areas.merge.target"))}
+          label={tr("project.settings.areas.merge.target")}
           triggerClassName="w-full"
           items={props.candidates.map((c) => ({
             value: String(c.id),

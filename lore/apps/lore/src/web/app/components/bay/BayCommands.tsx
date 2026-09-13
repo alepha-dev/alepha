@@ -89,12 +89,12 @@ const BayCommands = (props: BayCommandsProps) => {
         className="min-h-0 flex-1"
         data={items}
         emptyState={{
-          title: String(tr("bay.commands.empty")),
-          description: String(tr("bay.commands.empty.description")),
+          title: tr("bay.commands.empty"),
+          description: tr("bay.commands.empty.description"),
         }}
         noMatchState={{
-          title: String(tr("bay.commands.noMatch")),
-          description: String(tr("bay.commands.noMatch.description")),
+          title: tr("bay.commands.noMatch"),
+          description: tr("bay.commands.noMatch.description"),
         }}
         filters={{
           schema: filtersSchema,
@@ -106,8 +106,8 @@ const BayCommands = (props: BayCommandsProps) => {
                 select
                 clearable
                 input={form.input.kind}
-                label={String(tr("bay.commands.filter.kind"))}
-                placeholder={String(tr("bay.commands.filter.any"))}
+                label={tr("bay.commands.filter.kind")}
+                placeholder={tr("bay.commands.filter.any")}
                 items={ESTATE_COMMAND_KINDS.map((kind) => ({
                   value: kind,
                   label: kind,
@@ -117,8 +117,8 @@ const BayCommands = (props: BayCommandsProps) => {
                 select
                 clearable
                 input={form.input.status}
-                label={String(tr("bay.commands.filter.status"))}
-                placeholder={String(tr("bay.commands.filter.any"))}
+                label={tr("bay.commands.filter.status")}
+                placeholder={tr("bay.commands.filter.any")}
                 items={ESTATE_COMMAND_STATUSES.map((status) => ({
                   value: status,
                   label: status,
@@ -141,7 +141,7 @@ const BayCommands = (props: BayCommandsProps) => {
             sortable: true,
             cell: (command) => (
               <span className="text-muted-foreground text-xs whitespace-nowrap">
-                {String(l(command.createdAt, { date: "lll" }))}
+                {l(command.createdAt, { date: "lll" })}
               </span>
             ),
           },

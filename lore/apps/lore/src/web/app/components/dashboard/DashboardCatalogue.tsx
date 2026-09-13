@@ -132,7 +132,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     for (const metric of catalog.on(props.board)) {
       if (
         wanted &&
-        !String(tr(metric.labelKey as never))
+        !tr(metric.labelKey as never)
           .toLowerCase()
           .includes(wanted)
       ) {
@@ -273,8 +273,8 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={String(tr("dashboard.catalogue.filter"))}
-                aria-label={String(tr("dashboard.catalogue.filter"))}
+                placeholder={tr("dashboard.catalogue.filter")}
+                aria-label={tr("dashboard.catalogue.filter")}
                 className="bg-background h-8 rounded-lg pl-8 text-[12.5px]"
               />
             </div>

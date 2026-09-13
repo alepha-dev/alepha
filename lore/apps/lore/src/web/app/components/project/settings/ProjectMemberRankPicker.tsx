@@ -167,7 +167,7 @@ const ProjectMemberRankPicker = (props: ProjectMemberRankPickerProps) => {
       // picker at all.
       inputProps={{
         "data-testid": "member-rank",
-        "aria-label": String(tr("project.settings.members.rank.label")),
+        "aria-label": tr("project.settings.members.rank.label"),
       }}
       // The rank the row currently holds, for a list that has not loaded yet:
       // with no matching item the trigger would otherwise be blank.

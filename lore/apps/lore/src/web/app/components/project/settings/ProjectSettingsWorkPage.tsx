@@ -428,25 +428,21 @@ const ColumnRow = (props: ColumnRowProps) => {
         disabled={props.disabled}
         inputProps={{
           "data-testid": "kanban-column-status",
-          "aria-label": String(tr("project.settings.kanban.columns.status")),
+          "aria-label": tr("project.settings.kanban.columns.status"),
         }}
         triggerClassName="h-8 text-xs"
         items={[
           {
             value: "todo",
-            label: String(tr("project.settings.kanban.columns.status.todo")),
+            label: tr("project.settings.kanban.columns.status.todo"),
           },
           {
             value: "in_progress",
-            label: String(
-              tr("project.settings.kanban.columns.status.inProgress"),
-            ),
+            label: tr("project.settings.kanban.columns.status.inProgress"),
           },
           {
             value: "completed",
-            label: String(
-              tr("project.settings.kanban.columns.status.completed"),
-            ),
+            label: tr("project.settings.kanban.columns.status.completed"),
           },
         ]}
       />
@@ -457,8 +453,8 @@ const ColumnRow = (props: ColumnRowProps) => {
         value={props.wipLimit ?? ""}
         disabled={props.disabled}
         data-testid="kanban-column-wip"
-        aria-label={String(tr("project.settings.kanban.columns.wip"))}
-        placeholder={String(tr("project.settings.kanban.columns.wip.none"))}
+        aria-label={tr("project.settings.kanban.columns.wip")}
+        placeholder={tr("project.settings.kanban.columns.wip.none")}
         className="h-8 w-20 text-xs"
         onChange={(e) => {
           const raw = Number(e.currentTarget.value);

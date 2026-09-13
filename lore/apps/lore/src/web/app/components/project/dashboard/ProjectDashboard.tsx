@@ -247,9 +247,9 @@ const ProjectDashboard = () => {
   const onRemove = async (card: DashboardCardResource) => {
     if (!projectId) return;
     const confirmed = await dialog.confirm({
-      title: String(tr("dashboard.card.delete.confirm")),
-      description: String(tr("project.dashboard.card.delete.shared")),
-      confirmLabel: String(tr("dashboard.card.delete")),
+      title: tr("dashboard.card.delete.confirm"),
+      description: tr("project.dashboard.card.delete.shared"),
+      confirmLabel: tr("dashboard.card.delete"),
       destructive: true,
     });
     if (!confirmed) return;

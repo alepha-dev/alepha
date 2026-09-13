@@ -112,11 +112,9 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   const rotate = async () => {
     if (!estate) return;
     const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.rotate.confirmTitle", { args: [estate.slug] }),
-      ),
-      description: String(tr("account.estates.rotate.confirmDescription")),
-      confirmLabel: String(tr("account.estates.rotate.confirm")),
+      title: tr("account.estates.rotate.confirmTitle", { args: [estate.slug] }),
+      description: tr("account.estates.rotate.confirmDescription"),
+      confirmLabel: tr("account.estates.rotate.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -193,11 +191,9 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   const remove = async () => {
     if (!estate) return;
     const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.delete.confirmTitle", { args: [estate.slug] }),
-      ),
-      description: String(tr("account.estates.delete.confirmDescription")),
-      confirmLabel: String(tr("account.estates.delete.confirm")),
+      title: tr("account.estates.delete.confirmTitle", { args: [estate.slug] }),
+      description: tr("account.estates.delete.confirmDescription"),
+      confirmLabel: tr("account.estates.delete.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -219,13 +215,11 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   const detach = async (loan: OwnedEstateResource["projects"][number]) => {
     if (!estate) return;
     const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.detach.confirmTitle", {
-          args: [estate.slug, loan.title],
-        }),
-      ),
-      description: String(tr("estates.detach.confirmDescription")),
-      confirmLabel: String(tr("estates.detach.confirm")),
+      title: tr("account.estates.detach.confirmTitle", {
+        args: [estate.slug, loan.title],
+      }),
+      description: tr("estates.detach.confirmDescription"),
+      confirmLabel: tr("estates.detach.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -421,23 +415,13 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                 <span className="text-muted-foreground text-xs">
                   {estate.credentialCheckedAt
                     ? tr("estates.credential.checked", {
-                        args: [
-                          String(
-                            l(estate.credentialCheckedAt, { date: "lll" }),
-                          ),
-                        ],
+                        args: [l(estate.credentialCheckedAt, { date: "lll" })],
                       })
                     : tr("estates.credential.neverChecked")}
                   {estate.credentialExpiresAt &&
-                    ` · ${String(
-                      tr("estates.credential.expires", {
-                        args: [
-                          String(
-                            l(estate.credentialExpiresAt, { date: "lll" }),
-                          ),
-                        ],
-                      }),
-                    )}`}
+                    ` · ${tr("estates.credential.expires", {
+                      args: [l(estate.credentialExpiresAt, { date: "lll" })],
+                    })}`}
                 </span>
 
                 {estate.credentialError && (

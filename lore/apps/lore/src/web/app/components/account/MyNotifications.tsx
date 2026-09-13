@@ -71,7 +71,7 @@ const MyNotifications = () => {
       const saved = await api.updateMyNotificationPreferences({ body: patch });
       setPrefs(saved);
     } catch {
-      toast.error(String(tr("account.notifications.saveFailed")));
+      toast.error(tr("account.notifications.saveFailed"));
       // Put back what the server still believes.
       const row = await api
         .getMyNotificationPreferences()
@@ -96,8 +96,8 @@ const MyNotifications = () => {
   return (
     <div className="flex flex-col gap-6">
       <SettingsHeading
-        title={String(tr("account.notifications.title"))}
-        description={String(tr("account.notifications.description"))}
+        title={tr("account.notifications.title")}
+        description={tr("account.notifications.description")}
       />
 
       <SettingsSection
@@ -112,7 +112,7 @@ const MyNotifications = () => {
             checked={prefs.emailEnabled}
             disabled={busy}
             onCheckedChange={(value) => void save({ emailEnabled: value })}
-            aria-label={String(tr("account.notifications.email"))}
+            aria-label={tr("account.notifications.email")}
           />
         </SettingsRow>
         {/* Not a disabled switch: the inbox has no channel switch at all, and
@@ -157,20 +157,20 @@ const MyNotifications = () => {
  * touch.
  */
 const categoryLabel = (
-  tr: (key: never) => string | number,
+  tr: (key: never) => string,
   category: string,
 ): string => {
   const key = `account.notifications.category.${category}`;
-  const label = String(tr(key as never));
+  const label = tr(key as never);
   return label === key ? category : label;
 };
 
 const categoryGloss = (
-  tr: (key: never) => string | number,
+  tr: (key: never) => string,
   category: string,
 ): string | undefined => {
   const key = `account.notifications.category.${category}.description`;
-  const gloss = String(tr(key as never));
+  const gloss = tr(key as never);
   return gloss === key ? undefined : gloss;
 };
 

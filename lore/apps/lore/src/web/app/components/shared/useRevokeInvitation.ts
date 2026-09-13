@@ -35,12 +35,12 @@ export const useRevokeInvitation = (): RevokeInvitation => {
     email: string,
   ) => {
     const confirmed = await dialog.confirm({
-      title: String(tr("project.settings.members.revoke.title")),
-      description: String(
-        tr("project.settings.members.revoke.description", { args: [email] }),
-      ),
-      confirmLabel: String(tr("project.settings.members.revoke.confirm")),
-      cancelLabel: String(tr("project.settings.members.revoke.cancel")),
+      title: tr("project.settings.members.revoke.title"),
+      description: tr("project.settings.members.revoke.description", {
+        args: [email],
+      }),
+      confirmLabel: tr("project.settings.members.revoke.confirm"),
+      cancelLabel: tr("project.settings.members.revoke.cancel"),
       destructive: true,
     });
     if (!confirmed) return false;
@@ -51,7 +51,7 @@ export const useRevokeInvitation = (): RevokeInvitation => {
         params: { projectId, id: invitationId },
       });
       toaster.success(
-        String(tr("project.settings.members.revoke.done", { args: [email] })),
+        tr("project.settings.members.revoke.done", { args: [email] }),
       );
       return true;
     } catch (error: any) {
@@ -61,7 +61,7 @@ export const useRevokeInvitation = (): RevokeInvitation => {
       // page load and the click, and the catalog string is only the
       // fallback for a failure with nothing to say.
       toaster.error(
-        error?.message ?? String(tr("project.settings.members.revoke.failed")),
+        error?.message ?? tr("project.settings.members.revoke.failed"),
       );
       return false;
     } finally {

@@ -57,7 +57,7 @@ export const MemberIdentity = (props: MemberIdentityProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   const src = memberPictureSrc(member);
-  const name = displayName(member.user, "") || String(tr("members.unknown"));
+  const name = displayName(member.user, "") || tr("members.unknown");
 
   return (
     <span

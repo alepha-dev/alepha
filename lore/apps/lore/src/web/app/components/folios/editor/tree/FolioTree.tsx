@@ -141,8 +141,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               size="icon-sm"
               variant="ghost"
               onClick={() => commands.createFolio()}
-              aria-label={String(tr("folios.editor.tree.new-folio"))}
-              title={String(tr("folios.editor.tree.new-folio"))}
+              aria-label={tr("folios.editor.tree.new-folio")}
+              title={tr("folios.editor.tree.new-folio")}
             >
               <FilePlus className="size-3.5" />
             </Button>
@@ -151,8 +151,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               size="icon-sm"
               variant="ghost"
               onClick={() => commands.createDirectory()}
-              aria-label={String(tr("folios.editor.tree.new-directory"))}
-              title={String(tr("folios.editor.tree.new-directory"))}
+              aria-label={tr("folios.editor.tree.new-directory")}
+              title={tr("folios.editor.tree.new-directory")}
             >
               <FolderPlus className="size-3.5" />
             </Button>
@@ -167,8 +167,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           size="icon-sm"
           variant="ghost"
           onClick={props.onCollapse}
-          aria-label={String(tr("folios.editor.tree.collapse"))}
-          title={String(tr("folios.editor.tree.collapse"))}
+          aria-label={tr("folios.editor.tree.collapse")}
+          title={tr("folios.editor.tree.collapse")}
         >
           <PanelLeftClose className="size-3.5" />
         </Button>
@@ -185,7 +185,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           </p>
         )}
         <TreeView<FolioTreeData>
-          label={String(tr("folios.editor.tree.title"))}
+          label={tr("folios.editor.tree.title")}
           rows={tree.rows}
           collapsed={tree.collapsed}
           selectedId={tree.selectedId}

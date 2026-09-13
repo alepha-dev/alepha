@@ -89,8 +89,8 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={String(tr("agentPrompts.menu"))}
-            title={String(tr("agentPrompts.menu"))}
+            aria-label={tr("agentPrompts.menu")}
+            title={tr("agentPrompts.menu")}
           />
         }
       >

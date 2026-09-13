@@ -262,9 +262,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
 
       <FolioMoveDialog
         open={props.actions.moveDialogOpen}
-        folioTitle={
-          values.title.trim() || String(tr("folios.title-placeholder"))
-        }
+        folioTitle={values.title.trim() || tr("folios.title-placeholder")}
         currentDirectoryId={directoryId}
         onCancel={props.actions.closeMoveDialog}
         onConfirm={props.actions.confirmMove}

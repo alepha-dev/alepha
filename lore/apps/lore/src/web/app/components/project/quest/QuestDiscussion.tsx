@@ -73,7 +73,7 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
     // the way. Still open by default: it is what a returning reader came for.
     <CollapsibleBlock
       icon={<MessageSquare className="size-5" />}
-      label={String(tr("quest.discussion.title"))}
+      label={tr("quest.discussion.title")}
       defaultOpen
     >
       {shown.length === 0 ? (

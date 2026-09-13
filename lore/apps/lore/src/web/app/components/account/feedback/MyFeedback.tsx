@@ -78,15 +78,15 @@ const MyFeedback = () => {
         `text-base font-semibold` heading that made it the odd one out.
       */}
       <SettingsHeading
-        title={String(tr("myFeedback.title"))}
-        description={String(tr("myFeedback.description"))}
+        title={tr("myFeedback.title")}
+        description={tr("myFeedback.description")}
       />
 
       <AlephaTable<MyFeedbackResource>
         key={tableKey}
         className="min-h-0 flex-1"
         persistenceKey="lor.me.feedback"
-        emptyMessage={String(tr("myFeedback.empty"))}
+        emptyMessage={tr("myFeedback.empty")}
         filters={{
           schema: myFeedbackFiltersSchema,
           render: (form) => (
@@ -96,9 +96,9 @@ const MyFeedback = () => {
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder={String(tr("myFeedback.filter.search"))}
+                  placeholder={tr("myFeedback.filter.search")}
                   inputProps={{
-                    "aria-label": String(tr("myFeedback.filter.search.aria")),
+                    "aria-label": tr("myFeedback.filter.search.aria"),
                   }}
                 />
               </FilterSlot>
@@ -108,31 +108,29 @@ const MyFeedback = () => {
                   label=""
                   clearable
                   icon={CircleDot}
-                  clearLabel={String(tr("myFeedback.filter.allStatuses"))}
+                  clearLabel={tr("myFeedback.filter.allStatuses")}
                   countLabel={(n) =>
-                    String(
-                      tr("myFeedback.filter.statusCount", {
-                        args: [String(n)],
-                      }),
-                    )
+                    tr("myFeedback.filter.statusCount", {
+                      args: [String(n)],
+                    })
                   }
                   triggerClassName="w-full"
                   items={[
                     {
-                      label: String(tr("feedback.status.pending")),
+                      label: tr("feedback.status.pending"),
                       value: "pending",
                     },
                     {
-                      label: String(tr("feedback.status.accepted")),
+                      label: tr("feedback.status.accepted"),
                       value: "accepted",
                     },
                     {
-                      label: String(tr("feedback.status.rejected")),
+                      label: tr("feedback.status.rejected"),
                       value: "rejected",
                     },
                   ]}
                   inputProps={{
-                    "aria-label": String(tr("myFeedback.column.status")),
+                    "aria-label": tr("myFeedback.column.status"),
                   }}
                 />
               </div>
@@ -143,11 +141,11 @@ const MyFeedback = () => {
                     label=""
                     clearable
                     icon={FolderKanban}
-                    clearLabel={String(tr("myFeedback.filter.allProjects"))}
+                    clearLabel={tr("myFeedback.filter.allProjects")}
                     triggerClassName="w-full"
                     items={projectOptions}
                     inputProps={{
-                      "aria-label": String(tr("myFeedback.column.project")),
+                      "aria-label": tr("myFeedback.column.project"),
                     }}
                   />
                 </div>
@@ -243,15 +241,15 @@ const MyFeedback = () => {
             ? [
                 {
                   icon: Trash,
-                  label: String(tr("myFeedback.action.delete")),
+                  label: tr("myFeedback.action.delete"),
                   destructive: true,
                   onClick: async (
                     _p: MyFeedbackResource,
                     { refresh }: { refresh: () => void },
                   ) => {
                     const confirmed = await dialog.confirm({
-                      title: String(tr("myFeedback.delete.title")),
-                      description: String(tr("myFeedback.delete.description")),
+                      title: tr("myFeedback.delete.title"),
+                      description: tr("myFeedback.delete.description"),
                       destructive: true,
                     });
                     if (!confirmed) return;

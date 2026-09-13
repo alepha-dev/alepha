@@ -48,7 +48,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
         await router.push("project", { params: { projectSlug: joined.slug } });
       }
     } catch (error: any) {
-      toaster.error(error?.message ?? String(tr("invitations.accept.error")));
+      toaster.error(error?.message ?? tr("invitations.accept.error"));
     } finally {
       setBusyId(undefined);
     }
@@ -59,9 +59,9 @@ const MyInvitations = (props: MyInvitationsProps) => {
     try {
       await invitationApi.declineInvitation({ params: { id } });
       setItems((prev) => prev.filter((it) => it.id !== id));
-      toaster.show(String(tr("invitations.declined")), "warning");
+      toaster.show(tr("invitations.declined"), "warning");
     } catch (error: any) {
-      toaster.error(error?.message ?? String(tr("invitations.decline.error")));
+      toaster.error(error?.message ?? tr("invitations.decline.error"));
     } finally {
       setBusyId(undefined);
     }
@@ -79,8 +79,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
         became `members` and identity moved to the account.
       */}
       <SettingsHeading
-        title={String(tr("invitations.title"))}
-        description={String(tr("invitations.description"))}
+        title={tr("invitations.title")}
+        description={tr("invitations.description")}
       />
 
       {items.length === 0 ? (

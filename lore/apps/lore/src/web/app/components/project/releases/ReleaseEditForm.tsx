@@ -141,9 +141,7 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Control
             label={tr("release.detail.editTag")}
-            description={
-              retagging ? undefined : String(tr("release.edit.tagHint"))
-            }
+            description={retagging ? undefined : tr("release.edit.tagHint")}
             input={form.input.tag}
             icon={Tag}
             inputProps={{ className: "font-mono" }}

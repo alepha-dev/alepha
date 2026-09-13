@@ -141,13 +141,13 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
 
       <span
         role="group"
-        aria-label={String(tr("questline.zoom.label"))}
+        aria-label={tr("questline.zoom.label")}
         className="inline-flex items-center gap-0.5"
       >
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={String(tr("questline.zoom.out"))}
+          aria-label={tr("questline.zoom.out")}
           onClick={props.zoom.onZoomOut}
         >
           <Minus />
@@ -161,7 +161,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={String(tr("questline.zoom.in"))}
+          aria-label={tr("questline.zoom.in")}
           onClick={props.zoom.onZoomIn}
         >
           <Plus />
@@ -169,7 +169,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={String(tr("questline.zoom.fit"))}
+          aria-label={tr("questline.zoom.fit")}
           onClick={props.zoom.onReset}
         >
           <Maximize />

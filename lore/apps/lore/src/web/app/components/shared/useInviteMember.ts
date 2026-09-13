@@ -30,9 +30,7 @@ export const useInviteMember = (): InviteMember => {
   const invite = async (projectId: number, email: string, rank?: string) => {
     const trimmed = email.trim();
     if (!trimmed) {
-      toaster.error(
-        String(tr("project.settings.members.invite.emailRequired")),
-      );
+      toaster.error(tr("project.settings.members.invite.emailRequired"));
       return false;
     }
     setLoading(true);
@@ -49,7 +47,7 @@ export const useInviteMember = (): InviteMember => {
         },
       });
       toaster.success(
-        String(tr("project.settings.members.invite.sent", { args: [trimmed] })),
+        tr("project.settings.members.invite.sent", { args: [trimmed] }),
       );
       return true;
     } catch (error: any) {
@@ -57,7 +55,7 @@ export const useInviteMember = (): InviteMember => {
       // reason (already a member, pending invitation, project full) and the
       // catalog string is only the fallback for a failure with no story.
       toaster.error(
-        error?.message ?? String(tr("project.settings.members.invite.failed")),
+        error?.message ?? tr("project.settings.members.invite.failed"),
       );
       return false;
     } finally {

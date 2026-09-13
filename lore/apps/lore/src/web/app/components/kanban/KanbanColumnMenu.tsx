@@ -50,9 +50,7 @@ const KanbanColumnMenu = (props: KanbanColumnMenuProps) => {
             type="button"
             data-testid="kanban-column-menu"
             disabled={props.busy}
-            aria-label={String(
-              tr("kanban.column.actions", { args: [props.name] }),
-            )}
+            aria-label={tr("kanban.column.actions", { args: [props.name] })}
             // 24x24, matching the collapse button it sits beside - see the
             // note there. The audit that found this (#1743) measured a board
             // with no editable column, so it only reported the sibling; this

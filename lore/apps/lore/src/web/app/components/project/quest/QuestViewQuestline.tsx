@@ -142,7 +142,7 @@ const QuestViewQuestline = (props: QuestViewQuestlineProps) => {
 
       {dependents.map((dep) =>
         row(
-          String(tr("quest.view.questline.unlocks")),
+          tr("quest.view.questline.unlocks"),
           dep.shortId,
           dep.title,
           "border-border bg-muted/40",

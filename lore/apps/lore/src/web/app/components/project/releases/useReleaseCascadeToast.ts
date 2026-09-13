@@ -50,9 +50,7 @@ export const useReleaseCascadeToast = () => {
       );
     }
     if (cascade.kept > 0) {
-      lines.push(
-        String(tr("release.cascade.kept", { args: [String(cascade.kept)] })),
-      );
+      lines.push(tr("release.cascade.kept", { args: [String(cascade.kept)] }));
     }
     if (lines.length > 0) {
       toaster.success(lines.join(" "));
@@ -60,16 +58,14 @@ export const useReleaseCascadeToast = () => {
 
     if (cascade.refused.length > 0) {
       toaster.error(
-        String(
-          tr("release.cascade.refused", {
-            args: [
-              String(cascade.refused.length),
-              cascade.refused
-                .map((quest) => formatReference("quest", quest.shortId))
-                .join(", "),
-            ],
-          }),
-        ),
+        tr("release.cascade.refused", {
+          args: [
+            String(cascade.refused.length),
+            cascade.refused
+              .map((quest) => formatReference("quest", quest.shortId))
+              .join(", "),
+          ],
+        }),
       );
     }
   };

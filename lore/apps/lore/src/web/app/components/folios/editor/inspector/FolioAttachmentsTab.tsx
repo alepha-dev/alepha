@@ -247,8 +247,8 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
                 type="button"
                 disabled={props.disabled || !canWrite}
                 onClick={() => void rename(attachment.id, attachment.name)}
-                aria-label={String(tr("folios.editor.tree.rename"))}
-                title={String(tr("folios.editor.tree.rename"))}
+                aria-label={tr("folios.editor.tree.rename")}
+                title={tr("folios.editor.tree.rename")}
                 className="text-muted-foreground hover:text-foreground flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Pencil className="size-3.5" />
@@ -256,12 +256,8 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               <button
                 type="button"
                 onClick={() => copyReference(attachment.name)}
-                aria-label={String(
-                  tr("folios.editor.inspector.attachments-copy-ref"),
-                )}
-                title={String(
-                  tr("folios.editor.inspector.attachments-copy-ref"),
-                )}
+                aria-label={tr("folios.editor.inspector.attachments-copy-ref")}
+                title={tr("folios.editor.inspector.attachments-copy-ref")}
                 className="text-muted-foreground hover:text-foreground flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Copy className="size-3.5" />
@@ -270,8 +266,8 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
                 type="button"
                 disabled={props.disabled || !canWrite}
                 onClick={() => void remove(attachment.id, attachment.name)}
-                aria-label={String(tr("folio.action.delete"))}
-                title={String(tr("folio.action.delete"))}
+                aria-label={tr("folio.action.delete")}
+                title={tr("folio.action.delete")}
                 className="text-muted-foreground hover:text-destructive flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Trash2 className="size-3.5" />

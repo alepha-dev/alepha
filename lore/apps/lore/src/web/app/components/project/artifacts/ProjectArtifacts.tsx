@@ -253,20 +253,20 @@ const ProjectArtifacts = () => {
              */
             emptyState={{
               icon: Package,
-              title: String(tr("artifacts.empty.title")),
+              title: tr("artifacts.empty.title"),
               // The answer to "there is nothing here", which is what an
               // empty state's description is for: why the page is empty, and
               // the one link that says what to do about it.
               description: (
                 <ArtifactsEmpty
-                  description={String(tr("artifacts.empty.description"))}
+                  description={tr("artifacts.empty.description")}
                 />
               ),
             }}
             noMatchState={{
               icon: SearchX,
-              title: String(tr("artifacts.noMatch")),
-              description: String(tr("artifacts.list.empty")),
+              title: tr("artifacts.noMatch"),
+              description: tr("artifacts.list.empty"),
             }}
             filters={{
               schema: filtersSchema,
@@ -300,11 +300,9 @@ const ProjectArtifacts = () => {
                         icon={AppWindow}
                         clearLabel={tr("artifacts.filter.allApps")}
                         countLabel={(n) =>
-                          String(
-                            tr("artifacts.filter.appCount", {
-                              args: [String(n)],
-                            }),
-                          )
+                          tr("artifacts.filter.appCount", {
+                            args: [String(n)],
+                          })
                         }
                         triggerClassName="w-full"
                         items={appItems}
@@ -323,11 +321,9 @@ const ProjectArtifacts = () => {
                         icon={Server}
                         clearLabel={tr("artifacts.filter.allRuntimes")}
                         countLabel={(n) =>
-                          String(
-                            tr("artifacts.filter.runtimeCount", {
-                              args: [String(n)],
-                            }),
-                          )
+                          tr("artifacts.filter.runtimeCount", {
+                            args: [String(n)],
+                          })
                         }
                         triggerClassName="w-full"
                         items={runtimeItems}
@@ -346,11 +342,9 @@ const ProjectArtifacts = () => {
                         icon={Container}
                         clearLabel={tr("artifacts.filter.allFormats")}
                         countLabel={(n) =>
-                          String(
-                            tr("artifacts.filter.formatCount", {
-                              args: [String(n)],
-                            }),
-                          )
+                          tr("artifacts.filter.formatCount", {
+                            args: [String(n)],
+                          })
                         }
                         triggerClassName="w-full"
                         items={formatItems}
@@ -473,7 +467,7 @@ const ProjectArtifacts = () => {
                 label: tr("artifacts.table.pushed"),
                 sortable: true,
                 cell: (row) =>
-                  row.pushedAt ? String(l(row.pushedAt, { date: "lll" })) : "—",
+                  row.pushedAt ? l(row.pushedAt, { date: "lll" }) : "—",
               },
               commitSha: {
                 label: tr("artifacts.table.commit"),

@@ -65,7 +65,7 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
             ? tr("estates.type.cloudflare")
             : estate.lastSeenAt
               ? tr("estates.lastSeen", {
-                  args: [String(l(estate.lastSeenAt, { date: "lll" }))],
+                  args: [l(estate.lastSeenAt, { date: "lll" })],
                 })
               : tr("estates.neverSeen")}
         </span>

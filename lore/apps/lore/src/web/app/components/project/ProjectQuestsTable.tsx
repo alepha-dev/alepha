@@ -242,7 +242,7 @@ const ProjectQuestsTable = () => {
   const releaseOptions = [
     {
       value: QUEST_RELEASE_NONE,
-      label: String(tr("board.filter.noRelease")),
+      label: tr("board.filter.noRelease"),
     },
     ...(releases ?? []).map((r) => ({
       value: String(r.id),
@@ -284,11 +284,9 @@ const ProjectQuestsTable = () => {
         );
         reportBulk(
           outcome,
-          String(tr("board.bulk.shelved", { args: [count(outcome.done)] })),
+          tr("board.bulk.shelved", { args: [count(outcome.done)] }),
           skipped > 0
-            ? String(
-                tr("board.bulk.shelve.skipped", { args: [String(skipped)] }),
-              )
+            ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
             : undefined,
         );
         ctx.refresh();
@@ -316,11 +314,9 @@ const ProjectQuestsTable = () => {
         );
         reportBulk(
           outcome,
-          String(tr("board.bulk.unshelved", { args: [count(outcome.done)] })),
+          tr("board.bulk.unshelved", { args: [count(outcome.done)] }),
           skipped > 0
-            ? String(
-                tr("board.bulk.unshelve.skipped", { args: [String(skipped)] }),
-              )
+            ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
             : undefined,
         );
         ctx.refresh();
@@ -349,11 +345,9 @@ const ProjectQuestsTable = () => {
               );
               reportBulk(
                 outcome,
-                String(
-                  tr("board.bulk.released", {
-                    args: [count(outcome.done), release.tag ?? release.title],
-                  }),
-                ),
+                tr("board.bulk.released", {
+                  args: [count(outcome.done), release.tag ?? release.title],
+                }),
               );
               ctx.refresh();
               ctx.clearSelection();
@@ -382,7 +376,7 @@ const ProjectQuestsTable = () => {
         );
         reportBulk(
           outcome,
-          String(tr("board.bulk.deleted", { args: [count(outcome.done)] })),
+          tr("board.bulk.deleted", { args: [count(outcome.done)] }),
         );
         ctx.refresh();
         ctx.clearSelection();
@@ -443,7 +437,7 @@ const ProjectQuestsTable = () => {
             <AlephaTableFilterBar
               form={form}
               search={{
-                placeholder: String(tr("board.filter.search")),
+                placeholder: tr("board.filter.search"),
                 control: {
                   inputProps: { "aria-label": tr("board.filter.search") },
                 },
@@ -451,7 +445,7 @@ const ProjectQuestsTable = () => {
               fields={[
                 {
                   key: "status",
-                  label: String(tr("board.filter.status")),
+                  label: tr("board.filter.status"),
                   icon: CircleDot,
                   // is / is not. Several statuses under "is not" exclude all
                   // of them, and shelved quests stay out unless named - see
@@ -471,15 +465,13 @@ const ProjectQuestsTable = () => {
                         "shelved",
                       ] as const
                     ).map((status) => ({
-                      label: String(tr(QUEST_STATUS_LABEL_KEYS[status])),
+                      label: tr(QUEST_STATUS_LABEL_KEYS[status]),
                       value: status,
                     })),
                   control: {
                     clearLabel: tr("board.filter.allStatuses"),
                     countLabel: (n) =>
-                      String(
-                        tr("board.filter.statusCount", { args: [String(n)] }),
-                      ),
+                      tr("board.filter.statusCount", { args: [String(n)] }),
                     triggerClassName: "w-full",
                     inputProps: { "aria-label": tr("board.filter.status") },
                   },
@@ -488,17 +480,15 @@ const ProjectQuestsTable = () => {
                   ? [
                       {
                         key: "area",
-                        label: String(tr("board.filter.area")),
+                        label: tr("board.filter.area"),
                         icon: MapPin,
                         items: areaOptions,
                         control: {
                           clearLabel: tr("board.filter.allAreas"),
                           countLabel: (n: number) =>
-                            String(
-                              tr("board.filter.areaCount", {
-                                args: [String(n)],
-                              }),
-                            ),
+                            tr("board.filter.areaCount", {
+                              args: [String(n)],
+                            }),
                           // Opted in rather than left to the option count.
                           // Areas are named by import path (`lore/quests`,
                           // `lore/folios`), so the "select every match" row
@@ -516,17 +506,15 @@ const ProjectQuestsTable = () => {
                   ? [
                       {
                         key: "release",
-                        label: String(tr("board.filter.release")),
+                        label: tr("board.filter.release"),
                         icon: Flag,
                         items: releaseOptions,
                         control: {
                           clearLabel: tr("board.filter.allReleases"),
                           countLabel: (n: number) =>
-                            String(
-                              tr("board.filter.releaseCount", {
-                                args: [String(n)],
-                              }),
-                            ),
+                            tr("board.filter.releaseCount", {
+                              args: [String(n)],
+                            }),
                           triggerClassName: "w-full",
                           inputProps: {
                             "aria-label": tr("board.filter.release"),
@@ -539,7 +527,7 @@ const ProjectQuestsTable = () => {
                   ? [
                       {
                         key: "tag",
-                        label: String(tr("board.filter.tag")),
+                        label: tr("board.filter.tag"),
                         icon: Tag,
                         items: knownTags.map((tag) => ({
                           label: tag,
@@ -552,11 +540,9 @@ const ProjectQuestsTable = () => {
                         control: {
                           clearLabel: tr("board.filter.allTags"),
                           countLabel: (n: number) =>
-                            String(
-                              tr("board.filter.tagCount", {
-                                args: [String(n)],
-                              }),
-                            ),
+                            tr("board.filter.tagCount", {
+                              args: [String(n)],
+                            }),
                           triggerClassName: "w-full",
                           inputProps: { "aria-label": tr("board.filter.tag") },
                         },

@@ -57,7 +57,7 @@ const AppLayoutSwitcher = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={String(tr("app.switcher.label"))}
+        aria-label={tr("app.switcher.label")}
         className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center rounded p-0.5 transition-colors"
       >
         <ChevronDown className="size-4" />

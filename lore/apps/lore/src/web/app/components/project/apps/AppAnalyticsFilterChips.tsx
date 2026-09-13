@@ -72,7 +72,7 @@ const AppAnalyticsFilterChips = (props: AppAnalyticsFilterChipsProps) => {
           <button
             type="button"
             aria-label={tr("insights.filter.clear", {
-              args: [String(tr(LABEL[key]))],
+              args: [tr(LABEL[key])],
             })}
             onClick={() => onClear(key)}
             className="hover:text-foreground"

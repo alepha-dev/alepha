@@ -55,8 +55,8 @@ const FolioSummaryField = (props: FolioSummaryFieldProps): ReactElement => {
           maxLength={MAX_LENGTH}
           rows={2}
           onChange={(e) => props.onChange(e.target.value)}
-          placeholder={String(tr("folios.editor.summary.placeholder"))}
-          aria-label={String(tr("folios.editor.summary.label"))}
+          placeholder={tr("folios.editor.summary.placeholder")}
+          aria-label={tr("folios.editor.summary.label")}
           className={cn(
             "focus:bg-muted mt-0.5 w-full resize-none border-0 bg-transparent px-1 py-0.5 text-sm leading-relaxed outline-none",
             props.unavailable && "text-muted-foreground",

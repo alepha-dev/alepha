@@ -77,9 +77,9 @@ export const ProjectSettingsAgentPromptEditor = (
 
   const reset = async () => {
     const confirmed = await dialog.confirm({
-      title: String(tr("agentPrompts.settings.reset.title")),
-      description: String(tr("agentPrompts.settings.reset.description")),
-      confirmLabel: String(tr("agentPrompts.settings.reset")),
+      title: tr("agentPrompts.settings.reset.title"),
+      description: tr("agentPrompts.settings.reset.description"),
+      confirmLabel: tr("agentPrompts.settings.reset"),
       destructive: true,
     });
     if (!confirmed) return;
@@ -118,9 +118,7 @@ export const ProjectSettingsAgentPromptEditor = (
         disabled={pending}
         spellCheck={false}
         className="font-mono text-xs"
-        aria-label={String(
-          tr(`agentPrompts.settings.${props.kind}.title` as never),
-        )}
+        aria-label={tr(`agentPrompts.settings.${props.kind}.title` as never)}
         data-testid={`prompt-input-${props.kind}`}
         onChange={(e) => setText(e.currentTarget.value)}
       />

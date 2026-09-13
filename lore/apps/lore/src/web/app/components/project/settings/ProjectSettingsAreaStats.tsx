@@ -32,13 +32,13 @@ const ProjectSettingsAreaStats = (props: ProjectSettingsAreaStatsProps) => {
       label: tr("area.detail.stats.first"),
       value: props.area.firstQuestAt
         ? dt.of(props.area.firstQuestAt).fromNow()
-        : String(tr("area.detail.stats.never")),
+        : tr("area.detail.stats.never"),
     },
     {
       label: tr("area.detail.stats.last"),
       value: props.area.lastQuestAt
         ? dt.of(props.area.lastQuestAt).fromNow()
-        : String(tr("area.detail.stats.never")),
+        : tr("area.detail.stats.never"),
     },
   ];
 

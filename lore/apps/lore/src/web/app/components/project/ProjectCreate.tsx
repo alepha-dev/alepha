@@ -307,10 +307,8 @@ const ProjectCreate = () => {
                 )}
                 {activeStep === 2 && (
                   <StepCapabilities
-                    title={String(tr("project.create.step.capabilities"))}
-                    helper={String(
-                      tr("project.create.step.capabilities.helper"),
-                    )}
+                    title={tr("project.create.step.capabilities")}
+                    helper={tr("project.create.step.capabilities.helper")}
                     capabilities={registry.all()}
                     enabled={draft.enabled}
                     onToggle={toggleCapability}
@@ -319,8 +317,8 @@ const ProjectCreate = () => {
                 )}
                 {activeStep === 3 && hasSetup && (
                   <StepSetup
-                    title={String(tr("project.create.step.setup"))}
-                    helper={String(tr("project.create.step.setup.helper"))}
+                    title={tr("project.create.step.setup")}
+                    helper={tr("project.create.step.setup.helper")}
                     sections={setupSections.map((key) => ({
                       key,
                       capability: registry.get(key),
@@ -328,7 +326,7 @@ const ProjectCreate = () => {
                     }))}
                     values={draft.options}
                     onToggle={toggleOption}
-                    soonLabel={String(tr("project.create.soon"))}
+                    soonLabel={tr("project.create.soon")}
                     tr={tr}
                   />
                 )}
@@ -451,7 +449,7 @@ interface StepCapabilitiesProps {
   capabilities: CapabilityDescriptor[];
   enabled: CapabilityKey[];
   onToggle: (key: CapabilityKey) => void;
-  tr: (key: never) => string | number;
+  tr: (key: never) => string;
 }
 
 /**
@@ -474,8 +472,8 @@ const StepCapabilities = (props: StepCapabilitiesProps) => {
           <ModuleToggle
             key={capability.key}
             icon={CAPABILITY_ICONS[capability.key]}
-            label={String(props.tr(capability.labelKey as never))}
-            helper={String(props.tr(capability.descriptionKey as never))}
+            label={props.tr(capability.labelKey as never)}
+            helper={props.tr(capability.descriptionKey as never)}
             checked={props.enabled.includes(capability.key)}
             onChange={() => props.onToggle(capability.key)}
           />
@@ -496,7 +494,7 @@ interface StepSetupProps {
   values: Record<string, Record<string, boolean>>;
   onToggle: (key: CapabilityKey, option: string) => void;
   soonLabel: string;
-  tr: (key: never) => string | number;
+  tr: (key: never) => string;
 }
 
 /**
@@ -517,14 +515,14 @@ const StepSetup = (props: StepSetupProps) => {
       {props.sections.map((section) => (
         <div key={section.key} className="flex flex-col gap-2">
           <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            {String(props.tr(section.capability.labelKey as never))}
+            {props.tr(section.capability.labelKey as never)}
           </span>
           {section.options.map((option) => (
             <ModuleToggle
               key={option.key}
               icon={CAPABILITY_ICONS[section.key]}
-              label={String(props.tr(option.labelKey as never))}
-              helper={String(props.tr(option.descriptionKey as never))}
+              label={props.tr(option.labelKey as never)}
+              helper={props.tr(option.descriptionKey as never)}
               checked={props.values[section.key]?.[option.key] === true}
               onChange={() => props.onToggle(section.key, option.key)}
               // Rendered disabled rather than hidden: the wizard is where

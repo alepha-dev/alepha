@@ -118,9 +118,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
                         [objective.id]: event.target.value,
                       }))
                     }
-                    placeholder={String(
-                      tr("quest.view.complete.waive.placeholder"),
-                    )}
+                    placeholder={tr("quest.view.complete.waive.placeholder")}
                     disabled={props.submitting}
                   />
                 </label>

@@ -189,7 +189,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             // re-render that remounts the input.
             ref={(el) => el?.focus()}
             data-testid="kanban-column-rename-input"
-            aria-label={String(tr("kanban.column.rename"))}
+            aria-label={tr("kanban.column.rename")}
             defaultValue={descriptor.label}
             maxLength={24}
             className="border-input focus-visible:border-ring min-w-0 flex-1 rounded border bg-transparent px-1 text-sm font-semibold outline-none"
@@ -243,7 +243,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             <button
               type="button"
               data-testid="kanban-column-collapse"
-              aria-label={String(tr("kanban.column.collapse"))}
+              aria-label={tr("kanban.column.collapse")}
               // A 24x24 box around a 14px glyph, WCAG 2.2 Target Size
               // (Minimum). It was a bare button the size of its icon, so the
               // whole target was 14x14 - workable with a mouse, never with a

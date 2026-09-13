@@ -67,9 +67,7 @@ export const useKanbanColumnOps = (
       // quests in this column before deleting it" is the whole story, and a
       // generic catalogue string would replace an answer with a shrug.
       toaster.error(
-        error instanceof Error
-          ? error.message
-          : String(tr("kanban.column.failed")),
+        error instanceof Error ? error.message : tr("kanban.column.failed"),
       );
       return false;
     } finally {
@@ -125,12 +123,10 @@ export const useKanbanColumnOps = (
       // move here and getting a refusal there would be worse than the plain
       // rule.
       const confirmed = await dialog.confirm({
-        title: String(tr("kanban.column.delete.title")),
-        description: String(
-          tr("kanban.column.delete.description", { args: [name] }),
-        ),
-        confirmLabel: String(tr("kanban.column.delete.confirm")),
-        cancelLabel: String(tr("kanban.column.delete.cancel")),
+        title: tr("kanban.column.delete.title"),
+        description: tr("kanban.column.delete.description", { args: [name] }),
+        confirmLabel: tr("kanban.column.delete.confirm"),
+        cancelLabel: tr("kanban.column.delete.cancel"),
         destructive: true,
       });
       if (!confirmed) return false;

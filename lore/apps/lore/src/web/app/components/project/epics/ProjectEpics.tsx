@@ -324,7 +324,7 @@ const ProjectEpics = () => {
   const releaseOptions = [
     {
       value: QUEST_RELEASE_NONE,
-      label: String(tr("board.filter.noRelease")),
+      label: tr("board.filter.noRelease"),
     },
     ...(releases ?? []).map((release) => ({
       value: String(release.id),
@@ -361,14 +361,12 @@ const ProjectEpics = () => {
               );
               reportBulk(
                 outcome,
-                String(
-                  tr("board.bulk.released", {
-                    args: [
-                      String(outcome.done.length),
-                      release.tag ?? release.title,
-                    ],
-                  }),
-                ),
+                tr("board.bulk.released", {
+                  args: [
+                    String(outcome.done.length),
+                    release.tag ?? release.title,
+                  ],
+                }),
               );
               ctx.refresh();
               ctx.clearSelection();
@@ -401,9 +399,7 @@ const ProjectEpics = () => {
         );
         reportBulk(
           outcome,
-          String(
-            tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
-          ),
+          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
         );
         ctx.refresh();
         ctx.clearSelection();
@@ -441,7 +437,7 @@ const ProjectEpics = () => {
                   icon={CircleDot}
                   clearLabel={tr("epic.filter.allStatuses")}
                   countLabel={(n) =>
-                    String(tr("epic.filter.statusCount", { args: [String(n)] }))
+                    tr("epic.filter.statusCount", { args: [String(n)] })
                   }
                   triggerClassName="w-full"
                   items={EPIC_STATUSES.map((status) => ({
@@ -464,9 +460,7 @@ const ProjectEpics = () => {
                     icon={Flag}
                     clearLabel={tr("board.filter.allReleases")}
                     countLabel={(n) =>
-                      String(
-                        tr("board.filter.releaseCount", { args: [String(n)] }),
-                      )
+                      tr("board.filter.releaseCount", { args: [String(n)] })
                     }
                     triggerClassName="w-full"
                     items={releaseOptions}

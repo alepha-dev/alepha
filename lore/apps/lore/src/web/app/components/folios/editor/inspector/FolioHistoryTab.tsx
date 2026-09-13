@@ -438,7 +438,7 @@ const RevisionSummary = (props: { revision: HistoryRevision }) => {
                 user deletion so the content survives the account. Reusing
                 the string the feedback threads already show for the same
                 situation rather than minting a second one. */}
-            {r.byUsername ?? String(tr("feedback.thread.unknownAuthor"))}
+            {r.byUsername ?? tr("feedback.thread.unknownAuthor")}
           </span>
         </dd>
       </div>
