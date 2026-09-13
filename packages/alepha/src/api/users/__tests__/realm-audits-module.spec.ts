@@ -1,27 +1,34 @@
 import { Alepha } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, SecurityProvider } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
+import { SessionAudits } from "../audits/SessionAudits.ts";
+import { UserAudits } from "../audits/UserAudits.ts";
 import { AlephaApiUsers } from "../index.ts";
-import { $realm } from "../primitives/$realm.ts";
+import { UserJobs } from "../jobs/UserJobs.ts";
+import { $realm, type RealmFeatures } from "../primitives/$realm.ts";
+import { UserService } from "../services/UserService.ts";
 
 /**
- * `features.audits` must register the audits MODULE, not only the two
- * `$audit` holder classes.
+ * A feature flag gates a surface, not infrastructure (#Q2096).
  *
- * `AlephaApiAudits` carries `AdminAuditController`, whose
- * `$secure({ permissions: ["admin:audit:read"] })` is the only thing that
- * declares that permission. A permission nothing declares cannot be granted
- * to anyone — not even an admin holding the `*` wildcard, because
- * `SecurityProvider.getPermissions()` expands `*` against the container's
- * live registry. So without the module the admin Audits page is unreachable
- * AND invisible, with no error anywhere to say why.
+ * `$realm` used to register `UserAudits`, `SessionAudits` and `UserJobs` only
+ * when `features.audits` / `features.jobs` were on, both off by default. What
+ * that actually switched off was the user and session audit trail, and the
+ * only job that deletes session rows, so every application left at the
+ * defaults grew its `sessions` table forever.
+ *
+ * The audits MODULE comes with them: `AlephaApiAudits` carries
+ * `AdminAuditController`, whose `$secure` is the only declaration of
+ * `admin:audit:read`, and a permission nothing declares cannot be granted,
+ * not even to an admin holding `*`.
  */
-describe("$realm features.audits", () => {
-  const declaredPermissions = async (audits: boolean) => {
+describe("$realm jobs and audits are infrastructure", () => {
+  const boot = async (features?: Partial<RealmFeatures>) => {
     class App {
-      realm = $realm({ features: { audits } });
+      realm = $realm({ features });
     }
 
     const alepha = Alepha.create({
@@ -33,17 +40,45 @@ describe("$realm features.audits", () => {
     alepha.with(App);
     await alepha.start();
 
-    return alepha
+    return alepha;
+  };
+
+  const declaredPermissions = (alepha: Alepha) =>
+    alepha
       .inject(SecurityProvider)
       .getPermissions()
       .map((it) => [it.group, it.name].filter(Boolean).join(":"));
-  };
 
-  it("declares admin:audit:read when audits are on", async () => {
-    expect(await declaredPermissions(true)).toContain("admin:audit:read");
+  it("registers the audit types, the session purge and the audits module for a realm declaring no features", async () => {
+    const alepha = await boot();
+
+    expect(alepha.has(UserAudits)).toBe(true);
+    expect(alepha.has(SessionAudits)).toBe(true);
+    expect(alepha.has(UserJobs)).toBe(true);
+    expect(declaredPermissions(alepha)).toContain("admin:audit:read");
   });
 
-  it("does not declare admin:audit:read when audits are off", async () => {
-    expect(await declaredPermissions(false)).not.toContain("admin:audit:read");
+  it("ignores audits: false and jobs: false, which still typecheck", async () => {
+    // Kept on `RealmFeatures`, deprecated, so applications that set them
+    // upgrade by changing behaviour only.
+    const alepha = await boot({ audits: false, jobs: false });
+
+    expect(alepha.has(UserAudits)).toBe(true);
+    expect(alepha.has(SessionAudits)).toBe(true);
+    expect(alepha.has(UserJobs)).toBe(true);
+    expect(declaredPermissions(alepha)).toContain("admin:audit:read");
+  });
+
+  it("writes the user audit trail from the services with audits: false", async () => {
+    const alepha = await boot({ audits: false });
+
+    const user = await alepha
+      .inject(UserService)
+      .createUser({ username: `audited-${crypto.randomUUID().slice(0, 8)}` });
+
+    const page = await alepha
+      .inject(AuditService)
+      .find({ type: "user", action: "create" });
+    expect(page.content.some((row) => row.resourceId === user.id)).toBe(true);
   });
 });

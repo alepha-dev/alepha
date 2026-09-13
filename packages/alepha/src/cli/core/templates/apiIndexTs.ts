@@ -5,10 +5,10 @@ export interface ApiIndexTsOptions {
    * Mount the identity backend the saas web routers talk to.
    *
    * Only two modules, because `$realm` is the switchboard for the rest:
-   * `features.apiKeys` registers `AlephaApiKeys`, `features.jobs` registers
-   * `UserJobs`, `features.notifications` registers `UserNotifications` plus
-   * `AlephaApiVerification`. Listing those here as well would give a project
-   * two places to turn the same feature on.
+   * `features.apiKeys` registers `AlephaApiKeys`, `features.notifications`
+   * registers `UserNotifications` plus `AlephaApiVerification`, and the realm
+   * registers its jobs and audit types itself. Listing those here as well
+   * would give a project two places to turn the same feature on.
    */
   saas?: boolean;
 }

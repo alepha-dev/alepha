@@ -87,13 +87,11 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   // Merge features with defaults
   const features: RealmFeatures = {
-    jobs: false,
     notifications: false,
     apiKeys: false,
     oauth: false,
     parameters: false,
     avatars: false,
-    audits: false,
     ...options.features,
   };
 
@@ -125,14 +123,14 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     alepha.with(AdminAvatarController);
   }
 
-  if (features.audits) {
-    alepha.with(UserAudits);
-    alepha.with(SessionAudits);
-  }
-
-  if (features.jobs) {
-    alepha.with(UserJobs);
-  }
+  // Infrastructure, not features: registered whatever `features` says. The
+  // user and session audit types are a security baseline, and `UserJobs`
+  // holds the only thing that deletes session rows, so a realm without it
+  // grows its `sessions` table forever. `features.audits` and `features.jobs`
+  // are accepted and ignored, `false` included (see `RealmFeatures`).
+  alepha.with(UserAudits);
+  alepha.with(SessionAudits);
+  alepha.with(UserJobs);
 
   if (features.notifications) {
     alepha.with(UserNotifications);
@@ -416,13 +414,22 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * The surfaces a realm turns on.
+ *
+ * **A feature flag gates a surface, not infrastructure.** Every flag here adds
+ * screens or endpoints a user can see, and an application turns one on because
+ * it wants the feature. Jobs and audits add neither: an audit trail nobody
+ * asked for is a security baseline, and a session table nobody purges is a
+ * leak. So the realm always registers its audit types and its session purge,
+ * and the `jobs` and `audits` keys below are kept only so the applications
+ * that set them keep compiling.
+ */
 export interface RealmFeatures {
   /**
-   * Will enable Job module.
-   *
-   * - Enable session purge functionality for cleaning up expired sessions.
-   *
-   * @default false
+   * @deprecated Ignored. The realm's jobs (the expired-session purge) are
+   * always registered: `UserJobs` is the only thing that deletes session rows,
+   * and turning it off grew the `sessions` table forever. Remove the key.
    */
   jobs?: boolean;
 
@@ -487,9 +494,9 @@ export interface RealmFeatures {
   avatars?: boolean;
 
   /**
-   * Enable audit trail for compliance and event logging.
-   *
-   * @default false
+   * @deprecated Ignored. The user and session audit types are always
+   * registered and always written, `audits: false` included: an audit trail
+   * is a security baseline, not a feature. Remove the key.
    */
   audits?: boolean;
 }

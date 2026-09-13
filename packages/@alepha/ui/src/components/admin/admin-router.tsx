@@ -79,8 +79,8 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * have.
  *
  * This is why there is no `pages: [...]` allowlist. A second gate on top of
- * two that already work goes stale: an application that later turns on
- * `features.audits` would still not see the Audits page until someone
+ * two that already work goes stale: an application that later registers the
+ * audits module would still not see the Audits page until someone
  * remembered to edit the list.
  *
  * ### Extending the shell

@@ -52,16 +52,18 @@ export class SessionService {
   protected readonly userService = $inject(UserService);
 
   protected userAudits(realmName?: string) {
-    const realm = this.realmProvider.getRealm(realmName);
-    if (realm.features.audits) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(UserAudits)) {
       return this.alepha.inject(UserAudits);
     }
     return undefined;
   }
 
   protected sessionAudits(realmName?: string) {
-    const realm = this.realmProvider.getRealm(realmName);
-    if (realm.features.audits) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(SessionAudits)) {
       return this.alepha.inject(SessionAudits);
     }
     return undefined;

@@ -190,12 +190,10 @@ export class RealmProvider {
 
     // Merge features with defaults
     const features: RealmFeatures = {
-      jobs: false,
       notifications: false,
       apiKeys: false,
       parameters: false,
       avatars: false,
-      audits: false,
       ...realmOptions.features,
     };
 
@@ -400,7 +398,9 @@ export class RealmProvider {
       { userId: user.id, realm: realm.name },
     );
 
-    if (realm.features.audits) {
+    // Registered by every `$realm`; a realm registered straight through this
+    // provider (tests) may not have it.
+    if (this.alepha.has(UserAudits)) {
       await this.alepha.inject(UserAudits).user.log("role_change", {
         resourceType: "user",
         userId: user.id,

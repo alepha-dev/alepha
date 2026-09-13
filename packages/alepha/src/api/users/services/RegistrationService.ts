@@ -103,8 +103,9 @@ export class RegistrationService {
   });
 
   protected userAudits(realmName?: string) {
-    const realm = this.realmProvider.getRealm(realmName);
-    if (realm.features.audits) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(UserAudits)) {
       return this.alepha.inject(UserAudits);
     }
     return undefined;
