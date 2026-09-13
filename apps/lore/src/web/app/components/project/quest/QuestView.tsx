@@ -156,13 +156,11 @@ const QuestView = (props: QuestViewProps) => {
   const withheldReason = questAgentGate(quest, epics);
   const acceptWithheld =
     withheldReason && questEpic
-      ? String(
-          tr(
-            withheldReason === "epicDraft"
-              ? "quest.view.accept.epicDraft"
-              : "quest.view.accept.epicCompleted",
-            { args: [String(questEpic.number)] },
-          ),
+      ? tr(
+          withheldReason === "epicDraft"
+            ? "quest.view.accept.epicDraft"
+            : "quest.view.accept.epicCompleted",
+          { args: [String(questEpic.number)] },
         )
       : undefined;
 
@@ -191,7 +189,7 @@ const QuestView = (props: QuestViewProps) => {
             <CalendarClock className="size-3" />
             {tr("quest.view.due", {
               args: [
-                String(l(quest.dueAt, { date: due.dateFormat }) ?? ""),
+                l(quest.dueAt, { date: due.dateFormat }),
                 String(dt.of(quest.dueAt).fromNow()),
               ],
             })}
@@ -343,11 +341,11 @@ const QuestView = (props: QuestViewProps) => {
       const reason = await dialog.prompt({
         title: tr("quest.view.hold.title"),
         description: tr("quest.view.hold.description"),
-        placeholder: String(tr("quest.view.hold.placeholder")),
+        placeholder: tr("quest.view.hold.placeholder"),
         confirmLabel: tr("quest.view.hold.submit"),
         cancelLabel: tr("common.cancel"),
         validate: (value) =>
-          value.trim() ? null : String(tr("quest.view.hold.reasonRequired")),
+          value.trim() ? null : tr("quest.view.hold.reasonRequired"),
       });
       // `null` is cancel; the validator has already refused empty text, so
       // this cannot be an accidental hold with no reason.
@@ -759,7 +757,7 @@ const QuestView = (props: QuestViewProps) => {
               {(quest.attachments?.length || !quest.completedAt) && (
                 <CollapsibleBlock
                   icon={<Paperclip className="size-5" />}
-                  label={String(tr("quest.view.attachments"))}
+                  label={tr("quest.view.attachments")}
                   defaultOpen
                   // The count, so a folded section still says whether there
                   // is anything in it. Without it a collapsed Attachments

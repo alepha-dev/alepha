@@ -285,12 +285,12 @@ const ProjectRelease = () => {
   const tabs: PlateTab[] = [
     {
       key: "overview",
-      label: String(tr("release.tab.overview")),
+      label: tr("release.tab.overview"),
       icon: Gauge,
     },
     {
       key: "contents",
-      label: String(tr("release.tab.contents")),
+      label: tr("release.tab.contents"),
       icon: ListTree,
       count: contents
         ? contents.epics.length + contents.looseQuests.length
@@ -298,17 +298,17 @@ const ProjectRelease = () => {
     },
     {
       key: "flow",
-      label: String(tr("release.tab.flow")),
+      label: tr("release.tab.flow"),
       icon: Workflow,
     },
     {
       key: "changelog",
-      label: String(tr("release.tab.changelog")),
+      label: tr("release.tab.changelog"),
       icon: ScrollText,
     },
     {
       key: "artifacts",
-      label: String(tr("release.tab.artifacts")),
+      label: tr("release.tab.artifacts"),
       icon: Package,
       count: artifactCount,
     },

@@ -60,8 +60,8 @@ const MyProjects = () => {
   return (
     <div className="flex flex-col gap-6">
       <SettingsHeading
-        title={String(tr("account.projects.title"))}
-        description={String(tr("account.projects.description"))}
+        title={tr("account.projects.title")}
+        description={tr("account.projects.description")}
       />
 
       {/* ⚠️ Shown whenever there is a limit, not only near it. A counter
@@ -121,11 +121,9 @@ const MyProjects = () => {
                     </Badge>
                   )}
                   <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {String(
-                      tr("account.projects.updated", {
-                        args: [String(dt.of(project.updatedAt).fromNow())],
-                      }),
-                    )}
+                    {tr("account.projects.updated", {
+                      args: [String(dt.of(project.updatedAt).fromNow())],
+                    })}
                   </span>
                   <ChevronRight className="text-muted-foreground size-4 shrink-0" />
                 </Link>

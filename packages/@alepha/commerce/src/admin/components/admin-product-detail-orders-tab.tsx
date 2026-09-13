@@ -39,18 +39,16 @@ export const AdminProductDetailOrdersTab = (
         className="min-h-0 flex-1"
         persistenceKey={`commerce.admin.product.${props.productId}.orders`}
         fetch={props.fetch}
-        emptyMessage={String(
-          tr("commerce.admin.orders.empty", {
-            default: "This product has never been ordered.",
-          }),
-        )}
+        emptyMessage={tr("commerce.admin.orders.empty", {
+          default: "This product has never been ordered.",
+        })}
         columns={{
           orderCreatedAt: {
             label: tr("commerce.admin.orders.colWhen", { default: "Date" }),
             cell: (line) => (
               <span className="text-muted-foreground text-xs">
                 {line.orderCreatedAt
-                  ? String(l(line.orderCreatedAt, { date: "lll" }))
+                  ? l(line.orderCreatedAt, { date: "lll" })
                   : ""}
               </span>
             ),

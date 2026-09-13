@@ -55,11 +55,11 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
 
   const rows: DetailAsideRow[] = [
     {
-      label: String(tr("epic.aside.number")),
+      label: tr("epic.aside.number"),
       copy: formatReference("epic", props.epic.number),
     },
     {
-      label: String(tr("epic.aside.status")),
+      label: tr("epic.aside.status"),
       /*
         The same chip the list renders, from the same two tables. Whatever
         an epic looks like in `ProjectEpics` it looks like here, which is
@@ -81,7 +81,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
     ...(props.epic.dependsOnNumber !== undefined
       ? [
           {
-            label: String(tr("epic.aside.predecessor")),
+            label: tr("epic.aside.predecessor"),
             value: (
               <Link
                 href={router.path("projectEpic", {
@@ -101,14 +101,14 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
         ]
       : []),
     {
-      label: String(tr("epic.aside.release")),
+      label: tr("epic.aside.release"),
       // A control, not a label. Attaching from the release side is #1559; the
       // epic's own page is where this attachment is actually made, and a row
       // that only reports it would leave the FK writable by nothing but MCP.
       value: <EpicReleaseControl epic={props.epic} onChange={props.onChange} />,
     },
     {
-      label: String(tr("epic.aside.progress")),
+      label: tr("epic.aside.progress"),
       value: (
         <div className="flex flex-col gap-1.5">
           <Progress value={pct} />
@@ -132,7 +132,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
       (q) => q.dependsOn == null || !ids.has(q.dependsOn),
     ).length;
     rows.push({
-      label: String(tr("epic.aside.upNext")),
+      label: tr("epic.aside.upNext"),
       value: (
         <span className="text-sm">
           {tr("epic.aside.upNext.value", {
@@ -144,7 +144,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
 
     const areas = [...new Set(props.quests.map((q) => q.area))].sort();
     rows.push({
-      label: String(tr("epic.aside.areas")),
+      label: tr("epic.aside.areas"),
       value: (
         <div className="flex flex-wrap gap-1">
           {areas.map((area) => (
@@ -158,16 +158,16 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   }
 
   rows.push({
-    label: String(tr("epic.aside.lastActivity")),
+    label: tr("epic.aside.lastActivity"),
     value: (
       <span className="text-sm">{dt.of(props.epic.updatedAt).fromNow()}</span>
     ),
   });
   rows.push({
-    label: String(tr("epic.aside.created")),
+    label: tr("epic.aside.created"),
     value: (
       <span className="text-sm">
-        {String(i18n.l(props.epic.createdAt, { date: "ll" }))}
+        {i18n.l(props.epic.createdAt, { date: "ll" })}
       </span>
     ),
   });

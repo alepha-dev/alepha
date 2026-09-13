@@ -205,9 +205,7 @@ const ProjectBlights = () => {
                   icon={CircleDot}
                   clearLabel={tr("blights.filter.all")}
                   countLabel={(n) =>
-                    String(
-                      tr("blights.filter.statusCount", { args: [String(n)] }),
-                    )
+                    tr("blights.filter.statusCount", { args: [String(n)] })
                   }
                   triggerClassName="w-full"
                   items={[

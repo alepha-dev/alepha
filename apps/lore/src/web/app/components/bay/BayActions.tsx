@@ -84,13 +84,13 @@ const BayActions = (props: BayActionsProps) => {
   const confirmStop = async () => {
     const domains = row.reported ? (row.domains ?? []) : [];
     const ok = await dialog.confirm({
-      title: String(tr("bay.actions.stop.title", { args: [row.app, row.env] })),
+      title: tr("bay.actions.stop.title", { args: [row.app, row.env] }),
       description: String(
         domains.length
           ? tr("bay.actions.stop.description", { args: [domains.join(", ")] })
           : tr("bay.actions.stop.description.noDomains"),
       ),
-      confirmLabel: String(tr("bay.actions.stop")),
+      confirmLabel: tr("bay.actions.stop"),
       destructive: true,
     });
     if (ok) {
@@ -104,11 +104,11 @@ const BayActions = (props: BayActionsProps) => {
       // The machine answers on its own connection, so the page re-reads a
       // moment later rather than pretending the call returned an inventory.
       setTimeout(() => void refetch(), REREAD_MS);
-      toaster.success(String(tr("bay.actions.refresh.asked")));
+      toaster.success(tr("bay.actions.refresh.asked"));
     } catch (error) {
       if (HttpError.is(error, 429)) {
         // Six a minute per estate. A cooldown, not a failure.
-        toaster.error(String(tr("bay.actions.refresh.cooldown")));
+        toaster.error(tr("bay.actions.refresh.cooldown"));
         return;
       }
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -192,7 +192,7 @@ const BayActions = (props: BayActionsProps) => {
             : command.status === "failed"
               ? // The machine's own sentence about the host, verbatim.
                 tr("bay.actions.failed", {
-                  args: [command.reason ?? String(tr("bay.actions.noReason"))],
+                  args: [command.reason ?? tr("bay.actions.noReason")],
                 })
               : command.status === "done"
                 ? tr("bay.actions.done")

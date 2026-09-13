@@ -209,13 +209,9 @@ export const AdminFiles = () => {
                   input={form.input.name}
                   label=""
                   icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
+                  placeholder={tr("admin.search", { default: "Search" })}
                   inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
+                    "aria-label": tr("admin.search", { default: "Search" }),
                   }}
                 />
               </FilterSlot>
@@ -224,13 +220,13 @@ export const AdminFiles = () => {
                 label=""
                 clearable
                 icon={Container}
-                clearLabel={String(
-                  tr("admin.files.allBuckets", { default: "All buckets" }),
-                )}
+                clearLabel={tr("admin.files.allBuckets", {
+                  default: "All buckets",
+                })}
                 triggerClassName="w-48"
-                placeholder={String(
-                  tr("admin.files.bucketPlaceholder", { default: "Bucket" }),
-                )}
+                placeholder={tr("admin.files.bucketPlaceholder", {
+                  default: "Bucket",
+                })}
                 items={bucketItems}
               />
             </div>

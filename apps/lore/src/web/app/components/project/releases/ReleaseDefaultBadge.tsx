@@ -50,14 +50,12 @@ const ReleaseDefaultBadge = (props: ReleaseDefaultBadgeProps) => {
       // `role="img"` or the label is dropped: the span is presentational
       // otherwise. Same treatment as `AppStatusDot`.
       role="img"
-      aria-label={String(tr("release.default.badge"))}
+      aria-label={tr("release.default.badge")}
       // The date is why the column is a timestamp rather than a boolean.
       // ⚠️ `I18nLocalizeOptions` has `date` and `number` only, no `time`.
-      title={String(
-        tr("release.default.since", {
-          args: [String(l(since, { date: "ll" }))],
-        }),
-      )}
+      title={tr("release.default.since", {
+        args: [l(since, { date: "ll" })],
+      })}
       // `text-blue-500`, the colour the chip's `tone="info"` used
       // (`border-blue-500/40 bg-blue-500/15`), now that there is no chip to
       // tint. ⚠️ NOT `text-info`: that token does not exist in this theme, so

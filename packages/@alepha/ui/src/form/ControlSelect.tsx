@@ -785,12 +785,10 @@ function Combobox(props: ComboboxProps) {
     props.multi && q.length > 0 && unselectedMatches.length > 1
       ? {
           value: SELECT_ALL_VALUE,
-          label: String(
-            tr("controlSelect.selectAll", {
-              default: `Select ${unselectedMatches.length} matching "${query}"`,
-              args: [String(unselectedMatches.length), query],
-            }),
-          ),
+          label: tr("controlSelect.selectAll", {
+            default: `Select ${unselectedMatches.length} matching "${query}"`,
+            args: [String(unselectedMatches.length), query],
+          }),
           selectAll: true,
         }
       : undefined;
@@ -885,12 +883,10 @@ function Combobox(props: ComboboxProps) {
       : selected.length === 1
         ? labelFor(selected[0])
         : (props.countLabel?.(selected.length) ??
-          String(
-            tr("controlSelect.count", {
-              default: `${selected.length} selected`,
-              args: [String(selected.length)],
-            }),
-          ))
+          tr("controlSelect.count", {
+            default: `${selected.length} selected`,
+            args: [String(selected.length)],
+          }))
     : selected[0]
       ? labelFor(selected[0])
       : emptyLabel;

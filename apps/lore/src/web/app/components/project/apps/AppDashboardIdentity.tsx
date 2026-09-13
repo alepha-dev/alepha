@@ -99,7 +99,7 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
         <span className="text-muted-foreground">
           {tr("app.dashboard.created")}
         </span>
-        <span>{String(l(instance.createdAt, { date: "lll" }))}</span>
+        <span>{l(instance.createdAt, { date: "lll" })}</span>
 
         {/* The whole visible effect of an estate in v3: Deploy and Environment
             are epic #1's. Present only when one is attached, because a row
@@ -123,7 +123,7 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
         </span>
         <span className="flex flex-wrap items-center gap-2">
           {sigil?.lastSeenAt ? (
-            String(l(sigil.lastSeenAt, { date: "lll" }))
+            l(sigil.lastSeenAt, { date: "lll" })
           ) : (
             <span className="text-muted-foreground">
               {tr("sigils.neverSeen")}

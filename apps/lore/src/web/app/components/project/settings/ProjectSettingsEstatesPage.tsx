@@ -80,9 +80,9 @@ const ProjectSettingsEstatesPage = () => {
   const detach = async (estate: LentEstateResource) => {
     if (!project) return;
     const ok = await dialog.confirm({
-      title: String(tr("estates.detach.confirmTitle", { args: [estate.slug] })),
-      description: String(tr("estates.detach.confirmDescription")),
-      confirmLabel: String(tr("estates.detach.confirm")),
+      title: tr("estates.detach.confirmTitle", { args: [estate.slug] }),
+      description: tr("estates.detach.confirmDescription"),
+      confirmLabel: tr("estates.detach.confirm"),
       destructive: true,
     });
     if (!ok) return;

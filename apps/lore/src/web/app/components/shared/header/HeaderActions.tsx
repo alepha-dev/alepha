@@ -62,11 +62,11 @@ const HeaderActions = (props: HeaderActionsProps) => {
       compact
       before={props.before}
       labels={{
-        language: String(tr("header.actions.language")),
-        signIn: String(tr("header.actions.login")),
-        admin: String(tr("header.actions.admin")),
-        account: String(tr("header.actions.profile")),
-        logout: String(tr("header.actions.logout")),
+        language: tr("header.actions.language"),
+        signIn: tr("header.actions.login"),
+        admin: tr("header.actions.admin"),
+        account: tr("header.actions.profile"),
+        logout: tr("header.actions.logout"),
       }}
     />
   );

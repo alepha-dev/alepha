@@ -61,7 +61,7 @@ const ProjectSettingsAreaDescription = (
         <Textarea
           value={value}
           rows={4}
-          placeholder={String(tr("area.detail.description.placeholder"))}
+          placeholder={tr("area.detail.description.placeholder")}
           onChange={(e) => setValue(e.currentTarget.value)}
         />
         <div className="flex justify-end">

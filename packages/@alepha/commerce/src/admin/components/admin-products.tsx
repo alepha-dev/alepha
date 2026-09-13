@@ -76,11 +76,9 @@ export const AdminProducts = (props: AdminProductsProps) => {
       },
       onError: () =>
         toast.error(
-          String(
-            tr("commerce.admin.draftFailed", {
-              default: "Could not create the product",
-            }),
-          ),
+          tr("commerce.admin.draftFailed", {
+            default: "Could not create the product",
+          }),
         ),
     },
     [client, detailPath],
@@ -154,15 +152,11 @@ export const AdminProducts = (props: AdminProductsProps) => {
   const restock = useConfirmedAction<[AdminProductResource, () => void]>(
     {
       confirm: (product) => ({
-        title: String(
-          tr("commerce.admin.restockTitle", { default: "Restock" }),
-        ),
-        description: String(
-          tr("commerce.admin.restockConfirm", {
-            default: `Add one unit of “${product.name}” to stock?`,
-            args: [product.name],
-          }),
-        ),
+        title: tr("commerce.admin.restockTitle", { default: "Restock" }),
+        description: tr("commerce.admin.restockConfirm", {
+          default: `Add one unit of “${product.name}” to stock?`,
+          args: [product.name],
+        }),
       }),
       // Deliberately +1 rather than a quantity prompt: a dialog that asks for a
       // number is a form, and forms belong in the editor. One click covers the
@@ -175,12 +169,10 @@ export const AdminProducts = (props: AdminProductsProps) => {
         refresh();
       },
       success: (product) =>
-        String(
-          tr("commerce.admin.restocked", {
-            default: `“${product.name}”: +1 in stock.`,
-            args: [product.name],
-          }),
-        ),
+        tr("commerce.admin.restocked", {
+          default: `“${product.name}”: +1 in stock.`,
+          args: [product.name],
+        }),
     },
     [client],
   );
@@ -192,11 +184,9 @@ export const AdminProducts = (props: AdminProductsProps) => {
         persistenceKey="commerce.admin.products"
         fetch={fetcher}
         onRowClick={(product) => openProduct(product.id)}
-        emptyMessage={String(
-          tr("commerce.admin.noProducts", {
-            default: "No products in the catalogue.",
-          }),
-        )}
+        emptyMessage={tr("commerce.admin.noProducts", {
+          default: "No products in the catalogue.",
+        })}
         filters={{
           schema: filtersSchema,
           /*
@@ -219,9 +209,9 @@ export const AdminProducts = (props: AdminProductsProps) => {
               label=""
               clearable
               icon={Shapes}
-              clearLabel={String(
-                tr("commerce.admin.allKinds", { default: "All types" }),
-              )}
+              clearLabel={tr("commerce.admin.allKinds", {
+                default: "All types",
+              })}
               triggerClassName="w-52"
               items={(kinds?.kinds ?? []).map((kind) => ({
                 value: kind,
@@ -242,7 +232,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
         }
         rowActions={(product) => [
           {
-            label: String(tr("commerce.admin.edit", { default: "Edit" })),
+            label: tr("commerce.admin.edit", { default: "Edit" }),
             icon: Pencil,
             onClick: (item) => openProduct(item.id),
           },
@@ -259,7 +249,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
             onClick: (item, ctx) => void publish.run(item, ctx.refresh),
           },
           {
-            label: String(tr("commerce.admin.restock", { default: "Restock" })),
+            label: tr("commerce.admin.restock", { default: "Restock" }),
             icon: PackagePlus,
             onClick: (item, ctx) => void restock.run(item, ctx.refresh),
           },
@@ -335,7 +325,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
             sortable: true,
             cell: (p) => (
               <span className="text-muted-foreground text-xs">
-                {String(l(p.createdAt, { date: "lll" }))}
+                {l(p.createdAt, { date: "lll" })}
               </span>
             ),
           },

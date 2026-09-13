@@ -48,10 +48,8 @@ export interface AlephaTableFilterAddProps {
  */
 export const AlephaTableFilterAdd = (props: AlephaTableFilterAddProps) => {
   const { tr } = useI18n();
-  const label = String(tr("alephaTable.addFilter", { default: "Add filter" }));
-  const groupLabel = String(
-    tr("alephaTable.filterBy", { default: "Filter by" }),
-  );
+  const label = tr("alephaTable.addFilter", { default: "Add filter" });
+  const groupLabel = tr("alephaTable.filterBy", { default: "Filter by" });
 
   // Spelled out case by case rather than built from the type: the i18n check
   // finds a key by its literal call, and a key assembled at runtime would be
@@ -59,9 +57,9 @@ export const AlephaTableFilterAdd = (props: AlephaTableFilterAddProps) => {
   const typeLabel = (type: AlephaTableFilterAddType): string => {
     switch (type) {
       case "text":
-        return String(tr("alephaTable.filterType.text", { default: "text" }));
+        return tr("alephaTable.filterType.text", { default: "text" });
       case "list":
-        return String(tr("alephaTable.filterType.list", { default: "list" }));
+        return tr("alephaTable.filterType.list", { default: "list" });
     }
   };
 

@@ -28,12 +28,12 @@ export const useRemoveMember = (): RemoveMember => {
 
   const remove = async (projectId: number, userId: string, name: string) => {
     const confirmed = await dialog.confirm({
-      title: String(tr("project.settings.members.remove.title")),
-      description: String(
-        tr("project.settings.members.remove.description", { args: [name] }),
-      ),
-      confirmLabel: String(tr("project.settings.members.remove.confirm")),
-      cancelLabel: String(tr("project.settings.members.remove.cancel")),
+      title: tr("project.settings.members.remove.title"),
+      description: tr("project.settings.members.remove.description", {
+        args: [name],
+      }),
+      confirmLabel: tr("project.settings.members.remove.confirm"),
+      cancelLabel: tr("project.settings.members.remove.cancel"),
       destructive: true,
     });
     if (!confirmed) return false;
@@ -42,7 +42,7 @@ export const useRemoveMember = (): RemoveMember => {
     try {
       await projectApi.removeMember({ params: { id: projectId, userId } });
       toaster.success(
-        String(tr("project.settings.members.remove.done", { args: [name] })),
+        tr("project.settings.members.remove.done", { args: [name] }),
       );
       return true;
     } catch (error: any) {
@@ -51,7 +51,7 @@ export const useRemoveMember = (): RemoveMember => {
       // the whole thing, and the catalogue string is the fallback for a
       // failure with nothing to say.
       toaster.error(
-        error?.message ?? String(tr("project.settings.members.remove.failed")),
+        error?.message ?? tr("project.settings.members.remove.failed"),
       );
       return false;
     } finally {

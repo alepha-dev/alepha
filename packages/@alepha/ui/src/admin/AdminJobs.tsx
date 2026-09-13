@@ -113,13 +113,9 @@ export const AdminJobs = () => {
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
+                  placeholder={tr("admin.search", { default: "Search" })}
                   inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
+                    "aria-label": tr("admin.search", { default: "Search" }),
                   }}
                 />
               </FilterSlot>
@@ -128,9 +124,7 @@ export const AdminJobs = () => {
                 label=""
                 clearable
                 icon={Shapes}
-                clearLabel={String(
-                  tr("admin.jobs.typeAll", { default: "All types" }),
-                )}
+                clearLabel={tr("admin.jobs.typeAll", { default: "All types" })}
                 triggerClassName="w-36"
                 items={[
                   {
@@ -152,9 +146,9 @@ export const AdminJobs = () => {
                 label=""
                 clearable
                 icon={Boxes}
-                clearLabel={String(
-                  tr("admin.jobs.originAll", { default: "All origins" }),
-                )}
+                clearLabel={tr("admin.jobs.originAll", {
+                  default: "All origins",
+                })}
                 triggerClassName="w-36"
                 items={[
                   {
@@ -174,9 +168,9 @@ export const AdminJobs = () => {
                 label=""
                 clearable
                 icon={FolderTree}
-                clearLabel={String(
-                  tr("admin.jobs.domainAll", { default: "All domains" }),
-                )}
+                clearLabel={tr("admin.jobs.domainAll", {
+                  default: "All domains",
+                })}
                 triggerClassName="w-40"
                 items={domainItems}
               />
@@ -185,9 +179,9 @@ export const AdminJobs = () => {
                 label=""
                 clearable
                 icon={HeartPulse}
-                clearLabel={String(
-                  tr("admin.jobs.healthAll", { default: "Any health" }),
-                )}
+                clearLabel={tr("admin.jobs.healthAll", {
+                  default: "Any health",
+                })}
                 triggerClassName="w-44"
                 items={[
                   {
@@ -262,7 +256,7 @@ export const AdminJobs = () => {
             cell: (j) => (
               <span className="text-muted-foreground text-xs">
                 {j.recent.lastRun
-                  ? String(l(j.recent.lastRun, { date: "fromNow" }))
+                  ? l(j.recent.lastRun, { date: "fromNow" })
                   : tr("admin.jobs.unknown", { default: "unknown" })}
               </span>
             ),
@@ -315,9 +309,7 @@ export const AdminJobs = () => {
             onClick: () => open(j),
           },
         ]}
-        emptyMessage={String(
-          tr("admin.jobs.none", { default: "No jobs registered." }),
-        )}
+        emptyMessage={tr("admin.jobs.none", { default: "No jobs registered." })}
       />
     </AdminPage>
   );

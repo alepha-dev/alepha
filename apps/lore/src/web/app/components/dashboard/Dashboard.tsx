@@ -160,8 +160,8 @@ const Dashboard = () => {
 
   const onRemove = async (card: DashboardCardResource) => {
     const confirmed = await dialog.confirm({
-      title: String(tr("dashboard.card.delete.confirm")),
-      confirmLabel: String(tr("dashboard.card.delete")),
+      title: tr("dashboard.card.delete.confirm"),
+      confirmLabel: tr("dashboard.card.delete"),
       destructive: true,
     });
     if (!confirmed) return;

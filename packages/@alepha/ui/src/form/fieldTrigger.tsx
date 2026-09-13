@@ -231,9 +231,7 @@ export const ControlClearButton = (props: ControlClearButtonProps) => {
     <button
       type="button"
       data-slot="control-clear"
-      aria-label={String(
-        tr("controlSelect.clear", { default: "Clear selection" }),
-      )}
+      aria-label={tr("controlSelect.clear", { default: "Clear selection" })}
       className={cn(
         // ⚠️ Lighter than the chevron at rest, and it sharpens when
         // reached for. They are not peers: the chevron is decoration,

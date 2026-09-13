@@ -21,35 +21,31 @@ export const stockAdjustSchema = (tr: TrFunction) =>
       .min(-100000)
       .max(100000)
       .meta({
-        title: String(
-          tr("commerce.admin.stock.fQuantity", { default: "Quantity" }),
-        ),
+        title: tr("commerce.admin.stock.fQuantity", { default: "Quantity" }),
         $control: { width: 30 },
       }),
     reason: z.enum(["intake", "return", "adjustment"]).meta({
-      title: String(tr("commerce.admin.stock.fReason", { default: "Reason" })),
+      title: tr("commerce.admin.stock.fReason", { default: "Reason" }),
       $control: {
         width: 30,
         items: [
           {
             value: "intake",
-            label: String(
-              tr("commerce.admin.stock.reasonIntake", { default: "Intake" }),
-            ),
+            label: tr("commerce.admin.stock.reasonIntake", {
+              default: "Intake",
+            }),
           },
           {
             value: "return",
-            label: String(
-              tr("commerce.admin.stock.reasonReturn", { default: "Return" }),
-            ),
+            label: tr("commerce.admin.stock.reasonReturn", {
+              default: "Return",
+            }),
           },
           {
             value: "adjustment",
-            label: String(
-              tr("commerce.admin.stock.reasonAdjustment", {
-                default: "Adjustment",
-              }),
-            ),
+            label: tr("commerce.admin.stock.reasonAdjustment", {
+              default: "Adjustment",
+            }),
           },
         ],
       },
@@ -57,7 +53,7 @@ export const stockAdjustSchema = (tr: TrFunction) =>
     note: z
       .text({ maxLength: 500 })
       .meta({
-        title: String(tr("commerce.admin.stock.fNote", { default: "Note" })),
+        title: tr("commerce.admin.stock.fNote", { default: "Note" }),
         $control: { width: 40 },
       })
       .optional(),

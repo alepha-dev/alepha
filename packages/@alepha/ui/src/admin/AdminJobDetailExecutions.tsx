@@ -213,13 +213,9 @@ export const AdminJobDetailExecutions = (
                 input={form.input.key}
                 label=""
                 icon={KeyRound}
-                placeholder={String(
-                  tr("admin.jobs.keyFilter", { default: "Key" }),
-                )}
+                placeholder={tr("admin.jobs.keyFilter", { default: "Key" })}
                 inputProps={{
-                  "aria-label": String(
-                    tr("admin.jobs.keyFilter", { default: "Key" }),
-                  ),
+                  "aria-label": tr("admin.jobs.keyFilter", { default: "Key" }),
                 }}
               />
             </FilterSlot>
@@ -229,9 +225,9 @@ export const AdminJobDetailExecutions = (
               clearable
               icon={CircleDot}
               triggerClassName="w-48"
-              placeholder={String(
-                tr("admin.jobs.statusAll", { default: "All statuses" }),
-              )}
+              placeholder={tr("admin.jobs.statusAll", {
+                default: "All statuses",
+              })}
               items={JOB_EXECUTION_STATUSES.map((status) => ({
                 value: status,
                 label: statusLabels[status],
@@ -242,9 +238,9 @@ export const AdminJobDetailExecutions = (
               label=""
               clearable
               icon={Workflow}
-              clearLabel={String(
-                tr("admin.jobs.triggerAll", { default: "Any trigger" }),
-              )}
+              clearLabel={tr("admin.jobs.triggerAll", {
+                default: "Any trigger",
+              })}
               triggerClassName="w-40"
               items={[
                 {
@@ -270,9 +266,9 @@ export const AdminJobDetailExecutions = (
               label=""
               clearable
               triggerClassName="w-64"
-              placeholder={String(
-                tr("admin.jobs.startedAny", { default: "Started any time" }),
-              )}
+              placeholder={tr("admin.jobs.startedAny", {
+                default: "Started any time",
+              })}
             />
           </div>
         ),
@@ -420,9 +416,7 @@ export const AdminJobDetailExecutions = (
             ]
           : undefined
       }
-      emptyMessage={String(
-        tr("admin.jobs.noExecs", { default: "No executions yet." }),
-      )}
+      emptyMessage={tr("admin.jobs.noExecs", { default: "No executions yet." })}
     />
   );
 };

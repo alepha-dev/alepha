@@ -129,7 +129,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
 
   const byArea = new Map<string, ReleaseContentQuest[]>();
   for (const quest of looseQuests) {
-    const area = quest.area || String(tr("release.contents.uncategorized"));
+    const area = quest.area || tr("release.contents.uncategorized");
     const list = byArea.get(area) ?? [];
     list.push(quest);
     byArea.set(area, list);
@@ -237,7 +237,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={String(tr("release.contents.remove"))}
+                  aria-label={tr("release.contents.remove")}
                   onClick={() => void detachEpic(epic.id)}
                 >
                   <X className="size-3.5" />

@@ -52,7 +52,7 @@ export const AdminJobExecutionLogs = (props: AdminJobExecutionLogsProps) => {
   return (
     <ol
       className="bg-muted flex max-h-[50vh] flex-col overflow-auto rounded-md p-2 font-mono text-xs leading-relaxed"
-      aria-label={String(tr("admin.jobs.logs", { default: "Logs" }))}
+      aria-label={tr("admin.jobs.logs", { default: "Logs" })}
     >
       {logs.map((entry, index) => (
         <li
@@ -74,7 +74,7 @@ export const AdminJobExecutionLogs = (props: AdminJobExecutionLogsProps) => {
               {entry.level}
             </span>
             <span className="text-muted-foreground shrink-0">
-              {String(l(entry.timestamp, { date: "HH:mm:ss" }))}
+              {l(entry.timestamp, { date: "HH:mm:ss" })}
             </span>
             <span className="min-w-0 break-words whitespace-pre-wrap">
               {entry.message}

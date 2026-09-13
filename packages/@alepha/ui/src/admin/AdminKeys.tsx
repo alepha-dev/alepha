@@ -182,9 +182,9 @@ export const AdminKeys = () => {
                 label=""
                 icon={CircleDot}
                 triggerClassName="w-64"
-                clearLabel={String(
-                  tr("admin.keys.statusAll", { default: "All statuses" }),
-                )}
+                clearLabel={tr("admin.keys.statusAll", {
+                  default: "All statuses",
+                })}
                 items={(
                   ["active", "expiring", "expired", "revoked"] as const
                 ).map((status) => ({

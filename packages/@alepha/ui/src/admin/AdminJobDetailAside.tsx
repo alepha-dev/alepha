@@ -80,7 +80,7 @@ export const AdminJobDetailAside = (props: AdminJobDetailAsideProps) => {
     {
       label: tr("admin.jobs.colLastRun", { default: "Last run" }),
       value: job.recent.lastRun
-        ? String(l(job.recent.lastRun, { date: "lll" }))
+        ? l(job.recent.lastRun, { date: "lll" })
         : tr("admin.jobs.unknown", { default: "unknown" }),
     },
   ];

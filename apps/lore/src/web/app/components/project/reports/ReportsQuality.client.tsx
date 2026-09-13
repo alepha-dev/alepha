@@ -92,11 +92,9 @@ const ReportsQuality = (props: ReportsQualityProps) => {
       value: `${Math.round(latest.durationMs / 1000)}s`,
       // Two sources, one column: `numPendingTests` plus `numTodoTests`. Saying
       // so here is cheaper than a reader assuming the first.
-      hint: String(
-        tr("reports.quality.skipped", {
-          args: [String(latest.testsSkipped)],
-        }),
-      ),
+      hint: tr("reports.quality.skipped", {
+        args: [String(latest.testsSkipped)],
+      }),
     },
   ];
 
@@ -129,7 +127,7 @@ const ReportsQuality = (props: ReportsQualityProps) => {
    *
    * Short on the tick, because an axis of five full dates does not fit.
    */
-  const dayTick = (day: string) => String(l(day, { date: "D MMM" }));
+  const dayTick = (day: string) => l(day, { date: "D MMM" });
 
   /**
    * The tooltip is where the sha went. It answers "which commit produced
@@ -147,7 +145,7 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     )?.[0];
     const point = first?.payload;
     if (!point) return "";
-    const date = String(l(point.day, { date: "ll" }));
+    const date = l(point.day, { date: "ll" });
     return point.commit ? `${date} · ${point.commit}` : date;
   };
 

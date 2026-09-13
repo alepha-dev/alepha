@@ -373,7 +373,7 @@ const AccountProfile = (props: AccountProfileProps) => {
           label={tr("account.profile.memberSince", { default: "Member since" })}
         >
           <span className="text-muted-foreground text-sm">
-            {String(l(profile.createdAt, { date: "LL" }))}
+            {l(profile.createdAt, { date: "LL" })}
           </span>
         </SettingsRow>
       </SettingsSection>

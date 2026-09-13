@@ -90,20 +90,16 @@ export const useDeleteRelease = (): DeleteRelease => {
     remove: async (release) => {
       const label = name(release);
       const ok = await dialog.confirm({
-        title: String(tr("release.delete.title", { args: [label] })),
+        title: tr("release.delete.title", { args: [label] }),
         // The title names the release; the sentences say "it", or a
         // default release reads "detached from 0.3.0. 0.3.0 is the default".
         description: sentences([
-          String(tr("release.delete.detached")),
-          release.releasedAt
-            ? String(tr("release.delete.published"))
-            : undefined,
-          release.defaultSince
-            ? String(tr("release.delete.default"))
-            : undefined,
+          tr("release.delete.detached"),
+          release.releasedAt ? tr("release.delete.published") : undefined,
+          release.defaultSince ? tr("release.delete.default") : undefined,
         ]),
-        confirmLabel: String(tr("release.delete.action")),
-        cancelLabel: String(tr("common.cancel")),
+        confirmLabel: tr("release.delete.action"),
+        cancelLabel: tr("common.cancel"),
         destructive: true,
       });
       if (!ok) return false;
@@ -114,7 +110,7 @@ export const useDeleteRelease = (): DeleteRelease => {
         failure(error);
         return false;
       }
-      toaster.success(String(tr("release.delete.done", { args: [label] })));
+      toaster.success(tr("release.delete.done", { args: [label] }));
       await refetch(release.projectId);
       return true;
     },
@@ -122,18 +118,18 @@ export const useDeleteRelease = (): DeleteRelease => {
       if (selected.length === 0) return false;
       const n = String(selected.length);
       const ok = await dialog.confirm({
-        title: String(tr("release.bulk.delete.title", { args: [n] })),
+        title: tr("release.bulk.delete.title", { args: [n] }),
         description: sentences([
-          String(tr("release.bulk.delete.detached")),
+          tr("release.bulk.delete.detached"),
           selected.some((release) => release.releasedAt)
-            ? String(tr("release.bulk.delete.published"))
+            ? tr("release.bulk.delete.published")
             : undefined,
           selected.some((release) => release.defaultSince)
-            ? String(tr("release.bulk.delete.default"))
+            ? tr("release.bulk.delete.default")
             : undefined,
         ]),
-        confirmLabel: String(tr("release.bulk.delete.confirm", { args: [n] })),
-        cancelLabel: String(tr("common.cancel")),
+        confirmLabel: tr("release.bulk.delete.confirm", { args: [n] }),
+        cancelLabel: tr("common.cancel"),
         destructive: true,
       });
       if (!ok) return false;
@@ -147,9 +143,7 @@ export const useDeleteRelease = (): DeleteRelease => {
       );
       reportBulk(
         outcome,
-        String(
-          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
-        ),
+        tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
       );
       await refetch(selected[0].projectId);
       return true;

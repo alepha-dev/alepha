@@ -166,7 +166,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
                   default: "Created at",
                 })}
               </dt>
-              <dd>{String(l(v.createdAt, { date: "lll" }))}</dd>
+              <dd>{l(v.createdAt, { date: "lll" })}</dd>
 
               <dt className="text-muted-foreground">
                 {tr("admin.parameters.fieldCreatedBy", {

@@ -65,12 +65,12 @@ export const useSetDefaultRelease = (): SetDefaultRelease => {
     set: async (release) => {
       const label = name(release);
       const ok = await dialog.confirm({
-        title: String(tr("release.default.confirm.title", { args: [label] })),
-        description: String(
-          tr("release.default.confirm.description", { args: [label] }),
-        ),
-        confirmLabel: String(tr("release.default.set")),
-        cancelLabel: String(tr("common.cancel")),
+        title: tr("release.default.confirm.title", { args: [label] }),
+        description: tr("release.default.confirm.description", {
+          args: [label],
+        }),
+        confirmLabel: tr("release.default.set"),
+        cancelLabel: tr("common.cancel"),
       });
       if (!ok) return false;
       return await apply(release.projectId, release.id);
@@ -79,7 +79,7 @@ export const useSetDefaultRelease = (): SetDefaultRelease => {
       const done = await apply(release.projectId, null);
       if (done) {
         toaster.success(
-          String(tr("release.default.cleared", { args: [name(release)] })),
+          tr("release.default.cleared", { args: [name(release)] }),
         );
       }
       return done;

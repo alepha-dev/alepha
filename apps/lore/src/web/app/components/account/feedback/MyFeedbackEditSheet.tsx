@@ -81,7 +81,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
     if (!trimmedTitle || !trimmedDescription) {
-      toaster.error(String(tr("myFeedback.edit.required")));
+      toaster.error(tr("myFeedback.edit.required"));
       return;
     }
     setSaving(true);
@@ -90,10 +90,10 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
         params: { feedbackId: props.feedback.id },
         body: { title: trimmedTitle, description: trimmedDescription, tags },
       });
-      toaster.success(String(tr("myFeedback.edit.saved")));
+      toaster.success(tr("myFeedback.edit.saved"));
       props.onSaved();
     } catch (error: any) {
-      toaster.error(error?.message ?? String(tr("myFeedback.edit.error")));
+      toaster.error(error?.message ?? tr("myFeedback.edit.error"));
     } finally {
       setSaving(false);
     }
@@ -131,7 +131,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
-              placeholder={String(tr("myFeedback.edit.title.placeholder"))}
+              placeholder={tr("myFeedback.edit.title.placeholder")}
               disabled={disabled}
             />
           </div>
@@ -154,9 +154,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               onChange={(e) => setDescription(e.target.value)}
               rows={8}
               maxLength={10000}
-              placeholder={String(
-                tr("myFeedback.edit.description.placeholder"),
-              )}
+              placeholder={tr("myFeedback.edit.description.placeholder")}
               disabled={disabled}
             />
           </div>

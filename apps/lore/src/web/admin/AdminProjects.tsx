@@ -227,7 +227,7 @@ export const AdminProjects = () => {
             sortable: true,
             cell: (project) => (
               <span className="text-muted-foreground text-xs">
-                {String(l(project.createdAt, { date: "ll" }))}
+                {l(project.createdAt, { date: "ll" })}
               </span>
             ),
           },
@@ -241,9 +241,7 @@ export const AdminProjects = () => {
             sortable: true,
             cell: (project) => (
               <span className="text-muted-foreground text-xs">
-                {project.updatedAt
-                  ? String(l(project.updatedAt, { date: "ll" }))
-                  : "—"}
+                {project.updatedAt ? l(project.updatedAt, { date: "ll" }) : "—"}
               </span>
             ),
           },

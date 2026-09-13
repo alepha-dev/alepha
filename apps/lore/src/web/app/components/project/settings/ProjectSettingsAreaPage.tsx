@@ -52,7 +52,7 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
 
   const remove = async () => {
     const ok = await dialog.confirm({
-      title: String(tr("project.settings.areas.delete.confirm")),
+      title: tr("project.settings.areas.delete.confirm"),
       destructive: true,
     });
     if (!ok) return;

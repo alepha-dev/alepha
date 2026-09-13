@@ -110,14 +110,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
       // leaves the URL alone, and the button cannot know which edit this was.
       if (nextSlug !== currentSlug) {
         const confirmed = await dialog.confirm({
-          title: String(tr("project.update.rename.title")),
-          description: String(
-            tr("project.update.rename.description", {
-              args: [currentSlug, nextSlug],
-            }),
-          ),
-          confirmLabel: String(tr("project.update.rename.confirm")),
-          cancelLabel: String(tr("project.update.rename.cancel")),
+          title: tr("project.update.rename.title"),
+          description: tr("project.update.rename.description", {
+            args: [currentSlug, nextSlug],
+          }),
+          confirmLabel: tr("project.update.rename.confirm"),
+          cancelLabel: tr("project.update.rename.cancel"),
           destructive: true,
         });
 
@@ -152,7 +150,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           // silence. Caught by the "a name already taken is refused" e2e,
           // which asserted on a message that was never on the page.
           if (HttpError.is(error, 409)) {
-            const message = String(tr("project.update.slug.taken"));
+            const message = tr("project.update.slug.taken");
             toaster.error(message);
             throw new AlephaError(message);
           }
@@ -213,7 +211,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           // className="text-sm">` in `ProjectSettingsGeneralPage` because
           // `AutoFormGroup` had no way to carry one — the exact drift
           // `SettingsHeading` exists to prevent, which the group now renders.
-          title: String(tr("project.settings.general.title")),
+          title: tr("project.settings.general.title"),
           fields: ["icon", "title", "preferredLanguage", "repositoryUrl"],
         },
       ]}

@@ -83,14 +83,12 @@ const ReleasePlate = (props: ReleasePlateProps) => {
 
   const publish = async () => {
     const ok = await dialog.confirm({
-      title: String(tr("release.publish.title")),
-      description: String(
-        tr("release.publish.description", {
-          args: [release.tag ?? String(release.number)],
-        }),
-      ),
-      confirmLabel: String(tr("release.publish.confirm")),
-      cancelLabel: String(tr("common.cancel")),
+      title: tr("release.publish.title"),
+      description: tr("release.publish.description", {
+        args: [release.tag ?? String(release.number)],
+      }),
+      confirmLabel: tr("release.publish.confirm"),
+      cancelLabel: tr("common.cancel"),
       destructive: true,
     });
     if (!ok || submitting) return;
@@ -110,10 +108,10 @@ const ReleasePlate = (props: ReleasePlateProps) => {
 
   const reopen = async () => {
     const ok = await dialog.confirm({
-      title: String(tr("release.reopen.title")),
-      description: String(tr("release.reopen.description")),
-      confirmLabel: String(tr("release.reopen.confirm")),
-      cancelLabel: String(tr("common.cancel")),
+      title: tr("release.reopen.title"),
+      description: tr("release.reopen.description"),
+      confirmLabel: tr("release.reopen.confirm"),
+      cancelLabel: tr("common.cancel"),
       destructive: true,
     });
     if (!ok || submitting) return;
@@ -135,18 +133,14 @@ const ReleasePlate = (props: ReleasePlateProps) => {
       // once on this page, in the Target card on Overview, and repeating it
       // here would make the densest line the wordiest.
       text: published
-        ? String(
-            tr("release.meta.released", {
-              args: [String(l(release.releasedAt as string, { date: "ll" }))],
-            }),
-          )
+        ? tr("release.meta.released", {
+            args: [l(release.releasedAt as string, { date: "ll" })],
+          })
         : release.targetDate
-          ? String(
-              tr("release.meta.target", {
-                args: [String(l(release.targetDate, { date: "ll" }))],
-              }),
-            )
-          : String(tr("release.list.noTarget")),
+          ? tr("release.meta.target", {
+              args: [l(release.targetDate, { date: "ll" })],
+            })
+          : tr("release.list.noTarget"),
       divide: true,
     },
     {

@@ -365,9 +365,7 @@ const ProjectFeedbackRequest = () => {
     if (projectId === undefined) return;
     if (attachments.length + files.length > maxFiles) {
       toaster.show(
-        String(
-          tr("feedback.request.tooManyFiles", { args: [String(maxFiles)] }),
-        ),
+        tr("feedback.request.tooManyFiles", { args: [String(maxFiles)] }),
         "danger",
       );
       return;

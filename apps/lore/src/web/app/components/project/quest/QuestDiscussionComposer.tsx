@@ -116,7 +116,7 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
           // offer a handle that links nowhere and pings nobody.
           mentionSuggestions={props.members}
           minHeight={120}
-          placeholder={String(tr("quest.discussion.composer.placeholder"))}
+          placeholder={tr("quest.discussion.composer.placeholder")}
         />
         <div className="flex items-center justify-end gap-2">
           <Button

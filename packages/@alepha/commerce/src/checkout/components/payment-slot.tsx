@@ -78,20 +78,16 @@ export const PaymentSlot = (props: PaymentSlotProps) => {
   // Read through a ref inside the mount effect: the labels must not be a
   // dependency that re-mounts the PSP widget on every render.
   const labelsRef = useRef({
-    pay: String(tr("commerce.checkout.pay", { default: "Pay" })),
-    declined: String(
-      tr("commerce.checkout.declined", {
-        default: "The payment was declined.",
-      }),
-    ),
+    pay: tr("commerce.checkout.pay", { default: "Pay" }),
+    declined: tr("commerce.checkout.declined", {
+      default: "The payment was declined.",
+    }),
   });
   labelsRef.current = {
-    pay: String(tr("commerce.checkout.pay", { default: "Pay" })),
-    declined: String(
-      tr("commerce.checkout.declined", {
-        default: "The payment was declined.",
-      }),
-    ),
+    pay: tr("commerce.checkout.pay", { default: "Pay" }),
+    declined: tr("commerce.checkout.declined", {
+      default: "The payment was declined.",
+    }),
   };
   const containerRef = useRef<HTMLDivElement>(null);
   const [confirmed, setConfirmed] = useState(false);

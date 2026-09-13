@@ -192,7 +192,7 @@ const ProjectInbox = () => {
         actions={[
           {
             icon: CheckCheck,
-            label: String(tr("inbox.markAllRead")),
+            label: tr("inbox.markAllRead"),
             onClick: () => void markAllRead(),
             disabled: unreadOnScreen === 0,
           },
@@ -207,12 +207,12 @@ const ProjectInbox = () => {
           },
         ]}
         emptyState={{
-          title: String(tr("inbox.empty")),
-          description: String(tr("inbox.empty.description")),
+          title: tr("inbox.empty"),
+          description: tr("inbox.empty.description"),
         }}
         noMatchState={{
-          title: String(tr("inbox.noMatch")),
-          description: String(tr("inbox.noMatch.description")),
+          title: tr("inbox.noMatch"),
+          description: tr("inbox.noMatch.description"),
         }}
         filters={{
           schema: filtersSchema,
@@ -264,7 +264,7 @@ const ProjectInbox = () => {
                   <span
                     data-testid="inbox-row-unread"
                     className="bg-primary size-1.5 shrink-0 rounded-full"
-                    aria-label={String(tr("inbox.unread"))}
+                    aria-label={tr("inbox.unread")}
                   />
                 )}
                 <span className="flex min-w-0 flex-col">

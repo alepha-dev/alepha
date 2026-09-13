@@ -89,11 +89,9 @@ const BaySettings = () => {
 
   const rotate = async () => {
     const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.rotate.confirmTitle", { args: [estate.slug] }),
-      ),
-      description: String(tr("account.estates.rotate.confirmDescription")),
-      confirmLabel: String(tr("account.estates.rotate.confirm")),
+      title: tr("account.estates.rotate.confirmTitle", { args: [estate.slug] }),
+      description: tr("account.estates.rotate.confirmDescription"),
+      confirmLabel: tr("account.estates.rotate.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -115,11 +113,9 @@ const BaySettings = () => {
 
   const remove = async () => {
     const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.delete.confirmTitle", { args: [estate.slug] }),
-      ),
-      description: String(tr("account.estates.delete.confirmDescription")),
-      confirmLabel: String(tr("account.estates.delete.confirm")),
+      title: tr("account.estates.delete.confirmTitle", { args: [estate.slug] }),
+      description: tr("account.estates.delete.confirmDescription"),
+      confirmLabel: tr("account.estates.delete.confirm"),
       destructive: true,
     });
     if (!ok) return;
@@ -139,13 +135,11 @@ const BaySettings = () => {
 
   const detach = async (loan: { id: number; title: string }) => {
     const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.detach.confirmTitle", {
-          args: [estate.slug, loan.title],
-        }),
-      ),
-      description: String(tr("estates.detach.confirmDescription")),
-      confirmLabel: String(tr("estates.detach.confirm")),
+      title: tr("account.estates.detach.confirmTitle", {
+        args: [estate.slug, loan.title],
+      }),
+      description: tr("estates.detach.confirmDescription"),
+      confirmLabel: tr("estates.detach.confirm"),
       destructive: true,
     });
     if (!ok) return;

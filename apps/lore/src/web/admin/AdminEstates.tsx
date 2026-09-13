@@ -182,7 +182,7 @@ export const AdminEstates = () => {
             cell: (estate) => (
               <span className="text-muted-foreground text-xs">
                 {estate.lastSeenAt
-                  ? String(l(estate.lastSeenAt, { date: "lll" }))
+                  ? l(estate.lastSeenAt, { date: "lll" })
                   : "never"}
               </span>
             ),
@@ -192,7 +192,7 @@ export const AdminEstates = () => {
             sortable: true,
             cell: (estate) => (
               <span className="text-muted-foreground text-xs">
-                {String(l(estate.createdAt, { date: "ll" }))}
+                {l(estate.createdAt, { date: "ll" })}
               </span>
             ),
           },

@@ -100,7 +100,7 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
     >
       <div
         role="tablist"
-        aria-label={String(tr("folios.editor.action.toggle-inspector"))}
+        aria-label={tr("folios.editor.action.toggle-inspector")}
         className="border-border flex h-10 flex-none items-center gap-0.5 border-b px-1"
       >
         {TABS.map((t) => (
@@ -127,8 +127,8 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
         <button
           type="button"
           onClick={props.onCollapse}
-          aria-label={String(tr("folios.editor.inspector.collapse"))}
-          title={String(tr("folios.editor.inspector.collapse"))}
+          aria-label={tr("folios.editor.inspector.collapse")}
+          title={tr("folios.editor.inspector.collapse")}
           className="text-muted-foreground hover:text-foreground flex size-6.5 items-center justify-center rounded-md transition-colors"
         >
           <PanelRightClose className="size-3.5" />

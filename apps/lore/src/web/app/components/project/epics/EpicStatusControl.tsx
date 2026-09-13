@@ -104,7 +104,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
 
   const blockedLabel =
     blockedBy !== undefined
-      ? String(tr("epic.start.blocked", { args: [String(blockedBy)] }))
+      ? tr("epic.start.blocked", { args: [String(blockedBy)] })
       : undefined;
 
   return (

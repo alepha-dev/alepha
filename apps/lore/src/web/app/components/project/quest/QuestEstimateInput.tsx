@@ -140,7 +140,7 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
                 input={unitForm.input.unit}
                 label=""
                 inputProps={{
-                  "aria-label": String(tr("quest.create.estimate.unit")),
+                  "aria-label": tr("quest.create.estimate.unit"),
                 }}
                 triggerClassName="w-full"
                 // The labels are localized and pluralized, so they are handed

@@ -71,36 +71,28 @@ export const AdminUserDetailOverviewTab = (
           disabledIfPristine
           fields={{
             username: {
-              label: String(
-                tr("admin.userDetail.username", { default: "Username" }),
-              ),
+              label: tr("admin.userDetail.username", { default: "Username" }),
             },
             email: {
-              label: String(tr("admin.userDetail.email", { default: "Email" })),
+              label: tr("admin.userDetail.email", { default: "Email" }),
             },
             emailVerified: {
-              label: String(
-                tr("admin.userDetail.emailVerified", {
-                  default: "Email verified",
-                }),
-              ),
+              label: tr("admin.userDetail.emailVerified", {
+                default: "Email verified",
+              }),
             },
             firstName: {
-              label: String(
-                tr("admin.userDetail.firstName", {
-                  default: "First name",
-                }),
-              ),
+              label: tr("admin.userDetail.firstName", {
+                default: "First name",
+              }),
             },
             lastName: {
-              label: String(
-                tr("admin.userDetail.lastName", {
-                  default: "Last name",
-                }),
-              ),
+              label: tr("admin.userDetail.lastName", {
+                default: "Last name",
+              }),
             },
             roles: {
-              label: String(tr("admin.userDetail.roles", { default: "Roles" })),
+              label: tr("admin.userDetail.roles", { default: "Roles" }),
               icon: ShieldCheck,
               items: props.availableRoles.map((r) => ({
                 value: r.name,

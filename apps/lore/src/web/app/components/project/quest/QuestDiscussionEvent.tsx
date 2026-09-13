@@ -183,9 +183,7 @@ const predicate = (
     );
   }
   if (entry.action === "objective_completed" && entry.subject) {
-    return String(
-      tr("quest.event.objectiveCompleted", { args: [entry.subject] }),
-    );
+    return tr("quest.event.objectiveCompleted", { args: [entry.subject] });
   }
   // An `updated` event says what it changed. The FIRST change becomes the
   // header line so the row reads as a sentence; the rest are listed under it
@@ -194,7 +192,7 @@ const predicate = (
   if (entry.action === "updated" && entry.changes?.length) {
     return changeLine(tr, entry.changes[0]);
   }
-  return String(tr(PREDICATE_KEYS[entry.action] ?? "quest.event.updated"));
+  return tr(PREDICATE_KEYS[entry.action] ?? "quest.event.updated");
 };
 
 /**
@@ -222,15 +220,15 @@ const changeLine = (
           : tr("quest.event.change.priorityTo", { args: [to ?? ""] }),
       );
     case "area":
-      return String(tr("quest.event.change.area", { args: [to ?? ""] }));
+      return tr("quest.event.change.area", { args: [to ?? ""] });
     case "title":
-      return String(tr("quest.event.change.title", { args: [from ?? ""] }));
+      return tr("quest.event.change.title", { args: [from ?? ""] });
     case "description":
-      return String(tr("quest.event.change.description"));
+      return tr("quest.event.change.description");
     case "objectives":
-      return String(tr("quest.event.change.objectives"));
+      return tr("quest.event.change.objectives");
     case "size":
-      return String(tr("quest.event.change.size"));
+      return tr("quest.event.change.size");
     case "dueAt":
       return String(
         to ? tr("quest.event.change.due") : tr("quest.event.change.dueCleared"),
@@ -260,7 +258,7 @@ const changeLine = (
           : tr("quest.event.change.releaseCleared"),
       );
     default:
-      return String(tr("quest.event.updated"));
+      return tr("quest.event.updated");
   }
 };
 

@@ -147,9 +147,7 @@ export const useQuestMutations = (): QuestMutations => {
       // release they did not name.
       const landed = caughtByDefault(quest);
       if (landed) {
-        toaster.success(
-          String(tr("quest.complete.landedIn", { args: [landed] })),
-        );
+        toaster.success(tr("quest.complete.landedIn", { args: [landed] }));
       }
       return quest;
     },

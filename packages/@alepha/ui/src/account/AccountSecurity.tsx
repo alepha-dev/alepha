@@ -186,7 +186,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
             label={PROVIDER_LABELS[identity.provider] ?? identity.provider}
             description={tr("account.security.addedAt", {
               default: "Added $1",
-              args: [String(l(identity.createdAt, { date: "ll" }))],
+              args: [l(identity.createdAt, { date: "ll" })],
             })}
           >
             {signInMethods.length > 1 ? (

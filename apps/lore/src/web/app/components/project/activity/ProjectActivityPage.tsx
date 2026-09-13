@@ -232,7 +232,7 @@ const ProjectActivityPage = () => {
                     label=""
                     clearable
                     icon={User}
-                    clearLabel={String(tr("activity.filter.allPeople"))}
+                    clearLabel={tr("activity.filter.allPeople")}
                     triggerClassName="w-full"
                     items={(people ?? []).map((person) => ({
                       label: person.label,
@@ -247,11 +247,9 @@ const ProjectActivityPage = () => {
                   label=""
                   clearable
                   icon={Layers}
-                  clearLabel={String(tr("activity.filter.allResources"))}
+                  clearLabel={tr("activity.filter.allResources")}
                   countLabel={(n) =>
-                    String(
-                      tr("activity.filter.typeCount", { args: [String(n)] }),
-                    )
+                    tr("activity.filter.typeCount", { args: [String(n)] })
                   }
                   triggerClassName="w-full"
                   items={options.types.map((type) => ({
@@ -266,11 +264,9 @@ const ProjectActivityPage = () => {
                   label=""
                   clearable
                   icon={Zap}
-                  clearLabel={String(tr("activity.filter.allActions"))}
+                  clearLabel={tr("activity.filter.allActions")}
                   countLabel={(n) =>
-                    String(
-                      tr("activity.filter.actionCount", { args: [String(n)] }),
-                    )
+                    tr("activity.filter.actionCount", { args: [String(n)] })
                   }
                   triggerClassName="w-full"
                   // The label is capitalized, the value is not: this filter
@@ -292,7 +288,7 @@ const ProjectActivityPage = () => {
                   input={form.input.createdAt}
                   label=""
                   clearable
-                  placeholder={String(tr("activity.filter.anyDate"))}
+                  placeholder={tr("activity.filter.anyDate")}
                 />
               </FilterSlot>
             </div>
@@ -404,7 +400,7 @@ const ProjectActivityPage = () => {
                       {
                         args: [
                           descriptor
-                            ? String(tr(descriptor.labelKey as never))
+                            ? tr(descriptor.labelKey as never)
                             : capability,
                         ],
                       },
@@ -445,12 +441,10 @@ export default ProjectActivityPage;
  * rather than as the one entry nobody had translated yet (feedback #P2151).
  */
 const resourceLabel = (
-  tr: (key: any, options?: any) => string | number,
+  tr: (key: any, options?: any) => string,
   type: string,
 ): string =>
-  String(
-    tr(`activity.resource.${type}` as never, { default: capitalize(type) }),
-  );
+  tr(`activity.resource.${type}` as never, { default: capitalize(type) });
 
 /**
  * The first letter uppercased, for values that are displayed as labels but

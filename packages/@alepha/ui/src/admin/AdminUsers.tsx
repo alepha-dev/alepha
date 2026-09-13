@@ -311,13 +311,9 @@ export const AdminUsers = (props: AdminUsersProps) => {
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
+                  placeholder={tr("admin.search", { default: "Search" })}
                   inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
+                    "aria-label": tr("admin.search", { default: "Search" }),
                   }}
                 />
               </FilterSlot>
@@ -383,9 +379,9 @@ export const AdminUsers = (props: AdminUsersProps) => {
                     {u.emailVerified && u.email && (
                       <Check
                         className="size-3.5 shrink-0 text-emerald-500"
-                        aria-label={String(
-                          tr("admin.users.verified", { default: "Verified" }),
-                        )}
+                        aria-label={tr("admin.users.verified", {
+                          default: "Verified",
+                        })}
                       />
                     )}
                   </button>
@@ -427,12 +423,10 @@ export const AdminUsers = (props: AdminUsersProps) => {
                 user={u}
                 availableRoles={availableRoles}
                 onToggle={(roles) => setRoles.run(u, roles)}
-                rolesLabel={String(
-                  tr("admin.users.rolesLabel", { default: "Roles" }),
-                )}
-                noRolesLabel={String(
-                  tr("admin.users.noRoles", { default: "No roles" }),
-                )}
+                rolesLabel={tr("admin.users.rolesLabel", { default: "Roles" })}
+                noRolesLabel={tr("admin.users.noRoles", {
+                  default: "No roles",
+                })}
               />
             ),
           },
@@ -459,9 +453,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
             sortable: true,
             cell: (u) => (
               <span className="text-muted-foreground text-xs">
-                {u.lastLoginAt
-                  ? String(l(u.lastLoginAt, { date: "fromNow" }))
-                  : "—"}
+                {u.lastLoginAt ? l(u.lastLoginAt, { date: "fromNow" }) : "—"}
               </span>
             ),
           },

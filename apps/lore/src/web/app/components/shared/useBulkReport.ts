@@ -29,11 +29,9 @@ export const useBulkReport = (): BulkReport => {
     if (outcome.failed.length > 0) {
       toaster.error(
         [
-          String(
-            tr("board.bulk.failed", {
-              args: [String(outcome.failed.length)],
-            }),
-          ),
+          tr("board.bulk.failed", {
+            args: [String(outcome.failed.length)],
+          }),
           ...parts,
         ].join(" "),
       );

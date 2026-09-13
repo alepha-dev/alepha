@@ -175,7 +175,7 @@ const AppDashboardCapabilities = (props: AppDashboardCapabilitiesProps) => {
         <p className="text-muted-foreground text-xs">
           {config && sigil.reportedConfigAt
             ? tr("app.dashboard.reportedAt", {
-                args: [String(l(sigil.reportedConfigAt, { date: "lll" }))],
+                args: [l(sigil.reportedConfigAt, { date: "lll" })],
               })
             : tr("app.dashboard.neverReported")}
         </p>

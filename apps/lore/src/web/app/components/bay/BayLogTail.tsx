@@ -86,7 +86,7 @@ const BayLogTail = (props: BayLogTailProps) => {
           // read yet.
         }
       }
-      setNote(String(tr("bay.logs.timeout")));
+      setNote(tr("bay.logs.timeout"));
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {
@@ -105,7 +105,7 @@ const BayLogTail = (props: BayLogTailProps) => {
             // Said before the click rather than refused after it. The enqueue
             // refuses too, server-side, which is what actually holds.
             disabled={busy || !estate.online}
-            title={estate.online ? undefined : String(tr("bay.logs.offline"))}
+            title={estate.online ? undefined : tr("bay.logs.offline")}
             onClick={() => void fetchLogs()}
             data-testid="bay-logs-fetch"
           >

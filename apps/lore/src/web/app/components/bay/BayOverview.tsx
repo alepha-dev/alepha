@@ -51,9 +51,7 @@ const BayOverview = () => {
             <span className="text-muted-foreground text-xs">
               {inventory
                 ? tr("bay.overview.reported", {
-                    args: [
-                      String(l(inventory.reportedAt, { date: "fromNow" })),
-                    ],
+                    args: [l(inventory.reportedAt, { date: "fromNow" })],
                   })
                 : estate.connectedAt
                   ? tr("bay.overview.noReportYet")
@@ -63,12 +61,12 @@ const BayOverview = () => {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <BayUsageBar
-              label={String(tr("bay.overview.memory"))}
+              label={tr("bay.overview.memory")}
               usedBytes={host?.memUsedBytes}
               totalBytes={host?.memTotalBytes}
             />
             <BayUsageBar
-              label={String(tr("bay.overview.disk"))}
+              label={tr("bay.overview.disk")}
               usedBytes={host?.diskUsedBytes}
               totalBytes={host?.diskTotalBytes}
             />
@@ -76,7 +74,7 @@ const BayOverview = () => {
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
             <Fact
-              label={String(tr("bay.overview.cpu"))}
+              label={tr("bay.overview.cpu")}
               // The row's live gauge, always written on a stats push, and
               // exact. Absent until the first push lands.
               value={
@@ -84,34 +82,32 @@ const BayOverview = () => {
                   ? undefined
                   : `${Math.round(estate.cpuPercent)}%`
               }
-              empty={String(tr("bay.overview.notReported"))}
+              empty={tr("bay.overview.notReported")}
             />
             <Fact
-              label={String(tr("bay.overview.cores"))}
+              label={tr("bay.overview.cores")}
               value={host?.cores === undefined ? undefined : String(host.cores)}
-              empty={String(tr("bay.overview.notReported"))}
+              empty={tr("bay.overview.notReported")}
             />
             <Fact
-              label={String(tr("bay.overview.load"))}
+              label={tr("bay.overview.load")}
               value={host?.load1 === undefined ? undefined : String(host.load1)}
-              empty={String(tr("bay.overview.notReported"))}
+              empty={tr("bay.overview.notReported")}
             />
             <Fact
-              label={String(tr("bay.overview.uptime"))}
+              label={tr("bay.overview.uptime")}
               value={
                 host?.uptimeSeconds === undefined
                   ? undefined
-                  : String(
-                      l(
-                        dt
-                          .of(dt.nowISOString())
-                          .subtract(host.uptimeSeconds, "seconds")
-                          .toISOString(),
-                        { date: "fromNow" },
-                      ),
+                  : l(
+                      dt
+                        .of(dt.nowISOString())
+                        .subtract(host.uptimeSeconds, "seconds")
+                        .toISOString(),
+                      { date: "fromNow" },
                     )
               }
-              empty={String(tr("bay.overview.notReported"))}
+              empty={tr("bay.overview.notReported")}
             />
           </dl>
         </CardContent>
@@ -124,37 +120,35 @@ const BayOverview = () => {
           </h3>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
             <Fact
-              label={String(tr("bay.overview.state"))}
+              label={tr("bay.overview.state")}
               value={String(
                 estate.online ? tr("estates.online") : tr("estates.offline"),
               )}
               empty=""
             />
             <Fact
-              label={String(tr("bay.overview.lastSeen"))}
+              label={tr("bay.overview.lastSeen")}
               value={
                 estate.lastSeenAt
-                  ? String(l(estate.lastSeenAt, { date: "lll" }))
+                  ? l(estate.lastSeenAt, { date: "lll" })
                   : undefined
               }
-              empty={String(tr("estates.neverSeen"))}
+              empty={tr("estates.neverSeen")}
             />
             <Fact
-              label={String(tr("bay.overview.connectedSince"))}
+              label={tr("bay.overview.connectedSince")}
               value={
                 estate.connectedAt
-                  ? String(l(estate.connectedAt, { date: "lll" }))
+                  ? l(estate.connectedAt, { date: "lll" })
                   : undefined
               }
-              empty={String(tr("estates.neverSeen"))}
+              empty={tr("estates.neverSeen")}
             />
             <Fact
-              label={String(tr("bay.overview.interval"))}
-              value={String(
-                tr("bay.overview.intervalValue", {
-                  args: [String(estate.statsIntervalSeconds)],
-                }),
-              )}
+              label={tr("bay.overview.interval")}
+              value={tr("bay.overview.intervalValue", {
+                args: [String(estate.statsIntervalSeconds)],
+              })}
               empty=""
             />
           </dl>

@@ -123,32 +123,24 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
 
   const deleteOrphan = async (name: string) => {
     const ok = await dialog.confirm({
-      title: String(
-        tr("admin.parameters.orphanDeleteTitle", {
-          default: "Delete this parameter?",
-        }),
-      ),
-      description: String(
-        tr("admin.parameters.orphanDeleteDescription", {
-          default: `No $parameter declares "${name}" in this process. If a module that is not loaded here still reads it, deleting it throws that configuration away. Every stored version of it is removed.`,
-          args: [name],
-        }),
-      ),
-      confirmLabel: String(
-        tr("admin.parameters.orphanDelete", { default: "Delete" }),
-      ),
+      title: tr("admin.parameters.orphanDeleteTitle", {
+        default: "Delete this parameter?",
+      }),
+      description: tr("admin.parameters.orphanDeleteDescription", {
+        default: `No $parameter declares "${name}" in this process. If a module that is not loaded here still reads it, deleting it throws that configuration away. Every stored version of it is removed.`,
+        args: [name],
+      }),
+      confirmLabel: tr("admin.parameters.orphanDelete", { default: "Delete" }),
       destructive: true,
     });
     if (!ok) return;
     try {
       await client.deleteParameter({ params: { name } });
       toast.success(
-        String(
-          tr("admin.parameters.orphanDeleted", {
-            default: `"${name}" deleted.`,
-            args: [name],
-          }),
-        ),
+        tr("admin.parameters.orphanDeleted", {
+          default: `"${name}" deleted.`,
+          args: [name],
+        }),
       );
       if (selected === name) setQuery({ param: undefined });
       setReloadKey((k) => k + 1);
@@ -557,12 +549,10 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
             variant="ghost"
             size="icon-sm"
             className="text-muted-foreground hover:text-destructive shrink-0"
-            aria-label={String(
-              tr("admin.parameters.orphanDeleteAction", {
-                default: `Delete ${node.path}`,
-                args: [node.path],
-              }),
-            )}
+            aria-label={tr("admin.parameters.orphanDeleteAction", {
+              default: `Delete ${node.path}`,
+              args: [node.path],
+            })}
             onClick={() => props.onDeleteOrphan(node.path)}
           >
             <Trash2 className="size-3.5" />

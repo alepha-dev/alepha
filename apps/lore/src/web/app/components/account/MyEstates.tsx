@@ -112,8 +112,8 @@ const MyEstates = () => {
           own against the background. `AccountKeys.tsx` is the shape being
           matched, down to the section rather than a hand-rolled `Card`. */}
       <SettingsSection
-        title={String(tr("account.estates.title"))}
-        description={String(tr("account.estates.description"))}
+        title={tr("account.estates.title")}
+        description={tr("account.estates.description")}
       >
         {(items ?? []).map((estate) => (
           <MyEstateRow

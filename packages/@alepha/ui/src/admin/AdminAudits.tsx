@@ -189,22 +189,20 @@ export const AdminAudits = () => {
                 label=""
                 clearable
                 icon={Layers}
-                clearLabel={String(
-                  tr("admin.audits.layerAll", { default: "All layers" }),
-                )}
+                clearLabel={tr("admin.audits.layerAll", {
+                  default: "All layers",
+                })}
                 triggerClassName="w-40"
                 items={[
                   {
                     value: "app",
-                    label: String(
-                      tr("admin.audits.layerApp", { default: "App" }),
-                    ),
+                    label: tr("admin.audits.layerApp", { default: "App" }),
                   },
                   {
                     value: "scoped",
-                    label: String(
-                      tr("admin.audits.layerScoped", { default: "Scoped" }),
-                    ),
+                    label: tr("admin.audits.layerScoped", {
+                      default: "Scoped",
+                    }),
                   },
                 ]}
               />
@@ -216,18 +214,18 @@ export const AdminAudits = () => {
                 label=""
                 clearable
                 triggerClassName="w-64"
-                placeholder={String(
-                  tr("admin.audits.dateAll", { default: "Any date" }),
-                )}
+                placeholder={tr("admin.audits.dateAll", {
+                  default: "Any date",
+                })}
               />
               <Control
                 input={form.input.status}
                 label=""
                 clearable
                 icon={CircleDot}
-                clearLabel={String(
-                  tr("admin.audits.statusAll", { default: "All status" }),
-                )}
+                clearLabel={tr("admin.audits.statusAll", {
+                  default: "All status",
+                })}
                 triggerClassName="w-40"
                 items={[
                   {
@@ -236,9 +234,7 @@ export const AdminAudits = () => {
                   },
                   {
                     value: "failed",
-                    label: String(
-                      tr("admin.audits.failed", { default: "Failed" }),
-                    ),
+                    label: tr("admin.audits.failed", { default: "Failed" }),
                   },
                 ]}
               />
@@ -247,9 +243,9 @@ export const AdminAudits = () => {
                 label=""
                 clearable
                 icon={Zap}
-                clearLabel={String(
-                  tr("admin.audits.actionAll", { default: "All actions" }),
-                )}
+                clearLabel={tr("admin.audits.actionAll", {
+                  default: "All actions",
+                })}
                 triggerClassName="w-56"
                 // Sorted by type then action on the server, so the list reads
                 // grouped: every `parameter:*` row, then every `user:*` row.

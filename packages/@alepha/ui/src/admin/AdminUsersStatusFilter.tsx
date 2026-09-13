@@ -27,26 +27,20 @@ export const AdminUsersStatusFilter = (props: AdminUsersStatusFilterProps) => {
       label=""
       clearable
       icon={CircleDot}
-      clearLabel={String(
-        tr("admin.users.statusAll", { default: "All status" }),
-      )}
+      clearLabel={tr("admin.users.statusAll", { default: "All status" })}
       triggerClassName="w-40"
       items={[
         {
           value: "verified",
-          label: String(
-            tr("admin.users.statusVerified", { default: "Verified" }),
-          ),
+          label: tr("admin.users.statusVerified", { default: "Verified" }),
         },
         {
           value: "active",
-          label: String(tr("admin.users.statusActive", { default: "Active" })),
+          label: tr("admin.users.statusActive", { default: "Active" }),
         },
         {
           value: "disabled",
-          label: String(
-            tr("admin.users.statusDisabled", { default: "Disabled" }),
-          ),
+          label: tr("admin.users.statusDisabled", { default: "Disabled" }),
         },
       ]}
     />

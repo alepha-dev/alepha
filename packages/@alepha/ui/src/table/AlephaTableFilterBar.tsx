@@ -113,27 +113,19 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
     if (!field.operators || Array.isArray(field.operators)) {
       return field.operators;
     }
-    const not = String(
-      tr("alephaTable.operator.prefixNot", { default: "not" }),
-    );
-    const anyOf = String(
-      tr("alephaTable.operator.anyOf", { default: "any of" }),
-    );
-    const noneOf = String(
-      tr("alephaTable.operator.noneOf", { default: "none of" }),
-    );
+    const not = tr("alephaTable.operator.prefixNot", { default: "not" });
+    const anyOf = tr("alephaTable.operator.anyOf", { default: "any of" });
+    const noneOf = tr("alephaTable.operator.noneOf", { default: "none of" });
     switch (field.operators) {
       case "is":
         return [
           {
             value: "is",
-            label: String(tr("alephaTable.operator.is", { default: "is" })),
+            label: tr("alephaTable.operator.is", { default: "is" }),
           },
           {
             value: "not",
-            label: String(
-              tr("alephaTable.operator.isNot", { default: "is not" }),
-            ),
+            label: tr("alephaTable.operator.isNot", { default: "is not" }),
             prefix: not,
           },
         ];
@@ -147,12 +139,8 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
           { value: "any", label: anyOf },
           {
             value: "all",
-            label: String(
-              tr("alephaTable.operator.allOf", { default: "all of" }),
-            ),
-            prefix: String(
-              tr("alephaTable.operator.prefixAll", { default: "all" }),
-            ),
+            label: tr("alephaTable.operator.allOf", { default: "all of" }),
+            prefix: tr("alephaTable.operator.prefixAll", { default: "all" }),
           },
           { value: "none", label: noneOf, prefix: not },
         ];
@@ -240,7 +228,7 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
   const searchKey = props.search?.key ?? "search";
   const searchPlaceholder =
     props.search?.placeholder ??
-    String(tr("alephaTable.search", { default: "Search" }));
+    tr("alephaTable.search", { default: "Search" });
 
   return (
     // `contents`, so the slots are items of the table's own wrapping row (and

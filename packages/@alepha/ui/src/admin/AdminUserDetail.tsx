@@ -386,9 +386,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
             args: [String(label)],
           }),
           destructive: true,
-          confirmLabel: String(
-            tr("admin.userDetail.deleteCta", { default: "Delete" }),
-          ),
+          confirmLabel: tr("admin.userDetail.deleteCta", { default: "Delete" }),
         });
         if (!ok) return;
         await userClient.deleteUser({
@@ -592,14 +590,12 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
           user
             ? undefined
             : {
-                message: String(
-                  tr("admin.userDetail.notFound", {
-                    default: "User not found.",
-                  }),
-                ),
-                backLabel: String(
-                  tr("admin.userDetail.back", { default: "Back to users" }),
-                ),
+                message: tr("admin.userDetail.notFound", {
+                  default: "User not found.",
+                }),
+                backLabel: tr("admin.userDetail.back", {
+                  default: "Back to users",
+                }),
                 onBack: () => void router.push(backPath),
               }
         }

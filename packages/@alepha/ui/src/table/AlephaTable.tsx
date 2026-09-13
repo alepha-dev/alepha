@@ -1485,16 +1485,14 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     // Announced, or the change is silent for a screen reader: nothing else
     // about a reordered table is spoken.
     setOrderAnnouncement(
-      String(
-        tr("alephaTable.columnMoved", {
-          default: `${String(props.columns[key]?.label ?? key)} moved to position ${at + delta + 1} of ${visible.length}`,
-          args: [
-            String(props.columns[key]?.label ?? key),
-            String(at + delta + 1),
-            String(visible.length),
-          ],
-        }),
-      ),
+      tr("alephaTable.columnMoved", {
+        default: `${String(props.columns[key]?.label ?? key)} moved to position ${at + delta + 1} of ${visible.length}`,
+        args: [
+          String(props.columns[key]?.label ?? key),
+          String(at + delta + 1),
+          String(visible.length),
+        ],
+      }),
     );
   };
 
@@ -2349,9 +2347,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   // to name itself.
                   label=""
                   inputProps={{
-                    "aria-label": String(
-                      tr("table.pageSize", { default: "Rows per page" }),
-                    ),
+                    "aria-label": tr("table.pageSize", {
+                      default: "Rows per page",
+                    }),
                   }}
                   // `bg-background`, because this bar is `bg-muted` and the
                   // trigger is `bg-transparent` by default: on a plain form
@@ -2552,9 +2550,7 @@ function ColumnPicker<T>(props: {
               <button
                 type="button"
                 disabled={index === 0}
-                aria-label={String(
-                  tr("alephaTable.moveUp", { default: "Move up" }),
-                )}
+                aria-label={tr("alephaTable.moveUp", { default: "Move up" })}
                 onClick={() => props.onReorder(key, entries[index - 1]![0])}
                 className="text-muted-foreground/60 hover:text-foreground rounded p-0.5 disabled:opacity-30"
               >
@@ -2563,9 +2559,9 @@ function ColumnPicker<T>(props: {
               <button
                 type="button"
                 disabled={index === entries.length - 1}
-                aria-label={String(
-                  tr("alephaTable.moveDown", { default: "Move down" }),
-                )}
+                aria-label={tr("alephaTable.moveDown", {
+                  default: "Move down",
+                })}
                 onClick={() => props.onReorder(entries[index + 1]![0], key)}
                 className="text-muted-foreground/60 hover:text-foreground rounded p-0.5 disabled:opacity-30"
               >

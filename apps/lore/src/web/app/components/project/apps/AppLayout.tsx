@@ -142,7 +142,7 @@ const AppLayout = () => {
       tab.route === "appAnalytics" || tab.route === "appVitals";
     return {
       key: tab.route,
-      label: String(tr(tab.labelKey)),
+      label: tr(tab.labelKey),
       // Each tab is its own route, so each is a link.
       href: router.path(tab.route, {
         params,
@@ -224,7 +224,7 @@ const AppLayout = () => {
             <span className="text-muted-foreground ml-auto text-xs">
               {sigil.lastSeenAt
                 ? tr("sigils.lastSeen", {
-                    args: [String(l(sigil.lastSeenAt, { date: "lll" }))],
+                    args: [l(sigil.lastSeenAt, { date: "lll" })],
                   })
                 : tr("sigils.neverSeen")}
             </span>

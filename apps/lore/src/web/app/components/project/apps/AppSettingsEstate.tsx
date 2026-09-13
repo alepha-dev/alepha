@@ -166,7 +166,7 @@ const AppSettingsEstate = () => {
             disabled={!isOwner || busy}
             triggerClassName="w-full sm:w-72"
             inputProps={{
-              "aria-label": String(tr("app.settings.estate.label")),
+              "aria-label": tr("app.settings.estate.label"),
             }}
             items={[
               // Clearing is a real operation: an instance pointed at the
@@ -175,7 +175,7 @@ const AppSettingsEstate = () => {
               // and renders as the placeholder.
               {
                 value: CLEARED,
-                label: String(tr("app.settings.estate.clear")),
+                label: tr("app.settings.estate.clear"),
               },
               ...estates.map((estate) => ({
                 value: estate.id,

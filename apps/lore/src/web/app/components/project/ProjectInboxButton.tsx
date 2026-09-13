@@ -36,11 +36,11 @@ const ProjectInboxButton = () => {
     <ButtonInbox
       seeAllHref={`/${project.slug}/inbox?scope=all`}
       labels={{
-        inbox: String(tr("inbox.title")),
-        heading: String(tr("inbox.title")),
-        empty: String(tr("inbox.empty")),
-        markAllRead: String(tr("inbox.markAllRead")),
-        seeAll: String(tr("inbox.seeAll")),
+        inbox: tr("inbox.title"),
+        heading: tr("inbox.title"),
+        empty: tr("inbox.empty"),
+        markAllRead: tr("inbox.markAllRead"),
+        seeAll: tr("inbox.seeAll"),
       }}
       // A push, not a full navigation: Lore has a router, and reloading the
       // document to reach a page one hop away throws the whole SPA away.

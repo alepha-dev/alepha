@@ -48,34 +48,34 @@ const PAYS = [
  * autofill — those autocomplete hints are what make a checkout fillable in two
  * taps on a phone, which is where most of these orders will come from.
  */
-const buildAdresseSchema = (tr: (key: string) => string | number) =>
+const buildAdresseSchema = (tr: (key: string) => string) =>
   z.object({
     email: z.email().meta({
-      title: String(tr("field.email")),
-      description: String(tr("field.emailHint")),
+      title: tr("field.email"),
+      description: tr("field.emailHint"),
       $control: { autoComplete: "email", width: 100 },
     }),
     fullName: z.text({ minLength: 1, maxLength: 200 }).meta({
-      title: String(tr("field.fullName")),
+      title: tr("field.fullName"),
       $control: { autoComplete: "name", width: 100 },
     }),
     line1: z.text({ minLength: 1, maxLength: 200 }).meta({
-      title: String(tr("field.line1")),
+      title: tr("field.line1"),
       $control: { autoComplete: "address-line1", width: 100 },
     }),
     line2: z
       .text({ maxLength: 200 })
       .meta({
-        title: String(tr("field.line2")),
+        title: tr("field.line2"),
         $control: { autoComplete: "address-line2", width: 100 },
       })
       .optional(),
     postalCode: z.text({ minLength: 2, maxLength: 16 }).meta({
-      title: String(tr("field.postalCode")),
+      title: tr("field.postalCode"),
       $control: { autoComplete: "postal-code", width: 40 },
     }),
     locality: z.text({ minLength: 1, maxLength: 120 }).meta({
-      title: String(tr("field.locality")),
+      title: tr("field.locality"),
       $control: { autoComplete: "address-level2", width: 60 },
     }),
     /*
@@ -90,7 +90,7 @@ const buildAdresseSchema = (tr: (key: string) => string | number) =>
     country: z
       .text({ minLength: 2, maxLength: 2 })
       .meta({
-        title: String(tr("field.country")),
+        title: tr("field.country"),
         $control: { autoComplete: "country", items: PAYS, width: 100 },
       })
       .default("FR"),
@@ -207,9 +207,7 @@ const Commande = () => {
         );
       } catch (error) {
         toast.error(
-          error instanceof Error
-            ? error.message
-            : String(tr("checkout.addressFailed")),
+          error instanceof Error ? error.message : tr("checkout.addressFailed"),
         );
         return;
       }
@@ -242,12 +240,10 @@ const Commande = () => {
         return;
       }
       // An embedded provider would mount <PaymentSlot/> here instead.
-      toast.info(String(tr("checkout.embedded")));
+      toast.info(tr("checkout.embedded"));
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : String(tr("checkout.payFailed")),
+        error instanceof Error ? error.message : tr("checkout.payFailed"),
       );
     } finally {
       setEnCours(false);
@@ -298,8 +294,8 @@ const Commande = () => {
           {etape === 1 ? (
             <AutoForm
               form={form}
-              title={String(tr("checkout.addressTitle"))}
-              submitLabel={String(tr("checkout.continue"))}
+              title={tr("checkout.addressTitle")}
+              submitLabel={tr("checkout.continue")}
             />
           ) : null}
 

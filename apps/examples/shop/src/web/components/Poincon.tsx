@@ -43,8 +43,8 @@ export const Poincon = (props: PoinconProps) => {
       // A screen reader should hear the fact, not the shape.
       aria-label={
         /^\d+$/.test(titre)
-          ? String(tr("hallmark.fineness", { args: [titre] }))
-          : String(tr("hallmark.mark", { args: [titre] }))
+          ? tr("hallmark.fineness", { args: [titre] })
+          : tr("hallmark.mark", { args: [titre] })
       }
     >
       <polygon

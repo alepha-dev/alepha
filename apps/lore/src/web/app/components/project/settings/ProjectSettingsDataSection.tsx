@@ -43,7 +43,7 @@ const ProjectSettingsDataSection = () => {
       toaster.error(
         err instanceof Error
           ? err.message
-          : String(tr("project.settings.data.export.failed")),
+          : tr("project.settings.data.export.failed"),
       );
     }
   };

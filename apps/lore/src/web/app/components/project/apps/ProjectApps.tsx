@@ -279,7 +279,7 @@ const ProjectApps = () => {
             ? [
                 {
                   icon: Plus,
-                  label: String(tr("apps.create.title")),
+                  label: tr("apps.create.title"),
                   primary: true,
                   onClick: () => setCreating(true),
                 },
@@ -321,7 +321,7 @@ const ProjectApps = () => {
                     // the whole of the way #Q1816 settled: there is no clear
                     // ROW in the list, so the label says what unfiltered
                     // means and the trigger's `x` is how you get back to it.
-                    clearLabel={String(tr("apps.filter.app"))}
+                    clearLabel={tr("apps.filter.app")}
                     items={appOptions}
                     inputProps={{ "aria-label": tr("apps.filter.app") }}
                   />
@@ -340,7 +340,7 @@ const ProjectApps = () => {
                     // the whole of the way #Q1816 settled: there is no clear
                     // ROW in the list, so the label says what unfiltered
                     // means and the trigger's `x` is how you get back to it.
-                    clearLabel={String(tr("apps.filter.env"))}
+                    clearLabel={tr("apps.filter.env")}
                     items={envOptions}
                     inputProps={{ "aria-label": tr("apps.filter.env") }}
                   />
@@ -358,7 +358,7 @@ const ProjectApps = () => {
                   // the whole of the way #Q1816 settled: there is no clear
                   // ROW in the list, so the label says what unfiltered
                   // means and the trigger's `x` is how you get back to it.
-                  clearLabel={String(tr("apps.filter.status"))}
+                  clearLabel={tr("apps.filter.status")}
                   // Semantic order, not alphabetical: reporting, silent,
                   // never wired up.
                   //
@@ -402,7 +402,7 @@ const ProjectApps = () => {
                     label=""
                     icon={Tag}
                     triggerClassName="w-full"
-                    clearLabel={String(tr("apps.filter.version"))}
+                    clearLabel={tr("apps.filter.version")}
                     items={versionOptions}
                     inputProps={{ "aria-label": tr("apps.filter.version") }}
                   />
@@ -619,7 +619,7 @@ const ProjectApps = () => {
             defaultHidden: true,
             cell: (instance) => (
               <span className="text-muted-foreground text-xs whitespace-nowrap">
-                {String(l(instance.createdAt, { date: "lll" }))}
+                {l(instance.createdAt, { date: "lll" })}
               </span>
             ),
           },

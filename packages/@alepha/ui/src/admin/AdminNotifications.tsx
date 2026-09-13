@@ -267,21 +267,15 @@ export const AdminNotifications = () => {
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
+                  placeholder={tr("admin.search", { default: "Search" })}
                   inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
+                    "aria-label": tr("admin.search", { default: "Search" }),
                     // What the box matches, as a hover hint and the field's
                     // accessible description, now that it reads "Search"
                     // like every other filter bar (#Q2231).
-                    title: String(
-                      tr("admin.notifications.filterSearch", {
-                        default: "Recipient",
-                      }),
-                    ),
+                    title: tr("admin.notifications.filterSearch", {
+                      default: "Recipient",
+                    }),
                   }}
                 />
               </FilterSlot>

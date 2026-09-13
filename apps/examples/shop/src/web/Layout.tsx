@@ -96,8 +96,8 @@ export const Layout = () => {
                 <ButtonUser
                   onSignIn={() => router.push("login")}
                   onAdminClick={() => router.push("adminProduits")}
-                  signInLabel={String(tr("nav.signIn"))}
-                  menuLabel={String(tr("nav.account"))}
+                  signInLabel={tr("nav.signIn")}
+                  menuLabel={tr("nav.account")}
                 />
               </div>
             </div>

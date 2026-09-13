@@ -173,24 +173,18 @@ export const AdminSessions = () => {
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
+                  placeholder={tr("admin.search", { default: "Search" })}
                   inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
+                    "aria-label": tr("admin.search", { default: "Search" }),
                     // "Search" like every other filter bar (#Q2231), and
                     // what this box matches moves here: it is the one
                     // search that also takes an IP, which nobody guesses.
                     // A title is a hover hint and the field's accessible
                     // description, where a placeholder was both the hint
                     // and the only label a sighted reader got.
-                    title: String(
-                      tr("admin.sessions.searchHint", {
-                        default: "Email, username or IP",
-                      }),
-                    ),
+                    title: tr("admin.sessions.searchHint", {
+                      default: "Email, username or IP",
+                    }),
                   }}
                 />
               </FilterSlot>
@@ -199,24 +193,22 @@ export const AdminSessions = () => {
                 label=""
                 clearable
                 icon={CircleDot}
-                clearLabel={String(
-                  tr("admin.sessions.statusAll", { default: "All sessions" }),
-                )}
+                clearLabel={tr("admin.sessions.statusAll", {
+                  default: "All sessions",
+                })}
                 triggerClassName="w-40"
                 items={[
                   {
                     value: "active",
-                    label: String(
-                      tr("admin.sessions.statusActive", { default: "Active" }),
-                    ),
+                    label: tr("admin.sessions.statusActive", {
+                      default: "Active",
+                    }),
                   },
                   {
                     value: "expired",
-                    label: String(
-                      tr("admin.sessions.statusExpired", {
-                        default: "Expired",
-                      }),
-                    ),
+                    label: tr("admin.sessions.statusExpired", {
+                      default: "Expired",
+                    }),
                   },
                 ]}
               />
@@ -225,11 +217,9 @@ export const AdminSessions = () => {
                 label=""
                 clearable
                 icon={Globe}
-                clearLabel={String(
-                  tr("admin.sessions.countryAll", {
-                    default: "All countries",
-                  }),
-                )}
+                clearLabel={tr("admin.sessions.countryAll", {
+                  default: "All countries",
+                })}
                 triggerClassName="w-40"
                 items={countries.map((code) => ({
                   value: code,
@@ -241,15 +231,13 @@ export const AdminSessions = () => {
                 label=""
                 clearable
                 icon={Clock}
-                clearLabel={String(
-                  tr("admin.sessions.lastUsedAny", { default: "Any time" }),
-                )}
+                clearLabel={tr("admin.sessions.lastUsedAny", {
+                  default: "Any time",
+                })}
                 triggerClassName="w-44"
                 items={LAST_USED_WINDOWS.map((window) => ({
                   value: window.hours,
-                  label: String(
-                    tr(window.labelKey, { default: window.fallback }),
-                  ),
+                  label: tr(window.labelKey, { default: window.fallback }),
                 }))}
               />
             </div>
@@ -320,7 +308,7 @@ export const AdminSessions = () => {
             cell: (s) => (
               <span className="text-muted-foreground text-xs">
                 {s.lastUsedAt
-                  ? String(l(s.lastUsedAt, { date: "fromNow" }))
+                  ? l(s.lastUsedAt, { date: "fromNow" })
                   : tr("admin.sessions.lastUsedNever", { default: "Never" })}
               </span>
             ),

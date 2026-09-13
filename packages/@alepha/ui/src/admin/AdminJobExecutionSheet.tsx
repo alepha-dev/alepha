@@ -81,7 +81,7 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
 
   const inProgress = execution ? isInProgress(execution.status) : false;
   const date = (value?: string) =>
-    value ? String(l(value, { date: "lll" })) : undefined;
+    value ? l(value, { date: "lll" }) : undefined;
 
   const overview: Array<[string, React.ReactNode]> = execution
     ? [

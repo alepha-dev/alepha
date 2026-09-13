@@ -100,9 +100,7 @@ const AppArtifactsList = (props: AppArtifactsListProps) => {
             {tr("app.artifacts.error")}
           </p>
         ) : groups.length === 0 ? (
-          <ArtifactsEmpty
-            description={String(tr("app.artifacts.empty.description"))}
-          />
+          <ArtifactsEmpty description={tr("app.artifacts.empty.description")} />
         ) : (
           <div className="flex flex-col divide-y">
             {groups.map((group) => (
