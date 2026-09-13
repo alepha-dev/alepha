@@ -59,8 +59,16 @@ export class ProjectPermissions {
     // `ownership === false` bypass. Nor by a capability: an operator looking at
     // a project with Work off is not being offered a quest button, because
     // there is no page to put one on.
+    //
+    // A credential's permission scope still applies: the bypass is about
+    // ranks and capabilities, and a scoped admin key must not read the full
+    // set back through it.
     if (user.ownership === false) {
-      return { permissions: registered };
+      return {
+        permissions: registered.filter((it) =>
+          this.security.isInPermissionScope(it, user.permissionScope),
+        ),
+      };
     }
 
     // 1. Application scope: what the caller's roles grant, whatever project
