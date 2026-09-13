@@ -36,6 +36,28 @@ One more field matters on a non-default install: if Bay's root is not
 `$HOME/bay-data`, set `socket` to the absolute path of the control socket -
 without it, every command the adapter sends fails to find the server.
 
+## Static files and their headers
+
+Bay answers every file it finds under the release's `dist/public` itself, without waking
+the app: a page pulls tens of them. So the app's own headers never reach those files, and
+Bay applies `dist/public/_headers` to them instead, the file `alepha build` writes and
+Cloudflare applies to the same build:
+
+- the security headers `helmetOptions` produces, on every file;
+- a year of immutable caching on content-hashed chunks and assets;
+- your own rules from `public/_headers`;
+- `public, max-age=0, must-revalidate` for a file no rule caches.
+
+The rules match the path the browser asked for, percent-encoded, never the file Bay found:
+`/changelog` served from `changelog.html` matches `/changelog`, and a miss answered with
+`404.html` matches the missed path. A request the app answers is left alone, as on
+Cloudflare; the app applies the same file to what its own server serves.
+
+A release whose `_headers` does not parse is refused at deploy, naming the line, and the
+running release keeps serving. `/_headers`, `/_redirects` and `/.assetsignore` are never
+served. A release built before `_headers` existed is served as it always was. See
+[Static File Headers](/docs/guides-deployment-headers) for the file itself.
+
 ## HTTPS
 
 Started with `--tls`, Bay obtains a certificate for every app's domain and

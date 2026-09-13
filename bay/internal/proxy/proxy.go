@@ -38,6 +38,9 @@ type Proxy struct {
 	// seen accumulates when each app last answered, drained to the store on a
 	// ticker so the request path never writes to disk. See lastseen.go.
 	seen lastSeen
+	// headerCache holds each release's `_headers` rules, read once. See
+	// headers.go.
+	headerCache headerCache
 }
 
 // DrainLastSeen returns the traffic recorded since the previous call, and
@@ -87,7 +90,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// traffic could be seen at all, since a page served entirely from disk
 		// never reaches the app process to be counted there.
 		p.seen.touch(app.Key(), time.Now())
-		p.serveStatic(w, r, path)
+		p.serveStatic(w, r, app, path)
 		return
 	}
 	// A static site has no process to forward to: the fallback files the build
@@ -113,14 +116,18 @@ func (p *Proxy) serveFallback(w http.ResponseWriter, r *http.Request, app state.
 	// Only an extensionless path can be a client route. A missing `.js` chunk
 	// handed the SPA shell becomes a syntax error in the console, which is a
 	// much longer walk back to "that file was not deployed".
-	if filepath.Ext(cleanPath(r.URL.Path)) == "" {
+	//
+	// `/_headers` has no extension and is not a route either: configuration,
+	// hidden by findStatic, and a 404 rather than the shell under a 200.
+	clean := cleanPath(r.URL.Path)
+	if filepath.Ext(clean) == "" && !isConfigFile(clean) {
 		if shell, ok := p.findStatic(app, "/200.html"); ok {
-			p.serveStatic(w, r, shell)
+			p.serveStatic(w, r, app, shell)
 			return
 		}
 	}
 	if notFound, ok := p.findStatic(app, "/404.html"); ok {
-		p.serveStatusPage(w, notFound, http.StatusNotFound)
+		p.serveStatusPage(w, r, app, notFound, http.StatusNotFound)
 		return
 	}
 	http.NotFound(w, r)
@@ -132,7 +139,7 @@ func (p *Proxy) serveFallback(w http.ResponseWriter, r *http.Request, app state.
 // page is the status code. Range requests and precompressed sidecars are given
 // up deliberately: this path serves one small document on a request that has
 // already missed everything else.
-func (p *Proxy) serveStatusPage(w http.ResponseWriter, path string, status int) {
+func (p *Proxy) serveStatusPage(w http.ResponseWriter, r *http.Request, app state.App, path string, status int) {
 	body, err := os.ReadFile(path)
 	if err != nil {
 		// It was stat'd a moment ago, so this is a race with a prune or a disk
@@ -141,7 +148,7 @@ func (p *Proxy) serveStatusPage(w http.ResponseWriter, path string, status int) 
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
+	w = p.withRules(w, r, app, "no-cache")
 	w.WriteHeader(status)
 	if _, err := w.Write(body); err != nil {
 		p.log.Debug("writing status page failed", "path", path, "err", err)
@@ -156,6 +163,12 @@ func (p *Proxy) serveStatusPage(w http.ResponseWriter, path string, status int) 
 // every retained release is safe and removes the whole failure class.
 func (p *Proxy) findStatic(app state.App, urlPath string) (string, bool) {
 	clean := cleanPath(urlPath)
+	// Configuration a host reads, never a file it serves: a process app hands
+	// the request to its own server, which hides them too, and a static site
+	// answers its 404 page.
+	if isConfigFile(clean) {
+		return "", false
+	}
 	if clean == "/" {
 		clean = "/index.html"
 	}
@@ -235,15 +248,12 @@ var encodings = []struct{ token, suffix string }{
 	{"gzip", ".gz"},
 }
 
-func (p *Proxy) serveStatic(w http.ResponseWriter, r *http.Request, path string) {
-	// Content-addressed names can be cached forever. Everything else must
-	// revalidate, otherwise a rollback is never visible to clients still
-	// holding the previous HTML.
-	if hashedAsset.MatchString(filepath.Base(path)) {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	} else {
-		w.Header().Set("Cache-Control", "no-cache")
-	}
+func (p *Proxy) serveStatic(w http.ResponseWriter, r *http.Request, app state.App, path string) {
+	// With a `_headers` in the current release, its rules decide, on top of
+	// Cloudflare's default; see withRules. Without one, content-addressed
+	// names are cached forever and everything else revalidates, otherwise a
+	// rollback is never visible to clients still holding the previous HTML.
+	w = p.withRules(w, r, app, hashedCacheControl(path))
 
 	// The build already emitted .br/.gz sidecars; serving them saves recompressing
 	// on every request. Content-Type must be set from the ORIGINAL name, since
