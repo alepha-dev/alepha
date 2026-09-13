@@ -1,0 +1,1 @@
+ALTER TABLE `api_keys` ADD `rotated_at` integer;
