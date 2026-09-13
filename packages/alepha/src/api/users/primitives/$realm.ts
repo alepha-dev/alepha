@@ -1,5 +1,9 @@
 import { $context, AlephaError } from "alepha";
-import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
+import {
+  AlephaApiKeys,
+  ApiKeyNotifications,
+  ApiKeyService,
+} from "alepha/api/keys";
 import {
   AlephaOAuth,
   OAuthClientService,
@@ -148,6 +152,10 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // Enable API key authentication - must be added to customResolvers before $issuer() call
   if (features.apiKeys) {
     alepha.with(AlephaApiKeys);
+    // The expiry notice, when there is a mailer to send it with.
+    if (features.notifications) {
+      alepha.with(ApiKeyNotifications);
+    }
     const apiKeyService = alepha.inject(ApiKeyService);
     customResolvers.push(
       apiKeyService.createResolver({

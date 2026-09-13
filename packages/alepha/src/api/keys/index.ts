@@ -5,6 +5,7 @@ import { AlephaBackground } from "alepha/background";
 import { AdminApiKeyController } from "./controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "./controllers/ApiKeyController.ts";
 import { ApiKeyJobs } from "./jobs/ApiKeyJobs.ts";
+import { ApiKeyNotifications } from "./notifications/ApiKeyNotifications.ts";
 import { ApiKeyParameters } from "./parameters/ApiKeyParameters.ts";
 import { ApiKeyService } from "./services/ApiKeyService.ts";
 
@@ -12,6 +13,7 @@ export * from "./controllers/AdminApiKeyController.ts";
 export * from "./controllers/ApiKeyController.ts";
 export * from "./entities/apiKeyEntity.ts";
 export * from "./jobs/ApiKeyJobs.ts";
+export * from "./notifications/ApiKeyNotifications.ts";
 export * from "./parameters/ApiKeyParameters.ts";
 export * from "./schemas/adminApiKeyOwnerSchema.ts";
 export * from "./schemas/adminApiKeyQuerySchema.ts";
@@ -68,4 +70,7 @@ export const AlephaApiKeys = $module({
     // `job_executions` table, exactly as `alepha/api/audits` already gives it.
     ApiKeyJobs,
   ],
+  // Registered by `$realm` when a realm has notifications too, never here:
+  // this module does not pull the notifications module in.
+  variants: [ApiKeyNotifications],
 });

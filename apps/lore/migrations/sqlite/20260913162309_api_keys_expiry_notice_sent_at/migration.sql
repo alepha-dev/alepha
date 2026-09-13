@@ -1,0 +1,1 @@
+ALTER TABLE `api_keys` ADD `expiry_notice_sent_at` integer;

@@ -28,4 +28,19 @@ export class ApiKeyJobs {
       await this.apiKeyService.purgeDeadKeys();
     },
   });
+
+  /**
+   * Tell each key's owner, once, that the key enters its expiry warning
+   * window (`expiryWarningDays`, `0` disabling the notice). Does nothing
+   * where `ApiKeyNotifications` is not registered. See
+   * {@link ApiKeyService.notifyExpiring}.
+   */
+  public readonly notifyExpiring = $job({
+    name: "system.keys.notify-expiring",
+    cron: "0 9 * * *", // Daily at 09:00
+    description: "Warns the owners of API keys about to expire, once per key.",
+    handler: async () => {
+      await this.apiKeyService.notifyExpiring();
+    },
+  });
 }

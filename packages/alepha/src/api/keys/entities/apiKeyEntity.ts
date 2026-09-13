@@ -65,6 +65,13 @@ export const apiKeyEntity = $entity({
      * start again.
      */
     rotatedAt: z.datetime().optional(),
+
+    /**
+     * When the owner was told this key is about to expire. The notice goes
+     * out once per expiry: set when it is sent, part of what the daily job
+     * selects on, and cleared by a rotation, which gives the key a new expiry.
+     */
+    expiryNoticeSentAt: z.datetime().optional(),
   }),
   indexes: [
     // Unique among keys that are not revoked: revoking a key frees its name

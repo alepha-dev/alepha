@@ -25,6 +25,7 @@ import {
 } from "alepha/server";
 
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
+import { ApiKeyNotifications } from "../notifications/ApiKeyNotifications.ts";
 import { ApiKeyParameters } from "../parameters/ApiKeyParameters.ts";
 import type { AdminApiKeyResource } from "../schemas/adminApiKeyResourceSchema.ts";
 import {
@@ -805,6 +806,8 @@ export class ApiKeyService {
       lastUsedAt: sql`NULL`,
       lastUsedIp: sql`NULL`,
       usageCount: 0,
+      // A new expiry deserves its own warning.
+      expiryNoticeSentAt: sql`NULL`,
     });
 
     this.markRevocation();
@@ -1045,6 +1048,93 @@ export class ApiKeyService {
     }
 
     return { expired, revoked };
+  }
+
+  /**
+   * Warn the owners of keys entering their expiry warning window, once per
+   * key, and say how many were warned.
+   *
+   * Selects live keys expiring within `expiryWarningDays` whose notice has
+   * not gone out, soonest first, in the purge's bounded batches. Each owner is
+   * read through the same registry-resolved `users` join the admin listing
+   * uses (this module does not import `alepha/api/users`), and each push
+   * carries the key's own `organizationId`, since a job has no request to
+   * take a tenant from.
+   *
+   * `expiryNoticeSentAt` is the marker that keeps it to one notice rather
+   * than one a day for the whole window. A key whose owner has no email is
+   * marked too, or it would be selected again every day and hold a batch.
+   *
+   * Does nothing when `ApiKeyNotifications` is not registered (the
+   * notifications module is optional), or when the warning is off.
+   */
+  public async notifyExpiring(): Promise<number> {
+    const warningDays = this.parameters.get("expiryWarningDays");
+    if (warningDays === 0 || !this.alepha.has(ApiKeyNotifications)) {
+      return 0;
+    }
+    const notifications = this.alepha.inject(ApiKeyNotifications);
+
+    const now = this.dateTimeProvider.nowMillis();
+    const nowIso = new Date(now).toISOString();
+    const until = new Date(this.warningUntil(now)).toISOString();
+    const withOwner = this.resolveOwnerJoin();
+    const size = this.purgeBatchSize();
+    let notified = 0;
+
+    for (let batch = 0; batch < this.maxPurgeBatchesPerRun; batch++) {
+      const rows = (await this.repo.findMany({
+        where: {
+          revokedAt: { isNull: true },
+          expiryNoticeSentAt: { isNull: true },
+          expiresAt: { gt: nowIso, lte: until },
+        },
+        limit: size,
+        orderBy: { column: "expiresAt", direction: "asc" },
+        ...(withOwner ? { with: withOwner } : {}),
+      })) as Array<ApiKeyEntity & { user?: { email?: string } }>;
+      if (rows.length === 0) {
+        break;
+      }
+
+      for (const row of rows) {
+        const email = row.user?.email;
+        if (!email || !row.expiresAt) {
+          continue;
+        }
+        const daysLeft = Math.max(
+          1,
+          Math.ceil(
+            (new Date(row.expiresAt).getTime() - now) / (24 * 3600 * 1000),
+          ),
+        );
+        await notifications.expiring.push({
+          contact: email,
+          organizationId: row.organizationId,
+          variables: {
+            email,
+            name: row.name,
+            tokenSuffix: row.tokenSuffix,
+            daysLeft,
+          },
+        });
+        notified++;
+      }
+
+      await this.repo.updateMany(
+        { id: { inArray: rows.map((row) => row.id) } },
+        { expiryNoticeSentAt: nowIso },
+      );
+
+      if (rows.length < size) {
+        break;
+      }
+    }
+
+    if (notified > 0) {
+      this.log.info("API key expiry notices sent", { notified });
+    }
+    return notified;
   }
 
   /**
