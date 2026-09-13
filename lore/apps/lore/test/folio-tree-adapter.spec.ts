@@ -7,7 +7,7 @@ import {
 
 /**
  * The model itself is tested in `@alepha/ui`
- * (`components/tree-view/__tests__/tree-model.spec.ts`). What is left here is
+ * (`src/tree/__tests__/treeModel.spec.ts`). What is left here is
  * the translation Lore owns: two lists into one, `title` into `name`,
  * `directoryId` into `parentId`, and the three fields of the payload.
  */

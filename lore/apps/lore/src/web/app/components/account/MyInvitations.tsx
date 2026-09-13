@@ -1,7 +1,5 @@
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Badge, Button, useToast } from "@alepha/ui";
+import { SettingsHeading } from "@alepha/ui/settings";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

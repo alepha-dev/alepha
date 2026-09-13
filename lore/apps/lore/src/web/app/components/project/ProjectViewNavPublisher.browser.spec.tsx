@@ -1,4 +1,4 @@
-import type { NavGroup } from "@alepha/ui/components/app-shell/app-shell";
+import type { NavGroup } from "@alepha/ui/shell";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";

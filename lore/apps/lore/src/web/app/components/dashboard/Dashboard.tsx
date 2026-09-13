@@ -1,4 +1,4 @@
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useDialog } from "@alepha/ui";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";

@@ -1,7 +1,6 @@
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
+import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
+import { Control } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
 import { AlephaError, type Infer, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 
 import type { VitalsMetricResource } from "@/api/schemas/vitalsMetricSchema.ts";

@@ -1,10 +1,7 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { FilterSlot, TimeAgo, Badge, useDialog } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { SettingsHeading } from "@alepha/ui/settings";
+import { AlephaTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

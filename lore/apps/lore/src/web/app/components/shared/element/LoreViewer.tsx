@@ -1,4 +1,4 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
+import { MarkdownView } from "@alepha/ui/markdown";
 
 import type { ElementRef } from "./elementRef.ts";
 import { useElementLinks } from "./useElementLinks.ts";

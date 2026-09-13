@@ -1,6 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, Card, CardContent, useToast } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ScrollText } from "lucide-react";

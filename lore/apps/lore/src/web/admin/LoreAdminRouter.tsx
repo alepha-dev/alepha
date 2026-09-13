@@ -1,4 +1,4 @@
-import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
+import { $pageAdmin } from "@alepha/ui/admin";
 import { $client } from "alepha/server/links";
 import { FolderKanban, Server } from "lucide-react";
 

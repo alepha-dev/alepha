@@ -1,5 +1,4 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { cn } from "@alepha/ui/lib/utils";
+import { Segmented, cn } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";

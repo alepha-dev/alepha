@@ -1,7 +1,7 @@
 import type {
   PermissionMatrixGroup,
   PermissionMatrixRow,
-} from "@alepha/ui/components/permission-matrix/permission-matrix";
+} from "@alepha/ui/table";
 
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 import { LoreRankBounds } from "@/api/security/LoreRankBounds.ts";

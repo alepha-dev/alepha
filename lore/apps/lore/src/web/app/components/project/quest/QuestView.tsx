@@ -1,6 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { Badge, Button, useDialog } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

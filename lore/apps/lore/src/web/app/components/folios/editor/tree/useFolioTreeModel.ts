@@ -1,12 +1,10 @@
+import { useDialog } from "@alepha/ui";
 import {
   type TreeDropPosition,
   resolveDrop,
-} from "@alepha/ui/components/tree-view/tree-model.ts";
-import {
   type TreeStateCommands,
   useTreeState,
-} from "@alepha/ui/components/tree-view/use-tree-state.ts";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+} from "@alepha/ui/tree";
 import { CryptoProvider } from "alepha/crypto";
 import {
   useAction,
