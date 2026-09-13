@@ -13,6 +13,7 @@ import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
 import { LoreProjectResolver } from "./services/LoreProjectResolver.ts";
+import { LoreRefusals } from "./services/LoreRefusals.ts";
 import { LoreTokenStore } from "./services/LoreTokenStore.ts";
 import { QualityReportReader } from "./services/QualityReportReader.ts";
 
@@ -83,6 +84,10 @@ export const AlephaLoreCli = $module({
     // `$client<QuestController>` / `$client<FolioAttachmentController>`.
     AttachmentUploader,
     LoreProjectResolver,
+    // Not a leak of the private workspace, but not an API either: how a
+    // `lore project`, `quest` or `folio` refusal exits is the binary's
+    // behaviour. Unexported so nobody builds on it.
+    LoreRefusals,
     QualityCommand,
     AppsCommand,
     ArtifactCommand,

@@ -751,6 +751,69 @@ describe("$command", () => {
 
       process.exitCode = 0;
     });
+
+    /**
+     * An exit code a script can branch on: 3 for "not authenticated", 4 for
+     * "forbidden", without parsing the sentence. An error that names none
+     * keeps exiting 1, which the cases above already pin.
+     */
+    test("should exit with the code the error carries", async () => {
+      class RefusingCommands {
+        refused = $command({
+          name: "refused",
+          handler: () => {
+            throw new CommandError("Not authenticated to lore.example.com.", {
+              exitCode: 3,
+            });
+          },
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["refused"], (alepha) =>
+        alepha.with(RefusingCommands),
+      );
+
+      expect(process.exitCode).toBe(3);
+      expect(
+        mockLogger.logs
+          .filter((l) => l.level === "ERROR")
+          .map((l) => l.message),
+      ).toEqual(["Not authenticated to lore.example.com."]);
+
+      process.exitCode = 0;
+    });
+
+    test("should not repeat a cause the message already quotes", async () => {
+      const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
+        alepha.with(
+          class QuotingCommands {
+            broken = $command({
+              name: "broken",
+              handler: () => {
+                throw new CommandError(
+                  "Project alepha: Your rank does not grant quest:create.",
+                  {
+                    cause: new AlephaError(
+                      "Your rank does not grant quest:create.",
+                    ),
+                    exitCode: 4,
+                  },
+                );
+              },
+            });
+          },
+        ),
+      );
+
+      expect(
+        mockLogger.logs
+          .filter((l) => l.level === "ERROR")
+          .map((l) => l.message),
+      ).toEqual(["Project alepha: Your rank does not grant quest:create."]);
+      expect(process.exitCode).toBe(4);
+
+      process.exitCode = 0;
+    });
   });
 
   describe("Help Message", () => {

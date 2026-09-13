@@ -1,4 +1,5 @@
 import { $env, $inject, AlephaError, z } from "alepha";
+import { CommandError } from "alepha/command";
 import type { ClientScope } from "alepha/server/links";
 
 import { LoreTokenStore } from "./LoreTokenStore.ts";
@@ -124,8 +125,12 @@ export class LoreClientService {
       return `Bearer ${token}`;
     }
 
-    throw new AlephaError(
+    // A `CommandError` carrying exit code 3, so the CLI reports it as a
+    // refusal rather than a crash, and a script can tell "not authenticated"
+    // from any other failure without reading the sentence.
+    throw new CommandError(
       `Not authenticated to ${this.hostname()}. Run \`lore login\` on a machine with a browser, or set LORE_API_KEY (which is what CI does).`,
+      { exitCode: 3 },
     );
   }
 

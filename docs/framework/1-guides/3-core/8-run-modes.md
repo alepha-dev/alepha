@@ -214,6 +214,46 @@ in a shape that changed with `LOG_FORMAT`: an environment variable the calling
 script does not control. `print` strips colour when stdout is not a TTY, so a
 coloured string is still safe to pipe.
 
+### Failing, and exit codes
+
+Throw a `CommandError` to fail a command. The CLI reports its message, and the
+message of its innermost `cause` when that says something the message does not,
+without a stack trace (`--verbose` keeps it), and exits non-zero. Any other
+error is a crash and keeps its stack.
+
+`exitCode` says why it failed, so a script can branch without parsing the
+sentence:
+
+```typescript check
+import { z } from "alepha";
+import { $command, CommandError } from "alepha/command";
+
+class SyncCommands {
+  sync = $command({
+    name: "sync",
+    env: z.object({ SYNC_TOKEN: z.text().optional() }),
+    handler: async ({ env }) => {
+      if (!env.SYNC_TOKEN) {
+        throw new CommandError("Not authenticated. Set SYNC_TOKEN.", {
+          exitCode: 3,
+        });
+      }
+    },
+  });
+}
+```
+
+| Code | Meaning                                                       |
+| ---- | ------------------------------------------------------------- |
+| 0    | Success                                                       |
+| 1    | Generic failure: the default when a `CommandError` names none |
+| 2    | Reserved: `alepha i18n check` found drift                     |
+| 3    | Not authenticated, or the credential was not accepted         |
+| 4    | Forbidden                                                     |
+
+A mistyped command, flag or argument is a `UsageError`, a `CommandError` of its
+own: the reason, then the help, then exit 1.
+
 ### Subcommands
 
 `children` turns a command into a parent:

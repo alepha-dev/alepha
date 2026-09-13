@@ -374,6 +374,11 @@ export class CliProvider {
    * So the default is the reason and nothing else, and the stack stays one
    * `--verbose` away. `CliProvider.run()` is untouched: a caller driving the
    * CLI from code still gets the error thrown.
+   *
+   * The exit code is the error's own `exitCode`, and 1 when it names none, so
+   * a caller can say WHY a command failed without a script parsing English.
+   * `2` is taken by `alepha i18n check`; see {@link CommandError} for the
+   * table.
    */
   protected reportFailure(error: CommandError): void {
     this.log.error(error.message);
@@ -383,13 +388,14 @@ export class CliProvider {
     // check that throws on its own (schema drift, say) it is the only sentence
     // that explains anything, and nothing else printed it.
     //
-    // A bare "Command exited with code N" is the exception: the tool streamed
+    // Two exceptions. A bare "Command exited with code N": the tool streamed
     // its own output and the exit code adds nothing the line above did not
-    // already say.
+    // already say. And a cause the message already quotes: a translated
+    // refusal carries the server's sentence inside its own.
     const cause = this.rootCause(error);
     if (
       cause?.message &&
-      cause.message !== error.message &&
+      !error.message.includes(cause.message) &&
       !/^Command exited with code \d+$/.test(cause.message)
     ) {
       this.log.error(cause.message);
@@ -398,7 +404,7 @@ export class CliProvider {
     this.log.debug("Task failure detail", error);
 
     if (typeof process === "object") {
-      process.exitCode = 1;
+      process.exitCode = error.exitCode ?? 1;
     }
   }
 
