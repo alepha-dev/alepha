@@ -23,6 +23,7 @@ import type {
   JsonRpcError,
   JsonRpcRequest,
   JsonRpcResponse,
+  McpCacheHints,
   McpCapabilities,
   McpClientInfo,
   McpCompletionArgument,
@@ -131,6 +132,31 @@ export class McpServerProvider {
    * ```
    */
   public protocolVersions: string[] = [...SUPPORTED_PROTOCOL_VERSIONS];
+
+  /**
+   * Caching hints on the `tools/list`, `prompts/list`, `resources/list` and
+   * `resources/templates/list` results sent to a modern client (spec
+   * 2026-07-28 `ttlMs` / `cacheScope`). Every page of a list carries the same
+   * hints.
+   *
+   * `"public"` because the registries are filled once at start and every
+   * caller gets the same list. Five minutes bounds how long a client keeps a
+   * list from before a deploy: there is no `listChanged` notification to
+   * invalidate it sooner. A server that filters a list per caller (by
+   * overriding a list handler) must switch this to `"private"`, or a shared
+   * cache may hand one user's list to another.
+   */
+  public listCache: McpCacheHints = { ttlMs: 300_000, cacheScope: "public" };
+
+  /**
+   * Caching hints on the `server/discover` result (spec 2026-07-28). Public
+   * and five minutes, for the same reasons as {@link listCache}: versions and
+   * capabilities are the same for every caller and change only with a deploy.
+   */
+  public discoverCache: McpCacheHints = {
+    ttlMs: 300_000,
+    cacheScope: "public",
+  };
 
   // -----------------------------------------------------------------------------------------------------------------
   // Registration Methods
@@ -448,7 +474,10 @@ export class McpServerProvider {
       if (controller.signal.aborted) {
         return null;
       }
-      return createResponse(id, result);
+      return createResponse(
+        id,
+        modern ? this.toModernResult(request, result) : result,
+      );
     } catch (error) {
       if (controller.signal.aborted) {
         this.log.debug("MCP request aborted by client", { id });
@@ -482,6 +511,95 @@ export class McpServerProvider {
     } finally {
       this.inFlight.delete(key);
     }
+  }
+
+  /**
+   * Shape a handler's result for a modern request (spec 2026-07-28): the one
+   * place the result envelope is decided, so handlers stay era-blind.
+   *
+   * - `resultType: "complete"` on every result, a tool's `isError` result
+   *   included (it is a result, not a JSON-RPC error; errors carry none).
+   * - `ttlMs` and `cacheScope` on the six cacheable results.
+   * - `_meta["io.modelcontextprotocol/serverInfo"]`, since there is no
+   *   `initialize` result left to carry the server's identity. Merged into a
+   *   `_meta` the result already has (a raw tool result may bring one), never
+   *   replacing it.
+   *
+   * Never applied to a legacy request, whose result stays exactly what it
+   * always was.
+   */
+  protected toModernResult(
+    request: JsonRpcRequest,
+    result: unknown,
+  ): Record<string, unknown> {
+    const object = this.isPlainObject(result) ? result : {};
+    const meta = this.isPlainObject(object._meta) ? object._meta : {};
+    return {
+      ...object,
+      resultType: "complete",
+      ...this.cacheHintsFor(request),
+      _meta: { ...meta, "io.modelcontextprotocol/serverInfo": this.serverInfo },
+    };
+  }
+
+  /**
+   * The caching hints a modern result of this request carries, or `undefined`
+   * when its method is not cacheable.
+   */
+  protected cacheHintsFor(request: JsonRpcRequest): McpCacheHints | undefined {
+    switch (request.method) {
+      case "server/discover":
+        return this.normalizeCacheHints(this.discoverCache);
+      case "tools/list":
+      case "prompts/list":
+      case "resources/list":
+      case "resources/templates/list":
+        return this.normalizeCacheHints(this.listCache);
+      case "resources/read": {
+        const uri = request.params?.uri;
+        const hints =
+          typeof uri === "string"
+            ? this.findReadable(uri)?.readCache
+            : undefined;
+        return this.normalizeCacheHints(
+          hints ?? { ttlMs: 0, cacheScope: "private" },
+        );
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Hints as the spec requires them on the wire: an integer `ttlMs >= 0`, and
+   * a scope that is `"private"` unless it says `"public"`. A typo fails closed.
+   */
+  protected normalizeCacheHints(hints: McpCacheHints): McpCacheHints {
+    const ttl = Number(hints.ttlMs);
+    return {
+      ttlMs: Number.isFinite(ttl) && ttl > 0 ? Math.floor(ttl) : 0,
+      cacheScope: hints.cacheScope === "public" ? "public" : "private",
+    };
+  }
+
+  /**
+   * The primitive a `resources/read` of this URI is served by: the concrete
+   * resource when there is one, otherwise the first template that matches.
+   * The same precedence {@link handleResourcesRead} applies.
+   */
+  protected findReadable(
+    uri: string,
+  ): ResourcePrimitive | ResourceTemplatePrimitive<any> | undefined {
+    const resource = this.resources.get(uri);
+    if (resource) {
+      return resource;
+    }
+    for (const template of this.resourceTemplates.values()) {
+      if (template.match(uri)) {
+        return template;
+      }
+    }
+    return undefined;
   }
 
   /**

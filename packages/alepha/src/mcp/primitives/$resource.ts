@@ -2,6 +2,7 @@ import { $inject, createPrimitive, KIND, Primitive } from "alepha";
 
 import type {
   McpAnnotations,
+  McpCacheHints,
   McpContext,
   McpIcon,
   McpResourceDescriptor,
@@ -127,6 +128,21 @@ export interface ResourcePrimitiveOptions {
   _meta?: Record<string, unknown>;
 
   /**
+   * Caching hints for this resource's `resources/read` result, sent to modern
+   * clients only (spec 2026-07-28 `ttlMs` / `cacheScope`; a legacy client never
+   * sees them).
+   *
+   * Defaults to `{ ttlMs: 0, cacheScope: "private" }`: resource content
+   * usually depends on the caller and can change at any moment. Raise `ttlMs`
+   * for content that is stable. Set `cacheScope: "public"` only when the
+   * content is identical for every caller: a shared cache may then serve it
+   * across users and access tokens.
+   *
+   * @example { ttlMs: 60_000 }
+   */
+  cache?: Partial<McpCacheHints>;
+
+  /**
    * Handler function that returns the resource content.
    *
    * Called when the resource is read. Can return text or binary content.
@@ -167,6 +183,17 @@ export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
    */
   public get mimeType(): string {
     return this.options.mimeType ?? "text/plain";
+  }
+
+  /**
+   * The caching hints a modern `resources/read` of this resource carries:
+   * {@link ResourcePrimitiveOptions.cache} over `0` / `"private"`.
+   */
+  public get readCache(): McpCacheHints {
+    return {
+      ttlMs: this.options.cache?.ttlMs ?? 0,
+      cacheScope: this.options.cache?.cacheScope ?? "private",
+    };
   }
 
   protected onInit(): void {

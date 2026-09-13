@@ -57,6 +57,8 @@ export type {
   JsonRpcRequest,
   JsonRpcResponse,
   McpAnnotations,
+  McpCacheHints,
+  McpCacheScope,
   // MCP protocol types
   McpCapabilities,
   McpClientInfo,

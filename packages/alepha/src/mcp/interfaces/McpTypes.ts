@@ -151,6 +151,27 @@ export interface McpRequestMeta {
 }
 
 /**
+ * Who may cache a result (spec 2026-07-28): `"public"` when it holds nothing
+ * specific to the caller, so any client or shared cache may serve it to
+ * anyone; `"private"` when it may only be reused for the same authorization
+ * context.
+ */
+export type McpCacheScope = "public" | "private";
+
+/**
+ * The caching hints a modern cacheable result carries (spec 2026-07-28,
+ * `CacheableResult`).
+ */
+export interface McpCacheHints {
+  /**
+   * How long, in milliseconds, a client may consider the result fresh. `0`
+   * means immediately stale.
+   */
+  ttlMs: number;
+  cacheScope: McpCacheScope;
+}
+
+/**
  * The result of `server/discover` (spec 2026-07-28): the versions this server
  * serves, modern first, and its capabilities.
  */

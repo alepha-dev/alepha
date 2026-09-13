@@ -13,6 +13,7 @@ import type {
   CompletionHandler,
   CompletionHandlerArgs,
   McpAnnotations,
+  McpCacheHints,
   McpContext,
   McpIcon,
   McpResourceTemplateDescriptor,
@@ -122,6 +123,21 @@ export interface ResourceTemplatePrimitiveOptions<T extends ZObject> {
   _meta?: Record<string, unknown>;
 
   /**
+   * Caching hints for a `resources/read` this template serves, sent to modern
+   * clients only (spec 2026-07-28 `ttlMs` / `cacheScope`; a legacy client never
+   * sees them).
+   *
+   * Defaults to `{ ttlMs: 0, cacheScope: "private" }`: resource content
+   * usually depends on the caller and can change at any moment. Raise `ttlMs`
+   * for content that is stable. Set `cacheScope: "public"` only when the
+   * content is identical for every caller: a shared cache may then serve it
+   * across users and access tokens.
+   *
+   * @example { ttlMs: 60_000 }
+   */
+  cache?: Partial<McpCacheHints>;
+
+  /**
    * Zod schema validating the variables extracted from a concrete URI.
    *
    * Every extracted value starts life as a string, so this is where `id`
@@ -191,6 +207,18 @@ export class ResourceTemplatePrimitive<T extends ZObject> extends Primitive<
 
   public get mimeType(): string {
     return this.options.mimeType ?? "text/plain";
+  }
+
+  /**
+   * The caching hints a modern `resources/read` served by this template
+   * carries: {@link ResourceTemplatePrimitiveOptions.cache} over `0` /
+   * `"private"`.
+   */
+  public get readCache(): McpCacheHints {
+    return {
+      ttlMs: this.options.cache?.ttlMs ?? 0,
+      cacheScope: this.options.cache?.cacheScope ?? "private",
+    };
   }
 
   /**
