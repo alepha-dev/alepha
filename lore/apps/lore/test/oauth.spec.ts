@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { Alepha, z } from "alepha";
-import { ApiKeyController } from "alepha/api/keys";
 import { oauthOptions } from "alepha/api/oauth";
 import {
   AdminUserController,
@@ -17,6 +16,7 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
+import { AppSecurityProvider } from "../src/api/providers/AppSecurityProvider.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
 /**
@@ -35,7 +35,7 @@ interface TestContext {
   alepha: Alepha;
   baseUrl: string;
   adminUserController: AdminUserController;
-  apiKeyController: ApiKeyController;
+  security: AppSecurityProvider;
   fakeProvider: FakeProvider;
 }
 
@@ -75,7 +75,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     baseUrl: server.hostname,
     adminUserController: alepha.inject(AdminUserController),
-    apiKeyController: alepha.inject(ApiKeyController),
+    security: alepha.inject(AppSecurityProvider),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -91,15 +91,18 @@ async function createTestUser(
   return { id: response.data.id, roles: response.data.roles };
 }
 
-async function createApiKey(
+/**
+ * A signed-in session's access token, which is what approves a consent.
+ *
+ * ⚠️ It was an API key until #Q2297: a key is a machine credential, not a
+ * session (D10), and the consent POST now treats it as nobody signed in.
+ */
+async function createSessionToken(
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<string> {
-  const response = await ctx.apiKeyController.createApiKey.fetch(
-    { body: { name: "OAuth Test Key" } },
-    { user },
-  );
-  return response.data.token;
+  const tokens = await ctx.security.realm.createToken(user);
+  return tokens.access_token;
 }
 
 /**
@@ -136,7 +139,7 @@ function pkce(): { verifier: string; challenge: string } {
  */
 async function authorize(
   baseUrl: string,
-  apiKey: string,
+  sessionToken: string,
   params: {
     clientId: string;
     redirectUri: string;
@@ -148,7 +151,7 @@ async function authorize(
     redirect: "manual",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
-      authorization: `Bearer ${apiKey}`,
+      authorization: `Bearer ${sessionToken}`,
     },
     body: new URLSearchParams({
       decision: "allow",
@@ -264,10 +267,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -315,10 +318,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -367,11 +370,11 @@ describe("OAuth 2.1 authorization server", () => {
     expect(second).toBe(first);
 
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
 
     for (const _ of [1, 2]) {
       const { verifier, challenge } = pkce();
-      const code = await authorize(ctx.baseUrl, apiKey, {
+      const code = await authorize(ctx.baseUrl, sessionToken, {
         clientId: first,
         redirectUri,
         challenge,
@@ -413,10 +416,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -451,10 +454,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -482,10 +485,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -510,10 +513,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
