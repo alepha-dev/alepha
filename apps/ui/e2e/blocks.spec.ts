@@ -435,6 +435,62 @@ test.describe("blocks", () => {
   });
 
   /**
+   * ⚠️ **The calendar is a chunk of its own, and this is the only place that
+   * can see it.** `Control` dispatches on the schema at runtime, so every form
+   * used to ship react-day-picker and date-fns whether it had a date field or
+   * not (#Q2185). The date controls now render `LazyCalendar` inside their
+   * popover and preload it when the pointer reaches a trigger.
+   *
+   * A chunk is recognised by its CONTENT, not its name: production chunk names
+   * are hashes, and react-day-picker's `rdp-` class prefix is in exactly one of
+   * them. jsdom has no chunks at all, so no unit spec can claim this.
+   */
+  test("the calendar is downloaded when a date trigger is touched, not before", async ({
+    page,
+  }) => {
+    const calendarChunks: string[] = [];
+    const reads: Promise<void>[] = [];
+    page.on("response", (response) => {
+      if (!new URL(response.url()).pathname.endsWith(".js")) return;
+      const read = async () => {
+        const body = await response.text().catch(() => "");
+        if (body.includes("rdp-")) calendarChunks.push(response.url());
+      };
+      reads.push(read());
+    });
+
+    await page.goto("/blocks/control/date");
+    const trigger = page.locator('[data-slot="date-trigger"]').first();
+    await expect(trigger).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await Promise.all(reads);
+
+    // Guard the guard: the page did download its own JavaScript, so an empty
+    // list below means the calendar was left out, not that nothing was read.
+    expect(reads.length).toBeGreaterThan(0);
+    expect(calendarChunks).toEqual([]);
+
+    await trigger.hover();
+    await expect
+      .poll(async () => {
+        await Promise.all(reads);
+        return calendarChunks.length;
+      })
+      .toBe(1);
+
+    await trigger.click();
+    const day = page
+      .locator('[data-slot="popover-content"] [role="gridcell"] button')
+      .filter({ hasText: /^15$/ })
+      .first();
+    await day.click();
+
+    // A date-only field closes on the pick and shows the day it took.
+    await expect(trigger).not.toContainText("Pick a date");
+    await expect(trigger).toContainText("15");
+  });
+
+  /**
    * ⚠️ **A LAYOUT assertion, and it has to live here.** The clear `x` is
    * positioned, so the only thing that can catch it in the wrong place is a
    * browser that lays the page out. The kit's own `*.browser.spec.tsx` files

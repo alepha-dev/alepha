@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 import type { DayPickerProps } from "react-day-picker";
 
-import { Calendar } from "../calendar/Calendar.tsx";
+import { LazyCalendar, preloadCalendar } from "../calendar/LazyCalendar.tsx";
 import { Input } from "../core/Input.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
 import { cn } from "../core/utils.ts";
@@ -253,6 +253,11 @@ const DatePopover = (props: DatePopoverProps) => {
           // field to begin with, so there is nothing left to undo.
           data-slot="date-trigger"
           disabled={props.disabled}
+          // The calendar is a chunk of its own (`LazyCalendar`). Asking for it
+          // as the pointer arrives or focus lands means the click that opens
+          // the popover usually finds it already downloaded.
+          onPointerEnter={preloadCalendar}
+          onFocus={preloadCalendar}
           className={cn(
             TRIGGER_CLASSES,
             size.trigger,
@@ -298,7 +303,7 @@ const DatePopover = (props: DatePopoverProps) => {
         )}
       </div>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
+        <LazyCalendar
           mode="single"
           selected={date}
           onSelect={handleDate}

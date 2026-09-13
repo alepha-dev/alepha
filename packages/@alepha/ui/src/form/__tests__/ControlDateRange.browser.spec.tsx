@@ -147,15 +147,23 @@ describe("Control (date range)", () => {
      * ⚠️ The day BUTTON, not the cell. react-day-picker renders a `gridcell`
      * wrapping a button, and only the button carries the handler - a click on
      * the cell reaches nothing and the case passes for the wrong reason.
+     *
+     * ⚠️ Five seconds, not `waitFor`'s default one. The calendar is a lazy
+     * chunk (`LazyCalendar`), so the first open of the file imports
+     * react-day-picker and date-fns cold, which Node alone takes about 0.9 s to
+     * do on a fast machine. The trigger itself still renders synchronously.
      */
     const days = async () =>
-      await waitFor(() => {
-        const found = [
-          ...document.querySelectorAll('[role="gridcell"] button'),
-        ] as HTMLElement[];
-        expect(found.length).toBeGreaterThan(1);
-        return found;
-      });
+      await waitFor(
+        () => {
+          const found = [
+            ...document.querySelectorAll('[role="gridcell"] button'),
+          ] as HTMLElement[];
+          expect(found.length).toBeGreaterThan(1);
+          return found;
+        },
+        { timeout: 5000 },
+      );
 
     it("writes nothing on the first click, and keeps the popover open", async () => {
       await mount();
