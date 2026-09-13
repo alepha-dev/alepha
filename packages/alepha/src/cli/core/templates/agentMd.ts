@@ -14,11 +14,11 @@ export const agentMd = (opts: { saas?: boolean } = {}): string => {
 This project uses the \`saas\` preset, so three routers from \`@alepha/ui\` are
 registered in \`src/web/index.ts\` and mount pages of their own:
 
-| Route        | Router          | Source                                         |
-| ------------ | --------------- | ---------------------------------------------- |
-| \`/auth/*\`    | \`AuthRouter\`    | \`@alepha/ui/components/auth/auth-router\`       |
-| \`/account/*\` | \`AccountRouter\` | \`@alepha/ui/components/account/account-router\` |
-| \`/admin/*\`   | \`AdminRouter\`   | \`@alepha/ui/components/admin/admin-router\`     |
+| Route        | Router          | Source                 |
+| ------------ | --------------- | ---------------------- |
+| \`/auth/*\`    | \`AuthRouter\`    | \`@alepha/ui/auth\`      |
+| \`/account/*\` | \`AccountRouter\` | \`@alepha/ui/account\`   |
+| \`/admin/*\`   | \`AdminRouter\`   | \`@alepha/ui/admin\`     |
 
 **These pages are not in \`src/web/\`.** Don't write your own login or admin
 screen — extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page

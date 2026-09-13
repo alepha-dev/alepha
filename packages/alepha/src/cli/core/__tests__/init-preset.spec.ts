@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -156,7 +156,7 @@ describe("alepha init --preset", () => {
       expect(web).toContain("AuthRouter");
       expect(web).toContain("AccountRouter");
       expect(web).toContain("AdminRouter");
-      expect(web).toContain('@alepha/ui/components/account/account-router"');
+      expect(web).toContain('from "@alepha/ui/account"');
     });
 
     it("should import the react modules the routers depend on", async () => {
@@ -228,40 +228,54 @@ describe("alepha init --preset", () => {
     /**
      * The templates are strings, so every other test here proves only that we
      * wrote the specifier we meant to write — not that anything answers to it.
-     * A component renamed inside `@alepha/ui` would leave all of them green
-     * and ship a preset whose generated project does not compile.
+     * A router moved or dropped from its module inside `@alepha/ui` would
+     * leave all of them green and ship a preset whose generated project does
+     * not compile.
+     *
+     * So each emitted import is resolved the way a consumer resolves it:
+     * through `@alepha/ui`'s exports map, to the module barrel it names, which
+     * must export the imported router. Never by mapping the specifier onto a
+     * source path, which is the coupling to the package's file layout that
+     * the modules exist to remove.
      *
      * Resolving against the workspace rather than `node_modules` is deliberate:
-     * the published package trails main (`@alepha/ui@0.25.1` predates both the
-     * account module and `admin-router`), and the preset pins
-     * `@alepha/ui@^<same version as alepha>`, so what a scaffolded project
-     * actually gets is whatever this source tree publishes next. That is the
-     * tree worth asserting against.
+     * the preset pins `@alepha/ui@^<same version as alepha>`, so what a
+     * scaffolded project actually gets is whatever this source tree publishes
+     * next. The published tarball's own map is exercised by the e2e-cli saas
+     * case.
      */
-    it("should emit @alepha/ui import paths that exist in the workspace", async () => {
+    it("should emit @alepha/ui imports its exports map resolves", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
 
       const web = await readFile(fs, "/project/src/web/index.ts");
-      const specifiers = [
-        ...web.matchAll(/from "@alepha\/ui\/(components\/[^"]+)"/g),
-      ].map((match) => match[1]);
+      const imports = [
+        ...web.matchAll(/import \{ (\w+) \} from "@alepha\/ui\/([^"]+)"/g),
+      ].map((match) => ({ name: match[1], subpath: `./${match[2]}` }));
 
       // Guards the guard: a template that stopped importing from @alepha/ui
       // would otherwise satisfy an empty loop.
-      expect(specifiers).toHaveLength(3);
+      expect(imports).toHaveLength(3);
 
-      const uiSrc = resolve(
+      const uiRoot = resolve(
         dirname(fileURLToPath(import.meta.url)),
-        "../../../../../@alepha/ui/src",
+        "../../../../../@alepha/ui",
       );
-      for (const specifier of specifiers) {
+      const manifest = JSON.parse(
+        readFileSync(join(uiRoot, "package.json"), "utf8"),
+      ) as { exports: Record<string, string> };
+
+      for (const { name, subpath } of imports) {
+        const target = manifest.exports[subpath];
+        expect(target, `@alepha/ui exports no ${subpath}`).toBeTypeOf("string");
+        const barrel = join(uiRoot, target as string);
+        expect(existsSync(barrel), `${subpath} points at ${target}`).toBe(true);
         expect(
-          existsSync(join(uiSrc, `${specifier}.tsx`)),
-          `${specifier} does not exist in @alepha/ui`,
-        ).toBe(true);
+          readFileSync(barrel, "utf8"),
+          `@alepha/ui/${subpath.slice(2)} does not export ${name}`,
+        ).toMatch(new RegExp(`\\b${name}\\b`));
       }
     });
 
