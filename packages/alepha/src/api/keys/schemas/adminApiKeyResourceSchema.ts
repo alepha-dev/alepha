@@ -17,6 +17,7 @@ export const adminApiKeyResourceSchema = z.object({
   lastUsedIp: z.string().optional(),
   expiresAt: z.datetime().optional(),
   revokedAt: z.datetime().optional(),
+  rotatedAt: z.datetime().optional(),
   usageCount: z.integer(),
   status: apiKeyStatusSchema,
 });

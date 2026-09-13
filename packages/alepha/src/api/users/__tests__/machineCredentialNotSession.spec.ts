@@ -112,6 +112,7 @@ const setup = async () => {
 const SESSION_ONLY_ROUTES: Array<[string, string, unknown?]> = [
   ["POST", "/api/api-keys", { name: "minted by a key" }],
   ["DELETE", `/api/api-keys/${randomUUID()}`],
+  ["POST", `/api/api-keys/${randomUUID()}/rotate`, {}],
   [
     "POST",
     "/api/users/me/password",

@@ -284,10 +284,7 @@ export class ApiKeyService {
   }): Promise<{ apiKey: ApiKeyEntity; token: string }> {
     const expiresAt = this.resolveExpiresAt(options);
     const prefix = options.prefix ?? "ak";
-    const random = randomBytes(24).toString("base64url");
-    const token = `${prefix}_${random}`;
-    const hash = this.hashToken(token);
-    const suffix = token.slice(-8);
+    const { token, hash, suffix } = this.mintToken(prefix);
 
     const apiKey = await this.repo.create({
       userId: options.userId,
@@ -447,6 +444,7 @@ export class ApiKeyService {
       lastUsedIp: apiKey.lastUsedIp,
       expiresAt: apiKey.expiresAt,
       revokedAt: apiKey.revokedAt,
+      rotatedAt: apiKey.rotatedAt,
       usageCount: apiKey.usageCount,
       status: this.statusOf(apiKey),
     };
@@ -607,6 +605,72 @@ export class ApiKeyService {
       apiKeyId: id,
       userId,
     });
+  }
+
+  /**
+   * Replace a key's secret, in place. Only the owner can rotate their own
+   * keys, and only from a signed-in session (`sessionOnly` on the route).
+   *
+   * The renewal path for an expired key: a fresh secret, not a longer life
+   * for the old one, which is exactly what an expiry exists to prevent. The
+   * row keeps its id, name, description and roles; the token, its expiry
+   * (`expiresIn`, else `defaultExpiresIn`, checked by
+   * {@link resolveExpiresAt} as on creation) and its usage history start
+   * again, since the old history describes a secret that no longer exists.
+   *
+   * A revoked key cannot be rotated: revocation is final, and it freed the
+   * key's name for another live key. An expired key can.
+   *
+   * Returns the updated key and the plain token, shown once.
+   */
+  public async rotate(
+    id: string,
+    userId: string,
+    options: { expiresIn?: ApiKeyExpiresIn } = {},
+  ): Promise<{ apiKey: ApiKeyEntity; token: string }> {
+    const apiKey = await this.repo.getById(id);
+
+    if (apiKey.userId !== userId) {
+      throw new ForbiddenError("Not your API key");
+    }
+
+    if (apiKey.revokedAt) {
+      throw new BadRequestError("A revoked API key cannot be rotated");
+    }
+
+    const expiresAt = this.resolveExpiresAt({
+      expiresIn: options.expiresIn ?? this.parameters.get("defaultExpiresIn"),
+    });
+    const { token, hash, suffix } = this.mintToken(apiKey.tokenPrefix);
+
+    // Bracketed exactly like a revocation, on the OLD hash: a validation that
+    // read the pre-rotation row before this write must not cache it after,
+    // or the rotated-away token keeps authenticating for the cache's TTL.
+    this.markRevocation();
+    await this.validationCache.invalidate(apiKey.tokenHash);
+
+    const updated = await this.repo.updateById(id, {
+      tokenHash: hash,
+      tokenSuffix: suffix,
+      expiresAt: expiresAt?.toISOString() ?? sql`NULL`,
+      rotatedAt: this.dateTimeProvider.nowISOString(),
+      // The history described the old secret. A validation of the old token
+      // already in flight may still land its deferred usage write after this
+      // reset and leave a count of 1: accepted, the counter is approximate.
+      lastUsedAt: sql`NULL`,
+      lastUsedIp: sql`NULL`,
+      usageCount: 0,
+    });
+
+    this.markRevocation();
+    await this.validationCache.invalidate(apiKey.tokenHash);
+
+    // Or the fresh secret inherits the old one's usage write suppression.
+    this.usageScheduledAt.delete(id);
+
+    this.log.info("API key rotated", { apiKeyId: id, userId });
+
+    return { apiKey: updated, token };
   }
 
   // -------------------------------------------------------------------------
@@ -882,6 +946,20 @@ export class ApiKeyService {
       lastUsedIp: ipFits ? ip : undefined,
       usageCount: sql`${this.repo.table.usageCount} + 1`,
     });
+  }
+
+  /**
+   * A new plain token under `prefix`, with the hash stored in its place and
+   * the suffix shown to identify it.
+   */
+  protected mintToken(prefix: string): {
+    token: string;
+    hash: string;
+    suffix: string;
+  } {
+    const random = randomBytes(24).toString("base64url");
+    const token = `${prefix}_${random}`;
+    return { token, hash: this.hashToken(token), suffix: token.slice(-8) };
   }
 
   /**

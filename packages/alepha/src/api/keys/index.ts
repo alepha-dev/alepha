@@ -24,6 +24,8 @@ export * from "./schemas/listApiKeyItemSchema.ts";
 export * from "./schemas/listApiKeyResponseSchema.ts";
 export * from "./schemas/revokeApiKeyParamsSchema.ts";
 export * from "./schemas/revokeApiKeyResponseSchema.ts";
+export * from "./schemas/rotateApiKeyBodySchema.ts";
+export * from "./schemas/rotateApiKeyParamsSchema.ts";
 export * from "./services/ApiKeyService.ts";
 
 /**

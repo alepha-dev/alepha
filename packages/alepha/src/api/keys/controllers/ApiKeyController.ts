@@ -7,6 +7,8 @@ import { createApiKeyResponseSchema } from "../schemas/createApiKeyResponseSchem
 import { listApiKeyResponseSchema } from "../schemas/listApiKeyResponseSchema.ts";
 import { revokeApiKeyParamsSchema } from "../schemas/revokeApiKeyParamsSchema.ts";
 import { revokeApiKeyResponseSchema } from "../schemas/revokeApiKeyResponseSchema.ts";
+import { rotateApiKeyBodySchema } from "../schemas/rotateApiKeyBodySchema.ts";
+import { rotateApiKeyParamsSchema } from "../schemas/rotateApiKeyParamsSchema.ts";
 import { ApiKeyService } from "../services/ApiKeyService.ts";
 
 /**
@@ -73,6 +75,33 @@ export class ApiKeyController {
       response: listApiKeyResponseSchema,
     },
     handler: (request) => this.apiKeyService.list(request.user.id),
+  });
+
+  /**
+   * Rotate one of your API keys: a new secret on the same row, returned once.
+   * The old token stops authenticating immediately.
+   *
+   * Owner only, and only from a signed-in session: a key cannot rotate a key.
+   */
+  public readonly rotateMyApiKey = $action({
+    method: "POST",
+    path: `${this.url}/:id/rotate`,
+    group: this.group,
+    description: "Rotate an API key",
+    use: [$secure({ permissions: ["api-key:create"], sessionOnly: true })],
+    schema: {
+      params: rotateApiKeyParamsSchema,
+      body: rotateApiKeyBodySchema,
+      response: createApiKeyResponseSchema,
+    },
+    handler: async (request) => {
+      const { apiKey, token } = await this.apiKeyService.rotate(
+        request.params.id,
+        request.user.id,
+        { expiresIn: request.body.expiresIn },
+      );
+      return { ...this.apiKeyService.toView(apiKey), token };
+    },
   });
 
   /**

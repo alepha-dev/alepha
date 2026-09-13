@@ -50,6 +50,13 @@ export const apiKeyEntity = $entity({
     // Lifecycle
     expiresAt: z.datetime().optional(),
     revokedAt: z.datetime().optional(),
+
+    /**
+     * When the key's secret was last replaced by a rotation. The row, its
+     * name and its scope stay; the token, its expiry and its usage history
+     * start again.
+     */
+    rotatedAt: z.datetime().optional(),
   }),
   indexes: [
     // Unique among keys that are not revoked: revoking a key frees its name
