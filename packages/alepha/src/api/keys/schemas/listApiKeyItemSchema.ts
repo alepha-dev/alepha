@@ -1,12 +1,16 @@
 import { type Infer, z } from "alepha";
 
-import { adminApiKeyOwnerSchema } from "./adminApiKeyOwnerSchema.ts";
 import { apiKeyStatusSchema } from "./apiKeyStatusSchema.ts";
 
-export const adminApiKeyResourceSchema = z.object({
+/**
+ * One of the caller's own keys, as `GET /api-keys` lists it.
+ *
+ * Expired and revoked keys are listed too, with their `status`: a key that
+ * stopped working is the answer to "why did CI stop", so the list must be
+ * able to show it.
+ */
+export const listApiKeyItemSchema = z.object({
   id: z.uuid(),
-  userId: z.uuid(),
-  user: adminApiKeyOwnerSchema.optional(),
   name: z.string(),
   description: z.string().optional(),
   tokenPrefix: z.string(),
@@ -21,4 +25,4 @@ export const adminApiKeyResourceSchema = z.object({
   status: apiKeyStatusSchema,
 });
 
-export type AdminApiKeyResource = Infer<typeof adminApiKeyResourceSchema>;
+export type ListApiKeyItem = Infer<typeof listApiKeyItemSchema>;

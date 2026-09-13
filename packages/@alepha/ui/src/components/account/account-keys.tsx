@@ -94,7 +94,9 @@ const AccountKeys = (props: AccountKeysProps) => {
     }
     try {
       await api.revokeMyApiKey({ params: { id: key.id } });
-      setKeys((prev) => prev.filter((it) => it.id !== key.id));
+      // Re-read rather than drop the row: a revoked key stays listed, with
+      // its status, until the retention window purges it.
+      setKeys(await (api.listApiKeys() as Promise<any>));
     } catch (error: any) {
       toaster.show(
         error?.message ??
@@ -122,36 +124,53 @@ const AccountKeys = (props: AccountKeysProps) => {
           default: "Keys act as you. Revoke any you no longer recognise.",
         })}
       >
-        {keys.map((key) => (
-          <SettingsRow
-            key={key.id}
-            label={key.name}
-            description={
-              tr("account.keys.createdAt", {
-                default: "…$1 · created $2",
-                args: [key.tokenSuffix, dt.of(key.createdAt).fromNow()],
-              }) +
-              (key.lastUsedAt
-                ? tr("account.keys.lastUsedAt", {
-                    default: " · last used $1",
-                    args: [dt.of(key.lastUsedAt).fromNow()],
-                  })
-                : tr("account.keys.neverUsed", { default: " · never used" }))
-            }
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => revoke(key)}
-              aria-label={tr("account.keys.revokeAria", {
-                default: "Revoke $1",
-                args: [key.name],
-              })}
+        {keys.map((key) => {
+          // Expired and revoked keys are listed too: the key that stopped
+          // working is the one a user comes here looking for. A dead key is
+          // dimmed and offers nothing to click, since revoking it again would
+          // do nothing.
+          const dead = key.status === "revoked" || key.status === "expired";
+          return (
+            <SettingsRow
+              key={key.id}
+              label={key.name}
+              className={dead ? "opacity-60" : undefined}
+              description={
+                tr("account.keys.createdAt", {
+                  default: "…$1 · created $2",
+                  args: [key.tokenSuffix, dt.of(key.createdAt).fromNow()],
+                }) +
+                (key.lastUsedAt
+                  ? tr("account.keys.lastUsedAt", {
+                      default: " · last used $1",
+                      args: [dt.of(key.lastUsedAt).fromNow()],
+                    })
+                  : tr("account.keys.neverUsed", {
+                      default: " · never used",
+                    })) +
+                (key.status === "revoked"
+                  ? tr("account.keys.revoked", { default: " · revoked" })
+                  : key.status === "expired"
+                    ? tr("account.keys.expired", { default: " · expired" })
+                    : "")
+              }
             >
-              <Trash2 className="size-4" />
-            </Button>
-          </SettingsRow>
-        ))}
+              {dead ? null : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => revoke(key)}
+                  aria-label={tr("account.keys.revokeAria", {
+                    default: "Revoke $1",
+                    args: [key.name],
+                  })}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
+            </SettingsRow>
+          );
+        })}
 
         <SettingsRow
           label={tr("account.keys.create", { default: "Create a key" })}

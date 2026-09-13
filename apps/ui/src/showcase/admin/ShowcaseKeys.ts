@@ -87,6 +87,7 @@ export class ShowcaseKeys {
       expiresAt: expiresIn === undefined ? undefined : this.at(expiresIn),
       revokedAt: revoked ? this.at(48) : undefined,
       usageCount: revoked ? 3 : [18422, 40311, 96, 0][i],
+      status: (["active", "active", "expiring", "revoked"] as const)[i],
     })) as AdminApiKeyResource[];
   }
 

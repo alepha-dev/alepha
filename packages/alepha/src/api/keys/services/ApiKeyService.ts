@@ -5,7 +5,13 @@ import { BackgroundTaskProvider } from "alepha/background";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, type Page, RepositoryProvider, sql } from "alepha/orm";
+import {
+  $repository,
+  type Page,
+  type PgQueryWhere,
+  RepositoryProvider,
+  sql,
+} from "alepha/orm";
 import type { IssuerResolver, UserInfo } from "alepha/security";
 import {
   BadRequestError,
@@ -15,7 +21,9 @@ import {
 
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
 import { ApiKeyParameters } from "../parameters/ApiKeyParameters.ts";
+import type { AdminApiKeyResource } from "../schemas/adminApiKeyResourceSchema.ts";
 import type { ApiKeyExpiresIn } from "../schemas/apiKeyExpiresInSchema.ts";
+import type { ApiKeyStatus } from "../schemas/apiKeyStatusSchema.ts";
 
 export class ApiKeyService {
   protected readonly alepha = $inject(Alepha);
@@ -302,16 +310,146 @@ export class ApiKeyService {
   }
 
   /**
-   * List all non-revoked API keys for a user.
+   * List every API key a user has, newest first, as {@link toView} shapes
+   * them.
+   *
+   * ⚠️ Expired and revoked keys are included, each with its `status`, until
+   * the purge job removes them. This used to return live keys only, so the key
+   * that stopped working, the one a user comes looking for, could never be
+   * shown. Anything that read the length of this list as a count of usable
+   * keys now counts dead ones too: filter on `status`.
    */
-  public async list(userId: string): Promise<ApiKeyEntity[]> {
-    return this.repo.findMany({
-      where: {
-        userId: { eq: userId },
-        revokedAt: { isNull: true },
-      },
+  public async list(userId: string): Promise<AdminApiKeyResource[]> {
+    const rows = await this.repo.findMany({
+      where: { userId: { eq: userId } },
       orderBy: { column: "createdAt", direction: "desc" },
     });
+    return rows.map((row) => this.toView(row));
+  }
+
+  // -------------------------------------------------------------------------
+  // Status
+  // -------------------------------------------------------------------------
+
+  /**
+   * Where a key is in its life. Derived, never stored (see
+   * `apiKeyStatusSchema`). Revoked wins over expired.
+   *
+   * {@link statusWhere} is the same rule as a query; the two sit together so a
+   * filter and a badge cannot disagree about a key an hour from its warning
+   * window.
+   */
+  public statusOf(
+    apiKey: Pick<ApiKeyEntity, "expiresAt" | "revokedAt">,
+  ): ApiKeyStatus {
+    if (apiKey.revokedAt) {
+      return "revoked";
+    }
+    if (!apiKey.expiresAt) {
+      return "active";
+    }
+
+    const now = this.dateTimeProvider.nowMillis();
+    const expiresAt = new Date(apiKey.expiresAt).getTime();
+    if (expiresAt <= now) {
+      return "expired";
+    }
+    if (expiresAt <= this.warningUntil(now)) {
+      return "expiring";
+    }
+    return "active";
+  }
+
+  /**
+   * The `where` matching keys in any of these statuses: {@link statusOf} as a
+   * query.
+   *
+   * With `expiryWarningDays: 0` nothing is `expiring`, so asking for it alone
+   * matches no key at all.
+   */
+  public statusWhere(
+    statuses: ApiKeyStatus[],
+  ): PgQueryWhere<typeof apiKeyEntity.schema> {
+    const now = this.dateTimeProvider.nowMillis();
+    const nowIso = new Date(now).toISOString();
+    const warningIso = new Date(this.warningUntil(now)).toISOString();
+
+    const branches: Array<PgQueryWhere<typeof apiKeyEntity.schema>> = [];
+    for (const status of new Set(statuses)) {
+      switch (status) {
+        case "revoked":
+          branches.push({ revokedAt: { isNotNull: true } });
+          break;
+        case "expired":
+          branches.push({
+            revokedAt: { isNull: true },
+            expiresAt: { lte: nowIso },
+          });
+          break;
+        case "expiring":
+          if (warningIso !== nowIso) {
+            branches.push({
+              revokedAt: { isNull: true },
+              expiresAt: { gt: nowIso, lte: warningIso },
+            });
+          }
+          break;
+        case "active":
+          branches.push({
+            revokedAt: { isNull: true },
+            or: [
+              { expiresAt: { isNull: true } },
+              { expiresAt: { gt: warningIso } },
+            ],
+          });
+          break;
+      }
+    }
+
+    if (branches.length === 0) {
+      // A primary key is never null: the honest spelling of "no key".
+      return { id: { isNull: true } };
+    }
+    return branches.length === 1 ? branches[0] : { or: branches };
+  }
+
+  /**
+   * The end of the expiry warning window, from `now`.
+   */
+  protected warningUntil(now: number): number {
+    const days = this.parameters.get("expiryWarningDays");
+    return now + days * 24 * 60 * 60 * 1000;
+  }
+
+  /**
+   * The one shape every read path returns: an explicit field list with the
+   * derived `status`, and never `tokenHash`.
+   *
+   * Explicit rather than a spread of the row, so a column added to the entity
+   * is published only when somebody adds it here, and the hash cannot ride
+   * along on a transport whose response schema is not applied. The owner
+   * summary the admin listing joins is carried when present.
+   */
+  public toView(
+    apiKey: ApiKeyEntity & { user?: AdminApiKeyResource["user"] },
+  ): AdminApiKeyResource {
+    return {
+      id: apiKey.id,
+      userId: apiKey.userId,
+      user: apiKey.user ?? undefined,
+      name: apiKey.name,
+      description: apiKey.description,
+      tokenPrefix: apiKey.tokenPrefix,
+      tokenSuffix: apiKey.tokenSuffix,
+      roles: apiKey.roles,
+      createdAt: apiKey.createdAt,
+      lastUsedAt: apiKey.lastUsedAt,
+      lastUsedIp: apiKey.lastUsedIp,
+      expiresAt: apiKey.expiresAt,
+      revokedAt: apiKey.revokedAt,
+      usageCount: apiKey.usageCount,
+      status: this.statusOf(apiKey),
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -334,7 +472,7 @@ export class ApiKeyService {
     page?: number;
     size?: number;
     sort?: string;
-  }): Promise<Page<ApiKeyEntity>> {
+  }): Promise<Page<AdminApiKeyResource>> {
     query.sort ??= "-createdAt";
 
     const where = this.repo.createQueryWhere();
@@ -349,18 +487,29 @@ export class ApiKeyService {
 
     const withOwner = this.resolveOwnerJoin();
 
-    return this.repo.paginate(
+    const page = await this.repo.paginate(
       query,
       { where, ...(withOwner ? { with: withOwner } : {}) },
       { count: true },
     );
+
+    // The registry-resolved join types `user` as `Record<string, unknown>`;
+    // at runtime it is the owner row or absent (see the note above).
+    return {
+      ...page,
+      content: page.content.map((row) =>
+        this.toView(
+          row as ApiKeyEntity & { user?: AdminApiKeyResource["user"] },
+        ),
+      ),
+    };
   }
 
   /**
    * Get an API key by ID (admin only).
    */
-  public async getById(id: string): Promise<ApiKeyEntity> {
-    return await this.repo.getById(id);
+  public async getById(id: string): Promise<AdminApiKeyResource> {
+    return this.toView(await this.repo.getById(id));
   }
 
   /**
@@ -436,6 +585,12 @@ export class ApiKeyService {
 
     if (apiKey.userId !== userId) {
       throw new ForbiddenError("Not your API key");
+    }
+
+    // Already revoked: a second revocation would move `revokedAt`, and with it
+    // the purge window measured from it.
+    if (apiKey.revokedAt) {
+      return;
     }
 
     this.markRevocation();

@@ -58,8 +58,11 @@ export class ApiKeyController {
   });
 
   /**
-   * List all active API keys for the authenticated user.
+   * List the authenticated user's API keys, each with its derived `status`.
    * Does not return the actual tokens.
+   *
+   * ⚠️ Expired and revoked keys are listed too, until they are purged: the
+   * length of this list is not a count of keys that work.
    */
   public readonly listApiKeys = $action({
     path: this.url,
@@ -69,22 +72,7 @@ export class ApiKeyController {
     schema: {
       response: listApiKeyResponseSchema,
     },
-    handler: async (request) => {
-      const apiKeys = await this.apiKeyService.list(request.user.id);
-
-      return apiKeys.map((apiKey) => ({
-        id: apiKey.id,
-        name: apiKey.name,
-        tokenPrefix: apiKey.tokenPrefix,
-        tokenSuffix: apiKey.tokenSuffix,
-        roles: apiKey.roles,
-        createdAt: apiKey.createdAt,
-        lastUsedAt: apiKey.lastUsedAt,
-        lastUsedIp: apiKey.lastUsedIp,
-        expiresAt: apiKey.expiresAt,
-        usageCount: apiKey.usageCount,
-      }));
-    },
+    handler: (request) => this.apiKeyService.list(request.user.id),
   });
 
   /**

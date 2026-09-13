@@ -1095,7 +1095,9 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     expect(response.data).toEqual([]);
   });
 
-  it("should not return revoked keys in user's list", async ({ expect }) => {
+  it("should list revoked keys too, marked with their status", async ({
+    expect,
+  }) => {
     const { adminUserController, apiKeyController, fakeProvider } =
       await setup();
     const fakeUser = fakeProvider.generate(userDataSchema);
@@ -1128,13 +1130,16 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
       { user: { id: user.id, roles: user.roles } },
     );
 
-    // List should only show active key
+    // The list used to hide the revoked key. It shows it now, marked, so a
+    // user can see which key stopped working (#Q2054).
     const response = await apiKeyController.listApiKeys.fetch(
       {},
       { user: { id: user.id, roles: user.roles } },
     );
 
-    expect(response.data).toHaveLength(1);
-    expect(response.data[0].name).toBe("Active Key");
+    expect(response.data).toHaveLength(2);
+    const byName = new Map(response.data.map((key) => [key.name, key.status]));
+    expect(byName.get("Active Key")).toBe("active");
+    expect(byName.get("Revoked Key")).toBe("revoked");
   });
 });

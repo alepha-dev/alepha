@@ -61,6 +61,7 @@ export const SHOWCASE_KEYS = [
     createdAt: "2026-08-20T09:00:00.000Z",
     lastUsedAt: "2026-09-05T06:30:00.000Z",
     usageCount: 412,
+    status: "active",
   },
   {
     id: "k2",
@@ -70,6 +71,7 @@ export const SHOWCASE_KEYS = [
     createdAt: "2026-05-02T09:00:00.000Z",
     revokedAt: "2026-08-01T09:00:00.000Z",
     usageCount: 38,
+    status: "revoked",
   },
 ];
 

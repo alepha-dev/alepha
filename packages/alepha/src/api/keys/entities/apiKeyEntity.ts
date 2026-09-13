@@ -1,5 +1,5 @@
 import { type Infer, z } from "alepha";
-import { $entity, db } from "alepha/orm";
+import { $entity, db, sql } from "alepha/orm";
 
 export const apiKeyEntity = $entity({
   name: "api_keys",
@@ -52,7 +52,20 @@ export const apiKeyEntity = $entity({
     revokedAt: z.datetime().optional(),
   }),
   indexes: [
-    { columns: ["userId", "name"], unique: true },
+    // Unique among keys that are not revoked: revoking a key frees its name
+    // at once, so a leaked "CI pipeline" can be replaced by a new one under
+    // the same name without waiting for the purge. An expired key keeps its
+    // name, because rotating it is how it is renewed.
+    //
+    // Named apart from the full index it replaces: drizzle-kit does not diff
+    // the `where` of an index that keeps its name, and generated no migration
+    // at all for the change.
+    {
+      name: "api_keys_user_id_name_live_idx",
+      columns: ["userId", "name"],
+      unique: true,
+      where: sql`revoked_at IS NULL`,
+    },
     { columns: ["tokenHash"], unique: true },
   ],
 });

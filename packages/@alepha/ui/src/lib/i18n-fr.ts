@@ -846,6 +846,7 @@ export const uiFr: Record<string, string> = {
   "account.keys.description":
     "Une clé agit en votre nom. Révoquez celles que vous ne reconnaissez plus.",
   "account.keys.done": "Terminé",
+  "account.keys.expired": " · expirée",
   "account.keys.lastUsedAt": " · dernière utilisation $1",
   "account.keys.name": "Nom",
   "account.keys.namePlaceholder": "Pipeline CI",
@@ -861,6 +862,7 @@ export const uiFr: Record<string, string> = {
     "Tout ce qui utilise encore cette clé cesse de fonctionner immédiatement. C'est irréversible.",
   "account.keys.revokeError": "Impossible de révoquer cette clé",
   "account.keys.revokeTitle": "Révoquer $1 ?",
+  "account.keys.revoked": " · révoquée",
   "account.keys.submit": "Créer",
   "account.keys.title": "Clés d'API",
   "account.mfa.cannotScan": "Impossible de scanner le code ?",
