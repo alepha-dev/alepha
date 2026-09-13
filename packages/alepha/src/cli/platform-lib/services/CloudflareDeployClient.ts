@@ -143,6 +143,13 @@ export interface CloudflareDeployAssets {
     onFile: (key: string, bytes: Uint8Array) => Promise<void>,
   ) => Promise<void>;
 
+  /**
+   * The asset behaviour sent as `metadata.assets.config`: wrangler's
+   * `not_found_handling` and `run_worker_first`, plus the raw text of
+   * `dist/public/_headers` and `_redirects` under those two names, which
+   * Cloudflare parses server-side. Those two files are never in
+   * {@link manifest}.
+   */
   config?: Record<string, unknown>;
 }
 
