@@ -22,11 +22,12 @@ lore login
 lore quality push -p alepha
 ```
 
-## ⚠️ Six top-level commands, and no root of its own
+## ⚠️ Top-level commands, and no root of its own
 
-`quality`, `artifacts`, `attachments`, `releases`, `login` and `logout`
-register at the top level, because the binary IS the root. A `lore` command
-inside a `lore` binary reads `lore lore quality push`.
+`quality`, `artifacts`, `attachments`, `releases`, `apps`, `deploy`,
+`secrets`, `login`, `logout`, `project`, `quest` and `folio` register at
+the top level, because the binary IS the root. A `lore` command inside a
+`lore` binary reads `lore lore quality push`.
 
 That also means nothing here may inject a command from `alepha/cli`:
 `Alepha.inject` registers the module that declares a service, so one such

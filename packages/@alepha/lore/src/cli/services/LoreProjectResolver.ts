@@ -1,11 +1,13 @@
 import { $inject, AlephaError } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
+import { UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 import type { AppController } from "lore/api/controllers/AppController";
 import type { ProjectController } from "lore/api/controllers/ProjectController";
 
 import { LoreClientService } from "./LoreClientService.ts";
+import type { LoreRefusalContext } from "./LoreRefusals.ts";
 
 /**
  * The four axes a `lore` invocation is about: where, which project, which app,
@@ -93,6 +95,34 @@ export class LoreProjectResolver {
       );
     }
     return found.id;
+  }
+
+  /**
+   * The project a `project`, `quest` or `folio` command is about: `-p`, then
+   * `LORE_PROJECT`, as named and as the id every endpoint takes.
+   *
+   * No project at all is a {@link UsageError}, so the refusal comes with the
+   * command's help rather than as a crash; the older verbs keep the error
+   * {@link LoreClientService.resolveProject} throws.
+   *
+   * The name goes into `context` BEFORE the lookup, so a lookup that is
+   * refused (a stranger's key, a slug nobody owns) already says which project
+   * it was about.
+   */
+  public async named(
+    flag: string | undefined,
+    context: LoreRefusalContext,
+  ): Promise<{ project: string; projectId: number }> {
+    let project: string;
+    try {
+      project = this.client.resolveProject(flag);
+    } catch (error) {
+      throw new UsageError(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    context.project = project;
+    return { project, projectId: await this.resolve(project) };
   }
 
   /**
