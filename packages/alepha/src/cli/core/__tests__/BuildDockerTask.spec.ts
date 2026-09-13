@@ -8,11 +8,45 @@ import {
 import { describe, expect, it } from "vitest";
 
 import type { BuildOptions } from "../atoms/buildOptions.ts";
+import { BuildCommand } from "../commands/build.ts";
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import type { BuildTaskContext } from "../tasks/BuildTask.ts";
 
+/**
+ * Exposes the pipeline's order, which is the whole of the next spec.
+ */
+class TestBuildCommand extends BuildCommand {
+  public order(): string[] {
+    return this.pipeline.map((task) => task.constructor.name);
+  }
+}
+
 describe("BuildDockerTask", () => {
+  it("runs after every task that writes into dist/public, and before compile", ({
+    expect,
+  }) => {
+    // With `--image` the standard image is built inside this task, from
+    // `dist/` as it stands at that moment. It used to run before the
+    // `_headers` and compress tasks, and the image it built had neither
+    // `dist/public/_headers` nor a single `.br` sidecar (found by the live
+    // proof of epic #E49 on a real `docker run`).
+    const order = Alepha.create().inject(TestBuildCommand).order();
+    const at = (name: string) => order.indexOf(name);
+
+    for (const writer of [
+      "BuildClientTask",
+      "BuildPrerenderTask",
+      "BuildStaticTask",
+      "BuildHeadersTask",
+      "BuildCompressTask",
+    ]) {
+      expect(at(writer), writer).toBeGreaterThanOrEqual(0);
+      expect(at(writer), writer).toBeLessThan(at("BuildDockerTask"));
+    }
+    expect(at("BuildDockerTask")).toBeLessThan(at("BuildCompileTask"));
+  });
+
   const createTestEnv = () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
