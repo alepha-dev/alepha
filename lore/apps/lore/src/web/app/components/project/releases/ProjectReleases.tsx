@@ -11,7 +11,7 @@ import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { CircleDot, Flag, Inbox, Plus, Search, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
@@ -24,6 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { OutboundLink } from "../../shared/OutboundLink.tsx";
+import { suggestedReleaseTag } from "./releaseBumps.ts";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
@@ -126,6 +127,25 @@ const ProjectReleases = () => {
   // Bumped after a create, which happens outside the table and so has no
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
+  /**
+   * The project's WHOLE release list, as the table's last fetch received it,
+   * before the state filter, the search and the paging narrowed it.
+   *
+   * The create dialog's placeholder reads it, and so does every row's create
+   * entry. Never the rows on screen: filtered to Released, `0.30.0` is not a
+   * row, so `0.29.0` would look like the frontier of major 0. And never
+   * `currentReleasesAtom`, which is filled when the project is entered and
+   * misses a release created over MCP since, while this table refetches on
+   * mount: rows and suggestions must come from the same response.
+   *
+   * ⚠️ A ref, not state. The write happens inside the table's fetcher, and a
+   * state write there re-renders this component, which hands the table a new
+   * `fetch` and spins it into the refetch loop `ProjectEpics.tsx` warns
+   * about. Nothing needs to re-render on the write: the dialog reads it when
+   * `creating` flips, and the row menu while the table renders the rows that
+   * very fetch returned.
+   */
+  const allReleases = useRef<ReleaseResource[]>([]);
 
   if (!project) return null;
 
@@ -155,6 +175,8 @@ const ProjectReleases = () => {
     const all = await releaseApi.getReleases({
       params: { projectId: project.id },
     });
+    // Before anything filters it; see `allReleases`.
+    allReleases.current = all;
 
     const state = filters?.state as "open" | "released" | undefined;
     const needle = String(filters?.search ?? "")
@@ -224,6 +246,7 @@ const ProjectReleases = () => {
         open={creating}
         onOpenChange={setCreating}
         onCreated={() => void created()}
+        suggestedTag={suggestedReleaseTag(allReleases.current)}
       />
 
       <AlephaTable<ReleaseResource>

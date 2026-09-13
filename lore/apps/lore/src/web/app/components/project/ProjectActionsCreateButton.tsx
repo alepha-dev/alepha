@@ -47,6 +47,7 @@ import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import {
@@ -57,6 +58,7 @@ import { useInviteMember } from "../shared/useInviteMember.ts";
 import AppCreateDialog from "./apps/AppCreateDialog.tsx";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
 import QuestCreate from "./quest/QuestCreate.tsx";
+import { suggestedReleaseTag } from "./releases/releaseBumps.ts";
 import ReleaseCreateDialog from "./releases/ReleaseCreateDialog.tsx";
 
 const ProjectActionsCreateButton = () => {
@@ -72,6 +74,11 @@ const ProjectActionsCreateButton = () => {
   const client = useClient<QuestController>();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
+  // Only for the release dialog's placeholder. The Releases table computes
+  // the same suggestion from its own fresher fetch; this mount has no fetch
+  // of its own, and the atom is what it can read. Both pass one, or the same
+  // dialog would hint differently depending on the door that opened it.
+  const [releases] = useStore(currentReleasesAtom);
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
   const routerState = useRouterState();
   // Kanban is its own route again, so this is just the route name. It used
@@ -276,6 +283,7 @@ const ProjectActionsCreateButton = () => {
         projectId={project.id}
         open={showRelease}
         onOpenChange={setShowRelease}
+        suggestedTag={suggestedReleaseTag(releases ?? [])}
         onCreated={(created) => {
           setShowRelease(false);
           // Onto the release itself, the way New Epic opens the epic it just
