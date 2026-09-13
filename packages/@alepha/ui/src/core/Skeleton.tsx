@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "./utils.ts";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (

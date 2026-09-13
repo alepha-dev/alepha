@@ -2,34 +2,6 @@ import * as React from "react";
 
 void React;
 
-import {
-  FormFieldAutoSaveProvider,
-  FormFieldLayoutProvider,
-  FormFieldRequiredMarkerProvider,
-} from "@alepha/ui/components/control-base/form-field";
-import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
-import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
-import {
-  Control,
-  type ControlProps,
-  readSchemaControl,
-  useDynamicControlRefresh,
-} from "@alepha/ui/components/control/control";
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
-import { cn } from "@alepha/ui/lib/utils";
 import { type ZObject, type ZType, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
@@ -43,6 +15,31 @@ import { useI18n } from "alepha/react/i18n";
 import { resolveSchemaControl } from "alepha/react/ui";
 import { AlertCircle, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardTitle,
+} from "../core/Card.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
+import { cn } from "../core/utils.ts";
+import { SettingsHeading } from "../settings/SettingsHeading.tsx";
+import {
+  Control,
+  type ControlProps,
+  readSchemaControl,
+  useDynamicControlRefresh,
+} from "./Control.tsx";
+import {
+  FormFieldAutoSaveProvider,
+  FormFieldLayoutProvider,
+  FormFieldRequiredMarkerProvider,
+} from "./FormField.tsx";
+import { spanClass, widthFor } from "./grid.tsx";
+import { iconFor } from "./iconHint.tsx";
 
 /**
  * Detect a `z.string()` schema (incl. optional/nullable wrappers) so the

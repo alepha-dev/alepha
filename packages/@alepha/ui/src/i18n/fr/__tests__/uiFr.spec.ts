@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { uiFr } from "../i18n-fr.ts";
+import { uiFr } from "../uiFr.ts";
 
 /**
  * The French catalogue must cover every `tr()` key in the package, exactly.
@@ -19,7 +19,9 @@ import { uiFr } from "../i18n-fr.ts";
  * is a translation for something no component asks for any more, which is dead
  * weight that makes the real gaps harder to see.
  */
-const SRC = join(import.meta.dirname, "..", "..");
+// The whole of `src`, named explicitly: this spec sits three directories
+// below it, and every module asks for keys.
+const SRC = join(import.meta.dirname, "..", "..", "..", "..", "src");
 
 /**
  * Every key the package asks for, in either of the two forms it declares one.

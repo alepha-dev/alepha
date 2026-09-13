@@ -2,12 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
-import { Control } from "@alepha/ui/components/control/control";
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Separator } from "@alepha/ui/components/ui/separator";
 import { AlephaError, SchemaValidationError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { isMfaRequired, type MfaChallenge, useAuth } from "alepha/react/auth";
@@ -18,8 +12,14 @@ import { HttpError } from "alepha/server";
 import { AlertCircle, Mail, User } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 
-import { AuthMfaStep } from "./auth-mfa-step.tsx";
-import { safeRedirect } from "./safe-redirect.ts";
+import { Alert, AlertDescription } from "../core/Alert.tsx";
+import { BrandIcon } from "../core/BrandIcon.tsx";
+import { Button } from "../core/Button.tsx";
+import { Card, CardContent } from "../core/Card.tsx";
+import { Separator } from "../core/Separator.tsx";
+import { Control } from "../form/Control.tsx";
+import { AuthMfaStep } from "./AuthMfaStep.tsx";
+import { safeRedirect } from "./safeRedirect.ts";
 
 export interface AuthLoginProps {
   /**

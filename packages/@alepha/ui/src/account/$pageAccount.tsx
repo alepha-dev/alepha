@@ -6,11 +6,11 @@ import type {
   TPropsParentDefault,
 } from "alepha/react/router";
 
-import { $pageNav, type PageNavOptions } from "../nav-shell/nav-page.tsx";
-import { AccountRouter } from "./account-router.tsx";
+import { $pageNav, type PageNavOptions } from "../shell/$pageNav.tsx";
+import { AccountRouter } from "./AccountRouter.tsx";
 
 /**
- * `$pageNav` already parented to {@link AccountRouter}'s `/account` shell —
+ * `$pageNav` already parented to {@link AccountRouter}'s `/account` shell:
  * the one-call form of "a page inside the shared account area".
  *
  * It carries the `$` prefix to sit with the framework's other declarations at
@@ -23,14 +23,14 @@ import { AccountRouter } from "./account-router.tsx";
  * and reads each page's own `nav`.
  *
  * **Calling this registers `AccountRouter`.** Declaring even one page this
- * way mounts the whole `/account` shell including its five built-in pages —
+ * way mounts the whole `/account` shell including its five built-in pages:
  * an account page without the account area around it is not a thing. That is
  * the intended reading, but it is a real side effect: an application wanting
  * `/account` to carry only its own pages must build its own layout instead.
  *
  * **Take `order: 100` or above, or declare your own `nav.group`.** The
  * built-ins occupy `Account` (order 1) and `Security` (orders 2-5), and
- * `useNavEntries` sorts groups by their smallest member — a page at a lower
+ * `useNavEntries` sorts groups by their smallest member, so a page at a lower
  * order silently reshuffles the shared rail.
  *
  * **Gate with `can: () => this.someApi.someAction.can()`, not `permission`

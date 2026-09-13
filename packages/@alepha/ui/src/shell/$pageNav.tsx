@@ -8,7 +8,7 @@ import {
 } from "alepha/react/router";
 import { $secure } from "alepha/security";
 
-import type { NavMeta } from "./nav-tree-util.ts";
+import type { NavMeta } from "./navTreeUtil.ts";
 
 export interface PageNavOptions<
   TConfig extends PageConfigSchema = PageConfigSchema,

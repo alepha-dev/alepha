@@ -2,16 +2,13 @@ import * as React from "react";
 
 void React;
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@alepha/ui/components/ui/avatar";
-import { Button } from "@alepha/ui/components/ui/button";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { Avatar, AvatarFallback, AvatarImage } from "../core/Avatar.tsx";
+import { Button } from "../core/Button.tsx";
+import { UserAvatar } from "../core/UserAvatar.tsx";
 
 export interface DetailAsideRow {
   /**

@@ -1,6 +1,7 @@
-import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
-import { cn } from "@alepha/ui/lib/utils";
 import { Link } from "alepha/react/router";
+
+import { cn } from "../core/utils.ts";
+import type { IconComponent } from "../form/iconHint.tsx";
 
 export interface PlateTab {
   /**

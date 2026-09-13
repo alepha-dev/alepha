@@ -6,16 +6,16 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import AdminLayout from "../admin-layout.tsx";
+import AdminLayout from "../AdminLayout.tsx";
+import { AdminRouter } from "../AdminRouter.tsx";
 import {
   type AdminRouterOptions,
   adminRouterOptionsAtom,
-} from "../admin-router-options.tsx";
-import { AdminRouter } from "../admin-router.tsx";
+} from "../AdminRouterOptions.tsx";
 
 /**
  * The three seams `adminRouterOptionsAtom` opens into the layout itself —
- * as opposed to the routing contract, which `admin-router.spec.ts` owns.
+ * as opposed to the routing contract, which `AdminRouter.spec.ts` owns.
  *
  * Each exists for an application whose `/admin` lives inside a document it
  * does not fully own (a host page with fixed overlays, or a hardcoded

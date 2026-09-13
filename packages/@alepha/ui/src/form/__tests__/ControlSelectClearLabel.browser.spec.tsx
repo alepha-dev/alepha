@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { ControlSelect } from "../control-select.tsx";
+import { ControlSelect } from "../ControlSelect.tsx";
 
 /**
  * Where a `clearable` field's label belongs: on the trigger, and nowhere else.
@@ -32,7 +32,7 @@ import { ControlSelect } from "../control-select.tsx";
  * So empty is now EMPTY: `clearLabel` is the trigger's placeholder, styled as
  * one, and getting back there is either the `x` the trigger grows once
  * something is chosen or re-clicking the chosen row
- * (`control-select-deselect.browser.spec.tsx`).
+ * (`ControlSelectDeselect.browser.spec.tsx`).
  */
 describe("ControlSelect clear label", () => {
   const mount = (alepha: Alepha, ui: ReactNode) =>
@@ -151,7 +151,7 @@ describe("ControlSelect clear label", () => {
    * ⚠️ An earlier version of the component's own comment said the `x` had to
    * exist because `epics.spec.ts` went red when the injected "No release" row
    * was deleted. That is circular, and it is corrected in
-   * `control-select.tsx` and in that spec: it went red because its SELECTOR
+   * `ControlSelect.tsx` and in that spec: it went red because its SELECTOR
    * named a deleted node, and re-clicking the selected release would have
    * fixed it in one line. A broken locator is not a usability finding.
    *

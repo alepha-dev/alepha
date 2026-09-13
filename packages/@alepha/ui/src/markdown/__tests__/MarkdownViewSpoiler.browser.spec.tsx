@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { MarkdownView } from "../markdown-view.tsx";
+import { MarkdownView } from "../MarkdownView.tsx";
 
 /**
  * `||spoiler||`, and the ten cases the plugin was prototyped against.

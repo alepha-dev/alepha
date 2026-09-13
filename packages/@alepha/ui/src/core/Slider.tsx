@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Slider as SliderPrimitive } from "@base-ui/react/slider";
+
+import { cn } from "./utils.ts";
 
 function Slider({
   className,

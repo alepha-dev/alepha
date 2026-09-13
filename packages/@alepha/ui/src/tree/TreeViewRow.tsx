@@ -1,8 +1,3 @@
-import {
-  ContextMenu,
-  ContextMenuTrigger,
-} from "@alepha/ui/components/ui/context-menu";
-import { cn } from "@alepha/ui/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   type DragEvent,
@@ -13,9 +8,11 @@ import {
   type ReactNode,
 } from "react";
 
-import type { TreeDropPosition, TreeNode } from "./tree-model.ts";
-import { TreeViewRenameInput } from "./tree-view-rename-input.tsx";
-import type { TreeRowState } from "./tree-view.tsx";
+import { ContextMenu, ContextMenuTrigger } from "../core/ContextMenu.tsx";
+import { cn } from "../core/utils.ts";
+import type { TreeDropPosition, TreeNode } from "./treeModel.ts";
+import type { TreeRowState } from "./TreeView.tsx";
+import { TreeViewRenameInput } from "./TreeViewRenameInput.tsx";
 
 /**
  * The slots and callbacks a row reads, behind an object whose identity never

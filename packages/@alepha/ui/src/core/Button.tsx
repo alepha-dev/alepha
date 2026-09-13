@@ -1,7 +1,8 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2Icon } from "lucide-react";
+
+import { cn } from "./utils.ts";
 
 /*
  * ⚠️ `disabled:cursor-not-allowed`, NOT `disabled:pointer-events-none`, which

@@ -2,15 +2,12 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
 import { useColorMode } from "alepha/react/ui";
 import { Monitor, Moon, Sun } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { Button } from "../core/Button.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 
 export interface ButtonDarkProps {
   /**

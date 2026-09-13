@@ -1,17 +1,15 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import {
-  AlephaTable,
-  type TableFetcher,
-} from "@alepha/ui/components/alepha-table/alepha-table";
 import type { SessionResource } from "alepha/api/users";
 import type { UseActionReturn } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
+
+import { AlephaTable, type TableFetcher } from "../table/AlephaTable.tsx";
 
 export interface AdminUserDetailSessionsTabProps {
   /**

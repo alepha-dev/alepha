@@ -1,7 +1,8 @@
-import { EmailBodyFrame } from "@alepha/ui/components/email-body-frame/email-body-frame";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import type { NotificationPreviewResource } from "alepha/api/notifications";
 import { useI18n } from "alepha/react/i18n";
+
+import { Badge } from "../core/Badge.tsx";
+import { EmailBodyFrame } from "./EmailBodyFrame.tsx";
 
 export interface AdminNotificationsPreviewBodyProps {
   preview: NotificationPreviewResource;

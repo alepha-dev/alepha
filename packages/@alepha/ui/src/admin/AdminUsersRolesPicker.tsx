@@ -2,14 +2,11 @@ import * as React from "react";
 
 void React;
 
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
 import type { UserEntity } from "alepha/api/users";
 import { useState } from "react";
+
+import { Checkbox } from "../core/Checkbox.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
 
 export interface RoleMeta {
   name: string;

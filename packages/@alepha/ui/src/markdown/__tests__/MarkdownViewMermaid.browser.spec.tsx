@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { MarkdownView } from "../markdown-view.tsx";
+import { MarkdownView } from "../MarkdownView.tsx";
 
 const fence = (language: string, body: string) =>
   ["```" + language, body, "```"].join("\n");

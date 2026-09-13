@@ -1,3 +1,8 @@
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { Menubar as MenubarPrimitive } from "@base-ui/react/menubar";
+import { CheckIcon } from "lucide-react";
+import * as React from "react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,12 +17,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { cn } from "@alepha/ui/lib/utils";
-import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { Menubar as MenubarPrimitive } from "@base-ui/react/menubar";
-import { CheckIcon } from "lucide-react";
-import * as React from "react";
+} from "./DropdownMenu.tsx";
+import { cn } from "./utils.ts";
 
 function Menubar({ className, ...props }: MenubarPrimitive.Props) {
   return (

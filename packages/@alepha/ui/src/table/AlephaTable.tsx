@@ -2,55 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@alepha/ui/components/ui/context-menu";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@alepha/ui/components/ui/pagination";
-import { Skeleton } from "@alepha/ui/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@alepha/ui/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
 import { type Page, type ZObject, z } from "alepha";
 import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
@@ -86,17 +37,66 @@ import {
   useState,
 } from "react";
 
-import { useIsMobile } from "../../hooks/use-mobile.ts";
-import { AlephaTableBulkMenu } from "./alepha-table-bulk-menu.tsx";
-import { AlephaTableFilterDialog } from "./alepha-table-filter-dialog.tsx";
-import { AlephaTableFilterMenu } from "./alepha-table-filter-menu.tsx";
-import { paginateLocal } from "./paginate-local.ts";
+import { Button } from "../core/Button.tsx";
+import { Checkbox } from "../core/Checkbox.tsx";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "../core/ContextMenu.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../core/DropdownMenu.tsx";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../core/Pagination.tsx";
+import { Skeleton } from "../core/Skeleton.tsx";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../core/Table.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../core/Tooltip.tsx";
+import { useIsMobile } from "../core/useIsMobile.ts";
+import { useToast } from "../core/useToast.tsx";
+import { cn } from "../core/utils.ts";
+import { Control } from "../form/Control.tsx";
+import { AlephaTableBulkMenu } from "./AlephaTableBulkMenu.tsx";
+import { AlephaTableFilterDialog } from "./AlephaTableFilterDialog.tsx";
+import { AlephaTableFilterMenu } from "./AlephaTableFilterMenu.tsx";
+import { paginateLocal } from "./paginateLocal.ts";
 import {
   cleanFilterValues,
   queryToFilters,
   shareFiltersUrl,
-} from "./query-filters.ts";
-import { useTableSelection } from "./use-table-selection.ts";
+} from "./queryFilters.ts";
+import { useTableSelection } from "./useTableSelection.ts";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 

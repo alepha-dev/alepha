@@ -1,13 +1,13 @@
 import { useI18n } from "alepha/react/i18n";
 
-import type { NotificationStatus } from "./admin-notifications-status-tones.ts";
+import type { NotificationStatus } from "./adminNotificationsStatusTones.ts";
 
 /**
  * Localised delivery status labels, keyed by status.
  *
  * ⚠️ One literal `tr()` per status, and never
  * ``tr(`admin.notifications.status.${status}`)``. A computed key is invisible
- * to `i18n-fr.spec.ts`, which finds keys by matching a literal after `tr(`,
+ * to `uiFr.spec.ts`, which finds keys by matching a literal after `tr(`,
  * so the French entries could not be added at all: the spec would report
  * every one of them as a translation nothing asks for, and the statuses would
  * render in English inside a French UI. Same trap `admin-jobs-status-labels`

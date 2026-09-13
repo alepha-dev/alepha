@@ -1,6 +1,6 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 
+import { Badge } from "../../core/Badge.tsx";
 import { analyticsCompact, analyticsNumber } from "./analyticsModel.ts";
 import type { AnalyticsRunResult } from "./analyticsTypes.ts";
 

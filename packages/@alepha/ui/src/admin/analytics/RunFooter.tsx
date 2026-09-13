@@ -1,8 +1,8 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { Braces, ChevronUp, Play, RotateCcw } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Button } from "../../core/Button.tsx";
 import { useDismissable } from "./useDismissable.ts";
 
 export interface RunFooterProps {

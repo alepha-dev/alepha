@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+
+import { cn } from "./utils.ts";
 
 function TooltipProvider({
   // 600ms rather than 0, which fired a tooltip the instant the pointer touched

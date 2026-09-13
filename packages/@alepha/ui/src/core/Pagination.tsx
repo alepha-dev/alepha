@@ -1,11 +1,12 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
 import * as React from "react";
+
+import { Button } from "./Button.tsx";
+import { cn } from "./utils.ts";
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (

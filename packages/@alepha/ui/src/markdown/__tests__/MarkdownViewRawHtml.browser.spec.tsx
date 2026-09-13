@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { MarkdownView } from "../markdown-view.tsx";
+import { MarkdownView } from "../MarkdownView.tsx";
 
 /**
  * `rehypeSafeImg` promoted a lone `<img …>` raw node to a real element, and

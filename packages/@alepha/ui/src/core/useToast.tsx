@@ -47,7 +47,7 @@ export interface Toast {
 
 /**
  * Imperative toast hook. Requires a `<Toaster />` mounted somewhere in
- * the tree (from `@alepha/ui/components/ui/sonner`).
+ * the tree (`Toaster`, from the same `@alepha/ui` module).
  *
  * The underlying library (currently sonner) is an implementation
  * detail — never exported from this module. Consumers depend on the

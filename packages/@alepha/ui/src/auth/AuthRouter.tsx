@@ -2,17 +2,17 @@ import type { RealmController } from "alepha/api/users";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 
-import { AuthLogin } from "./auth-login.tsx";
-import { AuthRegister } from "./auth-register.tsx";
-import { AuthResetPassword } from "./auth-reset-password.tsx";
-import { AuthVerifyEmail } from "./auth-verify-email.tsx";
+import { AuthLogin } from "./AuthLogin.tsx";
+import { AuthRegister } from "./AuthRegister.tsx";
+import { AuthResetPassword } from "./AuthResetPassword.tsx";
+import { AuthVerifyEmail } from "./AuthVerifyEmail.tsx";
 
 /**
  * The four authentication screens, mounted and wired — a router you can use
  * as-is.
  *
  * ```ts
- * import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
+ * import { AuthRouter } from "@alepha/ui/auth";
  *
  * export const MyWeb = $module({
  *   name: "my.web",

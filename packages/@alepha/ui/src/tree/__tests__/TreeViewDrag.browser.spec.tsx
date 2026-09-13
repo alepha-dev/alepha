@@ -7,8 +7,8 @@ import {
   flattenTree,
   type TreeDropPosition,
   type TreeItem,
-} from "../tree-model.ts";
-import { TreeView } from "../tree-view.tsx";
+} from "../treeModel.ts";
+import { TreeView } from "../TreeView.tsx";
 
 const ITEMS: TreeItem[] = [
   { id: "d-0", name: "Branch", branch: true },

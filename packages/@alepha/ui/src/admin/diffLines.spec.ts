@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { diffLines } from "./diff-lines.ts";
+import { diffLines } from "./diffLines.ts";
 
 describe("diffLines", () => {
   it("marks every line as unchanged for identical input", () => {

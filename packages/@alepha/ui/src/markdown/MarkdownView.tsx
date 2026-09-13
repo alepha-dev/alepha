@@ -2,7 +2,7 @@ import * as React from "react";
 
 void React;
 
-import "./markdown-view.css";
+import "./MarkdownView.css";
 import { lazy, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";

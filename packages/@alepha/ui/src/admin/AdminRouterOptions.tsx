@@ -1,11 +1,11 @@
-import type { AdminDashboardCard } from "@alepha/ui/components/admin/admin-dashboard-card";
-import type { NavGroup } from "@alepha/ui/components/app-shell/app-shell";
 import { $atom, z } from "alepha";
 import type { ReactNode } from "react";
 
-import type { AdminParametersProps } from "./admin-parameters.tsx";
-import type { AdminUserDetailProps } from "./admin-user-detail.tsx";
-import type { AdminUsersProps } from "./admin-users.tsx";
+import type { NavGroup } from "../shell/AppShell.tsx";
+import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import type { AdminParametersProps } from "./AdminParameters.tsx";
+import type { AdminUserDetailProps } from "./AdminUserDetail.tsx";
+import type { AdminUsersProps } from "./AdminUsers.tsx";
 
 /**
  * Everything an application can change about `AdminRouter` without writing

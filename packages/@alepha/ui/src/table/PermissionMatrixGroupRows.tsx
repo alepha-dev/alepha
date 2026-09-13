@@ -1,18 +1,14 @@
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
-import { TableCell, TableRow } from "@alepha/ui/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { cn } from "@alepha/ui/lib/utils";
 import { Lock } from "lucide-react";
 
+import { Checkbox } from "../core/Checkbox.tsx";
+import { TableCell, TableRow } from "../core/Table.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
+import { cn } from "../core/utils.ts";
 import type {
   PermissionMatrixColumn,
   PermissionMatrixGroup,
   PermissionMatrixRow,
-} from "./permission-matrix.tsx";
+} from "./PermissionMatrix.tsx";
 
 export interface PermissionMatrixGroupRowsProps {
   group: PermissionMatrixGroup;

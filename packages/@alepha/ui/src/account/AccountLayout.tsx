@@ -1,15 +1,12 @@
-import { AccountHeader } from "@alepha/ui/components/account/account-header";
-import { SettingsLayout } from "@alepha/ui/components/settings/settings-layout";
-import { SettingsNav } from "@alepha/ui/components/settings/settings-nav";
 import { useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
 
-import { useNavEntries } from "../nav-shell/use-nav-entries.ts";
-import {
-  DialogProvider,
-  useHasDialogProvider,
-} from "../use-dialog/use-dialog.tsx";
-import { accountRouterOptionsAtom } from "./account-router-options.tsx";
+import { DialogProvider, useHasDialogProvider } from "../core/useDialog.tsx";
+import { SettingsLayout } from "../settings/SettingsLayout.tsx";
+import { SettingsNav } from "../settings/SettingsNav.tsx";
+import { useNavEntries } from "../shell/useNavEntries.ts";
+import { AccountHeader } from "./AccountHeader.tsx";
+import { accountRouterOptionsAtom } from "./AccountRouterOptions.tsx";
 
 /**
  * The account shell: a centred column with a settings rail, deliberately not

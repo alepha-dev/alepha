@@ -7,7 +7,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { useState } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AlephaTable } from "../alepha-table.tsx";
+import { AlephaTable } from "../AlephaTable.tsx";
 
 /** No `id`, on purpose: this is the case that fell back to `Math.random()`. */
 interface Row {

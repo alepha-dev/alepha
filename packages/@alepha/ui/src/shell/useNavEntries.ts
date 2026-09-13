@@ -11,7 +11,7 @@ import {
   keepDeepestActive,
   navGroupLabel,
   navLabel,
-} from "./nav-tree-util.ts";
+} from "./navTreeUtil.ts";
 
 export interface UseNavEntriesOptions {
   /**

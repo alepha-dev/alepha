@@ -2,20 +2,17 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
+import { Languages } from "lucide-react";
+
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useI18n } from "alepha/react/i18n";
-import { Languages } from "lucide-react";
+} from "../core/DropdownMenu.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 
 export interface ButtonLanguageProps {
   /**

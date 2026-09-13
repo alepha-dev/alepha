@@ -1,16 +1,9 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Infer, z } from "alepha";
 import type {
   AdminAuditController,
@@ -29,6 +22,14 @@ import {
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
 const auditFiltersSchema = z.object({
   status: z.string().optional(),

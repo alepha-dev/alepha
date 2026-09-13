@@ -22,28 +22,97 @@
     "src"
   ],
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
-    "./components/*.ts": "./src/components/*.ts",
-    "./components/*": "./src/components/*.tsx",
-    "./hooks/*": "./src/hooks/*.ts",
-    "./lib/*": "./src/lib/*.ts",
-    "./styles.css": "./src/styles.css"
+    ".": "./src/core/index.ts",
+    "./form": "./src/form/index.ts",
+    "./settings": "./src/settings/index.ts",
+    "./table": "./src/table/index.ts",
+    "./tree": "./src/tree/index.ts",
+    "./markdown": "./src/markdown/index.ts",
+    "./shell": "./src/shell/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./account": "./src/account/index.ts",
+    "./admin": "./src/admin/index.ts",
+    "./chart": "./src/chart/index.ts",
+    "./command": "./src/command/index.ts",
+    "./calendar": "./src/calendar/index.ts",
+    "./otp": "./src/otp/index.ts",
+    "./resizable": "./src/resizable/index.ts",
+    "./i18n/fr": "./src/i18n/fr/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "exports": {
-      "./components/*": {
-        "types": "./dist/components/*.d.ts",
-        "default": "./dist/components/*.js"
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.js"
       },
-      "./hooks/*": {
-        "types": "./dist/hooks/*.d.ts",
-        "default": "./dist/hooks/*.js"
+      "./form": {
+        "types": "./dist/form/index.d.ts",
+        "default": "./dist/form/index.js"
       },
-      "./lib/*": {
-        "types": "./dist/lib/*.d.ts",
-        "default": "./dist/lib/*.js"
+      "./settings": {
+        "types": "./dist/settings/index.d.ts",
+        "default": "./dist/settings/index.js"
       },
-      "./styles.css": "./src/styles.css"
+      "./table": {
+        "types": "./dist/table/index.d.ts",
+        "default": "./dist/table/index.js"
+      },
+      "./tree": {
+        "types": "./dist/tree/index.d.ts",
+        "default": "./dist/tree/index.js"
+      },
+      "./markdown": {
+        "types": "./dist/markdown/index.d.ts",
+        "default": "./dist/markdown/index.js"
+      },
+      "./shell": {
+        "types": "./dist/shell/index.d.ts",
+        "default": "./dist/shell/index.js"
+      },
+      "./auth": {
+        "types": "./dist/auth/index.d.ts",
+        "default": "./dist/auth/index.js"
+      },
+      "./account": {
+        "types": "./dist/account/index.d.ts",
+        "default": "./dist/account/index.js"
+      },
+      "./admin": {
+        "types": "./dist/admin/index.d.ts",
+        "default": "./dist/admin/index.js"
+      },
+      "./chart": {
+        "types": "./dist/chart/index.d.ts",
+        "default": "./dist/chart/index.js"
+      },
+      "./command": {
+        "types": "./dist/command/index.d.ts",
+        "default": "./dist/command/index.js"
+      },
+      "./calendar": {
+        "types": "./dist/calendar/index.d.ts",
+        "default": "./dist/calendar/index.js"
+      },
+      "./otp": {
+        "types": "./dist/otp/index.d.ts",
+        "default": "./dist/otp/index.js"
+      },
+      "./resizable": {
+        "types": "./dist/resizable/index.d.ts",
+        "default": "./dist/resizable/index.js"
+      },
+      "./i18n/fr": {
+        "types": "./dist/i18n/fr/index.d.ts",
+        "default": "./dist/i18n/fr/index.js"
+      },
+      "./styles.css": "./src/styles.css",
+      "./package.json": "./package.json"
     }
   },
   "scripts": {

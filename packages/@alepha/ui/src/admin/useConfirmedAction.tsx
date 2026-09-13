@@ -1,10 +1,8 @@
-import {
-  type ConfirmOptions,
-  useDialog,
-} from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useAction } from "alepha/react";
 import type { DependencyList } from "react";
+
+import { type ConfirmOptions, useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
 
 export interface UseConfirmedActionConfig<TArgs extends unknown[]> {
   /**
@@ -31,7 +29,7 @@ export interface UseConfirmedActionReturn<TArgs extends unknown[]> {
 }
 
 /**
- * The recurring admin pattern — confirm, then mutate, then toast — in one hook.
+ * The recurring admin pattern (confirm, then mutate, then toast) in one hook.
  * Wraps {@link useAction} (so failures still emit `react:action:error` for the
  * global toaster) plus `useDialog().confirm` and an optional success toast.
  *

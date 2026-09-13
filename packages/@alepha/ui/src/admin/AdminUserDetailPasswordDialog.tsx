@@ -2,8 +2,11 @@ import * as React from "react";
 
 void React;
 
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
+import type { FormModel } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { Ban } from "lucide-react";
+
+import { Button } from "../core/Button.tsx";
 import {
   Dialog,
   DialogContent,
@@ -11,12 +14,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import type { FormModel } from "alepha/react/form";
-import { useI18n } from "alepha/react/i18n";
-import { Ban } from "lucide-react";
-
-import type { passwordSchema } from "./admin-user-detail-password-schema.ts";
+} from "../core/Dialog.tsx";
+import { Control } from "../form/Control.tsx";
+import type { passwordSchema } from "./adminUserDetailPasswordSchema.ts";
 
 export interface AdminUserDetailPasswordDialogProps {
   open: boolean;

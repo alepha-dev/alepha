@@ -1,19 +1,9 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { cn } from "@alepha/ui/lib/utils";
 import type { AdminParameterController } from "alepha/api/parameters";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -30,8 +20,18 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { ParameterDiffDialog } from "./parameter-diff-dialog.tsx";
-import { ParameterJsonDialog } from "./parameter-json-dialog.tsx";
+import { Badge } from "../core/Badge.tsx";
+import { Button } from "../core/Button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../core/DropdownMenu.tsx";
+import { cn } from "../core/utils.ts";
+import { ParameterDiffDialog } from "./ParameterDiffDialog.tsx";
+import { ParameterJsonDialog } from "./ParameterJsonDialog.tsx";
 
 type HistoryVersion = Awaited<
   ReturnType<AdminParameterController["getHistory"]>

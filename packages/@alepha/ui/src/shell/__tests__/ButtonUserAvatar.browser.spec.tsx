@@ -6,7 +6,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { ButtonUser } from "../button-user.tsx";
+import { ButtonUser } from "../ButtonUser.tsx";
 
 /**
  * The account button's avatar (feedback #P2138, #Q2229).

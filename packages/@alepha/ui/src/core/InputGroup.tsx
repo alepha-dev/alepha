@@ -1,9 +1,10 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
-import { cn } from "@alepha/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
+
+import { Button } from "./Button.tsx";
+import { Input } from "./Input.tsx";
+import { Textarea } from "./Textarea.tsx";
+import { cn } from "./utils.ts";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (

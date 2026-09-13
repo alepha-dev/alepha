@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
+
+import { cn } from "./utils.ts";
 
 function Switch({
   className,

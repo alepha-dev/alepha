@@ -30,7 +30,7 @@ export interface MermaidFenceProps {
  * untouched.
  *
  * This is the ONLY module that pulls in either parser, `graphre` and either
- * emitter, and it is imported through `lazy()` from `markdown-view.tsx`.
+ * emitter, and it is imported through `lazy()` from `MarkdownView.tsx`.
  * That is the whole constraint the diagram layer lives under: a document
  * with no diagram must pay nothing at all.
  *

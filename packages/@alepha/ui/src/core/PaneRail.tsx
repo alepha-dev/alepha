@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
+
+import { cn } from "./utils.ts";
 
 export interface PaneRailProps {
   /**

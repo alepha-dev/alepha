@@ -1,8 +1,9 @@
-import { AppActions } from "@alepha/ui/components/app-actions/app-actions";
-import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ArrowLeft } from "lucide-react";
+
+import { Button } from "../core/Button.tsx";
+import { AppActions } from "../shell/AppActions.tsx";
 
 export interface AccountHeaderProps {
   /**

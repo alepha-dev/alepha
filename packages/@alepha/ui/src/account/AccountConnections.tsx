@@ -1,14 +1,15 @@
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { MyConnection, MyConnectionController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plug } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { SettingsRow } from "../settings/SettingsRow.tsx";
+import { SettingsSection } from "../settings/SettingsSection.tsx";
 
 export interface AccountConnectionsProps {
   connections?: MyConnection[];

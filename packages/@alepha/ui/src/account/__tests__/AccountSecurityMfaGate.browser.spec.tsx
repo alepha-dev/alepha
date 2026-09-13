@@ -1,4 +1,3 @@
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
@@ -9,7 +8,8 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { AlephaServerLinks } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import AccountSecurity from "../account-security.tsx";
+import { DialogProvider } from "../../core/useDialog.tsx";
+import AccountSecurity from "../AccountSecurity.tsx";
 
 /**
  * A realm that has turned the authenticator-app factor off must not be

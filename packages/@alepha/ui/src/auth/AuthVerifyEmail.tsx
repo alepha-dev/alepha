@@ -2,15 +2,16 @@ import * as React from "react";
 
 void React;
 
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import type { UserController } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Loader2, MailCheck } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+
+import { Alert, AlertDescription } from "../core/Alert.tsx";
+import { Button } from "../core/Button.tsx";
+import { Card, CardContent } from "../core/Card.tsx";
 
 export type VerifyEmailStep = "verifying" | "success" | "error";
 

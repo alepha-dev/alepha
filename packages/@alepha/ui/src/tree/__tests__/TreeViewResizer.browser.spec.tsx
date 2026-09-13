@@ -11,7 +11,7 @@ import {
   TREE_VIEW_MAX_WIDTH,
   TREE_VIEW_MIN_WIDTH,
   TreeViewResizer,
-} from "../tree-view-resizer.tsx";
+} from "../TreeViewResizer.tsx";
 
 describe("TreeViewResizer", () => {
   let alepha: Alepha | undefined;

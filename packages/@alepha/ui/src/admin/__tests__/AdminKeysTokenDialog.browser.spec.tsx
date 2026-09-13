@@ -5,7 +5,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { AdminKeysTokenDialog } from "../admin-keys-token-dialog.tsx";
+import { AdminKeysTokenDialog } from "../AdminKeysTokenDialog.tsx";
 
 /**
  * The dialog is the single moment a freshly minted API key token is readable

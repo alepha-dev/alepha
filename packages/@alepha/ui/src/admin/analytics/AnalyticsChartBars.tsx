@@ -1,6 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 
+import { cn } from "../../core/utils.ts";
 import { analyticsNumber } from "./analyticsModel.ts";
 import type { AnalyticsChartPoint } from "./chartModel.ts";
 import { analyticsSlotColor } from "./chartModel.ts";

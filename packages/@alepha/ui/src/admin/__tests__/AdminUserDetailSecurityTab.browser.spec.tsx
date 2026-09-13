@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AdminUserDetailSecurityTab } from "../admin-user-detail-security-tab.tsx";
+import { AdminUserDetailSecurityTab } from "../AdminUserDetailSecurityTab.tsx";
 
 /**
  * The support case this tab has to serve is a user who lost the phone holding

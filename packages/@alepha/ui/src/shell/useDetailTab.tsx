@@ -3,10 +3,10 @@ import { useQueryParams } from "alepha/react/router";
 import { useCallback } from "react";
 
 /**
- * `.tsx` despite holding no JSX, like `use-confirmed-action.tsx` beside it.
- * This package's `exports` map resolves `./components/*` to `*.tsx` only, so a
- * `.ts` file here is reachable by a relative import within `@alepha/ui` and by
- * nothing outside it — and `@alepha/commerce` imports this hook.
+ * `.tsx` despite holding no JSX, like `useConfirmedAction.tsx`: both were named
+ * when the package exported one wildcard subpath per component, which resolved
+ * `.tsx` files only. Every consumer imports it through `@alepha/ui/shell` now,
+ * so the extension no longer matters to anyone.
  */
 
 /**
@@ -25,7 +25,7 @@ const tabSchema = z.object({ tab: z.string().optional() });
  *
  * The generic is the union of valid keys, so a caller gets `"overview" |
  * "stock"` back rather than `string`. An unknown `?tab=` value in the URL is
- * not validated here — it falls through to whatever the page renders for an
+ * not validated here: it falls through to whatever the page renders for an
  * unmatched key, the same way a hand-edited query param always could.
  */
 export const useDetailTab = <T extends string>(

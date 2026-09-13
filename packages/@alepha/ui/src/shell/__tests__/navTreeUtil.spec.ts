@@ -7,7 +7,7 @@ import {
   type NavMeta,
   navGroupLabel,
   navLabel,
-} from "../nav-tree-util.ts";
+} from "../navTreeUtil.ts";
 
 /**
  * Entries as `useNavEntries` builds them: `href` is the page's resolved

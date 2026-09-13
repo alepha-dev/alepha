@@ -1,10 +1,10 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { Spinner } from "@alepha/ui/components/ui/spinner";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { LayoutDashboard, Table } from "lucide-react";
 import { useMemo } from "react";
 
+import { Segmented } from "../../core/Segmented.tsx";
+import { Spinner } from "../../core/Spinner.tsx";
+import { cn } from "../../core/utils.ts";
 import { AnalyticsChart } from "./AnalyticsChart.tsx";
 import { AnalyticsEmpty } from "./AnalyticsEmpty.tsx";
 import { analyticsNumber } from "./analyticsModel.ts";
@@ -71,7 +71,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
   //
   // Each key is also a literal sitting directly after `tr(`. A ternary that
   // picks between two key strings reads fine but is invisible to the
-  // catalogue scanner (`i18n-fr.spec.ts` and `alepha i18n check` both match
+  // catalogue scanner (`uiFr.spec.ts` and `alepha i18n check` both match
   // on `tr("..."`), so the singular would silently never be translated, which
   // is the exact rot those checks exist to catch.
   const groupsText =

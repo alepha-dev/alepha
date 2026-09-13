@@ -2,17 +2,6 @@ import * as React from "react";
 
 void React;
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@alepha/ui/components/ui/alert-dialog";
-import { Input } from "@alepha/ui/components/ui/input";
 import { AlephaError } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -26,6 +15,18 @@ import {
   useRef,
   useState,
 } from "react";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./AlertDialog.tsx";
+import { Input } from "./Input.tsx";
 
 export interface ConfirmOptions {
   title: string;

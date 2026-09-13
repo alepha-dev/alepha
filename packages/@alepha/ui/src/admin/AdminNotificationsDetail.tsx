@@ -1,18 +1,16 @@
-import { AdminNotificationsDetailTabs } from "@alepha/ui/components/admin/admin-notifications-detail-tabs";
+import type { AdminNotificationController } from "alepha/api/notifications";
+import { useClient, useQuery } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import type { AdminNotificationController } from "alepha/api/notifications";
-import { useClient, useQuery } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
-
-// Relative: the package's `components/*` subpath export maps to `.tsx`, so a
-// plain `.ts` sibling only resolves this way.
-import { notificationTemplateLabel } from "./admin-notifications-template-label.ts";
+} from "../core/Sheet.tsx";
+import { AdminNotificationsDetailTabs } from "./AdminNotificationsDetailTabs.tsx";
+import { notificationTemplateLabel } from "./adminNotificationsTemplateLabel.ts";
 
 export interface AdminNotificationsDetailProps {
   notificationId: string | null;

@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { EmailBodyFrame } from "../email-body-frame.tsx";
+import { EmailBodyFrame } from "../EmailBodyFrame.tsx";
 
 /**
  * An email body is untrusted HTML written by whoever authored the template,

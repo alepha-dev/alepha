@@ -1,15 +1,3 @@
-import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
   MyAccountController,
   MyProfileController,
@@ -17,6 +5,19 @@ import type {
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
+import { Input } from "../core/Input.tsx";
+import { Label } from "../core/Label.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { ControlPassword } from "../form/ControlPassword.tsx";
 
 export interface AccountDeleteDialogProps {
   open: boolean;

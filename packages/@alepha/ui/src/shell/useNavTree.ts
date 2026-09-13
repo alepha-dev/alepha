@@ -1,10 +1,7 @@
-import type {
-  NavGroup,
-  NavItem,
-} from "@alepha/ui/components/app-shell/app-shell";
 import { useMemo } from "react";
 
-import { type NavEntry, useNavEntries } from "./use-nav-entries.ts";
+import type { NavGroup, NavItem } from "./AppShell.tsx";
+import { type NavEntry, useNavEntries } from "./useNavEntries.ts";
 
 export interface UseNavTreeOptions {
   /**

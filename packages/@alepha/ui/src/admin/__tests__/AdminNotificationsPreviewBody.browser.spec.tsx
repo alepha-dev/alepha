@@ -5,7 +5,7 @@ import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { AdminNotificationsPreviewBody } from "../admin-notifications-preview-body.tsx";
+import { AdminNotificationsPreviewBody } from "../AdminNotificationsPreviewBody.tsx";
 
 /**
  * The preview has four outcomes, three of which show nothing.

@@ -2,24 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
-import {
-  TurnstileWidget,
-  type TurnstileWidgetHandle,
-} from "@alepha/ui/components/captcha/turnstile-widget";
-import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
-import { Control } from "@alepha/ui/components/control/control";
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@alepha/ui/components/ui/input-otp";
-import { Label } from "@alepha/ui/components/ui/label";
-import { Separator } from "@alepha/ui/components/ui/separator";
 import { SchemaValidationError, z } from "alepha";
 import type {
   RealmConfig,
@@ -41,7 +23,25 @@ import {
   useState,
 } from "react";
 
-import { safeRedirect } from "./safe-redirect.ts";
+import { Alert, AlertDescription } from "../core/Alert.tsx";
+import { BrandIcon } from "../core/BrandIcon.tsx";
+import { Button } from "../core/Button.tsx";
+import { Card, CardContent } from "../core/Card.tsx";
+import { Label } from "../core/Label.tsx";
+import { Separator } from "../core/Separator.tsx";
+import { Control } from "../form/Control.tsx";
+import { iconFor } from "../form/iconHint.tsx";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "../otp/InputOTP.tsx";
+import { safeRedirect } from "./safeRedirect.ts";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "./TurnstileWidget.tsx";
 
 export interface AuthRegisterProps {
   /**
@@ -247,7 +247,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
           });
         }
         // `force: true` so parent-layout loaders re-run against the freshly
-        // authenticated user — see the note in auth-login.tsx.
+        // authenticated user — see the note in AuthLogin.tsx.
         await router.push(redirect, { force: true });
       } catch (err) {
         // Turnstile tokens are single-use — force a fresh challenge so the
@@ -306,7 +306,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
         });
       }
       // `force: true` so parent-layout loaders re-run against the freshly
-      // authenticated user — see the note in auth-login.tsx.
+      // authenticated user — see the note in AuthLogin.tsx.
       await router.push(redirect, { force: true });
     } catch (err) {
       setVerifyError(

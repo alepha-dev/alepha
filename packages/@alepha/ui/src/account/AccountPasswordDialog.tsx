@@ -1,13 +1,3 @@
-import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
   MyIdentityController,
   MyPasswordController,
@@ -15,6 +5,17 @@ import type {
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { ControlPassword } from "../form/ControlPassword.tsx";
 
 export interface AccountPasswordDialogProps {
   open: boolean;

@@ -7,13 +7,13 @@ import { fileURLToPath } from "node:url";
  * Copy stylesheets from `src/` into `dist/`, preserving their paths.
  *
  * `tsdown` leaves `.css` imports external (see `tsdown.config.ts`), so the
- * emitted `markdown-view.js` still carries `import "./markdown-view.css"`.
+ * emitted `markdown/MarkdownView.js` still carries `import "./MarkdownView.css"`.
  * That specifier is relative, so the file has to exist beside it in `dist/`
  * or the import resolves to nothing.
  *
  * `styles.css` is copied for symmetry, but the published `exports` map still
- * points `./styles.css` at the copy in `src/`: it ends in
- * `@source "../**\/*.{ts,tsx}"`, which is how Tailwind discovers the class
+ * points `./styles.css` at the copy in `src/`: it carries
+ * `@source "./**\/*.{ts,tsx}"`, which is how Tailwind discovers the class
  * names used by the components. Tailwind needs to read the sources to do that,
  * and `dist/` holds `.js`.
  */

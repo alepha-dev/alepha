@@ -2,8 +2,8 @@ import { fireEvent, render } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { PermissionMatrixGroup } from "../permission-matrix.tsx";
-import { PermissionMatrix } from "../permission-matrix.tsx";
+import type { PermissionMatrixGroup } from "../PermissionMatrix.tsx";
+import { PermissionMatrix } from "../PermissionMatrix.tsx";
 
 /**
  * What these pin is what the component is NOT allowed to know.

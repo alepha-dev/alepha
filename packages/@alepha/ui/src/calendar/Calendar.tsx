@@ -1,5 +1,3 @@
-import { Button, buttonVariants } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { enUS, es, fr } from "date-fns/locale";
 import {
@@ -14,6 +12,9 @@ import {
   getDefaultClassNames,
   type Locale,
 } from "react-day-picker";
+
+import { Button, buttonVariants } from "../core/Button.tsx";
+import { cn } from "../core/utils.ts";
 
 // Map Alepha's active language to a date-fns locale so month names and
 // weekday headers render translated by default (consumers can still override

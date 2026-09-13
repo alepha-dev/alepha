@@ -2,7 +2,10 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
+import { type ReactNode, useMemo } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   Dialog,
   DialogClose,
@@ -11,12 +14,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { cn } from "@alepha/ui/lib/utils";
-import { useI18n } from "alepha/react/i18n";
-import { type ReactNode, useMemo } from "react";
-
-import { diffLines } from "./diff-lines.ts";
+} from "../core/Dialog.tsx";
+import { cn } from "../core/utils.ts";
+import { diffLines } from "./diffLines.ts";
 
 export interface ParameterDiffDialogProps {
   open: boolean;

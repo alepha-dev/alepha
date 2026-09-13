@@ -2,27 +2,6 @@ import * as React from "react";
 
 void React;
 
-import {
-  ControlClearButton,
-  type ControlTriggerSize,
-  TRIGGER_CLASSES,
-  TRIGGER_MINIMAL_CLASSES,
-  TRIGGER_SIZES,
-  TRIGGER_WRAPPER_CLASSES,
-} from "@alepha/ui/components/control-base/field-trigger";
-import { FormField } from "@alepha/ui/components/control-base/form-field";
-import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
-import {
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-  Combobox as ComboboxRoot,
-  ComboboxTrigger,
-} from "@alepha/ui/components/ui/combobox";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { cn } from "@alepha/ui/lib/utils";
 import type { Async } from "alepha";
 import { useAction } from "alepha/react";
 import {
@@ -35,6 +14,28 @@ import { useI18n } from "alepha/react/i18n";
 import { ListChecks, Loader2 } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
+
+import {
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  Combobox as ComboboxRoot,
+  ComboboxTrigger,
+} from "../core/Combobox.tsx";
+import { Segmented } from "../core/Segmented.tsx";
+import { cn } from "../core/utils.ts";
+import {
+  ControlClearButton,
+  type ControlTriggerSize,
+  TRIGGER_CLASSES,
+  TRIGGER_MINIMAL_CLASSES,
+  TRIGGER_SIZES,
+  TRIGGER_WRAPPER_CLASSES,
+} from "./fieldTrigger.tsx";
+import { FormField } from "./FormField.tsx";
+import type { IconComponent } from "./iconHint.tsx";
 
 export type SelectOption =
   | string
@@ -750,7 +751,7 @@ function Combobox(props: ComboboxProps) {
   // The empty state is now expressed ONCE, on the trigger, via `clearLabel`
   // as its placeholder. Clearing a chosen value is re-clicking it, which
   // `deselectable` already implements and
-  // `control-select-deselect.browser.spec.tsx` already covers.
+  // `ControlSelectDeselect.browser.spec.tsx` already covers.
   //
   // `clearable` therefore no longer adds a row. It still means "this field
   // may be empty": it is what puts `clearLabel` on the trigger and what makes

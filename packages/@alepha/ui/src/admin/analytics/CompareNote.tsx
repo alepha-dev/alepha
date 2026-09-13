@@ -1,6 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 
+import { cn } from "../../core/utils.ts";
 import type {
   AnalyticsCompareMode,
   AnalyticsWindow,

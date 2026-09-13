@@ -1,14 +1,14 @@
-import { AppActions } from "@alepha/ui/components/app-actions/app-actions";
-import { NavShell } from "@alepha/ui/components/nav-shell/nav-shell";
-import { Spotlight } from "@alepha/ui/components/nav-shell/spotlight";
-import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ColorScheme } from "alepha/react/ui";
 import { LayoutDashboard, Search } from "lucide-react";
 import { useState } from "react";
 
-import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
+import { cn } from "../core/utils.ts";
+import { AppActions } from "../shell/AppActions.tsx";
+import { NavShell } from "../shell/NavShell.tsx";
+import { Spotlight } from "../shell/Spotlight.tsx";
+import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 
 /**
  * The admin shell.

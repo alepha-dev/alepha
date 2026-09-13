@@ -5,7 +5,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { NavigationProgress } from "../navigation-progress.tsx";
+import { NavigationProgress } from "../NavigationProgress.tsx";
 
 /**
  * The bar draws for a transition it is mounted across, and for no other.

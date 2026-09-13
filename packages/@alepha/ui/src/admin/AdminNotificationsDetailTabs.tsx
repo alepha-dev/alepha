@@ -1,15 +1,11 @@
-import { AdminNotificationsPreviewTab } from "@alepha/ui/components/admin/admin-notifications-preview-tab";
-import { AdminNotificationsRawTab } from "@alepha/ui/components/admin/admin-notifications-raw-tab";
-import { AdminNotificationsStatusBadge } from "@alepha/ui/components/admin/admin-notifications-status-badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@alepha/ui/components/ui/tabs";
 import type { NotificationDetailResource } from "alepha/api/notifications";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../core/Tabs.tsx";
+import { AdminNotificationsPreviewTab } from "./AdminNotificationsPreviewTab.tsx";
+import { AdminNotificationsRawTab } from "./AdminNotificationsRawTab.tsx";
+import { AdminNotificationsStatusBadge } from "./AdminNotificationsStatusBadge.tsx";
 
 export interface AdminNotificationsDetailTabsProps {
   notificationId: string;

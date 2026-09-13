@@ -1,4 +1,3 @@
-import { $pageNav } from "@alepha/ui/components/nav-shell/nav-page";
 import { $store } from "alepha";
 import type { ApiKeyController } from "alepha/api/keys";
 import type {
@@ -13,10 +12,11 @@ import { $client } from "alepha/server/links";
 import { KeyRound, Plug, RadioTower, ShieldCheck, User } from "lucide-react";
 import { createElement } from "react";
 
+import { $pageNav } from "../shell/$pageNav.tsx";
 import {
   type AccountPage,
   accountRouterOptionsAtom,
-} from "./account-router-options.tsx";
+} from "./AccountRouterOptions.tsx";
 
 /**
  * The whole `/account` surface — five pages and their shell — mounted and
@@ -32,7 +32,7 @@ import {
  * defined`, breaking migration generation for the whole app.
  *
  * ```ts
- * import { AccountRouter } from "@alepha/ui/components/account/account-router";
+ * import { AccountRouter } from "@alepha/ui/account";
  *
  * export const MyWeb = $module({
  *   name: "my.web",
@@ -156,7 +156,7 @@ export class AccountRouter {
     path: "/account",
     use: [$secure()],
     nav: { label: "Account", labelKey: "account.nav.account" },
-    lazy: () => import("./account-layout.tsx"),
+    lazy: () => import("./AccountLayout.tsx"),
   });
 
   profile = $pageNav({
@@ -191,7 +191,7 @@ export class AccountRouter {
       ]);
       return { profile, realmConfig };
     },
-    lazy: () => import("./account-profile.tsx"),
+    lazy: () => import("./AccountProfile.tsx"),
     props: () => this.options.pages?.profile ?? {},
   });
 
@@ -224,7 +224,7 @@ export class AccountRouter {
       ]);
       return { identities, realmConfig };
     },
-    lazy: () => import("./account-security.tsx"),
+    lazy: () => import("./AccountSecurity.tsx"),
     props: () => this.options.pages?.security ?? {},
   });
 
@@ -244,7 +244,7 @@ export class AccountRouter {
       keywords: ["devices", "sign out"],
     },
     loader: async () => ({ sessions: await this.sessionApi.listMySessions() }),
-    lazy: () => import("./account-sessions.tsx"),
+    lazy: () => import("./AccountSessions.tsx"),
     props: () => this.options.pages?.sessions ?? {},
   });
 
@@ -264,7 +264,7 @@ export class AccountRouter {
       keywords: ["tokens", "credentials"],
     },
     loader: async () => ({ apiKeys: await this.apiKeyApi.listApiKeys() }),
-    lazy: () => import("./account-keys.tsx"),
+    lazy: () => import("./AccountKeys.tsx"),
     props: () => this.options.pages?.keys ?? {},
   });
 
@@ -287,7 +287,7 @@ export class AccountRouter {
     loader: async () => ({
       connections: await this.connectionApi.listMyConnections(),
     }),
-    lazy: () => import("./account-connections.tsx"),
+    lazy: () => import("./AccountConnections.tsx"),
     props: () => this.options.pages?.connections ?? {},
   });
 }

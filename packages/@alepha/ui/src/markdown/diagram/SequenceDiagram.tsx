@@ -28,7 +28,7 @@ export interface SequenceDiagramProps {
  *
  * ## React elements, not an HTML string
  *
- * `markdown-view.tsx` carries an explicit rule that no raw HTML is ever
+ * `MarkdownView.tsx` carries an explicit rule that no raw HTML is ever
  * promoted to markup, because it renders one user's content to another.
  * Emitting elements means labels are escaped by React itself and
  * `dangerouslySetInnerHTML` never appears on this path.

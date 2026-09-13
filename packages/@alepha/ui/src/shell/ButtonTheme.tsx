@@ -2,7 +2,11 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
+import { useStore } from "alepha/react";
+import { uiThemeListAtom, useTheme } from "alepha/react/ui";
+import { Check, Palette } from "lucide-react";
+
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,16 +15,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { cn } from "@alepha/ui/lib/utils";
-import { useStore } from "alepha/react";
-import { uiThemeListAtom, useTheme } from "alepha/react/ui";
-import { Check, Palette } from "lucide-react";
+} from "../core/DropdownMenu.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
+import { cn } from "../core/utils.ts";
 
 export interface ButtonThemeProps {
   /**

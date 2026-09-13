@@ -1,12 +1,3 @@
-import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@alepha/ui/components/ui/command";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -17,7 +8,16 @@ import {
   useState,
 } from "react";
 
-import { type NavEntry, useNavEntries } from "./use-nav-entries.ts";
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "../command/Command.tsx";
+import { type NavEntry, useNavEntries } from "./useNavEntries.ts";
 
 export interface SpotlightProps {
   /**

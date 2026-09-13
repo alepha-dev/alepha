@@ -1,8 +1,8 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import type { JobExecutionResource } from "alepha/api/jobs";
 
-import { useJobStatusLabels } from "./admin-jobs-status-labels.ts";
-import { JOB_STATUS_ICON, JOB_STATUS_TONE } from "./admin-jobs-status-tones.ts";
+import { Badge } from "../core/Badge.tsx";
+import { JOB_STATUS_ICON, JOB_STATUS_TONE } from "./adminJobsStatusTones.ts";
+import { useJobStatusLabels } from "./useJobStatusLabels.ts";
 
 export interface AdminJobsStatusBadgeProps {
   status: JobExecutionResource["status"];

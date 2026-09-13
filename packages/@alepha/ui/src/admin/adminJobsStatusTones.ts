@@ -1,4 +1,3 @@
-import type { BadgeTone } from "@alepha/ui/components/ui/badge";
 import type { JobExecutionResource } from "alepha/api/jobs";
 import {
   CalendarClock,
@@ -9,6 +8,8 @@ import {
   Play,
   type LucideIcon,
 } from "lucide-react";
+
+import type { BadgeTone } from "../core/Badge.tsx";
 
 type JobStatus = JobExecutionResource["status"];
 

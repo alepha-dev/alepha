@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { auditActionFromKey, auditActionKey } from "../admin-audits.tsx";
+import { auditActionFromKey, auditActionKey } from "../AdminAudits.tsx";
 
 /**
  * The Action filter's value is the `type:action` key the Action column

@@ -2,16 +2,17 @@ import * as React from "react";
 
 void React;
 
-import { FormField } from "@alepha/ui/components/control-base/form-field";
-import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Slider } from "@alepha/ui/components/ui/slider";
 import {
   type BaseInputField,
   parseField,
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
+
+import { Input } from "../core/Input.tsx";
+import { Slider } from "../core/Slider.tsx";
+import { FormField } from "./FormField.tsx";
+import { iconFor } from "./iconHint.tsx";
 
 export interface ControlNumberProps {
   /**

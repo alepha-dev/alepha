@@ -1,20 +1,20 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
+import { ChevronUp, Loader2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { useI18n } from "alepha/react/i18n";
-import { ChevronUp, Loader2 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
-
+} from "../core/DropdownMenu.tsx";
 import type {
   BulkAction,
   BulkActionContext,
   BulkMenuAction,
-} from "./alepha-table.tsx";
+} from "./AlephaTable.tsx";
 
 export interface AlephaTableBulkMenuProps<T> {
   action: BulkMenuAction<T>;

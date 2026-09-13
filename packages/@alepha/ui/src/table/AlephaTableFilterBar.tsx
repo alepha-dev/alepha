@@ -1,22 +1,23 @@
-import type { AlephaTableFilterAddType } from "@alepha/ui/components/alepha-table/alepha-table-filter-add";
-import { AlephaTableFilterAdd } from "@alepha/ui/components/alepha-table/alepha-table-filter-add";
-import { AlephaTableFilterControl } from "@alepha/ui/components/alepha-table/alepha-table-filter-control";
-import type {
-  AlephaTableFilterOperatorOption,
-  AlephaTableFilterOperatorPreset,
-} from "@alepha/ui/components/alepha-table/alepha-table-filter-operator";
-import { AlephaTableFilterOperator } from "@alepha/ui/components/alepha-table/alepha-table-filter-operator";
-import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
-import type { SelectOption } from "@alepha/ui/components/control-select/control-select";
-import type { ControlProps } from "@alepha/ui/components/control/control";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import type { ZObject } from "alepha";
 import type { FormModel } from "alepha/react/form";
 import { useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import type { ControlProps } from "../form/Control.tsx";
+import { Control } from "../form/Control.tsx";
+import type { SelectOption } from "../form/ControlSelect.tsx";
+import type { IconComponent } from "../form/iconHint.tsx";
+import type { AlephaTableFilterAddType } from "./AlephaTableFilterAdd.tsx";
+import { AlephaTableFilterAdd } from "./AlephaTableFilterAdd.tsx";
+import { AlephaTableFilterControl } from "./AlephaTableFilterControl.tsx";
+import type {
+  AlephaTableFilterOperatorOption,
+  AlephaTableFilterOperatorPreset,
+} from "./AlephaTableFilterOperator.tsx";
+import { AlephaTableFilterOperator } from "./AlephaTableFilterOperator.tsx";
 
 export interface AlephaTableFilterBarProps {
   /**

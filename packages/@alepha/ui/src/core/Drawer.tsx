@@ -1,6 +1,7 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
 import * as React from "react";
+
+import { cn } from "./utils.ts";
 
 type DrawerContextProps = {
   hasSnapPoints: boolean;

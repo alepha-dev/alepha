@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { paginateLocal } from "../paginate-local.ts";
+import { paginateLocal } from "../paginateLocal.ts";
 
 interface Row {
   id: number;

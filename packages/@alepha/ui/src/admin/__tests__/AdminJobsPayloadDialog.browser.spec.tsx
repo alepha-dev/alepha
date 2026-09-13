@@ -6,7 +6,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AdminJobsPayloadDialog } from "../admin-jobs-payload-dialog.tsx";
+import { AdminJobsPayloadDialog } from "../AdminJobsPayloadDialog.tsx";
 
 /**
  * A job that reschedules itself through stages carries the stage in its

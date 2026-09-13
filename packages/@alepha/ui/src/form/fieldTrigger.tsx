@@ -2,9 +2,10 @@ import * as React from "react";
 
 void React;
 
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { X } from "lucide-react";
+
+import { cn } from "../core/utils.ts";
 
 /**
  * How tall and how loud a field trigger is.

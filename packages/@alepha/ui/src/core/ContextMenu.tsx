@@ -1,7 +1,8 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import * as React from "react";
+
+import { cn } from "./utils.ts";
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;

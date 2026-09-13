@@ -1,22 +1,19 @@
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@alepha/ui/components/ui/input-otp";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { MyMfaController } from "alepha/api/users";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
+
+import { Alert, AlertDescription } from "../core/Alert.tsx";
+import { Button } from "../core/Button.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
 
 /**
  * What `enrollTotp` hands back: the secret in clear, the `otpauth://` URI,

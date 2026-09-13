@@ -1,18 +1,18 @@
-import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
+import type { ReactNode } from "react";
+
 import {
   Table,
   TableBody,
   TableHead,
   TableHeader,
   TableRow,
-} from "@alepha/ui/components/ui/table";
-import { cn } from "@alepha/ui/lib/utils";
-import type { ReactNode } from "react";
-
+} from "../core/Table.tsx";
+import { cn } from "../core/utils.ts";
+import type { IconComponent } from "../form/iconHint.tsx";
 import {
   PermissionMatrixGroupRows,
   permissionChecked,
-} from "./permission-matrix-group-rows.tsx";
+} from "./PermissionMatrixGroupRows.tsx";
 
 export interface PermissionMatrixProps {
   /**

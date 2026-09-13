@@ -1,4 +1,8 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
+import { FunnelPlus } from "lucide-react";
+import type { ComponentType } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,10 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { useI18n } from "alepha/react/i18n";
-import { FunnelPlus } from "lucide-react";
-import type { ComponentType } from "react";
+} from "../core/DropdownMenu.tsx";
 
 export interface AlephaTableFilterAddProps {
   /**

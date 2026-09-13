@@ -1,4 +1,3 @@
-import type { BadgeTone } from "@alepha/ui/components/ui/badge";
 import type { IntentResource } from "alepha/api/payments";
 import {
   Ban,
@@ -13,6 +12,8 @@ import {
   Undo2,
   type LucideIcon,
 } from "lucide-react";
+
+import type { BadgeTone } from "../core/Badge.tsx";
 
 type PaymentStatus = IntentResource["status"];
 

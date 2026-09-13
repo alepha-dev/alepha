@@ -1,5 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
-
+import { cn } from "../../core/utils.ts";
 import { analyticsTicks } from "./chartModel.ts";
 import type { AnalyticsChartPoint } from "./chartModel.ts";
 

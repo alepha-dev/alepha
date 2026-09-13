@@ -1,14 +1,15 @@
-import type { AdminDashboardCard } from "@alepha/ui/components/admin/admin-dashboard-card";
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { LayoutDashboard } from "lucide-react";
+import { Fragment } from "react";
+
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@alepha/ui/components/ui/empty";
-import { LayoutDashboard } from "lucide-react";
-import { Fragment } from "react";
+} from "../core/Empty.tsx";
+import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { AdminPage } from "./AdminPage.tsx";
 
 export interface AdminDashboardProps {
   /**

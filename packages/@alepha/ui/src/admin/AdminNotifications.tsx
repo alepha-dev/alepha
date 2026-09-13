@@ -1,13 +1,3 @@
-import { AdminNotificationsDetail } from "@alepha/ui/components/admin/admin-notifications-detail";
-import { AdminNotificationsStatusBadge } from "@alepha/ui/components/admin/admin-notifications-status-badge";
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import type {
   AdminNotificationController,
@@ -30,13 +20,21 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
-import { notificationChannelLabel } from "./admin-notifications-channel-label.ts";
-// Relative, not through the `@alepha/ui/components/*` alias: that subpath
-// pattern maps to `.tsx`, so a plain `.ts` sibling only resolves this way.
-import { useNotificationStatusLabels } from "./admin-notifications-status-labels.ts";
-import { NOTIFICATION_STATUSES } from "./admin-notifications-status-tones.ts";
-import { notificationTemplateLabel } from "./admin-notifications-template-label.ts";
+import { Badge } from "../core/Badge.tsx";
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { notificationChannelLabel } from "./adminNotificationsChannelLabel.ts";
+import { AdminNotificationsDetail } from "./AdminNotificationsDetail.tsx";
+import { AdminNotificationsStatusBadge } from "./AdminNotificationsStatusBadge.tsx";
+import { NOTIFICATION_STATUSES } from "./adminNotificationsStatusTones.ts";
+import { notificationTemplateLabel } from "./adminNotificationsTemplateLabel.ts";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
+import { useNotificationStatusLabels } from "./useNotificationStatusLabels.ts";
 
 /**
  * What the app sent, what happened to it, and who it may not send to.

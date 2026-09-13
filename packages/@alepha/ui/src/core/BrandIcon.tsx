@@ -2,8 +2,9 @@ import * as React from "react";
 
 void React;
 
-import { cn } from "@alepha/ui/lib/utils";
 import type { SVGProps } from "react";
+
+import { cn } from "./utils.ts";
 
 export interface BrandIconProps extends SVGProps<SVGSVGElement> {
   /**

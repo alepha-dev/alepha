@@ -1,12 +1,10 @@
-import {
-  FormField,
-  formFieldAriaProps,
-} from "@alepha/ui/components/control-base/form-field";
-import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { type HTMLAttributes, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import { Input } from "../core/Input.tsx";
+import { FormField, formFieldAriaProps } from "./FormField.tsx";
+import type { IconComponent } from "./iconHint.tsx";
 
 export interface ControlPasswordProps {
   id?: string;

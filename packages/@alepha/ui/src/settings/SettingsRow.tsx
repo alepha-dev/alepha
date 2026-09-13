@@ -1,6 +1,7 @@
-import { CardContent } from "@alepha/ui/components/ui/card";
-import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
+
+import { CardContent } from "../core/Card.tsx";
+import { cn } from "../core/utils.ts";
 
 export interface SettingsRowProps {
   /**

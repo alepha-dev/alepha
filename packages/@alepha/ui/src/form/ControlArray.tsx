@@ -2,19 +2,6 @@ import * as React from "react";
 
 void React;
 
-import {
-  Control,
-  type ControlProps,
-} from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
 import { type ZObject, type ZType, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
@@ -34,10 +21,17 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Button } from "../core/Button.tsx";
 import {
-  childI18nPrefix,
-  resolveFieldI18n,
-} from "../control-base/field-i18n.ts";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
+import { Control, type ControlProps } from "./Control.tsx";
+import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
 
 interface ArrayItem {
   key: number;

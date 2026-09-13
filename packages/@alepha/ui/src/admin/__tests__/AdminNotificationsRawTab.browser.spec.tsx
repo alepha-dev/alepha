@@ -5,7 +5,7 @@ import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { AdminNotificationsRawTab } from "../admin-notifications-raw-tab.tsx";
+import { AdminNotificationsRawTab } from "../AdminNotificationsRawTab.tsx";
 
 /**
  * `variables`, `rendered` and `logs` were all returned by `getNotification`

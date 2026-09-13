@@ -34,7 +34,7 @@ export interface TreeViewRenameInputProps {
  * second time reopens showing the name it had before the FIRST rename. That
  * bug is why the row it came from carried a `wasRenamingRef` and React's
  * "adjust state during render" dance; a component that unmounts when the
- * rename ends needs neither. `tree-view-rename.browser.spec.tsx` pins the
+ * rename ends needs neither. `TreeViewRename.browser.spec.tsx` pins the
  * second rename, so the bug cannot come back quietly.
  */
 export const TreeViewRenameInput = (

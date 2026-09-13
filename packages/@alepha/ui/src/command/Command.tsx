@@ -1,18 +1,16 @@
+import { Command as CommandPrimitive } from "cmdk";
+import { CheckIcon, SearchIcon } from "lucide-react";
+import * as React from "react";
+
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import {
-  InputGroup,
-  InputGroupAddon,
-} from "@alepha/ui/components/ui/input-group";
-import { cn } from "@alepha/ui/lib/utils";
-import { Command as CommandPrimitive } from "cmdk";
-import { CheckIcon, SearchIcon } from "lucide-react";
-import * as React from "react";
+} from "../core/Dialog.tsx";
+import { InputGroup, InputGroupAddon } from "../core/InputGroup.tsx";
+import { cn } from "../core/utils.ts";
 
 function Command({
   className,

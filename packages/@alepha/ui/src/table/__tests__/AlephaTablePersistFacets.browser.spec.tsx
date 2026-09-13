@@ -6,8 +6,8 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import type { AlephaTablePersistedFacets } from "../alepha-table.tsx";
-import { AlephaTable } from "../alepha-table.tsx";
+import type { AlephaTablePersistedFacets } from "../AlephaTable.tsx";
+import { AlephaTable } from "../AlephaTable.tsx";
 
 interface Row {
   id: number;

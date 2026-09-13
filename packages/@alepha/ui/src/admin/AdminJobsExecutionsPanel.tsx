@@ -1,8 +1,3 @@
-import { AdminJobsPayloadDialog } from "@alepha/ui/components/admin/admin-jobs-payload-dialog";
-import { AdminJobsStatusBadge } from "@alepha/ui/components/admin/admin-jobs-status-badge";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
 import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobExecutionResource } from "alepha/api/jobs";
 import { useClient } from "alepha/react";
@@ -10,11 +5,16 @@ import { useI18n } from "alepha/react/i18n";
 import { Ban, Braces, CircleDot, RotateCcw } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminJobsPayloadDialog } from "./AdminJobsPayloadDialog.tsx";
+import { AdminJobsStatusBadge } from "./AdminJobsStatusBadge.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
 import {
   JOB_EXECUTION_STATUSES,
   useJobStatusLabels,
-} from "./admin-jobs-status-labels.ts";
+} from "./useJobStatusLabels.ts";
 
 const EXEC_POLL_MS = 10_000;
 

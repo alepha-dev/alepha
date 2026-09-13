@@ -1,9 +1,10 @@
-import { AdminNotificationsPreviewBody } from "@alepha/ui/components/admin/admin-notifications-preview-body";
 import type {
   AdminNotificationController,
   NotificationPreviewResource,
 } from "alepha/api/notifications";
 import { useClient, useQuery } from "alepha/react";
+
+import { AdminNotificationsPreviewBody } from "./AdminNotificationsPreviewBody.tsx";
 
 export interface AdminNotificationsPreviewTabProps {
   notificationId: string | null;

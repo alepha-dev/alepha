@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
+
+import { cn } from "../../core/utils.ts";
 
 export interface ClauseLabelProps {
   children: ReactNode;

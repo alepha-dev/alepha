@@ -2,8 +2,9 @@ import * as React from "react";
 
 void React;
 
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useEvents } from "alepha/react";
+
+import { useToast } from "../core/useToast.tsx";
 
 export interface ActionErrorToasterProps {
   /**

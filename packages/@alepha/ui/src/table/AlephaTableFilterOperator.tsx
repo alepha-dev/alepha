@@ -1,4 +1,4 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
+import { Segmented } from "../core/Segmented.tsx";
 
 export interface AlephaTableFilterOperatorProps {
   /**

@@ -1,8 +1,9 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import { Card } from "@alepha/ui/components/ui/card";
-import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
+
+import { Card } from "../core/Card.tsx";
+import { cn } from "../core/utils.ts";
+import { settingsCardEdge } from "./settingsCardEdge.ts";
+import { SettingsHeading } from "./SettingsHeading.tsx";
 
 export interface SettingsSectionProps {
   /**

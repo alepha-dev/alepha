@@ -1,9 +1,9 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { layoutSequence } from "../layoutSequence.ts";
-import { SequenceDiagram } from "../SequenceDiagram.tsx";
-import { parseSequence } from "../sequenceParser.ts";
+import { layoutSequence } from "../diagram/layoutSequence.ts";
+import { SequenceDiagram } from "../diagram/SequenceDiagram.tsx";
+import { parseSequence } from "../diagram/sequenceParser.ts";
 
 const diagramOf = (source: string) => {
   const model = parseSequence(source);

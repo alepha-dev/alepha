@@ -2,12 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
-import {
-  Control,
-  type ControlProps,
-} from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
 import { type ZObject, z } from "alepha";
 import {
   type BaseInputField,
@@ -20,10 +14,10 @@ import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import {
-  childI18nPrefix,
-  resolveFieldI18n,
-} from "../control-base/field-i18n.ts";
+import { Button } from "../core/Button.tsx";
+import { Control, type ControlProps } from "./Control.tsx";
+import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
+import { spanClass, widthFor } from "./grid.tsx";
 
 export interface ControlObjectProps {
   /**

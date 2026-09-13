@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { SettingsDangerSection } from "../settings-danger-section.tsx";
-import { SettingsRow } from "../settings-row.tsx";
-import { SettingsSection } from "../settings-section.tsx";
+import { SettingsDangerSection } from "../SettingsDangerSection.tsx";
+import { SettingsRow } from "../SettingsRow.tsx";
+import { SettingsSection } from "../SettingsSection.tsx";
 
 /**
  * These pin the padding contract, which is the one thing about this kit that

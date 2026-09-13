@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { Control } from "../../control/control.tsx";
+import { Control } from "../Control.tsx";
 
 /**
  * `size` and `minimal` on a select-shaped `Control`.
@@ -18,7 +18,7 @@ import { Control } from "../../control/control.tsx";
  * visibly heavier than every row around it (#1703).
  *
  * Asserted through `Control` rather than `ControlSelect`, for the reason its
- * neighbour `control-select-trigger-props.browser.spec.tsx` gives: the props
+ * neighbour `ControlSelectTriggerProps.browser.spec.tsx` gives: the props
  * that go missing go missing in the hand-off between the two, and a test on
  * the inner component passes throughout.
  */

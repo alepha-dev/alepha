@@ -7,7 +7,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { LinkProvider } from "alepha/server/links";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { ButtonInbox } from "../button-inbox.tsx";
+import { ButtonInbox } from "../ButtonInbox.tsx";
 
 const ROWS = [
   {

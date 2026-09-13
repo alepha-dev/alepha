@@ -2,8 +2,12 @@ import * as React from "react";
 
 void React;
 
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
+import { z } from "alepha";
+import { useAction } from "alepha/react";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+
+import { Button } from "../core/Button.tsx";
 import {
   Dialog,
   DialogContent,
@@ -11,11 +15,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { z } from "alepha";
-import { useAction } from "alepha/react";
-import { useForm } from "alepha/react/form";
-import { useI18n } from "alepha/react/i18n";
+} from "../core/Dialog.tsx";
+import { Control } from "../form/Control.tsx";
 
 export interface ParameterSaveDialogProps {
   open: boolean;

@@ -4,8 +4,8 @@ import {
   type TreeDropPosition,
   type TreeNode,
   type TreeRow,
-} from "./tree-model.ts";
-import { type TreeViewFacade, TreeViewRow } from "./tree-view-row.tsx";
+} from "./treeModel.ts";
+import { type TreeViewFacade, TreeViewRow } from "./TreeViewRow.tsx";
 
 /**
  * A controlled tree: rows in, gestures out.

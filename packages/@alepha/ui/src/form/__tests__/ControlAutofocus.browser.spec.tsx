@@ -8,7 +8,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { Control } from "../control.tsx";
+import { Control } from "../Control.tsx";
 
 /**
  * `autoFocus` is documented on `Control` and was being dropped: a lint pass

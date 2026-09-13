@@ -1,13 +1,9 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminPaymentsStatusBadge } from "@alepha/ui/components/admin/admin-payments-status-badge";
-import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import type {
   AdminPaymentController,
   IntentResource,
@@ -15,6 +11,11 @@ import type {
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback } from "react";
+
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminPaymentsStatusBadge } from "./AdminPaymentsStatusBadge.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
 
 const formatAmount = (cents: number, currency = "USD") => {
   return new Intl.NumberFormat("en-US", {

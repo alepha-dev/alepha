@@ -5,8 +5,8 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { Toaster } from "../../ui/sonner.tsx";
-import { DialogProvider, useDialog } from "../use-dialog.tsx";
+import { Toaster } from "../Toaster.tsx";
+import { DialogProvider, useDialog } from "../useDialog.tsx";
 
 /**
  * Pins the standalone recipe documented on `AccountRouter` and `AdminRouter`.

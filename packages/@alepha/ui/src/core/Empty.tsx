@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
+
+import { cn } from "./utils.ts";
 
 function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (

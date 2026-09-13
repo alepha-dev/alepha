@@ -1,9 +1,7 @@
-import {
-  type PlateTab,
-  PlateTabBar,
-} from "@alepha/ui/components/plate-layout/plate-tab-bar";
-import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
+
+import { cn } from "../core/utils.ts";
+import { type PlateTab, PlateTabBar } from "./PlateTabBar.tsx";
 
 export interface PlateLayoutProps {
   /**

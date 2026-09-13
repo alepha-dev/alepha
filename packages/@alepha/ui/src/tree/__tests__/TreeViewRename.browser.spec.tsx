@@ -6,9 +6,9 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { type ReactElement, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildTree, flattenTree, type TreeItem } from "../tree-model.ts";
-import { TreeViewRenameInput } from "../tree-view-rename-input.tsx";
-import { TreeView } from "../tree-view.tsx";
+import { buildTree, flattenTree, type TreeItem } from "../treeModel.ts";
+import { TreeView } from "../TreeView.tsx";
+import { TreeViewRenameInput } from "../TreeViewRenameInput.tsx";
 
 const ITEMS: TreeItem[] = [
   { id: "a", name: "Alpha", branch: false },

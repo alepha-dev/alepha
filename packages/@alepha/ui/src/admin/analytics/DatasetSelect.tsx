@@ -1,10 +1,10 @@
-import { Control } from "@alepha/ui/components/control/control";
 import { z } from "alepha";
 import type { AdminDatasetDescriptor } from "alepha/api/analytics";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Database } from "lucide-react";
 
+import { Control } from "../../form/Control.tsx";
 import { analyticsDatasetSummary } from "./analyticsModel.ts";
 import { ClauseLabel } from "./ClauseLabel.tsx";
 

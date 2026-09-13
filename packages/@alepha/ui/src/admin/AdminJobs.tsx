@@ -2,26 +2,27 @@ import * as React from "react";
 
 void React;
 
-import { AdminJobsExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs-executions-panel";
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Play, Search, Shapes, SignalHigh, Timer } from "lucide-react";
 import { useCallback, useState } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../core/Sheet.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminJobsExecutionsPanel } from "./AdminJobsExecutionsPanel.tsx";
+import { AdminPage } from "./AdminPage.tsx";
 
 const POLL_MS = 30_000;
 

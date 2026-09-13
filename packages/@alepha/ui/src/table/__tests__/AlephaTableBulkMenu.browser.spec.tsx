@@ -16,7 +16,7 @@ import {
   AlephaTable,
   type BulkAction,
   type BulkMenuAction,
-} from "../alepha-table.tsx";
+} from "../AlephaTable.tsx";
 
 interface Row {
   id: number;

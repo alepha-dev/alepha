@@ -1,6 +1,7 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import * as React from "react";
+
+import { cn } from "./utils.ts";
 
 function Avatar({
   className,

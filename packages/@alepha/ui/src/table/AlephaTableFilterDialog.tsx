@@ -1,5 +1,11 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
+import type { FormModel } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { Funnel, Share2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { useState } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { Button } from "../core/Button.tsx";
 import {
   Dialog,
   DialogClose,
@@ -9,12 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@alepha/ui/components/ui/dialog";
-import type { FormModel } from "alepha/react/form";
-import { useI18n } from "alepha/react/i18n";
-import { Funnel, Share2 } from "lucide-react";
-import type { ReactNode } from "react";
-import { useState } from "react";
+} from "../core/Dialog.tsx";
 
 export interface AlephaTableFilterDialogProps {
   /**

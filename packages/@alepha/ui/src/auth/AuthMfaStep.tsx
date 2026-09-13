@@ -2,18 +2,15 @@ import * as React from "react";
 
 void React;
 
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@alepha/ui/components/ui/input-otp";
 import { type MfaChallenge, useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { HttpError } from "alepha/server";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
+
+import { Alert, AlertDescription } from "../core/Alert.tsx";
+import { Button } from "../core/Button.tsx";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
 
 export interface AuthMfaStepProps {
   /**

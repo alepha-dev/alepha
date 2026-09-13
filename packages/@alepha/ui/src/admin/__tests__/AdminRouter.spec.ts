@@ -6,8 +6,8 @@ import {
 } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
-import type { NavMeta } from "../../nav-shell/nav-tree-util.ts";
-import { AdminRouter } from "../admin-router.tsx";
+import type { NavMeta } from "../../shell/navTreeUtil.ts";
+import { AdminRouter } from "../AdminRouter.tsx";
 
 /**
  * Reads the permission(s) a page's route gate actually enforces, the same

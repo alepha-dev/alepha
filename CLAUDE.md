@@ -400,7 +400,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ### React components
 
-- **One component per file.** If a file has two, extract the second.
+- **One component per file.** If a file has two, extract the second. The one exemption is a compound primitive, which keeps its family in one file: `@alepha/ui`'s `src/core/DropdownMenu.tsx` holds the menu and all its parts.
 - **File order:** PROPS interface → COMPONENT → the rest (other interfaces, helpers).
 - **Extracted component naming:** `ParentComponent.tsx` with an inner `Header` becomes `ParentComponentHeader.tsx`.
 - **Always arrow functions:** `const MyComponent = (props: MyComponentProps) => {}` — never `function`.

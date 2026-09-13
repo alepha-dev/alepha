@@ -1,14 +1,15 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { Combobox as ComboboxPrimitive } from "@base-ui/react";
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
+import * as React from "react";
+
+import { Button } from "./Button.tsx";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@alepha/ui/components/ui/input-group";
-import { cn } from "@alepha/ui/lib/utils";
-import { Combobox as ComboboxPrimitive } from "@base-ui/react";
-import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
-import * as React from "react";
+} from "./InputGroup.tsx";
+import { cn } from "./utils.ts";
 
 const Combobox = ComboboxPrimitive.Root;
 

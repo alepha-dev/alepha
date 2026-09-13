@@ -6,7 +6,7 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import TimeAgo from "./time-ago.tsx";
+import TimeAgo from "./TimeAgo.tsx";
 
 /**
  * The two halves of what this component exists for: a relative label a reader

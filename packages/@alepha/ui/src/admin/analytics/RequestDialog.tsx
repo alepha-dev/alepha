@@ -1,4 +1,9 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import type { AdminAnalyticsQuery } from "alepha/api/analytics";
+import { useI18n } from "alepha/react/i18n";
+import { Copy } from "lucide-react";
+import { useState } from "react";
+
+import { Button } from "../../core/Button.tsx";
 import {
   Dialog,
   DialogContent,
@@ -6,11 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import type { AdminAnalyticsQuery } from "alepha/api/analytics";
-import { useI18n } from "alepha/react/i18n";
-import { Copy } from "lucide-react";
-import { useState } from "react";
+} from "../../core/Dialog.tsx";
 
 export interface RequestDialogProps {
   open: boolean;

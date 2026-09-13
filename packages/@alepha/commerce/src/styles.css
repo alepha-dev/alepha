@@ -4,7 +4,7 @@
  * ### Why this file has to exist
  *
  * Tailwind v4 generates a utility only if it finds the class in a scanned
- * source. `@alepha/ui/styles.css` declares `@source "../**\/*.{ts,tsx}"`, which
+ * source. `@alepha/ui/styles.css` declares `@source "./**\/*.{ts,tsx}"`, which
  * covers `@alepha/ui` and nothing else — and an application's own scan covers
  * the application. This package's components sat in neither.
  *

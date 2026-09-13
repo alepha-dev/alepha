@@ -2,15 +2,13 @@ import * as React from "react";
 
 void React;
 
-import { AdminUsersStatusBadge } from "@alepha/ui/components/admin/admin-users-status-badge";
-import {
-  DetailAside,
-  type DetailAsideRow,
-} from "@alepha/ui/components/detail/detail-aside";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import type { UserResource } from "alepha/api/users";
 import { useI18n } from "alepha/react/i18n";
 import { ShieldCheck } from "lucide-react";
+
+import { Badge } from "../core/Badge.tsx";
+import { DetailAside, type DetailAsideRow } from "../shell/DetailAside.tsx";
+import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
 
 export interface AdminUserDetailIdentityAsideProps {
   user: UserResource;

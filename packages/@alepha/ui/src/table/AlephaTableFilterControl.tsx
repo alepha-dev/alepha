@@ -1,12 +1,9 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { FunnelX, X } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
+import { cn } from "../core/utils.ts";
 
 export interface AlephaTableFilterControlProps {
   /**

@@ -1,10 +1,10 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import type { IntentResource } from "alepha/api/payments";
 
+import { Badge } from "../core/Badge.tsx";
 import {
   PAYMENT_STATUS_ICON,
   PAYMENT_STATUS_TONE,
-} from "./admin-payments-status-tones.ts";
+} from "./adminPaymentsStatusTones.ts";
 
 export interface AdminPaymentsStatusBadgeProps {
   status: IntentResource["status"];

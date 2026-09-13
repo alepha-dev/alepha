@@ -1,12 +1,3 @@
-import { AccountDeleteDialog } from "@alepha/ui/components/account/account-delete-dialog";
-import { AccountMfaDialog } from "@alepha/ui/components/account/account-mfa-dialog";
-import { AccountPasswordDialog } from "@alepha/ui/components/account/account-password-dialog";
-import { SettingsDangerSection } from "@alepha/ui/components/settings/settings-danger-section";
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
   MyIdentity,
   MyIdentityController,
@@ -20,7 +11,16 @@ import { useI18n } from "alepha/react/i18n";
 import { KeyRound, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
+import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
+import { Button } from "../core/Button.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { SettingsDangerSection } from "../settings/SettingsDangerSection.tsx";
+import { SettingsRow } from "../settings/SettingsRow.tsx";
+import { SettingsSection } from "../settings/SettingsSection.tsx";
+import { AccountDeleteDialog } from "./AccountDeleteDialog.tsx";
+import { AccountMfaDialog } from "./AccountMfaDialog.tsx";
+import { AccountPasswordDialog } from "./AccountPasswordDialog.tsx";
 
 export interface AccountSecurityProps {
   identities?: MyIdentity[];

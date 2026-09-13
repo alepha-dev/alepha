@@ -2,10 +2,11 @@ import * as React from "react";
 
 void React;
 
-import { Control } from "@alepha/ui/components/control/control";
 import type { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { CircleDot } from "lucide-react";
+
+import { Control } from "../form/Control.tsx";
 
 export interface AdminUsersStatusFilterProps {
   input: Parameters<typeof useFieldValue>[0];

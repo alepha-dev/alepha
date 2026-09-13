@@ -2,8 +2,13 @@ import * as React from "react";
 
 void React;
 
-import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
-import { Button } from "@alepha/ui/components/ui/button";
+import type { NotificationInboxController } from "alepha/api/notifications";
+import { DateTimeProvider } from "alepha/datetime";
+import { useClient, useInject, useStore } from "alepha/react";
+import { Bell } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,18 +17,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { cn } from "@alepha/ui/lib/utils";
-import type { NotificationInboxController } from "alepha/api/notifications";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
-import { Bell } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+} from "../core/DropdownMenu.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
+import { cn } from "../core/utils.ts";
+import { inboxUnreadAtom } from "./inboxUnreadAtom.ts";
 
 export interface ButtonInboxProps {
   /**

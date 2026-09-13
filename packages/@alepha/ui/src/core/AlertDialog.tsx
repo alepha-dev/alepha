@@ -1,7 +1,8 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
 import * as React from "react";
+
+import { Button } from "./Button.tsx";
+import { cn } from "./utils.ts";
 
 function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;

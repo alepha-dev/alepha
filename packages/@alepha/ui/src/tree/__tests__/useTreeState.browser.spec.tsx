@@ -2,8 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { TreeDropPosition } from "../tree-model.ts";
-import { useTreeState } from "../use-tree-state.ts";
+import type { TreeDropPosition } from "../treeModel.ts";
+import { useTreeState } from "../useTreeState.ts";
 
 const noop = () => {};
 

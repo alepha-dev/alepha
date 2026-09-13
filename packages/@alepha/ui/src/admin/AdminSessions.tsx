@@ -1,23 +1,24 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import type { AdminSessionController, SessionResource } from "alepha/api/users";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { CircleDot, Clock, Globe, LogOut, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
 /**
  * The filter bar this page rendered empty until #1319.
@@ -41,7 +42,7 @@ const filtersSchema = z.object({
  * is usually measured in them.
  *
  * ⚠️ A literal `labelKey`, never `admin.sessions.lastUsed${hours}`.
- * `i18n-fr.spec.ts` extracts keys by reading them out of the source, so an
+ * `uiFr.spec.ts` extracts keys by reading them out of the source, so an
  * interpolated one is invisible to it in both directions: the French
  * catalogue would report the translations as unused extras while the
  * component silently fell back to English. This is the declarative form that

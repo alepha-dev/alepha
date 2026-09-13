@@ -1,8 +1,9 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import * as React from "react";
+
+import { cn } from "./utils.ts";
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (

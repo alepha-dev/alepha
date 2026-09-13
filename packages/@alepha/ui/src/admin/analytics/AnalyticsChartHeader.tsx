@@ -1,6 +1,6 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { useI18n } from "alepha/react/i18n";
 
+import { Segmented } from "../../core/Segmented.tsx";
 import type { AnalyticsChartShape } from "./analyticsTypes.ts";
 import type { AnalyticsChartModel } from "./chartModel.ts";
 import { ANALYTICS_SHAPE_ICONS, useShapeLabels } from "./useShapeLabels.ts";

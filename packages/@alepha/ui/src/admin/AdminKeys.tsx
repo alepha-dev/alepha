@@ -1,17 +1,9 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { AdminKeysTokenDialog } from "@alepha/ui/components/admin/admin-keys-token-dialog";
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
   AdminApiKeyController,
   AdminApiKeyResource,
@@ -21,6 +13,15 @@ import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminKeysTokenDialog } from "./AdminKeysTokenDialog.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
 export const AdminKeys = () => {
   const client = useClient<AdminApiKeyController>();

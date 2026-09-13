@@ -2,11 +2,12 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
+
+import { Button } from "../core/Button.tsx";
+import { Segmented } from "../core/Segmented.tsx";
+import { Skeleton } from "../core/Skeleton.tsx";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 

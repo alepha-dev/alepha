@@ -5,17 +5,14 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { AdminJobsStatusBadge } from "../admin-jobs-status-badge.tsx";
-import {
-  JOB_STATUS_ICON,
-  JOB_STATUS_TONE,
-} from "../admin-jobs-status-tones.ts";
-import { AdminPaymentsStatusBadge } from "../admin-payments-status-badge.tsx";
+import { AdminJobsStatusBadge } from "../AdminJobsStatusBadge.tsx";
+import { JOB_STATUS_ICON, JOB_STATUS_TONE } from "../adminJobsStatusTones.ts";
+import { AdminPaymentsStatusBadge } from "../AdminPaymentsStatusBadge.tsx";
 import {
   PAYMENT_STATUS_ICON,
   PAYMENT_STATUS_TONE,
-} from "../admin-payments-status-tones.ts";
-import { AdminUsersStatusBadge } from "../admin-users-status-badge.tsx";
+} from "../adminPaymentsStatusTones.ts";
+import { AdminUsersStatusBadge } from "../AdminUsersStatusBadge.tsx";
 
 /**
  * The users, jobs and payments status chips (feedback #2192, #Q2247): a

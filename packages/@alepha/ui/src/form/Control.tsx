@@ -2,41 +2,6 @@ import * as React from "react";
 
 void React;
 
-import {
-  ControlArray,
-  type ControlArrayProps,
-} from "@alepha/ui/components/control-array/control-array";
-import {
-  FormField,
-  formFieldAriaProps,
-  useFormFieldAutoSave,
-  useFormFieldLayout,
-} from "@alepha/ui/components/control-base/form-field";
-import {
-  type IconComponent,
-  iconFor,
-} from "@alepha/ui/components/control-base/icon-hint";
-import { ControlDateRange } from "@alepha/ui/components/control-date-range/control-date-range";
-import {
-  ControlDate,
-  type ControlDateProps,
-} from "@alepha/ui/components/control-date/control-date";
-import { ControlNumber } from "@alepha/ui/components/control-number/control-number";
-import { ControlObject } from "@alepha/ui/components/control-object/control-object";
-import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
-import {
-  ControlSelect,
-  type ControlSelectSize,
-  type SelectOption,
-} from "@alepha/ui/components/control-select/control-select";
-import {
-  ControlUpload,
-  type ControlUploadProps,
-} from "@alepha/ui/components/control-upload/control-upload";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Switch } from "@alepha/ui/components/ui/switch";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
-import { cn } from "@alepha/ui/lib/utils";
 import { z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
@@ -54,6 +19,30 @@ import {
   useEffect,
   useState,
 } from "react";
+
+import { Input } from "../core/Input.tsx";
+import { Switch } from "../core/Switch.tsx";
+import { Textarea } from "../core/Textarea.tsx";
+import { cn } from "../core/utils.ts";
+import { ControlArray, type ControlArrayProps } from "./ControlArray.tsx";
+import { ControlDate, type ControlDateProps } from "./ControlDate.tsx";
+import { ControlDateRange } from "./ControlDateRange.tsx";
+import { ControlNumber } from "./ControlNumber.tsx";
+import { ControlObject } from "./ControlObject.tsx";
+import { ControlPassword } from "./ControlPassword.tsx";
+import {
+  ControlSelect,
+  type ControlSelectSize,
+  type SelectOption,
+} from "./ControlSelect.tsx";
+import { ControlUpload, type ControlUploadProps } from "./ControlUpload.tsx";
+import {
+  FormField,
+  formFieldAriaProps,
+  useFormFieldAutoSave,
+  useFormFieldLayout,
+} from "./FormField.tsx";
+import { type IconComponent, iconFor } from "./iconHint.tsx";
 
 export interface ControlProps {
   /**

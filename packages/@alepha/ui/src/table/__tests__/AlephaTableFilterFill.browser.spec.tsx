@@ -1,4 +1,3 @@
-import { Control } from "@alepha/ui/components/control/control";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaContext } from "alepha/react";
@@ -7,7 +6,8 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AlephaTable } from "../alepha-table.tsx";
+import { Control } from "../../form/Control.tsx";
+import { AlephaTable } from "../AlephaTable.tsx";
 
 interface Row {
   id: number;
@@ -25,7 +25,7 @@ const rows: Row[] = [{ id: 1, title: "Alpha" }];
  *
  * The bar is `bg-muted` chrome and its fields are `bg-background` wells sunk
  * into it, painted from the bar rather than from the primitives - see the
- * comment on the toolbar in `alepha-table.tsx` for why it is scoped there and
+ * comment on the toolbar in `AlephaTable.tsx` for why it is scoped there and
  * why the `dark:` copy is not redundant.
  *
  * ⚠️ **Asserted through the bar's OWN selector, read off its class, rather

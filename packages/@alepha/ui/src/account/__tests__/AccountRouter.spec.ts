@@ -6,15 +6,15 @@ import {
 } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
-import { AdminRouter } from "../../admin/admin-router.tsx";
-import type { NavMeta } from "../../nav-shell/nav-tree-util.ts";
-import { accountRouterOptionsAtom } from "../account-router-options.tsx";
-import { $pageAccount } from "../account-router-page.tsx";
-import { AccountRouter } from "../account-router.tsx";
+import { $pageAccount } from "../$pageAccount.tsx";
+import { AdminRouter } from "../../admin/AdminRouter.tsx";
+import type { NavMeta } from "../../shell/navTreeUtil.ts";
+import { AccountRouter } from "../AccountRouter.tsx";
+import { accountRouterOptionsAtom } from "../AccountRouterOptions.tsx";
 
 /**
  * Reads the permissions a page's route gate actually enforces — see
- * `admin-router.spec.ts` for why this reads the gate back rather than the
+ * `AdminRouter.spec.ts` for why this reads the gate back rather than the
  * `permission` option a page was built from.
  */
 const permissionsOf = (page: PagePrimitive): string[] => {
@@ -226,7 +226,7 @@ describe("AccountRouter", () => {
   /**
    * Same rule as `AdminRouter`: a class field is evaluated once, outside
    * React, so the rail follows a language switch only through the key. See
-   * `admin-router.spec.ts`.
+   * `AdminRouter.spec.ts`.
    */
   it("names a catalogue key for every label and every group heading", async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);

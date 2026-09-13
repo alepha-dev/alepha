@@ -1,4 +1,3 @@
-import type { BadgeTone } from "@alepha/ui/components/ui/badge";
 import type { NotificationQuery } from "alepha/api/notifications";
 import {
   Ban,
@@ -11,6 +10,8 @@ import {
   ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
+
+import type { BadgeTone } from "../core/Badge.tsx";
 
 /**
  * One delivery status.
@@ -29,7 +30,7 @@ export type NotificationStatus = NonNullable<NotificationQuery["status"]>;
  *
  * The list, the filter and the badge all need the set, and a hand-kept copy
  * in each of them is how one ends up missing a status.
- * `admin-status-labels.browser.spec.tsx` holds it equal to the query schema's.
+ * `AdminStatusLabels.browser.spec.tsx` holds it equal to the query schema's.
  */
 export const NOTIFICATION_STATUSES: NotificationStatus[] = [
   "sent",

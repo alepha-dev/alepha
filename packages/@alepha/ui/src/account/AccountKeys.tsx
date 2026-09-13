@@ -1,17 +1,3 @@
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { Infer } from "alepha";
 import type { ApiKeyController, listApiKeyItemSchema } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
@@ -19,6 +5,21 @@ import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Clipboard, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
+import { Input } from "../core/Input.tsx";
+import { Label } from "../core/Label.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { SettingsRow } from "../settings/SettingsRow.tsx";
+import { SettingsSection } from "../settings/SettingsSection.tsx";
 
 /**
  * Derived from the framework's own response schema rather than restated, so a

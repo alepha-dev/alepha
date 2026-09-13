@@ -8,7 +8,7 @@ import {
   resolveDrop,
   type TreeItem,
   type TreeNode,
-} from "../tree-model.ts";
+} from "../treeModel.ts";
 
 const branch = (
   id: string,

@@ -6,20 +6,20 @@ import { AlephaContext } from "alepha/react";
 import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { describe, expect, it } from "vitest";
 
-import { uiFr } from "../../../lib/i18n-fr.ts";
+import { uiFr } from "../../i18n/fr/uiFr.ts";
+import { NOTIFICATION_STATUSES } from "../adminNotificationsStatusTones.ts";
 import {
   JOB_EXECUTION_STATUSES,
   useJobStatusLabels,
-} from "../admin-jobs-status-labels.ts";
-import { useNotificationStatusLabels } from "../admin-notifications-status-labels.ts";
-import { NOTIFICATION_STATUSES } from "../admin-notifications-status-tones.ts";
+} from "../useJobStatusLabels.ts";
+import { useNotificationStatusLabels } from "../useNotificationStatusLabels.ts";
 
 /**
  * The status vocabularies are the one place where a translation can go
  * missing without anything noticing.
  *
  * They used to be looked up with `tr(\`admin.jobs.status.${status}\`)`, a
- * computed key: `i18n-fr.spec.ts` matches a literal after `tr(`, so those
+ * computed key: `uiFr.spec.ts` matches a literal after `tr(`, so those
  * keys were invisible to it in BOTH directions - nothing reported them as
  * untranslated, and adding the French would have been reported as a
  * translation nothing asks for. French users read `ok`, `error`,

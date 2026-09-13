@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { useTableSelection } from "../use-table-selection.ts";
+import { useTableSelection } from "../useTableSelection.ts";
 
 interface Row {
   id: string;

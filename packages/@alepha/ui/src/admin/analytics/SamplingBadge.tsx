@@ -1,6 +1,7 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Dices } from "lucide-react";
+
+import { Badge } from "../../core/Badge.tsx";
 
 export interface SamplingBadgeProps {
   estimated: boolean;

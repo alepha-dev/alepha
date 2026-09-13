@@ -1,13 +1,14 @@
+import { Link } from "alepha/react/router";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
-import { Link } from "alepha/react/router";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+} from "../core/Card.tsx";
 
 export interface AdminDashboardCountCardProps {
   /**

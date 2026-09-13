@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { ControlSelect } from "../control-select.tsx";
+import { ControlSelect } from "../ControlSelect.tsx";
 
 /**
  * Base UI's single-select `Combobox` re-selects on every item press - it never

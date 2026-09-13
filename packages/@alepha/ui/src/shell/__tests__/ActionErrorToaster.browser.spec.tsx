@@ -7,8 +7,8 @@ import { HttpError } from "alepha/server";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { Toaster } from "../../ui/sonner.tsx";
-import { ActionErrorToaster } from "../action-error-toaster.tsx";
+import { Toaster } from "../../core/Toaster.tsx";
+import { ActionErrorToaster } from "../ActionErrorToaster.tsx";
 
 /**
  * `ActionErrorToaster` is the single owner of the error toast: `AppShell`

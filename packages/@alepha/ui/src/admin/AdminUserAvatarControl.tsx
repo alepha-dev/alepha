@@ -2,13 +2,14 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { AdminAvatarController, UserResource } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ImageUp, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
+import { useToast } from "../core/useToast.tsx";
 
 export interface AdminUserAvatarControlProps {
   user: UserResource;

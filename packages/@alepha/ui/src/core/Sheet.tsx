@@ -1,8 +1,9 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
 import * as React from "react";
+
+import { Button } from "./Button.tsx";
+import { cn } from "./utils.ts";
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;

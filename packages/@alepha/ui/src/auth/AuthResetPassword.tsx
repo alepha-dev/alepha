@@ -2,21 +2,6 @@ import * as React from "react";
 
 void React;
 
-import {
-  TurnstileWidget,
-  type TurnstileWidgetHandle,
-} from "@alepha/ui/components/captcha/turnstile-widget";
-import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
-import { Control } from "@alepha/ui/components/control/control";
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@alepha/ui/components/ui/input-otp";
-import { Label } from "@alepha/ui/components/ui/label";
 import { AlephaError, SchemaValidationError, z } from "alepha";
 import type {
   PasswordResetIntentResponse,
@@ -31,7 +16,18 @@ import { useRouter } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-import { safeRedirect } from "./safe-redirect.ts";
+import { Alert, AlertDescription } from "../core/Alert.tsx";
+import { Button } from "../core/Button.tsx";
+import { Card, CardContent } from "../core/Card.tsx";
+import { Label } from "../core/Label.tsx";
+import { Control } from "../form/Control.tsx";
+import { iconFor } from "../form/iconHint.tsx";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
+import { safeRedirect } from "./safeRedirect.ts";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "./TurnstileWidget.tsx";
 
 export interface AuthResetPasswordProps {
   /**
@@ -98,7 +94,7 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
   /*
    * The handler reads the token the widget issued last through a ref, so a
    * submit never posts a token captured by an earlier render. Same shape as
-   * `auth-register.tsx`.
+   * `AuthRegister.tsx`.
    */
   const captchaTokenRef = useRef<string | undefined>(undefined);
   useEffect(() => {

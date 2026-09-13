@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import * as ResizablePrimitive from "react-resizable-panels";
+
+import { cn } from "../core/utils.ts";
 
 function ResizablePanelGroup({
   className,

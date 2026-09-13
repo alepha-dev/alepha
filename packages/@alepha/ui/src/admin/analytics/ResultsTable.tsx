@@ -1,8 +1,8 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowDown, ArrowUp, Download } from "lucide-react";
 
+import { Button } from "../../core/Button.tsx";
+import { cn } from "../../core/utils.ts";
 import { AnalyticsEmpty } from "./AnalyticsEmpty.tsx";
 import { analyticsNumber } from "./analyticsModel.ts";
 import type { AnalyticsRunResult } from "./analyticsTypes.ts";

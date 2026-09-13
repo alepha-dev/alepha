@@ -3,7 +3,7 @@ import { useRouterState } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
-import { navLabel } from "./nav-tree-util.ts";
+import { navLabel } from "./navTreeUtil.ts";
 
 export interface UseNavBreadcrumbsOptions {
   /**
@@ -33,7 +33,7 @@ export function useNavBreadcrumbs(
 ): NavCrumb[] {
   const state = useRouterState();
   const i18n = useI18n();
-  // Load-bearing, and pinned by `admin-nav-i18n.browser.spec.tsx`: `tr` never
+  // Load-bearing, and pinned by `AdminNavI18n.browser.spec.tsx`: `tr` never
   // changes identity and `state.layers` does not move on a language switch, so
   // without `lang` in the list below the trail keeps its first language until
   // the next navigation.

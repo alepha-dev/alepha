@@ -1,6 +1,3 @@
-import type { AdminDashboardCard } from "@alepha/ui/components/admin/admin-dashboard-card";
-import { AdminDashboardCountCard } from "@alepha/ui/components/admin/admin-dashboard-count-card";
-import { $pageNav } from "@alepha/ui/components/nav-shell/nav-page";
 import { $store, z } from "alepha";
 import type { AdminAnalyticsController } from "alepha/api/analytics";
 import type { AdminAuditController } from "alepha/api/audits";
@@ -31,7 +28,10 @@ import {
 } from "lucide-react";
 import { createElement } from "react";
 
-import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
+import { $pageNav } from "../shell/$pageNav.tsx";
+import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { AdminDashboardCountCard } from "./AdminDashboardCountCard.tsx";
+import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 
 /**
  * The whole `/admin` surface — twelve pages and their shell — mounted and wired.
@@ -49,7 +49,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * for the whole app — with a stack that points here and explains none of this.
  *
  * ```ts
- * import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
+ * import { AdminRouter } from "@alepha/ui/admin";
  *
  * export const MyWeb = $module({
  *   name: "my.web",
@@ -85,7 +85,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * ### Extending the shell
  *
- * {@link $pageAdmin} (`@alepha/ui/components/admin/admin-router-page`) is the
+ * {@link $pageAdmin} (`@alepha/ui/admin`) is the
  * way to add a page to this shell — the one-call form an application, or a
  * satellite package such as `@alepha/commerce/admin`, whose pages
  * deliberately live outside this design system so it never depends on a
@@ -129,7 +129,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * no catalogue sees exactly what it saw before.
  *
  * A page added here without a `labelKey` is untranslatable, and
- * `admin-router.spec.ts` fails for it.
+ * `AdminRouter.spec.ts` fails for it.
  *
  * ### Group order is a contract
  *
@@ -198,7 +198,7 @@ export class AdminRouter {
     path: "/admin",
     permission: "admin:ui",
     nav: { label: "Admin", labelKey: "admin.nav.admin" },
-    lazy: () => import("./admin-layout.tsx"),
+    lazy: () => import("./AdminLayout.tsx"),
   });
 
   /**
@@ -226,7 +226,7 @@ export class AdminRouter {
       icon: createElement(LayoutDashboard),
       order: 0,
     },
-    lazy: () => import("./admin-dashboard.tsx"),
+    lazy: () => import("./AdminDashboard.tsx"),
     props: () => ({ cards: this.dashboardCards() }),
   });
 
@@ -287,7 +287,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.identity",
       order: 1000,
     },
-    lazy: () => import("./admin-users.tsx"),
+    lazy: () => import("./AdminUsers.tsx"),
     props: () => this.options.pages?.users ?? {},
   });
 
@@ -310,7 +310,7 @@ export class AdminRouter {
         userId: z.uuid(),
       }),
     },
-    lazy: () => import("./admin-user-detail.tsx"),
+    lazy: () => import("./AdminUserDetail.tsx"),
     props: () => this.options.pages?.userDetail ?? {},
   });
 
@@ -329,7 +329,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.identity",
       order: 1001,
     },
-    lazy: () => import("./admin-sessions.tsx"),
+    lazy: () => import("./AdminSessions.tsx"),
   });
 
   keys = $pageNav({
@@ -348,7 +348,7 @@ export class AdminRouter {
       order: 1003,
       keywords: ["tokens", "credentials"],
     },
-    lazy: () => import("./admin-keys.tsx"),
+    lazy: () => import("./AdminKeys.tsx"),
   });
 
   jobs = $pageNav({
@@ -366,7 +366,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.system",
       order: 1010,
     },
-    lazy: () => import("./admin-jobs.tsx"),
+    lazy: () => import("./AdminJobs.tsx"),
   });
 
   notifications = $pageNav({
@@ -384,7 +384,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.system",
       order: 1011,
     },
-    lazy: () => import("./admin-notifications.tsx"),
+    lazy: () => import("./AdminNotifications.tsx"),
   });
 
   audits = $pageNav({
@@ -402,7 +402,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.identity",
       order: 1002,
     },
-    lazy: () => import("./admin-audits.tsx"),
+    lazy: () => import("./AdminAudits.tsx"),
   });
 
   files = $pageNav({
@@ -420,7 +420,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.system",
       order: 1012,
     },
-    lazy: () => import("./admin-files.tsx"),
+    lazy: () => import("./AdminFiles.tsx"),
   });
 
   parameters = $pageNav({
@@ -439,7 +439,7 @@ export class AdminRouter {
       order: 1015,
       keywords: ["settings", "config", "configuration"],
     },
-    lazy: () => import("./admin-parameters.tsx"),
+    lazy: () => import("./AdminParameters.tsx"),
     props: () => this.options.pages?.parameters ?? {},
   });
 
@@ -463,7 +463,7 @@ export class AdminRouter {
       groupKey: "admin.nav.group.system",
       order: 1013,
     },
-    lazy: () => import("./admin-payments.tsx"),
+    lazy: () => import("./AdminPayments.tsx"),
   });
 
   analytics = $pageNav({
@@ -481,6 +481,6 @@ export class AdminRouter {
       groupKey: "admin.nav.group.system",
       order: 1016,
     },
-    lazy: () => import("./admin-analytics.tsx"),
+    lazy: () => import("./AdminAnalytics.tsx"),
   });
 }

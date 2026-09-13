@@ -5,8 +5,8 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { ButtonUser } from "../../button-user/button-user.tsx";
-import { DropdownMenu, DropdownMenuContent } from "../../ui/dropdown-menu.tsx";
+import { DropdownMenu, DropdownMenuContent } from "../../core/DropdownMenu.tsx";
+import { ButtonUser } from "../ButtonUser.tsx";
 
 /**
  * What this pins is the bug that prompted the shared cluster: `apps/lore`'s

@@ -1,11 +1,12 @@
-import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
-import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
-import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
-import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
-import { DropdownMenuSeparator } from "@alepha/ui/components/ui/dropdown-menu";
-import { cn } from "@alepha/ui/lib/utils";
 import { useRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
+
+import { DropdownMenuSeparator } from "../core/DropdownMenu.tsx";
+import { cn } from "../core/utils.ts";
+import { ButtonDark } from "./ButtonDark.tsx";
+import { ButtonLanguage } from "./ButtonLanguage.tsx";
+import { ButtonTheme } from "./ButtonTheme.tsx";
+import { ButtonUser } from "./ButtonUser.tsx";
 
 export interface AppActionsProps {
   /**

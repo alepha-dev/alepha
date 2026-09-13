@@ -2,24 +2,21 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
+import { useAuth } from "alepha/react/auth";
+import { Link, useRouter } from "alepha/react/router";
+import { CircleUser, LogIn, LogOut, Shield, User } from "lucide-react";
+import type { ReactNode } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
-import { useAuth } from "alepha/react/auth";
-import { Link, useRouter } from "alepha/react/router";
-import { CircleUser, LogIn, LogOut, Shield, User } from "lucide-react";
-import type { ReactNode } from "react";
+} from "../core/DropdownMenu.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
+import { UserAvatar } from "../core/UserAvatar.tsx";
 
 export interface ButtonUserProps {
   /**

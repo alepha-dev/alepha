@@ -1,10 +1,3 @@
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { FileImage } from "@alepha/ui/components/file-image/file-image";
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
   MyAvatarController,
   MyProfile,
@@ -17,6 +10,14 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { AtSign, Camera, Trash2, User } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { Button } from "../core/Button.tsx";
+import { FileImage } from "../core/FileImage.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { AutoForm } from "../form/AutoForm.tsx";
+import { SettingsRow } from "../settings/SettingsRow.tsx";
+import { SettingsSection } from "../settings/SettingsSection.tsx";
 
 export interface AccountProfileProps {
   /**
@@ -75,7 +76,7 @@ const AccountProfile = (props: AccountProfileProps) => {
    * is such a realm, and `"none"` is also the framework default, so this is
    * what any new app hits first.
    *
-   * ⚠️ `auth-register.tsx` excludes `"email"` here as well, and this
+   * ⚠️ `AuthRegister.tsx` excludes `"email"` here as well, and this
    * deliberately does not. In that mode `RegistrationService` derives the
    * handle from the address and drops whatever the client sent, so the
    * registration form is right to hide a field the user does not choose — but

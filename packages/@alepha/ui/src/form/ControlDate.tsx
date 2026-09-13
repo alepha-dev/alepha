@@ -3,26 +3,6 @@ import * as React from "react";
 void React;
 
 import {
-  ControlClearButton,
-  TRIGGER_CLASSES,
-  TRIGGER_SIZES,
-  TRIGGER_WRAPPER_CLASSES,
-} from "@alepha/ui/components/control-base/field-trigger";
-import { FormField } from "@alepha/ui/components/control-base/form-field";
-import {
-  DATE_ONLY,
-  formatDateOnly,
-  parseDateOnly,
-} from "@alepha/ui/components/control-date/date-only.ts";
-import { Calendar } from "@alepha/ui/components/ui/calendar";
-import { Input } from "@alepha/ui/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
-import { cn } from "@alepha/ui/lib/utils";
-import {
   type BaseInputField,
   parseField,
   useFieldValue,
@@ -35,6 +15,19 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import type { DayPickerProps } from "react-day-picker";
+
+import { Calendar } from "../calendar/Calendar.tsx";
+import { Input } from "../core/Input.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
+import { cn } from "../core/utils.ts";
+import { DATE_ONLY, formatDateOnly, parseDateOnly } from "./dateOnly.ts";
+import {
+  ControlClearButton,
+  TRIGGER_CLASSES,
+  TRIGGER_SIZES,
+  TRIGGER_WRAPPER_CLASSES,
+} from "./fieldTrigger.tsx";
+import { FormField } from "./FormField.tsx";
 
 /** How many years back a `birthdate` picker offers. Covers every living
  *  person; the oldest verified human reached 122. */

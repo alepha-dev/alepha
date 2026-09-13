@@ -1,7 +1,8 @@
-import { cn } from "@alepha/ui/lib/utils";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import * as React from "react";
+
+import { cn } from "./utils.ts";
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;

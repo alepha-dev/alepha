@@ -1,7 +1,7 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { Scissors } from "lucide-react";
 
+import { Button } from "../../core/Button.tsx";
 import {
   ANALYTICS_MAX_LIMIT,
   analyticsNextLimit,

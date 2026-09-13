@@ -1,8 +1,8 @@
-import { SidebarProvider, useSidebar } from "@alepha/ui/components/ui/sidebar";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { SidebarNavAutoClose } from "../app-shell.tsx";
+import { SidebarProvider, useSidebar } from "../../core/Sidebar.tsx";
+import { SidebarNavAutoClose } from "../AppShell.tsx";
 
 /**
  * Tapping a nav entry on a phone navigated and left the sheet up, so the

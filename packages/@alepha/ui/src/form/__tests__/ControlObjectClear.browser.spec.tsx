@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { ControlObject } from "../control-object.tsx";
+import { ControlObject } from "../ControlObject.tsx";
 
 /**
  * The clear button used to be behind an opt-in `clearable` prop that the only

@@ -1,7 +1,8 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import { Lock } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { Button } from "../../core/Button.tsx";
+import { cn } from "../../core/utils.ts";
 
 export interface ToggleChipProps {
   children: ReactNode;

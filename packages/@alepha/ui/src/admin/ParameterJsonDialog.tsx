@@ -2,18 +2,19 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
+import { Check, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useI18n } from "alepha/react/i18n";
-import { Check, Copy } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+} from "../core/Dialog.tsx";
+import { useToast } from "../core/useToast.tsx";
 
 export interface ParameterJsonDialogProps {
   open: boolean;

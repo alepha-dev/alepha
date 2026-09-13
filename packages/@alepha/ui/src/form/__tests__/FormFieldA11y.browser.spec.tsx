@@ -5,7 +5,7 @@ import {
   FormField,
   formFieldAriaProps,
   useFormFieldA11y,
-} from "../form-field.tsx";
+} from "../FormField.tsx";
 
 const Probe = () => {
   const a11y = useFormFieldA11y();

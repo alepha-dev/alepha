@@ -1,10 +1,10 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { Check, ChevronLeft, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "../../core/Button.tsx";
+import { Input } from "../../core/Input.tsx";
+import { cn } from "../../core/utils.ts";
 import { analyticsNumber } from "./analyticsModel.ts";
 import type { FilterValue } from "./useFilterValues.ts";
 

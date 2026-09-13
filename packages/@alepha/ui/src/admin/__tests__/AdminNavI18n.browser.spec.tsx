@@ -7,14 +7,14 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { uiFr } from "../../../lib/i18n-fr.ts";
-import AdminLayout from "../admin-layout.tsx";
-import { AdminRouter } from "../admin-router.tsx";
+import { uiFr } from "../../i18n/fr/uiFr.ts";
+import AdminLayout from "../AdminLayout.tsx";
+import { AdminRouter } from "../AdminRouter.tsx";
 
 /**
  * The shell chrome must follow a language switch with no reload.
  *
- * `admin-router.spec.ts` pins that every entry NAMES a catalogue key; this
+ * `AdminRouter.spec.ts` pins that every entry NAMES a catalogue key; this
  * pins that naming one is enough - that the sidebar, the section headings and
  * the brand are resolved inside React rather than frozen at the moment the
  * router's class fields ran. That freeze is the bug: an application in French

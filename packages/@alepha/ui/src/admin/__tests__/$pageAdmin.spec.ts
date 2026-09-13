@@ -2,8 +2,8 @@ import { Alepha } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
-import { $pageAdmin } from "../admin-router-page.tsx";
-import { AdminRouter } from "../admin-router.tsx";
+import { $pageAdmin } from "../$pageAdmin.tsx";
+import { AdminRouter } from "../AdminRouter.tsx";
 
 /**
  * `$pageAdmin` is the one-call form of "a page inside the shared admin shell".

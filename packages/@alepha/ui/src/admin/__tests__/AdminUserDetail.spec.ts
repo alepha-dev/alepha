@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveUserDetailId } from "../admin-user-detail.tsx";
+import { resolveUserDetailId } from "../AdminUserDetail.tsx";
 
 /**
  * `resolveUserDetailId` is the whole reason `~/git/club/apps/platform` keeps

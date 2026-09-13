@@ -1,19 +1,9 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminUsersRolesPicker } from "@alepha/ui/components/admin/admin-users-roles-picker";
-import { AdminUsersStatusBadge } from "@alepha/ui/components/admin/admin-users-status-badge";
-import { AdminUsersStatusFilter } from "@alepha/ui/components/admin/admin-users-status-filter";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
 import { type Infer, z } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
@@ -22,6 +12,17 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Check, Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback } from "react";
+
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { UserAvatar } from "../core/UserAvatar.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUsersRolesPicker } from "./AdminUsersRolesPicker.tsx";
+import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
+import { AdminUsersStatusFilter } from "./AdminUsersStatusFilter.tsx";
 
 export interface AdminUsersProps {
   /**

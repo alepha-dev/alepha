@@ -6,8 +6,8 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { PlateLayout } from "../plate-layout.tsx";
-import type { PlateTab } from "../plate-tab-bar.tsx";
+import { PlateLayout } from "../PlateLayout.tsx";
+import type { PlateTab } from "../PlateTabBar.tsx";
 
 /**
  * A full-width plate over a tab strip, lifted out of Lore's Release view so

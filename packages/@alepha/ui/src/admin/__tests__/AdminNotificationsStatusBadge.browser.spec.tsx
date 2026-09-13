@@ -4,12 +4,12 @@ import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { AdminNotificationsStatusBadge } from "../admin-notifications-status-badge.tsx";
+import { AdminNotificationsStatusBadge } from "../AdminNotificationsStatusBadge.tsx";
 import {
   NOTIFICATION_STATUS_ICON,
   NOTIFICATION_STATUS_TONE,
   NOTIFICATION_STATUSES,
-} from "../admin-notifications-status-tones.ts";
+} from "../adminNotificationsStatusTones.ts";
 
 /**
  * The status column used to render `job_executions.status`, which never wrote

@@ -7,15 +7,15 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import type React from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { uiFr } from "../../../lib/i18n-fr.ts";
 import {
   DialogProvider,
   useDialog,
   useHasDialogProvider,
-} from "../../use-dialog/use-dialog.tsx";
-import AccountLayout from "../account-layout.tsx";
-import { accountRouterOptionsAtom } from "../account-router-options.tsx";
-import { AccountRouter } from "../account-router.tsx";
+} from "../../core/useDialog.tsx";
+import { uiFr } from "../../i18n/fr/uiFr.ts";
+import AccountLayout from "../AccountLayout.tsx";
+import { AccountRouter } from "../AccountRouter.tsx";
+import { accountRouterOptionsAtom } from "../AccountRouterOptions.tsx";
 
 /**
  * The account shell mounted on its own, the way the `saas` preset mounts it.

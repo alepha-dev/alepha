@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 
-import type { TreeDropPosition } from "./tree-model.ts";
+import type { TreeDropPosition } from "./treeModel.ts";
 
 export interface UseTreeStateOptions {
   /**

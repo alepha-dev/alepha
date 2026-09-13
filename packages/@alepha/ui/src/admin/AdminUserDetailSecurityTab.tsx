@@ -2,8 +2,14 @@ import * as React from "react";
 
 void React;
 
-import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
-import { Button } from "@alepha/ui/components/ui/button";
+import type { IdentityResource } from "alepha/api/users";
+import type { UseActionReturn } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { KeyRound, ShieldOff, Trash2 } from "lucide-react";
+
+import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
+import { BrandIcon } from "../core/BrandIcon.tsx";
+import { Button } from "../core/Button.tsx";
 import {
   Card,
   CardContent,
@@ -11,13 +17,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
-import type { IdentityResource } from "alepha/api/users";
-import type { UseActionReturn } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
-import { KeyRound, ShieldOff, Trash2 } from "lucide-react";
-
-import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
+} from "../core/Card.tsx";
 
 export interface AdminUserDetailSecurityTabProps {
   /**

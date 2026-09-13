@@ -6,19 +6,19 @@ import type {
   TPropsParentDefault,
 } from "alepha/react/router";
 
-import { $pageNav, type PageNavOptions } from "../nav-shell/nav-page.tsx";
-import { AdminRouter } from "./admin-router.tsx";
+import { $pageNav, type PageNavOptions } from "../shell/$pageNav.tsx";
+import { AdminRouter } from "./AdminRouter.tsx";
 
 /**
- * `$pageNav` already parented to {@link AdminRouter}'s `/admin` shell — the
+ * `$pageNav` already parented to {@link AdminRouter}'s `/admin` shell: the
  * one-call form of "a page inside the shared admin shell". It exists because
- * the alternative — injecting `AdminRouter` and writing
- * `parent: this.admin.layout` by hand on every page — puts the rules of that
+ * the alternative (injecting `AdminRouter` and writing
+ * `parent: this.admin.layout` by hand on every page) puts the rules of that
  * composition nowhere an author will read them.
  *
  * It carries the `$` prefix to sit with the framework's other declarations at
- * a call site, but it is a plain function wrapping `$pageNav` — which in turn
- * wraps `$page` — rather than a `createPrimitive` primitive. Nothing about
+ * a call site, but it is a plain function wrapping `$pageNav` (which in turn
+ * wraps `$page`) rather than a `createPrimitive` primitive. Nothing about
  * its lifecycle differs from declaring `$page` yourself.
  *
  * The page appears in the shell's sidebar with no separate registration
@@ -27,15 +27,15 @@ import { AdminRouter } from "./admin-router.tsx";
  *
  * **Calling this registers `AdminRouter`.** Declaring even one page this way
  * mounts the whole `/admin` shell, including its thirteen built-in pages (Users,
- * Sessions, Jobs, …) — an admin page without the admin shell around it is
+ * Sessions, Jobs, …): an admin page without the admin shell around it is
  * not a thing. This is the intended reading, but it is a real side effect:
  * an application that wants `/admin` to carry only its own pages, with none
  * of the built-ins, must build its own layout page instead of reaching for
  * this helper.
  *
  * **Stay below `order: 1000`, or declare your own `nav.group`.** The
- * built-ins are parked in a reserved high band — `Identity` (1000-1003) and
- * `System` (1010-1016) — precisely so an application's own pages come first:
+ * built-ins are parked in a reserved high band, `Identity` (1000-1003) and
+ * `System` (1010-1016), precisely so an application's own pages come first:
  * the conventional `order: 100` sorts above them. `useNavEntries` sorts groups
  * by their smallest member, so only an order of 1000 or more sinks a page in
  * among the built-ins.
@@ -44,7 +44,7 @@ import { AdminRouter } from "./admin-router.tsx";
  * `permission` alone.** A permission named by this page's own `$secure` is
  * self-declaring: `$secure` registers it into `SecurityProvider` at
  * definition time, so an admin holding the `*` wildcard is granted it
- * whether or not any controller backing the page exists — the entry would
+ * whether or not any controller backing the page exists, and the entry would
  * stay visible over a dead API. An action name resolves against
  * `/api/_links`, a registry built only from actions the server actually
  * registered, so a page whose backend never shipped never appears for

@@ -24,7 +24,7 @@ export interface FlowchartDiagramProps {
  *
  * ## React elements, not an HTML string, and this is not negotiable
  *
- * `markdown-view.tsx` carries an explicit rule that no raw HTML is ever
+ * `MarkdownView.tsx` carries an explicit rule that no raw HTML is ever
  * promoted to markup, because it renders one user's content to another and
  * every raw tag would turn every markdown surface in every app into an
  * injection point. Emitting React elements means labels are escaped by React

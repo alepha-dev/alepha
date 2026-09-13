@@ -2,7 +2,11 @@ import * as React from "react";
 
 void React;
 
-import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
+import { Check, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "../core/Button.tsx";
 import {
   Dialog,
   DialogContent,
@@ -10,17 +14,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
+} from "../core/Dialog.tsx";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useI18n } from "alepha/react/i18n";
-import { Check, Copy } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+} from "../core/Tooltip.tsx";
+import { useToast } from "../core/useToast.tsx";
 
 export interface AdminKeysTokenDialogProps {
   /**

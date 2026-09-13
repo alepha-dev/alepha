@@ -6,10 +6,6 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useMemo, useState } from "react";
 
-// Relative, like `markdown-view/diagram`: the package's export map appends
-// `.tsx` to a bare `@alepha/ui/components/...` specifier, so a `.ts` hook
-// under it resolves to a file that does not exist. Same package, same folder,
-// no export map involved.
 import type { AnalyticsTransport } from "./analytics/analyticsTypes.ts";
 import { QueryPanel } from "./analytics/QueryPanel.tsx";
 import { RequestDialog } from "./analytics/RequestDialog.tsx";

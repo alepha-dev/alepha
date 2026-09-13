@@ -4,7 +4,7 @@ import {
   profileIssues,
   profilePolicy,
   profileUpdateBody,
-} from "./admin-user-detail-profile-policy.ts";
+} from "./adminUserDetailProfilePolicy.ts";
 
 /**
  * A realm that signs users in by username only: no email is ever collected,

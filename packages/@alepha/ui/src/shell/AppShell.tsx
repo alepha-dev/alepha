@@ -1,16 +1,22 @@
-import { cn } from "@alepha/ui/lib/utils";
 import * as React from "react";
+
+import { cn } from "../core/utils.ts";
 
 void React;
 
+import { Link, NestedView } from "alepha/react/router";
+import { useSidebarState } from "alepha/react/ui";
 import {
-  ActionErrorToaster,
-  type ActionErrorToasterProps,
-} from "@alepha/ui/components/action-error-toaster/action-error-toaster";
-import {
-  NavigationProgress,
-  type NavigationProgressOptions,
-} from "@alepha/ui/components/app-shell/navigation-progress";
+  ChevronRight,
+  Lock,
+  Minus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+} from "lucide-react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+import { Fragment, useState } from "react";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,8 +24,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@alepha/ui/components/ui/breadcrumb";
-import { Button } from "@alepha/ui/components/ui/button";
+} from "../core/Breadcrumb.tsx";
+import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,13 +36,13 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
+} from "../core/DropdownMenu.tsx";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@alepha/ui/components/ui/hover-card";
-import { Separator } from "@alepha/ui/components/ui/separator";
+} from "../core/HoverCard.tsx";
+import { Separator } from "../core/Separator.tsx";
 import {
   Sidebar,
   SidebarContent,
@@ -55,27 +61,23 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   useSidebar,
-} from "@alepha/ui/components/ui/sidebar";
-import { Toaster } from "@alepha/ui/components/ui/sonner";
+} from "../core/Sidebar.tsx";
+import { Toaster } from "../core/Toaster.tsx";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { Link, NestedView } from "alepha/react/router";
-import { useSidebarState } from "alepha/react/ui";
+} from "../core/Tooltip.tsx";
+import { DialogProvider } from "../core/useDialog.tsx";
 import {
-  ChevronRight,
-  Lock,
-  Minus,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Plus,
-} from "lucide-react";
-import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment, useState } from "react";
+  ActionErrorToaster,
+  type ActionErrorToasterProps,
+} from "./ActionErrorToaster.tsx";
+import {
+  NavigationProgress,
+  type NavigationProgressOptions,
+} from "./NavigationProgress.tsx";
 
 /**
  * Re-exported: the bar moved to its own module so it can be mounted at an

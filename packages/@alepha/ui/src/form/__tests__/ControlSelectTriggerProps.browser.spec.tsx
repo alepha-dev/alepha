@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { Control } from "../../control/control.tsx";
+import { Control } from "../Control.tsx";
 
 /**
  * `Control`'s `inputProps` has to reach a select-shaped field's trigger.

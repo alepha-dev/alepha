@@ -2,15 +2,16 @@ import * as React from "react";
 
 void React;
 
+import type { JobExecutionResource } from "alepha/api/jobs";
+import { useI18n } from "alepha/react/i18n";
+
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import type { JobExecutionResource } from "alepha/api/jobs";
-import { useI18n } from "alepha/react/i18n";
+} from "../core/Dialog.tsx";
 
 export interface AdminJobsPayloadDialogProps {
   /**

@@ -1,9 +1,9 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
+import { Segmented } from "../../core/Segmented.tsx";
+import { cn } from "../../core/utils.ts";
 import { ANALYTICS_LIMITS } from "./analyticsModel.ts";
 import type {
   AnalyticsCompareMode,

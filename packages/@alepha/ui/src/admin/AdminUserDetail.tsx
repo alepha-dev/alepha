@@ -2,21 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { AdminUserAvatarControl } from "@alepha/ui/components/admin/admin-user-avatar-control";
-import { AdminUserDetailAuditsTab } from "@alepha/ui/components/admin/admin-user-detail-audits-tab";
-import { AdminUserDetailIdentityAside } from "@alepha/ui/components/admin/admin-user-detail-identity-aside";
-import { AdminUserDetailOverviewTab } from "@alepha/ui/components/admin/admin-user-detail-overview-tab";
-import { AdminUserDetailPasswordDialog } from "@alepha/ui/components/admin/admin-user-detail-password-dialog";
-import { AdminUserDetailSecurityTab } from "@alepha/ui/components/admin/admin-user-detail-security-tab";
-import { AdminUserDetailSessionsTab } from "@alepha/ui/components/admin/admin-user-detail-sessions-tab";
-import {
-  DetailLayout,
-  type DetailTab,
-} from "@alepha/ui/components/detail/detail-layout";
-import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { AlephaError } from "alepha";
 import type { AdminAuditController } from "alepha/api/audits";
 import type {
@@ -44,18 +29,30 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
-import { passwordSchema } from "./admin-user-detail-password-schema.ts";
+import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
+import { Button } from "../core/Button.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { DetailLayout, type DetailTab } from "../shell/DetailLayout.tsx";
+import { useDetailTab } from "../shell/useDetailTab.tsx";
+import { AdminUserAvatarControl } from "./AdminUserAvatarControl.tsx";
+import { AdminUserDetailAuditsTab } from "./AdminUserDetailAuditsTab.tsx";
+import { AdminUserDetailIdentityAside } from "./AdminUserDetailIdentityAside.tsx";
+import { AdminUserDetailOverviewTab } from "./AdminUserDetailOverviewTab.tsx";
+import { AdminUserDetailPasswordDialog } from "./AdminUserDetailPasswordDialog.tsx";
+import { passwordSchema } from "./adminUserDetailPasswordSchema.ts";
 import {
   type ProfileIssue,
   profileIssues,
   profilePolicy,
   profileUpdateBody,
-} from "./admin-user-detail-profile-policy.ts";
+} from "./adminUserDetailProfilePolicy.ts";
 import {
   type ProfileForm,
   profileSchema,
-} from "./admin-user-detail-profile-schema.ts";
+} from "./adminUserDetailProfileSchema.ts";
+import { AdminUserDetailSecurityTab } from "./AdminUserDetailSecurityTab.tsx";
+import { AdminUserDetailSessionsTab } from "./AdminUserDetailSessionsTab.tsx";
 
 export interface AdminUserDetailProps {
   /**

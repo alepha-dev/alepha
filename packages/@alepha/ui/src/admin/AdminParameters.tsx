@@ -2,22 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import type { ControlProps } from "@alepha/ui/components/control/control";
-import { PaneRail } from "@alepha/ui/components/pane-rail/pane-rail";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@alepha/ui/components/ui/empty";
-import { Skeleton } from "@alepha/ui/components/ui/skeleton";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
 import { jsonSchemaToZod, type ZObject, z } from "alepha";
 import type { AdminParameterController } from "alepha/api/parameters";
 import { useAction, useClient, useQuery } from "alepha/react";
@@ -38,10 +22,26 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
-import { ParameterDiffDialog } from "./parameter-diff-dialog.tsx";
-import { useParameterHistoryCollapsed } from "./parameter-history-collapsed.ts";
-import { ParameterHistoryItem } from "./parameter-history-item.tsx";
-import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
+import { Badge } from "../core/Badge.tsx";
+import { Button } from "../core/Button.tsx";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../core/Empty.tsx";
+import { PaneRail } from "../core/PaneRail.tsx";
+import { Skeleton } from "../core/Skeleton.tsx";
+import { useDialog } from "../core/useDialog.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { cn } from "../core/utils.ts";
+import { AutoForm } from "../form/AutoForm.tsx";
+import type { ControlProps } from "../form/Control.tsx";
+import { ParameterDiffDialog } from "./ParameterDiffDialog.tsx";
+import { ParameterHistoryItem } from "./ParameterHistoryItem.tsx";
+import { ParameterSaveDialog } from "./ParameterSaveDialog.tsx";
+import { useParameterHistoryCollapsed } from "./useParameterHistoryCollapsed.ts";
 
 /**
  * Three-pane admin parameters editor:

@@ -2,22 +2,6 @@ import * as React from "react";
 
 void React;
 
-import { FormField } from "@alepha/ui/components/control-base/form-field";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { formatBytes } from "@alepha/ui/lib/utils";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
 import {
@@ -37,10 +21,19 @@ import {
   useState,
 } from "react";
 
+import { Button } from "../core/Button.tsx";
 import {
-  type ResizeImageOptions,
-  resizeImage,
-} from "../../lib/resize-image.ts";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { formatBytes } from "../core/utils.ts";
+import { FormField } from "./FormField.tsx";
+import { type ResizeImageOptions, resizeImage } from "./resizeImage.ts";
 
 export interface ControlUploadProps {
   /**

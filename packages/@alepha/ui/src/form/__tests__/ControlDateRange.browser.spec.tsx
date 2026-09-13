@@ -6,7 +6,7 @@ import { useForm } from "alepha/react/form";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { Control } from "../control.tsx";
+import { Control } from "../Control.tsx";
 
 /**
  * `z.dateRange()` renders as a range picker, and never as anything else.

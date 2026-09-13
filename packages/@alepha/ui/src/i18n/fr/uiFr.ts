@@ -12,7 +12,7 @@
  * So this is a record the application spreads into *its* catalogue:
  *
  * ```ts
- * import { uiFr } from "@alepha/ui/lib/i18n-fr";
+ * import { uiFr } from "@alepha/ui/i18n/fr";
  *
  * export class AppI18n {
  *   fr = $dictionary({

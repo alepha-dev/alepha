@@ -1,7 +1,8 @@
-import { FileImage } from "@alepha/ui/components/file-image/file-image";
-import { cn } from "@alepha/ui/lib/utils";
 import { User } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { FileImage } from "./FileImage.tsx";
+import { cn } from "./utils.ts";
 
 export interface UserAvatarProps {
   /**

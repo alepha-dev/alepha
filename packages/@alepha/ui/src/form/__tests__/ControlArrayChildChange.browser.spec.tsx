@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { AutoForm } from "../../auto-form/auto-form.tsx";
+import { AutoForm } from "../AutoForm.tsx";
 
 /**
  * `ControlArray` builds an input of its own for each item and each item field,

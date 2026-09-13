@@ -1,6 +1,6 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { ArrowRight } from "lucide-react";
 
+import { Segmented } from "../../core/Segmented.tsx";
 import { ANALYTICS_RANGES } from "./analyticsModel.ts";
 import type { AnalyticsWindow } from "./analyticsTypes.ts";
 import { ClauseLabel } from "./ClauseLabel.tsx";

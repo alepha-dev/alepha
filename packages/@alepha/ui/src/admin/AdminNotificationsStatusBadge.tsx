@@ -1,11 +1,10 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-
-import { useNotificationStatusLabels } from "./admin-notifications-status-labels.ts";
+import { Badge } from "../core/Badge.tsx";
 import {
   NOTIFICATION_STATUS_ICON,
   NOTIFICATION_STATUS_TONE,
   type NotificationStatus,
-} from "./admin-notifications-status-tones.ts";
+} from "./adminNotificationsStatusTones.ts";
+import { useNotificationStatusLabels } from "./useNotificationStatusLabels.ts";
 
 export interface AdminNotificationsStatusBadgeProps {
   status?: string;

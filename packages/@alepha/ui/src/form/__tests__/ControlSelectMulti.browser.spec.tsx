@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { ControlSelect } from "../control-select.tsx";
+import { ControlSelect } from "../ControlSelect.tsx";
 
 /**
  * Multi-select used to render a bordered chips box instead of a trigger: a

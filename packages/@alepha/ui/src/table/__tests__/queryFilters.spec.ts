@@ -5,7 +5,7 @@ import {
   filtersToQuery,
   queryToFilters,
   shareFiltersUrl,
-} from "../query-filters.ts";
+} from "../queryFilters.ts";
 
 const schema = z.object({
   search: z.text().optional(),

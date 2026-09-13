@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { useToast } from "../use-toast.tsx";
+import { useToast } from "../useToast.tsx";
 
 describe("useToast", () => {
   it("returns the same object across re-renders", () => {

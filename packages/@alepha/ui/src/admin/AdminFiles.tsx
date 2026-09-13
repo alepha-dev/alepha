@@ -1,23 +1,9 @@
 import * as React from "react";
 
-import TimeAgo from "../time-ago/time-ago.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
-import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alepha/ui/components/ui/hover-card";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { formatBytes } from "@alepha/ui/lib/utils";
 import { type Infer, z } from "alepha";
 import type {
   AdminFileStatsController,
@@ -34,6 +20,21 @@ import {
   useRef,
   useState,
 } from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../core/HoverCard.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { formatBytes } from "../core/utils.ts";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
 // Filter schema at module scope so its identity stays stable across renders
 // — AlephaTable's internal `useForm` captures it once.

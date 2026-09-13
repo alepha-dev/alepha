@@ -1,26 +1,23 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Separator } from "@alepha/ui/components/ui/separator";
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
+import { cva, type VariantProps } from "class-variance-authority";
+import { PanelLeftIcon } from "lucide-react";
+import * as React from "react";
+
+import { Button } from "./Button.tsx";
+import { Input } from "./Input.tsx";
+import { Separator } from "./Separator.tsx";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import { Skeleton } from "@alepha/ui/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useIsMobile } from "@alepha/ui/hooks/use-mobile";
-import { cn } from "@alepha/ui/lib/utils";
-import { mergeProps } from "@base-ui/react/merge-props";
-import { useRender } from "@base-ui/react/use-render";
-import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftIcon } from "lucide-react";
-import * as React from "react";
+} from "./Sheet.tsx";
+import { Skeleton } from "./Skeleton.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./Tooltip.tsx";
+import { useIsMobile } from "./useIsMobile.ts";
+import { cn } from "./utils.ts";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;

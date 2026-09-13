@@ -1,5 +1,6 @@
-import { cn } from "@alepha/ui/lib/utils";
 import * as React from "react";
+
+import { cn } from "./utils.ts";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (

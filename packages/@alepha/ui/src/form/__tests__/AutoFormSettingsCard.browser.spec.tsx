@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { AutoForm, type AutoFormProps } from "../auto-form.tsx";
+import { AutoForm, type AutoFormProps } from "../AutoForm.tsx";
 
 /**
  * `layout="row"` is not a near-miss of the settings-card shape, it is that

@@ -7,7 +7,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { Ghost } from "lucide-react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AlephaTable } from "../alepha-table.tsx";
+import { AlephaTable } from "../AlephaTable.tsx";
 
 interface Row {
   id: number;

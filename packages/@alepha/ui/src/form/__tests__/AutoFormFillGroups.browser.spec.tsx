@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { AutoForm, type AutoFormProps } from "../auto-form.tsx";
+import { AutoForm, type AutoFormProps } from "../AutoForm.tsx";
 
 /**
  * `fill` + `autoGroup` is the `/admin/parameters` shape, and it had no

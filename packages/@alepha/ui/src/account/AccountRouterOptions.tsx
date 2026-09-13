@@ -1,11 +1,11 @@
 import { $atom, z } from "alepha";
 import type { ReactNode } from "react";
 
-import type { AccountConnectionsProps } from "./account-connections.tsx";
-import type { AccountKeysProps } from "./account-keys.tsx";
-import type { AccountProfileProps } from "./account-profile.tsx";
-import type { AccountSecurityProps } from "./account-security.tsx";
-import type { AccountSessionsProps } from "./account-sessions.tsx";
+import type { AccountConnectionsProps } from "./AccountConnections.tsx";
+import type { AccountKeysProps } from "./AccountKeys.tsx";
+import type { AccountProfileProps } from "./AccountProfile.tsx";
+import type { AccountSecurityProps } from "./AccountSecurity.tsx";
+import type { AccountSessionsProps } from "./AccountSessions.tsx";
 
 /**
  * Everything an application can change about `AccountRouter` without writing
