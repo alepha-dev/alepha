@@ -66,7 +66,7 @@ describe("AdminRouter", () => {
       .map((page) => ({ path: page.options.path, name: page.name }));
   };
 
-  it("mounts the shell and its twelve pages", async () => {
+  it("mounts the shell and its thirteen pages", async () => {
     const pages = await mount();
 
     expect(pages).toEqual(
@@ -78,6 +78,7 @@ describe("AdminRouter", () => {
         { path: "/sessions", name: "sessions" },
         { path: "/keys", name: "keys" },
         { path: "/jobs", name: "jobs" },
+        { path: "/jobs/:jobName", name: "jobDetail" },
         { path: "/notifications", name: "notifications" },
         { path: "/audits", name: "audits" },
         { path: "/files", name: "files" },
@@ -99,6 +100,7 @@ describe("AdminRouter", () => {
       [router.sessions, ["admin:session:read"]],
       [router.keys, ["admin:api-key:read"]],
       [router.jobs, ["admin:job:read"]],
+      [router.jobDetail, ["admin:job:read"]],
       [router.notifications, ["admin:notification:read"]],
       [router.audits, ["admin:audit:read"]],
       [router.files, ["admin:file:read"]],
@@ -188,6 +190,7 @@ describe("AdminRouter", () => {
       router.sessions,
       router.keys,
       router.jobs,
+      router.jobDetail,
       router.notifications,
       router.audits,
       router.files,
@@ -308,11 +311,12 @@ describe("AdminRouter", () => {
     const adminPages = alepha
       .primitives($page)
       .filter((page) => page.options.parent === admin.layout);
-    expect(adminPages).toHaveLength(12);
+    expect(adminPages).toHaveLength(13);
     for (const page of adminPages) {
       expect(titleOf(page)).toMatch(/^Admin - \S/);
     }
     expect(titleOf(admin.jobs)).toBe("Admin - Jobs");
+    expect(titleOf(admin.jobDetail)).toBe("Admin - Job");
 
     const accountPages = alepha
       .primitives($page)

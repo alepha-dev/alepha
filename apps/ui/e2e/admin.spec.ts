@@ -58,16 +58,30 @@ test.describe("admin pages", () => {
     });
   }
 
-  test("a job's executions load with retry and cancel affordances", async ({
+  test("a job opens on its own page, and a run opens in a drawer with its logs", async ({
     page,
   }) => {
     await page.goto("/pages/admin/jobs");
     await page.getByText("digests.send-weekly").click();
 
-    // `can.retry` / `can.cancel` decide these, so a fixture without a failed
-    // and a running row would never show them.
+    // A real page now, not a drawer over the list: the URL carries the job.
+    await expect(page).toHaveURL(/\/admin\/jobs\/digests\.send-weekly/);
+
+    // A fixture with a failed and a running row, so both states render.
     await expect(page.getByText("Failed").first()).toBeVisible();
     await expect(page.getByText("Running").first()).toBeVisible();
+
+    // A failed run opens in the drawer, linked through ?execution=, with its
+    // error in full and its log as lines.
+    await page.getByText("Failed").first().click();
+    await expect(page).toHaveURL(/[?&]execution=/);
+    const drawer = page.getByRole("dialog");
+    await expect(
+      drawer.getByText("SMTP refused the connection").first(),
+    ).toBeVisible();
+    await expect(
+      drawer.getByText("Starting digests.send-weekly"),
+    ).toBeVisible();
   });
 
   test("a parameter opens its version history", async ({ page }) => {

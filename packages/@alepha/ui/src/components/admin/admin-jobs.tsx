@@ -2,25 +2,18 @@ import * as React from "react";
 
 void React;
 
-import { AdminJobsExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs-executions-panel";
 import { AdminJobsTypeIcon } from "@alepha/ui/components/admin/admin-jobs-type-icon";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import {
   Boxes,
   FolderTree,
@@ -57,8 +50,8 @@ export const AdminJobs = () => {
   const { l, tr } = useI18n();
   const toast = useToast();
   const retention = useJobRetentionLabels();
+  const router = useRouter();
   const [jobs, setJobs] = useState<JobRegistration[]>([]);
-  const [openJob, setOpenJob] = useState<JobRegistration | null>(null);
 
   const load = useAction(
     {
@@ -97,6 +90,11 @@ export const AdminJobs = () => {
 
   const canTrigger = client.triggerJob.can();
 
+  // By route name: `jobDetail` is `/admin/jobs/:jobName` under `AdminRouter`,
+  // and whatever path an application gave a page of that name elsewhere.
+  const open = (job: JobRegistration) =>
+    void router.push("jobDetail", { params: { jobName: job.name } });
+
   return (
     <AdminPage>
       <AlephaTable<JobRegistration>
@@ -105,7 +103,7 @@ export const AdminJobs = () => {
         rowKey={(j) => j.name}
         data={jobs}
         filter={matchesJobFilters}
-        onRowClick={(j) => setOpenJob(j)}
+        onRowClick={(j) => open(j)}
         filters={{
           schema: jobFiltersSchema,
           render: (form) => (
@@ -314,41 +312,13 @@ export const AdminJobs = () => {
               default: "View executions",
             }),
             icon: Timer,
-            onClick: () => setOpenJob(j),
+            onClick: () => open(j),
           },
         ]}
         emptyMessage={String(
           tr("admin.jobs.none", { default: "No jobs registered." }),
         )}
       />
-
-      <Sheet
-        open={openJob !== null}
-        onOpenChange={(open) => {
-          if (!open) setOpenJob(null);
-        }}
-      >
-        <SheetContent
-          side="right"
-          className="flex w-full flex-col gap-0 data-[side=right]:sm:max-w-[50vw]"
-        >
-          {openJob && (
-            <>
-              <SheetHeader>
-                <SheetTitle>{openJob.name}</SheetTitle>
-                <SheetDescription>
-                  {tr("admin.jobs.execsDescription", {
-                    default: "Recent executions for this job.",
-                  })}
-                </SheetDescription>
-              </SheetHeader>
-              <div className="flex min-h-0 flex-1 flex-col p-4">
-                <AdminJobsExecutionsPanel jobName={openJob.name} />
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </AdminPage>
   );
 };

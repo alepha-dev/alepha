@@ -34,7 +34,7 @@ import { createElement } from "react";
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
- * The whole `/admin` surface — twelve pages and their shell — mounted and wired.
+ * The whole `/admin` surface — thirteen pages and their shell — mounted and wired.
  *
  * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
  * them back to JSX.** This module is evaluated *eagerly* in the server graph:
@@ -141,20 +141,20 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * groups by their smallest member, so only an `order` of 1000 or more sinks a
  * page in among them.
  *
- * ### These twelve route names are claimed globally
+ * ### These thirteen route names are claimed globally
  *
  * `dashboard`, `users`, `userDetail`, `sessions`, `keys`, `jobs`,
- * `notifications`, `audits`, `files`, `parameters`, `payments` and
- * `analytics` each carry an explicit `name:` so a future rename of the
+ * `jobDetail`, `notifications`, `audits`, `files`, `parameters`, `payments`
+ * and `analytics` each carry an explicit `name:` so a future rename of the
  * field itself (done for readability, without touching the string) never
  * silently changes the public route name — the same reason `AuthRouter`'s
  * pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
- * registers its own page named `files` (or any of the other eleven) either
+ * registers its own page named `files` (or any of the other twelve) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
- * Treat these twelve names as reserved when hanging pages off `layout`.
+ * Treat these thirteen names as reserved when hanging pages off `layout`.
  *
  * ### It needs `<DialogProvider>` and `<Toaster />` above it
  *
@@ -391,6 +391,30 @@ export class AdminRouter {
       order: 1010,
     },
     lazy: () => import("./admin-jobs.tsx"),
+  });
+
+  /**
+   * One job: its executions, and a drawer for one run's logs, error and
+   * payload. `nav.hidden` like `userDetail`: a breadcrumb, not a sidebar
+   * entry, with a `labelKey` so the crumb follows the language.
+   *
+   * `:jobName`, not `:name`: param names are unique across the whole route
+   * table, and `name` is the one an application most likely uses.
+   */
+  jobDetail = $pageNav({
+    parent: this.layout,
+    path: "/jobs/:jobName",
+    name: "jobDetail",
+    head: this.adminHead("Job"),
+    nav: { hidden: true, label: "Job", labelKey: "admin.nav.jobDetail" },
+    permission: "admin:job:read",
+    can: () => this.jobApi.listExecutions.can(),
+    schema: {
+      params: z.object({
+        jobName: z.text(),
+      }),
+    },
+    lazy: () => import("./admin-job-detail.tsx"),
   });
 
   notifications = $pageNav({

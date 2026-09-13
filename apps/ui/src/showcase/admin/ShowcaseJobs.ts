@@ -133,6 +133,12 @@ export class ShowcaseJobs {
         completedAt:
           settled || status === "cancelled" ? this.at(hoursAgo) : undefined,
         error: status === "error" ? "SMTP refused the connection" : undefined,
+        // Every finished run keeps its log, successes included; a run still
+        // in progress has written nothing yet.
+        logs:
+          settled || status === "cancelled"
+            ? this.logs(jobName, status, hoursAgo)
+            : undefined,
         triggeredByName: i % 3 === 0 ? "Ada Lovelace" : undefined,
         can: {
           retry: status === "error" || status === "cancelled",
@@ -229,6 +235,62 @@ export class ShowcaseJobs {
       if (found) return found;
     }
     return undefined;
+  }
+
+  /**
+   * The log a finished run kept: what it did, and why it stopped when it
+   * failed.
+   */
+  protected logs(
+    jobName: string,
+    status: JobExecutionStatus,
+    hoursAgo: number,
+  ): JobExecutionResource["logs"] {
+    const at = (offsetSeconds: number) =>
+      Date.parse(this.at(hoursAgo + 0.05)) + offsetSeconds * 1000;
+    const entries: NonNullable<JobExecutionResource["logs"]> = [
+      {
+        level: "INFO",
+        message: `Starting ${jobName}`,
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(0),
+      },
+      {
+        level: "DEBUG",
+        message: "Loaded 128 subscribers",
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(1),
+        data: { batch: 1 },
+      },
+    ];
+    if (status === "error") {
+      entries.push({
+        level: "ERROR",
+        message: "SMTP refused the connection",
+        service: "showcase",
+        module: "mail",
+        timestamp: at(2),
+      });
+    } else if (status === "cancelled") {
+      entries.push({
+        level: "WARN",
+        message: "Cancelled by an operator",
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(2),
+      });
+    } else {
+      entries.push({
+        level: "INFO",
+        message: "Sent 128 digests",
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(3),
+      });
+    }
+    return entries;
   }
 
   /**
