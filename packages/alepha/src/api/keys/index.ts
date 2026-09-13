@@ -9,6 +9,7 @@ import { ApiKeyController } from "./controllers/ApiKeyController.ts";
 import { ApiKeyJobs } from "./jobs/ApiKeyJobs.ts";
 import { ApiKeyNotifications } from "./notifications/ApiKeyNotifications.ts";
 import { ApiKeyParameters } from "./parameters/ApiKeyParameters.ts";
+import { ApiKeyIpAllowlist } from "./services/ApiKeyIpAllowlist.ts";
 import { ApiKeyService } from "./services/ApiKeyService.ts";
 
 export * from "./audits/ApiKeyAudits.ts";
@@ -32,6 +33,7 @@ export * from "./schemas/revokeApiKeyParamsSchema.ts";
 export * from "./schemas/revokeApiKeyResponseSchema.ts";
 export * from "./schemas/rotateApiKeyBodySchema.ts";
 export * from "./schemas/rotateApiKeyParamsSchema.ts";
+export * from "./services/ApiKeyIpAllowlist.ts";
 export * from "./services/ApiKeyService.ts";
 
 /**
@@ -63,6 +65,7 @@ export const AlephaApiKeys = $module({
   imports: [AlephaBackground, AlephaApiJobs, AlephaApiAudits],
   services: [
     ApiKeyParameters,
+    ApiKeyIpAllowlist,
     ApiKeyService,
     ApiKeyController,
     AdminApiKeyController,

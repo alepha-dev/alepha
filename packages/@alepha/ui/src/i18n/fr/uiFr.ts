@@ -517,6 +517,7 @@ export const uiFr: Record<string, string> = {
   "admin.keys.bulkRevoked": "$1 clé(s) d'API révoquée(s)",
   "admin.keys.colCreated": "Créée le",
   "admin.keys.colExpires": "Expire",
+  "admin.keys.colIpAllowlist": "Autorisée depuis",
   "admin.keys.colName": "Nom",
   "admin.keys.colOwner": "Propriétaire",
   "admin.keys.colPermissions": "Portée",
@@ -528,6 +529,7 @@ export const uiFr: Record<string, string> = {
   "admin.keys.create": "Ajouter une clé d'API",
   "admin.keys.createDescription":
     "La clé est créée pour votre compte et porte vos rôles actuels.",
+  "admin.keys.ipAnywhere": "Partout",
   "admin.keys.noneSelected": "Aucune clé active dans la sélection",
   "admin.keys.noExpiry": "Jamais",
   "admin.keys.revoke": "Révoquer",
@@ -939,6 +941,7 @@ export const uiFr: Record<string, string> = {
   "account.keys.inactiveDescription":
     "Les clés expirées et révoquées, gardées un temps pour que vous sachiez ce qui a cessé de fonctionner. Une clé expirée peut être renouvelée en la régénérant.",
   "account.keys.inactiveTitle": "Clés inactives",
+  "account.keys.ipAllowlist": " · uniquement depuis $1",
   "account.keys.lastUsedAt": " · dernière utilisation $1",
   "account.keys.name": "Nom",
   "account.keys.nameHeldByExpired":

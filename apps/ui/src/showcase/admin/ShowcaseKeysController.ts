@@ -54,6 +54,7 @@ export class ShowcaseKeysController {
         tokenSuffix: "0000",
         roles: [],
         permissions: body.permissions ?? [],
+        ipAllowlist: body.ipAllowlist ?? [],
         createdAt: new Date(Date.UTC(2026, 8, 5, 9, 0)).toISOString(),
         expiresAt: undefined,
       }) as any,

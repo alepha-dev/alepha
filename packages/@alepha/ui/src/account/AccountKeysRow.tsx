@@ -52,7 +52,15 @@ export const AccountKeysRow = (props: AccountKeysRowProps) => {
               default: " · last used $1",
               args: [dt.of(key.lastUsedAt).fromNow()],
             })
-          : tr("account.keys.neverUsed", { default: " · never used" }))
+          : tr("account.keys.neverUsed", { default: " · never used" })) +
+        // Read-only, set when the key was created through the API: shown so a
+        // key refusing requests from a new address can be diagnosed here.
+        (key.ipAllowlist.length
+          ? tr("account.keys.ipAllowlist", {
+              default: " · only from $1",
+              args: [key.ipAllowlist.join(", ")],
+            })
+          : "")
       }
     >
       <div className="flex items-center gap-2">

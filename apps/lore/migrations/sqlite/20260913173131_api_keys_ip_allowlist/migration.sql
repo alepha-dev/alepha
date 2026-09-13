@@ -1,0 +1,1 @@
+ALTER TABLE `api_keys` ADD `ip_allowlist` text DEFAULT '[]' NOT NULL;

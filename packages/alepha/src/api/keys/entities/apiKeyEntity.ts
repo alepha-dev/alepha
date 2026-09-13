@@ -32,6 +32,18 @@ export const apiKeyEntity = $entity({
      */
     permissions: db.default(z.array(z.string()), []),
 
+    /**
+     * The client addresses the key may be used from: bare IPv4 or IPv6
+     * addresses and CIDR ranges, checked by `ApiKeyIpAllowlist` inside
+     * `ApiKeyService.validate()`. Empty means from anywhere, which is what
+     * every key created before the allowlist existed has.
+     *
+     * Set at creation only and carried over by a rotation. See
+     * `createApiKeyBodySchema.ipAllowlist` for why it is no stronger than the
+     * `TRUST_PROXY` setting in front of it.
+     */
+    ipAllowlist: db.default(z.array(z.string()), []),
+
     // Tracking. All three are APPROXIMATE: a key writes its usage at most once
     // per `apiKeyOptions.usageWriteIntervalMinutes` (5 by default) in each
     // isolate, so they are accurate to that interval and no finer. Do not

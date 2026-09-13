@@ -100,6 +100,8 @@ export class ShowcaseKeys {
       tokenSuffix: ["9f2a", "41bd", "77c0", "0e13", "5b88"][i],
       roles,
       permissions: [],
+      // The CI key is pinned to its runners, so the column has one to show.
+      ipAllowlist: i === 0 ? ["192.0.2.0/24", "2001:db8:c1::/48"] : [],
       createdAt: this.at(24 * (i + 3)),
       lastUsedAt: revoked ? undefined : this.at(i + 1),
       lastUsedIp: revoked ? undefined : `203.0.113.${20 + i}`,

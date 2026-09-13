@@ -239,6 +239,25 @@ export const AdminKeys = () => {
             label: tr("admin.keys.colPermissions", { default: "Scope" }),
             cell: (k) => <ApiKeyScopeSummary permissions={k.permissions} />,
           },
+          ipAllowlist: {
+            label: tr("admin.keys.colIpAllowlist", { default: "Allowed from" }),
+            // Read-only: an allowlist is set through the API at creation and
+            // cannot be edited, only seen, so a refused key can be diagnosed.
+            cell: (k) =>
+              k.ipAllowlist.length ? (
+                <div className="flex flex-col gap-0.5">
+                  {k.ipAllowlist.map((entry) => (
+                    <code key={entry} className="text-xs">
+                      {entry}
+                    </code>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.keys.ipAnywhere", { default: "Anywhere" })}
+                </span>
+              ),
+          },
           status: {
             label: tr("admin.keys.colStatus", { default: "Status" }),
             // The Expires column beside it carries the date.

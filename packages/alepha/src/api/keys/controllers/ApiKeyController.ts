@@ -43,6 +43,7 @@ export class ApiKeyController {
         description: request.body.description,
         roles: request.user.roles ?? [],
         permissions: request.body.permissions,
+        ipAllowlist: request.body.ipAllowlist,
         caller: request.user,
         expiresIn: request.body.expiresIn,
         expiresAt: request.body.expiresAt
@@ -57,6 +58,7 @@ export class ApiKeyController {
         tokenSuffix: apiKey.tokenSuffix,
         roles: apiKey.roles,
         permissions: apiKey.permissions,
+        ipAllowlist: apiKey.ipAllowlist,
         createdAt: apiKey.createdAt,
         expiresAt: apiKey.expiresAt,
       };

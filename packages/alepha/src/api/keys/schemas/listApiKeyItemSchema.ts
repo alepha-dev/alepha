@@ -20,6 +20,11 @@ export const listApiKeyItemSchema = z.object({
    * The key's permission scope. Empty is everything its roles allow.
    */
   permissions: z.array(z.string()),
+  /**
+   * The client addresses and CIDR ranges the key may be used from. Empty is
+   * from anywhere. Read-only: set at creation, kept by a rotation.
+   */
+  ipAllowlist: z.array(z.string()),
   createdAt: z.datetime(),
   lastUsedAt: z.datetime().optional(),
   lastUsedIp: z.string().optional(),

@@ -35,12 +35,14 @@ import {
 } from "../schemas/apiKeyExpiresInSchema.ts";
 import type { ApiKeyOptionsResponse } from "../schemas/apiKeyOptionsResponseSchema.ts";
 import type { ApiKeyStatus } from "../schemas/apiKeyStatusSchema.ts";
+import { ApiKeyIpAllowlist } from "./ApiKeyIpAllowlist.ts";
 
 export class ApiKeyService {
   protected readonly alepha = $inject(Alepha);
   protected readonly audits = $inject(ApiKeyAudits);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly ipAllowlist = $inject(ApiKeyIpAllowlist);
   protected readonly log = $logger();
   protected readonly parameters = $inject(ApiKeyParameters);
   protected readonly repo = $repository(apiKeyEntity);
@@ -205,6 +207,29 @@ export class ApiKeyService {
     }
 
     return expiresAt;
+  }
+
+  /**
+   * The allowlist a key is created with: entries trimmed and deduplicated,
+   * and every one a bare address or a CIDR range.
+   *
+   * Refused here, naming the entries, rather than stored and discovered at
+   * validation: a malformed entry matches nothing, so the key would look
+   * right when created and never authenticate from the address it names.
+   */
+  protected resolveIpAllowlist(entries: string[]): string[] {
+    const trimmed = [...new Set(entries.map((entry) => entry.trim()))];
+    const invalid = this.ipAllowlist.invalidEntries(trimmed);
+    if (invalid.length > 0) {
+      throw new BadRequestError(
+        `Invalid IP allowlist ${invalid.length === 1 ? "entry" : "entries"}: ${invalid
+          .map((entry) => `'${entry.slice(0, 64)}'`)
+          .join(
+            ", ",
+          )}. Use an IPv4 or IPv6 address, or a CIDR range such as 203.0.113.0/24.`,
+      );
+    }
+    return trimmed;
   }
 
   /**
@@ -420,6 +445,11 @@ export class ApiKeyService {
     expiresAt?: Date;
     prefix?: string;
     permissions?: string[];
+    /**
+     * Client addresses and CIDR ranges the key may be used from. See
+     * `createApiKeyBodySchema.ipAllowlist`, and its `TRUST_PROXY` warning.
+     */
+    ipAllowlist?: string[];
     caller?: Pick<UserAccount, "roles" | "permissionScope"> & {
       realm?: string;
     };
@@ -429,6 +459,7 @@ export class ApiKeyService {
       options.permissions ?? [],
       options.caller ?? { roles: options.roles },
     );
+    const ipAllowlist = this.resolveIpAllowlist(options.ipAllowlist ?? []);
     const prefix = options.prefix ?? "ak";
     const { token, hash, suffix } = this.mintToken(prefix);
 
@@ -441,6 +472,7 @@ export class ApiKeyService {
       tokenSuffix: suffix,
       roles: options.roles,
       permissions,
+      ipAllowlist,
       expiresAt: expiresAt?.toISOString(),
     });
 
@@ -457,6 +489,7 @@ export class ApiKeyService {
       description: `API key '${apiKey.name}' created`,
       metadata: this.auditMetadata(apiKey, "owner", {
         permissions: apiKey.permissions,
+        ipAllowlist: apiKey.ipAllowlist,
         expiresAt: apiKey.expiresAt,
       }),
     });
@@ -598,6 +631,7 @@ export class ApiKeyService {
       tokenSuffix: apiKey.tokenSuffix,
       roles: apiKey.roles,
       permissions: apiKey.permissions ?? [],
+      ipAllowlist: apiKey.ipAllowlist ?? [],
       createdAt: apiKey.createdAt,
       lastUsedAt: apiKey.lastUsedAt,
       lastUsedIp: apiKey.lastUsedIp,
@@ -890,7 +924,7 @@ export class ApiKeyService {
    * @param resolveOwner - Optional per-request owner check; a false return
    * refuses the key (owner disabled or deleted).
    * @param ip - The client address of the request being authenticated,
-   * recorded as the key's `lastUsedIp`. Pass it whenever the request is at
+   * checked against the key's `ipAllowlist` and recorded as its `lastUsedIp`. Pass it whenever the request is at
    * hand: the issuer resolver runs in `server:onRequest`, before the router
    * stores the request, so the fallback (the stored request's IP) only
    * reaches a caller inside a route handler.
@@ -946,6 +980,27 @@ export class ApiKeyService {
       return null;
     }
 
+    // The caller's `ip` comes first: the resolver calls this from
+    // `server:onRequest`, before the router stores the request.
+    const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
+
+    // Before the owner lookup and before any usage is recorded: a request
+    // from an address the key does not admit is not a use of the key. An
+    // unknown address refuses a restricted key, so a direct call that passes
+    // no IP fails closed.
+    if (
+      apiKey.ipAllowlist?.length &&
+      !this.ipAllowlist.allows(apiKey.ipAllowlist, clientIp)
+    ) {
+      this.log.warn("API key refused: client address not in its allowlist", {
+        apiKeyId: apiKey.id,
+        userId: apiKey.userId,
+        // Client-chosen under `TRUST_PROXY`, so bounded before it is logged.
+        ip: clientIp === undefined ? null : clientIp.slice(0, 64),
+      });
+      return null;
+    }
+
     // A key must never outlive its account: refuse when the owner is
     // disabled or deleted. Deliberately NOT cached — revocation must be
     // visible immediately.
@@ -975,14 +1030,12 @@ export class ApiKeyService {
     // Record usage without holding up the request. The provider keeps the
     // write alive past the response on Workers (`waitUntil`), flushes it on
     // stop, and logs a failure. The IP is resolved now, so the deferred task
-    // depends on nothing but its arguments. The caller's `ip` comes first:
-    // the store holds no request yet when the resolver calls this.
+    // depends on nothing but its arguments.
     //
     // Throttled to one write per key per `usageWriteIntervalMinutes`, decided
     // here rather than inside `updateUsage`, so a throttled request hands the
     // provider (and `waitUntil`) nothing.
     if (this.shouldRecordUsage(apiKey.id)) {
-      const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
       this.background.defer(() => this.updateUsage(apiKey.id, clientIp));
     }
 
