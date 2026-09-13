@@ -60,10 +60,16 @@ export class BuildCommand {
     // anything generating deploy config may want to read what was captured.
     $inject(BuildManifestTask),
     $inject(BuildCloudflareTask),
-    $inject(BuildDockerTask),
     $inject(BuildStaticTask),
     $inject(BuildHeadersTask),
     $inject(BuildCompressTask),
+    // ⚠️ After every task that writes into `dist/public`, because with
+    // `--image` it builds the standard image right here, from `dist/` as it
+    // stands. Before `_headers` and compress (where it used to run), that
+    // image shipped without `_headers` and without a single `.br` sidecar,
+    // while the same build's `dist/` had both. Before compile, which needs
+    // the Dockerfile this writes and builds the compile image itself.
+    $inject(BuildDockerTask),
     $inject(BuildCompileTask),
   ];
 
