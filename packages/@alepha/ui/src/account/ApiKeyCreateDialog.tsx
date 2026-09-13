@@ -5,7 +5,12 @@ import type {
   ApiKeyStatus,
 } from "alepha/api/keys";
 import { useClient } from "alepha/react";
-import { FormValidationError, useForm, useFormState } from "alepha/react/form";
+import {
+  FormValidationError,
+  useFieldValue,
+  useForm,
+  useFormState,
+} from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useMemo, useState } from "react";
 
@@ -20,6 +25,7 @@ import {
 } from "../core/Dialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { Control } from "../form/Control.tsx";
+import { ApiKeyScopeMatrix } from "./ApiKeyScopeMatrix.tsx";
 
 export interface ApiKeyCreateDialogProps {
   open: boolean;
@@ -46,6 +52,12 @@ export interface ApiKeyCreateDialogProps {
    * panel needs no such sentence.
    */
   ownershipNote?: string;
+
+  /**
+   * The answer of `GET /api-keys/options`, when the caller already holds it
+   * (a story, a test). Omitted, the dialog asks for it each time it opens.
+   */
+  options?: ApiKeyOptionsResponse;
 }
 
 /**
@@ -63,17 +75,18 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
   const api = useClient<ApiKeyController>();
   const toaster = useToast();
   const { tr } = useI18n();
-  const [options, setOptions] = useState<ApiKeyOptionsResponse | undefined>();
+  const [fetched, setFetched] = useState<ApiKeyOptionsResponse | undefined>();
+  const options = props.options ?? fetched;
 
   useEffect(() => {
-    if (!props.open) {
+    if (!props.open || props.options) {
       return;
     }
     let cancelled = false;
     (api.getApiKeyOptions() as Promise<ApiKeyOptionsResponse>)
       .then((response) => {
         if (!cancelled) {
-          setOptions(response);
+          setFetched(response);
         }
       })
       .catch((error: any) => {
@@ -99,6 +112,8 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
         name: z.text({ maxLength: 100 }),
         description: z.text({ maxLength: 500 }).optional(),
         expiresIn: z.text().optional(),
+        access: z.enum(["full", "select"]),
+        permissions: z.array(z.text()).optional(),
       }),
     [],
   );
@@ -110,6 +125,10 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
         name: "",
         description: "",
         expiresIn: options?.expiry.default,
+        // Full access needs no interaction: it is what every key was before
+        // scopes existed, and the common case must not ask for a matrix.
+        access: "full" as const,
+        permissions: [],
       },
       handler: async (values) => {
         const name = values.name?.trim() ?? "";
@@ -142,12 +161,27 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
           });
         }
 
+        // An empty scope means full access, so "Select permissions" with
+        // nothing selected would quietly mint the widest key there is.
+        const permissions =
+          values.access === "select" ? (values.permissions ?? []) : [];
+        if (values.access === "select" && permissions.length === 0) {
+          throw new FormValidationError({
+            message: tr("account.keys.scopeRequired", {
+              default:
+                "Select at least one permission, or give the key full access.",
+            }),
+            path: "/permissions",
+          });
+        }
+
         try {
           const created: any = await api.createApiKey({
             body: {
               name,
               description: values.description?.trim() || undefined,
               expiresIn: values.expiresIn as never,
+              permissions,
             },
           });
           await props.onCreated(created.token);
@@ -166,6 +200,7 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
     [props.open, options?.expiry.default],
   );
   const state = useFormState(form, ["loading"]);
+  const [access] = useFieldValue(form.input.access);
 
   const expiryLabel = (preset: string): string => {
     switch (preset) {
@@ -234,6 +269,41 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
             }))}
             disabled={!options}
           />
+          <Control
+            input={form.input.access}
+            segmented
+            label={tr("account.keys.access", { default: "Access" })}
+            description={
+              access === "select"
+                ? tr("account.keys.accessSelectHint", {
+                    default:
+                      "The key may use only the permissions ticked below, and never more than its roles allow.",
+                  })
+                : tr("account.keys.accessFullHint", {
+                    default: "The key may do everything your roles allow.",
+                  })
+            }
+            items={[
+              {
+                value: "full",
+                label: tr("account.keys.accessFull", {
+                  default: "Full access",
+                }),
+              },
+              {
+                value: "select",
+                label: tr("account.keys.accessSelect", {
+                  default: "Select permissions",
+                }),
+              },
+            ]}
+          />
+          {access === "select" && options ? (
+            <ApiKeyScopeMatrix
+              input={form.input.permissions}
+              groups={options.permissions.groups}
+            />
+          ) : null}
           {/* `DialogFooter`, not a hand-rolled row: the border-top, the
               tinted band and the rounded bottom live there, and they are
               what every imperative dialog (`useDialog`'s confirm and

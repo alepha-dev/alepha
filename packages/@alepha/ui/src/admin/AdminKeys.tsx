@@ -14,6 +14,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { ApiKeyScopeSummary } from "../account/ApiKeyScopeSummary.tsx";
 import { Badge } from "../core/Badge.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
@@ -187,6 +188,10 @@ export const AdminKeys = () => {
               ) : (
                 <span className="text-muted-foreground text-xs">—</span>
               ),
+          },
+          permissions: {
+            label: tr("admin.keys.colPermissions", { default: "Scope" }),
+            cell: (k) => <ApiKeyScopeSummary permissions={k.permissions} />,
           },
           createdAt: {
             label: tr("admin.keys.colCreated", { default: "Created" }),

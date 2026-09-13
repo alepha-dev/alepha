@@ -450,6 +450,7 @@ export const uiFr: Record<string, string> = {
   "admin.keys.colCreated": "Créée le",
   "admin.keys.colName": "Nom",
   "admin.keys.colOwner": "Propriétaire",
+  "admin.keys.colPermissions": "Portée",
   "admin.keys.colPrefix": "Préfixe",
   "admin.keys.colScopes": "Rôles",
   "admin.keys.copy": "Copier",
@@ -835,6 +836,13 @@ export const uiFr: Record<string, string> = {
   "account.delete.submit": "Supprimer le compte",
   "account.delete.title": "Supprimer votre compte",
   "account.header.back": "Retour au site",
+  "account.keys.access": "Accès",
+  "account.keys.accessFull": "Accès complet",
+  "account.keys.accessFullHint":
+    "La clé peut faire tout ce que vos rôles permettent.",
+  "account.keys.accessSelect": "Choisir les permissions",
+  "account.keys.accessSelectHint":
+    "La clé ne peut utiliser que les permissions cochées ci-dessous, et jamais plus que ce que ses rôles permettent.",
   "account.keys.cancel": "Annuler",
   "account.keys.copied": "Copiée",
   "account.keys.copy": "Copier",
@@ -889,6 +897,15 @@ export const uiFr: Record<string, string> = {
     "Le secret actuel cesse de fonctionner immédiatement, et un nouveau est affiché une seule fois. Mettez la clé à jour là où elle est enregistrée.",
   "account.keys.rotateError": "Impossible de régénérer cette clé",
   "account.keys.rotateTitle": "Régénérer $1 ?",
+  "account.keys.scopeColumn": "Autorisée",
+  "account.keys.scopeCount": "$1 permission(s)",
+  "account.keys.scopeEmpty":
+    "Vous ne détenez aucune permission à laquelle une clé pourrait être restreinte.",
+  "account.keys.scopeFull": "Accès complet",
+  "account.keys.scopeHeader": "Permission",
+  "account.keys.scopeRequired":
+    "Choisissez au moins une permission, ou donnez à la clé un accès complet.",
+  "account.keys.scopeUngrouped": "Autres",
   "account.keys.showInactive": "Afficher",
   "account.keys.status.expired": "Expirée",
   "account.keys.status.expires": "Expire",

@@ -8,6 +8,7 @@ import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
 import TimeAgo from "../core/TimeAgo.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
+import { ApiKeyScopeSummary } from "./ApiKeyScopeSummary.tsx";
 
 export interface AccountKeysRowProps {
   apiKey: ListApiKeyItem;
@@ -56,6 +57,7 @@ export const AccountKeysRow = (props: AccountKeysRowProps) => {
       }
     >
       <div className="flex items-center gap-2">
+        <ApiKeyScopeSummary permissions={key.permissions} />
         {key.status === "revoked" ? (
           <Badge variant="tint" tone="neutral">
             {tr("account.keys.status.revoked", { default: "Revoked" })}
