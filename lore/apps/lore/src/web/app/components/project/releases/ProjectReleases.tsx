@@ -1,6 +1,7 @@
 import {
   AlephaTable,
   type BulkAction,
+  type RowActionEntry,
 } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
@@ -24,7 +25,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { OutboundLink } from "../../shared/OutboundLink.tsx";
-import { suggestedReleaseTag } from "./releaseBumps.ts";
+import { releaseBumps, suggestedReleaseTag } from "./releaseBumps.ts";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
@@ -121,6 +122,11 @@ const ProjectReleases = () => {
   const deleteRelease = useDeleteRelease();
 
   const [creating, setCreating] = useState(false);
+  // What the dialog's field holds when it opens: the tag a row's create entry
+  // named, or nothing for the toolbar and the empty state. The dialog seeds
+  // itself from it on every open, so the two doors cannot leak into each
+  // other.
+  const [createTag, setCreateTag] = useState<string>();
   // The list, its rows and the empty state all stay; only the two doors into
   // `createRelease` close.
   const canCreate = releaseApi.createRelease.can();
@@ -148,6 +154,42 @@ const ProjectReleases = () => {
   const allReleases = useRef<ReleaseResource[]>([]);
 
   if (!project) return null;
+
+  const openCreate = (tag?: string) => {
+    setCreateTag(tag);
+    setCreating(true);
+  };
+
+  /**
+   * The row menu's create entries, named by the tag they would create
+   * ("Create 0.31.0") rather than by the bump ("Create minor"): the label
+   * verifies itself, and nobody has to know what the minor of `1.0` is
+   * before clicking. `releaseBumps.ts` holds the rule and why it is the
+   * frontier and not the release's state.
+   *
+   * One entry is flat; two or three are one group, in the order the rule
+   * returns them (patch, minor, major); none is nothing.
+   *
+   * ⚠️ Read from `allReleases`, the unfiltered response, and never from the
+   * rows on screen. See that ref for the two lists this must not use.
+   *
+   * An entry opens the create dialog with the tag filled in, and does not
+   * write. One write path, the tag stays editable, and a tag taken since the
+   * list was read is the dialog's own inline error. After the create the
+   * reader stays on this list, planning: `created()` refreshes and does not
+   * navigate, unlike the header menu's mount of the same dialog.
+   */
+  const createEntries = (
+    release: ReleaseResource,
+  ): RowActionEntry<ReleaseResource>[] => {
+    const entries = releaseBumps(release, allReleases.current).map((bump) => ({
+      icon: Plus,
+      label: tr("release.bump.create", { args: [bump.tag] }),
+      onClick: () => openCreate(bump.tag),
+    }));
+    if (entries.length < 2) return entries;
+    return [{ icon: Plus, label: tr("release.bump.group"), children: entries }];
+  };
 
   /**
    * The table refetches itself off `refreshSignal`, but the atom has to be
@@ -246,6 +288,7 @@ const ProjectReleases = () => {
         open={creating}
         onOpenChange={setCreating}
         onCreated={() => void created()}
+        initialTag={createTag}
         suggestedTag={suggestedReleaseTag(allReleases.current)}
       />
 
@@ -276,7 +319,7 @@ const ProjectReleases = () => {
           action: (
             <div className="flex flex-col items-center gap-3">
               {canCreate && (
-                <Button onClick={() => setCreating(true)}>
+                <Button onClick={() => openCreate()}>
                   <Plus className="size-4" />
                   {tr("release.start")}
                 </Button>
@@ -344,7 +387,7 @@ const ProjectReleases = () => {
                   icon: Plus,
                   label: tr("release.start"),
                   primary: true,
-                  onClick: () => setCreating(true),
+                  onClick: () => openCreate(),
                 },
               ]
             : []
@@ -358,8 +401,12 @@ const ProjectReleases = () => {
         // `release:manage` today, so the split between the pieces is about
         // the row's STATE, not about permission. Each piece still asks its
         // own action, so a later change to one permission cannot silently
-        // gate the others.
+        // gate the others. The menu reads create, then the default entries,
+        // then Delete last.
         rowActions={(release) => [
+          // On published and open rows alike: a patch is offered only on a
+          // published one.
+          ...(canCreate ? createEntries(release) : []),
           // Never offered on a published release: the server refuses it, and
           // an affordance that always fails is worse than no affordance.
           ...(defaultRelease.can && !release.releasedAt
