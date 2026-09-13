@@ -93,7 +93,12 @@ export class DeployJobs {
   public static readonly SLOT_RETRY_SECONDS = 10;
 
   public readonly runDeploy = $job({
-    name: "lore.deploy.run",
+    name: "deploys.run",
+    description:
+      "Runs one deployment, waiting for a free slot, and fails it once past its timeout.",
+    // A few deploys a day, and an operator wants both outcomes: a queue job
+    // keeps no successes by default, which made every deploy look failed.
+    retention: { ok: { days: 30 }, error: { days: 30 } },
     schema: z.object({
       deploymentId: z.uuid(),
       /**
@@ -199,7 +204,9 @@ export class DeployJobs {
    * is done per row.
    */
   public readonly sweepAbandoned = $job({
-    name: "lore.deploy.sweep",
+    name: "deploys.sweep-abandoned",
+    description:
+      "Marks deployments stuck in queued or running past their timeout plus five minutes as failed.",
     // ⚠️ Cron-only, so no `schema`: a job may declare one or the other and a
     // job carrying both is refused at boot. There is nothing to say anyway -
     // the sweep reads the rows and takes no payload.
