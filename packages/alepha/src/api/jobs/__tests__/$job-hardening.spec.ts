@@ -192,27 +192,21 @@ describe("$job — lease heartbeat", () => {
 });
 
 describe("$job — retention", () => {
-  it("keeps successful rows forever when the job declares keep.ok = 0", async ({
+  it("keeps the successes of a queue job that declares a rule for them", async ({
     expect,
   }) => {
     const alepha = Alepha.create()
       .with(AlephaOrmPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
-    // Global "delete successes" — the setting under which the per-job
-    // override was silently ignored.
-    alepha.store.mut(jobConfig, (c) => ({ ...c, keepLastSuccess: 0 }));
 
     class AuditApp {
       executions = $repository(jobExecutionEntity);
-      // Documented contract of `keep`: `{ ok: 0 }` means KEEP FOREVER (no
-      // trim) — the opposite of global `keepLastSuccess: 0`, which means
-      // "delete on success". The success path only consulted the global, so
-      // audit rows were destroyed at completion.
+      // A queue job records no successes by default; a declared rule is what
+      // keeps them, however the global defaults are tuned.
       work = $job({
         schema: z.object({ v: z.integer() }),
-        record: "all",
-        keep: { ok: 0, error: 0 },
+        retention: { ok: { days: 7 } },
         handler: async () => {},
       });
     }
@@ -702,8 +696,7 @@ describe("$job — inline", () => {
         executions = $repository(jobExecutionEntity);
         work = $job({
           schema: z.object({ v: z.integer() }),
-          record: "all",
-          keep: { ok: 0 },
+          retention: { ok: { last: 10 } },
           handler: async () => {
             ran = true;
             await sleep(30);
@@ -1271,7 +1264,7 @@ describe("$job — trim is proportional to the work done", () => {
       executions = $repository(jobExecutionEntity);
       work = $job({
         schema: z.object({ v: z.integer() }),
-        keep: { error: 3 },
+        retention: { error: { last: 3 } },
         handler: async () => {},
       });
     }
@@ -1312,7 +1305,7 @@ describe("$job — trim is proportional to the work done", () => {
       executions = $repository(jobExecutionEntity);
       work = $job({
         schema: z.object({ v: z.integer() }),
-        keep: { error: 3 },
+        retention: { error: { last: 3 } },
         handler: async () => {},
       });
     }
@@ -1340,49 +1333,7 @@ describe("$job — trim is proportional to the work done", () => {
     expect(left.map((r) => r.id).sort()).toEqual([...ids].sort());
   });
 
-  it("keeps a per-job keep of 0 forever, which is the opposite of the global 0", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create()
-      .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
-      .with(AlephaApiJobs);
-    // The global says "delete on success". The per-job 0 says "keep
-    // forever". They are documented opposites and conflating them once
-    // destroyed the audit trail of every job declaring `keep: { ok: 0 }`.
-    alepha.store.mut(jobConfig, (c) => ({ ...c, keepLastSuccess: 0 }));
-
-    class AuditApp {
-      executions = $repository(jobExecutionEntity);
-      work = $job({
-        schema: z.object({ v: z.integer() }),
-        record: "all",
-        keep: { ok: 0, error: 0 },
-        handler: async () => {},
-      });
-    }
-
-    const app = alepha.with(AuditApp).inject(AuditApp);
-    const jobs = alepha.inject(JobProvider) as TestJobProvider;
-    await alepha.start();
-
-    for (let v = 0; v < 5; v++) {
-      await app.executions.create({
-        jobName: "AuditApp.work",
-        status: "ok",
-        maxAttempts: 1,
-      });
-    }
-
-    await jobs.testTrimRingBuffers();
-
-    const left = await app.executions.findMany({
-      where: { jobName: { eq: "AuditApp.work" }, status: { eq: "ok" } },
-    });
-    expect(left).toHaveLength(5);
-  });
-
-  it("a cron whose buffer is one row updates it instead of insert-then-delete", async ({
+  it("a cron inserts one row per run, each with its own id", async ({
     expect,
   }) => {
     const alepha = Alepha.create()
@@ -1393,9 +1344,10 @@ describe("$job — trim is proportional to the work done", () => {
     let ticks = 0;
     class TickApp {
       executions = $repository(jobExecutionEntity);
-      // No explicit `record`: registration gives a cron `record: "all"` with
-      // `keep.ok = 1`, which is the configuration that used to INSERT a row
-      // per tick so trim could delete it again.
+      // No retention declared: an hourly cron keeps its last 24 successes.
+      // It used to keep ONE row and update it in place at every tick, which
+      // broke the row's id against its own job events and overwrote who
+      // triggered it.
       beat = $job({
         cron: "0 * * * *",
         handler: async () => {
@@ -1407,58 +1359,18 @@ describe("$job — trim is proportional to the work done", () => {
     const app = alepha.with(TickApp).inject(TickApp);
     await alepha.start();
 
-    await app.beat.trigger();
-    const first = await app.executions.findMany({
-      where: { jobName: { eq: "TickApp.beat" }, status: { eq: "ok" } },
-    });
-    expect(first).toHaveLength(1);
-
+    await app.beat.trigger({ triggeredBy: "admin-1" });
     await app.beat.trigger();
     await app.beat.trigger();
     expect(ticks).toBe(3);
 
-    const after = await app.executions.findMany({
+    const rows = await app.executions.findMany({
       where: { jobName: { eq: "TickApp.beat" }, status: { eq: "ok" } },
     });
-    // One row throughout, and it is the SAME row: three ticks used to mean
-    // three inserts and two deletes for one timestamp.
-    expect(after).toHaveLength(1);
-    expect(after[0].id).toBe(first[0].id);
-    // And it is current, which is the only thing the admin "Last run" reads.
-    expect(new Date(after[0].startedAt!).getTime()).toBeGreaterThanOrEqual(
-      new Date(first[0].startedAt!).getTime(),
-    );
-  });
-
-  it("a cron keeping more than one row still inserts, so its history survives", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create()
-      .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
-      .with(AlephaApiJobs);
-
-    class HistoryApp {
-      executions = $repository(jobExecutionEntity);
-      beat = $job({
-        cron: "0 * * * *",
-        record: "all",
-        keep: { ok: 5 },
-        handler: async () => {},
-      });
-    }
-
-    const app = alepha.with(HistoryApp).inject(HistoryApp);
-    await alepha.start();
-
-    await app.beat.trigger();
-    await app.beat.trigger();
-    await app.beat.trigger();
-
-    const rows = await app.executions.findMany({
-      where: { jobName: { eq: "HistoryApp.beat" }, status: { eq: "ok" } },
-    });
     expect(rows).toHaveLength(3);
+    expect(new Set(rows.map((r) => r.id)).size).toBe(3);
+    // The admin's trigger keeps its attribution after later ticks.
+    expect(rows.filter((r) => r.triggeredBy === "admin-1")).toHaveLength(1);
   });
 });
 
@@ -1484,7 +1396,7 @@ describe("$job — rows of unregistered jobs are purged", () => {
       executions = $repository(jobExecutionEntity);
       work = $job({
         schema: z.object({ v: z.integer() }),
-        record: "all",
+        retention: { ok: { last: 100 } },
         handler: async () => {},
       });
     }

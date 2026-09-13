@@ -1,4 +1,5 @@
 import { type Infer, z } from "alepha";
+import { jobRetentionSchema } from "alepha/api/jobs";
 
 /**
  * A job declared with `$job`.
@@ -26,10 +27,9 @@ export const devJobMetadataSchema = z.object({
    */
   lock: z.boolean().optional(),
   /**
-   * Which executions are persisted — `error` (default for queue), `all`, or
-   * `none`.
+   * What the job keeps of its executions, per status, defaults filled in.
    */
-  record: z.text().optional(),
+  retention: jobRetentionSchema,
   /**
    * Payload schema for queue-mode jobs, as JSON Schema.
    */

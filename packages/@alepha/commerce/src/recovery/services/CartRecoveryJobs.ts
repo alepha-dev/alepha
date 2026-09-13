@@ -32,7 +32,9 @@ export class CartRecoveryJobs {
         .enum(["firstReminder", "secondReminder", "markAbandoned"])
         .optional(),
     }),
-    record: "all",
+    // Per-order work: the last N rows keep the last N orders whatever the
+    // volume, so the unit is days. Declared, so no row cap applies.
+    retention: { ok: { days: 30 }, error: { days: 90 } },
     retry: {
       retries: 3,
       backoff: { initial: [1, "minute"], factor: 4 },

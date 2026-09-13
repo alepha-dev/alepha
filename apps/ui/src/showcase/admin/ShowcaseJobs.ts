@@ -29,6 +29,12 @@ export class ShowcaseJobs {
         cron: "0 7 * * 1",
         timeout: "5m",
         retry: { retries: 3 },
+        retention: {
+          ok: { last: 5 },
+          error: { days: 30 },
+          source: { ok: "default", error: "default" },
+          cadence: "slower",
+        },
         recent: { ok: 41, error: 1, lastRun: this.at(1) },
       },
       {
@@ -37,6 +43,12 @@ export class ShowcaseJobs {
         type: "cron",
         cron: "0 3 * * *",
         timeout: "30m",
+        retention: {
+          ok: { last: 7 },
+          error: { days: 30 },
+          source: { ok: "default", error: "default" },
+          cadence: "daily",
+        },
         recent: { ok: 12, error: 0, lastRun: this.at(9) },
       },
       {
@@ -44,6 +56,11 @@ export class ShowcaseJobs {
         description: "Generates a thumbnail for an uploaded image.",
         type: "queue",
         retry: { retries: 5 },
+        retention: {
+          ok: false,
+          error: { days: 30 },
+          source: { ok: "default", error: "default" },
+        },
         recent: { ok: 1284, error: 7, lastRun: this.at(0.2) },
       },
       {
@@ -52,6 +69,11 @@ export class ShowcaseJobs {
         type: "direct",
         timeout: "1m",
         retry: { retries: 2 },
+        retention: {
+          ok: { days: 30 },
+          error: { days: 90 },
+          source: { ok: "job", error: "job" },
+        },
         recent: { ok: 96, error: 3, lastRun: this.at(2) },
       },
     ];

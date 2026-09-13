@@ -1,3 +1,4 @@
+import type { JobRetention } from "alepha/api/jobs";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { RotateCcw } from "lucide-react";
@@ -5,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { JobExecution } from "../../hooks/useJobs.ts";
 import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
+import { describeRetention } from "./describeRetention.ts";
 
 const STATUS_COLOR: Record<string, string> = {
   ok: "var(--dt-get)",
@@ -48,10 +50,10 @@ const duration = (row: JobExecution): string => {
 export interface JobExecutionsProps {
   jobName: string;
   /**
-   * Whether the job persists executions at all — `record: "none"` means this
-   * table is empty by design, not because nothing ran.
+   * What the job keeps. A job that records neither successes nor failures
+   * has an empty table by design, not because nothing ran.
    */
-  record?: string;
+  retention?: JobRetention;
 }
 
 export const JobExecutions = (props: JobExecutionsProps) => {
@@ -108,9 +110,9 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     <div>
       <div className="dt-section-label">
         Recent executions
-        {props.record && (
+        {props.retention && (
           <span style={{ textTransform: "none", letterSpacing: 0 }}>
-            record: {props.record}
+            keeps {describeRetention(props.retention)}
           </span>
         )}
       </div>
@@ -131,9 +133,9 @@ export const JobExecutions = (props: JobExecutionsProps) => {
         <div
           style={{ padding: "14px", fontSize: 11, color: "var(--dt-fg-faint)" }}
         >
-          {props.record === "none"
-            ? "This job records no executions (record: none)."
-            : "No executions recorded yet."}
+          {props.retention?.ok === false && props.retention?.error === false
+            ? "This job records no executions."
+            : "No executions kept yet."}
         </div>
       ) : (
         <table className="dt-table">

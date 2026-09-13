@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { jobRetentionSchema } from "./jobRetentionSchema.ts";
+
 export const jobRegistrationSchema = z.object({
   name: z.text(),
   description: z.text().optional(),
@@ -15,6 +17,7 @@ export const jobRegistrationSchema = z.object({
       retries: z.integer(),
     })
     .optional(),
+  retention: jobRetentionSchema,
   recent: z.object({
     ok: z.integer(),
     error: z.integer(),

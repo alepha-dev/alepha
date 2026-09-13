@@ -91,8 +91,8 @@ export class QuestJobs {
           }
 
           // Enqueue via `$notification.push` so delivery goes through the
-          // framework's outbox + retry pipeline (3 retries, audit trail
-          // via `record: "all"`). Calling `NotificationSenderService.send`
+          // framework's outbox + retry pipeline (3 retries, an audit trail
+          // kept for `retentionDays`). Calling `NotificationSenderService.send`
           // directly here would bypass all of that.
           await this.questNotifications.questReminder.push({
             contact: recipient.email,

@@ -117,6 +117,7 @@ export class JobService {
               retries: opts.retry.retries,
             }
           : undefined,
+        retention: this.jobProvider.describeRetention(name),
         recent: counts,
       });
     }

@@ -5,15 +5,16 @@ import { $entity, db } from "alepha/orm";
 /**
  * Job execution record.
  *
- * Stores durable state for queue-mode jobs (outbox pattern) and error records
- * for cron-mode jobs. Successful executions are trimmed by the sweep to keep
- * the last N rows per job (configurable via `jobConfig.keepLastSuccess`).
+ * Stores durable state for queue-mode jobs (outbox pattern) and the terminal
+ * record of every run a job keeps. How many rows of each status a job keeps,
+ * and for how long, is its `retention`; the hourly trim enforces it, and
+ * deletes the rows of any job name nothing registers.
  *
  * Status transitions:
  * - queue push            → pending (or `scheduled` if `delay`/`scheduledAt` was given)
  * - worker claim          → running
- * - success               → ok (or row deleted, depending on `record` and `keepLastSuccess`)
- * - terminal failure      → error
+ * - success               → ok (or row deleted, when the job does not record successes)
+ * - terminal failure      → error (or row deleted, when the job does not record failures)
  * - retryable failure     → scheduled (with scheduledAt = now; sweep picks it up)
  * - delay                 → scheduled (with scheduledAt = now + delay)
  * - handler reschedule()  → scheduled (next scheduledAt and payload, attempt reset, same id and key)
@@ -69,6 +70,13 @@ export const jobExecutionEntity = $entity({
     completedAt: z.datetime().optional(),
 
     error: z.text().optional(),
+
+    /**
+     * The log entries captured while the run executed, stored when it ends,
+     * whatever its outcome: up to `jobConfig.logMaxEntries`, and TRACE and
+     * DEBUG entries included even when `LOG_LEVEL` hides them. Nothing is
+     * written while a run is in progress.
+     */
     logs: z.array(logEntrySchema).optional(),
 
     triggeredBy: z.text().optional(),

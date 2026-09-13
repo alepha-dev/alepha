@@ -16,10 +16,9 @@ const ORG = "33333333-3333-4333-8333-333333333333";
  */
 class App {
   readonly work = $job({
-    // Without this the rows are trimmed as soon as they succeed and there is
+    // Without this the rows are deleted as soon as they succeed and there is
     // nothing left to assert the tenant on.
-    record: "all",
-    keep: { ok: 0, error: 0 },
+    retention: { ok: { last: 100 } },
     schema: z.object({ n: z.integer() }),
     handler: async () => {},
   });

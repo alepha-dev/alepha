@@ -93,7 +93,7 @@ and writes them in a batched INSERT.
 
 A push with a `key` returns the existing execution id instead of enqueueing a
 second row - but only while a row with that key still exists. On success the row
-is either deleted (`record: "error"`, the queue-mode default) or updated with
+is either deleted (a queue job keeps no successes by default) or updated with
 `key` set to `null`. Either way **the key is released once the job succeeds**.
 
 So `key` means _"don't enqueue this twice while it's still pending, running, or
@@ -257,7 +257,7 @@ The rules that keep it honest:
 - The new payload is validated against the schema when `reschedule()` is
   called, so a bad one fails the run there rather than parking garbage.
 - A rescheduled run emits `job:end` but not `job:success`; the execution is not
-  over. `record` and `keep` only apply to the stage that completes.
+  over. Retention only applies to the stage that completes.
 - It throws from a cron tick (no row to park) and from an
   [`inline`](#inline-when-a-retry-is-worse-than-a-failure) push (the caller is
   waiting for an outcome).
@@ -371,32 +371,81 @@ Both modes are at-least-once. Write handlers to be idempotent.
 
 ## Retention
 
-Queue-mode jobs default to `record: "error"` - the pending row is written at
-push time and removed on success, so a healthy queue leaves no rows behind.
-Cron jobs default to `record: "all"` with one retained success so the admin
-"Last run" column is accurate.
+A job keeps a history of its runs in `job_executions`, and `retention` says how
+much of it, per status: `ok` for successes, `error` for failures, which
+cancelled runs follow.
 
-| Setting               | Effect                                             |
-| --------------------- | -------------------------------------------------- |
-| `record: "error"`     | Keep error and cancelled rows only (queue default) |
-| `record: "all"`       | Keep successes too, trimmed to `keepLastSuccess`   |
-| `record: "none"`      | Fire-and-forget, no row even on error              |
-| `keep: { ok, error }` | Per-job override. `0` here means **keep forever**  |
+```typescript check
+import { $job } from "alepha/api/jobs";
 
-Note the deliberate asymmetry: per-job `keep.ok: 0` means _never trim_, while
-the global `keepLastSuccess: 0` means _delete on success_.
+class Reminders {
+  send = $job({
+    cron: "0 0 * * *",
+    retention: {
+      ok: { last: 7 }, // the last 7 successes
+      error: { days: 30 }, // 30 days of failures
+    },
+    handler: async () => {
+      // send the reminders that are due
+    },
+  });
+}
+```
 
-Trim runs on its own cron (`trimCron`, hourly by default) and costs one
-grouped count for the whole tick, so a job whose buffer is already at its
-limit is never queried individually. A buffer that is over its limit is
-emptied back down in chunks, however far over it is; if one tick cannot
-finish the job it logs what is left and the next tick continues.
+Each status takes `{ last?, days? }` or `false`:
 
-A cron whose buffer is exactly one row (the default) **updates** that row
-rather than inserting a new one for the trim to delete later. A `*/15` cron
-used to write 96 rows a day so that trim could remove 95 of them, purely to
-keep one timestamp current. Jobs keeping more than one row still insert, since
-there the rows are the history.
+| Rule                | Keeps                                                   |
+| ------------------- | ------------------------------------------------------- |
+| `{ last: 7 }`       | The newest 7 rows                                       |
+| `{ days: 30 }`      | Rows that completed within the last 30 days             |
+| `{ last, days }`    | Rows within both limits: a row goes when it breaks one  |
+| `{ days: () => n }` | A window read at every trim tick, for a runtime setting |
+| `false`             | Nothing: no row is written for that outcome             |
+
+`last` is an integer of at least 1 and `days` is positive; a rule with neither
+is refused at registration. There is no "forever".
+
+A status the job leaves out takes a default, decided by how often the job runs.
+A cron's cadence is the shortest gap among its next 10 fire dates, so
+`0 9 * * 1-5` is a daily job:
+
+| Job                             | Successes    | Failures |
+| ------------------------------- | ------------ | -------- |
+| cron, at least every 15 minutes | last 12      | 30 days  |
+| cron, up to hourly              | last 24      | 30 days  |
+| cron, up to daily               | last 7       | 30 days  |
+| cron, slower                    | last 5       | 30 days  |
+| queue                           | not recorded | 30 days  |
+
+Successes are kept by count and failures by age: the last 12 runs of a `*/15`
+cron are three hours of history, and the last 7 of a daily one are a week. A
+queue job's successes are not recorded unless it says so, in days: for per-item
+work, "the last 10" means the last 10 items whatever the volume. For a cron the
+newest row of each status outlives its window, so a monthly job never looks like
+it never ran.
+
+Every kept run keeps the log entries it produced (up to `logMaxEntries`),
+whatever its outcome. Nothing is written while a run is in progress: a queue
+job's row says `running`, and a cron tick has no row until it ends.
+
+The trim runs on its own cron (`trimCron`, hourly by default), orders by
+`completedAt`, and costs one grouped query for the whole tick, so a status that
+is within its limits is never queried individually. A status over its limits is
+cut back in chunks, however far over it is; if one tick cannot finish, it logs
+what is left and the next tick continues.
+
+The effective rule of every job, defaults filled in, is in the admin's job list
+and in devtools, with where it came from.
+
+### A rename loses the history
+
+The trim also deletes every row whose job name no job declares, whatever its
+status. The name is a job's identity in `job_executions`: rename a job and its
+old rows, pending and scheduled ones included, are gone at the next trim tick.
+
+Any process pointed at the same database with a different job set does the same
+to the jobs it does not declare, so give each application its own database. A
+container that declares no job at all purges nothing.
 
 ## Configuration
 
@@ -430,15 +479,15 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | Key                    | Default        | Description                                                                                           |
 | ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
 | `sweepCron`            | `*/15 * * * *` | Reconciliation sweep - bounds retry latency                                                           |
-| `trimCron`             | `0 * * * *`    | Ring-buffer trim tick                                                                                 |
+| `trimCron`             | `0 * * * *`    | Trim tick: purges unregistered jobs' rows, enforces retention                                         |
 | `sweepBatchSize`       | `200`          | Rows one sweep phase reads per tick - see below                                                       |
 | `maxRedispatch`        | `3`            | Lost deliveries tolerated before a `pending` row is failed                                            |
 | `retryBackoffBase`     | `5000`         | First retry's backoff ceiling (ms); doubles per attempt, full jitter                                  |
 | `retryBackoffMax`      | `1800000`      | Ceiling for that curve (ms)                                                                           |
 | `staleThreshold`       | `300000`       | Pending age (ms) before the sweep re-dispatches                                                       |
 | `runTimeout`           | `1800000`      | Running age (ms) before a crash is assumed                                                            |
-| `keepLastSuccess`      | `10`           | Successful rows kept per job                                                                          |
-| `keepLastError`        | `10`           | Error rows kept per job                                                                               |
+| `retention.errorDays`  | `30`           | Days of failures a job keeps when it declares no `retention.error`                                    |
+| `retention.maxRows`    | `1000`         | Cap on rows one status keeps under a default rule; a declared rule is never capped                    |
 | `drainTimeout`         | `30000`        | Time (ms) to wait for in-flight jobs on shutdown                                                      |
 | `logMaxEntries`        | `100`          | Log lines captured per run                                                                            |
 | `directMaxConcurrency` | `10`           | Concurrent handlers in direct mode - what keeps a `pushMany` of thousands from exhausting the DB pool |

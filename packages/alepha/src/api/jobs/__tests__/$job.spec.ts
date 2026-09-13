@@ -120,7 +120,7 @@ describe("$job — cron mode", () => {
     expect(rows[0].status).toBe("ok");
   });
 
-  it("records no row on success when record is 'error' (opt-out)", async ({
+  it("records no row on success when the job keeps no successes (ok: false)", async ({
     expect,
   }) => {
     const alepha = makeApp();
@@ -128,7 +128,7 @@ describe("$job — cron mode", () => {
       executions = $repository(jobExecutionEntity);
       tick = $job({
         cron: "0 0 * * *",
-        record: "error",
+        retention: { ok: false },
         handler: async () => {},
       });
     }
@@ -163,13 +163,13 @@ describe("$job — cron mode", () => {
     expect(rows[0].error).toBe("boom");
   });
 
-  it("records a success row when record: 'all'", async ({ expect }) => {
+  it("records a success row under a declared rule", async ({ expect }) => {
     const alepha = makeApp();
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
         cron: "0 0 * * *",
-        record: "all",
+        retention: { ok: { last: 3 } },
         handler: async () => {},
       });
     }
@@ -212,14 +212,13 @@ describe("$job — captured logs", () => {
     );
   });
 
-  it("keeps no logs on a successful row", async ({ expect }) => {
+  it("keeps the logs of a successful run", async ({ expect }) => {
     const alepha = makeApp();
     class App {
       log = $logger();
       executions = $repository(jobExecutionEntity);
       tick = $job({
         cron: "0 0 * * *",
-        record: "all",
         handler: async () => {
           this.log.info("all good");
         },
@@ -233,7 +232,32 @@ describe("$job — captured logs", () => {
       where: { jobName: { eq: "App.tick" } },
     });
     expect(rows[0].status).toBe("ok");
-    expect(rows[0].logs).toBeUndefined();
+    expect(rows[0].logs?.map((entry) => entry.message)).toContain("all good");
+  });
+
+  it("keeps the logs of a successful queue run", async ({ expect }) => {
+    const alepha = makeApp();
+    class App {
+      log = $logger();
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ n: z.integer() }),
+        retention: { ok: { last: 10 } },
+        handler: async ({ payload }) => {
+          this.log.info(`handled ${payload.n}`);
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    const id = await app.work.push({ n: 3 });
+
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { id: { eq: id } } }),
+      (r) => r[0]?.status === "ok",
+      { label: "row reaches status=ok" },
+    );
+    expect(rows[0].logs?.map((entry) => entry.message)).toContain("handled 3");
   });
 
   it("does not leak one run's logs into the next", async ({ expect }) => {
@@ -295,13 +319,15 @@ describe("$job — queue mode (outbox)", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("push keeps the row as 'ok' when record: 'all'", async ({ expect }) => {
+  it("push keeps the row as 'ok' when the job keeps successes", async ({
+    expect,
+  }) => {
     const alepha = makeApp();
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
         schema: z.object({ n: z.integer() }),
-        record: "all",
+        retention: { ok: { last: 10 } },
         handler: async () => {},
       });
     }
@@ -602,7 +628,7 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
 
     expect(received).toEqual({ n: 7 });
 
-    // Default record: 'error' → success deletes the row. The delete happens
+    // A queue job keeps no successes by default, so success deletes the row. The delete happens
     // AFTER the handler returns, so waiting on `received` alone raced the
     // cleanup and read the row mid-flight on a loaded runner.
     let rows = await app.executions.findMany({
@@ -1361,7 +1387,7 @@ describe("$job — admin resource shape", () => {
     class App {
       work = $job({
         schema: z.object({ v: z.integer() }),
-        record: "all",
+        retention: { ok: { last: 10 } },
         handler: async () => {},
       });
     }
@@ -1371,7 +1397,7 @@ describe("$job — admin resource shape", () => {
     const id = await app.work.push({ v: 1 });
     const { JobService } = await import("../services/JobService.ts");
     const svc = alepha.inject(JobService);
-    // Wait for the handler to finish so the row is `ok` (record: all keeps it).
+    // Wait for the handler to finish so the row is `ok` (the rule keeps it).
     const resource = await waitFor(
       () => svc.getExecution(id),
       (r) => r?.status === "ok",

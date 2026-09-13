@@ -118,7 +118,7 @@ describe("$job — reschedule", () => {
       (n) => n === 2,
       { label: "stage 2 ran" },
     );
-    // `record: "error"` by default, so the finished row is deleted.
+    // A queue job keeps no successes by default, so the finished row is deleted.
     await waitFor(
       () => app.executions.findById(id),
       (r) => r == null,
