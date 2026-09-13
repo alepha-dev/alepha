@@ -1461,3 +1461,217 @@ describe("$job — trim is proportional to the work done", () => {
     expect(rows).toHaveLength(3);
   });
 });
+
+describe("$job — rows of unregistered jobs are purged", () => {
+  const statuses = [
+    "pending",
+    "scheduled",
+    "running",
+    "ok",
+    "error",
+    "cancelled",
+  ] as const;
+
+  it("deletes every row of a name no job declares, whatever its status, and leaves registered jobs alone", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class PurgeApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        record: "all",
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(PurgeApp).inject(PurgeApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    const kept: string[] = [];
+    for (const status of statuses) {
+      // A renamed job's leftovers, one row per status.
+      await app.executions.create({
+        jobName: "OldApp.renamedAway",
+        status,
+        maxAttempts: 1,
+      });
+      const row = await app.executions.create({
+        jobName: "PurgeApp.work",
+        status,
+        maxAttempts: 1,
+        scheduledAt:
+          status === "scheduled"
+            ? new Date(Date.now() + 3_600_000).toISOString()
+            : undefined,
+      });
+      kept.push(row.id);
+    }
+
+    await jobs.testTrimRingBuffers();
+
+    const orphans = await app.executions.findMany({
+      where: { jobName: { eq: "OldApp.renamedAway" } },
+    });
+    expect(orphans).toHaveLength(0);
+
+    const registered = await app.executions.findMany({
+      where: { jobName: { eq: "PurgeApp.work" } },
+    });
+    expect(registered.map((r) => r.id).sort()).toEqual([...kept].sort());
+  });
+
+  it("purges past one chunk in a single tick", async ({ expect }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class ChunkApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(ChunkApp).inject(ChunkApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    // More than one 500-row chunk, well under the per-tick ceiling.
+    await app.executions.createMany(
+      Array.from({ length: 1_203 }, (_, i) => ({
+        jobName: `Gone.job${i % 3}`,
+        status: "ok" as const,
+        maxAttempts: 1,
+      })),
+    );
+
+    await jobs.testTrimRingBuffers();
+
+    const left = await app.executions.findMany({
+      where: { jobName: { notInArray: ["ChunkApp.work"] } },
+      columns: ["id"],
+    });
+    expect(left).toHaveLength(0);
+  });
+
+  it("a pending row of a removed job is never swept, and the trim purges it", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with({ provide: DirectJobDispatcher, use: BlackHoleJobDispatcher })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class StillHereApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(StillHereApp).inject(StillHereApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    const dispatcher = alepha.inject(
+      DirectJobDispatcher,
+    ) as BlackHoleJobDispatcher;
+    await alepha.start();
+
+    // Stale by both clocks the redispatch phase reads.
+    const staleIso = alepha
+      .inject(DateTimeProvider)
+      .now()
+      .subtract(1, "day")
+      .toISOString();
+    const orphan = await app.executions.create({
+      jobName: "RemovedApp.work",
+      status: "pending",
+      maxAttempts: 1,
+      payload: { v: 1 },
+      createdAt: staleIso,
+      updatedAt: staleIso,
+    });
+    // The control: the same stale row under a registered name IS swept, so
+    // the orphan staying put below is the name, not a sweep that saw nothing.
+    const twin = await app.executions.create({
+      jobName: "StillHereApp.work",
+      status: "pending",
+      maxAttempts: 1,
+      payload: { v: 1 },
+      createdAt: staleIso,
+      updatedAt: staleIso,
+    });
+
+    await jobs.testSweep();
+
+    expect((await app.executions.findById(twin.id))?.redispatchCount).toBe(1);
+    const afterSweep = await app.executions.findById(orphan.id);
+    expect(afterSweep?.status).toBe("pending");
+    expect(afterSweep?.redispatchCount).toBe(0);
+    expect(dispatcher.dispatches).toBe(1);
+
+    await jobs.testTrimRingBuffers();
+
+    const afterTrim = await app.executions.findMany({
+      where: { id: { eq: orphan.id } },
+    });
+    expect(afterTrim).toHaveLength(0);
+    expect(await app.executions.findById(twin.id)).toBeTruthy();
+  });
+
+  it("a container with no registered job purges nothing", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class NoJobsApp {
+      executions = $repository(jobExecutionEntity);
+    }
+
+    const app = alepha.with(NoJobsApp).inject(NoJobsApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    for (const status of statuses) {
+      await app.executions.create({
+        jobName: "SomeApp.work",
+        status,
+        maxAttempts: 1,
+      });
+    }
+
+    await jobs.testTrimRingBuffers();
+
+    const left = await app.executions.findMany({
+      where: { jobName: { eq: "SomeApp.work" } },
+    });
+    expect(left).toHaveLength(statuses.length);
+  });
+
+  it("names the internal crons system.jobs.sweep and system.jobs.trim", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    alepha.inject(JobProvider);
+    const { CronProvider } = await import("alepha/scheduler");
+    const names = alepha
+      .inject(CronProvider)
+      .getCronJobs()
+      .map((j) => j.name);
+    expect(names).toContain("system.jobs.sweep");
+    expect(names).toContain("system.jobs.trim");
+    expect(names.some((n) => n.startsWith("api:jobs:"))).toBe(false);
+  });
+});

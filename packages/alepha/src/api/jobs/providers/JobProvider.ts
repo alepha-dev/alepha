@@ -190,6 +190,8 @@ export interface SweepEntry {
  *   - `running` past its lease → failed, then the retry policy
  *
  * Trim runs on its own cron (`trimCron`, default hourly):
+ *   - rows of a job name nothing registers are purged first, every status
+ *     (a renamed job loses its rows, see `purgeUnregistered`)
  *   - per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
  *   - decoupled from sweep because trim cost scales with job count, not
  *     retry latency - running it every sweep is wasted work for most apps.
@@ -246,7 +248,7 @@ export class JobProvider {
     // in `onStart` from CronProvider's POV but visible to build-time
     // introspection.
     this.cronProvider.createCronJob(
-      "api:jobs:sweep",
+      "system.jobs.sweep",
       this.config.sweepCron,
       async () => {
         await this.sweep();
@@ -254,7 +256,7 @@ export class JobProvider {
       true,
     );
     this.cronProvider.createCronJob(
-      "api:jobs:trim",
+      "system.jobs.trim",
       this.config.trimCron,
       async () => {
         if (this.stopping) return;
@@ -499,10 +501,15 @@ export class JobProvider {
   }
 
   /**
-   * Acquire a per-job NX lock keyed by `cron-job:<name>` so that a single
-   * tick across all replicas runs exactly one execution. Auto-expires after
-   * `2 * timeout` (or 5 minutes if no per-job timeout) so a crashed worker
-   * cannot permanently block the cron from firing.
+   * Acquire a per-job NX lock keyed by `alepha.api.jobs.cron:<name>` (see
+   * `cronLockKey`) so that a single tick across all replicas runs exactly one
+   * execution. Auto-expires after `2 * timeout` (or 5 minutes if no per-job
+   * timeout) so a crashed worker cannot permanently block the cron from
+   * firing.
+   *
+   * The key carries the job's name, so renaming a job changes it: during a
+   * rolling deploy, a replica on the old name and one on the new name hold
+   * different locks, and one tick can run twice. That is accepted.
    *
    * **It only tells replicas apart.** The lock value is a per-process holder
    * id, so a second NX set from this same process reads the stored value
@@ -2230,6 +2237,67 @@ export class JobProvider {
   protected readonly trimMaxPerTick = 5_000;
 
   /**
+   * The trim's first phase: delete every row whose job name no job in this
+   * container declares, whatever its status.
+   *
+   * The name is a job's identity in `job_executions`, and every other path
+   * filters on a registered name: rows under a name nothing declares any more
+   * are never swept, trimmed, retried or listed, so without this they stay
+   * forever. **Renaming a job therefore loses its rows**, pending and
+   * scheduled ones included, at the first trim tick after the deploy. That is
+   * accepted: there is no alias and no carry-over.
+   *
+   * Skipped when no job is registered. A container that declares none (a
+   * script that loaded `AlephaApiJobs` alone) is not an application whose job
+   * set means anything, and would otherwise empty the table.
+   *
+   * ⚠️ Any process pointed at the same database with a different job set
+   * deletes the rows of the jobs it does not declare: two applications
+   * sharing a database, or a script that started a container with only some
+   * of the application's modules. Give each its own database, or its own
+   * schema.
+   */
+  protected async purgeUnregistered(): Promise<void> {
+    const names = [...this.jobs.keys()];
+    if (names.length === 0) return;
+
+    let deleted = 0;
+    try {
+      while (deleted < this.trimMaxPerTick) {
+        const chunk = Math.min(
+          this.trimChunkSize,
+          this.trimMaxPerTick - deleted,
+        );
+        // The registered names are a few dozen bound parameters on top of a
+        // chunk of ids, which keeps the delete under D1's 999.
+        const rows = await this.executions.findMany({
+          where: { jobName: { notInArray: names } },
+          columns: ["id"],
+          limit: chunk,
+        });
+        if (rows.length === 0) break;
+        await this.executions.deleteMany({
+          id: { inArray: rows.map((r) => r.id) },
+        });
+        deleted += rows.length;
+        if (rows.length < chunk) break;
+      }
+      if (deleted > 0) {
+        this.log.info(
+          `Purged ${deleted} execution row(s) of jobs no longer registered`,
+        );
+      }
+      if (deleted >= this.trimMaxPerTick) {
+        this.log.info(
+          `Purge of unregistered jobs hit its per-tick ceiling (${deleted} removed); the rest waits for the next tick`,
+        );
+      }
+    } catch (e) {
+      this.log.warn("Failed to purge rows of unregistered jobs", e);
+    }
+  }
+
+  /**
    * Trim every ring buffer that is actually over its limit.
    *
    * **One grouped query for the whole tick**, not two per registered job.
@@ -2242,6 +2310,8 @@ export class JobProvider {
    * what lets the trim below stop guessing.
    */
   protected async trimRingBuffers(): Promise<void> {
+    await this.purgeUnregistered();
+
     let counts: Array<{
       jobName: string;
       status: string;
