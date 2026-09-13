@@ -34,6 +34,9 @@ export class EstateCredentialJobs {
   protected readonly notifications = $inject(EstateNotifications);
 
   public readonly recheckCloudflareEstates = $job({
+    name: "estates.recheck-cloudflare",
+    description:
+      "Re-checks every Cloudflare estate token and emails the owner when a valid one turns invalid.",
     cron: "0 0 * * *",
     handler: async () => {
       const rows = await this.estates.findMany({

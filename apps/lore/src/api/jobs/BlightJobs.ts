@@ -54,6 +54,9 @@ export class BlightJobs {
    * retention value rather than one per project. See {@link byRetention}.
    */
   public readonly purgeStaleBlights = $job({
+    name: "blights.purge-stale",
+    description:
+      "Deletes open blights with no new occurrence within their project's retention window (30 days by default).",
     cron: "0 * * * *",
     handler: async () => {
       const nowMs = this.dt.nowMillis();

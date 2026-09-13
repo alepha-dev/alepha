@@ -1084,7 +1084,7 @@ describe("BuildCloudflareTask", () => {
 
     /**
      * The case the first version of this warning was blind to, and the one
-     * that actually reached production: `lore.deploy.run` declared no
+     * that actually reached production: Lore's `deploys.run` declared no
      * `timeout`, so the filter never looked at it, and it was killed at the
      * `waitUntil` budget while its own `DeployLimits` promised ten minutes.
      */
@@ -1092,12 +1092,12 @@ describe("BuildCloudflareTask", () => {
       const task = createTask();
       task.testWarnUnreachableTimeouts({
         manifest: manifest({
-          jobs: [{ name: "lore.deploy.run" }],
+          jobs: [{ name: "deploys.run" }],
         }),
       } as any);
 
       expect(task.warnings).toHaveLength(1);
-      expect(task.warnings[0]).toMatch(/lore\.deploy\.run/);
+      expect(task.warnings[0]).toMatch(/deploys\.run/);
       // Its consequence is the WORSE one, and the reason it gets a clause of
       // its own: with no timeout to double, crash recovery falls back to the
       // `runTimeout` config rather than to twice the declared timeout.
@@ -1127,7 +1127,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
       task.testWarnUnreachableTimeouts({
         manifest: manifest({
-          jobs: [{ name: "lore.deploy.run" }],
+          jobs: [{ name: "deploys.run" }],
         }),
       } as any);
       // Same reason: off `waitUntil`, an undeclared timeout is not a cap.

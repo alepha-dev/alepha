@@ -373,7 +373,7 @@ export class BuildCloudflareTask extends BuildTask {
    *   the code hinting at it, and with no timeout to double,
    *   `crashThresholdMs` falls back to the `runTimeout` config (30 minutes by
    *   default), which is longer still. This is the shape that reached
-   *   production: `lore.deploy.run` declared no `timeout`, so the first
+   *   production: Lore's `deploys.run` declared no `timeout`, so the first
    *   version of this warning filtered it straight out while its own
    *   `DeployLimits` promised ten minutes.
    */

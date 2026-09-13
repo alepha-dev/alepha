@@ -49,6 +49,9 @@ export class QuestJobs {
    * through to the next sweep — the row stays scheduled.
    */
   public readonly sendDueReminders = $job({
+    name: "quests.send-due-reminders",
+    description:
+      "Sends the quest reminders that are due, 50 per run, and schedules each one's next occurrence.",
     cron: "0 0 * * *",
     handler: async () => {
       const now = this.dt.nowISOString();
