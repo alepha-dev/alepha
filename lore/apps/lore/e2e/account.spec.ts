@@ -227,7 +227,13 @@ test.describe("Account area", () => {
 
     await page.getByRole("button", { name: "Revoke CI pipeline" }).click();
     await page.getByRole("button", { name: /^revoke$/i }).click();
-    await expect(page.getByText("CI pipeline")).toHaveCount(0);
+    // A revoked key stays listed, marked and with nothing left to click: it
+    // is the answer to "why did CI stop working" (#Q2054).
+    await expect(
+      page.getByRole("button", { name: "Revoke CI pipeline" }),
+    ).toHaveCount(0);
+    await expect(page.getByText("CI pipeline")).toBeVisible();
+    await expect(page.getByText(/revoked/i)).toBeVisible();
   });
 
   test("refuses to delete the account while a project is still owned", async ({
