@@ -196,7 +196,7 @@ const ProjectBlights = () => {
           schema: blightsFiltersSchema,
           initialValues: { status: ["open"] },
           render: (form) => (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <FilterSlot>
                 <Control
                   input={form.input.status}
