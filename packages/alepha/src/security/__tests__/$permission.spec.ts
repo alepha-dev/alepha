@@ -29,6 +29,32 @@ describe("$permission", () => {
     expect(app.hello.can(user)).toEqual(true);
   });
 
+  it("should refuse a permission the roles grant when the permission scope excludes it", async () => {
+    const alepha = Alepha.create();
+
+    class App {
+      hello = $permission();
+      world = $permission();
+
+      user = $role({
+        permissions: ["App:hello", "App:world"],
+      });
+    }
+
+    const app = alepha.inject(App);
+
+    await alepha.start();
+
+    const scoped = { id: "1", roles: ["user"], permissionScope: ["App:hello"] };
+
+    expect(app.hello.can(scoped)).toEqual(true);
+    expect(app.world.can(scoped)).toEqual(false);
+    expect(app.world.can({ ...scoped, permissionScope: undefined })).toEqual(
+      true,
+    );
+    expect(app.hello.can({ ...scoped, permissionScope: [] })).toEqual(false);
+  });
+
   it("should resolve the user's roles inside the user's own realm", async () => {
     const alepha = Alepha.create();
 
