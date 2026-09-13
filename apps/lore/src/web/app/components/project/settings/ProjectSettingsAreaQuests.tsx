@@ -1,10 +1,5 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 

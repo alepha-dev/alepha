@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
 import { File, Image as ImageIcon, X } from "lucide-react";
 
 export interface QuestAttachmentChipProps {

@@ -1,11 +1,11 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useToast,
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Clipboard } from "lucide-react";
 import { useState } from "react";
@@ -33,7 +33,7 @@ export interface MyEstateSecretDialogProps {
  * re-renders on every switch below it is a credential that can scroll out of
  * view and be gone.
  *
- * Same reasoning, and the same shape, as `@alepha/ui`'s `account-keys.tsx`,
+ * Same reasoning, and the same shape, as `@alepha/ui`'s `AccountKeys.tsx`,
  * whose doc states it for API keys: "a token that scrolls out of view behind
  * a re-render is gone".
  *

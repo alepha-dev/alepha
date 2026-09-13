@@ -1,8 +1,4 @@
-import {
-  buildTree,
-  flattenTree,
-} from "@alepha/ui/components/tree-view/tree-model.ts";
-import { TreeView } from "@alepha/ui/components/tree-view/tree-view";
+import { buildTree, flattenTree, TreeView } from "@alepha/ui/tree";
 import { FileText, Folder, FolderOpen } from "lucide-react";
 import { type ReactElement, useMemo, useState } from "react";
 

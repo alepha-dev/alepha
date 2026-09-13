@@ -21,6 +21,7 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 import { BuildCompileTask } from "../tasks/BuildCompileTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
+import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
 import { BuildPwaTask } from "../tasks/BuildPwaTask.ts";
@@ -45,6 +46,9 @@ export class BuildCommand {
    * Each task self-guards (checks target, hasClient, etc.).
    * Order matters: compress runs after everything that writes public files,
    * and compile runs last because it embeds what compress produced.
+   * `_headers` is written after the static task, which copies an adopted
+   * site (and its own `_headers`) into `dist/public`, and before compile,
+   * which embeds `dist/public` and deletes it.
    */
   protected readonly pipeline = [
     $inject(BuildClientTask),
@@ -58,6 +62,7 @@ export class BuildCommand {
     $inject(BuildCloudflareTask),
     $inject(BuildDockerTask),
     $inject(BuildStaticTask),
+    $inject(BuildHeadersTask),
     $inject(BuildCompressTask),
     $inject(BuildCompileTask),
   ];

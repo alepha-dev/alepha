@@ -1,10 +1,5 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
+import { Button, Dialog, DialogContent, DialogTitle } from "@alepha/ui";
+import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useEffect, useState } from "react";

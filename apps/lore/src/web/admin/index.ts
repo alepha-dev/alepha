@@ -1,4 +1,4 @@
-import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
+import { AdminRouter } from "@alepha/ui/admin";
 import { $module } from "alepha";
 
 import { LoreAdminRouter } from "./LoreAdminRouter.tsx";

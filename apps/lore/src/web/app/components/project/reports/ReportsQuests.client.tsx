@@ -3,7 +3,7 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@alepha/ui/components/ui/chart";
+} from "@alepha/ui/chart";
 import type { Infer } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";

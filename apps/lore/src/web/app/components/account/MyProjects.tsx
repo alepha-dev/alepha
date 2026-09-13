@@ -1,6 +1,5 @@
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { Badge, Card, CardContent } from "@alepha/ui";
+import { SettingsHeading } from "@alepha/ui/settings";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

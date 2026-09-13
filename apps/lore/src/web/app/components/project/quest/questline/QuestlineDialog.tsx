@@ -1,8 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@alepha/ui";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 

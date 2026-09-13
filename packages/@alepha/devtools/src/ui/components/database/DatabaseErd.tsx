@@ -1,4 +1,4 @@
-import { Control } from "@alepha/ui/components/control/control";
+import { Control } from "@alepha/ui/form";
 import {
   type Edge,
   type Node,

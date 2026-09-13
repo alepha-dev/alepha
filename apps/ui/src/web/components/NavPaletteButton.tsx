@@ -1,10 +1,11 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Kbd, KbdGroup } from "@alepha/ui/components/ui/kbd";
 import {
+  Button,
+  Kbd,
+  KbdGroup,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
+} from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { SearchIcon } from "lucide-react";
 

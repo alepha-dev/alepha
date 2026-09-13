@@ -3,9 +3,9 @@ import {
   findNode,
   flattenTree,
   resolveDrop,
-} from "@alepha/ui/components/tree-view/tree-model.ts";
-import { TreeView } from "@alepha/ui/components/tree-view/tree-view";
-import { useTreeState } from "@alepha/ui/components/tree-view/use-tree-state.ts";
+  TreeView,
+  useTreeState,
+} from "@alepha/ui/tree";
 import { FileText, Folder, FolderOpen } from "lucide-react";
 import { type ReactElement, useMemo, useState } from "react";
 

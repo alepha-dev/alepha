@@ -1,6 +1,5 @@
-import { PermissionMatrix } from "@alepha/ui/components/permission-matrix/permission-matrix";
-import type { PermissionMatrixGroup } from "@alepha/ui/components/permission-matrix/permission-matrix";
-import { Card } from "@alepha/ui/components/ui/card";
+import { Card } from "@alepha/ui";
+import { PermissionMatrix, type PermissionMatrixGroup } from "@alepha/ui/table";
 import { z } from "alepha";
 import { AppWindow, FolderClosed, Swords } from "lucide-react";
 import { useState } from "react";

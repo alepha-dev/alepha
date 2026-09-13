@@ -1,4 +1,4 @@
-import { TreeViewResizer } from "@alepha/ui/components/tree-view/tree-view-resizer";
+import { TreeViewResizer } from "@alepha/ui/tree";
 import { useClient, useStore } from "alepha/react";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { type ReactElement, useEffect, useMemo, useState } from "react";

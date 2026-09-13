@@ -1,4 +1,4 @@
-import { AdminPayments } from "@alepha/ui/components/admin/admin-payments";
+import { AdminPayments } from "@alepha/ui/admin";
 
 import { Showcase } from "@/web/components/Showcase.tsx";
 

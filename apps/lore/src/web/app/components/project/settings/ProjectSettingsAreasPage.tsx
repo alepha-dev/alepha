@@ -1,18 +1,19 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@alepha/ui/components/ui/table";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useDialog,
+  useToast,
+} from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

@@ -183,12 +183,26 @@ export class DeployRunner {
       await this.registry.line(deployment, "Unpacking");
       // ⚠️ `dist/public` is walked and hashed, never stored. See `assetsOf`.
       const manifest: Record<string, CloudflareAssetEntry> = {};
+      // ⚠️ The one exception to "never stored": the text of `_headers` and
+      // `_redirects`, which is configuration Cloudflare applies rather than a
+      // file it serves. Uploaded as an asset it is published and applies
+      // nothing (`CloudflareAssetManifest.isConfigFile`). Two small files.
+      const configTexts: Record<string, string> = {};
       const unpacked = await this.reader.extract(bytes, fs, DeployRunner.ROOT, {
         skip: (path) => path.startsWith(DeployRunner.ASSETS),
         onSkipped: (path, body) => {
           const key = this.assetManifest.key(
             path.slice(DeployRunner.ASSETS.length),
           );
+          if (this.assetManifest.isConfigFile(key)) {
+            const field = this.assetManifest.configField(key);
+            if (field) {
+              // Decoded at once: `body` may be a view into a buffer the
+              // reader moves past as soon as this returns.
+              configTexts[field] = new TextDecoder().decode(body);
+            }
+            return;
+          }
           manifest[key] = {
             hash: this.assetManifest.hash(body, key),
             size: body.length,
@@ -222,7 +236,7 @@ export class DeployRunner {
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)
         .withSecrets(request.secrets ?? {});
-      const assets = this.assetsOf(manifest, bytes, deployment);
+      const assets = this.assetsOf(manifest, bytes, deployment, configTexts);
       if (assets) {
         adapter.useAssets(assets);
       }
@@ -347,6 +361,7 @@ export class DeployRunner {
     manifest: Record<string, CloudflareAssetEntry>,
     bytes: Uint8Array,
     deployment?: string,
+    configTexts: Record<string, string> = {},
   ): CloudflareDeployAssets | undefined {
     if (Object.keys(manifest).length === 0) {
       return undefined;
@@ -398,6 +413,10 @@ export class DeployRunner {
     return {
       manifest,
       readAll,
+      // ⚠️ Only the texts. The adapter merges them into the wrangler config's
+      // own asset behaviour (`not_found_handling`, `run_worker_first`), and
+      // it is the only place that knows that config.
+      ...(Object.keys(configTexts).length > 0 ? { config: configTexts } : {}),
       // Never called while `readAll` is present, and present because the
       // interface is the same one a laptop deploy satisfies off a disk.
       read: async (key) => {

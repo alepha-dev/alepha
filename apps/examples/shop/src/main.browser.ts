@@ -1,4 +1,4 @@
-import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
+import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha, run } from "alepha";
 
 import { shopAdminOptions } from "./web/adminChrome.tsx";

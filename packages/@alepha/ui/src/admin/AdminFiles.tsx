@@ -1,0 +1,355 @@
+import * as React from "react";
+
+import TimeAgo from "../core/TimeAgo.tsx";
+
+void React;
+
+import { type Infer, z } from "alepha";
+import type {
+  AdminFileStatsController,
+  FileController,
+  FileResource,
+} from "alepha/api/files";
+import { useAction, useClient, useQuery } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { Container, Download, Search, Trash2, Upload } from "lucide-react";
+import {
+  type ChangeEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import { Badge } from "../core/Badge.tsx";
+import { FilterSlot } from "../core/FilterSlot.tsx";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../core/HoverCard.tsx";
+import { useToast } from "../core/useToast.tsx";
+import { formatBytes } from "../core/utils.ts";
+import { Control } from "../form/Control.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import { AdminPage } from "./AdminPage.tsx";
+import { AdminUserCell } from "./AdminUserCell.tsx";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
+
+// Filter schema at module scope so its identity stays stable across renders
+// — AlephaTable's internal `useForm` captures it once.
+const filtersSchema = z.object({
+  name: z.string().optional(),
+  bucket: z.string().optional(),
+});
+type AdminFileFilters = Infer<typeof filtersSchema>;
+
+const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
+
+export const AdminFiles = () => {
+  const client = useClient<FileController>();
+  const statsClient = useClient<AdminFileStatsController>();
+  const { tr } = useI18n();
+  const toast = useToast();
+  // Bumped after a successful upload to reload the bucket-stats query (which
+  // lists it in its deps) and the table (via AlephaTable's `refreshSignal`
+  // prop). Row/bulk actions reload via the table's own ctx.refresh() and
+  // don't touch this.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Populate the bucket filter from storage stats, the only source of the
+  // bucket names. Re-runs after uploads so a newly-created bucket appears in
+  // the list. The filter shows bare names: the per-bucket file counts were
+  // noise, and truncated the longest name in the trigger. If stats can't be
+  // fetched the filter degrades to empty.
+  const { data: stats } = useQuery(
+    {
+      handler: ({ signal }) =>
+        statsClient.getFileStats({} as never, { request: { signal } }),
+      onError: () => {},
+    },
+    [statsClient, refreshKey],
+  );
+  const bucketItems = useMemo(
+    () =>
+      (stats?.byBucket ?? []).map((b) => ({
+        value: b.bucket,
+        label: b.bucket,
+      })),
+    [stats],
+  );
+
+  const downloadFile = useCallback((f: FileResource) => {
+    window.open(`/api/files/${f.id}`, "_blank");
+  }, []);
+
+  const upload = useAction<[ChangeEvent<HTMLInputElement>], void>(
+    {
+      handler: async (e) => {
+        const file = e.target.files?.[0];
+        // Reset so the same file can be re-selected on a subsequent click,
+        // regardless of whether the upload succeeds.
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (!file) return;
+        await client.uploadFile({ body: { file } });
+        toast.success(
+          tr("admin.files.uploaded", {
+            default: `Uploaded ${file.name}`,
+            args: [file.name],
+          }),
+        );
+        setRefreshKey((k) => k + 1);
+      },
+    },
+    [client, toast, tr],
+  );
+
+  const fetcher = useCallback(
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: AdminFileFilters;
+    }) => {
+      return client.findFiles({
+        query: {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          name: params.filters?.name || undefined,
+          bucket: params.filters?.bucket || undefined,
+        },
+      });
+    },
+    [client],
+  );
+
+  const deleteFile = useConfirmedAction<[FileResource, () => void]>(
+    {
+      confirm: (file) => ({
+        title: tr("admin.files.deleteTitle", { default: "Delete file" }),
+        description: tr("admin.files.deleteConfirm", {
+          default: `Permanently delete "${file.name}"?`,
+          args: [file.name],
+        }),
+        destructive: true,
+      }),
+      handler: async (file, refresh) => {
+        await client.deleteFile({ params: { id: file.id } });
+        refresh();
+      },
+      success: tr("admin.files.deleted", { default: "File deleted" }),
+    },
+    [client, tr],
+  );
+
+  const bulkDelete = useConfirmedAction<
+    [FileResource[], { clearSelection: () => void; refresh: () => void }]
+  >(
+    {
+      confirm: (items) => ({
+        title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
+        description: tr("admin.files.bulkDeleteConfirm", {
+          default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
+          args: [String(items.length)],
+        }),
+        destructive: true,
+      }),
+      handler: async (items, { clearSelection, refresh }) => {
+        if (items.length === 0) return;
+        const res = await client.deleteFiles({
+          body: { ids: items.map((f) => f.id) },
+        });
+        toast.success(
+          tr("admin.files.bulkDeleted", {
+            default: `${res.deleted.length} file(s) deleted`,
+            args: [String(res.deleted.length)],
+          }),
+        );
+        clearSelection();
+        refresh();
+      },
+    },
+    [client, toast, tr],
+  );
+
+  return (
+    <AdminPage>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => upload.run(e)}
+      />
+      <AlephaTable<FileResource>
+        className="min-h-0 flex-1"
+        persistenceKey="admin.files"
+        fetch={fetcher}
+        refreshSignal={refreshKey}
+        actions={[
+          {
+            icon: Upload,
+            label: upload.loading
+              ? tr("admin.files.uploading", { default: "Uploading…" })
+              : tr("admin.files.upload", { default: "Upload" }),
+            // Upload is what this page is for; the label doubles as the
+            // progress line while a file is in flight.
+            primary: true,
+            disabled: upload.loading,
+            onClick: () => fileInputRef.current?.click(),
+          },
+        ]}
+        filters={{
+          schema: filtersSchema,
+          render: (form) => (
+            <div className="flex flex-wrap items-center gap-2">
+              <FilterSlot>
+                <Control
+                  input={form.input.name}
+                  label=""
+                  icon={Search}
+                  placeholder={String(
+                    tr("admin.search", { default: "Search" }),
+                  )}
+                  inputProps={{
+                    "aria-label": String(
+                      tr("admin.search", { default: "Search" }),
+                    ),
+                  }}
+                />
+              </FilterSlot>
+              <Control
+                input={form.input.bucket}
+                label=""
+                clearable
+                icon={Container}
+                clearLabel={String(
+                  tr("admin.files.allBuckets", { default: "All buckets" }),
+                )}
+                triggerClassName="w-48"
+                placeholder={String(
+                  tr("admin.files.bucketPlaceholder", { default: "Bucket" }),
+                )}
+                items={bucketItems}
+              />
+            </div>
+          ),
+        }}
+        bulkActions={[
+          {
+            label: tr("admin.files.bulkDelete", {
+              default: "Delete selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: (items, ctx) => bulkDelete.run(items, ctx),
+          },
+        ]}
+        columns={{
+          // Every column but the preview sorts SERVER-side: `findFiles` takes
+          // `pageQuerySchema`'s `sort`, and the repository orders on the
+          // column of that name (feedback #2190, #Q2232).
+          name: {
+            label: tr("admin.files.colName", { default: "Name" }),
+            sortable: true,
+            cell: (f) => {
+              const trigger = (
+                <button
+                  type="button"
+                  onClick={() => downloadFile(f)}
+                  className="hover:text-primary truncate text-left font-medium underline-offset-2 hover:underline"
+                >
+                  {f.name}
+                </button>
+              );
+              if (!isImage(f.mimeType)) return trigger;
+              return (
+                <HoverCard>
+                  <HoverCardTrigger render={trigger} />
+                  <HoverCardContent className="w-auto p-1">
+                    <img
+                      src={`/api/files/${f.id}`}
+                      alt={f.name}
+                      loading="lazy"
+                      className="max-h-48 max-w-64 rounded object-contain"
+                    />
+                  </HoverCardContent>
+                </HoverCard>
+              );
+            },
+          },
+          user: {
+            label: tr("admin.files.colUser", { default: "Uploaded by" }),
+            sortable: true,
+            // ⚠️ Sorts on `creator`, the uploader's id, and so orders the
+            // uploaders by uuid rather than by name: each one's files come
+            // together, but which uploader comes first reads as arbitrary.
+            // Ordering by name or email would mean ordering on the joined
+            // `users` row, and the repository resolves a sort column on the
+            // files table only. System uploads (no creator) sort together
+            // at one end.
+            sortKey: "creator",
+            cell: (f) => (
+              <AdminUserCell
+                userId={f.creator}
+                user={f.user}
+                fallbackLabel={f.creatorName}
+              />
+            ),
+          },
+          size: {
+            label: tr("admin.files.colSize", { default: "Size" }),
+            align: "right",
+            sortable: true,
+            cell: (f) => (
+              <span className="text-muted-foreground text-xs">
+                {formatBytes(f.size ?? 0)}
+              </span>
+            ),
+          },
+          mimeType: {
+            label: tr("admin.files.colType", { default: "Type" }),
+            sortable: true,
+            cell: (f) => (
+              <Badge variant="secondary">
+                {f.mimeType ??
+                  tr("admin.files.unknown", { default: "unknown" })}
+              </Badge>
+            ),
+          },
+          bucket: {
+            label: tr("admin.files.colBucket", { default: "Bucket" }),
+            sortable: true,
+            cell: (f) => <code className="text-xs">{f.bucket ?? "—"}</code>,
+          },
+          createdAt: {
+            label: tr("admin.files.colUploaded", { default: "Uploaded" }),
+            sortable: true,
+            cell: (f) => (
+              <TimeAgo
+                value={f.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+        }}
+        rowActions={(f) => [
+          {
+            label: tr("admin.files.download", { default: "Download" }),
+            icon: Download,
+            onClick: () => downloadFile(f),
+          },
+          {
+            label: tr("admin.files.delete", { default: "Delete" }),
+            icon: Trash2,
+            destructive: true,
+            onClick: (_f, { refresh }) => deleteFile.run(f, refresh),
+          },
+        ]}
+      />
+    </AdminPage>
+  );
+};
+
+export default AdminFiles;

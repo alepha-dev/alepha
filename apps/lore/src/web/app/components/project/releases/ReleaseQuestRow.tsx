@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "@alepha/ui";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";

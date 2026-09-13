@@ -16,8 +16,10 @@ import (
 	"compress/gzip"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -25,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alepha/bay/internal/headers"
 	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runner"
@@ -131,6 +134,13 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 
 	m, err := manifest.LoadFromRelease(staging)
 	if err != nil {
+		return nil, err
+	}
+
+	// Before anything is placed, so the running release keeps serving. A build
+	// newer than this Bay can emit syntax it does not know, and the place to
+	// find that out is here, loudly, never at request time.
+	if err := checkHeaders(staging); err != nil {
 		return nil, err
 	}
 
@@ -344,6 +354,23 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		DatabasePath: dbPath, DatabaseCreated: dbCreated,
 		StorageBackend: storageBackend,
 	}, nil
+}
+
+// checkHeaders refuses a release whose `dist/public/_headers` does not parse,
+// naming every line. A release without one is fine: it is served the way every
+// release was before Bay applied the file.
+func checkHeaders(release string) error {
+	body, err := os.ReadFile(filepath.Join(release, "dist", "public", "_headers"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read dist/public/_headers: %w", err)
+	}
+	if _, err := headers.Read(string(body), "dist/public/_headers"); err != nil {
+		return fmt.Errorf("refusing the release: %w", err)
+	}
+	return nil
 }
 
 // uniqueRelease returns a release name not already taken under this instance.
