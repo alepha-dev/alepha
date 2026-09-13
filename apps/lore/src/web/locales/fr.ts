@@ -833,11 +833,11 @@ export default {
   "release.delete.action": "Supprimer",
   "release.delete.title": "Supprimer la version $1 ?",
   "release.delete.detached":
-    "Cette action est irréversible. Ses épopées et ses quêtes sont conservées, détachées de $1.",
+    "Cette action est irréversible. Ses épopées et ses quêtes sont conservées, détachées de celle-ci.",
   "release.delete.published":
-    "$1 est publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
+    "Elle est publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
   "release.delete.default":
-    "$1 est la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
+    "C'est la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
   "release.delete.done": "$1 supprimée.",
   "release.bulk.delete.title": "Supprimer $1 versions ?",
   "release.bulk.delete.confirm": "Supprimer $1 versions",

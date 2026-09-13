@@ -92,13 +92,15 @@ export const useDeleteRelease = (): DeleteRelease => {
       const label = name(release);
       const ok = await dialog.confirm({
         title: String(tr("release.delete.title", { args: [label] })),
+        // The title names the release; the sentences say "it", or a
+        // default release reads "detached from 0.3.0. 0.3.0 is the default".
         description: sentences([
-          String(tr("release.delete.detached", { args: [label] })),
+          String(tr("release.delete.detached")),
           release.releasedAt
-            ? String(tr("release.delete.published", { args: [label] }))
+            ? String(tr("release.delete.published"))
             : undefined,
           release.defaultSince
-            ? String(tr("release.delete.default", { args: [label] }))
+            ? String(tr("release.delete.default"))
             : undefined,
         ]),
         confirmLabel: String(tr("release.delete.action")),

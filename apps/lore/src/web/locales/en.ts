@@ -861,11 +861,11 @@ export default {
   "release.delete.action": "Delete",
   "release.delete.title": "Delete release $1?",
   "release.delete.detached":
-    "This cannot be undone. Its epics and quests stay, detached from $1.",
+    "This cannot be undone. Its epics and quests stay, detached from it.",
   "release.delete.published":
-    "$1 is published: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
+    "It is published: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
   "release.delete.default":
-    "$1 is the default release: the project is left with none until another is set.",
+    "It is the default release: the project is left with none until another is set.",
   "release.delete.done": "$1 deleted.",
   "release.bulk.delete.title": "Delete $1 releases?",
   "release.bulk.delete.confirm": "Delete $1 releases",
