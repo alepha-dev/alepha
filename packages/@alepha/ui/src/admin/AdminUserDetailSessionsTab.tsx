@@ -9,7 +9,8 @@ import type { UseActionReturn } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
 
-import { AlephaTable, type TableFetcher } from "../table/AlephaTable.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import type { TableFetcher } from "../table/alephaTableTypes.ts";
 
 export interface AdminUserDetailSessionsTabProps {
   /**

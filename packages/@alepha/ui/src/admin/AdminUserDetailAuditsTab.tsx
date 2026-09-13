@@ -8,7 +8,8 @@ import type { AuditEntity } from "alepha/api/audits";
 import { useI18n } from "alepha/react/i18n";
 
 import { Badge } from "../core/Badge.tsx";
-import { AlephaTable, type TableFetcher } from "../table/AlephaTable.tsx";
+import { AlephaTable } from "../table/AlephaTable.tsx";
+import type { TableFetcher } from "../table/alephaTableTypes.ts";
 
 export interface AdminUserDetailAuditsTabProps {
   /**

@@ -11,26 +11,25 @@
  * @module alepha.ui.table
  */
 
-export {
-  AlephaTable,
-  type AlephaTableBaseProps,
-  type AlephaTableEmptyState,
-  type AlephaTableFilters,
-  type AlephaTablePersistedFacets,
-  type AlephaTableProps,
-  type AlephaTableSource,
-  type BulkAction,
-  type BulkActionContext,
-  type BulkMenuAction,
-  type ColumnDef,
-  PAGE_SIZES,
-  type RowAction,
-  type RowActionContext,
-  type RowActionEntry,
-  type RowActionGroup,
-  type TableAction,
-  type TableFetcher,
-} from "./AlephaTable.tsx";
+export { PAGE_SIZES } from "./AlephaTableFooter.tsx";
+export { AlephaTable, type AlephaTableProps } from "./AlephaTable.tsx";
+export type { AlephaTableBaseProps } from "./alephaTableBaseProps.ts";
+export type {
+  AlephaTableEmptyState,
+  AlephaTableFilters,
+  AlephaTablePersistedFacets,
+  AlephaTableSource,
+  BulkAction,
+  BulkActionContext,
+  BulkMenuAction,
+  ColumnDef,
+  RowAction,
+  RowActionContext,
+  RowActionEntry,
+  RowActionGroup,
+  TableAction,
+  TableFetcher,
+} from "./alephaTableTypes.ts";
 export {
   AlephaTableBulkMenu,
   type AlephaTableBulkMenuProps,

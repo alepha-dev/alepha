@@ -14,7 +14,7 @@ import type {
   BulkAction,
   BulkActionContext,
   BulkMenuAction,
-} from "./AlephaTable.tsx";
+} from "./alephaTableTypes.ts";
 
 export interface AlephaTableBulkMenuProps<T> {
   action: BulkMenuAction<T>;
