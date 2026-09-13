@@ -1,34 +1,20 @@
-# Cloudflare Workers Static Assets reads this file at deploy time. Both deploy
-# paths send its text as the asset configuration and leave it out of the
-# uploaded asset list, so it is never served as a page: wrangler
-# (`alepha platform up`) always did, and `lore apps deploy`, which docs uses,
-# does since epic #E49. GitHub Pages ignores it entirely.
+# What only this site knows about its own files. `alepha build` merges it into
+# dist/public/_headers: the security headers helmetOptions produces go above
+# it under /*, and a year of immutable caching for every content-hashed file
+# (/entry.*, /chunk.*, /asset.*) goes below it. See the deployment guide,
+# "Static File Headers".
 #
-# It exists because Workers Static Assets defaults every asset to
-# `cache-control: public, max-age=0, must-revalidate`. That is right for HTML -
-# a docs page must not be stale - and wrong for everything whose URL contains
-# its own content hash, where revalidating asks "has the immutable file
-# changed?" once per page load, forever.
-#
-# Every rule that matches a path applies, in file order, and a second rule
-# setting the same header is comma-JOINED to the first, not substituted. So a
-# rule that overrides an earlier one starts with `! Name`.
-
-# HSTS is the one security header worth setting here: `alepha.dev` is the
-# registrable domain, so `includeSubDomains` covers every app under it. The rest
-# (CSP, frame-options) would guard against nothing on a site with no auth, no
-# cookies and no forms. `nosniff` is free, so it goes in anyway.
-#
-# Deliberately no `preload` directive: that submits the apex to the browsers'
-# built-in HSTS list, which is slow to leave and would strand any subdomain that
-# ever needs plain HTTP.
-/*
-  Strict-Transport-Security: max-age=15552000; includeSubDomains
-  X-Content-Type-Options: nosniff
+# Every host that serves these files itself applies the merged file:
+# Cloudflare (docs deploys through `lore apps deploy`), Bay, and the app's own
+# server. Cloudflare defaults every file to
+# `cache-control: public, max-age=0, must-revalidate`, which is right for a
+# docs page and is what a file no rule caches gets everywhere.
 
 # Not content-hashed, so not immutable - but a logo that changes twice a year
 # has no business being revalidated on every navigation. A day is the honest
-# trade between staleness and traffic.
+# trade between staleness and traffic. A hashed image such as
+# `/asset.<hash>.png` also matches these, and the build's hash rules, written
+# after them, replace the value rather than join it.
 /*.png
   Cache-Control: public, max-age=86400
 
@@ -47,22 +33,3 @@
 # rather than a day later.
 /bay/install.sh
   Content-Type: text/plain; charset=utf-8
-
-# Vite writes the content hash into the name, so these URLs can never change
-# meaning. Fonts carry no hash but are equally frozen: the file behind
-# `asset.<hash>.woff2` is the hash.
-#
-# Last, and each removing `Cache-Control` first: a hashed image such as
-# `/asset.<hash>.png` also matches the one-day rules above, and without the
-# `!` it would answer both values joined, which a cache may read as stale.
-/entry.*
-  ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
-
-/chunk.*
-  ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
-
-/asset.*
-  ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
