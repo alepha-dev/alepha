@@ -21,6 +21,12 @@ export type AttachmentPreview =
  * Extension to highlight.js language. Only languages that library actually
  * knows: an unknown hint makes it fall back to plaintext anyway, so listing
  * `csv` here would promise colour it cannot deliver.
+ *
+ * ⚠️ "Knows" means registered by `MarkdownView`, which highlights through
+ * `HIGHLIGHT_LANGUAGES` in `@alepha/ui`'s `src/markdown/rehypeHighlight.ts`:
+ * fifteen grammars, not highlight.js's whole set. Every value below must be
+ * one of them (or an alias of one). A language added here and not there
+ * renders as plain text, silently.
  */
 const LANGUAGES: Record<string, string> = {
   json: "json",
