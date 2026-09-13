@@ -198,7 +198,7 @@ export class CliProvider {
   protected readonly onReady = $hook({
     on: "ready",
     handler: async () => {
-      const argv = [...this.argv];
+      const argv = this.helpWordAsFlag([...this.argv]);
 
       // Resolve command using space-separated or colon-notation, skipping
       // argv slots that are flag values rather than positionals.
@@ -638,7 +638,27 @@ export class CliProvider {
     consumedArgs: string[];
     positionalArgs: string[];
   } {
-    const flagDefs = [
+    const consumedIndices = this.getFlagConsumedIndices(
+      argv,
+      this.everyFlagDef(),
+    );
+
+    const positionalArgs = this.extractPositionals(argv, consumedIndices);
+
+    return { ...this.resolveCommand(positionalArgs), positionalArgs };
+  }
+
+  /**
+   * The flag definitions of every registered command, plus the global flags
+   * and `--mode`: the superset {@link resolveCommandFromArgv} needs, because
+   * which command owns a flag is what it is working out.
+   */
+  protected everyFlagDef(): Array<{
+    key: string;
+    aliases: string[];
+    schema: ZType;
+  }> {
+    return [
       ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
         key,
         aliases: value.aliases,
@@ -659,12 +679,33 @@ export class CliProvider {
         schema: z.string(),
       },
     ];
+  }
 
-    const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
+  /**
+   * `help` as a word: `cli help quest create` is `cli quest create --help`.
+   *
+   * Rewritten on the argv, before anything else reads it, so the two
+   * spellings cannot print different things: the word is removed and the
+   * flag added, and from there the one help path runs. It used to print
+   * `Unknown command: 'help'`, the root help, and exit 1, which is the first
+   * thing a newcomer to a CLI types.
+   *
+   * Only as the FIRST positional, and only when no top-level command is named
+   * `help`: a CLI that registers one keeps it.
+   */
+  protected helpWordAsFlag(argv: string[]): string[] {
+    if (this.findTopLevelCommand("help")) {
+      return argv;
+    }
 
-    const positionalArgs = this.extractPositionals(argv, consumedIndices);
-
-    return { ...this.resolveCommand(positionalArgs), positionalArgs };
+    const consumed = this.getFlagConsumedIndices(argv, this.everyFlagDef());
+    const end = this.terminatorIndex(argv);
+    for (let i = 0; i < end; i++) {
+      if (this.isFlagToken(argv[i]) || consumed.has(i)) continue;
+      if (argv[i] !== "help") return argv;
+      return [...argv.slice(0, i), ...argv.slice(i + 1), "--help"];
+    }
+    return argv;
   }
 
   protected resolveCommand(positionalArgs: string[]): {
@@ -1842,14 +1883,14 @@ export class CliProvider {
   }
 
   /**
-   * The two argv conventions that no individual flag can advertise: the
-   * `--no-x` negation of a boolean, and the `--` terminator.
+   * The argv conventions that no individual flag can advertise: the `--no-x`
+   * negation of a boolean, the `--` terminator, and `help` as a word.
    */
   protected printFlagConventions(): void {
     const c = this.color;
     this.output.print("");
     this.output.print(
-      `    ${c.set("GREY_DARK", "--no-<flag> turns a boolean flag off; -- ends flag parsing, everything after it is an argument.")}`,
+      `    ${c.set("GREY_DARK", "--no-<flag> turns a boolean flag off; -- ends flag parsing, everything after it is an argument; help <command> prints a command's help.")}`,
     );
   }
 

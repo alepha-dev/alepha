@@ -108,7 +108,11 @@ alepha report monthly --format=csv --verbose
 ```
 
 Everything on the declaration does double duty. `flags` and `args` are parsed
-_and_ validated _and_ printed in `--help`. `env` is validated before the handler
+_and_ validated _and_ printed in `--help`, which `help` also answers as a word:
+`alepha help report` prints exactly what `alepha report --help` prints, unless
+the CLI registers a command named `help` of its own. A positional prints under
+its schema's `title` (`args: z.text({ title: "month" })` reads `<month>`), and
+a flag's help line is its description. `env` is validated before the handler
 runs, so a missing token is a clear failure at second zero rather than a
 `undefined` three API calls in.
 
