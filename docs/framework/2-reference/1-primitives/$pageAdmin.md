@@ -23,8 +23,14 @@ The page appears in the shell's sidebar with no separate registration
 step: `useNavEntries` walks the parent chain and reads each page's own
 `nav`, the same as any other page hung off `AdminRouter.layout`.
 
+**Its tab reads `Admin - <title>`**, the way every built-in page's does: a
+static `head.title` or the title a `head` function returns is prefixed.
+When the page names no `nav.label` and no `label`, its unprefixed static
+title becomes the `label`, so its sidebar entry and breadcrumb do not carry
+the prefix.
+
 **Calling this registers `AdminRouter`.** Declaring even one page this way
-mounts the whole `/admin` shell, including its thirteen built-in pages (Users,
+mounts the whole `/admin` shell, including its fourteen built-in pages (Users,
 Sessions, Jobs, …): an admin page without the admin shell around it is
 not a thing. This is the intended reading, but it is a real side effect:
 an application that wants `/admin` to carry only its own pages, with none

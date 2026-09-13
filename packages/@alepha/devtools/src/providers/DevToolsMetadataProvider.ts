@@ -90,10 +90,10 @@ export class DevToolsMetadataProvider {
    */
   public getJobs(): DevJobMetadata[] {
     let registrations: Array<{ name: string; options: any; kind: string }>;
+    let jobProvider: JobProvider;
     try {
-      registrations = Array.from(
-        this.alepha.inject(JobProvider).getRegisteredJobs().values(),
-      );
+      jobProvider = this.alepha.inject(JobProvider);
+      registrations = Array.from(jobProvider.getRegisteredJobs().values());
     } catch {
       // An app that never loaded the jobs module has no JobProvider to
       // inject, and the container refuses to register one after start. Degrade
@@ -113,7 +113,6 @@ export class DevToolsMetadataProvider {
         description: options.description,
         mode,
         cron: options.cron,
-        priority: options.priority,
         // Durations are declared as a `[value, unit]` tuple; stringifying one
         // directly yields "30,seconds".
         timeout: Array.isArray(options.timeout)
@@ -123,7 +122,9 @@ export class DevToolsMetadataProvider {
             : undefined,
         retries: options.retry?.retries,
         lock: options.lock,
-        record: options.record,
+        // The effective rule, from the same resolver the trim reads, so the
+        // panel cannot disagree with what is actually kept.
+        retention: jobProvider.describeRetention(name),
         schema: this.toJsonSchema(options.schema),
       };
     });

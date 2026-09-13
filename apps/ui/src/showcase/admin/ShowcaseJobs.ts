@@ -1,4 +1,10 @@
-import type { JobExecutionResource, JobRegistration } from "alepha/api/jobs";
+import type { Page } from "alepha";
+import type {
+  JobExecutionQuery,
+  JobExecutionResource,
+  JobExecutionRow,
+  JobRegistration,
+} from "alepha/api/jobs";
 
 /**
  * The execution statuses the entity actually declares. Written out rather than
@@ -23,40 +29,63 @@ export class ShowcaseJobs {
   public registrations(): JobRegistration[] {
     return [
       {
-        name: "ShowcaseJobs.sendDigest",
+        name: "digests.send-weekly",
         description: "Emails the weekly digest to every subscriber.",
         type: "cron",
-        priority: "normal",
         cron: "0 7 * * 1",
         timeout: "5m",
         retry: { retries: 3 },
-        recent: { ok: 41, error: 1, lastRun: this.at(1) },
+        retention: {
+          ok: { last: 5 },
+          error: { days: 30 },
+          source: { ok: "default", error: "default" },
+          cadence: "slower",
+        },
+        recent: { ok: 41, error: 1, lastRun: this.at(1), lastStatus: "ok" },
       },
       {
-        name: "ShowcaseJobs.rebuildSearchIndex",
+        name: "search.rebuild-index",
         description: "Rewrites the search index from scratch.",
         type: "cron",
-        priority: "low",
         cron: "0 3 * * *",
         timeout: "30m",
-        recent: { ok: 12, error: 0, lastRun: this.at(9) },
+        retention: {
+          ok: { last: 7 },
+          error: { days: 30 },
+          source: { ok: "default", error: "default" },
+          cadence: "daily",
+        },
+        recent: { ok: 12, error: 0, lastRun: this.at(9), lastStatus: "ok" },
       },
       {
-        name: "ShowcaseJobs.thumbnail",
+        name: "images.make-thumbnail",
         description: "Generates a thumbnail for an uploaded image.",
         type: "queue",
-        priority: "high",
         retry: { retries: 5 },
-        recent: { ok: 1284, error: 7, lastRun: this.at(0.2) },
+        retention: {
+          ok: false,
+          error: { days: 30 },
+          source: { ok: "default", error: "default" },
+        },
+        recent: {
+          ok: 1284,
+          error: 7,
+          lastRun: this.at(0.2),
+          lastStatus: "error",
+        },
       },
       {
-        name: "ShowcaseJobs.settleInvoice",
+        name: "invoices.settle",
         description: "Charges a due invoice and records the result.",
         type: "direct",
-        priority: "critical",
         timeout: "1m",
         retry: { retries: 2 },
-        recent: { ok: 96, error: 3, lastRun: this.at(2) },
+        retention: {
+          ok: { days: 30 },
+          error: { days: 90 },
+          source: { ok: "job", error: "job" },
+        },
+        recent: { ok: 96, error: 3, lastRun: this.at(2), lastStatus: "ok" },
       },
     ];
   }
@@ -95,7 +124,6 @@ export class ShowcaseJobs {
         key: undefined,
         organizationId: undefined,
         status,
-        priority: i % 4 === 0 ? "high" : "normal",
         attempt: status === "error" ? 3 : 1,
         maxAttempts: 3,
         redispatchCount: 0,
@@ -105,13 +133,164 @@ export class ShowcaseJobs {
         completedAt:
           settled || status === "cancelled" ? this.at(hoursAgo) : undefined,
         error: status === "error" ? "SMTP refused the connection" : undefined,
+        // Every finished run keeps its log, successes included; a run still
+        // in progress has written nothing yet.
+        logs:
+          settled || status === "cancelled"
+            ? this.logs(jobName, status, hoursAgo)
+            : undefined,
         triggeredByName: i % 3 === 0 ? "Ada Lovelace" : undefined,
         can: {
           retry: status === "error" || status === "cancelled",
           cancel: status === "running" || pending,
+          delete: settled || status === "cancelled",
         },
       };
     }) as unknown as JobExecutionResource[];
+  }
+
+  /**
+   * One page of a job's executions, filtered and sorted the way the real
+   * endpoint does, without the payload and logs a list row does not carry.
+   */
+  public page(
+    jobName: string,
+    query: JobExecutionQuery,
+  ): Page<JobExecutionRow> {
+    const size = Number(query.size ?? 10);
+    const number = Number(query.page ?? 0);
+
+    let rows = this.executions(jobName);
+    if (query.status?.length) {
+      rows = rows.filter((r) => query.status!.includes(r.status));
+    }
+    if (query.trigger) {
+      rows = rows.filter((r) =>
+        query.trigger === "scheduled"
+          ? r.triggeredBy === "system"
+          : query.trigger === "manual"
+            ? r.triggeredBy !== undefined && r.triggeredBy !== "system"
+            : r.triggeredBy === undefined,
+      );
+    }
+    if (query.key) {
+      const key = query.key.toLowerCase();
+      rows = rows.filter((r) => r.key?.toLowerCase().includes(key));
+    }
+    if (query.from) {
+      rows = rows.filter((r) => !!r.startedAt && r.startedAt >= query.from!);
+    }
+    if (query.to) {
+      rows = rows.filter((r) => !!r.startedAt && r.startedAt <= query.to!);
+    }
+
+    const sort = query.sort ?? "-createdAt";
+    const desc = sort.startsWith("-");
+    const field = (desc ? sort.slice(1) : sort) as
+      | "createdAt"
+      | "startedAt"
+      | "completedAt"
+      | "status"
+      | "attempt";
+    const valueOf = (row: JobExecutionResource): string =>
+      field === "attempt"
+        ? String(row.attempt).padStart(6, "0")
+        : (row[field] ?? "");
+    rows = [...rows].sort((a, b) => {
+      const av = valueOf(a);
+      const bv = valueOf(b);
+      const primary = av < bv ? -1 : av > bv ? 1 : 0;
+      if (primary !== 0) return desc ? -primary : primary;
+      return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
+    });
+
+    const offset = number * size;
+    const content = rows
+      .slice(offset, offset + size)
+      .map(({ payload: _payload, logs: _logs, ...row }) => row);
+    const totalPages = Math.max(1, Math.ceil(rows.length / size));
+
+    return {
+      content,
+      page: {
+        number,
+        size,
+        offset,
+        numberOfElements: content.length,
+        totalElements: rows.length,
+        totalPages,
+        isEmpty: content.length === 0,
+        isFirst: number === 0,
+        isLast: number >= totalPages - 1,
+      },
+    };
+  }
+
+  /**
+   * One execution by id, whatever job it belongs to, or `undefined`.
+   */
+  public execution(id: string): JobExecutionResource | undefined {
+    for (const job of this.registrations()) {
+      const found = this.executions(job.name).find((r) => r.id === id);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  /**
+   * The log a finished run kept: what it did, and why it stopped when it
+   * failed.
+   */
+  protected logs(
+    jobName: string,
+    status: JobExecutionStatus,
+    hoursAgo: number,
+  ): JobExecutionResource["logs"] {
+    const at = (offsetSeconds: number) =>
+      Date.parse(this.at(hoursAgo + 0.05)) + offsetSeconds * 1000;
+    const entries: NonNullable<JobExecutionResource["logs"]> = [
+      {
+        level: "INFO",
+        message: `Starting ${jobName}`,
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(0),
+      },
+      {
+        level: "DEBUG",
+        message: "Loaded 128 subscribers",
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(1),
+        data: { batch: 1 },
+      },
+    ];
+    if (status === "error") {
+      entries.push({
+        level: "ERROR",
+        message: "SMTP refused the connection",
+        service: "showcase",
+        module: "mail",
+        timestamp: at(2),
+      });
+    } else if (status === "cancelled") {
+      entries.push({
+        level: "WARN",
+        message: "Cancelled by an operator",
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(2),
+      });
+    } else {
+      entries.push({
+        level: "INFO",
+        message: "Sent 128 digests",
+        service: "showcase",
+        module: "jobs",
+        timestamp: at(3),
+      });
+    }
+    return entries;
   }
 
   /**

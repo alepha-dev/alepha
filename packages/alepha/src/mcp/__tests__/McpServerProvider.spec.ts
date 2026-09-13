@@ -6,8 +6,9 @@ import {
   $resource,
   $tool,
   AlephaMcp,
-  MCP_PROTOCOL_VERSION,
+  MCP_LEGACY_PROTOCOL_VERSION,
   type McpContext,
+  McpErrorCodes,
   McpForbiddenError,
   McpServerProvider,
   McpUnauthorizedError,
@@ -31,7 +32,7 @@ describe("McpServerProvider", () => {
         id: 1,
         method: "initialize",
         params: {
-          protocolVersion: MCP_PROTOCOL_VERSION,
+          protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
           capabilities: {},
           clientInfo: { name: "test-client", version: "1.0.0" },
         },
@@ -39,7 +40,7 @@ describe("McpServerProvider", () => {
 
       expect(response).not.toBeNull();
       expect(response?.result).toEqual({
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
         capabilities: {},
         serverInfo: { name: "alepha-mcp", version: "1.0.0" },
       });
@@ -880,8 +881,8 @@ describe("McpServerProvider", () => {
      * codes that the tool-error catch discarded, making them dead public API.
      */
     it.each([
-      [McpUnauthorizedError, -32001],
-      [McpForbiddenError, -32003],
+      [McpUnauthorizedError, -31001],
+      [McpForbiddenError, -31003],
     ])("honours %s thrown by a handler", async (ErrorClass, code) => {
       const alepha = Alepha.create();
 
@@ -902,6 +903,18 @@ describe("McpServerProvider", () => {
       expect(response?.result).toBeUndefined();
       expect(response?.error?.code).toBe(code);
       expect(response?.error?.message).toBe("nope");
+    });
+
+    /**
+     * The 2026-07-28 error-code policy reserves `-32768..-32000`: the legacy
+     * `-32000..-32019` sub-range must not be emitted by new implementations
+     * and `-32020..-32099` belongs to the specification. Alepha's own codes
+     * are application codes and live outside it.
+     */
+    it("allocates no McpErrorCodes value inside the JSON-RPC reserved range", () => {
+      for (const code of Object.values(McpErrorCodes)) {
+        expect(code >= -32768 && code <= -32000).toBe(false);
+      }
     });
 
     it("still reports an ordinary handler throw as a tool error", async () => {

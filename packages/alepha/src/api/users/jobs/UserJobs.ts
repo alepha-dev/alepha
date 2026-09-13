@@ -48,7 +48,9 @@ export class UserJobs {
    * `SessionService.refreshSession()`.
    */
   public readonly purgeExpiredSessions = $job({
-    name: "api:users:purgeExpiredSessions",
+    name: "system.users.purge-expired-sessions",
+    description:
+      "Deletes sessions past their expiry date, and sessions idle for longer than the realm allows.",
     cron: "0 * * * *", // Hourly at minute 0
     handler: async () => {
       const now = this.dateTimeProvider.nowISOString();

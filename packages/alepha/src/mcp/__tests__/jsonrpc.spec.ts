@@ -14,6 +14,7 @@ import {
   JSONRPC_VERSION,
   JsonRpcErrorCodes,
   JsonRpcParseError,
+  MCP_LEGACY_PROTOCOL_VERSION,
   MCP_PROTOCOL_VERSION,
   parseMessage,
 } from "../index.ts";
@@ -26,7 +27,8 @@ describe("jsonrpc constants", () => {
   });
 
   test("MCP_PROTOCOL_VERSION should be defined", () => {
-    expect(MCP_PROTOCOL_VERSION).toBe("2025-11-25");
+    expect(MCP_PROTOCOL_VERSION).toBe("2026-07-28");
+    expect(MCP_LEGACY_PROTOCOL_VERSION).toBe("2025-11-25");
   });
 
   test("JsonRpcErrorCodes should have correct values", () => {

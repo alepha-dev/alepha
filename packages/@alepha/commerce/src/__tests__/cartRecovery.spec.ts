@@ -16,7 +16,7 @@ import { AlephaCommerceRecovery } from "../recovery/index.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 
-const JOB = "CartRecoveryJobs.cartRecovery";
+const JOB = "system.commerce.recover-cart";
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.

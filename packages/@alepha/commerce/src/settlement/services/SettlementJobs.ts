@@ -35,10 +35,13 @@ export class SettlementJobs {
   protected readonly payments = $inject(PaymentService);
 
   public readonly orderSettlement = $job({
+    name: "system.commerce.settle-order",
     description:
-      "Issues the invoice and sends the confirmation once an order is paid.",
+      "Issues the invoice and sends the confirmation email once an order is paid.",
     schema: z.object({ orderId: z.uuid() }),
-    record: "all",
+    // Per-order work: the last N rows keep the last N orders whatever the
+    // volume, so the unit is days. Declared, so no row cap applies.
+    retention: { ok: { days: 30 }, error: { days: 90 } },
     retry: {
       retries: 4,
       backoff: { initial: [1, "second"], factor: 4, max: [10, "minute"] },
@@ -73,13 +76,16 @@ export class SettlementJobs {
    * a paid conversion also cancels the parked row via `SettlementListener`.
    */
   public readonly checkoutReconciliation = $job({
+    name: "system.commerce.reconcile-checkout",
     description:
-      "Polls the PSP for a checkout still paying after the wait, then settles or abandons it.",
+      "Asks the payment provider about a checkout still paying after the wait, then settles or abandons it.",
     schema: z.object({
       sessionId: z.uuid(),
       intentId: z.uuid(),
     }),
-    record: "all",
+    // Per-order work: the last N rows keep the last N orders whatever the
+    // volume, so the unit is days. Declared, so no row cap applies.
+    retention: { ok: { days: 30 }, error: { days: 90 } },
     retry: {
       retries: 3,
       backoff: { initial: [1, "minute"], factor: 4 },

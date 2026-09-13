@@ -12,9 +12,10 @@ export class VerificationJobs {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   public readonly cleanExpired = $job({
-    name: "api:verifications:cleanExpired",
+    name: "system.verifications.clean-expired",
     cron: "0 * * * *", // Hourly at minute 0
-    description: "Clean expired verifications",
+    description:
+      "Deletes expired verification codes once past the purge window.",
     handler: async () => {
       const purgeDays = this.verificationParameters.get("purgeDays");
       if (purgeDays <= 0) {

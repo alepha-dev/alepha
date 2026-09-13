@@ -20,8 +20,9 @@ abstracted behind `JobDispatcher`, substituted by DI:
 
 Push flow:
 push() → INSERT row (pending) → dispatcher.dispatch(jobName, id)
-worker → claim → UPDATE running → handler → DELETE/UPDATE on success
-→ UPDATE error / scheduled (retry) on failure
+worker → claim → UPDATE running → handler → UPDATE ok (or DELETE when
+successes are not recorded)
+→ UPDATE error (or DELETE) / scheduled (retry) on failure
 
 Cron flow:
 scheduler tick → claim the instant → acquire lock → executeInline (no retry)
@@ -36,6 +37,9 @@ Sweep responsibilities (every `sweepCron`), one per status, declared in
 
 Trim runs on its own cron (`trimCron`, default hourly):
 
-- per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
+- rows of a job name nothing registers are purged first, every status
+  (a renamed job loses its rows, see `purgeUnregistered`)
+- then each job's retention: per status, rows past the newest `last` or
+  completed more than `days` ago (see `JobRetentionProvider`)
 - decoupled from sweep because trim cost scales with job count, not
   retry latency - running it every sweep is wasted work for most apps.

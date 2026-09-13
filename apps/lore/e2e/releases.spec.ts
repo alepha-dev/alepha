@@ -711,14 +711,23 @@ test.describe("Releases", () => {
 
     await page.goto(`/${slug}/releases`);
 
+    // ⚠️ The column index is read off the header rather than hardcoded. It
+    // was `td[1]` until bulk delete (#Q2288) gave this table its first
+    // checkbox column, which moved every cell one to the right, so a fixed
+    // index would read the State chip instead of the tag. The Epics spec hit
+    // the same shift with feedback #2086. A throw is deliberate: a missing
+    // header must fail loudly rather than read `td[-1]` as every row empty.
     const tagColumn = async () =>
-      await page
-        .locator("tbody tr")
-        .evaluateAll((rows) =>
-          rows.map(
-            (row) => row.querySelectorAll("td")[1]?.textContent?.trim() ?? "",
-          ),
+      await page.locator("table").evaluate((table) => {
+        const headers = [...table.querySelectorAll("thead th")];
+        const index = headers.findIndex(
+          (th) => th.textContent?.trim() === "Release",
         );
+        if (index < 0) throw new Error("no Release column in the header");
+        return [...table.querySelectorAll("tbody tr")].map(
+          (row) => row.querySelectorAll("td")[index]?.textContent?.trim() ?? "",
+        );
+      });
 
     await test.step("the tag column orders by version, not by creation or as text", async () => {
       // Scoped to `thead`: the toolbar's "New Release" action is on this page
@@ -788,6 +797,228 @@ test.describe("Releases", () => {
         .poll(tagColumn, { timeout: 15_000 })
         .toEqual(["0.9.0", "0.28.0", "0.29.0", "1.0.0", "demo-1"]);
       await expect(stateFilter).toContainText("All states");
+    });
+  });
+
+  /**
+   * Epic #E56, from a row: the create entries the frontier rule offers, and
+   * the two deletes.
+   *
+   * `ProjectReleases.browser.spec.tsx` covers the same menu on a fake client.
+   * What only a real server can prove is here: the pre-filled create goes
+   * through the real `createRelease` and its `(projectId, tag)` unique index,
+   * a delete really detaches (`epics.releaseId` and `quests.releaseId` are
+   * `ON DELETE SET NULL`, and only a real database runs the clause), and
+   * deleting the default leaves the project with none.
+   */
+  test.describe("from the row menu", () => {
+    /**
+     * Open one row's menu. The row is found by its tag anchor, whose name is
+     * exactly the tag, so `0.1.0` never matches `0.1.1`.
+     */
+    const openRowMenu = async (page: Page, tag: string) => {
+      const row = page
+        .locator("tbody tr")
+        .filter({ has: page.getByRole("link", { name: tag, exact: true }) });
+      await row.getByRole("button", { name: "Open row actions" }).click();
+    };
+
+    test("creates the next version from a row, without leaving the list", async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+
+      const t = Date.now();
+      await registerAndVerify(page, `relrow${t}@example.com`, "RelTest123!");
+      const { id: projectId, slug } = await createProjectViaWizard(
+        page,
+        `RW${t}`.slice(0, 20),
+        { options: { work: ["releases"] } },
+      );
+
+      const first = await post<Release>(
+        page,
+        `/api/createRelease/${projectId}`,
+        { tag: "0.1.0" },
+      );
+      await post(page, `/api/publishRelease/${first.id}`, {});
+
+      await page.goto(`/${slug}/releases`);
+      await expect(
+        page.getByRole("link", { name: "0.1.0", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+
+      await test.step("a published release alone offers all three bumps", async () => {
+        await openRowMenu(page, "0.1.0");
+        // Three entries are grouped, and the group opens on hover or click.
+        await page.getByRole("menuitem", { name: "Create release" }).click();
+        for (const tag of ["0.1.1", "0.2.0", "1.0.0"]) {
+          await expect(
+            page.getByRole("menuitem", { name: `Create ${tag}` }),
+          ).toBeVisible();
+        }
+      });
+
+      await test.step("an entry opens the dialog holding its tag, and creates it", async () => {
+        await page.getByRole("menuitem", { name: "Create 0.2.0" }).click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog.getByRole("textbox")).toHaveValue("0.2.0");
+
+        await dialog.getByRole("button", { name: "Create" }).click();
+
+        // The row appears only once the real `createRelease` answered and
+        // the table refetched, so this is the barrier for everything below.
+        await expect(
+          page.getByRole("link", { name: "0.2.0", exact: true }),
+        ).toBeVisible({ timeout: 15_000 });
+        // The reader is planning on a list, so the table's mount of the
+        // dialog does not navigate. The header's mount does, on purpose.
+        await expect(page).toHaveURL(new RegExp(`/${slug}/releases$`));
+        expect((await listReleases(page, projectId)).map((r) => r.tag)).toEqual(
+          expect.arrayContaining(["0.1.0", "0.2.0"]),
+        );
+      });
+
+      await test.step("the older row keeps only its patch once 0.2.0 exists", async () => {
+        // 0.2.0 is the frontier of major 0 and of the project now, so the
+        // minor and the major moved to it. The patch of 0.1 stays here.
+        //
+        // Reloaded first: Base UI leaves `pointer-events: none` on the body
+        // after the dialog closes, which silently eats the next click.
+        await page.goto(`/${slug}/releases`);
+        await expect(
+          page.getByRole("link", { name: "0.2.0", exact: true }),
+        ).toBeVisible({ timeout: 15_000 });
+        await openRowMenu(page, "0.1.0");
+        await expect(
+          page.getByRole("menuitem", { name: "Create 0.1.1" }),
+        ).toBeVisible({ timeout: 15_000 });
+        await expect(
+          page.getByRole("menuitem", { name: "Create release" }),
+        ).toHaveCount(0);
+        await expect(
+          page.getByRole("menuitem", { name: "Create 0.2.0" }),
+        ).toHaveCount(0);
+      });
+    });
+
+    test("deletes a release with work in it, then a selection", async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+
+      const t = Date.now();
+      await registerAndVerify(page, `reldel${t}@example.com`, "RelTest123!");
+      const { id: projectId, slug } = await createProjectViaWizard(
+        page,
+        `RX${t}`.slice(0, 20),
+        { options: { work: ["releases"] } },
+      );
+
+      const doomed = await post<Release>(
+        page,
+        `/api/createRelease/${projectId}`,
+        { tag: "0.3.0" },
+      );
+      await post(page, `/api/createRelease/${projectId}`, { tag: "0.4.0" });
+      await post(page, `/api/createRelease/${projectId}`, { tag: "0.5.0" });
+
+      // The default, over its own PUT route: `post` only speaks POST.
+      await page.evaluate(
+        async ({ projectId, releaseId }) => {
+          const r = await fetch(`/api/projects/${projectId}/releases/default`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ releaseId }),
+          });
+          if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+        },
+        { projectId, releaseId: doomed.id },
+      );
+
+      // An epic and a loose quest, attached the way the first test does.
+      const epic = await post<{ id: number; number: number }>(
+        page,
+        `/api/createEpic/${projectId}`,
+        { title: `Doomed epic ${t}` },
+      );
+      await post(page, `/api/updateEpic/${epic.id}`, { releaseId: doomed.id });
+      const loose = await createQuest(page, projectId, `Loose${t}`);
+      await post(page, `/api/updateQuestById/${loose.id}`, {
+        releaseId: doomed.id,
+      });
+
+      await page.goto(`/${slug}/releases`);
+      await expect(
+        page.getByRole("link", { name: "0.3.0", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+
+      await test.step("the default release says what its delete costs, and goes", async () => {
+        await openRowMenu(page, "0.3.0");
+        await page.getByRole("menuitem", { name: "Delete" }).click();
+
+        // ⚠️ `alertdialog`: the confirm comes from `useDialog().confirm`.
+        const confirm = page.getByRole("alertdialog");
+        await expect(confirm).toContainText("detached");
+        await expect(confirm).toContainText("default release");
+
+        await confirm.getByRole("button", { name: "Delete" }).click();
+
+        // Gone only once the real delete answered and the table refetched,
+        // which is also what makes the navigation in the next step safe.
+        await expect(
+          page.getByRole("link", { name: "0.3.0", exact: true }),
+        ).toHaveCount(0, { timeout: 15_000 });
+        // Nothing on the delete path picks a successor.
+        await expect(
+          page.getByRole("img", { name: "Default", exact: true }),
+        ).toHaveCount(0);
+      });
+
+      await test.step("its epic and quest survive, detached", async () => {
+        const quest = (await page.evaluate(async (id) => {
+          const r = await fetch(`/api/getQuestById/${id}`, {
+            credentials: "include",
+          });
+          return r.json();
+        }, loose.id)) as { id: number; releaseId?: number | null };
+        expect(quest.id).toBe(loose.id);
+        expect(quest.releaseId ?? null).toBeNull();
+
+        await page.goto(`/${slug}/epics/${epic.number}`);
+        const control = page.locator("aside").getByRole("combobox");
+        await expect(control).toContainText("No release", { timeout: 15_000 });
+      });
+
+      await test.step("a selection of two goes in one confirm", async () => {
+        await page.goto(`/${slug}/releases`);
+        for (const tag of ["0.4.0", "0.5.0"]) {
+          const row = page.locator("tbody tr").filter({
+            has: page.getByRole("link", { name: tag, exact: true }),
+          });
+          await row.getByRole("checkbox").click();
+        }
+
+        await page.getByRole("button", { name: "Delete", exact: true }).click();
+        const confirm = page.getByRole("alertdialog");
+        await expect(confirm).toContainText("Delete 2 releases?");
+        await confirm
+          .getByRole("button", { name: "Delete 2 releases" })
+          .click();
+
+        await expect(page.getByText("2 deleted.")).toBeVisible({
+          timeout: 15_000,
+        });
+        await expect(
+          page.locator("tbody tr").filter({ hasText: "0.4.0" }),
+        ).toHaveCount(0);
+        await expect(
+          page.locator("tbody tr").filter({ hasText: "0.5.0" }),
+        ).toHaveCount(0);
+        expect(await listReleases(page, projectId)).toEqual([]);
+      });
     });
   });
 });

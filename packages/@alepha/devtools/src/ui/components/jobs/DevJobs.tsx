@@ -13,6 +13,10 @@ import { describeCron } from "../declared/describeCron.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
+import {
+  describeRetention,
+  describeRetentionSource,
+} from "./describeRetention.ts";
 import { JobExecutions } from "./JobExecutions.tsx";
 
 const querySchema = z.object({ selected: z.text().optional() });
@@ -380,15 +384,6 @@ export const DevJobs = () => {
                 />
               )}
               <Stat
-                label="Priority"
-                value={
-                  current.runtime?.priority ??
-                  current.declared.priority ??
-                  "normal"
-                }
-                hint="sweep ordering under backlog"
-              />
-              <Stat
                 label="Timeout"
                 value={current.declared.timeout ?? "none"}
                 hint="per attempt · handler gets AbortSignal"
@@ -409,7 +404,12 @@ export const DevJobs = () => {
               <Stat
                 label="Last run"
                 value={relative(current.runtime?.recent.lastRun)}
-                hint={`record: ${current.declared.record ?? "default"}`}
+                hint="among the runs kept"
+              />
+              <Stat
+                label="Retention"
+                value={describeRetention(current.declared.retention)}
+                hint={describeRetentionSource(current.declared.retention)}
               />
               {current.declared.lock !== undefined && (
                 <Stat
@@ -430,7 +430,7 @@ export const DevJobs = () => {
 
             <JobExecutions
               jobName={current.declared.name}
-              record={current.declared.record}
+              retention={current.declared.retention}
             />
           </>
         )}

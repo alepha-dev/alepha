@@ -31,6 +31,26 @@ export interface ReleaseCreateDialogProps {
    * menu navigates to.
    */
   onCreated: (created: { tag?: string }) => void;
+  /**
+   * The tag the field holds when the dialog opens, for a door where the
+   * reader already picked one: the Releases row menu's "Create 0.31.0".
+   * Enter commits it as it stands, and it stays editable.
+   *
+   * Re-applied on EVERY open, whatever the previous open left in the field,
+   * and never while the dialog is open.
+   */
+  initialTag?: string;
+  /**
+   * The tag the PLACEHOLDER suggests, for a door where nobody picked
+   * anything (the toolbar, the empty state, the header's create menu).
+   * Falls back to the fixed `release.start.tag.placeholder` when undefined.
+   *
+   * Deliberately not the same thing as {@link initialTag}: a placeholder
+   * answers "what comes next" without putting a value in the field that
+   * anyone wanting `demo-1` would have to clear first. Computed by the
+   * caller with `suggestedReleaseTag`; the dialog holds no release list.
+   */
+  suggestedTag?: string;
 }
 
 /**
@@ -68,18 +88,41 @@ export interface ReleaseCreateDialogProps {
  * typed. So the message is rendered under the field and the dialog stays
  * open holding it, rather than going to a toast that outlives the dialog it
  * describes and takes the typed tag with it when it closes.
+ *
+ * ## Seeded on the OPEN edge, during render
+ *
+ * ⚠️ The dialog is always mounted and its `tag` outlives a close, so a
+ * `useState` initialiser would seed it once, ever: reopening from another
+ * row would show the first row's tag. Each time `open` turns true, `tag`
+ * becomes `initialTag ?? ""` and the error clears, which covers reopening
+ * from the same row, from another row, and from the toolbar after a row.
+ *
+ * It happens while rendering, through the "adjust state when a prop changes"
+ * pattern, and not in an effect: an effect runs after paint, so the dialog
+ * would open showing the previous value for a frame. It happens on the edge
+ * only, never while open, so a parent re-render cannot overwrite what the
+ * reader is typing.
  */
 const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const releaseApi = useClient<ReleaseController>();
 
-  const [tag, setTag] = useState("");
+  const [tag, setTag] = useState(props.open ? (props.initialTag ?? "") : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
 
+  const [wasOpen, setWasOpen] = useState(props.open);
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open);
+    if (props.open) {
+      setTag(props.initialTag ?? "");
+      setError(undefined);
+    }
+  }
+
+  // No reset here any more: the next open seeds the field, so clearing it
+  // on close would only blank it under the closing animation.
   const close = () => {
-    setTag("");
-    setError(undefined);
     props.onOpenChange(false);
   };
 
@@ -115,7 +158,9 @@ const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
             id="release-create-tag"
             value={tag}
             className="font-mono"
-            placeholder={tr("release.start.tag.placeholder")}
+            placeholder={
+              props.suggestedTag ?? tr("release.start.tag.placeholder")
+            }
             aria-invalid={error ? true : undefined}
             onChange={(e) => {
               setTag(e.currentTarget.value);

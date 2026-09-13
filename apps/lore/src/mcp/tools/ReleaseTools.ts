@@ -391,7 +391,7 @@ export class ReleaseTools {
 
   release_delete = $tool({
     description:
-      "Delete a release. Cheap and safe: the epics and quests in it are detached, never deleted, so nothing is lost but the row and its number. Allowed on a published release too.",
+      "Delete a release. The epics and quests in it are detached, never deleted. On a published release this also deletes its frozen changelog and progress counts, which exist nowhere else. Deleting the project's default release leaves it with no default until one is set.",
     title: "Delete release",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {

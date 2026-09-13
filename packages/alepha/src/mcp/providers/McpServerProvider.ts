@@ -9,27 +9,34 @@ import {
   McpResourceNotFoundError,
   McpToolNotFoundError,
   McpToolOutputError,
+  McpUnsupportedProtocolVersionError,
 } from "../errors/McpError.ts";
 import {
   createErrorResponse,
   createInternalError,
   createResponse,
-  isSupportedProtocolVersion,
+  isLegacyProtocolVersion,
+  MCP_LEGACY_PROTOCOL_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import type {
+  JsonRpcError,
   JsonRpcRequest,
   JsonRpcResponse,
+  McpCacheHints,
   McpCapabilities,
+  McpClientInfo,
   McpCompletionArgument,
   McpCompletionRef,
   McpCompletionResult,
   McpContent,
   McpContext,
+  McpDiscoverResult,
   McpInitializeResult,
   McpPromptDescriptor,
   McpPromptGetResult,
   McpPromptMessage,
+  McpRequestMeta,
   McpResourceContent,
   McpResourceDescriptor,
   McpResourceReadResult,
@@ -102,6 +109,54 @@ export class McpServerProvider {
    * can tell the user to keep typing.
    */
   public completionLimit = 100;
+
+  /**
+   * The protocol revisions this server serves, highest preference first.
+   *
+   * **This list is the switch for the modern protocol.** The modern path
+   * (2026-07-28: per-request `_meta`, `server/discover`, no handshake) is on
+   * exactly when it holds a modern version, and off otherwise. There is no
+   * separate flag, because a flag and a version list can disagree, and
+   * advertising a revision the server does not serve is precisely that
+   * disagreement.
+   *
+   * While the modern path is off, a request is always served as legacy and an
+   * unsupported `MCP-Protocol-Version` gets a plain non-JSON-RPC 400: the
+   * answer that makes a dual-era client fall back to `initialize`.
+   *
+   * ```ts
+   * mcpServer.protocolVersions = [
+   *   ...MODERN_PROTOCOL_VERSIONS,
+   *   ...LEGACY_PROTOCOL_VERSIONS,
+   * ];
+   * ```
+   */
+  public protocolVersions: string[] = [...SUPPORTED_PROTOCOL_VERSIONS];
+
+  /**
+   * Caching hints on the `tools/list`, `prompts/list`, `resources/list` and
+   * `resources/templates/list` results sent to a modern client (spec
+   * 2026-07-28 `ttlMs` / `cacheScope`). Every page of a list carries the same
+   * hints.
+   *
+   * `"public"` because the registries are filled once at start and every
+   * caller gets the same list. Five minutes bounds how long a client keeps a
+   * list from before a deploy: there is no `listChanged` notification to
+   * invalidate it sooner. A server that filters a list per caller (by
+   * overriding a list handler) must switch this to `"private"`, or a shared
+   * cache may hand one user's list to another.
+   */
+  public listCache: McpCacheHints = { ttlMs: 300_000, cacheScope: "public" };
+
+  /**
+   * Caching hints on the `server/discover` result (spec 2026-07-28). Public
+   * and five minutes, for the same reasons as {@link listCache}: versions and
+   * capabilities are the same for every caller and change only with a deploy.
+   */
+  public discoverCache: McpCacheHints = {
+    ttlMs: 300_000,
+    cacheScope: "public",
+  };
 
   // -----------------------------------------------------------------------------------------------------------------
   // Registration Methods
@@ -256,6 +311,150 @@ export class McpServerProvider {
   }
 
   // -----------------------------------------------------------------------------------------------------------------
+  // Protocol Eras
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Whether the modern protocol is on: {@link protocolVersions} holds at least
+   * one modern version.
+   */
+  public isModernEnabled(): boolean {
+    return this.protocolVersions.some((v) => !isLegacyProtocolVersion(v));
+  }
+
+  /**
+   * {@link protocolVersions}, modern versions first, each era in its own order.
+   * What `server/discover` and `-32022` advertise.
+   */
+  public getSupportedVersions(): string[] {
+    return [
+      ...this.protocolVersions.filter((v) => !isLegacyProtocolVersion(v)),
+      ...this.protocolVersions.filter((v) => isLegacyProtocolVersion(v)),
+    ];
+  }
+
+  /**
+   * Decide which era a request belongs to, from the request alone.
+   *
+   * The spec lets a dual-era server choose "from how the client opens", but
+   * this server keeps no session and this provider is a process-global
+   * singleton: it cannot remember who sent `initialize`. So the rule is
+   * applied to each request on its own:
+   *
+   * - **Modern** iff `_meta["io.modelcontextprotocol/protocolVersion"]` or the
+   *   `MCP-Protocol-Version` header names a version outside
+   *   `LEGACY_PROTOCOL_VERSIONS`. An unknown future version is modern too, and
+   *   gets the modern `-32022`.
+   * - **Legacy** otherwise, and `initialize` always: served exactly as before.
+   *
+   * Returns the request's modern metadata, or `undefined` for a legacy
+   * request. Always `undefined` while the modern path is off
+   * ({@link isModernEnabled}): modern `_meta` is then ignored, as it was
+   * before this server knew about it.
+   *
+   * Public because a transport needs the answer before it dispatches: an HTTP
+   * status is decided before a response stream opens.
+   */
+  public resolveModernRequest(
+    request: JsonRpcRequest,
+    headers?: Record<string, string | string[] | undefined>,
+  ): McpRequestMeta | undefined {
+    if (request.method === "initialize" || !this.isModernEnabled()) {
+      return undefined;
+    }
+
+    const meta = this.requestMeta(request);
+    const metaVersion = meta?.["io.modelcontextprotocol/protocolVersion"];
+    const headerRaw = headers?.["mcp-protocol-version"];
+    const headerVersion = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
+
+    const protocolVersion = [metaVersion, headerVersion].find(
+      (v): v is string =>
+        typeof v === "string" && v.length > 0 && !isLegacyProtocolVersion(v),
+    );
+    if (protocolVersion === undefined) {
+      return undefined;
+    }
+
+    const clientInfo = meta?.["io.modelcontextprotocol/clientInfo"];
+    const clientCapabilities =
+      meta?.["io.modelcontextprotocol/clientCapabilities"];
+    return {
+      protocolVersion,
+      clientInfo: this.isPlainObject(clientInfo)
+        ? (clientInfo as unknown as McpClientInfo)
+        : undefined,
+      clientCapabilities: this.isPlainObject(clientCapabilities)
+        ? clientCapabilities
+        : {},
+    };
+  }
+
+  /**
+   * Why a modern request cannot be served at all, before it is routed: today,
+   * a protocol version outside {@link protocolVersions}. `undefined` when it
+   * can be.
+   *
+   * Public for the same reason as {@link resolveModernRequest}: the HTTP
+   * transport answers these with a 400, and has to know before it opens a
+   * response stream.
+   */
+  public checkModernRequest(modern: McpRequestMeta): McpError | undefined {
+    if (!this.protocolVersions.includes(modern.protocolVersion)) {
+      return new McpUnsupportedProtocolVersionError(
+        modern.protocolVersion,
+        this.getSupportedVersions(),
+      );
+    }
+    return undefined;
+  }
+
+  /**
+   * Whether this server implements a request method in the given era.
+   *
+   * 2026-07-28 removed `ping` (and `initialize`, which is legacy by
+   * definition) and added `server/discover`; everything else is shared. A
+   * modern request for a method outside this answers `-32601`, which the HTTP
+   * transport sends as 404 and decides before a response stream opens.
+   *
+   * A subclass that adds a method to {@link handleRequest} adds it here too.
+   */
+  public handlesMethod(method: string, modern: boolean): boolean {
+    switch (method) {
+      case "tools/list":
+      case "tools/call":
+      case "resources/list":
+      case "resources/templates/list":
+      case "resources/read":
+      case "prompts/list":
+      case "prompts/get":
+      case "completion/complete":
+        return true;
+      case "server/discover":
+        return modern;
+      case "initialize":
+      case "ping":
+        return !modern;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * A request's `params._meta`, when it is an object.
+   */
+  protected requestMeta(
+    request: JsonRpcRequest,
+  ): Record<string, unknown> | undefined {
+    const meta = request.params?._meta;
+    return this.isPlainObject(meta) ? meta : undefined;
+  }
+
+  protected isPlainObject(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === "object" && !Array.isArray(value);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
   // Message Handling
   // -----------------------------------------------------------------------------------------------------------------
 
@@ -278,6 +477,16 @@ export class McpServerProvider {
       return null;
     }
 
+    // Decided here, from the request, and written over whatever the caller
+    // put in the context: on a legacy request all three stay undefined.
+    const modern = this.resolveModernRequest(request, context?.headers);
+    if (modern) {
+      const rejection = this.checkModernRequest(modern);
+      if (rejection) {
+        return createErrorResponse(id, this.toJsonRpcError(rejection));
+      }
+    }
+
     const key = this.inFlightKey(context?.clientKey, id);
     const controller = new AbortController();
     this.inFlight.set(key, controller);
@@ -286,6 +495,9 @@ export class McpServerProvider {
       const result = await this.handleRequest(request, {
         ...context,
         signal: controller.signal,
+        protocolVersion: modern?.protocolVersion,
+        clientInfo: modern?.clientInfo,
+        clientCapabilities: modern?.clientCapabilities,
       });
       // The client has withdrawn the request. Answering it now would be a
       // response to a question nobody is listening for any more — and per
@@ -293,7 +505,10 @@ export class McpServerProvider {
       if (controller.signal.aborted) {
         return null;
       }
-      return createResponse(id, result);
+      return createResponse(
+        id,
+        modern ? this.toModernResult(request, result) : result,
+      );
     } catch (error) {
       if (controller.signal.aborted) {
         this.log.debug("MCP request aborted by client", { id });
@@ -302,10 +517,7 @@ export class McpServerProvider {
       this.log.error("MCP request failed", error);
       // Preserve error code from McpError instances
       if (error instanceof McpError) {
-        return createErrorResponse(id, {
-          code: error.code,
-          message: error.message,
-        });
+        return createErrorResponse(id, this.toJsonRpcError(error));
       }
       // A schema failure is the CALLER's fault, so it is -32602 Invalid
       // params, not -32603 Internal error. Prompts and resources validate
@@ -330,6 +542,108 @@ export class McpServerProvider {
     } finally {
       this.inFlight.delete(key);
     }
+  }
+
+  /**
+   * Shape a handler's result for a modern request (spec 2026-07-28): the one
+   * place the result envelope is decided, so handlers stay era-blind.
+   *
+   * - `resultType: "complete"` on every result, a tool's `isError` result
+   *   included (it is a result, not a JSON-RPC error; errors carry none).
+   * - `ttlMs` and `cacheScope` on the six cacheable results.
+   * - `_meta["io.modelcontextprotocol/serverInfo"]`, since there is no
+   *   `initialize` result left to carry the server's identity. Merged into a
+   *   `_meta` the result already has (a raw tool result may bring one), never
+   *   replacing it.
+   *
+   * Never applied to a legacy request, whose result stays exactly what it
+   * always was.
+   */
+  protected toModernResult(
+    request: JsonRpcRequest,
+    result: unknown,
+  ): Record<string, unknown> {
+    const object = this.isPlainObject(result) ? result : {};
+    const meta = this.isPlainObject(object._meta) ? object._meta : {};
+    return {
+      ...object,
+      resultType: "complete",
+      ...this.cacheHintsFor(request),
+      _meta: { ...meta, "io.modelcontextprotocol/serverInfo": this.serverInfo },
+    };
+  }
+
+  /**
+   * The caching hints a modern result of this request carries, or `undefined`
+   * when its method is not cacheable.
+   */
+  protected cacheHintsFor(request: JsonRpcRequest): McpCacheHints | undefined {
+    switch (request.method) {
+      case "server/discover":
+        return this.normalizeCacheHints(this.discoverCache);
+      case "tools/list":
+      case "prompts/list":
+      case "resources/list":
+      case "resources/templates/list":
+        return this.normalizeCacheHints(this.listCache);
+      case "resources/read": {
+        const uri = request.params?.uri;
+        const hints =
+          typeof uri === "string"
+            ? this.findReadable(uri)?.readCache
+            : undefined;
+        return this.normalizeCacheHints(
+          hints ?? { ttlMs: 0, cacheScope: "private" },
+        );
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Hints as the spec requires them on the wire: an integer `ttlMs >= 0`, and
+   * a scope that is `"private"` unless it says `"public"`. A typo fails closed.
+   */
+  protected normalizeCacheHints(hints: McpCacheHints): McpCacheHints {
+    const ttl = Number(hints.ttlMs);
+    return {
+      ttlMs: Number.isFinite(ttl) && ttl > 0 ? Math.floor(ttl) : 0,
+      cacheScope: hints.cacheScope === "public" ? "public" : "private",
+    };
+  }
+
+  /**
+   * The primitive a `resources/read` of this URI is served by: the concrete
+   * resource when there is one, otherwise the first template that matches.
+   * The same precedence {@link handleResourcesRead} applies.
+   */
+  protected findReadable(
+    uri: string,
+  ): ResourcePrimitive | ResourceTemplatePrimitive<any> | undefined {
+    const resource = this.resources.get(uri);
+    if (resource) {
+      return resource;
+    }
+    for (const template of this.resourceTemplates.values()) {
+      if (template.match(uri)) {
+        return template;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * The JSON-RPC error an {@link McpError} is sent as. `data` only when the
+   * error carries some, so every error that never had it keeps its exact
+   * shape on the wire.
+   */
+  protected toJsonRpcError(error: McpError): JsonRpcError {
+    return {
+      code: error.code,
+      message: error.message,
+      ...(error.data !== undefined ? { data: error.data } : {}),
+    };
   }
 
   // -----------------------------------------------------------------------------------------------------------------
@@ -371,9 +685,19 @@ export class McpServerProvider {
   ): Promise<unknown> {
     const { method, params = {} } = request;
 
+    // A method is known per era: `server/discover` only to a modern request
+    // (a legacy one, or any request while the modern path is off, gets -32601,
+    // exactly the answer a dual-era stdio client reads as "this server is
+    // legacy"), `ping` only to a legacy one.
+    if (!this.handlesMethod(method, context?.protocolVersion !== undefined)) {
+      throw new McpMethodNotFoundError(method);
+    }
+
     switch (method) {
       case "initialize":
         return this.handleInitialize(params);
+      case "server/discover":
+        return this.handleDiscover();
       case "ping":
         return this.handlePing();
       case "tools/list":
@@ -431,12 +755,17 @@ export class McpServerProvider {
     params: Record<string, unknown>,
   ): McpInitializeResult {
     const requested = params.protocolVersion;
-    // Echo the client's version when supported, otherwise reply with our
-    // preferred version (highest entry in SUPPORTED_PROTOCOL_VERSIONS).
-    // The client can then decide to retry, downgrade, or disconnect.
-    const negotiated = isSupportedProtocolVersion(requested)
-      ? requested
-      : SUPPORTED_PROTOCOL_VERSIONS[0];
+    // Echo the client's version when it is a legacy one, otherwise reply with
+    // our preferred legacy version. The client can then decide to retry,
+    // downgrade, or disconnect.
+    //
+    // From the LEGACY list only, never from `protocolVersions`: `initialize`
+    // is how a legacy client opens, and once a modern version is served,
+    // echoing it here would tell that client it negotiated a revision whose
+    // semantics it does not speak.
+    const negotiated: string = isLegacyProtocolVersion(requested)
+      ? (requested as string)
+      : MCP_LEGACY_PROTOCOL_VERSION;
 
     this.log.info("MCP client initializing", {
       clientInfo: params.clientInfo,
@@ -459,6 +788,19 @@ export class McpServerProvider {
 
   protected handlePing(): Record<string, never> {
     return {};
+  }
+
+  /**
+   * `server/discover` (spec 2026-07-28): the versions this server serves,
+   * modern first, and its capabilities. Every server MUST implement it; a
+   * client may call it before anything else, and a dual-era stdio client uses
+   * it as its probe.
+   */
+  protected handleDiscover(): McpDiscoverResult {
+    return {
+      supportedVersions: this.getSupportedVersions(),
+      capabilities: this.getCapabilities(),
+    };
   }
 
   // -----------------------------------------------------------------------------------------------------------------

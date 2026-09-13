@@ -39,8 +39,11 @@ const REQUIRED: Record<string, string[]> = {
     "listJobs",
     "triggerJob",
     "listExecutions",
+    "getExecution",
     "retryExecution",
     "cancelExecution",
+    "deleteExecution",
+    "deleteExecutions",
   ],
   AdminSessions: ["findSessions", "deleteSession", "deleteSessions"],
   AdminAnalytics: ["listDatasets", "queryDataset"],
@@ -139,18 +142,43 @@ describe("showcase admin fixtures", () => {
       listExecutions: (a: {
         params: { name: string };
         query: Record<string, unknown>;
-      }) => Promise<{ can: { retry: boolean; cancel: boolean } }[]>;
+      }) => Promise<{
+        content: {
+          id: string;
+          status: string;
+          can: { retry: boolean; cancel: boolean; delete: boolean };
+        }[];
+        page: { totalElements: number };
+      }>;
+      getExecution: (a: {
+        params: { id: string };
+      }) => Promise<{ id: string; payload?: unknown }>;
     };
-    const rows = await api.listExecutions({
-      params: { name: "ShowcaseJobs.sendDigest" },
-      query: {},
+    const page = await api.listExecutions({
+      params: { name: "digests.send-weekly" },
+      query: { page: 0, size: 100 },
     });
+    const rows = page.content;
 
-    // `can` is what decides whether a row offers retry or cancel, so the
-    // fixture has to contain at least one of each or those buttons are never
-    // shown on the site.
+    // `can` is what decides whether a row offers retry, cancel or delete, so
+    // the fixture has to contain at least one of each or those buttons are
+    // never shown on the site.
     expect(rows.some((r) => r.can.retry)).toBe(true);
     expect(rows.some((r) => r.can.cancel)).toBe(true);
+    expect(rows.some((r) => r.can.delete)).toBe(true);
+    expect(page.page.totalElements).toBe(rows.length);
+
+    // A list row carries no payload; the detail does.
+    expect(rows[0]).not.toHaveProperty("payload");
+    const detail = await api.getExecution({ params: { id: rows[0].id } });
+    expect(detail.payload).toBeDefined();
+
+    const errors = await api.listExecutions({
+      params: { name: "digests.send-weekly" },
+      query: { status: ["error"] },
+    });
+    expect(errors.content.length).toBeGreaterThan(0);
+    expect(errors.content.every((r) => r.status === "error")).toBe(true);
   });
 
   for (const action of LISTINGS) {

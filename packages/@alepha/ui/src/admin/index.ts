@@ -27,6 +27,7 @@ export {
   type AdminDashboardCountCardProps,
 } from "./AdminDashboardCountCard.tsx";
 export { AdminFiles } from "./AdminFiles.tsx";
+export { AdminJobDetail, type AdminJobDetailProps } from "./AdminJobDetail.tsx";
 export { AdminJobs } from "./AdminJobs.tsx";
 export { AdminKeys } from "./AdminKeys.tsx";
 export { AdminLayout } from "./AdminLayout.tsx";

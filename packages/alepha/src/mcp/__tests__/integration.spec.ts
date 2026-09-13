@@ -6,7 +6,7 @@ import {
   $resource,
   $tool,
   AlephaMcp,
-  MCP_PROTOCOL_VERSION,
+  MCP_LEGACY_PROTOCOL_VERSION,
   McpServerProvider,
 } from "../index.ts";
 
@@ -41,7 +41,7 @@ describe("MCP Integration", () => {
       id: 1,
       method: "initialize",
       params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "test", version: "1.0.0" },
       },
@@ -116,7 +116,7 @@ describe("MCP Integration", () => {
       id: 1,
       method: "initialize",
       params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "test", version: "1.0.0" },
       },
@@ -205,7 +205,7 @@ describe("MCP Integration", () => {
       id: 1,
       method: "initialize",
       params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "test", version: "1.0.0" },
       },
@@ -343,7 +343,7 @@ describe("MCP Integration", () => {
       id: 1,
       method: "initialize",
       params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "test", version: "1.0.0" },
       },

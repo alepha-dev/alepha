@@ -15,8 +15,8 @@ User notification management.
 **Features:**
 
 - Notification definitions (email/SMS templates)
-- Delivery via `$job` with retry and audit trail (`record: "all"` + no ring buffer trim)
-- Runtime-editable retention window via `$parameter` - purge cron respects it live
+- Delivery via `$job` with retry and an audit trail kept for `retentionDays`
+- Runtime-editable retention window via `$parameter` - the jobs trim reads it live
 - Admin API for inspecting sent notifications
 
 **Delivery mode** is decided at runtime by the `$job` system:

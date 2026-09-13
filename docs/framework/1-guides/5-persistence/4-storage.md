@@ -119,7 +119,7 @@ await this.images.deleteMany([id1, id2]); // batched where supported
 ## Expiry
 
 A storage-level `ttl` stamps `expirationDate` on every row it accepts. The
-`api:files:purgeFiles` cron job (registered by `AlephaApiFiles`) sweeps expired
+`system.files.purge-deleted` cron job (registered by `AlephaApiFiles`) sweeps expired
 rows and deletes their blobs. Override per upload with `ttl`, or set an exact
 `expirationDate`.
 

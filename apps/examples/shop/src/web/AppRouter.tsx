@@ -267,7 +267,7 @@ export class AppRouter {
 
   adminProduits = $pageAdmin({
     path: "/produits",
-    head: { title: "Produits · gestion" },
+    head: { title: "Produits" },
     nav: {
       label: <Tr k="admin.produits" />,
       icon: <Gem />,
@@ -294,7 +294,7 @@ export class AppRouter {
    */
   adminProduitDetail = $pageAdmin({
     path: "/produits/:productId",
-    head: { title: "Produit · gestion" },
+    head: { title: "Produit" },
     schema: { params: z.object({ productId: z.uuid() }) },
     can: () => this.productApi.commerceAdminProductGet.can(),
     lazy: () => import("./pages/admin/AdminProduitDetail.tsx"),
@@ -302,7 +302,7 @@ export class AppRouter {
 
   adminCommandes = $pageAdmin({
     path: "/commandes",
-    head: { title: "Commandes · gestion" },
+    head: { title: "Commandes" },
     nav: {
       label: <Tr k="admin.orders" />,
       icon: <Package />,
@@ -315,7 +315,7 @@ export class AppRouter {
 
   adminLivraison = $pageAdmin({
     path: "/livraison",
-    head: { title: "Livraison · gestion" },
+    head: { title: "Livraison" },
     nav: {
       label: <Tr k="admin.shipping" />,
       icon: <Truck />,
