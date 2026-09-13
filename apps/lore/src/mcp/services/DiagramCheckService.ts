@@ -1,6 +1,8 @@
-import { diagramKind } from "@alepha/ui/components/markdown-view/diagram/diagramKind.ts";
-import { parseFlowchart } from "@alepha/ui/components/markdown-view/diagram/flowchartParser.ts";
-import { parseSequence } from "@alepha/ui/components/markdown-view/diagram/sequenceParser.ts";
+import {
+  diagramKind,
+  parseFlowchart,
+  parseSequence,
+} from "@alepha/ui/markdown";
 
 /**
  * Checks the ` ```mermaid ` fences in markdown an agent just wrote, and says

@@ -1,11 +1,11 @@
-import { buttonVariants } from "@alepha/ui/components/ui/button";
 import {
+  buttonVariants,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
+} from "@alepha/ui";
 import { useAuth } from "alepha/react/auth";
 import { Link } from "alepha/react/router";
 import { KeyRound, ShieldCheck, SmartphoneNfc } from "lucide-react";

@@ -18,7 +18,7 @@ export * from "./controllers/AdminProductController.ts";
  *
  * `@alepha/ui` is a design system. Putting commerce screens in it would make the
  * design system depend on this domain, which is backwards. The existing
- * `admin-payments.tsx` lives there because `alepha/api/payments` is part of the
+ * `AdminPayments.tsx` lives there because `alepha/api/payments` is part of the
  * framework core; reproducing that from a satellite package would invert the
  * arrow. So the dependency runs `@alepha/commerce/admin` → `@alepha/ui`, and
  * never back.

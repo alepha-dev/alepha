@@ -36,9 +36,9 @@ export const WebModule = $module({
 
   return (
     `
-import { AccountRouter } from "@alepha/ui/components/account/account-router";
-import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
-import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
+import { AccountRouter } from "@alepha/ui/account";
+import { AdminRouter } from "@alepha/ui/admin";
+import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";

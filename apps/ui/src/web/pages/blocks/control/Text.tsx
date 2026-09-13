@@ -1,4 +1,4 @@
-import { Control } from "@alepha/ui/components/control/control";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 import { Globe, Mail } from "lucide-react";

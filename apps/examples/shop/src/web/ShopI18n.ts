@@ -1,6 +1,6 @@
 import { commerceEn } from "@alepha/commerce/lib/i18n-en";
 import { commerceFr } from "@alepha/commerce/lib/i18n-fr";
-import { uiFr } from "@alepha/ui/lib/i18n-fr";
+import { uiFr } from "@alepha/ui/i18n/fr";
 import { $dictionary } from "alepha/react/i18n";
 
 /**

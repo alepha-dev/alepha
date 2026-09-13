@@ -1,5 +1,5 @@
 import type { AdminProductController } from "@alepha/commerce/admin";
-import { AdminDashboardCountCard } from "@alepha/ui/components/admin/admin-dashboard-count-card";
+import { AdminDashboardCountCard } from "@alepha/ui/admin";
 import { useClient } from "alepha/react";
 import { Tr } from "alepha/react/i18n";
 import { Gem } from "lucide-react";

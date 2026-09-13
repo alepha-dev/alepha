@@ -8,17 +8,88 @@ import { $logger } from "alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { FileDetector } from "alepha/system";
 
+import type { HeadersRule } from "../interfaces/HeadersFile.ts";
 import type { StaticFileSource } from "../interfaces/StaticFileSource.ts";
 import { $serve, type ServePrimitiveOptions } from "../primitives/$serve.ts";
 import { DiskStaticFileSource } from "../services/DiskStaticFileSource.ts";
+import { HeadersFileReader } from "../services/HeadersFileReader.ts";
 
 export class ServerStaticProvider {
+  /**
+   * Files a host reads as configuration, never serves: `/_headers`,
+   * `/_redirects` and `/.assetsignore`. Hidden from a static server that
+   * applies `_headers`, as Cloudflare and Bay hide them.
+   */
+  public static readonly CONFIG_FILES: readonly string[] = [
+    "/_headers",
+    "/_redirects",
+    "/.assetsignore",
+  ];
+
+  /**
+   * What Cloudflare answers for a file no `_headers` rule caches, and so what
+   * every host answers once an app ships a `_headers`: keep it, and ask
+   * before using it again.
+   */
+  public static readonly DEFAULT_CACHE_CONTROL =
+    "public, max-age=0, must-revalidate";
+
   protected readonly alepha = $inject(Alepha);
   protected readonly routerProvider = $inject(ServerRouterProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly fileDetector = $inject(FileDetector);
+  protected readonly headersReader = $inject(HeadersFileReader);
   protected readonly log = $logger();
   protected readonly directories: ServeDirectory[] = [];
+
+  /**
+   * The `_headers` rules of every route a static server created with
+   * `headersFile`, keyed by the route object itself: it is the one thing
+   * `server:onResponse` hands back that says which server answered.
+   */
+  protected readonly headerRoutes = new WeakMap<
+    object,
+    { rules: HeadersRule[]; prefix: string }
+  >();
+
+  /**
+   * Apply `_headers` to a response of a static server that has one.
+   *
+   * ## ⚠️ A hook, `last`, and never inside the file handler
+   *
+   * `ServerHelmetProvider` fills in its security headers from a
+   * `server:onResponse` hook with `priority: "first"`, for every route,
+   * static files included, and only where a header is absent. A rule's
+   * `! X-Frame-Options` applied inside the handler would be put back by
+   * helmet a moment later. Here the provider's own headers and helmet's are
+   * the host defaults, and the rules go on top: Cloudflare's order.
+   *
+   * It covers every response those routes give: a file, the `index.html`
+   * alias, the history fallback, a 304, a redirect.
+   */
+  protected readonly applyHeaders = $hook({
+    on: "server:onResponse",
+    priority: "last",
+    handler: ({ route, request, response }) => {
+      const entry = this.headerRoutes.get(route);
+      if (!entry) {
+        return;
+      }
+      const redirect =
+        response.status >= 300 &&
+        response.status < 400 &&
+        response.status !== 304;
+      if (!redirect && !response.headers["cache-control"]) {
+        response.headers["cache-control"] =
+          ServerStaticProvider.DEFAULT_CACHE_CONTROL;
+      }
+      this.headersReader.apply(
+        entry.rules,
+        this.pathUnder(entry.prefix, request.url.pathname),
+        response.headers,
+      );
+    },
+  });
 
   protected readonly configure = $hook({
     on: "configure",
@@ -51,7 +122,36 @@ export class ServerStaticProvider {
     });
 
     // 1. every file of the source, precompressed siblings included
-    const files = await fileSource.list();
+    let files = await fileSource.list();
+
+    // `_headers`, read before anything is mounted, so an invalid file fails
+    // the boot instead of a request.
+    let rules: HeadersRule[] | undefined;
+    if (options.headersFile) {
+      files = files.filter(
+        (it) => !ServerStaticProvider.CONFIG_FILES.includes(it),
+      );
+      rules = await this.readHeadersFile(
+        fileSource,
+        source ? "_headers (embedded)" : `${options.root ?? "."}/_headers`,
+      );
+    }
+    // With rules, they decide what is cached; the extension-based header
+    // below would only be a second opinion answering differently from
+    // Cloudflare and Bay for the same file.
+    const fileOptions: ServePrimitiveOptions = rules
+      ? { ...options, cacheControl: false }
+      : options;
+    const mount = (route: {
+      silent?: boolean;
+      path: string;
+      handler: ServerHandler;
+    }) => {
+      this.routerProvider.createRoute(route);
+      if (rules) {
+        this.headerRoutes.set(route, { rules, prefix });
+      }
+    };
 
     // 2. create a $route for each file (yes, this could be a lot of routes)
     const routes = await Promise.all(
@@ -61,13 +161,17 @@ export class ServerStaticProvider {
         return {
           silent: options.silent,
           path: routePath,
-          handler: await this.createFileHandler(fileSource, urlPath, options),
+          handler: await this.createFileHandler(
+            fileSource,
+            urlPath,
+            fileOptions,
+          ),
         };
       }),
     );
 
     for (const route of routes) {
-      this.routerProvider.createRoute(route);
+      mount(route);
 
       // if route is for index.html, also create a route without it
       // e.g. /my/path/index.html -> /my/path/
@@ -75,7 +179,7 @@ export class ServerStaticProvider {
         options.indexFallback !== false &&
         route.path.endsWith("index.html")
       ) {
-        this.routerProvider.createRoute({
+        mount({
           silent: options.silent,
           path: route.path.replace(/index\.html$/, ""),
           handler: route.handler,
@@ -89,7 +193,7 @@ export class ServerStaticProvider {
     // bonus! for SPAs, handle history API fallback
     if (options.historyApiFallback) {
       // meaning all unmatched routes should serve index.html
-      this.routerProvider.createRoute({
+      mount({
         silent: options.silent,
         path: join(prefix, "*").replace(/\\/g, "/"),
         handler: async (request) => {
@@ -216,6 +320,54 @@ export class ServerStaticProvider {
       }
       return body;
     };
+  }
+
+  /**
+   * The rules of the source's `/_headers`, or `undefined` when it has none.
+   *
+   * Read through the source, never the disk directly: a compiled binary
+   * carries the file inside itself.
+   *
+   * @throws {AlephaError} naming the line, for a file that does not parse.
+   * The build validated it, so an invalid one is a hand-edited `dist`, and a
+   * server started from it would disagree with Cloudflare and Bay.
+   */
+  protected async readHeadersFile(
+    source: StaticFileSource,
+    label: string,
+  ): Promise<HeadersRule[] | undefined> {
+    if (!(await source.has("/_headers"))) {
+      return undefined;
+    }
+    const stream = await source.open("/_headers");
+    if (!stream) {
+      return undefined;
+    }
+    const decoder = new TextDecoder();
+    let text = "";
+    for await (const chunk of stream as AsyncIterable<Uint8Array | string>) {
+      text +=
+        typeof chunk === "string"
+          ? chunk
+          : decoder.decode(chunk, { stream: true });
+    }
+    text += decoder.decode();
+    const rules = this.headersReader.read(text, label);
+    this.log.debug(`Applying ${rules.length} _headers rules`, { label });
+    return rules;
+  }
+
+  /**
+   * A request path relative to the prefix a static server is mounted under,
+   * still percent-encoded: `/static/app.js` under `/static` is `/app.js`.
+   */
+  protected pathUnder(prefix: string, pathname: string): string {
+    const base = prefix.replace(/\/+$/, "");
+    if (base === "" || !pathname.startsWith(base)) {
+      return pathname;
+    }
+    const rest = pathname.slice(base.length);
+    return rest.startsWith("/") ? rest : `/${rest}`;
   }
 
   /**

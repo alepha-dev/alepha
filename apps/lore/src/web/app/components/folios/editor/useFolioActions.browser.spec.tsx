@@ -2,7 +2,7 @@
 // component whose only job is to hand the hook's return value back to the
 // assertion, so the writes to the enclosing `let` are the measurement, not a
 // side effect the component depends on.
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { DialogProvider } from "@alepha/ui";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";

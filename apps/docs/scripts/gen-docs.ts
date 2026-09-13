@@ -516,45 +516,72 @@ export class DocsCommand {
   ): Promise<ModuleData> {
     const notSpec = (n: string) =>
       !/\.(spec|browser)\.tsx?$/.test(n) && !n.endsWith(".browser.ts");
-    const [description, primitives, hooks, providers, channels, envVars] =
-      await Promise.all([
-        // Try index.ts then Alepha.ts for @module description
-        this.extractModuleDescription(join(sourcePath, "index.ts")).then(
-          (r) =>
-            r ?? this.extractModuleDescription(join(sourcePath, "Alepha.ts")),
-        ),
-        this.readDir(
-          join(sourcePath, "primitives"),
-          (n) => n.startsWith("$") && notSpec(n),
-          (p) => this.extractPrimitiveDoc(p, srcDir, importMap, false),
-        ),
-        this.readDir(
-          join(sourcePath, "hooks"),
-          (n) => n.startsWith("use") && notSpec(n),
-          (p) => this.extractPrimitiveDoc(p, srcDir, importMap, true),
-        ),
-        this.readDir(
-          join(sourcePath, "providers"),
-          (n) => notSpec(n),
-          (p) => this.extractProviderInfo(p, srcDir, importMap),
-        ),
-        // `channels/` holds the same kind of thing as `providers/`: an
-        // abstract class an application or a plugin implements. Without it
-        // `NotificationChannel` - the whole extension point of the
-        // notifications module - had no reference page at all, and an
-        // extension point nobody can find is not one.
-        this.readDir(
-          join(sourcePath, "channels"),
-          (n) => notSpec(n),
-          (p) => this.extractProviderInfo(p, srcDir, importMap),
-        ),
-        this.getEnvInfo(sourcePath),
-      ]);
-
-    return {
+    // A flat module (`@alepha/ui`'s: `src/core/useIsMobile.ts`, no `hooks/`)
+    // keeps its hooks and primitives beside its `index.ts`. Only the files
+    // that barrel re-exports are public, so only those get a page: a private
+    // `useJobStatusLabels` beside `AdminRouter` is layout, not API.
+    const barrel = await fs
+      .readFile(join(sourcePath, "index.ts"), "utf-8")
+      .catch(() => "");
+    const exportedHere = (n: string) =>
+      notSpec(n) && barrel.includes(`"./${n.replace(/\.tsx?$/, "")}.ts`);
+    const [
       description,
       primitives,
       hooks,
+      providers,
+      channels,
+      envVars,
+      flatPrimitives,
+      flatHooks,
+    ] = await Promise.all([
+      // Try index.ts then Alepha.ts for @module description
+      this.extractModuleDescription(join(sourcePath, "index.ts")).then(
+        (r) =>
+          r ?? this.extractModuleDescription(join(sourcePath, "Alepha.ts")),
+      ),
+      this.readDir(
+        join(sourcePath, "primitives"),
+        (n) => n.startsWith("$") && notSpec(n),
+        (p) => this.extractPrimitiveDoc(p, srcDir, importMap, false),
+      ),
+      this.readDir(
+        join(sourcePath, "hooks"),
+        (n) => n.startsWith("use") && notSpec(n),
+        (p) => this.extractPrimitiveDoc(p, srcDir, importMap, true),
+      ),
+      this.readDir(
+        join(sourcePath, "providers"),
+        (n) => notSpec(n),
+        (p) => this.extractProviderInfo(p, srcDir, importMap),
+      ),
+      // `channels/` holds the same kind of thing as `providers/`: an
+      // abstract class an application or a plugin implements. Without it
+      // `NotificationChannel` - the whole extension point of the
+      // notifications module - had no reference page at all, and an
+      // extension point nobody can find is not one.
+      this.readDir(
+        join(sourcePath, "channels"),
+        (n) => notSpec(n),
+        (p) => this.extractProviderInfo(p, srcDir, importMap),
+      ),
+      this.getEnvInfo(sourcePath),
+      this.readDir(
+        sourcePath,
+        (n) => n.startsWith("$") && exportedHere(n),
+        (p) => this.extractPrimitiveDoc(p, srcDir, importMap, false),
+      ),
+      this.readDir(
+        sourcePath,
+        (n) => /^use[A-Z]/.test(n) && exportedHere(n),
+        (p) => this.extractPrimitiveDoc(p, srcDir, importMap, true),
+      ),
+    ]);
+
+    return {
+      description,
+      primitives: [...primitives, ...flatPrimitives],
+      hooks: [...hooks, ...flatHooks],
       providers: [...providers, ...channels],
       envVars,
     };
@@ -741,13 +768,14 @@ export class DocsCommand {
   }
 
   /**
-   * Hand-written overview for packages that carry no `@module` block.
+   * A package's hand-written overview, from the `DOC.md` at its root.
    *
-   * Component libraries like `@alepha/ui` export files directly instead of
-   * registering a `$module`, so there is nothing for {@link collectModuleData}
-   * to read. A `DOC.md` at the package root fills that gap: it becomes the
-   * package page on the docs site, the `## Overview` of the generated README,
-   * and - through both - an entry in `llms.txt`.
+   * {@link collectModuleData} documents what a module exports; it cannot say
+   * how the modules fit together or how to start. `DOC.md` does: it becomes
+   * the package's overview page on the docs site (beside its module pages, or
+   * the whole page when no module carries an `@module` block), the
+   * `## Overview` of the generated README, and - through both - an entry in
+   * `llms.txt`.
    */
   async readPackageDoc(packagePath: string): Promise<string | null> {
     try {
@@ -960,9 +988,22 @@ export class DocsCommand {
               stats.packages++;
             }
 
+            // Documented modules AND a `DOC.md`: the modules each get a page
+            // and the `DOC.md` becomes the package's overview beside them.
+            // Without this a package's hand-written overview left the site
+            // the moment its first module grew an `@module` block, surviving
+            // only in the README (`@alepha/ui` and `@alepha/lore` both).
+            // `0-` sorts it first in the package's directory.
+            if (written > 0 && doc) {
+              await fs.writeFile(
+                join(pkgDocsDir, "0-overview.md"),
+                this.generatePackagePage(pkgJson, realPkgName, doc),
+                "utf-8",
+              );
+            }
+
             // No module carried an `@module` block, so the directory would be
-            // left empty (`@alepha/ui` exports components, not a `$module`).
-            // Fall back to `DOC.md` as a single flat page.
+            // left empty. Fall back to `DOC.md` as a single flat page.
             if (written === 0) {
               await fs.rm(pkgDocsDir, { recursive: true, force: true });
               if (doc) {

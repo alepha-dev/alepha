@@ -1,0 +1,983 @@
+import * as React from "react";
+
+import { cn } from "../core/utils.ts";
+
+void React;
+
+import { Link, NestedView } from "alepha/react/router";
+import { useSidebarState } from "alepha/react/ui";
+import {
+  ChevronRight,
+  Lock,
+  Minus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+} from "lucide-react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+import { Fragment, useState } from "react";
+
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "../core/Breadcrumb.tsx";
+import { Button } from "../core/Button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../core/DropdownMenu.tsx";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../core/HoverCard.tsx";
+import { Separator } from "../core/Separator.tsx";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  useSidebar,
+} from "../core/Sidebar.tsx";
+import { Toaster } from "../core/Toaster.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../core/Tooltip.tsx";
+import { DialogProvider } from "../core/useDialog.tsx";
+import {
+  ActionErrorToaster,
+  type ActionErrorToasterProps,
+} from "./ActionErrorToaster.tsx";
+import {
+  NavigationProgress,
+  type NavigationProgressOptions,
+} from "./NavigationProgress.tsx";
+
+/**
+ * Re-exported: the bar moved to its own module so it can be mounted at an
+ * application root, but the option type is part of {@link AppShellProps}
+ * and was importable from here first.
+ */
+export type { NavigationProgressOptions };
+
+const StatefulSidebarTrigger = () => {
+  const { toggleSidebar, isMobile, openMobile, state } = useSidebar();
+  const open = isMobile ? openMobile : state === "expanded";
+  const Icon = open ? PanelLeftClose : PanelLeftOpen;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggleSidebar}
+      aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
+      className="size-8"
+    >
+      <Icon className="size-4" />
+    </Button>
+  );
+};
+
+/**
+ * Closes the mobile nav sheet when a link inside it is followed.
+ *
+ * On a phone the sidebar is a `Sheet` driven by `openMobile`. Tapping a nav
+ * entry navigated and left the sheet up, so the destination page rendered
+ * behind an overlay the reader had to dismiss by hand (feedback #2077, at
+ * 491x929).
+ *
+ * ⚠️ One handler on the container, not a callback on each nav item. The links
+ * inside that sheet are `SidebarNavItem`'s leaf, `NavDropdownItems`, the group
+ * children, the brand slot's project switcher and every app's own sidebar
+ * footer - a per-item `onClick` covers whichever of those someone remembers
+ * today and silently misses the next one added. A capture listener on the
+ * container covers them all, including the ones no `@alepha/ui` file knows
+ * about, because it asks what the DOM event actually landed on.
+ *
+ * It reacts to ANCHORS only. The switcher, the disclosure toggles and the
+ * dropdown triggers in there are buttons that open something inside the sheet,
+ * and closing it under them would break the control rather than fix it.
+ */
+export const SidebarNavAutoClose = (props: { children: ReactNode }) => {
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  // The desktop sidebar is not a sheet and `openMobile` does not drive it, so
+  // this branch is not just an optimisation: running the handler there would
+  // be a state write on every nav click for no reason. Collapsing the desktop
+  // rail on navigation would be a new bug, not this fix.
+  if (!isMobile) return props.children;
+
+  return (
+    // Capture, so the sheet closes even when the link's own handler stops
+    // propagation on the way back up.
+    <div
+      data-slot="sidebar-nav-auto-close"
+      className="flex h-full w-full flex-col"
+      onClickCapture={(event) => {
+        const anchor = (event.target as HTMLElement | null)?.closest?.("a");
+        if (!(anchor instanceof HTMLAnchorElement)) return;
+
+        // Nothing here navigates the page the sheet is covering, so the sheet
+        // has no reason to move: a placeholder `#` (the locked nav rows use
+        // `item.href ?? "#"`), a download, a new tab, or a modified click that
+        // the browser opens elsewhere.
+        const href = anchor.getAttribute("href");
+        if (!href || href === "#" || href.startsWith("#")) return;
+        if (anchor.hasAttribute("download")) return;
+        if (anchor.target && anchor.target !== "_self") return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+
+        setOpenMobile(false);
+      }}
+    >
+      {props.children}
+    </div>
+  );
+};
+
+type IconType = ComponentType<SVGProps<SVGSVGElement>>;
+
+export interface NavItem {
+  label: ReactNode;
+  /**
+   * Required for leaf items. Ignored when `children` is provided (the parent becomes a toggle group).
+   */
+  href?: string;
+  /**
+   * Either an icon *component* (e.g. a lucide `Users`) which is instantiated
+   * with the row's sizing className, or an already-rendered ReactNode element
+   * (e.g. `<Users />`). The latter lets nav metadata declared on a `$page`
+   * (which is pure React) carry its icon as a node — see `useNavTree`.
+   */
+  icon?: IconType | ReactNode;
+  /**
+   * When provided, renders as the active marker. Compare against current path.
+   */
+  active?: boolean;
+  /**
+   * Nested items. When set, the parent becomes a collapsible group.
+   */
+  children?: NavItem[];
+  /**
+   * Initial open state for groups. Defaults to true if any descendant is active.
+   */
+  defaultOpen?: boolean;
+  /**
+   * Optional trailing badge (e.g. unread count). Hidden when the sidebar is collapsed to icons.
+   */
+  badge?: ReactNode;
+  /**
+   * When true the item is rendered muted, navigation is blocked, and the
+   * `tooltip` (if any) explains why. Use for paywalled / unavailable entries.
+   */
+  disabled?: boolean;
+  /**
+   * Hover tooltip shown on the row regardless of sidebar state. When the
+   * item is `disabled`, this is the explanation surface (HoverCard, with
+   * room to breathe). When the item is enabled, it surfaces as a regular
+   * Tooltip on the trigger.
+   */
+  tooltip?: ReactNode;
+}
+
+function hasActiveDescendant(item: NavItem): boolean {
+  if (item.active) return true;
+  return (item.children ?? []).some(hasActiveDescendant);
+}
+
+/**
+ * The one open branch of the nav tree, when `navAccordion` is on.
+ *
+ * A single path rather than a set of open ids, because "one group open" has to
+ * mean one group open PER LEVEL: a nested group closing its own parent to open
+ * itself would be a bug, not exclusivity. A path says both things at once - a
+ * group is open exactly when its path is a prefix of this one, so opening a
+ * sibling replaces the path (the sibling closes) while opening a child extends
+ * it (the parent stays).
+ *
+ * Paths are indices into `nav`: `[groupIndex, itemIndex, ...childIndex]`.
+ */
+interface NavAccordion {
+  openPath: number[];
+  setOpenPath: (path: number[]) => void;
+}
+
+function isOpenPathPrefix(path: number[], openPath: number[]): boolean {
+  if (path.length === 0 || path.length > openPath.length) return false;
+  return path.every((index, depth) => openPath[depth] === index);
+}
+
+function samePath(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((index, i) => b[i] === index);
+}
+
+/**
+ * The path the accordion should be showing: the DEEPEST group holding the
+ * active page, or failing that the first group asking for `defaultOpen`.
+ *
+ * Computed here, from the tree, rather than reported upwards by the item that
+ * notices it is active. An item cannot set its parent's state during render
+ * (React refuses to update another component mid-render), and doing it in an
+ * effect costs a frame of the wrong group being open on every navigation.
+ */
+function findOpenPath(nav: NavGroup[]): number[] {
+  let fallback: number[] = [];
+
+  const walk = (item: NavItem, path: number[]): number[] | undefined => {
+    const children = item.children ?? [];
+    if (children.length === 0) return undefined;
+    for (let ci = 0; ci < children.length; ci++) {
+      const deeper = walk(children[ci]!, [...path, ci]);
+      if (deeper) return deeper;
+    }
+    if (hasActiveDescendant(item)) return path;
+    if (fallback.length === 0 && item.defaultOpen) fallback = path;
+    return undefined;
+  };
+
+  for (let gi = 0; gi < nav.length; gi++) {
+    const items = nav[gi]?.items ?? [];
+    for (let ii = 0; ii < items.length; ii++) {
+      const found = walk(items[ii]!, [gi, ii]);
+      if (found) return found;
+    }
+  }
+  return fallback;
+}
+
+/**
+ * Render a NavItem icon. An already-created element (e.g. `<Users />`, which
+ * `React.isValidElement` recognises) is returned as-is; anything else is
+ * treated as a component *type* — including lucide's `forwardRef` icons, which
+ * are objects rather than plain functions — and instantiated with the row's
+ * sizing className.
+ */
+function renderNavIcon(icon: NavItem["icon"], className: string): ReactNode {
+  if (icon == null || icon === false) return null;
+  if (React.isValidElement(icon)) {
+    // Already an element (e.g. `<Users />`): clone it to apply the row's sizing
+    // className so element icons render at the same size as component icons,
+    // merging with any className the caller already set.
+    const existing = (icon.props as { className?: string })?.className;
+    return React.cloneElement(
+      icon as React.ReactElement<{ className?: string }>,
+      {
+        className: existing ? `${existing} ${className}` : className,
+      },
+    );
+  }
+  const Icon = icon as IconType;
+  return <Icon className={className} />;
+}
+
+/**
+ * The open/close animation for a nav group.
+ *
+ * `grid-template-rows: 0fr -> 1fr` on a wrapper whose child is
+ * `overflow: hidden`. That is the one way to transition to an INTRINSIC
+ * height in CSS alone: `height: auto` is not interpolable, so the usual
+ * alternatives are a hardcoded max-height (which either clips a long group or
+ * makes a short one crawl through empty space) or measuring the subtree in an
+ * effect (a layout read on every toggle, and a frame of the wrong height).
+ *
+ * ⚠️ The children stay MOUNTED while closed, which is what makes the height
+ * animatable, so something has to do what unmounting used to: clipped content
+ * is invisible but still focusable and still read aloud. `inert` does it, and
+ * it is the right tool rather than `visibility: hidden` because it needs no
+ * animation of its own - the clipping already hides the group, so the only
+ * job left is taking it out of the tab order and the a11y tree, which is a
+ * state rather than a transition.
+ *
+ * `min-h-0` on the inner element is load-bearing, not tidiness: a grid item's
+ * automatic minimum size is its content, so without it the row never shrinks
+ * below the subtree's natural height and nothing appears to animate.
+ */
+const NavCollapse = (props: {
+  open: boolean;
+  animate: boolean;
+  children: ReactNode;
+}) => (
+  <div
+    data-state={props.open ? "open" : "closed"}
+    inert={!props.open}
+    className={cn(
+      "grid grid-rows-[0fr] data-[state=open]:grid-rows-[1fr]",
+      props.animate &&
+        "transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+    )}
+  >
+    <div className="min-h-0 overflow-hidden">{props.children}</div>
+  </div>
+);
+
+const SidebarNavItem = (props: {
+  item: NavItem;
+  /**
+   * This item's position in `nav`, used only by the accordion. See
+   * {@link NavAccordion}.
+   */
+  path: number[];
+  /**
+   * Present when `navAccordion` is on, and then it OWNS the open state: the
+   * local `useState` below is still declared (hooks cannot be conditional) but
+   * nothing reads it.
+   */
+  accordion?: NavAccordion;
+  /**
+   * `navAnimate`, threaded down so a nested group animates like its parent.
+   */
+  animate: boolean;
+  /**
+   * `navToggleIcon`, threaded down for the same reason.
+   */
+  toggleIcon: "caret" | "plusMinus";
+}) => {
+  const { item, path, accordion, animate, toggleIcon } = props;
+  const { state, isMobile } = useSidebar();
+  const children = item.children;
+  const isGroup = !!children && children.length > 0;
+  const hasActive = isGroup && hasActiveDescendant(item);
+  const [localOpen, setLocalOpen] = useState(item.defaultOpen ?? hasActive);
+  // Reveal a collapsed group when navigation makes one of its descendants
+  // active — SPA nav, spotlight (⌘K), breadcrumb, or a deep-link that doesn't
+  // remount this item (useState's initializer runs only at mount, so without
+  // this the group stays stuck closed and the active page is hidden — petition
+  // #4). Only OPENS; never auto-collapses, so a manual toggle is preserved.
+  //
+  // Accordion mode does the same job in `AppShell` instead, from the tree, and
+  // skips this: the state lives there, and a child cannot write it mid-render.
+  const [wasActive, setWasActive] = useState(hasActive);
+  if (!accordion && hasActive !== wasActive) {
+    setWasActive(hasActive);
+    if (hasActive) setLocalOpen(true);
+  }
+
+  const open = accordion
+    ? isOpenPathPrefix(path, accordion.openPath)
+    : localOpen;
+
+  // Closing means handing the branch back to this item's PARENT, not clearing
+  // it: a nested group that closed itself by emptying the path would collapse
+  // every ancestor along with it.
+  const toggle = () => {
+    if (accordion) {
+      accordion.setOpenPath(open ? path.slice(0, -1) : path);
+    } else {
+      setLocalOpen((v) => !v);
+    }
+  };
+
+  if (!isGroup) {
+    // Disabled rows render with a muted, dashed-border treatment plus a
+    // Lock affordance on the trailing edge. Clicks are swallowed. When a
+    // `tooltip` is provided, the row opens a HoverCard dropdown on hover
+    // so the explanation has space to breathe regardless of sidebar
+    // state.
+    if (item.disabled) {
+      // Bypass SidebarMenuButton — it self-wraps in a Tooltip when given
+      // a `tooltip` prop, which would swallow the HoverCard pointer
+      // events. A plain styled <div> keeps cursor-not-allowed and lets
+      // the row act as the HoverCard trigger.
+      const row = (
+        <div
+          aria-disabled="true"
+          className="border-muted-foreground/40 bg-muted/40 text-muted-foreground flex h-8 w-full items-center gap-2 rounded-md border border-dashed px-2 text-sm"
+          style={{ cursor: "not-allowed" }}
+        >
+          {renderNavIcon(item.icon, "size-4 shrink-0")}
+          <span className="flex-1 truncate text-left">{item.label}</span>
+          <Lock className="size-3.5 shrink-0 opacity-70" />
+        </div>
+      );
+      return (
+        <SidebarMenuItem>
+          {item.tooltip ? (
+            <HoverCard>
+              <HoverCardTrigger render={row} />
+              <HoverCardContent side="right" align="start" className="text-sm">
+                {item.tooltip}
+              </HoverCardContent>
+            </HoverCard>
+          ) : (
+            row
+          )}
+        </SidebarMenuItem>
+      );
+    }
+
+    const link = (
+      <SidebarMenuButton
+        isActive={item.active}
+        tooltip={typeof item.label === "string" ? item.label : undefined}
+        render={<Link href={item.href ?? "#"} />}
+      >
+        {renderNavIcon(item.icon, "size-4")}
+        <span>{item.label}</span>
+      </SidebarMenuButton>
+    );
+
+    const row = item.tooltip ? (
+      <Tooltip>
+        <TooltipTrigger render={link} />
+        <TooltipContent side="right">{item.tooltip}</TooltipContent>
+      </Tooltip>
+    ) : (
+      link
+    );
+
+    return (
+      <SidebarMenuItem>
+        {row}
+        {item.badge != null && item.badge !== false && (
+          <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+        )}
+      </SidebarMenuItem>
+    );
+  }
+
+  // Collapsed to icons, the expanded branch below is a dead button: it still
+  // flips `open`, but what `open` reveals is a `SidebarMenuSub`, which carries
+  // `group-data-[collapsible=icon]:hidden`. The group has no `href` either, so
+  // there is no fallback — every child is simply unreachable. A dropdown is the
+  // standard answer, and it belongs here rather than in any one app because
+  // this hits EVERY `NavItem` with children.
+  //
+  // Mobile is excluded: it uses the sheet, not icon mode, so the sub renders
+  // normally there.
+  if (isGroup && state === "collapsed" && !isMobile) {
+    return (
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              // No `tooltip` here on purpose. `SidebarMenuButton` turns itself
+              // into a `TooltipTrigger` when given one, and layering the
+              // dropdown trigger on top makes hover and click fight over the
+              // same element. The menu names itself with a label instead.
+              //
+              // `hasActive` joins `item.active` so the trigger still reads as
+              // current when a descendant is — collapsed, it is the only clue
+              // which group holds the open page.
+              <SidebarMenuButton isActive={item.active || hasActive} />
+            }
+          >
+            {renderNavIcon(item.icon, "size-4")}
+            <span className="flex-1 text-left">{item.label}</span>
+            <ChevronRight className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" className="min-w-48">
+            {/*
+              The group wrapper is required, not cosmetic: `DropdownMenuLabel`
+              is Base UI's `Menu.GroupLabel`, which reads `MenuGroupContext` and
+              THROWS outside a `Menu.Group`. Nothing types this — the label
+              compiles fine, and the whole app-shell crashes at the first click
+              on the trigger, because the throw happens when the menu opens
+              rather than when it mounts.
+            */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{item.label}</DropdownMenuLabel>
+              <NavDropdownItems items={children} />
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        onClick={toggle}
+        isActive={item.active}
+        tooltip={typeof item.label === "string" ? item.label : undefined}
+      >
+        {renderNavIcon(item.icon, "size-4")}
+        <span className="flex-1 text-left">{item.label}</span>
+        {/*
+          Plus and minus are SWAPPED, never rotated: a plus turned 45° is a
+          close button, which is a different promise. The caret is the one
+          that turns, and it stays the default because it is what every app
+          using this shell already had.
+        */}
+        {toggleIcon === "plusMinus" ? (
+          open ? (
+            <Minus className="size-4" />
+          ) : (
+            <Plus className="size-4" />
+          )
+        ) : (
+          <ChevronRight
+            className={`size-4 transition-transform ${open ? "rotate-90" : ""}`}
+          />
+        )}
+      </SidebarMenuButton>
+      <NavCollapse open={open} animate={animate}>
+        <SidebarMenuSub>
+          {children.map((child, ci) => (
+            <SidebarMenuSubItem key={child.href ?? ci}>
+              {child.children && child.children.length > 0 ? (
+                <SidebarNavItem
+                  item={child}
+                  path={[...path, ci]}
+                  accordion={accordion}
+                  animate={animate}
+                  toggleIcon={toggleIcon}
+                />
+              ) : (
+                <SidebarMenuSubButton
+                  isActive={child.active}
+                  render={<Link href={child.href ?? "#"} />}
+                >
+                  {renderNavIcon(child.icon, "size-4")}
+                  <span>{child.label}</span>
+                </SidebarMenuSubButton>
+              )}
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      </NavCollapse>
+    </SidebarMenuItem>
+  );
+};
+
+/**
+ * The children of a collapsed nav group, as dropdown entries.
+ *
+ * Recurses through nested groups via `DropdownMenuSub` — `SidebarNavItem`
+ * recurses into itself for depth-2 groups in the expanded tree, and without the
+ * matching recursion here a nested group would be dead again one level down,
+ * which is the very bug this branch exists to fix.
+ *
+ * Badges are carried inline. `SidebarMenuBadge` is
+ * `group-data-[collapsible=icon]:hidden`, so a collapsed sidebar drops every
+ * count — and the count is usually why you opened the group.
+ */
+const NavDropdownItems = (props: { items: NavItem[] }) => {
+  return (
+    <>
+      {props.items.map((child, ci) => {
+        const badge = child.badge != null && child.badge !== false && (
+          <span className="text-muted-foreground ml-auto pl-2 text-xs tabular-nums">
+            {child.badge}
+          </span>
+        );
+
+        if (child.children && child.children.length > 0) {
+          return (
+            <DropdownMenuSub key={child.href ?? ci}>
+              <DropdownMenuSubTrigger>
+                {renderNavIcon(child.icon, "size-4")}
+                <span>{child.label}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <NavDropdownItems items={child.children} />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        }
+
+        if (child.disabled) {
+          return (
+            <DropdownMenuItem key={child.href ?? ci} disabled>
+              {renderNavIcon(child.icon, "size-4")}
+              <span>{child.label}</span>
+              <Lock className="ml-auto size-3.5 opacity-70" />
+            </DropdownMenuItem>
+          );
+        }
+
+        return (
+          <DropdownMenuItem
+            key={child.href ?? ci}
+            render={<Link href={child.href ?? "#"} />}
+          >
+            {renderNavIcon(child.icon, "size-4")}
+            <span>{child.label}</span>
+            {badge}
+          </DropdownMenuItem>
+        );
+      })}
+    </>
+  );
+};
+
+export interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+export interface AppShellProps {
+  /**
+   * Branding shown at the top of the sidebar.
+   */
+  brand?: ReactNode;
+  /**
+   * Sidebar navigation groups.
+   */
+  nav?: NavGroup[];
+  /**
+   * Keep at most ONE nav group open at a time. Defaults to `true`.
+   *
+   * Opening a group closes the one that was open beside it, the way an
+   * accordion does. Exclusivity is per level, so a nested group opens inside
+   * its parent rather than replacing it, and the open branch always runs from
+   * the root to the deepest open group.
+   *
+   * On means the sidebar owns the open state, so `NavItem.defaultOpen` seeds
+   * the branch rather than opening a group of its own: the first item asking
+   * for it wins, and only when nothing is active. Pass `false` for the older
+   * behaviour, where every group keeps its own state and any number can be
+   * open at once.
+   *
+   * ⚠️ Nothing changes in the icon rail. Collapsed to icons a group is a
+   * dropdown, and one dropdown at a time is already all a menu can do.
+   */
+  navAccordion?: boolean;
+  /**
+   * Slide a nav group open and shut instead of swapping it in. Defaults to
+   * `true`.
+   *
+   * `false` is a snap, not a shorter animation: an app that wants a different
+   * duration or curve should style
+   * `[data-slot=sidebar-menu-item] [data-state]` rather than turn this off.
+   *
+   * ⚠️ Honours `prefers-reduced-motion` on its own, so this is not the switch
+   * for accessibility. It exists for a shell embedded somewhere that owns its
+   * own motion, and for a test that would rather not wait 200ms.
+   */
+  navAnimate?: boolean;
+  /**
+   * Which glyph a collapsible nav group carries. Defaults to `"caret"`.
+   *
+   * - `"caret"` - a chevron that turns a quarter clockwise when the group
+   *   opens. One glyph, and the rotation is the state.
+   * - `"plusMinus"` - a plus when shut, a minus when open. Two glyphs that
+   *   name the two states outright, where a caret only points and leaves the
+   *   reader to learn which direction means open.
+   *
+   * ⚠️ Nothing in the icon rail. Collapsed, a group is a dropdown that opens
+   * to the RIGHT, so its chevron is a direction rather than a state and there
+   * is no minus that could answer it.
+   */
+  navToggleIcon?: "caret" | "plusMinus";
+  /**
+   * Content rendered at the bottom of the sidebar (user menu, etc.).
+   */
+  sidebarFooter?: ReactNode;
+  /**
+   * Breadcrumb crumbs (last one is rendered as the current page).
+   */
+  breadcrumbs?: { label: ReactNode; href?: string }[];
+  /**
+   * Top-bar right-side content (search, theme toggle, user menu).
+   */
+  topbarActions?: ReactNode;
+  /**
+   * Layout variant.
+   * - `sidebar` (default): sidebar and page sit flush side-by-side.
+   * - `inset`: sidebar uses the global background; the page is a rounded card with margin.
+   * - `floating`: the page uses the global background; the sidebar is a rounded card with margin.
+   */
+  variant?: "sidebar" | "floating" | "inset";
+  /**
+   * When `variant="inset"`, lift the header out of the floating card so it
+   * sits on the sidebar background — only the main page becomes the card.
+   * Has no effect on other variants.
+   */
+  headerOutside?: boolean;
+  /**
+   * Top loading bar shown during route transitions.
+   * `true` (default) enables it with default styling, `false` disables it,
+   * or pass an options object to customize.
+   */
+  progress?: boolean | NavigationProgressOptions;
+  /**
+   * Page content. Defaults to `<NestedView />` (renders the active route).
+   */
+  children?: ReactNode;
+  /**
+   * Surface failed `useAction` / `useQuery` calls as a toast (via the
+   * `react:action:error` event). `true` (default) enables it, `false`
+   * disables it, or pass an options object to configure
+   * (see {@link ActionErrorToasterProps}). Ignored when `embedded` (the
+   * parent layout owns the toaster).
+   */
+  actionErrorToaster?: boolean | ActionErrorToasterProps;
+  /**
+   * When `true`, the shell assumes it is mounted inside an outer provider tree
+   * and skips its own `<DialogProvider>` and `<Toaster />` wrappers. Use this
+   * when a parent layout already provides them.
+   */
+  embedded?: boolean;
+  /**
+   * When `true`, the shell fills its parent container instead of the viewport
+   * (`min-h-svh`). Use when a parent layout owns the height (e.g. when a
+   * sticky footer sits below the shell).
+   */
+  fill?: boolean;
+  /**
+   * Extra classes for the scrolling `<main>` element.
+   *
+   * Exists so an app can paint its own page surface (Lore stamps a dot
+   * texture there) without every other consumer of the shell inheriting it.
+   * Layout classes are applied after this, so a caller cannot break the
+   * flex/overflow contract described above.
+   */
+  mainClassName?: string;
+}
+
+/**
+ * Standard SaaS layout: collapsible sidebar + topbar with breadcrumbs.
+ * Built on shadcn `<Sidebar>` + `<Breadcrumb>`.
+ */
+export const AppShell = (props: AppShellProps) => {
+  const { collapsed, setCollapsed } = useSidebarState();
+  const nav = props.nav ?? [];
+
+  // The accordion's one open branch. Held here because exclusivity is a
+  // question about SIBLINGS, and no nav item can see its own.
+  const navAccordion = props.navAccordion ?? true;
+  const navAnimate = props.navAnimate ?? true;
+  const navToggleIcon = props.navToggleIcon ?? "caret";
+  const wantedOpenPath = findOpenPath(nav);
+  const [openPath, setOpenPath] = useState(wantedOpenPath);
+  // Follow the active page. Set during render of THIS component, which is the
+  // supported way to react to changed input without a wasted frame; the same
+  // pattern a nav item uses for its own state when the accordion is off.
+  // Only ever opens: `findOpenPath` returns an empty path when nothing is
+  // active and nothing asked for `defaultOpen`, and adopting that would slam
+  // the branch shut on every navigation to a top-level page.
+  const [lastWanted, setLastWanted] = useState(wantedOpenPath);
+  if (!samePath(wantedOpenPath, lastWanted)) {
+    setLastWanted(wantedOpenPath);
+    if (wantedOpenPath.length > 0) setOpenPath(wantedOpenPath);
+  }
+  const variant = props.variant ?? "sidebar";
+  const progress = props.progress ?? true;
+  const headerOutside = !!props.headerOutside && variant === "inset";
+
+  const headerNode = (
+    <header
+      className={
+        headerOutside
+          ? "bg-sidebar flex h-14 shrink-0 items-center gap-2 px-4"
+          : "bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4"
+      }
+    >
+      {/* This bar is one non-wrapping flex line, and on a Lore project page it
+          carries the trigger, a separator, the breadcrumbs, a split button,
+          the search button and four header icons: about 470px of content in
+          373px at phone width. Nothing here used to be marked as the one that
+          must survive, so the overflow fell off the RIGHT end and took the
+          theme, colour-mode and account controls with it — off-screen, with no
+          horizontal scroll to reach them and no menu they collapse into.
+
+          So everything on the row is `shrink-0` with exactly one exception:
+          the breadcrumbs, which are the one thing repeated in the page below
+          and can therefore afford to give way. They truncate while there is
+          still something to read, and below `sm` they are dropped outright
+          rather than left as an unreadable sliver. */}
+      <div className="flex shrink-0 items-center">
+        <StatefulSidebarTrigger />
+        <Separator orientation="vertical" className="mx-2" />
+      </div>
+      {props.breadcrumbs && props.breadcrumbs.length > 0 && (
+        <Breadcrumb className="min-w-0 overflow-hidden max-sm:hidden">
+          {/* `flex-nowrap`: the list wraps by default, and a second line in an
+              `h-14` bar is drawn outside it. */}
+          <BreadcrumbList className="flex-nowrap">
+            {props.breadcrumbs.map((crumb, i) => {
+              const last = i === props.breadcrumbs!.length - 1;
+              return (
+                <Fragment key={i}>
+                  <BreadcrumbItem className="min-w-0">
+                    {last || !crumb.href ? (
+                      <BreadcrumbPage className="truncate">
+                        {crumb.label}
+                      </BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink
+                        className="truncate"
+                        render={<Link href={crumb.href} />}
+                      >
+                        {crumb.label}
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {!last && <BreadcrumbSeparator className="shrink-0" />}
+                </Fragment>
+              );
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
+      <div className="flex-1" />
+      {/* Wrapped rather than spread straight into the header: the actions have
+          to be one `shrink-0` unit, and they keep the `gap-2` the header was
+          giving them. */}
+      <div className="flex shrink-0 items-center gap-2">
+        {props.topbarActions}
+      </div>
+    </header>
+  );
+
+  const mainNode = (
+    // Layout contract for `fill: true` pages:
+    //   parent (`h-svh`) → SidebarProvider (`h-full`) → SidebarInset → main
+    //   - main is `flex flex-col min-h-0 flex-1` so its children can
+    //     claim the leftover height via `flex-1 min-h-0`.
+    //   - main itself is `overflow-hidden` (not `overflow-auto`) so the
+    //     table's inner `overflow-auto` is the actual scroll surface —
+    //     header stays sticky, body scrolls, no page-level scrollbar.
+    //   - For non-fill pages there's no height bound, so this collapses
+    //     to "scroll whatever overflows" without further config.
+    //
+    // `relative` is load-bearing in BOTH branches, and it is the whole of
+    // #1849: an `overflow` declared on a STATIC element does not clip an
+    // absolutely positioned descendant whose containing block resolves above
+    // it. Base UI gives every named form control a 1×1 hidden `<input>`
+    // styled `position: absolute` with no offsets, so on a page whose fields
+    // live inside an inner scroller each of those inputs escaped this `main`,
+    // resolved against the positioned `SidebarInset` and pinned the document
+    // open at its own static offset — a page that scrolled 1271px into empty
+    // background beneath a shell that had not moved. Positioning `main` makes
+    // its overflow bound real, whatever a page renders inside it.
+    <main
+      className={cn(
+        props.mainClassName,
+        "relative",
+        props.fill
+          ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+          : "flex-1 overflow-auto",
+      )}
+    >
+      {props.children ?? <NestedView />}
+    </main>
+  );
+  const renderBody = () => (
+    <>
+      {progress !== false && (
+        <NavigationProgress {...(progress === true ? {} : progress)} />
+      )}
+      <SidebarProvider
+        open={!collapsed}
+        onOpenChange={(o: boolean) => setCollapsed(!o)}
+        // `fill` = a parent owns the height (e.g. a full-width banner above
+        // the shell). The desktop sidebar is `fixed inset-y-0 h-svh` (pinned
+        // to the VIEWPORT), so it would overlap whatever sits above the
+        // shell — re-anchor it to this wrapper instead (absolute within the
+        // now-relative provider, height from the wrapper). The arbitrary
+        // selectors out-specify the base `.fixed`/`.h-svh` utilities.
+        className={
+          props.fill
+            ? "relative h-full min-h-0 [&_[data-slot=sidebar-container]]:absolute [&_[data-slot=sidebar-container]]:h-auto"
+            : undefined
+        }
+      >
+        <Sidebar collapsible="icon" variant={variant}>
+          {/* Wraps the WHOLE sidebar, brand slot and footer included, because
+              the links that leave this sheet are not only the nav items - the
+              project switcher lives in `brand` and each app puts its own
+              links in `sidebarFooter`. */}
+          <SidebarNavAutoClose>
+            <SidebarHeader>{props.brand}</SidebarHeader>
+            <SidebarContent>
+              {nav.map((group, gi) => (
+                <SidebarGroup key={gi}>
+                  {group.label && (
+                    <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                  )}
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.items.map((item, ii) => (
+                        <SidebarNavItem
+                          key={item.href ?? `${gi}-${ii}`}
+                          item={item}
+                          path={[gi, ii]}
+                          accordion={
+                            navAccordion ? { openPath, setOpenPath } : undefined
+                          }
+                          animate={navAnimate}
+                          toggleIcon={navToggleIcon}
+                        />
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ))}
+            </SidebarContent>
+            {props.sidebarFooter && (
+              <SidebarFooter>{props.sidebarFooter}</SidebarFooter>
+            )}
+          </SidebarNavAutoClose>
+        </Sidebar>
+        {headerOutside ? (
+          <div className="bg-sidebar flex flex-1 flex-col">
+            {headerNode}
+            <div className="bg-background m-2 mt-0 flex flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
+              {mainNode}
+            </div>
+          </div>
+        ) : (
+          <SidebarInset
+            className={
+              variant === "inset"
+                ? "border md:peer-data-[variant=inset]:overflow-hidden"
+                : undefined
+            }
+          >
+            {headerNode}
+            {mainNode}
+          </SidebarInset>
+        )}
+      </SidebarProvider>
+    </>
+  );
+
+  if (props.embedded) {
+    return renderBody();
+  }
+
+  const errorToaster = props.actionErrorToaster ?? true;
+
+  return (
+    <DialogProvider>
+      <TooltipProvider>
+        {renderBody()}
+        <Toaster />
+        {errorToaster !== false && (
+          <ActionErrorToaster
+            {...(typeof errorToaster === "object" ? errorToaster : {})}
+          />
+        )}
+      </TooltipProvider>
+    </DialogProvider>
+  );
+};

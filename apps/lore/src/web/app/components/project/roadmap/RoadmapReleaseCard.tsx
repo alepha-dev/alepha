@@ -1,4 +1,4 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
+import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 

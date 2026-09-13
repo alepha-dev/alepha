@@ -1,10 +1,13 @@
 import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "@alepha/lore/sigil";
-import { Control } from "@alepha/ui/components/control/control";
-import { FileImage } from "@alepha/ui/components/file-image/file-image";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
+import {
+  FileImage,
+  Button,
+  Card,
+  CardContent,
+  useToast,
+  UserAvatar,
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";

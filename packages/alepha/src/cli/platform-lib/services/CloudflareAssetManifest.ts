@@ -65,6 +65,47 @@ export class CloudflareAssetManifest {
   }
 
   /**
+   * Whether a manifest key names one of the files Cloudflare reads as
+   * configuration rather than serves: `/_headers`, `/_redirects` and
+   * `/.assetsignore`, at the root of the assets directory only.
+   *
+   * ## ⚠️ Uploaded as an asset, the file is published and never applied
+   *
+   * wrangler leaves these three out of the upload (its default ignore list in
+   * `createAssetsIgnoreFunction`, anchored at the root) and sends the text of
+   * `_headers` and `_redirects` as `metadata.assets.config`. A deploy that
+   * lists them in the manifest instead serves `https://<site>/_headers` as a
+   * page with the file's text, and applies none of its rules. That is what
+   * `alepha.dev` did from 2026-09-08 to epic #E49.
+   */
+  public isConfigFile(key: string): boolean {
+    return CloudflareAssetManifest.CONFIG_FILES.includes(key);
+  }
+
+  /**
+   * The field of the asset config a configuration file's text travels under,
+   * or `undefined` for a file whose text goes nowhere.
+   *
+   * `/.assetsignore` answers `undefined`: wrangler reads it locally to extend
+   * its ignore list and never sends it.
+   */
+  public configField(key: string): "_headers" | "_redirects" | undefined {
+    if (key === "/_headers") {
+      return "_headers";
+    }
+    if (key === "/_redirects") {
+      return "_redirects";
+    }
+    return undefined;
+  }
+
+  protected static readonly CONFIG_FILES: readonly string[] = [
+    "/_headers",
+    "/_redirects",
+    "/.assetsignore",
+  ];
+
+  /**
    * wrangler's `hashFile`, reproduced.
    */
   public hash(bytes: Uint8Array, path: string): string {

@@ -1,4 +1,4 @@
-import { AdminParameters } from "@alepha/ui/components/admin/admin-parameters";
+import { AdminParameters } from "@alepha/ui/admin";
 
 import { Showcase } from "@/web/components/Showcase.tsx";
 

@@ -1,4 +1,4 @@
-import { Toaster } from "@alepha/ui/components/ui/sonner";
+import { Toaster } from "@alepha/ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";

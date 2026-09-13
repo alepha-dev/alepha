@@ -1,4 +1,4 @@
-import { AdminNotifications } from "@alepha/ui/components/admin/admin-notifications";
+import { AdminNotifications } from "@alepha/ui/admin";
 
 import { Showcase } from "@/web/components/Showcase.tsx";
 

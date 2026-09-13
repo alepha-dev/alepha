@@ -1,4 +1,4 @@
-import { AuthVerifyEmail } from "@alepha/ui/components/auth/auth-verify-email";
+import { AuthVerifyEmail } from "@alepha/ui/auth";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

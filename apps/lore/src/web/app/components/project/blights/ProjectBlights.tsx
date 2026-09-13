@@ -1,16 +1,16 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import {
+  FilterSlot,
+  TimeAgo,
+  Badge,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useDialog,
+  useToast,
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

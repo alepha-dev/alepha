@@ -478,6 +478,74 @@ describe("the worker-side Cloudflare adapter", () => {
       });
     });
 
+    /**
+     * ⚠️ **`_headers` uploaded as an asset is published and applies nothing.**
+     * `https://alepha.dev/_headers` answered 200 with the file's own text from
+     * 2026-09-08, while every rule in it was ignored: a chunk revalidated on
+     * every load and the HTML carried no HSTS. wrangler leaves the three names
+     * out of the upload and sends the two texts as `assets.config`; so must
+     * this adapter (epic #E49).
+     */
+    it("sends _headers and _redirects as asset config, and none of the three config files as assets", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      await fs.writeFile(
+        "/deploy/dist/public/_headers",
+        "/*\n  X-Content-Type-Options: nosniff\n",
+      );
+      await fs.writeFile("/deploy/dist/public/_redirects", "/old /new 301\n");
+      await fs.writeFile("/deploy/dist/public/.assetsignore", "*.map\n");
+      // Only at the root: a nested `_headers` is an ordinary file to wrangler.
+      await fs.writeFile("/deploy/dist/public/nested/_headers", "not config");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      const assets = calls[0]!.assets;
+      expect(Object.keys(assets.manifest).sort()).toEqual([
+        "/asset.abc.css",
+        "/nested/_headers",
+        "/nested/logo.svg",
+      ]);
+      expect(assets.config).toEqual({
+        not_found_handling: "404-page",
+        run_worker_first: ["/api/*"],
+        _headers: "/*\n  X-Content-Type-Options: nosniff\n",
+        _redirects: "/old /new 301\n",
+      });
+    });
+
+    it("merges the texts a runner supplies into the config, rather than replacing them", async ({
+      expect,
+    }) => {
+      // ⚠️ The injected branch used to answer `{ ...injected, config:
+      // assetConfig(config) }`, which overwrote whatever the runner had put in
+      // `config`: `DeployRunner` would have caught `_headers` off the archive
+      // and the upload would still have carried none.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      adapter.useAssets({
+        manifest: { "/index.html": { hash: "a".repeat(32), size: 1 } },
+        read: async () => new Uint8Array([1]),
+        config: { _headers: "/*\n  X-Frame-Options: DENY\n" },
+      });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      const assets = calls[0]!.assets;
+      expect(Object.keys(assets.manifest)).toEqual(["/index.html"]);
+      expect(assets.config).toEqual({
+        not_found_handling: "404-page",
+        run_worker_first: ["/api/*"],
+        _headers: "/*\n  X-Frame-Options: DENY\n",
+      });
+    });
+
     it("sends no assets for an app that has none", async ({ expect }) => {
       // An API-only Worker has no `public/` and no `assets` block, and must
       // not open an upload session for an empty manifest.

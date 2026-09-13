@@ -1,7 +1,6 @@
-import { AccountRouter } from "@alepha/ui/components/account/account-router";
-import { accountRouterOptionsAtom } from "@alepha/ui/components/account/account-router-options";
-import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
-import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
+import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
+import { AdminRouter } from "@alepha/ui/admin";
+import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";

@@ -1,4 +1,4 @@
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { AutoForm } from "@alepha/ui/form";
 import { jsonSchemaToZod, z } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";

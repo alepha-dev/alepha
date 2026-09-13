@@ -1,4 +1,4 @@
-import AccountKeys from "@alepha/ui/components/account/account-keys";
+import { AccountKeys } from "@alepha/ui/account";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

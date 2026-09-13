@@ -1,31 +1,25 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import {
+  Input,
+  Label,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
+} from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";

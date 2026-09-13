@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
+import { Button, UserAvatar } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";

@@ -130,6 +130,26 @@ export class ServerHelmetProvider {
     return this.buildHeadersFromConfig(this.options);
   }
 
+  /**
+   * The headers this provider adds to a response, for a host that serves the
+   * app's files without passing them through it.
+   *
+   * `alepha build` writes them into the `/*` rule of `dist/public/_headers`,
+   * which Cloudflare's asset store and Bay apply to every file they answer
+   * themselves. Empty when helmet is `disabled`.
+   *
+   * HSTS is always included when configured: the scheme check in
+   * {@link onResponse} is a per-request decision a file cannot make, and a
+   * browser ignores `Strict-Transport-Security` received over plain HTTP
+   * anyway (RFC 6797, section 8.1).
+   */
+  public getHeaders(): Record<string, string> {
+    if (this.options.disabled) {
+      return {};
+    }
+    return this.buildHeaders();
+  }
+
   protected buildHeadersFromConfig(
     config: HelmetOptions,
   ): Record<string, string> {

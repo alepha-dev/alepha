@@ -1,4 +1,4 @@
-import { AdminUsers } from "@alepha/ui/components/admin/admin-users";
+import { AdminUsers } from "@alepha/ui/admin";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";
