@@ -50,8 +50,10 @@ export interface SecureOptions {
    * Require a signed-in session: refuse an identity authenticated by a
    * machine credential, whatever it may otherwise do.
    *
-   * A machine credential is not a session. An API key may read, and call the
-   * permission-checked actions its roles and scope allow, but a route that
+   * A machine credential is not a session. An API key, or the access token a
+   * connected app obtained through the OAuth authorization server (trusted
+   * first-party clients included), may read, and call the permission-checked
+   * actions its roles and scope allow, but a route that
    * mints or revokes credentials, approves an OAuth grant, or changes the
    * account is something a person does from a signed-in session. Declare this
    * on every such route: in the framework, the key-minting routes and every

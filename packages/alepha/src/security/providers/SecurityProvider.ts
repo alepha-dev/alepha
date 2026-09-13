@@ -603,6 +603,9 @@ export class SecurityProvider {
     const lastName =
       typeof payload.family_name === "string" ? payload.family_name : undefined;
     const organization = this.getOrganizationFromPayload(payload);
+    const credential = realmName
+      ? this.getCredentialFromPayload(payload)
+      : undefined;
     const rolesFromSystem = this.getRoles(realmName);
     const roles = rolesFromPayload
       .reduce<Role[]>(
@@ -614,7 +617,11 @@ export class SecurityProvider {
 
     const realm = this.realms.find((it) => it.name === realmName);
     if (realm?.profile) {
-      return realm.profile(payload);
+      // Set after the custom mapping, never left to it: a profile function
+      // written before the marker existed would otherwise turn a connected
+      // app's token back into a session.
+      const account = realm.profile(payload);
+      return credential ? { ...account, credential } : account;
     }
 
     return {
@@ -628,7 +635,28 @@ export class SecurityProvider {
       picture,
       organization,
       sessionId,
+      credential,
     };
+  }
+
+  /**
+   * The machine credential an access token of this realm carries, if any.
+   *
+   * A `client_id` claim (the name RFC 9068 gives it) marks a token issued to
+   * an OAuth client: a connected app, not a person signed in. `$issuer`
+   * signs it, so a client cannot strip it.
+   *
+   * Only read from a realm's own tokens: `createUserFromPayload` without a
+   * realm maps an external identity provider's profile, whose claims are not
+   * ours to interpret.
+   */
+  protected getCredentialFromPayload(
+    payload: Record<string, any>,
+  ): UserAccount["credential"] {
+    if (typeof payload.client_id === "string" && payload.client_id !== "") {
+      return { type: "oauth", clientId: payload.client_id };
+    }
+    return undefined;
   }
 
   /**

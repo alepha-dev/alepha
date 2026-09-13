@@ -84,7 +84,8 @@ export const userAccountInfoSchema = z.object({
   credential: userCredentialSchema
     .describe(
       "The machine credential this identity was authenticated by (an API " +
-        "key). Absent on a signed-in session. A route declaring " +
+        "key, or a connected app's OAuth access token). Absent on a " +
+        "signed-in session. A route declaring " +
         "`$secure({ sessionOnly: true })` refuses any identity carrying one.",
     )
     .optional(),

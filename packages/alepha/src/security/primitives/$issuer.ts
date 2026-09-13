@@ -343,8 +343,9 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
     },
     context?: {
       /**
-       * OAuth client id to tag a freshly created session with. Only used
-       * on the `onCreateSession` path (no `refreshToken` passed).
+       * OAuth client the token is issued to. Tags a freshly created session
+       * with it (the `onCreateSession` path), and is signed into the access
+       * token as its `client_id` claim on every path, creation and refresh.
        */
       clientId?: string;
     },
@@ -411,6 +412,18 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
     // `viska.club.alepha.dev` even when the user belongs to both.
     const tenant = this.alepha.store.get(currentTenantAtom)?.id;
 
+    // A token issued to an OAuth client says so, and keeps saying so: the
+    // claim is what makes a connected app's identity a machine credential
+    // rather than a session (see `SecureOptions.sessionOnly`). Read from the
+    // context on creation and on a session-backed refresh, and from the user
+    // itself when it was rebuilt from such a token, so re-minting an OAuth
+    // identity can never launder it into a session.
+    const clientId =
+      context?.clientId ??
+      (user.credential?.type === "oauth"
+        ? user.credential.clientId
+        : undefined);
+
     // Resilient display name: compose from first/last when the caller didn't
     // provide one (credentials users register with first+last but no `name`),
     // and carry the OIDC given/family claims so consumers can re-derive it —
@@ -442,6 +455,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         organization: user.organization,
         roles: user.roles,
         tenant,
+        client_id: clientId,
       },
       this.name,
       // Marks this JWT as the only kind that may be presented as a Bearer.
@@ -480,12 +494,20 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       const { user, expiresIn, sessionId, clientId } =
         await this.options.settings.onRefreshSession(refreshToken);
 
-      // then, create a new access token
-      const tokens = await this.createToken(user, {
-        sid: sessionId,
-        refresh_token: refreshToken,
-        refresh_token_expires_in: expiresIn,
-      });
+      // then, create a new access token. The client comes back from the
+      // session row: without it, the first refresh of a connected app's token
+      // would mint one without its `client_id` claim, which is to say a
+      // session. Both refresh routes (`/oauth/token` and `/_auth/refresh`)
+      // end here, which is why the claim is set here and not in either.
+      const tokens = await this.createToken(
+        user,
+        {
+          sid: sessionId,
+          refresh_token: refreshToken,
+          refresh_token_expires_in: expiresIn,
+        },
+        { clientId },
+      );
 
       return { user, tokens, clientId };
     }
