@@ -711,14 +711,23 @@ test.describe("Releases", () => {
 
     await page.goto(`/${slug}/releases`);
 
+    // ⚠️ The column index is read off the header rather than hardcoded. It
+    // was `td[1]` until bulk delete (#Q2288) gave this table its first
+    // checkbox column, which moved every cell one to the right, so a fixed
+    // index would read the State chip instead of the tag. The Epics spec hit
+    // the same shift with feedback #2086. A throw is deliberate: a missing
+    // header must fail loudly rather than read `td[-1]` as every row empty.
     const tagColumn = async () =>
-      await page
-        .locator("tbody tr")
-        .evaluateAll((rows) =>
-          rows.map(
-            (row) => row.querySelectorAll("td")[1]?.textContent?.trim() ?? "",
-          ),
+      await page.locator("table").evaluate((table) => {
+        const headers = [...table.querySelectorAll("thead th")];
+        const index = headers.findIndex(
+          (th) => th.textContent?.trim() === "Release",
         );
+        if (index < 0) throw new Error("no Release column in the header");
+        return [...table.querySelectorAll("tbody tr")].map(
+          (row) => row.querySelectorAll("td")[index]?.textContent?.trim() ?? "",
+        );
+      });
 
     await test.step("the tag column orders by version, not by creation or as text", async () => {
       // Scoped to `thead`: the toolbar's "New Release" action is on this page
