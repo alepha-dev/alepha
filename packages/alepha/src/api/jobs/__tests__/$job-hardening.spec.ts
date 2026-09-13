@@ -1428,7 +1428,7 @@ describe("$job — trim is proportional to the work done", () => {
   });
 });
 
-describe("$job — rows of unregistered jobs are purged", () => {
+describe("$job: rows of unregistered jobs are purged", () => {
   const statuses = [
     "pending",
     "scheduled",

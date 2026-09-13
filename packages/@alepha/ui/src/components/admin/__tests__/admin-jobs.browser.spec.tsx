@@ -167,7 +167,7 @@ describe("AdminJobs", () => {
     for (const name of ["deploys.run", "images.make-thumbnail"]) {
       const row = rowOf(name);
       expect(row.querySelector("code")).toBeNull();
-      expect(row.textContent).not.toMatch(/[—–]/);
+      expect(row.textContent).not.toMatch(/[\u2013\u2014]/);
     }
   });
 

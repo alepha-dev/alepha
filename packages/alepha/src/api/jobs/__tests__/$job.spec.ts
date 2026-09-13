@@ -1551,7 +1551,7 @@ describe("$job — admin resource shape", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — naming", () => {
+describe("$job: naming", () => {
   const register = (name: string, description: string) => {
     const alepha = makeAppDirect();
     class NamingApp {

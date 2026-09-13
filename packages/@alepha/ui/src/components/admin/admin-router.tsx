@@ -34,7 +34,7 @@ import { createElement } from "react";
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
- * The whole `/admin` surface — thirteen pages and their shell — mounted and wired.
+ * The whole `/admin` surface, thirteen pages and their shell, mounted and wired.
  *
  * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
  * them back to JSX.** This module is evaluated *eagerly* in the server graph:

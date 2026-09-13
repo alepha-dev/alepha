@@ -160,7 +160,7 @@ const boot = async () => {
   };
 };
 
-describe("AdminJobController — executions page", () => {
+describe("AdminJobController: executions page", () => {
   it("pages newest created first by default, with a total, and without payload or logs", async ({
     expect,
   }) => {
@@ -306,7 +306,7 @@ describe("AdminJobController — executions page", () => {
   });
 });
 
-describe("AdminJobController — deleting executions", () => {
+describe("AdminJobController: deleting executions", () => {
   it("deletes one finished execution", async ({ expect }) => {
     const { service, app, ids } = await boot();
 

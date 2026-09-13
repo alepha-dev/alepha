@@ -91,7 +91,7 @@ const idsOf = async (
     .map((r) => r.id)
     .sort();
 
-describe("$job retention — registration", () => {
+describe("$job retention: registration", () => {
   const refused = [
     ["an empty rule", { ok: {} }, /neither 'last' nor 'days'/],
     ["last of 0", { ok: { last: 0 } }, /at least 1/],
@@ -140,7 +140,7 @@ describe("$job retention — registration", () => {
   });
 });
 
-describe("$job retention — defaults by cadence", () => {
+describe("$job retention: defaults by cadence", () => {
   const cases = [
     ["*/5 * * * *", "frequent", 12],
     ["*/15 * * * *", "frequent", 12],
@@ -260,7 +260,7 @@ describe("$job retention — defaults by cadence", () => {
   });
 });
 
-describe("$job retention — the trim", () => {
+describe("$job retention: the trim", () => {
   it("a daily cron keeps its last 7 successes", async ({ expect }) => {
     const alepha = boot().with(TestRepo);
     class DailyApp {
@@ -461,7 +461,7 @@ describe("$job retention — the trim", () => {
   });
 });
 
-describe("$job retention — the run paths honour false", () => {
+describe("$job retention: the run paths honour false", () => {
   it("a queue failure writes nothing when failures are not recorded", async ({
     expect,
   }) => {

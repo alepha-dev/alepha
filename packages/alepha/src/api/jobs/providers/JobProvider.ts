@@ -419,7 +419,7 @@ export class JobProvider {
    *
    * **Two paths depending on `retry`:**
    *
-   * - **No `retry`** — runs the handler inline, then writes one terminal row
+   * - **No `retry`**: runs the handler inline, then writes one terminal row
    *   for the outcome, when the job's retention records that status. The
    *   "next tick" is the implicit retry.
    * - **`retry` declared** — enqueues a synthetic execution row and hands
