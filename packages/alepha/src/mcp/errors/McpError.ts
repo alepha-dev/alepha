@@ -6,11 +6,26 @@ import {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * MCP-specific error codes (application-specific codes in the -32000 to -32099 range).
+ * Alepha's own MCP error codes: application codes, for purposes the MCP
+ * specification does not define.
+ *
+ * Deliberately outside the JSON-RPC reserved range `-32768..-32000`, per the
+ * 2026-07-28 error-code policy (`basic/index`, "Error Codes"): new
+ * implementations SHOULD NOT emit codes in the legacy `-32000..-32019`
+ * sub-range and receivers MUST NOT assume a meaning for them, `-32020..-32099`
+ * belongs to the specification alone, and an application code SHOULD be
+ * allocated outside the reserved range altogether.
+ *
+ * They were `-32001` and `-32003`, which are also exactly what a pre-release
+ * draft of 2026-07-28 gave `HeaderMismatch` and
+ * `MissingRequiredClientCapability`: a client built against that draft would
+ * read a permission refusal as a header error. The trailing digits are kept
+ * so the old mapping stays obvious. The codes the specification does define
+ * are in `McpProtocolErrorCodes`.
  */
 export const McpErrorCodes = {
-  UNAUTHORIZED: -32001,
-  FORBIDDEN: -32003,
+  UNAUTHORIZED: -31001,
+  FORBIDDEN: -31003,
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------------

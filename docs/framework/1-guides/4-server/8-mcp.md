@@ -479,13 +479,18 @@ Available error classes:
 
 | Error                      | Code   | When to use                                                                                  |
 | -------------------------- | ------ | -------------------------------------------------------------------------------------------- |
-| `McpUnauthorizedError`     | -32001 | Missing or invalid credentials                                                               |
-| `McpForbiddenError`        | -32003 | Authenticated but not allowed                                                                |
+| `McpUnauthorizedError`     | -31001 | Missing or invalid credentials                                                               |
+| `McpForbiddenError`        | -31003 | Authenticated but not allowed                                                                |
 | `McpToolNotFoundError`     | -32602 | Unknown tool name                                                                            |
 | `McpResourceNotFoundError` | -32602 | Unknown resource URI                                                                         |
 | `McpPromptNotFoundError`   | -32602 | Unknown prompt name                                                                          |
 | `McpInvalidParamsError`    | -32602 | Bad parameters                                                                               |
 | `McpToolOutputError`       | -32603 | A tool returned a value violating its own `schema.result` (server raised, not thrown by you) |
+
+The two permission codes sit outside the JSON-RPC reserved range
+(`-32768..-32000`) on purpose: MCP 2026-07-28 reserves that range for JSON-RPC
+and for codes the MCP specification itself defines. They were `-32001` and
+`-32003` before.
 
 Unknown names are `-32602 Invalid params`, not `-32601 Method not found`:
 `-32601` says the _method_ `tools/call` does not exist, which a client can read
