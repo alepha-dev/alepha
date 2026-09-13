@@ -59,6 +59,28 @@ export class ApiKeyService {
   protected revocationEpoch = 0;
 
   /**
+   * When a usage write was last scheduled for each key, in this isolate.
+   *
+   * Consulted before `defer()` so a request inside the interval schedules
+   * nothing at all. It cannot be the cached row's `lastUsedAt`: `$cache`
+   * hands back a copy frozen at the moment the row was read, whose age only
+   * grows, so a throttle reading it would write on every cache hit, which is
+   * the write this exists to remove.
+   *
+   * Per-isolate, like the cache and the revocation epoch, so it needs no
+   * invalidation: a cold isolate writes once and then throttles. An id only
+   * lands here after its key validated, and the map is capped at
+   * {@link maxUsageScheduleEntries}, dropping the least recently written.
+   */
+  protected readonly usageScheduledAt = new Map<string, number>();
+
+  /**
+   * How many keys {@link usageScheduledAt} remembers. Past it the least
+   * recently written key is forgotten, which costs that key one early write.
+   */
+  protected readonly maxUsageScheduleEntries = 10_000;
+
+  /**
    * Mark a revocation boundary. Called on both sides of the write so any
    * validation whose read spans it declines to cache its result.
    */
@@ -529,8 +551,14 @@ export class ApiKeyService {
     // stop, and logs a failure. The IP is resolved now, so the deferred task
     // depends on nothing but its arguments. The caller's `ip` comes first:
     // the store holds no request yet when the resolver calls this.
-    const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
-    this.background.defer(() => this.updateUsage(apiKey.id, clientIp));
+    //
+    // Throttled to one write per key per `usageWriteIntervalMinutes`, decided
+    // here rather than inside `updateUsage`, so a throttled request hands the
+    // provider (and `waitUntil`) nothing.
+    if (this.shouldRecordUsage(apiKey.id)) {
+      const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
+      this.background.defer(() => this.updateUsage(apiKey.id, clientIp));
+    }
 
     // The marker is what tells every route downstream that this identity is
     // a machine credential and not a signed-in session.
@@ -539,6 +567,41 @@ export class ApiKeyService {
       roles,
       credential: { type: "api-key", id: apiKey.id },
     };
+  }
+
+  /**
+   * Whether this validation schedules a usage write, recording the moment
+   * when it does.
+   *
+   * Recorded when the write is scheduled, not when it finishes: a write that
+   * fails then suppresses the next one for an interval, which is the right
+   * trade for an approximate counter and keeps completion out of the map.
+   * `usageWriteIntervalMinutes: 0` writes on every call, as before.
+   */
+  protected shouldRecordUsage(apiKeyId: string): boolean {
+    const intervalMinutes = this.parameters.get("usageWriteIntervalMinutes");
+    if (intervalMinutes === 0) {
+      return true;
+    }
+
+    const now = this.dateTimeProvider.nowMillis();
+    const last = this.usageScheduledAt.get(apiKeyId);
+    if (last !== undefined && now - last < intervalMinutes * 60 * 1000) {
+      return false;
+    }
+
+    // Re-inserted so the Map's insertion order is least recently written
+    // first, which is what the cap below evicts.
+    this.usageScheduledAt.delete(apiKeyId);
+    this.usageScheduledAt.set(apiKeyId, now);
+    if (this.usageScheduledAt.size > this.maxUsageScheduleEntries) {
+      const oldest = this.usageScheduledAt.keys().next();
+      if (!oldest.done) {
+        this.usageScheduledAt.delete(oldest.value);
+      }
+    }
+
+    return true;
   }
 
   /**
