@@ -759,6 +759,112 @@ export class ApiKeyService {
     return true;
   }
 
+  // -------------------------------------------------------------------------
+  // Retention
+  // -------------------------------------------------------------------------
+
+  /**
+   * Most batches one purge window deletes per run.
+   *
+   * A cap, not a drain, for the same reason as the session purge
+   * (`UserJobs.maxBatchesPerRun`): the day retention is switched on in an
+   * application that has minted keys for a year, the first run meets the
+   * whole backlog, and on Cloudflare D1's free plan a run past the daily
+   * row-write limit fails everything until midnight UTC. The next run takes
+   * the rest.
+   */
+  protected readonly maxPurgeBatchesPerRun = 10;
+
+  /**
+   * Rows one purge batch selects and deletes: 1000, or fewer when the driver
+   * binds fewer parameters per statement (90 on D1).
+   */
+  protected purgeBatchSize(): number {
+    return Math.min(1000, this.repo.provider.maxBoundParameters - 10);
+  }
+
+  /**
+   * Delete the keys past their retention window, and say how many each
+   * window took.
+   *
+   * Two windows, applied independently, each disabled by `0`:
+   * `purgeRevokedAfterDays` from `revokedAt`, then `purgeExpiredAfterDays`
+   * from `expiresAt`. A key matching either is deleted, and counted under the
+   * first window that took it. An active key matches neither, however old.
+   *
+   * No validation cache invalidation, deliberately: every purged key was
+   * already refused by `validate()` on its `revokedAt` or `expiresAt`, so a
+   * cached copy of it authenticates nothing, and a purged row's hash simply
+   * stops being found. A loop invalidating every purged hash would add a
+   * cache round trip per row for no change in what any request gets.
+   */
+  public async purgeDeadKeys(): Promise<{ expired: number; revoked: number }> {
+    const now = this.dateTimeProvider.nowMillis();
+    const dayMillis = 24 * 60 * 60 * 1000;
+    const revokedDays = this.parameters.get("purgeRevokedAfterDays");
+    const expiredDays = this.parameters.get("purgeExpiredAfterDays");
+
+    const revoked =
+      revokedDays > 0
+        ? await this.purgeInBatches({
+            revokedAt: {
+              lt: new Date(now - revokedDays * dayMillis).toISOString(),
+            },
+          })
+        : 0;
+
+    const expired =
+      expiredDays > 0
+        ? await this.purgeInBatches({
+            expiresAt: {
+              lt: new Date(now - expiredDays * dayMillis).toISOString(),
+            },
+          })
+        : 0;
+
+    if (revoked + expired > 0) {
+      this.log.info("Dead API keys purged", { expired, revoked });
+    }
+
+    return { expired, revoked };
+  }
+
+  /**
+   * Delete the keys matching `where` in bounded batches, oldest first:
+   * select ids with a limit, delete by id, stop at a short batch or at
+   * {@link maxPurgeBatchesPerRun}. Two statements per batch because
+   * `deleteMany` takes no limit and PostgreSQL has no `DELETE ... LIMIT`.
+   */
+  protected async purgeInBatches(
+    where: PgQueryWhere<typeof apiKeyEntity.schema>,
+  ): Promise<number> {
+    const size = this.purgeBatchSize();
+    let deleted = 0;
+
+    for (let batch = 0; batch < this.maxPurgeBatchesPerRun; batch++) {
+      const rows = await this.repo.findMany({
+        where,
+        columns: ["id"],
+        limit: size,
+        orderBy: { column: "createdAt", direction: "asc" },
+      });
+      if (rows.length === 0) {
+        break;
+      }
+
+      await this.repo.deleteMany({
+        id: { inArray: rows.map((row) => row.id) },
+      });
+      deleted += rows.length;
+
+      if (rows.length < size) {
+        break;
+      }
+    }
+
+    return deleted;
+  }
+
   /**
    * Update usage statistics for an API key.
    *

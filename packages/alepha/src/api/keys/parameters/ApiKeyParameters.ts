@@ -38,6 +38,10 @@ export const apiKeyOptions = $atom({
     /**
      * Days an expired key stays visible before the purge job deletes it,
      * measured from `expiresAt`. `0` disables this window.
+     *
+     * An expired key keeps its name until it is rotated (the renewal path) or
+     * purged: the `(userId, name)` unique index covers every key that is not
+     * revoked. At `0`, an expired key holds its name forever.
      */
     purgeExpiredAfterDays: z
       .integer()
@@ -48,6 +52,8 @@ export const apiKeyOptions = $atom({
     /**
      * Days a revoked key stays visible before the purge job deletes it,
      * measured from `revokedAt`. `0` disables this window.
+     *
+     * Pure retention: revoking a key already freed its name.
      */
     purgeRevokedAfterDays: z
       .integer()
