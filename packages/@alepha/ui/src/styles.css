@@ -13,15 +13,16 @@
  * written against. Each variant is wrapped in `:where()`, so it adds no
  * specificity to the utility it prefixes.
  *
- * ⚠️ Three of them must never be swapped for Tailwind's built-in variants of
- * the same name, which match a different thing:
+ * ⚠️ Two of them must never be swapped for Tailwind's built-in variants of
+ * the same name, which match a different thing: `data-horizontal` and
+ * `data-vertical` read `[data-orientation=...]`. No element carries a bare
+ * `data-horizontal`, so the built-ins match nothing.
  *
- * - `data-selected` matches only `[data-selected="true"]`. cmdk writes
- *   `data-selected="false"` on every row it has not selected, so the built-in
- *   (any `[data-selected]`) highlights every row at once. `46e23a885` fixed
- *   exactly that once, and a later copy of the upstream file undid it.
- * - `data-horizontal` and `data-vertical` read `[data-orientation=...]`. No
- *   element carries a bare `data-horizontal`, so the built-ins match nothing.
+ * `data-selected` is deliberately absent. It matched only
+ * `[data-selected="true"]`, for cmdk, which wrote `data-selected="false"` on
+ * every row it had not selected. The command palette is on Base UI now, which
+ * marks the keyboard row `data-highlighted`, so the palette styles that and a
+ * `data-selected:` class gets Tailwind's built-in (any `[data-selected]`).
  */
 @custom-variant data-open {
   &:where([data-state="open"]),
@@ -47,12 +48,6 @@
 @custom-variant data-unchecked {
   &:where([data-state="unchecked"]),
   &:where([data-unchecked]:not([data-unchecked="false"])) {
-    @slot;
-  }
-}
-
-@custom-variant data-selected {
-  &:where([data-selected="true"]) {
     @slot;
   }
 }
