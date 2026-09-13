@@ -215,7 +215,7 @@
 - **lore**: a folio directory whose name says what it holds gets a badge (`3bde3ebd`)
 - **ui**: Discord-style ||spoilers|| in MarkdownView (`4305acce`)
 - **lore**: lore attachments push, and MCP stops carrying bytes (`d822267a`)
-- **lore**: MCP grows app_instance__, and sigil__ keeps working (`d2d83d62`)
+- **lore**: MCP grows `app_instance_*`, and `sigil_*` keeps working (`d2d83d62`)
 - **lore**: the sidebar stops listing apps (`9da5f6b1`)
 - **lore**: Apps is one flat list, Name / Env / Address (`5c447e09`)
 - **lore**: the instance page, where tabs are unlocks (`77df77a9`)

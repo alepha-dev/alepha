@@ -1,4 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import type { AlephaTableFilterField } from "@alepha/ui/components/alepha-table/alepha-table-filter-bar";
+import { AlephaTableFilterBar } from "@alepha/ui/components/alepha-table/alepha-table-filter-bar";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -6,12 +8,20 @@ import { cn } from "@alepha/ui/lib/utils";
 import { z } from "alepha";
 import type { Page } from "alepha";
 import { useClient } from "alepha/react";
-import { Bot, Trash2, UserPlus } from "lucide-react";
+import {
+  AtSign,
+  Bot,
+  CircleDot,
+  Shield,
+  Tag,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { useCallback } from "react";
 
 import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
 import { Showcase } from "@/web/components/Showcase.tsx";
-import { TableFilterBar } from "@/web/pages/blocks/TableFilterBar.tsx";
 
 /**
  * The one page that exercises the data path end to end: `useClient` resolves
@@ -77,6 +87,66 @@ const filtersSchema = z.object({
   // name and email at once.
   email: z.string().optional(),
 });
+
+/**
+ * The bar's filters, one of each shape a bar has to survive: a single select
+ * with is / is not, a plain single select, a multi select on a column holding
+ * one value (any / none of), a multi select on a column holding several (any /
+ * all / none of), and a text-contains on one column.
+ *
+ * ⚠️ Every option LABEL is capitalized; no stored value is. `status` holds
+ * `active` in the dataset and in the query, and only the label reads "Active".
+ * Capitalizing the value instead would leave the filter matching no row.
+ */
+const FILTER_FIELDS: AlephaTableFilterField[] = [
+  {
+    key: "status",
+    label: "Status",
+    icon: CircleDot,
+    placeholder: "Any status",
+    operators: "is",
+    items: [
+      { value: "active", label: "Active" },
+      { value: "invited", label: "Invited" },
+      { value: "disabled", label: "Disabled" },
+    ],
+  },
+  {
+    key: "team",
+    label: "Team",
+    icon: Users,
+    placeholder: "Any team",
+    items: ["Platform", "Design", "Growth", "Security"],
+  },
+  {
+    key: "roles",
+    label: "Roles",
+    icon: Shield,
+    placeholder: "Any role",
+    operators: "any-none",
+    items: ["Owner", "Admin", "Member", "Viewer"],
+  },
+  {
+    key: "tags",
+    label: "Tags",
+    icon: Tag,
+    placeholder: "Any tag",
+    operators: "any-all-none",
+    items: [
+      { value: "remote", label: "Remote" },
+      { value: "on-call", label: "On-call" },
+      { value: "mentor", label: "Mentor" },
+      { value: "contractor", label: "Contractor" },
+      { value: "beta", label: "Beta" },
+    ],
+  },
+  {
+    key: "email",
+    label: "Email",
+    icon: AtSign,
+    placeholder: "Email contains…",
+  },
+];
 
 /**
  * "No items" is the one state the fixture cannot reach on its own: it always
@@ -232,7 +302,13 @@ const Table = () => {
                     v.emptyState === "No match"
                       ? { search: "nobody" }
                       : undefined,
-                  render: (form) => <TableFilterBar form={form} />,
+                  render: (form) => (
+                    <AlephaTableFilterBar
+                      form={form}
+                      search={{}}
+                      fields={FILTER_FIELDS}
+                    />
+                  ),
                 }
               : undefined
           }

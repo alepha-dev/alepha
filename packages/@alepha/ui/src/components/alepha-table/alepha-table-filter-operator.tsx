@@ -60,4 +60,27 @@ export interface AlephaTableFilterOperatorOption {
    */
   value: string;
   label: string;
+  /**
+   * The word drawn before the value on the bar while this operator is in
+   * force, so "not Active" never reads as "Active". The default operator has
+   * none.
+   */
+  prefix?: string;
 }
+
+/**
+ * The operator sets a filter bar offers by name, labelled in the kit's own
+ * catalog so a caller does not translate "is not" itself:
+ *
+ * - `is`: is / is not, for a list the column holds ONE value of. Values `is`
+ *   and `not`.
+ * - `any-none`: any of / none of, the same column with several picks. Values
+ *   `any` and `none`. There is no "all of": a row has one value, so it could
+ *   only ever match nobody.
+ * - `any-all-none`: any / all / none of, for a column holding SEVERAL values
+ *   (tags). Values `any`, `all` and `none`.
+ */
+export type AlephaTableFilterOperatorPreset =
+  | "is"
+  | "any-none"
+  | "any-all-none";

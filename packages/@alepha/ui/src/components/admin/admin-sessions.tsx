@@ -166,7 +166,7 @@ export const AdminSessions = () => {
         filters={{
           schema: filtersSchema,
           render: (form) => (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <FilterSlot>
                 <Control
                   input={form.input.search}

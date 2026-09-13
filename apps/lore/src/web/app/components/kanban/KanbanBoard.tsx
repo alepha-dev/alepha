@@ -741,7 +741,10 @@ const KanbanBoard = (props: KanbanBoardProps) => {
             The bar around them stays this app's own: the table's toolbar is
             a chunky panel above a grid, this is a dense strip under the
             page header. */}
-        <form {...filterForm.props} className="flex flex-1 items-center gap-2">
+        <form
+          {...filterForm.props}
+          className="flex flex-1 flex-wrap items-center gap-2"
+        >
           <FilterSlot>
             <Control
               input={filterForm.input.search}

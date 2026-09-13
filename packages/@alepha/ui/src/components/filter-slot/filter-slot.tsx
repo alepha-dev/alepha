@@ -26,7 +26,14 @@ export interface FilterSlotProps {
  * ⚠️ It was `w-44` and then `w-[13.2rem] max-w-full` - both fixed. The fixed
  * width is what made every selected value truncate at the same point
  * regardless of how much space the bar actually had.
+ *
+ * ⚠️ **A floor cannot shrink, so the ROW has to wrap.** A fixed width could
+ * be squeezed by a flex row; a minimum cannot. Put slots in a `flex-wrap` row
+ * (`AlephaTable`'s own form already is one), or three of them hold 650px in a
+ * 375px phone. That was measured on Lore's kanban bar and the admin bars when
+ * the floor landed, and each of those rows gained `flex-wrap` with it (#Q2308).
+ * `max-w-full` still caps a single long value at the width of its row.
  */
 export const FilterSlot = (props: FilterSlotProps) => {
-  return <div className="min-w-[13.2rem]">{props.children}</div>;
+  return <div className="max-w-full min-w-[13.2rem]">{props.children}</div>;
 };

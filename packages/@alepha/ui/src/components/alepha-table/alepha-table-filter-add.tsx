@@ -12,29 +12,6 @@ import { useI18n } from "alepha/react/i18n";
 import { FunnelPlus } from "lucide-react";
 import type { ComponentType } from "react";
 
-export interface AlephaTableFilterAddItem {
-  /** Stable key the caller uses to identify the filter it is showing. */
-  key: string;
-  label: string;
-  icon?: ComponentType<{ className?: string }>;
-
-  /**
-   * What kind of control the filter is, drawn muted on the right of the item.
-   *
-   * It answers the question the reader has before choosing: "Email" could be
-   * a box to type in or a list of addresses. Absent draws nothing.
-   */
-  type?: AlephaTableFilterAddType;
-}
-
-/**
- * The control shapes a filter bar carries: a free-text box, or a list to pick
- * from. A select taking several values is still a `list`: whether it takes
- * one or many is found out by opening it, and a third word in the menu was
- * noise rather than help.
- */
-export type AlephaTableFilterAddType = "text" | "list";
-
 export interface AlephaTableFilterAddProps {
   /**
    * The filters not currently in the bar. ⚠️ Only the hidden ones: an item
@@ -65,8 +42,8 @@ export interface AlephaTableFilterAddProps {
  * filter already on screen - is fully visible without it.
  *
  * The caller owns which filters are shown; this only asks. It is also the
- * caller's job to open the new filter once it appears - see the note on
- * `onAdd` in the showcase for why that cannot be done from here.
+ * caller's job to open the new filter once it appears - see
+ * `AlephaTableFilterBar`, which does both.
  */
 export const AlephaTableFilterAdd = (props: AlephaTableFilterAddProps) => {
   const { tr } = useI18n();
@@ -152,3 +129,28 @@ export const AlephaTableFilterAdd = (props: AlephaTableFilterAddProps) => {
     </DropdownMenu>
   );
 };
+
+export interface AlephaTableFilterAddItem {
+  /**
+   * Stable key the caller uses to identify the filter it is showing.
+   */
+  key: string;
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+
+  /**
+   * What kind of control the filter is, drawn muted on the right of the item.
+   *
+   * It answers the question the reader has before choosing: "Email" could be
+   * a box to type in or a list of addresses. Absent draws nothing.
+   */
+  type?: AlephaTableFilterAddType;
+}
+
+/**
+ * The control shapes a filter bar carries: a free-text box, or a list to pick
+ * from. A select taking several values is still a `list`: whether it takes
+ * one or many is found out by opening it, and a third word in the menu was
+ * noise rather than help.
+ */
+export type AlephaTableFilterAddType = "text" | "list";
