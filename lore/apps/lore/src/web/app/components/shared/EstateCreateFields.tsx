@@ -1,4 +1,4 @@
-import { Control } from "@alepha/ui/components/control/control";
+import { Control } from "@alepha/ui/form";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Cloud, Fingerprint, KeyRound, Server, Tag } from "lucide-react";

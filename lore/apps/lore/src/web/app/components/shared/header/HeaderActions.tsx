@@ -1,4 +1,4 @@
-import { AppActions } from "@alepha/ui/components/app-actions/app-actions";
+import { AppActions } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 

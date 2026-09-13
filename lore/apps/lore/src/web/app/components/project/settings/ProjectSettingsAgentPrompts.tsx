@@ -1,6 +1,5 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { cn } from "@alepha/ui/lib/utils";
+import { Card, CardContent, cn } from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";

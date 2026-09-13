@@ -1,9 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, Maximize, Minus, Plus } from "lucide-react";
 import { useMemo } from "react";

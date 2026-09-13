@@ -16,7 +16,7 @@ import HeaderActions from "./HeaderActions.tsx";
  * avatar itself and this header passes nothing, so what these pin is that
  * Lore's header still gets it: the plain glyph without a picture, the picture
  * when there is one, and the fallback when it fails to load. The kit's own
- * spec (`button-user-avatar.browser.spec.tsx`) owns the contract.
+ * spec (`ButtonUserAvatar.browser.spec.tsx`) owns the contract.
  */
 describe("HeaderActions' account avatar", () => {
   let alepha: Alepha | undefined;

@@ -1,4 +1,4 @@
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useToast } from "@alepha/ui";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";

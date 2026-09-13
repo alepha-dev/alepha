@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "@alepha/ui";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 

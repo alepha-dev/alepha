@@ -1,4 +1,4 @@
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useToast } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Container } from "lucide-react";
 

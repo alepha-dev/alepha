@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { ClientOnly, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

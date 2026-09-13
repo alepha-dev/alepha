@@ -1,5 +1,4 @@
-import { PlateLayout } from "@alepha/ui/components/plate-layout/plate-layout";
-import type { PlateTab } from "@alepha/ui/components/plate-layout/plate-tab-bar";
+import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";

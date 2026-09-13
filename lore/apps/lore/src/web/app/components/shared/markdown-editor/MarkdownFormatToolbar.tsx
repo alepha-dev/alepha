@@ -1,9 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import type { EditorView } from "@codemirror/view";
 import { useI18n } from "alepha/react/i18n";
 

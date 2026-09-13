@@ -1,10 +1,10 @@
+import { UserAvatar } from "@alepha/ui";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@alepha/ui/components/ui/chart";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
+} from "@alepha/ui/chart";
 import type { Infer } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";

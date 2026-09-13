@@ -1,15 +1,15 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
+  Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { Label } from "@alepha/ui/components/ui/label";
+  Label,
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";

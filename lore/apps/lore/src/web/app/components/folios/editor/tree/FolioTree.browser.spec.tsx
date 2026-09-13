@@ -1,4 +1,4 @@
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { DialogProvider } from "@alepha/ui";
 import {
   act,
   fireEvent,
@@ -95,9 +95,9 @@ class Routes {
  * `e.detail` double-click guard, the chevron and the row as separate
  * targets, the memoised row, the named transition list, the press transform
  * dropped while dragging, and the whole indent-guide spec (which was its own
- * file here). They are `packages/@alepha/ui/src/components/tree-view/
- * __tests__/`, and duplicating them here would mean two files going red for
- * one bug and neither of them owning it.
+ * file here). They are `packages/@alepha/ui/src/tree/__tests__/`, and
+ * duplicating them here would mean two files going red for one bug and
+ * neither of them owning it.
  *
  * What is left is what only Lore can break: the collapse atom surviving the
  * remount `FoliosLayout` causes, the per-project seed, the reveal effect

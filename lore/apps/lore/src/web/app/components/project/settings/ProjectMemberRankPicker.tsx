@@ -1,6 +1,5 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Badge, useToast } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import type { RankController, RankResource } from "alepha/api/ranks";
 import { useClient } from "alepha/react";

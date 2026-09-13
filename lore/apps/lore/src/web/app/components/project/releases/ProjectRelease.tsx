@@ -1,13 +1,11 @@
-import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
-import { PlateLayout } from "@alepha/ui/components/plate-layout/plate-layout";
-import type { PlateTab } from "@alepha/ui/components/plate-layout/plate-tab-bar";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+  useToast,
+} from "@alepha/ui";
+import { useDetailTab, PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";

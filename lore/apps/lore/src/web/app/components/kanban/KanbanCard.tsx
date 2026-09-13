@@ -1,5 +1,4 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
+import { Badge, UserAvatar } from "@alepha/ui";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { DateTimeProvider } from "alepha/datetime";

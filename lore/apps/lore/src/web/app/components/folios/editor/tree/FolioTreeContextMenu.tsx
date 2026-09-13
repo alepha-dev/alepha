@@ -2,7 +2,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-} from "@alepha/ui/components/ui/context-menu";
+} from "@alepha/ui";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

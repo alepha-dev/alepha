@@ -1,5 +1,4 @@
-import { FileImage } from "@alepha/ui/components/file-image/file-image";
-import { cn } from "@alepha/ui/lib/utils";
+import { FileImage, cn } from "@alepha/ui";
 import { Image as ImageIcon } from "lucide-react";
 
 export interface ProjectIconProps {

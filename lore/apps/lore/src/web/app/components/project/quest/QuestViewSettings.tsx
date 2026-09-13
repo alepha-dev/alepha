@@ -1,4 +1,4 @@
-import { Segmented } from "@alepha/ui/components/ui/segmented";
+import { Segmented } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

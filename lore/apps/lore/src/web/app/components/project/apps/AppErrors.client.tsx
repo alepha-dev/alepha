@@ -1,10 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import {
   type ChartConfig,
   ChartContainer,
@@ -12,7 +6,7 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-} from "@alepha/ui/components/ui/chart";
+} from "@alepha/ui/chart";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";

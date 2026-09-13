@@ -1,4 +1,4 @@
-import { Skeleton } from "@alepha/ui/components/ui/skeleton";
+import { Skeleton } from "@alepha/ui";
 import { lazy, Suspense } from "react";
 
 import type { QuestViewProps } from "./QuestView.tsx";

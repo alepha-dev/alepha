@@ -1,14 +1,15 @@
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import {
+  Button,
+  Card,
+  CardContent,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+  useDialog,
+  useToast,
+  cn,
+} from "@alepha/ui";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";

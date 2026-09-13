@@ -1,8 +1,11 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Switch } from "@alepha/ui/components/ui/switch";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import {
+  Button,
+  Card,
+  CardContent,
+  Switch,
+  useDialog,
+  useToast,
+} from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";

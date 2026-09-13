@@ -12,7 +12,7 @@ import { ProjectLimits } from "./ProjectLimits.ts";
  * **Markdown**, not HTML: they are authored by `MarkdownEditor` and rendered
  * by `MarkdownView`, which mounts no `rehype-raw` and leaves react-markdown's
  * default in place — every raw node is escaped to text. That posture is
- * pinned by `markdown-view-raw-html.browser.spec.tsx`, whose whole purpose is
+ * pinned by `MarkdownViewRawHtml.browser.spec.tsx`, whose whole purpose is
  * to turn red if someone reaches for `rehype-raw` later.
  *
  * So there is deliberately **no sanitizer here.** A `sanitizeHtml` helper

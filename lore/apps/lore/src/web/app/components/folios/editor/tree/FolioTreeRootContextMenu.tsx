@@ -3,7 +3,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@alepha/ui/components/ui/context-menu";
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { FilePlus, FolderPlus } from "lucide-react";
 import type { ReactElement } from "react";
