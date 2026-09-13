@@ -20,15 +20,40 @@ export const JSONRPC_VERSION = "2.0" as const;
 export const MCP_PROTOCOL_VERSION = "2025-11-25" as const;
 
 /**
- * Protocol versions Alepha will accept during `initialize` negotiation,
- * highest preference first. The server echoes back whichever version the
- * client requested if it appears here, otherwise picks the first entry.
+ * The legacy MCP revisions: the ones that open a session with an `initialize`
+ * handshake (2025-11-25 and earlier), highest preference first.
+ *
+ * Fixed: every revision after 2025-11-25 is modern by the spec's own
+ * terminology, so this list never grows. `initialize` negotiates from it and
+ * from nothing else, which is what keeps a legacy client from being told it
+ * negotiated a modern revision.
  */
-export const SUPPORTED_PROTOCOL_VERSIONS = [
+export const LEGACY_PROTOCOL_VERSIONS = [
   "2025-11-25",
   "2025-06-18",
   "2025-03-26",
   "2024-11-05",
+] as const;
+
+/**
+ * The modern MCP revisions Alepha implements: version, client identity and
+ * capabilities ride on every request's `_meta`, and there is no handshake
+ * (2026-07-28 and later).
+ */
+export const MODERN_PROTOCOL_VERSIONS = ["2026-07-28"] as const;
+
+/**
+ * Protocol versions Alepha serves by default, highest preference first. Seeds
+ * `McpServerProvider.protocolVersions`, which is what the server actually
+ * checks against.
+ *
+ * Legacy-only for now: the modern path is on exactly when that list holds a
+ * modern version, and advertising 2026-07-28 before it is fully implemented
+ * would tell a dual-era client (claude.ai) to stop falling back to
+ * `initialize`.
+ */
+export const SUPPORTED_PROTOCOL_VERSIONS = [
+  ...LEGACY_PROTOCOL_VERSIONS,
 ] as const;
 
 export type SupportedProtocolVersion =
@@ -40,12 +65,35 @@ export const isSupportedProtocolVersion = (
   typeof v === "string" &&
   (SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(v);
 
+/**
+ * Whether a version is a legacy (handshake-based) revision. Anything else,
+ * an unknown future version included, is modern: a request naming it is
+ * answered with the modern `-32022`, which sends a dual-era client to a
+ * supported modern version rather than back to `initialize`.
+ */
+export const isLegacyProtocolVersion = (v: unknown): boolean =>
+  typeof v === "string" &&
+  (LEGACY_PROTOCOL_VERSIONS as readonly string[]).includes(v);
+
 export const JsonRpcErrorCodes = {
   PARSE_ERROR: -32700,
   INVALID_REQUEST: -32600,
   METHOD_NOT_FOUND: -32601,
   INVALID_PARAMS: -32602,
   INTERNAL_ERROR: -32603,
+} as const;
+
+/**
+ * Error codes the MCP specification itself defines (2026-07-28, "Error
+ * Codes"), allocated from the `-32020..-32099` sub-range it reserves. They
+ * mean exactly this and nothing else, so they live apart from
+ * `McpErrorCodes`, which holds Alepha's own application codes.
+ *
+ * Each identifies a modern server: a dual-era client that receives one
+ * retries or corrects its request instead of falling back to `initialize`.
+ */
+export const McpProtocolErrorCodes = {
+  UNSUPPORTED_PROTOCOL_VERSION: -32022,
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------------

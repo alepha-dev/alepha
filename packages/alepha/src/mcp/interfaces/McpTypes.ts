@@ -125,6 +125,40 @@ export interface McpInitializeResult {
   serverInfo: McpServerInfo;
 }
 
+/**
+ * What a modern request (2026-07-28 and later) says about itself in its
+ * `params._meta`, in place of the `initialize` handshake the legacy revisions
+ * used. Resolved per request by `McpServerProvider.resolveModernRequest`.
+ */
+export interface McpRequestMeta {
+  /**
+   * The revision this request speaks
+   * (`io.modelcontextprotocol/protocolVersion`, or the `MCP-Protocol-Version`
+   * header when the body carries none).
+   */
+  protocolVersion: string;
+  /**
+   * The client's self-reported identity (`io.modelcontextprotocol/clientInfo`).
+   * For display and logging: unverified, never a basis for a decision.
+   */
+  clientInfo?: McpClientInfo;
+  /**
+   * The capabilities the client declares for this request
+   * (`io.modelcontextprotocol/clientCapabilities`). `{}` when absent: the
+   * spec forbids inferring a capability the client did not declare.
+   */
+  clientCapabilities: Record<string, unknown>;
+}
+
+/**
+ * The result of `server/discover` (spec 2026-07-28): the versions this server
+ * serves, modern first, and its capabilities.
+ */
+export interface McpDiscoverResult {
+  supportedVersions: string[];
+  capabilities: McpCapabilities;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Tool Types
 // ---------------------------------------------------------------------------------------------------------------------
@@ -489,6 +523,26 @@ export interface McpContext<T = unknown> {
    * `id: 1` share a cancellation slot and either could cancel the other.
    */
   clientKey?: string;
+
+  /**
+   * The protocol revision a modern request (2026-07-28 and later) speaks, from
+   * its `_meta`. Undefined on a legacy request: those negotiate once, in
+   * `initialize`, and this stateless server does not remember it.
+   */
+  protocolVersion?: string;
+
+  /**
+   * The client's self-reported identity, from a modern request's `_meta`.
+   * Unverified: fine for display and logs, never for a decision. Undefined on
+   * a legacy request.
+   */
+  clientInfo?: McpClientInfo;
+
+  /**
+   * The capabilities a modern request declares, `{}` when it declares none.
+   * Undefined on a legacy request.
+   */
+  clientCapabilities?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

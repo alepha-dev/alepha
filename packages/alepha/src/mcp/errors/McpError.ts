@@ -1,4 +1,7 @@
-import { JsonRpcErrorCodes } from "../helpers/jsonrpc.ts";
+import {
+  JsonRpcErrorCodes,
+  McpProtocolErrorCodes,
+} from "../helpers/jsonrpc.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -16,12 +19,42 @@ export class McpError extends Error {
   name = "McpError";
   code: number;
 
+  /**
+   * The JSON-RPC error's `data` member, sent only when set.
+   */
+  data?: unknown;
+
   constructor(
     message: string,
     code: number = JsonRpcErrorCodes.INTERNAL_ERROR,
   ) {
     super(message);
     this.code = code;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A modern request (2026-07-28 and later) named a protocol version this
+ * server does not serve.
+ *
+ * `-32022` with the versions it does serve, per spec. On HTTP the status is
+ * 400. This error is itself the signal that the server is modern, so it is
+ * only ever sent while the modern path is on: with it off, an unsupported
+ * version gets a plain non-JSON-RPC 400 instead, which is what lets a
+ * dual-era client fall back to `initialize`.
+ */
+export class McpUnsupportedProtocolVersionError extends McpError {
+  name = "McpUnsupportedProtocolVersionError";
+  data: { supported: string[]; requested: string };
+
+  constructor(requested: string, supported: string[]) {
+    super(
+      "Unsupported protocol version",
+      McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION,
+    );
+    this.data = { supported, requested };
   }
 }
 

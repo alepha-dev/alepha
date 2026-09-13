@@ -21,6 +21,7 @@ export {
   McpToolNotFoundError,
   McpToolOutputError,
   McpUnauthorizedError,
+  McpUnsupportedProtocolVersionError,
 } from "./errors/McpError.ts";
 export {
   createErrorResponse,
@@ -31,13 +32,17 @@ export {
   createNotification,
   createParseError,
   createResponse,
+  isLegacyProtocolVersion,
   isNotification,
   isSupportedProtocolVersion,
   isValidJsonRpcRequest,
   JSONRPC_VERSION,
   JsonRpcErrorCodes,
   JsonRpcParseError,
+  LEGACY_PROTOCOL_VERSIONS,
   MCP_PROTOCOL_VERSION,
+  McpProtocolErrorCodes,
+  MODERN_PROTOCOL_VERSIONS,
   parseMessage,
   SUPPORTED_PROTOCOL_VERSIONS,
   type SupportedProtocolVersion,
@@ -61,6 +66,7 @@ export type {
   McpContent,
   // Context type for auth/headers
   McpContext,
+  McpDiscoverResult,
   McpInitializeParams,
   McpInitializeResult,
   McpJsonSchema,
@@ -71,6 +77,7 @@ export type {
   McpPromptGetParams,
   McpPromptGetResult,
   McpPromptMessage,
+  McpRequestMeta,
   McpResourceContent,
   // Resource types
   McpResourceDescriptor,

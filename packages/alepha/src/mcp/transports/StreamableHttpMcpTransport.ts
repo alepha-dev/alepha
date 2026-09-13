@@ -7,12 +7,15 @@ import {
   createInternalError,
   createNotification,
   createParseError,
-  isSupportedProtocolVersion,
   JsonRpcParseError,
+  McpProtocolErrorCodes,
   parseMessage,
-  SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
-import type { JsonRpcRequest, McpContext } from "../interfaces/McpTypes.ts";
+import type {
+  JsonRpcRequest,
+  JsonRpcResponse,
+  McpContext,
+} from "../interfaces/McpTypes.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -217,21 +220,28 @@ export class StreamableHttpMcpTransport {
           string | string[] | undefined
         >;
 
-        // Spec 2025-06-18+: every HTTP request after `initialize` MUST carry
-        // an `MCP-Protocol-Version` header matching the negotiated version.
-        // Reject mismatches with 400 so the client doesn't silently drift.
-        if (rpcRequest.method !== "initialize") {
-          const headerRaw = headers["mcp-protocol-version"];
-          const headerVersion = Array.isArray(headerRaw)
-            ? headerRaw[0]
-            : headerRaw;
+        // The era is decided per request, by the provider, from the version
+        // the request carries. `undefined` is a legacy request, and always is
+        // while the modern path is off.
+        const modern = this.mcpServer.resolveModernRequest(rpcRequest, headers);
+
+        // Legacy, spec 2025-06-18+: every HTTP request after `initialize` MUST
+        // carry an `MCP-Protocol-Version` header matching the negotiated
+        // version. Reject one this server does not serve with 400 so the
+        // client doesn't silently drift.
+        if (!modern && rpcRequest.method !== "initialize") {
+          const headerVersion = this.firstHeader(
+            headers,
+            "mcp-protocol-version",
+          );
+          const supported = this.mcpServer.protocolVersions;
           // Validated against the SUPPORTED set, not against a single
           // negotiated value held on the provider singleton. That value is
           // process-global: client B initializing with an older version
           // changed what client A was checked against, and on Workers a fresh
           // isolate reset it — so a client that negotiated correctly started
           // getting 400s on its next request.
-          if (headerVersion && !isSupportedProtocolVersion(headerVersion)) {
+          if (headerVersion && !supported.includes(headerVersion)) {
             // INFO, not WARN: nothing is wrong. A dual-era client (claude.ai)
             // probes with a modern version on every connection and falls back
             // on this answer, so at WARN it was the second most frequent line
@@ -240,7 +250,7 @@ export class StreamableHttpMcpTransport {
             // modern client actually sends.
             this.log.info("MCP-Protocol-Version header not supported", {
               header: headerVersion,
-              supported: SUPPORTED_PROTOCOL_VERSIONS,
+              supported,
               ...this.describeRequestShape(rpcRequest, headers),
             });
             request.reply.status = 400;
@@ -250,10 +260,35 @@ export class StreamableHttpMcpTransport {
             // falls back to `initialize` only when a 400's body is not a
             // recognized modern JSON-RPC error. A `-32022` here would tell
             // claude.ai this server is modern, and it would stop falling back.
+            // Only a modern request gets the modern error, below, and a request
+            // is only ever modern while the modern path is on.
             request.reply.body = JSON.stringify({
-              error: `MCP-Protocol-Version not supported: got ${headerVersion}, expected one of ${SUPPORTED_PROTOCOL_VERSIONS.join(", ")}`,
+              error: `MCP-Protocol-Version not supported: got ${headerVersion}, expected one of ${supported.join(", ")}`,
             });
             return;
+          }
+        }
+
+        // Modern: a request that cannot be served at all is answered before
+        // anything is routed, and before a response stream could open and
+        // commit the status to 200.
+        if (modern && rpcRequest.id !== undefined) {
+          const rejection = this.mcpServer.checkModernRequest(modern);
+          if (rejection) {
+            this.log.info("MCP modern request rejected", {
+              code: rejection.code,
+              message: rejection.message,
+              ...this.describeRequestShape(rpcRequest, headers),
+            });
+            return this.replyJson(
+              request,
+              createErrorResponse(rpcRequest.id, {
+                code: rejection.code,
+                message: rejection.message,
+                data: rejection.data,
+              }),
+              true,
+            );
           }
         }
 
@@ -268,8 +303,7 @@ export class StreamableHttpMcpTransport {
         );
 
         if (response) {
-          request.reply.headers["content-type"] = "application/json";
-          request.reply.body = JSON.stringify(response);
+          this.replyJson(request, response, !!modern);
         } else {
           // Spec: a notification "MUST return HTTP 202 Accepted".
           request.reply.status = 202;
@@ -293,6 +327,45 @@ export class StreamableHttpMcpTransport {
       }
     },
   });
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Responses
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Send one JSON-RPC response as `application/json`, with the HTTP status its
+   * era gives it.
+   */
+  protected replyJson(
+    request: any,
+    response: JsonRpcResponse,
+    modern: boolean,
+  ): void {
+    request.reply.status = this.httpStatusFor(response, modern);
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify(response);
+  }
+
+  /**
+   * The HTTP status of a JSON-RPC response.
+   *
+   * Legacy responses are always 200, errors included: that is what legacy
+   * clients have always received. A modern (2026-07-28) request that fails for
+   * a protocol reason gets the status the spec gives that reason, which is
+   * how an intermediary that never parses the body still sees the failure.
+   * Every other JSON-RPC error, a tool not found included, stays 200.
+   */
+  protected httpStatusFor(response: JsonRpcResponse, modern: boolean): number {
+    if (!modern || !response.error) {
+      return 200;
+    }
+    switch (response.error.code) {
+      case McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION:
+        return 400;
+      default:
+        return 200;
+    }
+  }
 
   // -------------------------------------------------------------------------------------------------------------
   // Diagnostics

@@ -3,7 +3,13 @@ import { EventEmitter } from "node:events";
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import { AlephaMcp, MCP_PROTOCOL_VERSION } from "../index.ts";
+import {
+  AlephaMcp,
+  LEGACY_PROTOCOL_VERSIONS,
+  MCP_PROTOCOL_VERSION,
+  McpServerProvider,
+  MODERN_PROTOCOL_VERSIONS,
+} from "../index.ts";
 import { $tool } from "../primitives/$tool.ts";
 import { StdioMcpTransport } from "../transports/StdioMcpTransport.ts";
 
@@ -219,6 +225,63 @@ describe("StdioMcpTransport", () => {
     // ...and the write was not lost, just rerouted.
     expect(fake.stderrChunks.join("")).toContain("a wild log appears");
     await alepha.stop();
+  });
+
+  /**
+   * A dual-era stdio client probes with `server/discover` before anything
+   * else: a result means modern, any error that is not a recognized modern
+   * one means legacy, and it falls back to `initialize`. There is no header on
+   * stdio, so `_meta` alone decides the era.
+   */
+  describe("modern probe", () => {
+    const probe = {
+      jsonrpc: "2.0",
+      id: "probe",
+      method: "server/discover",
+      params: {
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+          "io.modelcontextprotocol/clientCapabilities": {},
+        },
+      },
+    };
+
+    it("returns a discover result while the modern path is on", async () => {
+      const alepha = await start();
+      alepha.inject(McpServerProvider).protocolVersions = [
+        ...MODERN_PROTOCOL_VERSIONS,
+        ...LEGACY_PROTOCOL_VERSIONS,
+      ];
+
+      await send(probe);
+
+      expect(fake.messages[0]).toMatchObject({
+        id: "probe",
+        result: {
+          supportedVersions: [
+            ...MODERN_PROTOCOL_VERSIONS,
+            ...LEGACY_PROTOCOL_VERSIONS,
+          ],
+          capabilities: { tools: {} },
+        },
+      });
+      await alepha.stop();
+    });
+
+    it("returns -32601 while it is off, which tells the client to fall back", async () => {
+      const alepha = await start();
+      alepha.inject(McpServerProvider).protocolVersions = [
+        ...LEGACY_PROTOCOL_VERSIONS,
+      ];
+
+      await send(probe);
+
+      expect(fake.messages[0]).toMatchObject({
+        id: "probe",
+        error: { code: -32601 },
+      });
+      await alepha.stop();
+    });
   });
 
   it("gives stdout back on stop", async () => {
