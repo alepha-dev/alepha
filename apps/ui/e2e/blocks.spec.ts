@@ -312,7 +312,9 @@ test.describe("AlephaTable", () => {
     await page.goto("/blocks/table");
     await expect(page.getByText("Ada Lovelace")).toBeVisible();
 
-    await page.getByPlaceholder("Search members").fill("turing");
+    // `exact`: the placeholder is the plain "Search" now, which a substring
+    // match would also find in any "Search…" field on the page.
+    await page.getByPlaceholder("Search", { exact: true }).fill("turing");
 
     await expect(page.getByText("Alan Turing")).toBeVisible();
     await expect(page.getByText("Ada Lovelace")).toHaveCount(0);
