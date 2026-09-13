@@ -1,4 +1,4 @@
-import AdminJobDetail from "@alepha/ui/components/admin/admin-job-detail";
+import { AdminJobDetail } from "@alepha/ui/admin";
 
 /**
  * Mounted at `/admin/jobs/:jobName` under the route name `jobDetail`, which

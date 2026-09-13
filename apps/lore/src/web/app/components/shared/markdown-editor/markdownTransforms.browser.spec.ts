@@ -1,4 +1,4 @@
-import { parseFlowchart } from "@alepha/ui/components/markdown-view/diagram/flowchartParser.ts";
+import { parseFlowchart } from "@alepha/ui/markdown";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 

@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { Button } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronsLeftRight } from "lucide-react";

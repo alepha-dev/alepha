@@ -1278,7 +1278,7 @@ test.describe("Epics — the release control", () => {
       // circular and wrong: it went red because the SELECTOR below named a
       // node that no longer existed, and re-clicking the selected release
       // would have fixed it in one line. A broken locator is not a usability
-      // finding. The actual case for the `x` is in `control-select.tsx`, and
+      // finding. The actual case for the `x` is in `ControlSelect.tsx`, and
       // this step's job is narrower and still worth doing: that the control
       // can reach the empty state, and that the write lands.
       const saved = written();

@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { cn } from "@alepha/ui";
 import { ExternalLink } from "lucide-react";
 import type { ComponentProps } from "react";
 

@@ -1,6 +1,5 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Button, useToast } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";

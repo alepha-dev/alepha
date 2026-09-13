@@ -1,5 +1,4 @@
-import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
-import { Button } from "@alepha/ui/components/ui/button";
+import { BrandIcon, Button } from "@alepha/ui";
 import { useAlepha } from "alepha/react";
 import { Link } from "alepha/react/router";
 import { ArrowUpRight } from "lucide-react";

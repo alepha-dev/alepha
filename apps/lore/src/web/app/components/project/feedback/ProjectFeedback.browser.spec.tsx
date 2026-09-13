@@ -1,4 +1,4 @@
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { DialogProvider } from "@alepha/ui";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";

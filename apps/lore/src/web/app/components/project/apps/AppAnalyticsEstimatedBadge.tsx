@@ -2,7 +2,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   Tooltip as UiTooltip,
-} from "@alepha/ui/components/ui/tooltip";
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Info } from "lucide-react";
 

@@ -1,9 +1,9 @@
-import { SettingsLayout } from "@alepha/ui/components/settings/settings-layout";
+import { Badge } from "@alepha/ui";
 import {
+  SettingsLayout,
   SettingsNav,
   type SettingsNavItem,
-} from "@alepha/ui/components/settings/settings-nav";
-import { Badge } from "@alepha/ui/components/ui/badge";
+} from "@alepha/ui/settings";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";

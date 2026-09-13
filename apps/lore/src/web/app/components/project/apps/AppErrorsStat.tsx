@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { Card, CardContent } from "@alepha/ui";
 import type { LucideIcon } from "lucide-react";
 
 export interface AppErrorsStatProps {

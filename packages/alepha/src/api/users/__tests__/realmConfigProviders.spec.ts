@@ -15,7 +15,7 @@ import type { RealmConfig } from "../schemas/realmConfigSchema.ts";
  * `$authGithub` / `$authGoogle` compute `disabled` from their env,
  * `ServerAuthProvider.identities` filters the disabled ones out,
  * `getAuthenticationProviders()` walks that filtered list, and
- * `auth-login.tsx` builds its buttons purely from what it is told.
+ * `AuthLogin.tsx` builds its buttons purely from what it is told.
  *
  * None of those links was covered, and breaking any one of them ships a
  * self-hosted image whose login page offers a Google button leading to a

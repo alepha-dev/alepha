@@ -19,6 +19,9 @@
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+
+import { parseAst } from "rolldown/parseAst";
 
 /**
  * One row of `yarn workspaces list --json`.
@@ -240,13 +243,14 @@ if (versionViolations.length > 0) {
  * always resolve, so 13 of 14 subpaths pointed at files the tarball did not
  * contain while every test stayed green.
  *
- * The exemptions below are the two shapes that legitimately have no `@module`.
+ * The exemptions below are the shapes that legitimately have no `@module`.
+ *
+ * `@alepha/ui` was one, with a blanket `"*"`: it exported one wildcard subpath
+ * per component and had no file to hold a block. It is sixteen modules now,
+ * each an `index.ts` with its own `@module`, and the rules that keep that map
+ * honest are further down.
  */
 const SUBPATH_EXEMPT: Record<string, string | string[]> = {
-  // A component library, not a module: many subpaths on purpose, one per
-  // component, so an app pulls only what it renders. Wildcards - there is no
-  // file to hold a block.
-  "@alepha/ui": "*",
   // A container, not a module. `.` is the DI kernel itself; `$module` is
   // declared *by* it.
   alepha: ["."],
@@ -1154,6 +1158,255 @@ if (jobNameViolations.length > 0) {
       "system. for everything shipped from packages/ and never in an app. The\n" +
       "name is the job's identity in job_executions: renaming it later loses\n" +
       "its history, so get it right at declaration.\n",
+  );
+  process.exit(1);
+}
+
+/**
+ * `@alepha/ui`'s module map keeps its shape.
+ *
+ * The package is sixteen modules, one subpath each, and every rule below is a
+ * way that shape used to break, or would break silently:
+ *
+ * 1. **Symmetry.** Every `src/**\/index.ts` is exported, every export points at
+ *    one, and the dev and publish maps list the same keys. A module created and
+ *    never exported ships as dead files; an export that outlives its directory
+ *    resolves to nothing; and a key only the dev map carries resolves in the
+ *    monorepo and not from the tarball, which is exactly how the `.ts` subpaths
+ *    went missing from the published package for weeks.
+ * 2. **Placement.** Every file under `src` other than `styles.css` lives inside
+ *    an exported module's directory. tsdown's entry glob builds whatever is
+ *    there, so a stray `src/components/foo/` would ship, be exported by
+ *    nothing, and pass rule 1 because it has no `index.ts`.
+ * 3. **No self-import.** No `@alepha/ui` specifier under the package's `src`,
+ *    and no relative import of a module's `index.ts`. Inside the package every
+ *    import is relative and names a concrete file: tsdown `unbundle` keeps that
+ *    one file at a time, and an import through a barrel is how a module ends up
+ *    importing itself in a cycle.
+ * 4. **Layering**, over non-spec sources. `core` imports no other module, so
+ *    `import { Button } from "@alepha/ui"` never loads the form stack; `chart`,
+ *    `command`, `calendar`, `otp`, `resizable` and `i18n/fr` import only
+ *    `core`, so an opt-in wrapper cannot quietly grow a heavy dependency; and
+ *    the module graph has no cycle. Specs are outside it
+ *    (`AccountRouter.spec.ts` imports the admin router, legitimately), and
+ *    there is deliberately no allow-list of edges: an edge that is not a cycle
+ *    is a design decision, not a violation.
+ *
+ * The imports are parsed with `rolldown/parseAst`, never grepped: a multi-line
+ * `import type` defeats a line regex, and a comment that names a specifier is
+ * not an import. Type-only imports are edges too - they are edges of the
+ * declaration graph the package publishes.
+ */
+const UI_PACKAGE = "packages/@alepha/ui";
+const UI_SRC = `${UI_PACKAGE}/src/`;
+const UI_LEAF_MODULES = [
+  "core",
+  "chart",
+  "command",
+  "calendar",
+  "otp",
+  "resizable",
+  "i18n/fr",
+];
+const uiViolations: string[] = [];
+
+const uiManifest = JSON.parse(
+  readFileSync(`${UI_PACKAGE}/package.json`, "utf8"),
+) as Manifest & {
+  publishConfig?: {
+    exports?: Record<string, ExportsEntry | { default?: string }>;
+  };
+};
+
+// Tracked AND untracked: a module a session has just created is exactly the
+// file that must not slip past because it was not yet added.
+const uiFiles = execFileSync(
+  "git",
+  ["ls-files", "--cached", "--others", "--exclude-standard", UI_SRC],
+  { encoding: "utf8" },
+)
+  .trim()
+  .split("\n")
+  .filter((file) => file && existsSync(file));
+
+const exportTarget = (entry: unknown): string | undefined => {
+  if (typeof entry === "string") return entry;
+  const conditions = entry as {
+    types?: string;
+    import?: string;
+    default?: string;
+  };
+  return conditions?.types ?? conditions?.import ?? conditions?.default;
+};
+
+// Rule 1: symmetry.
+const uiModules = new Map<string, string>(); // src-relative dir -> subpath
+const devKeys = Object.keys(uiManifest.exports ?? {});
+const publishKeys = Object.keys(uiManifest.publishConfig?.exports ?? {});
+for (const key of devKeys) {
+  if (key === "./package.json" || key === "./styles.css") continue;
+  const target = exportTarget(uiManifest.exports?.[key]);
+  const match = target?.match(/^\.\/src\/(.+)\/index\.ts$/);
+  if (!match) {
+    uiViolations.push(
+      `  ${key}\n    → points at ${target}, not at a module's \`src/<module>/index.ts\``,
+    );
+    continue;
+  }
+  if (!existsSync(`${UI_SRC}${match[1]}/index.ts`)) {
+    uiViolations.push(`  ${key}\n    → ${target} does not exist`);
+  }
+  uiModules.set(match[1], key);
+  const published = uiManifest.publishConfig?.exports?.[key] as
+    | { types?: string; default?: string }
+    | undefined;
+  if (
+    published &&
+    (published.types !== `./dist/${match[1]}/index.d.ts` ||
+      published.default !== `./dist/${match[1]}/index.js`)
+  ) {
+    uiViolations.push(
+      `  ${key}\n    → publishes ${JSON.stringify(published)}, not ./dist/${match[1]}/index.{d.ts,js}`,
+    );
+  }
+}
+for (const key of new Set([...devKeys, ...publishKeys])) {
+  if (!devKeys.includes(key) || !publishKeys.includes(key)) {
+    uiViolations.push(
+      `  ${key}\n    → in the ${devKeys.includes(key) ? "dev" : "publish"} exports map only; both maps list the same keys`,
+    );
+  }
+}
+for (const file of uiFiles) {
+  const match = file.slice(UI_SRC.length).match(/^(.+)\/index\.ts$/);
+  if (match && !uiModules.has(match[1])) {
+    uiViolations.push(
+      `  ${file}\n    → a module index that no subpath exports; add \`./${match[1]}\` to both exports maps, or move the file`,
+    );
+  }
+}
+
+// Rule 2: placement.
+const uiModuleOf = (file: string): string | undefined => {
+  const rel = file.slice(UI_SRC.length);
+  let best: string | undefined;
+  for (const dir of uiModules.keys()) {
+    if (rel.startsWith(`${dir}/`) && (!best || dir.length > best.length))
+      best = dir;
+  }
+  return best;
+};
+for (const file of uiFiles) {
+  if (file === `${UI_SRC}styles.css`) continue;
+  if (!uiModuleOf(file)) {
+    uiViolations.push(
+      `  ${file}\n    → outside every module directory; tsdown would build it and no subpath would export it`,
+    );
+  }
+}
+
+// Rules 3 and 4 read the parsed import graph.
+const uiIsSpec = (file: string): boolean =>
+  /\.spec\.tsx?$/.test(file) || file.includes("/__tests__/");
+const uiSpecifiers = (file: string): string[] => {
+  const ast = parseAst(readFileSync(file, "utf8"), {
+    lang: file.endsWith(".tsx") ? "tsx" : "ts",
+  });
+  const found: string[] = [];
+  const visit = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child);
+      return;
+    }
+    const n = node as {
+      type?: string;
+      source?: { type?: string; value?: unknown };
+    };
+    if (
+      (n.type === "ImportDeclaration" ||
+        n.type === "ExportNamedDeclaration" ||
+        n.type === "ExportAllDeclaration" ||
+        n.type === "ImportExpression") &&
+      typeof n.source?.value === "string"
+    ) {
+      found.push(n.source.value);
+    }
+    for (const value of Object.values(node)) {
+      if (value && typeof value === "object") visit(value);
+    }
+  };
+  visit(ast.body);
+  return found;
+};
+
+const uiEdges = new Map<string, Map<string, string>>(); // from -> to -> example
+for (const file of uiFiles) {
+  if (!/\.tsx?$/.test(file)) continue;
+  const from = uiModuleOf(file);
+  for (const specifier of uiSpecifiers(file)) {
+    if (specifier === "@alepha/ui" || specifier.startsWith("@alepha/ui/")) {
+      uiViolations.push(
+        `  ${file}\n    → imports "${specifier}"; inside the package, import the concrete file by a relative path`,
+      );
+      continue;
+    }
+    if (!specifier.startsWith(".")) continue;
+    const target = join(dirname(file), specifier);
+    const to = uiModuleOf(target);
+    if (to && target === `${UI_SRC}${to}/index.ts`) {
+      uiViolations.push(
+        `  ${file}\n    → imports the \`${to}\` barrel ("${specifier}"); name the concrete file instead`,
+      );
+    }
+    if (uiIsSpec(file) || !from || !to || from === to) continue;
+    if (!uiEdges.has(from)) uiEdges.set(from, new Map());
+    if (!uiEdges.get(from)?.has(to)) uiEdges.get(from)?.set(to, file);
+  }
+}
+
+// Rule 4: layering.
+for (const leaf of UI_LEAF_MODULES) {
+  for (const [to, example] of uiEdges.get(leaf) ?? []) {
+    if (leaf !== "core" && to === "core") continue;
+    uiViolations.push(
+      `  ${example}\n    → \`${leaf}\` imports \`${to}\`; ${leaf === "core" ? "core imports no other module" : `${leaf} imports only core`}`,
+    );
+  }
+}
+const uiVisiting: string[] = [];
+const uiDone = new Set<string>();
+const uiCycles = new Set<string>();
+const uiWalk = (mod: string): void => {
+  if (uiDone.has(mod)) return;
+  const at = uiVisiting.indexOf(mod);
+  if (at !== -1) {
+    // One report per cycle, whichever module the walk entered it from.
+    const loop = uiVisiting.slice(at);
+    const first = loop.indexOf([...loop].sort()[0] as string);
+    const cycle = [...loop.slice(first), ...loop.slice(0, first)];
+    const label = [...cycle, cycle[0]].join(" → ");
+    if (!uiCycles.has(label)) {
+      uiCycles.add(label);
+      uiViolations.push(`  module cycle: ${label}`);
+    }
+    return;
+  }
+  uiVisiting.push(mod);
+  for (const to of uiEdges.get(mod)?.keys() ?? []) uiWalk(to);
+  uiVisiting.pop();
+  uiDone.add(mod);
+};
+for (const mod of uiModules.keys()) uiWalk(mod);
+
+if (uiViolations.length > 0) {
+  console.error(
+    `\n${uiViolations.length} @alepha/ui module-map violation(s):\n\n` +
+      `${uiViolations.join("\n")}\n\n` +
+      "`@alepha/ui` is one subpath per module, each a `src/<module>/index.ts`\n" +
+      "listed in both exports maps. Inside the package, imports are relative and\n" +
+      "name a concrete file. `core` imports no other module, the opt-in wrappers\n" +
+      "and `i18n/fr` import only `core`, and the module graph has no cycle.\n",
   );
   process.exit(1);
 }

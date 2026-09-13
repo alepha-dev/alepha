@@ -1,6 +1,4 @@
-import { Toaster } from "@alepha/ui/components/ui/sonner";
-import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
 import { useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { type ComponentType, lazy, Suspense, useMemo } from "react";

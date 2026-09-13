@@ -1,10 +1,9 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import type { AlephaTableFilterField } from "@alepha/ui/components/alepha-table/alepha-table-filter-bar";
-import { AlephaTableFilterBar } from "@alepha/ui/components/alepha-table/alepha-table-filter-bar";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { cn } from "@alepha/ui/lib/utils";
+import { Badge, Button, useToast, cn } from "@alepha/ui";
+import {
+  AlephaTable,
+  type AlephaTableFilterField,
+  AlephaTableFilterBar,
+} from "@alepha/ui/table";
 import { z } from "alepha";
 import type { Page } from "alepha";
 import { useClient } from "alepha/react";

@@ -618,8 +618,16 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     // ⚠️ When the runner has them, they never touched a filesystem: it walks
     // the archive instead, because materialising a 49 MB asset tree inside a
     // 128 MB isolate is what killed `apps/docs`. See {@link useAssets}.
+    //
+    // ⚠️ The runner's own `config` carries the `_headers` / `_redirects` texts
+    // it caught on its first pass, so it is MERGED into the wrangler config
+    // here and never replaced by it: spreading the injected assets and then
+    // setting `config` is the line that silently dropped them.
     if (this.injectedAssets) {
-      return { ...this.injectedAssets, config: this.assetConfig(config) };
+      return {
+        ...this.injectedAssets,
+        config: this.assetConfig(config, this.injectedAssets.config),
+      };
     }
     const root = this.fs.join(distDir, "public");
     if (!(await this.fs.exists(root))) {
@@ -628,6 +636,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
     const manifest: Record<string, CloudflareAssetEntry> = {};
     const paths = new Map<string, string>();
+    const texts: Record<string, string> = {};
     for (const entry of await this.fs.ls(root, { recursive: true })) {
       const path = this.fs.join(root, entry);
       // ⚠️ A recursive listing names directories too on the node provider,
@@ -637,6 +646,15 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       }
       const bytes = new Uint8Array(await this.fs.readFile(path));
       const key = this.assetManifest.key(entry);
+      // ⚠️ Configuration, not a page: its text goes in the asset config and
+      // the file itself is never uploaded. See `isConfigFile`.
+      if (this.assetManifest.isConfigFile(key)) {
+        const field = this.assetManifest.configField(key);
+        if (field) {
+          texts[field] = new TextDecoder().decode(bytes);
+        }
+        continue;
+      }
       manifest[key] = {
         hash: this.assetManifest.hash(bytes, entry),
         size: bytes.length,
@@ -662,8 +680,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
         }
         return new Uint8Array(await this.fs.readFile(path));
       },
-      ...(this.assetConfig(config)
-        ? { config: this.assetConfig(config) }
+      ...(this.assetConfig(config, texts)
+        ? { config: this.assetConfig(config, texts) }
         : undefined),
     };
   }
@@ -675,11 +693,18 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * Cloudflare never sees. `not_found_handling` and `run_worker_first` decide
    * whether a miss is a real 404 or the app's NotFound component under a 200,
    * which crawlers index, so those have to arrive.
+   *
+   * `files` is the text of `dist/public/_headers` and `_redirects`, keyed by
+   * the field the API reads them under, which is how wrangler sends them:
+   * raw, for Cloudflare to parse server-side. It is merged in, never
+   * substituted, since a site has both a `not_found_handling` and a
+   * `_headers`.
    */
   protected assetConfig(
     config: WranglerConfig,
+    files: Record<string, unknown> = {},
   ): Record<string, unknown> | undefined {
-    const assetConfig: Record<string, unknown> = { ...config.assets };
+    const assetConfig: Record<string, unknown> = { ...config.assets, ...files };
     delete assetConfig.directory;
     delete assetConfig.binding;
     return Object.keys(assetConfig).length > 0 ? assetConfig : undefined;

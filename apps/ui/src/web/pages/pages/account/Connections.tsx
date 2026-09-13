@@ -1,4 +1,4 @@
-import AccountConnections from "@alepha/ui/components/account/account-connections";
+import { AccountConnections } from "@alepha/ui/account";
 import { z } from "alepha";
 
 import { Showcase } from "@/web/components/Showcase.tsx";

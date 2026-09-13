@@ -3,18 +3,15 @@ import * as React from "react";
 void React;
 
 import {
-  AlephaTable,
-  type TableFetcher,
-} from "@alepha/ui/components/alepha-table/alepha-table";
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
+  Badge,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@alepha/ui/components/ui/card";
+} from "@alepha/ui";
+import { AutoForm } from "@alepha/ui/form";
+import { AlephaTable, type TableFetcher } from "@alepha/ui/table";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 

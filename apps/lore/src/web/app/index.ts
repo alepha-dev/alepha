@@ -1,6 +1,5 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
-import { AccountRouter } from "@alepha/ui/components/account/account-router";
-import { accountRouterOptionsAtom } from "@alepha/ui/components/account/account-router-options";
+import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
 import { $module } from "alepha";
 import { AlephaCrypto } from "alepha/crypto";
 import { I18nProvider } from "alepha/react/i18n";

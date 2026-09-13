@@ -17,8 +17,8 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
-} from "@alepha/ui/components/ui/sidebar";
-import { cn } from "@alepha/ui/lib/utils";
+  cn,
+} from "@alepha/ui";
 import { z } from "alepha";
 import {
   BookText,
