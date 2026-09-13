@@ -561,7 +561,9 @@ managersOnly = $action({
 
 1. **`currentUserAtom`**: checked first. Set by `$action.run()` fork, MCP transports, pipelines, and jobs.
 2. **`request.user`**: HTTP request user set by previous middleware.
-3. **HTTP headers**: JWT or API key resolved from `Authorization` header.
+3. **HTTP headers**: JWT or API key resolved from `Authorization` header. API
+   keys, their expiry, rotation and scope have a guide of their own:
+   [API keys](/docs/guides-server-api-keys).
 
 ### Local Action Calls
 
@@ -762,16 +764,21 @@ first or to name its realm as a string.
 
 ## $secure Options
 
-`$secure()` accepts four options. All are optional - when none are provided, it only checks authentication.
+`$secure()` accepts five options. All are optional - when none are provided, it only checks authentication.
 
 ```typescript
 $secure({
   issuers?: string[],
   roles?: string[],
   permissions?: (string | Permission)[],
+  sessionOnly?: boolean,
   guard?: (ctx: SecureGuardContext) => Async<boolean>,
 })
 ```
+
+`sessionOnly` refuses any identity authenticated by a machine credential (an
+API key or an OAuth access token): see
+[Permission scope and machine credentials](#permission-scope-and-machine-credentials).
 
 The `guard` receives a context object - `{ user, params, query, body, request?, alepha }` - and may be async:
 
@@ -783,10 +790,10 @@ guard: ({ user, params }) => user.id === params.id;
 
 When multiple options are provided, checks run in this fixed order. Each check must pass before the next runs:
 
-1. **Authentication**: Is there a valid user? → `UnauthorizedError` (401) if not.
+1. **Authentication**: Is there a valid user? → `UnauthorizedError` (401) if not. With `sessionOnly`, is it a signed-in session rather than a machine credential? → `ForbiddenError` (403) if not.
 2. **Issuers**: Does the user's realm match one of the listed issuers? → `ForbiddenError` (403) if not.
 3. **Roles**: Does the user have at least one of the listed roles? → `ForbiddenError` (403) if not.
-4. **Permissions**: Does the user's role grant all listed permissions? → `ForbiddenError` (403) if not.
+4. **Permissions**: Does the user's role grant all listed permissions, and does the credential's `permissionScope` admit them? → `ForbiddenError` (403) if not.
 5. **Guard**: Does the custom function return `true`? → `ForbiddenError` (403) if not.
 
 ### AND vs OR Logic
@@ -866,6 +873,81 @@ if (client.myAction.can()) {
   // render the button
 }
 ```
+
+## Permission scope and machine credentials
+
+Two things an identity can carry, besides its roles, change what `$secure` and
+`SecurityProvider` answer for it.
+
+### `permissionScope`: below the roles, never above
+
+`permissionScope` caps what a credential may do, below what its roles grant:
+
+- **`undefined`** is unrestricted. Every signed-in session is on this branch,
+  so nothing changes for an identity that never had a scope.
+- **An array** admits a permission only when one of its entries matches it:
+  a permission name, or a pattern such as `project:*` or `*`.
+- **`[]`** matches nothing, so every permission-checked route refuses. It reads
+  like a no-op and is a denial.
+
+The scope is applied wherever a permission is read, not only in `$secure`:
+`checkUserPermission`, `getPermissions(user)` (so a scoped caller is never
+shown actions it cannot call, in `/api/_links` or elsewhere) and
+`permissionCatalogueFor(user)` all intersect with it.
+
+⚠️ A scope binds **permission-checked routes only**. A route that declares no
+`permissions` (a bare `$secure()`, or `$secure({ roles })`) admits a scoped
+credential whatever its scope says. Declare a permission on a route a scope is
+meant to keep a credential out of.
+
+Where a scope comes from:
+
+- An **API key** created with `permissions` carries them as its scope. See
+  [API keys](/docs/guides-server-api-keys#permission-scope).
+- An **OAuth access token** carries the permissions its granted scopes
+  declare, as below.
+
+### `credential`: a machine credential is not a session
+
+An identity authenticated by an API key or by a connected app's OAuth access
+token carries a `credential` marker (`{ type: "api-key" | "oauth", id }`);
+a signed-in session carries none. `SecurityProvider.isMachineCredential(user)`
+reads it, and `$secure({ sessionOnly: true })` refuses it with a 403.
+
+Declare `sessionOnly` on every route that mints or revokes credentials,
+approves an OAuth grant, or changes the account. The framework does so on the
+API key routes that create, rotate and revoke, on OAuth consent and device
+approval, and on every non-GET route under `/users/me`. A machine credential
+still reads, and still calls the permission-checked actions its roles and
+scope allow.
+
+### OAuth scopes declare what a token reaches
+
+When the realm runs the OAuth authorization server, each scope an app offers is
+declared in `oauthOptions.scopes` with the sentence the consent screen shows,
+and the permissions a token granted it may use:
+
+```typescript
+import { oauthOptions } from "alepha/api/oauth";
+
+alepha.set(oauthOptions, {
+  scopes: {
+    openid: { label: "Who you are", permissions: [] },
+    projects: {
+      label: "Your projects",
+      description: "Read and manage the projects you are a member of.",
+      permissions: ["project:*", "quest:*"],
+    },
+  },
+});
+```
+
+- A grant reaches the union of its scopes' `permissions`, which becomes the
+  access token's `permissionScope`, resolved again at every refresh.
+- `permissions: []` reaches nothing, which is right for an identity scope.
+- **A scope declared without `permissions` leaves the whole grant
+  unrestricted**, as every grant was before scopes narrowed anything, and the
+  server logs a warning at boot for each one. Declare them.
 
 ## HTTP Basic Auth
 
