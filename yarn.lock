@@ -3939,6 +3939,7 @@ __metadata:
     oxfmt: "npm:^0.67.0"
     oxlint: "npm:^1.82.0"
     oxlint-tsgolint: "npm:^7.0.2001"
+    rolldown: "npm:~1.2.7"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.2.2"
     vitest: "npm:^5.0.0"
