@@ -252,3 +252,87 @@ describe("revoking an API key", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("the admin API key listing", () => {
+  const idsOf = (page: { content: Array<{ id: string }> }) =>
+    page.content.map((key) => key.id).sort();
+
+  it("filters by status with the same rule each row's status is derived by", async () => {
+    const { alepha, userId, seed } = await setup();
+    const ids = await seed();
+    const admin = { id: randomUUID(), roles: ["admin"] };
+    const controller = alepha.inject(AdminApiKeyController);
+
+    const expired = await controller.findApiKeys.run(
+      { query: { userId, status: ["expired", "revoked"] } },
+      { user: admin },
+    );
+    expect(idsOf(expired)).toEqual(
+      [ids.expired, ids.revoked, ids.revokedExpired].sort(),
+    );
+
+    const expiring = await controller.findApiKeys.run(
+      { query: { userId, status: ["expiring"] } },
+      { user: admin },
+    );
+    expect(idsOf(expiring)).toEqual([ids.expiring]);
+    expect(expiring.content[0].status).toBe("expiring");
+  });
+
+  it("keeps hiding revoked keys by default, and honours includeRevoked without a status", async () => {
+    const { alepha, userId, seed } = await setup();
+    const ids = await seed();
+    const admin = { id: randomUUID(), roles: ["admin"] };
+    const controller = alepha.inject(AdminApiKeyController);
+
+    const byDefault = await controller.findApiKeys.run(
+      { query: { userId } },
+      { user: admin },
+    );
+    expect(idsOf(byDefault)).toEqual(
+      [ids.active, ids.farFuture, ids.expiring, ids.expired].sort(),
+    );
+
+    const everything = await controller.findApiKeys.run(
+      { query: { userId, includeRevoked: true } },
+      { user: admin },
+    );
+    expect(everything.content).toHaveLength(6);
+  });
+
+  it("ignores includeRevoked once a status is given", async () => {
+    const { alepha, userId, seed } = await setup();
+    const ids = await seed();
+    const admin = { id: randomUUID(), roles: ["admin"] };
+
+    const page = await alepha
+      .inject(AdminApiKeyController)
+      .findApiKeys.run(
+        { query: { userId, status: ["active"], includeRevoked: true } },
+        { user: admin },
+      );
+
+    expect(idsOf(page)).toEqual([ids.active, ids.farFuture].sort());
+  });
+
+  it("reads one status or several from the query string over HTTP", async () => {
+    const { alepha, userId, seed } = await setup();
+    const ids = await seed();
+    const admin = { id: randomUUID(), roles: ["admin"] };
+    const controller = alepha.inject(AdminApiKeyController);
+
+    const one = await controller.findApiKeys.fetch(
+      { query: { userId, status: ["revoked"] } },
+      { user: admin },
+    );
+    expect(idsOf(one.data)).toEqual([ids.revoked, ids.revokedExpired].sort());
+
+    const two = await controller.findApiKeys.fetch(
+      { query: { userId, status: ["active", "expiring"] } },
+      { user: admin },
+    );
+    expect(idsOf(two.data)).toEqual(
+      [ids.active, ids.farFuture, ids.expiring].sort(),
+    );
+  });
+});

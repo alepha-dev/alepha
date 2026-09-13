@@ -4,11 +4,10 @@ import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { RefreshCw, Trash2 } from "lucide-react";
 
-import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
-import TimeAgo from "../core/TimeAgo.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { ApiKeyScopeSummary } from "./ApiKeyScopeSummary.tsx";
+import { ApiKeyStatusBadge } from "./ApiKeyStatusBadge.tsx";
 
 export interface AccountKeysRowProps {
   apiKey: ListApiKeyItem;
@@ -58,31 +57,7 @@ export const AccountKeysRow = (props: AccountKeysRowProps) => {
     >
       <div className="flex items-center gap-2">
         <ApiKeyScopeSummary permissions={key.permissions} />
-        {key.status === "revoked" ? (
-          <Badge variant="tint" tone="neutral">
-            {tr("account.keys.status.revoked", { default: "Revoked" })}
-            {key.revokedAt ? <TimeAgo value={key.revokedAt} /> : null}
-          </Badge>
-        ) : key.status === "expired" ? (
-          <Badge variant="tint" tone="danger">
-            {tr("account.keys.status.expired", { default: "Expired" })}
-            {key.expiresAt ? <TimeAgo value={key.expiresAt} /> : null}
-          </Badge>
-        ) : key.status === "expiring" ? (
-          <Badge variant="tint" tone="warning">
-            {tr("account.keys.status.expiring", { default: "Expires" })}
-            {key.expiresAt ? <TimeAgo value={key.expiresAt} /> : null}
-          </Badge>
-        ) : key.expiresAt ? (
-          <span className="text-muted-foreground text-xs">
-            {tr("account.keys.status.expires", { default: "Expires" })}{" "}
-            <TimeAgo value={key.expiresAt} />
-          </span>
-        ) : (
-          <span className="text-muted-foreground text-xs">
-            {tr("account.keys.status.noExpiry", { default: "No expiry" })}
-          </span>
-        )}
+        <ApiKeyStatusBadge apiKey={key} />
 
         {key.status === "revoked" ? null : (
           <Button

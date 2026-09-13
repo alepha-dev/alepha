@@ -36,7 +36,7 @@ export class ShowcaseKeysController {
       query: adminApiKeyQuerySchema,
       response: z.page(adminApiKeyResourceSchema),
     },
-    handler: ({ query }) => this.keys.paginate(query as any),
+    handler: ({ query }) => this.keys.paginate(query),
   });
 
   public readonly createApiKey = $action({

@@ -94,10 +94,15 @@ export const SHOWCASE_KEYS: ListApiKeyItem[] = [
     permissions: [],
     createdAt: "2026-06-10T09:00:00.000Z",
     lastUsedAt: "2026-09-05T07:10:00.000Z",
-    // Relative to the moment the showcase loads, unlike every other date
-    // here: an "expiring" badge reading "expires 5 days ago" would be the
-    // one lie a fixed date tells about this state.
-    expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    // Relative to today, unlike every other date here: an "expiring" badge
+    // reading "expires 5 days ago" would be the one lie a fixed date tells
+    // about this state. Whole UTC days, never the exact instant: the server
+    // evaluates this module when it boots and the browser when the page
+    // loads, and the exact datetime `TimeAgo` renders on both sides must be
+    // the same string or hydration fails.
+    expiresAt: new Date(
+      (Math.floor(Date.now() / 86_400_000) + 4) * 86_400_000,
+    ).toISOString(),
     usageCount: 96,
     status: "expiring",
   },

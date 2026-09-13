@@ -28,9 +28,10 @@ export class AdminApiKeyController {
       response: z.page(adminApiKeyResourceSchema),
     },
     handler: ({ query }) => {
-      const { userId, includeRevoked, ...pagination } = query;
+      const { userId, status, includeRevoked, ...pagination } = query;
       return this.apiKeyService.findAll({
         userId,
+        status,
         includeRevoked,
         ...pagination,
       });

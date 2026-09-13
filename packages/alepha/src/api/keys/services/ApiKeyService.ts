@@ -625,6 +625,7 @@ export class ApiKeyService {
    */
   public async findAll(query: {
     userId?: string;
+    status?: ApiKeyStatus[];
     includeRevoked?: boolean;
     page?: number;
     size?: number;
@@ -638,7 +639,11 @@ export class ApiKeyService {
       where.userId = { eq: query.userId };
     }
 
-    if (!query.includeRevoked) {
+    // `status` owns the rule when given; `includeRevoked` is the deprecated
+    // spelling of "everything but revoked" and is ignored then.
+    if (query.status?.length) {
+      where.and = [this.statusWhere(query.status)];
+    } else if (!query.includeRevoked) {
       where.revokedAt = { isNull: true };
     }
 
