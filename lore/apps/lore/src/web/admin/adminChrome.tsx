@@ -1,4 +1,4 @@
-import type { AdminRouterOptions } from "@alepha/ui/components/admin/admin-router-options";
+import type { AdminRouterOptions } from "@alepha/ui/admin";
 
 import { AdminBrand } from "./AdminBrand.tsx";
 

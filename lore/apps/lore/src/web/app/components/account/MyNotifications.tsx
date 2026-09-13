@@ -1,8 +1,9 @@
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
-import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
-import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import { Switch } from "@alepha/ui/components/ui/switch";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { Switch, useToast } from "@alepha/ui";
+import {
+  SettingsHeading,
+  SettingsRow,
+  SettingsSection,
+} from "@alepha/ui/settings";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";

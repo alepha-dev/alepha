@@ -1,4 +1,4 @@
-import { AuthRegister } from "@alepha/ui/components/auth/auth-register";
+import { AuthRegister } from "@alepha/ui/auth";
 import type { RealmConfig } from "alepha/api/users";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";

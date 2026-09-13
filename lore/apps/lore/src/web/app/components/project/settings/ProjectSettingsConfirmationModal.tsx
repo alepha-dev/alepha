@@ -7,8 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@alepha/ui/components/ui/alert-dialog";
-import { Input } from "@alepha/ui/components/ui/input";
+  Input,
+} from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 

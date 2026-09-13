@@ -1,25 +1,23 @@
 import {
-  AlephaTable,
-  type BulkAction,
-  type BulkMenuAction,
-} from "@alepha/ui/components/alepha-table/alepha-table";
-import { AlephaTableFilterBar } from "@alepha/ui/components/alepha-table/alepha-table-filter-bar";
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
+  TimeAgo,
+  Badge,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { UserAvatar } from "@alepha/ui/components/user-avatar/user-avatar";
+  useDialog,
+  useToast,
+  UserAvatar,
+} from "@alepha/ui";
+import {
+  AlephaTable,
+  type BulkAction,
+  type BulkMenuAction,
+  AlephaTableFilterBar,
+} from "@alepha/ui/table";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";

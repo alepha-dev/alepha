@@ -1,7 +1,4 @@
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { TimeAgo, Button, Textarea, useDialog } from "@alepha/ui";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";

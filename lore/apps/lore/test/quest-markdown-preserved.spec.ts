@@ -59,7 +59,7 @@ const setup = async (): Promise<TestContext> => {
  *
  * These pin the round-trip. The renderer is what makes raw HTML safe here
  * (`MarkdownView` mounts no `rehype-raw`; see
- * `markdown-view-raw-html.browser.spec.tsx`), so re-adding storage-level
+ * `MarkdownViewRawHtml.browser.spec.tsx`), so re-adding storage-level
  * stripping to "harden" these fields is what turns these red.
  */
 describe("quest markdown is stored verbatim", () => {

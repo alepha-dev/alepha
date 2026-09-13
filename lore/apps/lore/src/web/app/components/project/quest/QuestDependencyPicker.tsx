@@ -1,4 +1,10 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  cn,
+} from "@alepha/ui";
 import {
   Command,
   CommandEmpty,
@@ -6,13 +12,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@alepha/ui/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
-import { cn } from "@alepha/ui/lib/utils";
+} from "@alepha/ui/command";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check, ChevronDown, Link2, X } from "lucide-react";

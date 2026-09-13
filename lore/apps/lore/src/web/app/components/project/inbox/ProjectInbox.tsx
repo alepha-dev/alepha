@@ -1,9 +1,7 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Button } from "@alepha/ui/components/ui/button";
+import { FilterSlot, TimeAgo, Button } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { inboxUnreadAtom } from "@alepha/ui/shell";
+import { AlephaTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import type { NotificationInboxController } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";

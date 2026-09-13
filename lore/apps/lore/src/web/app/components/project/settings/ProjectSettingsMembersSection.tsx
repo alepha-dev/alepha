@@ -1,25 +1,24 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
-import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import {
+  TimeAgo,
+  Badge,
+  Button,
+  Card,
+  CardContent,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import { cn } from "@alepha/ui/lib/utils";
+  Input,
+  Label,
+  cn,
+} from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { settingsCardEdge } from "@alepha/ui/settings";
 import { z } from "alepha";
 import type { InvitationEntity } from "alepha/api/invitations";
 import { useAuth } from "alepha/react/auth";

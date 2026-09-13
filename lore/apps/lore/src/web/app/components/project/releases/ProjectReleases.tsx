@@ -1,8 +1,6 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
+import { FilterSlot, Badge, Button } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
+import { AlephaTable } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
