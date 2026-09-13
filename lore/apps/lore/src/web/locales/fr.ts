@@ -837,6 +837,14 @@ export default {
   "release.delete.default":
     "$1 est la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
   "release.delete.done": "$1 supprimée.",
+  "release.bulk.delete.title": "Supprimer $1 versions ?",
+  "release.bulk.delete.confirm": "Supprimer $1 versions",
+  "release.bulk.delete.detached":
+    "Cette action est irréversible. Leurs épopées et leurs quêtes sont conservées, détachées de celles-ci.",
+  "release.bulk.delete.published":
+    "La sélection contient une version publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
+  "release.bulk.delete.default":
+    "La sélection contient la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
   "quest.complete.landedIn": "Terminée dans $1",
   "release.publish.title": "Publier cette version ?",
   "release.publish.description":

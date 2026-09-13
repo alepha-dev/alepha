@@ -865,6 +865,14 @@ export default {
   "release.delete.default":
     "$1 is the default release: the project is left with none until another is set.",
   "release.delete.done": "$1 deleted.",
+  "release.bulk.delete.title": "Delete $1 releases?",
+  "release.bulk.delete.confirm": "Delete $1 releases",
+  "release.bulk.delete.detached":
+    "This cannot be undone. Their epics and quests stay, detached from them.",
+  "release.bulk.delete.published":
+    "The selection includes a published release: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
+  "release.bulk.delete.default":
+    "The selection includes the default release: the project is left with none until another is set.",
   "quest.complete.landedIn": "Completed in $1",
   "release.publish.title": "Publish this release?",
   "release.publish.description":

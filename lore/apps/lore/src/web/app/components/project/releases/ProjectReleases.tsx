@@ -1,4 +1,7 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type BulkAction,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -190,6 +193,30 @@ const ProjectReleases = () => {
     };
   };
 
+  // ⚠️ This array is the table's CHECKBOX COLUMN. `AlephaTable` derives
+  // `hasCheckbox` from it being non-empty, the way the Epics list documents,
+  // and Delete is the only bulk action here. So a rank that may not delete
+  // gets `[]`, and with it the table exactly as it was before bulk delete
+  // existed: no column, and no selection with nothing to do.
+  //
+  // Refresh, then clear, in that order: a selection that survives a delete
+  // points at rows that no longer exist. The hook has already refetched
+  // `currentReleasesAtom` once for the whole run.
+  const bulkActions: BulkAction<ReleaseResource>[] = deleteRelease.can
+    ? [
+        {
+          icon: Trash2,
+          label: tr("board.bulk.delete"),
+          destructive: true,
+          onClick: async (selected, ctx) => {
+            if (!(await deleteRelease.removeMany(selected))) return;
+            ctx.refresh();
+            ctx.clearSelection();
+          },
+        },
+      ]
+    : [];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
       <ReleaseCreateDialog
@@ -202,6 +229,7 @@ const ProjectReleases = () => {
       <AlephaTable<ReleaseResource>
         className="min-h-0 flex-1"
         persistenceKey={`lor.releases.${project.id}`}
+        bulkActions={bulkActions}
         defaultSort={{ field: "tag", direction: "desc" }}
         // The full empty state rather than `emptyMessage`, so the page that
         // has never had a release still explains what one IS and offers the

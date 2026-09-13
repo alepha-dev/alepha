@@ -8,14 +8,19 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { settleBulk } from "../../shared/bulkOutcome.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
+import { useBulkReport } from "../../shared/useBulkReport.ts";
 
 /**
- * Delete a release, after saying what the row does not show.
+ * Delete a release, or a selection of them, after saying what the row does
+ * not show.
  *
  * `ReleaseController.deleteRelease` existed for a long time with nothing in
  * the web app calling it, so a release created by mistake could only be
- * removed from the MCP. The Releases table's row menu is the door now.
+ * removed from the MCP. The Releases table's row menu and its checkbox
+ * selection are the two doors now, and they share this hook so the single
+ * and the bulk confirm cannot start disagreeing about what a delete costs.
  *
  * ## The server is cheap about it, the confirm is not
  *
@@ -34,9 +39,11 @@ import { formatReference } from "../../shared/element/typedReference.ts";
  *   row, and nothing on the delete path picks a successor the way publishing
  *   does, so the project is left with none.
  *
- * At most one of the two ever applies: publishing clears the default, and
- * `setDefaultRelease` refuses a published release. The description is still
- * built as sentences joined rather than a branch per case, because
+ * On one row at most one of the two applies: publishing clears the default,
+ * and `setDefaultRelease` refuses a published release. A selection can carry
+ * both, and says that it includes such a release, since someone who ticked
+ * four rows cannot see which of them holds the frozen changelog. The
+ * description is sentences joined rather than a branch per case, because
  * `ConfirmOptions.description` is a string and a list cannot be drawn in it.
  *
  * ⚠️ **No guard is added anywhere.** The server stays as permissive as the
@@ -44,39 +51,56 @@ import { formatReference } from "../../shared/element/typedReference.ts";
  * from the first. The dialog is where the loss is named, not where it is
  * prevented.
  *
- * ⚠️ **It refetches `currentReleasesAtom`.** The sidebar, both release
- * controls and the Epics and Quests release filters read the atom, and none
- * of them watches the table this is called from.
+ * ⚠️ **It refetches `currentReleasesAtom`, once per run.** The sidebar, both
+ * release controls and the Epics and Quests release filters read the atom,
+ * and none of them watches the table this is called from. A bulk run
+ * refetches after every call has settled, never once per id: the table's own
+ * `ctx.refresh()` re-fires only its own fetch.
  */
 export const useDeleteRelease = (): DeleteRelease => {
   const releaseApi = useClient<ReleaseController>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const toaster = useToast();
+  const reportBulk = useBulkReport();
   const [, setReleases] = useStore(currentReleasesAtom);
 
   const name = (release: ReleaseResource): string =>
     release.tag ?? formatReference("release", release.number);
 
+  const sentences = (parts: Array<string | undefined>): string =>
+    parts.filter((sentence): sentence is string => Boolean(sentence)).join(" ");
+
+  const failure = (error: unknown) =>
+    toaster.error(error instanceof Error ? error.message : String(error));
+
+  /**
+   * The releases are gone whatever this answers, so a failed refetch is
+   * reported and the caller still refreshes: its rows must go too.
+   */
+  const refetch = async (projectId: number) => {
+    try {
+      setReleases(await releaseApi.getReleases({ params: { projectId } }));
+    } catch (error) {
+      failure(error);
+    }
+  };
+
   return {
     can: releaseApi.deleteRelease.can(),
     remove: async (release) => {
       const label = name(release);
-      const description = [
-        String(tr("release.delete.detached", { args: [label] })),
-        release.releasedAt
-          ? String(tr("release.delete.published", { args: [label] }))
-          : undefined,
-        release.defaultSince
-          ? String(tr("release.delete.default", { args: [label] }))
-          : undefined,
-      ]
-        .filter((sentence): sentence is string => Boolean(sentence))
-        .join(" ");
-
       const ok = await dialog.confirm({
         title: String(tr("release.delete.title", { args: [label] })),
-        description,
+        description: sentences([
+          String(tr("release.delete.detached", { args: [label] })),
+          release.releasedAt
+            ? String(tr("release.delete.published", { args: [label] }))
+            : undefined,
+          release.defaultSince
+            ? String(tr("release.delete.default", { args: [label] }))
+            : undefined,
+        ]),
         confirmLabel: String(tr("release.delete.action")),
         cancelLabel: String(tr("common.cancel")),
         destructive: true,
@@ -86,21 +110,47 @@ export const useDeleteRelease = (): DeleteRelease => {
       try {
         await releaseApi.deleteRelease({ params: { id: release.id } });
       } catch (error) {
-        toaster.error(error instanceof Error ? error.message : String(error));
+        failure(error);
         return false;
       }
       toaster.success(String(tr("release.delete.done", { args: [label] })));
-      // The release is gone whatever this answers, so a failed refetch is
-      // reported and still resolves `true`: the caller's rows must go too.
-      try {
-        setReleases(
-          await releaseApi.getReleases({
-            params: { projectId: release.projectId },
-          }),
-        );
-      } catch (error) {
-        toaster.error(error instanceof Error ? error.message : String(error));
-      }
+      await refetch(release.projectId);
+      return true;
+    },
+    removeMany: async (selected) => {
+      if (selected.length === 0) return false;
+      const n = String(selected.length);
+      const ok = await dialog.confirm({
+        title: String(tr("release.bulk.delete.title", { args: [n] })),
+        description: sentences([
+          String(tr("release.bulk.delete.detached")),
+          selected.some((release) => release.releasedAt)
+            ? String(tr("release.bulk.delete.published"))
+            : undefined,
+          selected.some((release) => release.defaultSince)
+            ? String(tr("release.bulk.delete.default"))
+            : undefined,
+        ]),
+        confirmLabel: String(tr("release.bulk.delete.confirm", { args: [n] })),
+        cancelLabel: String(tr("common.cancel")),
+        destructive: true,
+      });
+      if (!ok) return false;
+
+      // Every call settles, and the report says how many landed: one
+      // refusal must not hide the deletes that went through, nor stop the
+      // ones after it.
+      const outcome = await settleBulk(
+        selected.map((release) => release.id),
+        (id) => releaseApi.deleteRelease({ params: { id } }),
+      );
+      reportBulk(
+        outcome,
+        String(
+          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
+        ),
+      );
+      await refetch(selected[0].projectId);
       return true;
     },
   };
@@ -108,7 +158,8 @@ export const useDeleteRelease = (): DeleteRelease => {
 
 export interface DeleteRelease {
   /**
-   * Whether this rank may delete a release. Hide the entry when false.
+   * Whether this rank may delete a release. Hide the entry, and the checkbox
+   * column with it, when false.
    */
   can: boolean;
   /**
@@ -118,4 +169,10 @@ export interface DeleteRelease {
    * refused, which has already been toasted.
    */
   remove: (release: ReleaseResource) => Promise<boolean>;
+  /**
+   * The same over a selection. Resolves `true` once the run happened, even
+   * when some of it was refused (the toast says how many landed), so the
+   * caller refreshes and clears; `false` only when the reader backed out.
+   */
+  removeMany: (selected: ReleaseResource[]) => Promise<boolean>;
 }
