@@ -207,8 +207,10 @@ in a spec, and `MemoryFileSystemProvider` for the files.
 | `help`  | Prints this command's help                                        |
 
 **`print` is not the logger, and the distinction matters.** Output is what a
-command _produces_; the logger is what it _reports_. Anything a caller might
-pipe, parse or redirect goes through `print`. Sending it to the logger instead
+command _produces_; the logger is what it _reports_. They go to different
+streams: `print` to stdout, and in a CLI every log line to stderr (see
+[Logging](/docs/guides-core-logging#which-stream-stdout-or-stderr)). Anything a caller
+might pipe, parse or redirect goes through `print`. Sending it to the logger instead
 is how `alepha --version` once answered `18:21:36 I Alepha v0.24.0`, in colour,
 in a shape that changed with `LOG_FORMAT`: an environment variable the calling
 script does not control. `print` strips colour when stdout is not a TTY, so a

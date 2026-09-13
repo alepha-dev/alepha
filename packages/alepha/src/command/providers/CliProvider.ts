@@ -273,6 +273,7 @@ export class CliProvider {
     }
 
     if (globalFlags.help) {
+      this.logToStderr();
       this.printHelp(command);
       return;
     }
@@ -289,13 +290,18 @@ export class CliProvider {
 
       // Execute root command if it exists
       if (rootCommand) {
+        this.logToStderr();
         await this.executeCommand(rootCommand, argv, true);
         return;
       }
 
-      // No command found and no root command
+      // No command found and no root command: nothing for a CLI to do, so
+      // this process is not one (an application that happens to register
+      // commands), and its logs stay where they were.
       return;
     }
+
+    this.logToStderr();
 
     // A mistyped *sub*command must not report success either.
     //
@@ -352,6 +358,7 @@ export class CliProvider {
     message: string,
     command?: CommandPrimitive<ZObject>,
   ): void {
+    this.logToStderr();
     this.log.error(message);
     this.printHelp(command);
     if (typeof process === "object") {
@@ -381,6 +388,7 @@ export class CliProvider {
    * table.
    */
   protected reportFailure(error: CommandError): void {
+    this.logToStderr();
     this.log.error(error.message);
 
     // The wrapper names the task; the innermost cause carries what went wrong.
@@ -406,6 +414,24 @@ export class CliProvider {
     if (typeof process === "object") {
       process.exitCode = error.exitCode ?? 1;
     }
+  }
+
+  /**
+   * From here on, this container's log lines go to stderr, and stdout carries
+   * only what a command prints: `--version`, help, a rendered result.
+   *
+   * Called the moment this process turns out to be a CLI (a command runs, or
+   * help or a usage error is printed), and never from {@link run}, which is
+   * the programmatic path. It writes THIS container's store, read at write
+   * time by `ConsoleDestinationProvider`; an application container a command
+   * boots keeps writing to stdout, because its logs are its output.
+   *
+   * Not a `LogDestinationProvider` substitution: the destination is resolved
+   * inside `AlephaLogger`'s `register`, long before a command module could
+   * swap it.
+   */
+  protected logToStderr(): void {
+    this.alepha.store.set("alepha.logger.stream", "stderr");
   }
 
   /**
