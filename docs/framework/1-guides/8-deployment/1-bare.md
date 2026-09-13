@@ -39,6 +39,14 @@ Database migrations stay in your project's `migrations/` directory - run them wi
 
 If no React frontend is present, only `index.js` is generated.
 
+## Static File Headers
+
+The server answers the files of `dist/public` itself, and applies `dist/public/_headers` to every one
+of them, the file `alepha build` writes for Cloudflare and Bay: a content-hashed chunk is cached for a
+year, a file no rule caches gets `public, max-age=0, must-revalidate`, and your own rules apply on top
+of the security headers. `/_headers` itself is never served. The same holds for a `--compile` binary,
+which reads the file from inside itself. See [Static File Headers](/docs/guides-deployment-headers).
+
 ## Runtime Flag
 
 Optimize the build for a specific runtime:

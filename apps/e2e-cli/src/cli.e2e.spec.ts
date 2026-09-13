@@ -808,6 +808,11 @@ describe("Alepha CLI E2E", () => {
         });
         expect(plain.status).toBe(200);
         expect(plain.headers.get("content-type")).toContain("javascript");
+        // `dist/public/_headers` is embedded like every other public file,
+        // and the binary applies it: a content-hashed chunk is immutable.
+        expect(plain.headers.get("cache-control")).toBe(
+          "public, max-age=31536000, immutable",
+        );
         const plainBody = await plain.text();
         expect(plainBody.length).toBeGreaterThan(1000);
 
@@ -819,6 +824,10 @@ describe("Alepha CLI E2E", () => {
 
         const missing = await fetch(`${base}/not-embedded.js`);
         expect(missing.status).toBe(404);
+
+        // Configuration, never a file: embedded, applied, and not served.
+        const headersFile = await fetch(`${base}/_headers`);
+        expect(headersFile.status).toBe(404);
       } finally {
         await server.kill();
       }
