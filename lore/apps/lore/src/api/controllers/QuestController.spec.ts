@@ -470,4 +470,80 @@ describe("QuestController hold", () => {
       );
     });
   });
+
+  describe("the status and tag operators", () => {
+    const list = async (
+      project: { id: number; createdBy: string },
+      query: Record<string, string>,
+    ) => {
+      const page = await ctx.controller.getQuests(
+        { params: { projectId: project.id }, query: query as never },
+        { user: ownerToken(project) },
+      );
+      return page.content
+        .map((q: { id: number }) => q.id)
+        .sort((a, b) => a - b);
+    };
+
+    it("`statusOp=not` negates the status and keeps shelved quests out", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const at = new Date(ctx.dt.nowMillis()).toISOString();
+      const open = await createTestQuest(ctx.alepha, project);
+      const done = await createTestQuest(ctx.alepha, project, {
+        completedAt: at,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        shelvedAt: at,
+      });
+
+      // Everything but completed is the work still in scope, so the shelved
+      // quest does not come back just because it is not completed.
+      expect(
+        await list(project, { status: "completed", statusOp: "not" }),
+      ).toEqual([open.id]);
+      // Named, it is excluded like any other status.
+      expect(
+        await list(project, { status: "completed,shelved", statusOp: "not" }),
+      ).toEqual([open.id]);
+      // `is` is the default, spelled or not.
+      expect(
+        await list(project, { status: "completed", statusOp: "is" }),
+      ).toEqual([done.id]);
+    });
+
+    it("reads `statusOp` only beside a status", async ({ expect }) => {
+      const project = await createTestProject(ctx.alepha);
+      const open = await createTestQuest(ctx.alepha, project);
+
+      expect(await list(project, { statusOp: "not" })).toEqual([open.id]);
+    });
+
+    it("`tagOp` matches any, all or none of the tags", async ({ expect }) => {
+      const project = await createTestProject(ctx.alepha);
+      const both = await createTestQuest(ctx.alepha, project, {
+        tags: ["bug", "ui"],
+      });
+      const bugOnly = await createTestQuest(ctx.alepha, project, {
+        tags: ["bug"],
+      });
+      const neither = await createTestQuest(ctx.alepha, project, {
+        tags: ["docs"],
+      });
+      const untagged = await createTestQuest(ctx.alepha, project, {
+        tags: [],
+      });
+
+      expect(await list(project, { tag: "bug,ui" })).toEqual(
+        [both.id, bugOnly.id].sort((a, b) => a - b),
+      );
+      expect(await list(project, { tag: "bug,ui", tagOp: "all" })).toEqual([
+        both.id,
+      ]);
+      expect(await list(project, { tag: "bug,ui", tagOp: "none" })).toEqual(
+        [neither.id, untagged.id].sort((a, b) => a - b),
+      );
+    });
+  });
 });

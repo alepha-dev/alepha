@@ -947,16 +947,11 @@ test.describe("Quest", () => {
     });
 
     await test.step("Shelved filter brings it back", async () => {
-      // The status filter takes several values (#1644), but its trigger is a
-      // plain button again: the chips box (whose search input carried "All
-      // status" as a placeholder, the handle this used to grab) was replaced
-      // by a value-then-count trigger. With nothing selected it shows
-      // `clearLabel` as its own text, so match on that.
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: "All status" })
-        .first()
-        .click();
+      // The bar starts with the search box alone (#Q2310): Status is added
+      // from the funnel-plus menu, and adding a filter opens its list, so the
+      // option is the next click.
+      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("menuitem", { name: "Status" }).click();
       await page.getByRole("option", { name: "Shelved" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -1955,12 +1950,13 @@ test.describe("Quest", () => {
     // `searchable` explicitly so this field exists at any option count -
     // without it there is no way to type a prefix and the row below never
     // appears.
-    const filter = page
-      .getByRole("combobox")
-      .filter({ hasText: "All areas" })
-      .first();
-    await expect(filter).toBeVisible({ timeout: 15_000 });
-    await filter.click();
+    //
+    // The Area filter is added from the funnel-plus menu first (#Q2310), and
+    // adding it opens its popup - the search field is then already there.
+    const addFilter = page.getByRole("button", { name: "Add filter" });
+    await expect(addFilter).toBeVisible({ timeout: 15_000 });
+    await addFilter.click();
+    await page.getByRole("menuitem", { name: "Area" }).click();
     await page.getByPlaceholder("Search…").fill("lore/");
 
     // One row, standing for the three matches. It only appears when it would
@@ -2124,13 +2120,10 @@ test.describe("Quest", () => {
     });
 
     await test.step("the shelved row offers Unshelve, not Shelve", async () => {
-      // See the note in "Shelved filter brings it back": a button trigger
-      // showing `clearLabel`, not a chips input with a placeholder.
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: "All status" })
-        .first()
-        .click();
+      // See the note in "Shelved filter brings it back": Status is added
+      // from the menu, which opens its list.
+      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("menuitem", { name: "Status" }).click();
       await page.getByRole("option", { name: "Shelved" }).click();
       // A multi-select does NOT close on pick - the point is to take several
       // - so the popup would sit over the table for the row-action click

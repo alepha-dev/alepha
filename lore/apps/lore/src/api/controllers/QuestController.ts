@@ -1223,6 +1223,18 @@ export class QuestController {
         area: z.string().optional(),
         tag: z.string().optional(),
         /**
+         * How `status` compares: `is` (the default, and what an absent key
+         * means) or `not`. Read only beside a status, so a link carrying the
+         * operator alone filters nothing.
+         */
+        statusOp: z.enum(["is", "not"]).optional(),
+        /**
+         * How `tag` compares: `any` (the default), `all` or `none`. Tags are
+         * the one filter here whose column holds several values, which is
+         * why only it has `all`.
+         */
+        tagOp: z.enum(["any", "all", "none"]).optional(),
+        /**
          * Rows to skip, when `page` cannot express it.
          *
          * MCP `quest_list` offers a raw `offset` and used to convert it to a
@@ -1296,17 +1308,44 @@ export class QuestController {
       if (tags.length > 0) {
         // tags are stored as a JSON array; LIKE the serialized form
         // matches an exact (normalized) value. Mirrors folio tag search.
-        // A quest matching ANY of the asked-for tags qualifies, which is the
-        // same reading the other three filters get.
-        groups.push({
-          or: tags.map((tag) => ({
-            tags: { like: `%"${tag.toLowerCase()}"%` },
-          })),
-        });
+        //
+        // ⚠️ LIKE rather than the ORM's `arrayContains` / `arrayOverlaps`,
+        // which refuse to run on sqlite/D1: the array is JSON text there, so
+        // postgres array operators have nothing to apply to.
+        //
+        // `any` (the default) is the reading the other filters get: a quest
+        // matching ANY of the asked-for tags qualifies. `all` is one LIKE per
+        // tag, AND'd through `groups`; `none` is one NOT LIKE per tag.
+        const pattern = (tag: string) => `%"${tag.toLowerCase()}"%`;
+        if (query.tagOp === "all") {
+          groups.push(...tags.map((tag) => ({ tags: { like: pattern(tag) } })));
+        } else if (query.tagOp === "none") {
+          groups.push(
+            ...tags.map((tag) => ({ tags: { notLike: pattern(tag) } })),
+          );
+        } else {
+          groups.push({
+            or: tags.map((tag) => ({ tags: { like: pattern(tag) } })),
+          });
+        }
       }
 
       const statuses = this.parseStatusList(query.status);
-      if (statuses.length === 0) {
+      if (statuses.length > 0 && query.statusOp === "not") {
+        // "Is not" is the negation of the same conditions "is" applies, and
+        // it keeps the no-filter scope: shelved quests stay out unless the
+        // reader asks for them by name. "Everything but completed" is a
+        // question about the work still in scope, not an invitation to bring
+        // back what was set aside - the same reason an absent filter hides
+        // them (see below).
+        where.shelvedAt = { isNull: true };
+        groups.push({
+          not:
+            statuses.length === 1
+              ? this.statusConditions(statuses[0])
+              : { or: statuses.map((status) => this.statusConditions(status)) },
+        });
+      } else if (statuses.length === 0) {
         // No status filter means "everything I still care about" — shelved
         // quests are deliberately out of scope, so they only ever surface
         // through the explicit `shelved` filter. An empty list and an absent

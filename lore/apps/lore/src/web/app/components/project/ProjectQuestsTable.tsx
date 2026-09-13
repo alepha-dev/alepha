@@ -3,8 +3,7 @@ import {
   type BulkAction,
   type BulkMenuAction,
 } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
-import { FilterSlot } from "@alepha/ui/components/filter-slot/filter-slot";
+import { AlephaTableFilterBar } from "@alepha/ui/components/alepha-table/alepha-table-filter-bar";
 import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
@@ -37,7 +36,6 @@ import {
   MapPin,
   Pencil,
   Plus,
-  Search,
   Signature,
   Flag,
   FlagOff,
@@ -115,8 +113,17 @@ const boardFiltersSchema = z.object({
    * two drifted in opposite directions, and only this half can be derived.
    */
   status: z.array(questStatusSchema).optional(),
+  /**
+   * How `status` compares. Absent is `is`; the bar sends no key for a filter
+   * on its default operator, so plain links stay plain.
+   */
+  statusOp: z.enum(["is", "not"]).optional(),
   area: z.array(z.string()).optional(),
   tag: z.array(z.string()).optional(),
+  /**
+   * How `tag` compares: any (absent), all or none of the picked tags.
+   */
+  tagOp: z.enum(["any", "all", "none"]).optional(),
   // The releases' numeric ids, carried as strings because that is what a
   // select's value is. Coerced back on the way into the query.
   release: z.array(z.string()).optional(),
@@ -435,30 +442,24 @@ const ProjectQuestsTable = () => {
            */
           fromQuery: true,
           render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("board.filter.search")}
-                  inputProps={{ "aria-label": tr("board.filter.search") }}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                <Control
-                  input={form.input.status}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("board.filter.allStatuses")}
-                  countLabel={(n) =>
-                    String(
-                      tr("board.filter.statusCount", { args: [String(n)] }),
-                    )
-                  }
-                  triggerClassName="w-full"
-                  items={
+            <AlephaTableFilterBar
+              form={form}
+              search={{
+                placeholder: String(tr("board.filter.search")),
+                control: {
+                  inputProps: { "aria-label": tr("board.filter.search") },
+                },
+              }}
+              fields={[
+                {
+                  key: "status",
+                  label: String(tr("board.filter.status")),
+                  icon: CircleDot,
+                  // is / is not. Several statuses under "is not" exclude all
+                  // of them, and shelved quests stay out unless named - see
+                  // `getQuests`.
+                  operators: "is",
+                  items:
                     // ⚠️ Hand-written, so widening `questStatusSchema`
                     // does NOT bring a value here and typecheck stays
                     // green while the filter silently offers one fewer
@@ -474,76 +475,98 @@ const ProjectQuestsTable = () => {
                     ).map((status) => ({
                       label: String(tr(QUEST_STATUS_LABEL_KEYS[status])),
                       value: status,
-                    }))
-                  }
-                  inputProps={{ "aria-label": tr("board.filter.status") }}
-                />
-              </FilterSlot>
-              {areaOptions.length > 0 && (
-                <FilterSlot>
-                  <Control
-                    input={form.input.area}
-                    label=""
-                    clearable
-                    icon={MapPin}
-                    clearLabel={tr("board.filter.allAreas")}
-                    countLabel={(n) =>
+                    })),
+                  control: {
+                    clearLabel: tr("board.filter.allStatuses"),
+                    countLabel: (n) =>
                       String(
-                        tr("board.filter.areaCount", { args: [String(n)] }),
-                      )
-                    }
-                    // Opted in rather than left to the option count. Areas
-                    // are named by import path (`lore/quests`, `lore/folios`),
-                    // so the "select every match" row - the whole of feedback
-                    // #2009 - only appears once a prefix has been TYPED, and
-                    // typing needs this field. A project under the search
-                    // threshold would otherwise lose prefix-selection
-                    // entirely: a default meant to remove noise quietly
-                    // removing a feature.
-                    searchable
-                    triggerClassName="w-full"
-                    items={areaOptions}
-                    inputProps={{ "aria-label": tr("board.filter.area") }}
-                  />
-                </FilterSlot>
-              )}
-              {(releases ?? []).length > 0 && (
-                <FilterSlot>
-                  <Control
-                    input={form.input.release}
-                    label=""
-                    clearable
-                    icon={Flag}
-                    clearLabel={tr("board.filter.allReleases")}
-                    countLabel={(n) =>
-                      String(
-                        tr("board.filter.releaseCount", { args: [String(n)] }),
-                      )
-                    }
-                    triggerClassName="w-full"
-                    items={releaseOptions}
-                    inputProps={{ "aria-label": tr("board.filter.release") }}
-                  />
-                </FilterSlot>
-              )}
-              {knownTags.length > 0 && (
-                <FilterSlot>
-                  <Control
-                    input={form.input.tag}
-                    label=""
-                    clearable
-                    icon={Tag}
-                    clearLabel={tr("board.filter.allTags")}
-                    countLabel={(n) =>
-                      String(tr("board.filter.tagCount", { args: [String(n)] }))
-                    }
-                    triggerClassName="w-full"
-                    items={knownTags.map((tag) => ({ label: tag, value: tag }))}
-                    inputProps={{ "aria-label": tr("board.filter.tag") }}
-                  />
-                </FilterSlot>
-              )}
-            </>
+                        tr("board.filter.statusCount", { args: [String(n)] }),
+                      ),
+                    triggerClassName: "w-full",
+                    inputProps: { "aria-label": tr("board.filter.status") },
+                  },
+                },
+                ...(areaOptions.length > 0
+                  ? [
+                      {
+                        key: "area",
+                        label: String(tr("board.filter.area")),
+                        icon: MapPin,
+                        items: areaOptions,
+                        control: {
+                          clearLabel: tr("board.filter.allAreas"),
+                          countLabel: (n: number) =>
+                            String(
+                              tr("board.filter.areaCount", {
+                                args: [String(n)],
+                              }),
+                            ),
+                          // Opted in rather than left to the option count.
+                          // Areas are named by import path (`lore/quests`,
+                          // `lore/folios`), so the "select every match" row
+                          // - the whole of feedback #2009 - only appears once
+                          // a prefix has been TYPED, and typing needs this
+                          // field.
+                          searchable: true,
+                          triggerClassName: "w-full",
+                          inputProps: { "aria-label": tr("board.filter.area") },
+                        },
+                      },
+                    ]
+                  : []),
+                ...((releases ?? []).length > 0
+                  ? [
+                      {
+                        key: "release",
+                        label: String(tr("board.filter.release")),
+                        icon: Flag,
+                        items: releaseOptions,
+                        control: {
+                          clearLabel: tr("board.filter.allReleases"),
+                          countLabel: (n: number) =>
+                            String(
+                              tr("board.filter.releaseCount", {
+                                args: [String(n)],
+                              }),
+                            ),
+                          triggerClassName: "w-full",
+                          inputProps: {
+                            "aria-label": tr("board.filter.release"),
+                          },
+                        },
+                      },
+                    ]
+                  : []),
+                ...(knownTags.length > 0
+                  ? [
+                      {
+                        key: "tag",
+                        label: String(tr("board.filter.tag")),
+                        icon: Tag,
+                        items: knownTags.map((tag) => ({
+                          label: tag,
+                          value: tag,
+                        })),
+                        // Tags are the one column here holding several
+                        // values, so they alone get "all of". Stored as
+                        // `tagOp`.
+                        operators: "any-all-none" as const,
+                        control: {
+                          clearLabel: tr("board.filter.allTags"),
+                          countLabel: (n: number) =>
+                            String(
+                              tr("board.filter.tagCount", {
+                                args: [String(n)],
+                              }),
+                            ),
+                          triggerClassName: "w-full",
+                          inputProps: { "aria-label": tr("board.filter.tag") },
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           ),
         }}
         fetch={async ({ page, size, sort, filters: f }) => {
@@ -564,6 +587,10 @@ const ProjectQuestsTable = () => {
               status: list(f?.status),
               area: list(f?.area),
               tag: list(f?.tag),
+              // Sent as they come: undefined drops the key, and the server
+              // reads an operator only beside its value.
+              statusOp: f?.statusOp,
+              tagOp: f?.tagOp,
               releaseId: list(f?.release),
             } as any,
           });
