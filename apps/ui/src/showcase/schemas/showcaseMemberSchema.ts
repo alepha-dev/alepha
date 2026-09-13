@@ -13,6 +13,9 @@ export const showcaseMemberSchema = z.object({
   email: z.text(),
   team: z.text(),
   role: z.text(),
+  // The one column holding SEVERAL values per row, and the reason it exists:
+  // "has all of" means nothing on a column like `role`, where a row has one.
+  tags: z.array(z.text()),
   status: z.text(),
   createdAt: z.text(),
 });

@@ -302,6 +302,21 @@ export interface ControlProps {
    */
   minimal?: boolean;
   /**
+   * Forwarded to `ControlSelect`: drawn at the top of a select's popup, for
+   * a setting that changes what the choice means (a filter's "is / is not").
+   */
+  popupHeader?: ReactNode;
+  /**
+   * Forwarded to `ControlSelect`: a short qualifier drawn before the
+   * selected label on the trigger ("not Active").
+   */
+  triggerPrefix?: ReactNode;
+  /**
+   * Forwarded to `ControlSelect`: extra className on a select's popup, e.g.
+   * `w-max min-w-48` to size it from its content rather than its trigger.
+   */
+  popupClassName?: string;
+  /**
    * Render a managed upload control (image preview, multi, drag-drop)
    * that calls `FileController.uploadFile` and stores the file ID(s) in
    * the form value. Pass `true` for defaults or an options object.
@@ -527,6 +542,11 @@ export const Control = (props: ControlProps) => {
         // among them) named nothing at all, because the trigger is a button
         // with no visible label to borrow a name from.
         triggerProps={merged.inputProps}
+        // From `props`, not `merged`: a node has no business in a schema's
+        // `$control`, so there is nothing for the merge to contribute.
+        popupHeader={props.popupHeader}
+        triggerPrefix={props.triggerPrefix}
+        popupClassName={merged.popupClassName}
       />,
     );
   }
@@ -796,6 +816,13 @@ export const Control = (props: ControlProps) => {
             type="button"
             onClick={() => setValue(undefined)}
             aria-label="Clear"
+            // `data-slot` like every other clear in the kit
+            // (`combobox-clear`, and `control-clear` on the field trigger).
+            // It was the only one without a hook, so the only way to address
+            // it was its `aria-label` - which is translated, so a French UI
+            // would have matched nothing. Purely an identification hook: no
+            // style and no behaviour rides on it here.
+            data-slot="control-clear"
             className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
           >
             <X className="size-3.5" />

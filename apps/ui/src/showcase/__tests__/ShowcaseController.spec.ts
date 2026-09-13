@@ -70,6 +70,7 @@ describe("ShowcaseController", () => {
       "name",
       "role",
       "status",
+      "tags",
       "team",
     ]);
   });

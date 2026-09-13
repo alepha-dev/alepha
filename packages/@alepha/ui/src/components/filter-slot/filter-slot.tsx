@@ -17,9 +17,16 @@ export interface FilterSlotProps {
  * It moved from Lore into the kit with #Q2231, so the admin console's bars
  * and Lore's project pages share it rather than each keeping a copy.
  *
- * `max-w-full` so a narrow board column shrinks the control instead of
- * pushing the bar sideways.
+ * The width is a MINIMUM, not a fixed size: `min-w-[13.2rem]` with no
+ * `max-w`. A filter that holds a long value ("Admin, Owner") grows to show
+ * it rather than truncating inside a box the bar has plenty of room to
+ * widen, and a bar of four short filters still lines up because they all
+ * start from the same floor.
+ *
+ * ⚠️ It was `w-44` and then `w-[13.2rem] max-w-full` - both fixed. The fixed
+ * width is what made every selected value truncate at the same point
+ * regardless of how much space the bar actually had.
  */
 export const FilterSlot = (props: FilterSlotProps) => {
-  return <div className="w-44 max-w-full">{props.children}</div>;
+  return <div className="min-w-[13.2rem]">{props.children}</div>;
 };

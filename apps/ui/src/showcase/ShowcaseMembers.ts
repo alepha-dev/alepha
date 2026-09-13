@@ -22,6 +22,16 @@ export class ShowcaseMembers {
   }
 
   /**
+   * A comma-joined query value as its entries, dropping the empty ones a
+   * trailing comma leaves.
+   */
+  protected list(value: string | undefined): string[] {
+    return String(value ?? "")
+      .split(",")
+      .filter((entry) => entry.length > 0);
+  }
+
+  /**
    * Pages, filters and sorts in memory, then answers in the `Page` shape
    * `AlephaTable` expects. Server-side paging is the whole point: the table
    * holds its fetcher in a ref excluded from its load effect, so a fetcher
@@ -42,8 +52,47 @@ export class ShowcaseMembers {
       );
     }
 
+    // Every operator key is read only alongside its value. An operator with
+    // nothing to compare is not a filter, and "not" applied to no status
+    // would otherwise be free to mean "everything" or "nothing".
     if (query.status) {
-      rows = rows.filter((r) => r.status === query.status);
+      const not = query.statusOp === "not";
+      rows = rows.filter((r) => (r.status === query.status) !== not);
+    }
+
+    if (query.team) {
+      rows = rows.filter((r) => r.team === query.team);
+    }
+
+    // Multi choice: any of the selected roles matches, or with `none`, none
+    // of them does. An empty list is not "match nothing" - the key is simply
+    // absent when nothing is picked.
+    const roles = this.list(query.roles);
+    if (roles.length > 0) {
+      const none = query.rolesOp === "none";
+      rows = rows.filter((r) => roles.includes(r.role) !== none);
+    }
+
+    // The three operators a multi-valued column supports: overlaps, contains
+    // every one, overlaps none.
+    const tags = this.list(query.tags);
+    if (tags.length > 0) {
+      rows = rows.filter((r) => {
+        switch (query.tagsOp) {
+          case "all":
+            return tags.every((tag) => r.tags.includes(tag));
+          case "none":
+            return !tags.some((tag) => r.tags.includes(tag));
+          default:
+            return tags.some((tag) => r.tags.includes(tag));
+        }
+      });
+    }
+
+    // Text contains, on one column only, case-insensitively.
+    const email = String(query.email ?? "").toLowerCase();
+    if (email) {
+      rows = rows.filter((r) => r.email.toLowerCase().includes(email));
     }
 
     // ⚠️ Alepha's pagination convention is `field` for ascending and `-field`
@@ -187,7 +236,27 @@ export class ShowcaseMembers {
       "Michael Rabin",
     ];
     const teams = ["Platform", "Design", "Growth", "Security"];
-    const roles = ["Owner", "Admin", "Member", "Viewer"];
+    // ⚠️ Nine entries against four teams, and the lengths must stay coprime.
+    // Both were four once, so `i % 4` picked the team AND the role: every
+    // Design member was an Admin, every Platform member an Owner, and
+    // filtering by one quietly filtered by the other. Coprime lengths make
+    // every team/role pair occur, and the repeats weight the mix the way a
+    // real organisation looks - a few owners, mostly members.
+    //
+    // Keep it off 5 and 7 as well: `status` below is keyed on those.
+    const roles = [
+      "Owner",
+      "Member",
+      "Admin",
+      "Viewer",
+      "Member",
+      "Member",
+      "Admin",
+      "Viewer",
+      "Member",
+    ];
+
+    const tags = ["remote", "on-call", "mentor", "contractor", "beta"];
 
     return names.map((name, i) => ({
       id: `mbr_${String(i + 1).padStart(3, "0")}`,
@@ -195,6 +264,14 @@ export class ShowcaseMembers {
       email: `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@alepha.dev`,
       team: teams[i % teams.length],
       role: roles[i % roles.length],
+      // Each tag decided by its own two bits of a scrambled row number: one
+      // chance in four apiece, so about a third of members carry none, most
+      // carry one or two, and "all of remote and mentor" still finds a few.
+      // No tag tracks the team, the role or the status - any modulus would
+      // line up with one of those, see the roles comment for what that did.
+      tags: tags.filter(
+        (_, j) => ((Math.imul(i + 1, 2654435761) >>> (j * 3 + 7)) & 3) === 0,
+      ),
       status: i % 7 === 0 ? "invited" : i % 5 === 0 ? "disabled" : "active",
       // Fixed epoch, stepped per row. `Date.now()` is banned repo-wide and
       // would also make the prerendered output differ on every build.

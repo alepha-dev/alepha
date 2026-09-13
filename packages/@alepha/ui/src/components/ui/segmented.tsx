@@ -89,6 +89,17 @@ interface ThumbRect {
   top: number;
   width: number;
   height: number;
+  /**
+   * The segment this rect was measured for.
+   */
+  index: number;
+  /**
+   * Whether reaching this rect should SLIDE. Only a change of segment does:
+   * a re-measure of the same segment (a resize, a popup settling its open
+   * animation, the first paint) snaps, or the thumb glides in from wherever
+   * the previous measurement put it every time the control appears.
+   */
+  slide: boolean;
 }
 
 export function Segmented(props: SegmentedProps) {
@@ -114,7 +125,6 @@ export function Segmented(props: SegmentedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const itemRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
   const [thumb, setThumb] = React.useState<ThumbRect | null>(null);
-  const [animate, setAnimate] = React.useState(false);
 
   const activeIndex = options.findIndex((opt) => opt.value === value);
 
@@ -145,12 +155,30 @@ export function Segmented(props: SegmentedProps) {
     const parentStyle = getComputedStyle(container);
     const borderLeft = Number.parseFloat(parentStyle.borderLeftWidth) || 0;
     const borderTop = Number.parseFloat(parentStyle.borderTopWidth) || 0;
-    setThumb({
-      left: elRect.left - parentRect.left - borderLeft,
-      top: elRect.top - parentRect.top - borderTop,
-      width: elRect.width,
-      height: elRect.height,
-    });
+    // ⚠️ Undo any transform an ANCESTOR is applying while this measures.
+    //
+    // `getBoundingClientRect()` answers in on-screen pixels, after transforms;
+    // the thumb is positioned in layout pixels, before them. Mounted inside a
+    // popup that opens with `zoom-in-95`, the first measurement lands while
+    // the popup is still at 95%: every offset and width comes back 5% short,
+    // and the thumb stays that way, because the transform settling changes no
+    // layout and so never wakes the ResizeObserver below. Seen as the "is
+    // not" pill of a filter's operator switch sitting 5px left of its label
+    // and 5px too narrow, on every reopen.
+    //
+    // `offsetWidth` is a layout measure of the same border box, so the ratio
+    // is exactly the scale in force. Guarded for a detached or hidden node,
+    // where both are zero.
+    const scale =
+      container.offsetWidth > 0 ? parentRect.width / container.offsetWidth : 1;
+    setThumb((previous) => ({
+      left: (elRect.left - parentRect.left) / scale - borderLeft,
+      top: (elRect.top - parentRect.top) / scale - borderTop,
+      width: elRect.width / scale,
+      height: elRect.height / scale,
+      index: activeIndex,
+      slide: previous !== null && previous.index !== activeIndex,
+    }));
   }, [activeIndex]);
 
   React.useLayoutEffect(() => {
@@ -166,15 +194,6 @@ export function Segmented(props: SegmentedProps) {
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [measureThumb]);
-
-  // Enable animation only after the first measurement so the thumb doesn't
-  // slide from (0,0) on initial paint.
-  React.useEffect(() => {
-    if (thumb && !animate) {
-      const id = requestAnimationFrame(() => setAnimate(true));
-      return () => cancelAnimationFrame(id);
-    }
-  }, [thumb, animate]);
 
   const handleSelect = (next: string) => {
     if (controlled === undefined) setUncontrolled(next);
@@ -208,7 +227,12 @@ export function Segmented(props: SegmentedProps) {
             // jank); Chrome's fast-paths hide it. Width/height still update, but
             // instantly — for equal-width segments they never change anyway, so
             // only the slide animates.
-            animate && "transition-transform duration-200 ease-out",
+            //
+            // Only while `slide` is set - see `ThumbRect.slide`. This replaces
+            // a flag switched on one frame after the first measurement, which
+            // kept the first paint still and then animated EVERY later
+            // re-measure, including the ones that only correct a position.
+            thumb.slide && "transition-transform duration-200 ease-out",
           )}
           style={{
             transform: `translate(${thumb.left}px, ${thumb.top}px)`,

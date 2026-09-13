@@ -215,6 +215,32 @@ export interface ControlSelectProps {
    * only shows an icon when one is explicitly set.
    */
   icon?: IconComponent;
+  /**
+   * Drawn at the top of the popup, above the options - for a setting that
+   * changes what the choice MEANS rather than what is chosen, such as a
+   * filter's "is / is not".
+   *
+   * ⚠️ Only the combobox shape has a popup, so a segmented or radio rendering
+   * of the same field draws nothing for it.
+   */
+  popupHeader?: ReactNode;
+  /**
+   * Drawn on the trigger just before the selected label, after the icon: the
+   * short word that keeps a qualified value from reading as a plain one
+   * ("not Active"). Absent while nothing is selected, because a qualifier on
+   * a placeholder has nothing to qualify.
+   */
+  triggerPrefix?: ReactNode;
+  /**
+   * Extra className on the popup, merged over its own.
+   *
+   * The popup is sized from its trigger by default (`--anchor-width`), and it
+   * keeps following that width while open. A trigger whose text changes as
+   * the reader picks - a `triggerPrefix` appearing, "2 selected" replacing a
+   * name - therefore resizes the popup under their cursor. `w-max` with a
+   * floor (`w-max min-w-48`) sizes it from its own content instead.
+   */
+  popupClassName?: string;
 }
 
 /**
@@ -462,6 +488,9 @@ export const ControlSelect = (props: ControlSelectProps) => {
         clearable={props.clearable}
         clearLabel={clearLabel}
         countLabel={props.countLabel}
+        popupHeader={props.popupHeader}
+        triggerPrefix={props.triggerPrefix}
+        popupClassName={props.popupClassName}
         // An optional field must also be able to go back to empty without a
         // dedicated row: Base UI never emits `null`, so re-pressing the
         // selected row deselects (see `handleSingle`). A required field keeps
@@ -541,6 +570,18 @@ interface ComboboxProps {
    * already selected. Set for optional (and `clearable`) fields only.
    */
   deselectable?: boolean;
+  /**
+   * See `ControlSelectProps.popupHeader`.
+   */
+  popupHeader?: ReactNode;
+  /**
+   * See `ControlSelectProps.triggerPrefix`.
+   */
+  triggerPrefix?: ReactNode;
+  /**
+   * See `ControlSelectProps.popupClassName`.
+   */
+  popupClassName?: string;
 }
 
 /**
@@ -1037,7 +1078,22 @@ function Combobox(props: ComboboxProps) {
                 )}
               />
             )}
-            <span className="truncate">{triggerLabel}</span>
+            {/*
+              The prefix rides in the SAME text run as the label, separated by
+              an ordinary space. As a flex sibling it was spaced by the row's
+              `gap-2`, 8px, while the words inside it were a font space apart,
+              so "Status not Active" read "Status not  Active". One run makes
+              every gap the same space, and truncation eats from the end of
+              the value rather than squeezing the two apart.
+            */}
+            <span className="truncate">
+              {props.triggerPrefix && selected.length > 0 && (
+                <span className="text-muted-foreground">
+                  {props.triggerPrefix}{" "}
+                </span>
+              )}
+              {triggerLabel}
+            </span>
           </span>
         </ComboboxTrigger>
         {showClear && (
@@ -1047,7 +1103,8 @@ function Combobox(props: ComboboxProps) {
           />
         )}
       </div>
-      <ComboboxContent>
+      <ComboboxContent className={props.popupClassName}>
+        {props.popupHeader}
         {props.searchable && (
           <ComboboxInput showTrigger={false} placeholder="Search…" />
         )}

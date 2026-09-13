@@ -1,5 +1,4 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -7,11 +6,12 @@ import { cn } from "@alepha/ui/lib/utils";
 import { z } from "alepha";
 import type { Page } from "alepha";
 import { useClient } from "alepha/react";
-import { Bot, Search, Trash2, UserPlus } from "lucide-react";
+import { Bot, Trash2, UserPlus } from "lucide-react";
 import { useCallback } from "react";
 
 import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
 import { Showcase } from "@/web/components/Showcase.tsx";
+import { TableFilterBar } from "@/web/pages/blocks/TableFilterBar.tsx";
 
 /**
  * The one page that exercises the data path end to end: `useClient` resolves
@@ -45,16 +45,37 @@ const KNOBS = z.object({
   // The layout an application actually mounts this in: the table takes the
   // pane's height and its BODY scrolls, so the filter bar and the pagination
   // footer stay put and the sticky header stays against the top of the rows.
-  // Off by default because the page's other blocks grow with their content and
-  // a table that swallows the viewport would read as a bug next to them.
-  fullHeight: z.boolean().default(false).meta({ title: "Full height" }),
-  hideTeam: z.boolean().default(false).meta({ title: "Hide team column" }),
-  hideRole: z.boolean().default(false).meta({ title: "Hide role column" }),
+  // ON by default, because that is the arrangement every real page uses and
+  // the showcase should open on the real one. The switch is kept so the
+  // content-height variant can still be seen.
+  fullHeight: z.boolean().default(true).meta({ title: "Full height" }),
 });
 
 const filtersSchema = z.object({
   search: z.string().optional(),
+  // ⚠️ The stored values stay lowercase - they are what the dataset holds and
+  // what the query carries. Only the LABELS are capitalized, in the filter
+  // bar's `items`. Capitalizing the value instead would mean the filter no
+  // longer matches any row.
   status: z.enum(["active", "invited", "disabled"]).optional(),
+  // ⚠️ Each operator is a field of its own, beside the value it qualifies,
+  // and only as wide as the backend's query schema allows. Being a field is
+  // what lets it persist and travel in a share link like any other filter;
+  // being optional is what keeps a filter on its default operator from
+  // carrying a key at all.
+  statusOp: z.enum(["is", "not"]).optional(),
+  team: z.enum(["Platform", "Design", "Growth", "Security"]).optional(),
+  // Multi choice. An array schema is what makes `Control` render a
+  // multi-select, so the shape of the field IS the choice of control.
+  roles: z.array(z.enum(["Owner", "Admin", "Member", "Viewer"])).optional(),
+  rolesOp: z.enum(["any", "none"]).optional(),
+  tags: z
+    .array(z.enum(["remote", "on-call", "mentor", "contractor", "beta"]))
+    .optional(),
+  tagsOp: z.enum(["any", "all", "none"]).optional(),
+  // Text contains, on a single column - distinct from `search`, which spans
+  // name and email at once.
+  email: z.string().optional(),
 });
 
 /**
@@ -97,7 +118,17 @@ const Table = () => {
       page: number;
       size: number;
       sort?: string;
-      filters?: { search?: string; status?: string };
+      filters?: {
+        search?: string;
+        status?: string;
+        statusOp?: "is" | "not";
+        team?: string;
+        roles?: string[];
+        rolesOp?: "any" | "none";
+        tags?: string[];
+        tagsOp?: "any" | "all" | "none";
+        email?: string;
+      };
     }) =>
       client.findShowcaseMembers({
         query: {
@@ -107,6 +138,22 @@ const Table = () => {
           // Never pass undefined into a filter: an empty box omits the key.
           search: params.filters?.search || undefined,
           status: params.filters?.status || undefined,
+          team: params.filters?.team || undefined,
+          // ⚠️ Joined, not sent as an array. A repeated query key is the one
+          // shape that differs between the in-process SSR dispatch and the
+          // HTTP one, so a comma-joined string keeps both paths identical.
+          roles: params.filters?.roles?.length
+            ? params.filters.roles.join(",")
+            : undefined,
+          tags: params.filters?.tags?.length
+            ? params.filters.tags.join(",")
+            : undefined,
+          // Forwarded as they come: the table already drops a key that is
+          // undefined, and the server reads an operator only beside its value.
+          statusOp: params.filters?.statusOp,
+          rolesOp: params.filters?.rolesOp,
+          tagsOp: params.filters?.tagsOp,
+          email: params.filters?.email || undefined,
         },
       }),
     [client],
@@ -124,9 +171,7 @@ const Table = () => {
         selectable: true,
         filters: true,
         emptyState: "Off",
-        fullHeight: false,
-        hideTeam: false,
-        hideRole: false,
+        fullHeight: true,
       }}
     >
       {(v) => (
@@ -136,7 +181,7 @@ const Table = () => {
           // key or the switch moves and the table does not. `fullHeight` is
           // deliberately absent: it feeds a class, and remounting on it would
           // throw the fetch away to change a style.
-          key={`${v.pageSize}-${v.selectable}-${v.filters}-${v.emptyState}-${v.hideTeam}-${v.hideRole}`}
+          key={`${v.pageSize}-${v.selectable}-${v.filters}-${v.emptyState}`}
           className={cn("min-h-0", v.fullHeight && "flex-1")}
           // Dropped while an empty state is forced. Persistence would
           // otherwise decide which of the two states appears: a search left in
@@ -187,21 +232,7 @@ const Table = () => {
                     v.emptyState === "No match"
                       ? { search: "nobody" }
                       : undefined,
-                  render: (form) => (
-                    <div className="flex items-center gap-2">
-                      <div className="w-64">
-                        <Control
-                          input={form.input.search}
-                          label=""
-                          icon={Search}
-                          placeholder="Search members"
-                        />
-                      </div>
-                      <div className="w-44">
-                        <Control input={form.input.status} label="" />
-                      </div>
-                    </div>
-                  ),
+                  render: (form) => <TableFilterBar form={form} />,
                 }
               : undefined
           }
@@ -264,18 +295,32 @@ const Table = () => {
                 </span>
               ),
             },
-            // `defaultHidden` is per COLUMN: the table has no
-            // defaultHiddenColumns prop, that one belongs to AdminUsers.
+            // Both columns start visible. Hiding one is what the "Toggle
+            // columns" menu is for, and a knob doing the same thing from the
+            // side panel only made the menu look decorative. (`defaultHidden`
+            // is per COLUMN, if a page wants one hidden from the start: the
+            // table has no defaultHiddenColumns prop, that one belongs to
+            // AdminUsers.)
             team: {
               label: "Team",
               sortable: true,
-              defaultHidden: v.hideTeam,
               cell: (m) => m.team,
             },
             role: {
               label: "Role",
-              defaultHidden: v.hideRole,
               cell: (m) => <Badge variant="outline">{m.role}</Badge>,
+            },
+            tags: {
+              label: "Tags",
+              cell: (m) => (
+                <div className="flex flex-wrap gap-1">
+                  {m.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ),
             },
             status: {
               label: "Status",
@@ -284,7 +329,9 @@ const Table = () => {
               // unreadable over a pale tint.
               cell: (m) => (
                 <Badge variant="tint" tone={STATUS_TONE[m.status]}>
-                  {m.status}
+                  {/* Capitalized for display only; the row still holds the
+                      lowercase value the filter matches on. */}
+                  {m.status.charAt(0).toUpperCase() + m.status.slice(1)}
                 </Badge>
               ),
             },
