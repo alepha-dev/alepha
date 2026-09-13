@@ -628,6 +628,68 @@ test.describe("blocks", () => {
 });
 
 /**
+ * The primitives' layout and timing, on the Primitives specimen page. jsdom
+ * lays nothing out and opens no popup (#F1208), so these two are pinned here
+ * and nowhere else (#Q2184).
+ */
+test.describe("primitives", () => {
+  /**
+   * ⚠️ A LOWER bound only. `TooltipProvider` waits 600ms; a loaded machine can
+   * only make the tooltip later, never earlier, so "not open at 300ms" cannot
+   * flake. "Open by 700ms" could, and is deliberately not asserted.
+   */
+  test("the tooltip waits before it opens", async ({ page }) => {
+    await page.goto("/blocks/primitives");
+    const trigger = page.getByTestId("primitives-tooltip");
+    await expect(trigger).toBeVisible();
+
+    await trigger.hover();
+    await page.waitForTimeout(300);
+    await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0);
+
+    // Guard the guard: the hover is on a real tooltip trigger, so an absent
+    // tooltip above means "not yet", never "not at all".
+    await expect(page.locator('[data-slot="tooltip-content"]')).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  /**
+   * `w-auto max-w-(--available-width)`: a menu sized to its 32px icon trigger
+   * would wrap every label, which is what the kit's menus did before.
+   */
+  test("the dropdown menu is as wide as its longest item, not its trigger", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/primitives");
+    const trigger = page.getByTestId("primitives-menu");
+    await trigger.click();
+
+    const menu = page.locator('[data-slot="dropdown-menu-content"]');
+    await expect(menu).toBeVisible();
+    const longest = menu.getByText(
+      "Export every quest and folio as a CSV archive",
+    );
+    const short = menu.getByText("Rename", { exact: true });
+
+    const t = (await trigger.boundingBox())!;
+    const m = (await menu.boundingBox())!;
+    const l = (await longest.boundingBox())!;
+    const s = (await short.boundingBox())!;
+    const viewport = page.viewportSize()!;
+
+    // The trigger really is narrower than the longest item, or this proves
+    // nothing about sizing.
+    expect(t.width).toBeLessThan(l.width);
+    expect(m.width).toBeGreaterThanOrEqual(l.width);
+    // One line: the long label did not wrap to fit a narrower menu.
+    expect(l.height).toBeLessThanOrEqual(s.height + 1);
+    expect(m.x).toBeGreaterThanOrEqual(0);
+    expect(m.x + m.width).toBeLessThanOrEqual(viewport.width);
+  });
+});
+
+/**
  * The five layout blocks that are shells rather than controls: each one is
  * mostly empty until a caller fills it, so "it rendered" and "it rendered
  * anything" are two different claims. These assert the parts the components

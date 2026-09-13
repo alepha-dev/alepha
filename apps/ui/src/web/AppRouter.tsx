@@ -33,6 +33,7 @@ export class AppRouter {
       this.blocksDialog,
       this.blocksToast,
       this.blocksButtons,
+      this.blocksPrimitives,
       this.authLogin,
       this.authRegister,
       this.authReset,
@@ -223,6 +224,13 @@ export class AppRouter {
     static: true,
     head: { title: "Buttons - Alepha UI" },
     lazy: () => import("./pages/blocks/Buttons.tsx"),
+  });
+
+  blocksPrimitives = $page({
+    path: "/blocks/primitives",
+    static: true,
+    head: { title: "Primitives - Alepha UI" },
+    lazy: () => import("./pages/blocks/Primitives.tsx"),
   });
 
   // ── Pages ────────────────────────────────────────────────────────────────

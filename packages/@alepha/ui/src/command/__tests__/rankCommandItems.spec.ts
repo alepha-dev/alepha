@@ -119,6 +119,7 @@ describe("rankCommandItems", () => {
           row("Blocks", "Messages", "Dialog"),
           row("Blocks", "Messages", "Toast"),
           row("Blocks", "", "Buttons"),
+          row("Blocks", "", "Primitives"),
         ],
       },
       {

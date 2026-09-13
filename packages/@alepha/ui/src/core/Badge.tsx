@@ -43,17 +43,47 @@ const badgeVariants = cva(
        * quest statuses and priorities onto these; anything else mapping the
        * same meanings lands on the same chip without restating the hex.
        *
-       * Only meaningful with `variant="tint"`. The other variants paint
-       * their own background and a tone would fight them.
+       * Applied only with `variant="tint"`, through `compoundVariants`
+       * below. The other variants paint their own background, and a tone
+       * would fight them: before this was enforced, a `default` badge given a
+       * tone lost its primary fill to the tone's wash, since tailwind-merge
+       * keeps the last `bg-*`.
        */
       tone: {
-        neutral: "border-border bg-muted text-muted-foreground",
-        info: "border-blue-500/40 bg-blue-500/15",
-        success: "border-emerald-500/40 bg-emerald-500/15",
-        warning: "border-amber-500/40 bg-amber-500/15",
-        danger: "border-red-500/40 bg-red-500/15",
+        neutral: "",
+        info: "",
+        success: "",
+        warning: "",
+        danger: "",
       },
     },
+    compoundVariants: [
+      {
+        variant: "tint",
+        tone: "neutral",
+        class: "border-border bg-muted text-muted-foreground",
+      },
+      {
+        variant: "tint",
+        tone: "info",
+        class: "border-blue-500/40 bg-blue-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "success",
+        class: "border-emerald-500/40 bg-emerald-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "warning",
+        class: "border-amber-500/40 bg-amber-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "danger",
+        class: "border-red-500/40 bg-red-500/15",
+      },
+    ],
     defaultVariants: {
       variant: "default",
     },
