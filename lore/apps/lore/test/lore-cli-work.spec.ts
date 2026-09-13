@@ -111,8 +111,8 @@ const createApiKey = async (
  * `LORE_API_KEY`. Never started: `run()` needs no lifecycle, and a started
  * `CliProvider` would read vitest's argv.
  *
- * Commands are found by path, `quest create`, because `list`, `get` and
- * `create` are each declared by three subjects.
+ * Commands are found by path, `quest create` or `quest objective set`,
+ * because `list`, `get`, `create` and `set` are each declared more than once.
  */
 const cliFor = (ctx: TestContext, token: string, project: string) => {
   const cli = Alepha.create({
@@ -132,11 +132,13 @@ const cliFor = (ctx: TestContext, token: string, project: string) => {
   const fs = cli.inject(MemoryFileSystemProvider);
 
   const command = (path: string) => {
-    const [subject, verb] = path.split(" ");
-    const found = cli
+    const [subject, ...verbs] = path.split(" ");
+    let found = cli
       .primitives<any>("$command")
-      .find((it) => it.name === subject)
-      ?.children.find((it: any) => it.name === verb);
+      .find((it) => it.name === subject && it.hasChildren);
+    for (const verb of verbs) {
+      found = found?.children.find((it: any) => it.name === verb);
+    }
     if (!found) {
       throw new AlephaError(`No command ${path}`);
     }
@@ -283,6 +285,108 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(done.metadata.status).toBe("completed");
     expect(done.completionMessage).toBe("Done.");
     expect(done.comments).toEqual([]);
+  });
+
+  /**
+   * The loop this repository asks of every session, run from a shell: create,
+   * accept, tick one objective, waive another, complete with a commit, read
+   * it all back.
+   */
+  it("runs the whole work loop from the shell", async () => {
+    const { lore } = await ownProject();
+    const created = JSON.parse(
+      await lore.run("quest create", [
+        "--title",
+        "The loop",
+        "--area",
+        "core",
+        "--priority",
+        "medium",
+        "--objective",
+        "Write the code",
+        "--objective",
+        "Walk it in the live app",
+        "--output",
+        "json",
+      ]),
+    );
+    const ref = `Q${created.shortId}`;
+    const [done, manual] = created.objectives;
+
+    expect(await lore.run("quest accept", [ref])).toBe(
+      `Accepted ${ref} The loop`,
+    );
+
+    // Ticking needs an in-progress quest, and an unknown id is refused with
+    // the ids the quest has.
+    const unknown = await lore.fail("quest objective set", [
+      ref,
+      "--objective",
+      "9",
+    ]);
+    expect(unknown.error?.name).toBe("UsageError");
+    expect(unknown.error?.message).toContain(`${done.id} (Write the code)`);
+
+    expect(
+      await lore.run("quest objective set", [
+        ref,
+        "--objective",
+        String(done.id),
+      ]),
+    ).toBe(`Ticked objective ${done.id} of ${ref}: Write the code`);
+
+    // A retry after a dropped response must not untick what it ticked:
+    // `completeObjective` flips, so the command reads first.
+    expect(
+      await lore.run("quest objective set", [
+        ref,
+        "--objective",
+        String(done.id),
+      ]),
+    ).toBe(`Objective ${done.id} of ${ref} is already ticked: Write the code`);
+
+    const badWaive = await lore.fail("quest complete", [
+      ref,
+      "--waive",
+      "no-equals-sign",
+    ]);
+    expect(badWaive.error?.name).toBe("UsageError");
+    const badSha = await lore.fail("quest complete", [
+      ref,
+      "--commit",
+      "not-a-sha",
+    ]);
+    expect(badSha.error?.name).toBe("UsageError");
+
+    expect(
+      await lore.run("quest complete", [
+        ref,
+        "--message",
+        "Shipped.",
+        "--waive",
+        `${manual.id}=manual, the owner walks it`,
+        "--commit",
+        "1a2b3c4d",
+      ]),
+    ).toBe(`Completed ${ref} The loop`);
+
+    const read = JSON.parse(
+      await lore.run("quest get", [ref, "--output", "json"]),
+    );
+    expect(read.metadata.status).toBe("completed");
+    expect(read.objectives.find((it: any) => it.id === done.id).completed).toBe(
+      true,
+    );
+    expect(
+      read.objectives.find((it: any) => it.id === manual.id).waivedReason,
+    ).toBe("manual, the owner walks it");
+    expect(read.commits.map((it: any) => it.sha)).toEqual(["1a2b3c4d"]);
+
+    const human = await lore.run("quest get", [ref]);
+    expect(human).toContain(`[x] ${done.id}  Write the code`);
+    expect(human).toContain(
+      `[-] ${manual.id}  Walk it in the live app (waived: manual, the owner walks it)`,
+    );
   });
 
   it("updates only the fields it is given, and refuses when it is given none", async () => {

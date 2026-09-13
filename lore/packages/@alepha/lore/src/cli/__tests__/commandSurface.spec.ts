@@ -119,10 +119,33 @@ describe("the Lore CLI command surface", () => {
       folio: ["list", "get", "create"],
       project: ["list", "info"],
       quality: ["push"],
-      quest: ["list", "get", "create", "update", "complete"],
+      quest: [
+        "list",
+        "get",
+        "create",
+        "update",
+        "accept",
+        "objective",
+        "complete",
+      ],
       releases: ["publish"],
       secrets: ["set", "list", "unset"],
     });
+  });
+
+  /**
+   * `lore quest objective set`: the one subject nested inside a subject,
+   * named from `quest_objective_set` by the same rule as every other command.
+   */
+  it("puts objective set under quest", () => {
+    const quest = setup()
+      .testGetTopLevelCommands()
+      .find((command) => command.name === "quest");
+    const objective = quest?.children.find(
+      (command) => command.name === "objective",
+    );
+
+    expect(objective?.children.map((child) => child.name)).toEqual(["set"]);
   });
 
   /**
