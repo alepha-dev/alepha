@@ -18,7 +18,6 @@ export const devJobMetadataSchema = z.object({
    */
   mode: z.enum(["cron", "queue", "direct"]),
   cron: z.text().optional(),
-  priority: z.text().optional(),
   timeout: z.text().optional(),
   retries: z.integer().optional(),
   /**

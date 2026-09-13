@@ -116,8 +116,6 @@ export interface JobRetryBackoff {
   jitter?: boolean;
 }
 
-export type JobPriority = "critical" | "high" | "normal" | "low";
-
 export interface JobPrimitiveOptions<
   T extends ZType = ZType,
 > extends PipelinePrimitiveOptions {
@@ -176,14 +174,6 @@ export interface JobPrimitiveOptions<
    * Max execution time per attempt. Handler receives an `AbortSignal`.
    */
   timeout?: DurationLike;
-
-  /**
-   * Default priority for pushed jobs. Used by the sweep to order
-   * dispatch when there is a backlog. Real-time queue consumption
-   * is FIFO.
-   * @default "normal"
-   */
-  priority?: JobPriority;
 
   /**
    * Run the handler inline and make the caller wait for it.

@@ -286,7 +286,6 @@ describe("$job — key dedup under concurrency", () => {
       jobName: "RaceLoserApp.work",
       key: "race-2",
       status: "scheduled",
-      priority: 2,
       maxAttempts: 1,
     });
 
@@ -295,7 +294,6 @@ describe("$job — key dedup under concurrency", () => {
       jobName: "RaceLoserApp.work",
       key: "race-2",
       status: "scheduled",
-      priority: 2,
       maxAttempts: 1,
     });
     expect(result.created).toBe(false);
@@ -332,7 +330,6 @@ describe("$job — lease renewal for long-running jobs", () => {
     const row = await app.executions.create({
       jobName: "LeaseApp.work",
       status: "running",
-      priority: 2,
       attempt: 1,
       maxAttempts: 1,
       startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
@@ -356,7 +353,6 @@ describe("$job — lease renewal for long-running jobs", () => {
     const row = await app.executions.create({
       jobName: "LeaseApp.work",
       status: "running",
-      priority: 2,
       attempt: 1,
       maxAttempts: 1,
       startedAt: new Date().toISOString(),
@@ -490,7 +486,6 @@ describe("$job — the sweep table", () => {
       const row = await app.executions.create({
         jobName: "SweepTableApp.work",
         status,
-        priority: 2,
         attempt: 1,
         maxAttempts: 1,
         payload: { v: 1 },

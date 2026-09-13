@@ -30,7 +30,6 @@ describe("AdminJobsPayloadDialog", () => {
     id: "0192aaaa-0000-7000-8000-000000000001",
     jobName: "CartRecoveryJobs.cartRecovery",
     status: "scheduled",
-    priority: "normal",
     attempt: 0,
     maxAttempts: 4,
     redispatchCount: 0,

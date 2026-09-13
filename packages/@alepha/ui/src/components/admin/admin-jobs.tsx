@@ -20,7 +20,7 @@ import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Play, Search, Shapes, SignalHigh, Timer } from "lucide-react";
+import { Play, Search, Shapes, Timer } from "lucide-react";
 import { useCallback, useState } from "react";
 
 const POLL_MS = 30_000;
@@ -28,7 +28,6 @@ const POLL_MS = 30_000;
 const jobFiltersSchema = z.object({
   search: z.string().optional(),
   type: z.string().optional(),
-  priority: z.string().optional(),
 });
 type JobFilters = Infer<typeof jobFiltersSchema>;
 
@@ -69,9 +68,6 @@ function applyJobFilters(
     );
   }
   if (filters?.type) out = out.filter((j) => j.type === filters.type);
-  if (filters?.priority) {
-    out = out.filter((j) => j.priority === filters.priority);
-  }
   if (sort) {
     const desc = sort.startsWith("-");
     const field = (desc ? sort.slice(1) : sort) as keyof JobRegistration;
@@ -165,22 +161,6 @@ export const AdminJobs = () => {
                   { value: "direct", label: "direct" },
                 ]}
               />
-              <Control
-                input={form.input.priority}
-                label=""
-                clearable
-                icon={SignalHigh}
-                clearLabel={String(
-                  tr("admin.jobs.priorityAll", { default: "All priorities" }),
-                )}
-                triggerClassName="w-40"
-                items={[
-                  { value: "critical", label: "critical" },
-                  { value: "high", label: "high" },
-                  { value: "normal", label: "normal" },
-                  { value: "low", label: "low" },
-                ]}
-              />
             </div>
           ),
         }}
@@ -216,11 +196,6 @@ export const AdminJobs = () => {
               ) : (
                 <span className="text-muted-foreground">—</span>
               ),
-          },
-          priority: {
-            label: tr("admin.jobs.colPriority", { default: "Priority" }),
-            sortable: true,
-            cell: (j) => <Badge variant="outline">{j.priority}</Badge>,
           },
           lastRun: {
             label: tr("admin.jobs.colLastRun", { default: "Last run" }),

@@ -44,8 +44,6 @@ export const jobExecutionEntity = $entity({
       z.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
       "pending",
     ),
-    priority: db.default(z.integer().min(0).max(3), 2),
-
     attempt: db.default(z.integer(), 0),
     maxAttempts: db.default(z.integer(), 1),
 

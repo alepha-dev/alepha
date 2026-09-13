@@ -29,7 +29,6 @@ import {
 } from "../entities/jobExecutionEntity.ts";
 import type {
   JobPrimitiveOptions,
-  JobPriority,
   JobRescheduleOptions,
   JobRetryBackoff,
 } from "../primitives/$job.ts";
@@ -40,26 +39,9 @@ import { JobQueueProvider } from "./JobQueueProvider.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
-const PRIORITY_MAP: Record<JobPriority, number> = {
-  critical: 0,
-  high: 1,
-  normal: 2,
-  low: 3,
-};
-
-const PRIORITY_REVERSE: Record<number, JobPriority> = {
-  0: "critical",
-  1: "high",
-  2: "normal",
-  3: "low",
-};
-
-// -----------------------------------------------------------------------------------------------------------------
-
 export interface PushOptions {
   delay?: DurationLike;
   key?: string;
-  priority?: JobPriority;
   scheduledAt?: Date;
   triggeredBy?: string;
   triggeredByName?: string;
@@ -93,7 +75,6 @@ export interface PushManyItem<T extends ZType = ZType> {
   payload: Infer<T>;
   key?: string;
   delay?: DurationLike;
-  priority?: JobPriority;
   scheduledAt?: Date;
   /**
    * Owning tenant for this row, per item.
@@ -160,7 +141,9 @@ export interface SweepEntry {
   /** Narrow further, in SQL. Mutates the where object in place. */
   where: (where: Record<string, any>, now: DateTime) => void;
 
-  /** Optional ordering, for phases where priority should be respected. */
+  /**
+   * Optional ordering: which rows a phase serves first when its batch fills.
+   */
   orderBy?: {
     column: keyof JobExecutionEntity;
     direction: "asc" | "desc";
@@ -337,7 +320,6 @@ export class JobProvider {
     this.jobs.set(name, { name, options, kind });
     this.log.debug(`Registered ${kind} job '${name}'`, {
       cron: options.cron,
-      priority: options.priority ?? "normal",
       retries: options.retry?.retries ?? 0,
     });
 
@@ -509,7 +491,6 @@ export class JobProvider {
       jobName: registration.name,
       payload: undefined,
       status: "pending",
-      priority: PRIORITY_MAP[opts.priority ?? "normal"],
       maxAttempts,
       triggeredBy: ctx.triggeredBy,
       triggeredByName: ctx.triggeredByName,
@@ -873,13 +854,11 @@ export class JobProvider {
     const opts = registration.options;
     const validated = this.alepha.codec.validate(opts.schema!, payload);
 
-    // Same precedence as `priority`: the call site wins, the job's own
-    // declaration is the default. See `PushOptions.inline` for why per-push
-    // is the form that carries the weight.
+    // The call site wins, the job's own declaration is the default. See
+    // `PushOptions.inline` for why per-push is the form that carries the
+    // weight.
     const inline = options?.inline ?? opts.inline ?? false;
 
-    const priority =
-      PRIORITY_MAP[options?.priority ?? opts.priority ?? "normal"];
     // A per-push `inline` on a job that declares `retry` means "not this
     // execution": one attempt, terminal on failure, and the caller is told.
     const maxAttempts = inline ? 1 : (opts.retry?.retries ?? 0) + 1;
@@ -917,7 +896,6 @@ export class JobProvider {
         key: options.key,
         payload: validated as Record<string, unknown>,
         status,
-        priority,
         maxAttempts,
         scheduledAt,
         triggeredBy: options.triggeredBy,
@@ -942,7 +920,6 @@ export class JobProvider {
       jobName: name,
       payload: validated as Record<string, unknown>,
       status,
-      priority,
       maxAttempts,
       scheduledAt,
       triggeredBy: options?.triggeredBy,
@@ -1060,7 +1037,6 @@ export class JobProvider {
     key: string;
     payload?: Record<string, unknown>;
     status: JobStatus;
-    priority: number;
     maxAttempts: number;
     scheduledAt?: string;
     triggeredBy?: string;
@@ -1156,7 +1132,6 @@ export class JobProvider {
       jobName: string;
       payload: Record<string, unknown>;
       status: JobStatus;
-      priority: number;
       maxAttempts: number;
       scheduledAt?: string;
       organizationId?: string;
@@ -1183,7 +1158,6 @@ export class JobProvider {
         jobName: name,
         payload: validated as Record<string, unknown>,
         status,
-        priority: PRIORITY_MAP[item.priority ?? opts.priority ?? "normal"],
         maxAttempts,
         scheduledAt,
         organizationId: item.organizationId,
@@ -1196,7 +1170,6 @@ export class JobProvider {
       const id = await this.push(name, item.payload, {
         key: item.key,
         delay: item.delay,
-        priority: item.priority,
         scheduledAt: item.scheduledAt,
         // The third place. Adding the field to `PushManyItem` and to the
         // bulk builder is not enough: keyed items never touch the bulk
@@ -1927,7 +1900,8 @@ export class JobProvider {
       {
         label: "promote-due",
         status: "scheduled",
-        orderBy: { column: "priority", direction: "asc" },
+        // Oldest due first, so a backlog is served in the order it fell due.
+        orderBy: { column: "scheduledAt", direction: "asc" },
         // Due when its own scheduledAt has arrived.
         where: (where, now) => {
           where.scheduledAt = { lte: now.toISOString() };
@@ -1937,7 +1911,9 @@ export class JobProvider {
       {
         label: "redispatch-stale",
         status: "pending",
-        orderBy: { column: "priority", direction: "asc" },
+        // Longest untouched first, the same clock the phase measures
+        // staleness with, and the ordering `recover-crashed` already uses.
+        orderBy: { column: "updatedAt", direction: "asc" },
         // Pending and untouched for `staleThreshold`: the delivery was lost.
         // `updatedAt` is the clock; the `createdAt` bound is redundant with
         // it (a row is never updated before it is created) and is there only
@@ -2007,11 +1983,8 @@ export class JobProvider {
    * stamps `updatedAt` past the stale window), so a bounded batch always
    * makes progress: next tick reads the next rows, not the same ones.
    *
-   * What DOES repeat is the priority ordering: while a backlog persists,
-   * `promote-due` and `redispatch-stale` keep serving the highest-priority
-   * rows first, so newly arriving `critical` work overtakes `low` work that
-   * has been waiting. That is priority doing its job, not starvation, and it
-   * is the one thing `$job` priority is defined to mean. Do not "fix" it.
+   * Every phase serves its oldest rows first, so under a backlog work is
+   * picked up in the order it has been waiting.
    */
   protected async runSweepEntry(
     entry: SweepEntry,
@@ -2428,5 +2401,3 @@ export class JobProvider {
     return registration;
   }
 }
-
-export { PRIORITY_MAP, PRIORITY_REVERSE };

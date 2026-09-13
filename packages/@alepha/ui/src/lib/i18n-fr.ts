@@ -411,7 +411,6 @@ export const uiFr: Record<string, string> = {
   "admin.jobs.colLastRun": "Dernière exécution",
   "admin.jobs.colName": "Nom",
   "admin.jobs.colOk": "OK",
-  "admin.jobs.colPriority": "Priorité",
   "admin.jobs.colSchedule": "Planification",
   "admin.jobs.colScheduled": "Planifiée pour",
   "admin.jobs.colStarted": "Démarrée le",
@@ -423,7 +422,6 @@ export const uiFr: Record<string, string> = {
   "admin.jobs.none": "Aucune tâche enregistrée.",
   "admin.jobs.notStarted": "Non démarré",
   "admin.jobs.payloadTitle": "Charge utile",
-  "admin.jobs.priorityAll": "Toutes les priorités",
   "admin.jobs.retried": "Exécution remise en file",
   "admin.jobs.retry": "Relancer",
   "admin.jobs.retryConfirm":

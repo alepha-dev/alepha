@@ -380,15 +380,6 @@ export const DevJobs = () => {
                 />
               )}
               <Stat
-                label="Priority"
-                value={
-                  current.runtime?.priority ??
-                  current.declared.priority ??
-                  "normal"
-                }
-                hint="sweep ordering under backlog"
-              />
-              <Stat
                 label="Timeout"
                 value={current.declared.timeout ?? "none"}
                 hint="per attempt · handler gets AbortSignal"

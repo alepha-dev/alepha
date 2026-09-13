@@ -113,7 +113,6 @@ export class DevToolsMetadataProvider {
         description: options.description,
         mode,
         cron: options.cron,
-        priority: options.priority,
         // Durations are declared as a `[value, unit]` tuple; stringifying one
         // directly yields "30,seconds".
         timeout: Array.isArray(options.timeout)

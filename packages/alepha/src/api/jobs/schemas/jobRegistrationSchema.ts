@@ -8,7 +8,6 @@ export const jobRegistrationSchema = z.object({
     .describe(
       "Effective runtime mode. 'cron' = scheduled. 'queue' = push-driven, dispatched via AlephaApiJobsQueue. 'direct' = push-driven, processed in-process (no queue infrastructure loaded), with the sweep as the safety net.",
     ),
-  priority: z.enum(["critical", "high", "normal", "low"]),
   cron: z.text().optional(),
   timeout: z.text().optional(),
   retry: z

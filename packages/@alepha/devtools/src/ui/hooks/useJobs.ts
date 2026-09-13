@@ -6,7 +6,6 @@ export interface JobRuntime {
   name: string;
   description?: string;
   type: "cron" | "queue" | "direct";
-  priority: string;
   cron?: string;
   timeout?: string;
   retry?: { retries: number };

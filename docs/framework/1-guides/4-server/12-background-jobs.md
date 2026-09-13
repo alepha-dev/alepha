@@ -79,15 +79,14 @@ const executionId = await this.welcome.push({ userId: "u1" });
 
 `push()` accepts a second options argument:
 
-| Option           | Type                                        | Description                                                       |
-| ---------------- | ------------------------------------------- | ----------------------------------------------------------------- |
-| `delay`          | `DurationLike`                              | Run no earlier than now + delay                                   |
-| `scheduledAt`    | `Date`                                      | Run no earlier than this instant                                  |
-| `key`            | `string`                                    | Deduplication key - see the caveat below                          |
-| `priority`       | `"critical" \| "high" \| "normal" \| "low"` | Sweep dispatch order when there is a backlog                      |
-| `organizationId` | `string`                                    | Owning tenant, persisted on the row for tenant-scoped admin views |
+| Option           | Type           | Description                                                       |
+| ---------------- | -------------- | ----------------------------------------------------------------- |
+| `delay`          | `DurationLike` | Run no earlier than now + delay                                   |
+| `scheduledAt`    | `Date`         | Run no earlier than this instant                                  |
+| `key`            | `string`       | Deduplication key - see the caveat below                          |
+| `organizationId` | `string`       | Owning tenant, persisted on the row for tenant-scoped admin views |
 
-`pushMany()` takes an array of `{ payload, key?, delay?, priority?, scheduledAt? }`
+`pushMany()` takes an array of `{ payload, key?, delay?, scheduledAt? }`
 and writes them in a batched INSERT.
 
 ### `key` dedups in-flight work, not completed work
@@ -455,10 +454,9 @@ so a backlog is visible in the logs rather than something you infer from a
 graph.
 
 Every phase's action moves the row out of the status that phase owns, so
-progress across ticks is guaranteed. What repeats is the **priority**
-ordering: while a backlog persists, newly arriving `critical` work is served
-before `low` work that has been waiting. That is what `$job` priority means,
-and it is the only thing it means.
+progress across ticks is guaranteed. Every phase serves its oldest rows
+first, so under a backlog work is picked up in the order it has been waiting.
+There is no priority: a job cannot jump the queue.
 
 A `pending` row whose delivery is lost is re-dispatched at most
 `maxRedispatch` times before it is failed. This is counted separately from

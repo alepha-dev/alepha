@@ -1354,14 +1354,13 @@ describe("$job — dispatchMany (queue mode)", () => {
 // ---------------------------------------------------------------------------
 
 describe("$job — admin resource shape", () => {
-  it("execution resource exposes priority as the enum string", async ({
+  it("execution resource derives its admin actions from the status", async ({
     expect,
   }) => {
     const alepha = makeApp();
     class App {
       work = $job({
         schema: z.object({ v: z.integer() }),
-        priority: "high",
         record: "all",
         handler: async () => {},
       });
@@ -1378,7 +1377,7 @@ describe("$job — admin resource shape", () => {
       (r) => r?.status === "ok",
       { label: "execution reaches status=ok" },
     );
-    expect(resource.priority).toBe("high");
-    expect(typeof resource.priority).toBe("string");
+    expect(resource.can).toEqual({ retry: false, cancel: false });
+    expect("priority" in resource).toBe(false);
   });
 });

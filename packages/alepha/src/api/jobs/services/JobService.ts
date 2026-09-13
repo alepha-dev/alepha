@@ -7,7 +7,7 @@ import { NotFoundError } from "alepha/server";
 import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
 import { $job } from "../primitives/$job.ts";
 import type { JobTriggerContext } from "../providers/JobProvider.ts";
-import { JobProvider, PRIORITY_REVERSE } from "../providers/JobProvider.ts";
+import { JobProvider } from "../providers/JobProvider.ts";
 import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 import type { JobExecutionResource } from "../schemas/jobExecutionResourceSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
@@ -36,17 +36,13 @@ export class JobService {
   }
 
   /**
-   * Convert the int-priority storage column into the public enum string.
-   * The cast through `unknown` skips TypeScript's structural check between
-   * the entity-level row (`priority: number`) and the resource schema
-   * (`priority: enum`); the runtime values are correct.
+   * A row with the admin actions its status allows.
    */
-  protected toResource<T extends { priority: number; status: string }>(
+  protected toResource<T extends { status: string }>(
     row: T,
   ): JobExecutionResource {
     return {
       ...row,
-      priority: PRIORITY_REVERSE[row.priority] ?? "normal",
       can: this.computeCan(row.status),
     } as unknown as JobExecutionResource;
   }
@@ -113,7 +109,6 @@ export class JobService {
         description: opts.description,
         type: this.jobProvider.effectiveMode(name),
         cron: opts.cron,
-        priority: (opts.priority ?? "normal") as JobRegistration["priority"],
         timeout: opts.timeout
           ? this.dt.duration(opts.timeout).toISOString()
           : undefined,
