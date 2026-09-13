@@ -102,9 +102,15 @@ alepha.set(oauthOptions, {
    * tells a reader nothing about what they are handing over.
    *
    * `cli` is what `lore login` asks for (#Q2244), and it is the whole
-   * application too: nothing enforces a scope, so the token acts as the
-   * account. It has its own entry so the device approval page names the
-   * terminal rather than Claude's MCP connection, which it used to borrow.
+   * application too. It has its own entry so the device approval page names
+   * the terminal rather than Claude's MCP connection, which it used to borrow.
+   *
+   * ⚠️ None of the three declares `permissions` yet, so a token granted any of
+   * them still acts as the account on every permission-checked route, and the
+   * server warns about each at boot. The framework narrows a grant to its
+   * scopes' declared permissions since #Q2307; which permissions `mcp`, `cli`
+   * and `openid` reach is Lore product policy, left for the owner to settle on
+   * that quest.
    */
   scopes: {
     mcp: {
