@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "fcb05bfa-f639-4fa7-b3c1-48774dae44a7",
-  "prevIds": ["8fa29ee6-4577-4269-80dc-dc25000e9a89"],
+  "id": "78e856af-5aa0-4758-b5de-2e1666103c05",
+  "prevIds": ["404fb3c6-23cd-4501-b10b-33e8cd7cad8f"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -2303,16 +2303,6 @@
       "default": "'pending'",
       "generated": null,
       "name": "status",
-      "entityType": "columns",
-      "table": "job_executions"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "2",
-      "generated": null,
-      "name": "priority",
       "entityType": "columns",
       "table": "job_executions"
     },
