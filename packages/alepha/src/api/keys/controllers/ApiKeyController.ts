@@ -27,7 +27,8 @@ export class ApiKeyController {
     path: this.url,
     group: this.group,
     description: "Create a new API key",
-    use: [$secure({ permissions: ["api-key:create"] })],
+    // A key must not mint a key: see `SecureOptions.sessionOnly`.
+    use: [$secure({ permissions: ["api-key:create"], sessionOnly: true })],
     schema: {
       body: createApiKeyBodySchema,
       response: createApiKeyResponseSchema,
@@ -94,7 +95,7 @@ export class ApiKeyController {
     path: `${this.url}/:id`,
     group: this.group,
     description: "Revoke an API key",
-    use: [$secure({ permissions: ["api-key:delete"] })],
+    use: [$secure({ permissions: ["api-key:delete"], sessionOnly: true })],
     schema: {
       params: revokeApiKeyParamsSchema,
       response: revokeApiKeyResponseSchema,

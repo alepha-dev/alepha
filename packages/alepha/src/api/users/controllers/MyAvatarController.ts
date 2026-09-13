@@ -39,7 +39,7 @@ export class MyAvatarController {
   updateMyAvatar = $action({
     method: "POST",
     path: "/users/me/avatar",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Replace the caller's avatar",
     schema: {
       body: z.object({
@@ -65,7 +65,7 @@ export class MyAvatarController {
   deleteMyAvatar = $action({
     method: "DELETE",
     path: "/users/me/avatar",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Remove the caller's avatar",
     schema: {
       response: myProfileSchema,

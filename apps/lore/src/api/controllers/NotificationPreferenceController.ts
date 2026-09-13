@@ -47,7 +47,8 @@ export class NotificationPreferenceController {
   updateMyNotificationPreferences = $action({
     method: "PATCH",
     path: "/users/me/notification-preferences",
-    use: [$secure()],
+    // Every non-GET route under `/users/me` refuses a machine credential.
+    use: [$secure({ sessionOnly: true })],
     description: "Update the caller's own notification preferences",
     schema: {
       body: updateNotificationPreferenceBodySchema,

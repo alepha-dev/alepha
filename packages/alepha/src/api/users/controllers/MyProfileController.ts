@@ -61,7 +61,7 @@ export class MyProfileController {
   updateMyProfile = $action({
     method: "PATCH",
     path: "/users/me",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Update the caller's own profile",
     schema: {
       body: updateMyProfileBodySchema,

@@ -532,9 +532,12 @@ export class ApiKeyService {
     const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
     this.background.defer(() => this.updateUsage(apiKey.id, clientIp));
 
+    // The marker is what tells every route downstream that this identity is
+    // a machine credential and not a signed-in session.
     return {
       id: apiKey.userId,
       roles,
+      credential: { type: "api-key", id: apiKey.id },
     };
   }
 

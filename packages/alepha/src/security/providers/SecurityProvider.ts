@@ -918,6 +918,22 @@ export class SecurityProvider {
   }
 
   /**
+   * Whether an identity was authenticated by a machine credential (an API
+   * key) rather than a signed-in session.
+   *
+   * Any `credential` marker counts, whatever its type: a new kind of machine
+   * credential is refused wherever this is asked the moment it sets the
+   * marker, with nothing to declare on any route.
+   *
+   * Read by `$secure({ sessionOnly: true })`, and by the handlers that read
+   * `user` themselves and so sit outside every `$secure` option (the OAuth
+   * consent and device approval routes).
+   */
+  public isMachineCredential(user?: { credential?: unknown }): boolean {
+    return user?.credential != null;
+  }
+
+  /**
    * Checks a permission for a user: the realm-aware role check first, then the
    * credential's {@link UserAccount.permissionScope}.
    *

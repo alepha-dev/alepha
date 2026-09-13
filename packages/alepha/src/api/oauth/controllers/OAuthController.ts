@@ -2,7 +2,11 @@ import { $atom, $inject, $store, Alepha, AlephaError, z } from "alepha";
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
-import { JwtProvider } from "alepha/security";
+import {
+  JwtProvider,
+  SecurityProvider,
+  type UserAccountToken,
+} from "alepha/security";
 import { $route, HttpError } from "alepha/server";
 
 import {
@@ -113,6 +117,27 @@ export class OAuthController {
   protected readonly clients = $inject(OAuthClientService);
   protected readonly deviceCodes = $inject(DeviceCodeService);
   protected readonly jwt = $inject(JwtProvider);
+  protected readonly security = $inject(SecurityProvider);
+
+  /**
+   * The signed-in session behind a request, or `undefined`.
+   *
+   * These handlers declare `use: []` and read `user` themselves, so no
+   * `$secure({ sessionOnly: true })` reaches them, and an identity
+   * authenticated by a machine credential (an API key) would otherwise
+   * approve a grant as the person: mint itself an authorization code, or a
+   * device's tokens, that outlive the key. So a marked identity is treated
+   * exactly as no user, and each handler answers it the way it already
+   * answers a visitor who is not signed in.
+   *
+   * Every handler that approves a grant reads its user through here, the
+   * trusted-client GET included, which mints a code with no POST at all.
+   */
+  protected sessionUser(
+    user: UserAccountToken | undefined,
+  ): UserAccountToken | undefined {
+    return this.security.isMachineCredential(user) ? undefined : user;
+  }
 
   /**
    * Absolute origin of the current request, e.g. https://app.com.
@@ -373,7 +398,8 @@ export class OAuthController {
     path: "/oauth/authorize",
     schema: { query: authorizeQuerySchema },
     use: [],
-    handler: async ({ query, user, url, reply }) => {
+    handler: async ({ query, user: requestUser, url, reply }) => {
+      const user = this.sessionUser(requestUser);
       if (query.response_type !== "code") {
         reply.status = 400;
         reply.body = "unsupported response_type";
@@ -503,7 +529,8 @@ export class OAuthController {
     path: "/oauth/authorize",
     schema: { body: authorizeDecisionBodySchema },
     use: [],
-    handler: async ({ body, user, reply }) => {
+    handler: async ({ body, user: requestUser, reply }) => {
+      const user = this.sessionUser(requestUser);
       if (!user) {
         reply.status = 401;
         reply.body = "authentication required";
@@ -600,7 +627,8 @@ export class OAuthController {
     path: "/oauth/device",
     schema: { query: deviceVerificationQuerySchema },
     use: [],
-    handler: async ({ query, user, url, reply }) => {
+    handler: async ({ query, user: requestUser, url, reply }) => {
+      const user = this.sessionUser(requestUser);
       if (!user) {
         const returnTo = encodeURIComponent(url.pathname + url.search);
         reply.redirect(
@@ -660,7 +688,8 @@ export class OAuthController {
     path: "/oauth/device",
     schema: { body: deviceDecisionBodySchema },
     use: [],
-    handler: async ({ body, user, url, headers, reply }) => {
+    handler: async ({ body, user: requestUser, url, headers, reply }) => {
+      const user = this.sessionUser(requestUser);
       if (!this.isSameOrigin(headers, url)) {
         reply.status = 403;
         reply.body = "cross-origin request refused";

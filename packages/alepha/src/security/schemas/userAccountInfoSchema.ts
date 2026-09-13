@@ -1,6 +1,8 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 
+import { userCredentialSchema } from "./userCredentialSchema.ts";
+
 export const userAccountInfoSchema = z.object({
   id: z.text({
     description: "Unique identifier for the user.",
@@ -76,6 +78,14 @@ export const userAccountInfoSchema = z.object({
         "nothing, so every permission-checked route refuses. It binds " +
         "permission checks only: a route that declares no permission still " +
         "admits a scoped credential.",
+    )
+    .optional(),
+
+  credential: userCredentialSchema
+    .describe(
+      "The machine credential this identity was authenticated by (an API " +
+        "key). Absent on a signed-in session. A route declaring " +
+        "`$secure({ sessionOnly: true })` refuses any identity carrying one.",
     )
     .optional(),
 

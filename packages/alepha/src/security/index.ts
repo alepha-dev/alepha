@@ -47,6 +47,7 @@ export * from "./providers/ServerSecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
 export * from "./schemas/userAccountInfoSchema.ts";
+export * from "./schemas/userCredentialSchema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
