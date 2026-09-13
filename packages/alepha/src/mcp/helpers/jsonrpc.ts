@@ -14,10 +14,19 @@ import type {
 export const JSONRPC_VERSION = "2.0" as const;
 
 /**
- * The latest MCP protocol revision Alepha targets.
- * See {@link SUPPORTED_PROTOCOL_VERSIONS} for the full negotiation list.
+ * The latest MCP protocol revision Alepha targets (the spec's
+ * `LATEST_PROTOCOL_VERSION`). A modern revision: no handshake, version and
+ * capabilities on every request's `_meta`.
+ * See {@link SUPPORTED_PROTOCOL_VERSIONS} for everything the server serves.
  */
-export const MCP_PROTOCOL_VERSION = "2025-11-25" as const;
+export const MCP_PROTOCOL_VERSION = "2026-07-28" as const;
+
+/**
+ * The latest legacy MCP revision: what a client that opens with
+ * `initialize` negotiates, and what `initialize` answers when the requested
+ * version is not a legacy one.
+ */
+export const MCP_LEGACY_PROTOCOL_VERSION = "2025-11-25" as const;
 
 /**
  * The legacy MCP revisions: the ones that open a session with an `initialize`
@@ -43,16 +52,20 @@ export const LEGACY_PROTOCOL_VERSIONS = [
 export const MODERN_PROTOCOL_VERSIONS = ["2026-07-28"] as const;
 
 /**
- * Protocol versions Alepha serves by default, highest preference first. Seeds
- * `McpServerProvider.protocolVersions`, which is what the server actually
- * checks against.
+ * Protocol versions Alepha serves by default, modern first, then legacy.
+ * Seeds `McpServerProvider.protocolVersions`, which is what the server
+ * actually checks against.
  *
- * Legacy-only for now: the modern path is on exactly when that list holds a
- * modern version, and advertising 2026-07-28 before it is fully implemented
- * would tell a dual-era client (claude.ai) to stop falling back to
- * `initialize`.
+ * Holding a modern version is what turns the modern path on: a request that
+ * names 2026-07-28 is served statelessly under that revision, and a request
+ * naming an unknown version gets the modern `-32022`. Legacy clients keep
+ * opening with `initialize`, on the same endpoint. An app that must not speak
+ * the modern protocol assigns `LEGACY_PROTOCOL_VERSIONS` to
+ * `protocolVersions`, which brings back the plain 400 a dual-era client
+ * falls back on.
  */
 export const SUPPORTED_PROTOCOL_VERSIONS = [
+  ...MODERN_PROTOCOL_VERSIONS,
   ...LEGACY_PROTOCOL_VERSIONS,
 ] as const;
 

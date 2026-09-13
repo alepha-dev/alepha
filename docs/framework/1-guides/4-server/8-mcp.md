@@ -451,6 +451,14 @@ class MyMcpTransport extends StreamableHttpMcpTransport {
 alepha.with({ provide: StreamableHttpMcpTransport, use: MyMcpTransport });
 ```
 
+A request in the modern protocol (2026-07-28, see
+[Protocol revisions](#protocol-revisions)) also says who is calling on every
+request, and the context carries it: `context.protocolVersion`,
+`context.clientInfo` (self-reported, fine for logs, never for a decision) and
+`context.clientCapabilities` (`{}` when the client declares none). All three are
+`undefined` on a legacy request, which states them once in `initialize` and is
+not remembered by this stateless server.
+
 ## Error Handling
 
 Throw errors in handlers and they are returned as tool results the AI can read:
@@ -510,7 +518,7 @@ Transports are opt-in: wire the one you need.
 **Streamable HTTP** (MCP spec 2025-03-26+), a single endpoint:
 
 - `POST /mcp`: JSON-RPC endpoint; single responses return `application/json`
-- `GET /mcp`: returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
+- `GET /mcp` and `DELETE /mcp`: return `405 Method Not Allowed` (no standalone SSE stream, no session to end)
 
 The path is configurable (keep it outside `/api`, which belongs to the `$action` dispatcher):
 
@@ -555,6 +563,89 @@ appear (on stderr, where the spec wants them) and cannot break the stream.
 A stdio server takes credentials from its environment rather than the HTTP
 authorization framework, so `requireAuth` has no meaning there - whoever
 launched the process is the caller.
+
+### Protocol revisions
+
+One endpoint serves two eras of MCP at once, on HTTP and on stdio alike:
+
+- **Modern, 2026-07-28** (`MCP_PROTOCOL_VERSION`). No handshake: every request
+  carries its protocol version, client identity and capabilities in
+  `params._meta`, and a client may call `server/discover` first to learn what
+  the server supports.
+- **Legacy, 2025-11-25 back to 2024-11-05** (`LEGACY_PROTOCOL_VERSIONS`). The
+  client opens with `initialize` and is served exactly as before. Claude Code
+  still connects this way.
+
+The server keeps no session, so it cannot remember how a client opened.
+The era is decided **per request**: a request is modern when its
+`_meta["io.modelcontextprotocol/protocolVersion"]` or its
+`MCP-Protocol-Version` header names a version outside the legacy list. Anything
+else, and `initialize` always, is legacy. `initialize` only ever negotiates a
+legacy version.
+
+What a modern request gets that a legacy one never does:
+
+- **`server/discover`**: the supported versions (modern first) and the
+  capabilities. A legacy request calling it gets `-32601`.
+- **A result envelope**: `resultType: "complete"` on every result and the
+  server's identity in `_meta["io.modelcontextprotocol/serverInfo"]`.
+- **Caching hints** (`ttlMs`, `cacheScope`) on `server/discover`, the four
+  lists and `resources/read`, described below.
+- **Strict header checks** on HTTP: `MCP-Protocol-Version`, `Mcp-Method`, and
+  `Mcp-Name` on `tools/call`, `resources/read` and `prompts/get`, must be present
+  and must match the body (`Mcp-Name` may be sent as `=?base64?...?=`). A missing
+  or disagreeing header is `400` with `-32020`.
+- **HTTP statuses for protocol failures**: an unsupported version is `400` with
+  `-32022` listing what is supported, an unknown method (`ping` included, which
+  2026-07-28 removed) is `404` with `-32601`. Every other JSON-RPC error, and
+  every legacy error, stays `200`.
+
+The switch is `McpServerProvider.protocolVersions`, seeded from
+`SUPPORTED_PROTOCOL_VERSIONS`. The modern protocol is on exactly when that list
+holds a modern version. To serve legacy clients only:
+
+```typescript
+import { LEGACY_PROTOCOL_VERSIONS, McpServerProvider } from "alepha/mcp";
+
+alepha.inject(McpServerProvider).protocolVersions = [
+  ...LEGACY_PROTOCOL_VERSIONS,
+];
+```
+
+With no modern version listed, a request naming one gets a plain `400` whose
+body is not a JSON-RPC error: that is what makes a dual-era client such as
+claude.ai fall back to `initialize`.
+
+#### Caching hints
+
+A modern client may cache a result for `ttlMs` milliseconds; `cacheScope` says
+whether a shared cache may hand it to other callers (`"public"`) or only to the
+same authorization context (`"private"`). The defaults:
+
+| Result                                                                                        | `ttlMs`  | `cacheScope` |
+| --------------------------------------------------------------------------------------------- | -------- | ------------ |
+| `server/discover`, `tools/list`, `prompts/list`, `resources/list`, `resources/templates/list` | `300000` | `"public"`   |
+| `resources/read`                                                                              | `0`      | `"private"`  |
+
+Lists are public because every caller gets the same registry, and five minutes
+bounds how long a client keeps a list from before a deploy. Reads are private
+and immediately stale because resource content usually depends on the caller.
+Override them where you know better:
+
+```typescript
+const mcp = alepha.inject(McpServerProvider);
+mcp.listCache = { ttlMs: 60_000, cacheScope: "private" }; // lists filtered per user
+mcp.discoverCache = { ttlMs: 3_600_000, cacheScope: "public" };
+
+changelog = $resource({
+  uri: "docs://changelog",
+  cache: { ttlMs: 600_000, cacheScope: "public" }, // same for everyone
+  handler: async () => ({ text: await this.changelog.render() }),
+});
+```
+
+`$resourceTemplate` takes the same `cache` option. Set `"public"` only on
+content that is identical for every caller.
 
 ### Progress on long calls
 

@@ -92,17 +92,31 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  * `application/json` (single response, the default) or `text/event-stream`
  * (when the client asked for progress via `_meta.progressToken`).
  *
- * Designed for serverless deployment (Cloudflare Workers, etc.) — there is
- * no long-lived GET stream. GET on the endpoint returns 405 Method Not
- * Allowed; clients that want server-initiated push must rely on the POST
- * response stream when the server upgrades to SSE for that particular call.
+ * Designed for serverless deployment (Cloudflare Workers, etc.): there is no
+ * session and no long-lived GET stream. GET and DELETE on the endpoint return
+ * 405 Method Not Allowed; a client that wants progress gets it on the POST
+ * response stream of the call it concerns.
  *
- * Spec compliance:
- * - 2025-06-18: validates `MCP-Protocol-Version` header on every request
- *   after `initialize` against the version negotiated and stored on
- *   `McpServerProvider`.
- * - 2025-11-25: rejects requests with a non-allow-listed `Origin` header
- *   (PR #1439). See {@link mcpStreamableHttpOptions.allowedOrigins}.
+ * Both protocol eras are served on this one endpoint, decided per request by
+ * `McpServerProvider.resolveModernRequest` from the version the request
+ * carries (there is no session to remember a handshake):
+ *
+ * - **Modern (2026-07-28)**, when the `_meta` protocol version or the
+ *   `MCP-Protocol-Version` header names a non-legacy version. The mirrored
+ *   headers are validated strictly against the body (`MCP-Protocol-Version`,
+ *   `Mcp-Method`, `Mcp-Name`: 400 and `-32020`), an unsupported version is 400
+ *   and `-32022`, an unknown method is 404 and `-32601`, all decided before a
+ *   response stream could open.
+ * - **Legacy (2025-11-25 and earlier)**, everything else and `initialize`
+ *   always. The `MCP-Protocol-Version` header, when present, is checked against
+ *   `McpServerProvider.protocolVersions` (never against a version negotiated
+ *   earlier: the provider is a process-global singleton, so that value would
+ *   be another client's). A version outside it gets a plain, non-JSON-RPC 400,
+ *   which is what a dual-era client falls back to `initialize` on. Every
+ *   JSON-RPC error keeps HTTP 200.
+ *
+ * Also: requests with a non-allow-listed `Origin` header are rejected with 403
+ * (spec 2025-11-25, PR #1439). See {@link mcpStreamableHttpOptions.allowedOrigins}.
  *
  * @example
  * ```ts

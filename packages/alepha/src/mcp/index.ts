@@ -41,6 +41,7 @@ export {
   JsonRpcErrorCodes,
   JsonRpcParseError,
   LEGACY_PROTOCOL_VERSIONS,
+  MCP_LEGACY_PROTOCOL_VERSION,
   MCP_PROTOCOL_VERSION,
   McpProtocolErrorCodes,
   MODERN_PROTOCOL_VERSIONS,

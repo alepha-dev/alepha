@@ -16,7 +16,7 @@ import {
   createInternalError,
   createResponse,
   isLegacyProtocolVersion,
-  LEGACY_PROTOCOL_VERSIONS,
+  MCP_LEGACY_PROTOCOL_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import type {
@@ -765,7 +765,7 @@ export class McpServerProvider {
     // semantics it does not speak.
     const negotiated: string = isLegacyProtocolVersion(requested)
       ? (requested as string)
-      : LEGACY_PROTOCOL_VERSIONS[0];
+      : MCP_LEGACY_PROTOCOL_VERSION;
 
     this.log.info("MCP client initializing", {
       clientInfo: params.clientInfo,

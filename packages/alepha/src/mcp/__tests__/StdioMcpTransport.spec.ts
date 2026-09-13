@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   AlephaMcp,
   LEGACY_PROTOCOL_VERSIONS,
-  MCP_PROTOCOL_VERSION,
+  MCP_LEGACY_PROTOCOL_VERSION,
   McpServerProvider,
   MODERN_PROTOCOL_VERSIONS,
 } from "../index.ts";
@@ -114,7 +114,7 @@ describe("StdioMcpTransport", () => {
       id: 1,
       method: "initialize",
       params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "test", version: "1.0.0" },
       },
@@ -124,7 +124,7 @@ describe("StdioMcpTransport", () => {
     expect(fake.messages[0]).toMatchObject({
       jsonrpc: "2.0",
       id: 1,
-      result: { protocolVersion: MCP_PROTOCOL_VERSION },
+      result: { protocolVersion: MCP_LEGACY_PROTOCOL_VERSION },
     });
     await alepha.stop();
   });

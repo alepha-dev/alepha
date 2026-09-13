@@ -6,7 +6,13 @@ import {
 import { ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
-import { AlephaMcp, MCP_PROTOCOL_VERSION } from "../index.ts";
+import {
+  AlephaMcp,
+  LEGACY_PROTOCOL_VERSIONS,
+  MCP_LEGACY_PROTOCOL_VERSION,
+  McpServerProvider,
+  MODERN_PROTOCOL_VERSIONS,
+} from "../index.ts";
 import { $tool } from "../primitives/$tool.ts";
 import {
   mcpStreamableHttpOptions,
@@ -32,7 +38,7 @@ const initBody = JSON.stringify({
   id: 1,
   method: "initialize",
   params: {
-    protocolVersion: MCP_PROTOCOL_VERSION,
+    protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
     capabilities: {},
     clientInfo: { name: "test", version: "1.0.0" },
   },
@@ -198,16 +204,20 @@ describe("StreamableHttpMcpTransport — spec compliance", () => {
 
 /**
  * claude.ai opens every connection with a 2026-07-28 `server/discover` probe.
- * This server does not speak that revision yet, and the answer it gives is
- * what makes claude.ai fall back to `initialize` on 2025-11-25.
+ * What it does next depends only on the answer:
  *
- * The 2026-07-28 Streamable HTTP backward-compatibility rule: on a 400, a
- * client falls back only when the body is NOT a recognized modern JSON-RPC
- * error. A spec-looking `-32022` would tell it the server is modern, it would
- * stop falling back, and its MCP would break. So the body is pinned here as
- * not being a JSON-RPC error at all (epic #E57, until the modern path is on).
+ * - a `DiscoverResult`, or a recognized modern JSON-RPC error such as
+ *   `-32022`: the server is modern, and the client stays modern;
+ * - a 400 whose body is NOT a recognized modern JSON-RPC error: the server is
+ *   legacy, and the client falls back to `initialize` (the 2026-07-28
+ *   Streamable HTTP backward-compatibility rule).
+ *
+ * Since epic #E57 the server serves 2026-07-28 by default, so the probe gets
+ * the first answer. The second survives for a server whose `protocolVersions`
+ * holds no modern version, and its body must stay a plain one: a JSON-RPC
+ * error there would tell the client the server is modern when it is not.
  */
-describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", () => {
+describe("StreamableHttpMcpTransport: a modern probe", () => {
   const probeHeaders = {
     "content-type": "application/json",
     accept: "application/json, text/event-stream",
@@ -231,7 +241,11 @@ describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", ()
     },
   });
 
-  const start = async () => {
+  /**
+   * `legacyOnly` removes the modern versions from `protocolVersions`: the
+   * configuration in which the plain fallback 400 is still the answer.
+   */
+  const start = async (legacyOnly = false) => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "info", SERVER_PORT: 0 },
     })
@@ -240,6 +254,11 @@ describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", ()
       .with(StreamableHttpMcpTransport)
       .with(PingTool);
     await alepha.start();
+    if (legacyOnly) {
+      alepha.inject(McpServerProvider).protocolVersions = [
+        ...LEGACY_PROTOCOL_VERSIONS,
+      ];
+    }
     return {
       alepha,
       url: `${alepha.inject(ServerProvider).hostname}/mcp`,
@@ -247,8 +266,46 @@ describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", ()
     };
   };
 
-  it("answers the probe with HTTP 400", async () => {
+  it("serves the probe by default: 200 and a server/discover result", async () => {
     const { alepha, url } = await start();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: probeHeaders,
+      body: probeBody,
+    });
+    const body = (await res.json()) as any;
+
+    expect(res.status).toBe(200);
+    expect(body.result).toMatchObject({
+      resultType: "complete",
+      supportedVersions: [
+        ...MODERN_PROTOCOL_VERSIONS,
+        ...LEGACY_PROTOCOL_VERSIONS,
+      ],
+    });
+    await alepha.stop();
+  });
+
+  it("answers a probe for an unknown version with 400 and -32022 listing 2026-07-28, so the client retries instead of falling back", async () => {
+    const { alepha, url } = await start();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...probeHeaders, "mcp-protocol-version": "2027-01-01" },
+      body: probeBody.replaceAll("2026-07-28", "2027-01-01"),
+    });
+    const body = (await res.json()) as any;
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe(-32022);
+    expect(body.error.data.supported).toContain("2026-07-28");
+    expect(body.error.data.requested).toBe("2027-01-01");
+    await alepha.stop();
+  });
+
+  it("answers the probe with HTTP 400 when modern versions are removed from protocolVersions", async () => {
+    const { alepha, url } = await start(true);
 
     const res = await fetch(url, {
       method: "POST",
@@ -261,7 +318,7 @@ describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", ()
   });
 
   it("answers with a body that is not a JSON-RPC error, so the client falls back", async () => {
-    const { alepha, url } = await start();
+    const { alepha, url } = await start(true);
 
     const res = await fetch(url, {
       method: "POST",
@@ -279,7 +336,7 @@ describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", ()
   });
 
   it("logs the rejection at INFO with the probe's shape, not at WARN", async () => {
-    const { alepha, url, logs } = await start();
+    const { alepha, url, logs } = await start(true);
 
     await fetch(url, {
       method: "POST",
@@ -307,7 +364,7 @@ describe("StreamableHttpMcpTransport — legacy fallback for a modern probe", ()
   });
 
   it("never logs a rejected request's arguments", async () => {
-    const { alepha, url, logs } = await start();
+    const { alepha, url, logs } = await start(true);
 
     await fetch(url, {
       method: "POST",
