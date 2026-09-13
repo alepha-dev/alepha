@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../core/Dialog.tsx";
+import { AdminJobsPayloadBody } from "./AdminJobsPayloadBody.tsx";
 
 export interface AdminJobsPayloadDialogProps {
   /**
@@ -49,9 +50,7 @@ export const AdminJobsPayloadDialog = (props: AdminJobsPayloadDialogProps) => {
             {execution?.id}
           </DialogDescription>
         </DialogHeader>
-        <pre className="bg-muted max-h-[60vh] overflow-auto rounded-md p-3 font-mono text-xs leading-relaxed">
-          {JSON.stringify(execution?.payload ?? null, null, 2)}
-        </pre>
+        <AdminJobsPayloadBody payload={execution?.payload} />
       </DialogContent>
     </Dialog>
   );

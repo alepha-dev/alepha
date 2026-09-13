@@ -231,7 +231,6 @@ export class NotificationPrimitive<
         // the only way the suppression gate learns whose message this is.
         this.payloadFor(type, { ...options, lang }, organizationId),
         {
-          ...(this.options.critical ? ({ priority: "critical" } as const) : {}),
           organizationId,
           scheduledAt: options.scheduledAt,
           delay: options.delay,
@@ -279,7 +278,6 @@ export class NotificationPrimitive<
           scheduledAt: options.scheduledAt,
           delay: options.delay,
           key: this.channelKey(options.key?.(entry.contact), type),
-          ...(this.options.critical ? ({ priority: "critical" } as const) : {}),
         });
       }
     }

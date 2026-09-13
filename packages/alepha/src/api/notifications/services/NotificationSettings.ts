@@ -21,7 +21,7 @@ export class NotificationSettings {
         .integer()
         .min(1)
         .describe(
-          "Days to keep notification execution rows before the purge sweep removes them.",
+          "Days to keep the outbox rows of sent notifications, successes and failures alike. The jobs module's hourly trim reads it at every tick, so an edit applies without a restart.",
         ),
       receiptRetentionDays: z
         .integer()
