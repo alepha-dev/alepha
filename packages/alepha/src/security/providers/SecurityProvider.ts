@@ -20,6 +20,7 @@ import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
+import type { PermissionCatalogue } from "../schemas/permissionCatalogueSchema.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import type { Role } from "../schemas/roleSchema.ts";
 import {
@@ -536,6 +537,61 @@ export class SecurityProvider {
       const right = b.order ?? Number.POSITIVE_INFINITY;
       return left === right ? a.name.localeCompare(b.name) : left - right;
     });
+  }
+
+  /**
+   * The permission catalogue as an editor consumes it
+   * (`permissionCatalogueSchema`): every name the full `group:name`, labels
+   * passed through untranslated.
+   *
+   * @param user - Narrow it to what this identity may grant:
+   * `getPermissions(user)`, its roles within its realm and then its own
+   * permission scope. Omit for the whole registry. Pass the identity itself,
+   * never `{ roles, realm }` rebuilt from it, which drops the scope and shows
+   * a scoped caller a ceiling wider than itself.
+   */
+  public permissionCatalogueFor(user?: {
+    roles?: string[];
+    realm?: string;
+    permissionScope?: string[];
+  }): PermissionCatalogue {
+    const allowed = user
+      ? new Set(
+          this.getPermissions(user).map((it) => this.permissionToString(it)),
+        )
+      : undefined;
+
+    const groups: PermissionCatalogue["groups"] = [];
+    for (const group of this.permissionCatalogue()) {
+      const permissions = group.permissions
+        .map((permission) => ({
+          permission,
+          name: this.permissionToString(permission),
+        }))
+        .filter((it) => !allowed || allowed.has(it.name))
+        .map(({ permission, name }) => ({
+          name,
+          ...(permission.label === undefined
+            ? {}
+            : { label: permission.label }),
+          ...(permission.description === undefined
+            ? {}
+            : { description: permission.description }),
+        }));
+
+      if (permissions.length === 0) {
+        continue;
+      }
+
+      groups.push({
+        name: group.name,
+        ...(group.label === undefined ? {} : { label: group.label }),
+        ...(group.order === undefined ? {} : { order: group.order }),
+        permissions,
+      });
+    }
+
+    return { groups };
   }
 
   public createRealm(realm: Realm) {

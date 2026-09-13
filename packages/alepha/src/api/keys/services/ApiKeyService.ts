@@ -12,7 +12,12 @@ import {
   RepositoryProvider,
   sql,
 } from "alepha/orm";
-import type { IssuerResolver, UserInfo } from "alepha/security";
+import {
+  type IssuerResolver,
+  SecurityProvider,
+  type UserAccount,
+  type UserInfo,
+} from "alepha/security";
 import {
   BadRequestError,
   ForbiddenError,
@@ -22,7 +27,11 @@ import {
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
 import { ApiKeyParameters } from "../parameters/ApiKeyParameters.ts";
 import type { AdminApiKeyResource } from "../schemas/adminApiKeyResourceSchema.ts";
-import type { ApiKeyExpiresIn } from "../schemas/apiKeyExpiresInSchema.ts";
+import {
+  type ApiKeyExpiresIn,
+  apiKeyExpiresInSchema,
+} from "../schemas/apiKeyExpiresInSchema.ts";
+import type { ApiKeyOptionsResponse } from "../schemas/apiKeyOptionsResponseSchema.ts";
 import type { ApiKeyStatus } from "../schemas/apiKeyStatusSchema.ts";
 
 export class ApiKeyService {
@@ -33,6 +42,7 @@ export class ApiKeyService {
   protected readonly parameters = $inject(ApiKeyParameters);
   protected readonly repo = $repository(apiKeyEntity);
   protected readonly repositoryProvider = $inject(RepositoryProvider);
+  protected readonly securityProvider = $inject(SecurityProvider);
 
   /**
    * Cache validated API keys for 15 minutes.
@@ -192,6 +202,58 @@ export class ApiKeyService {
     }
 
     return expiresAt;
+  }
+
+  /**
+   * The expiry durations the policy admits, in the enum's order: every preset
+   * while `maxExpiryDays` is 0, else those within the cap, and never `"never"`.
+   */
+  public expiryPresets(): ApiKeyExpiresIn[] {
+    const maxDays = this.parameters.get("maxExpiryDays");
+    return apiKeyExpiresInSchema.options.filter((preset) => {
+      if (maxDays === 0) {
+        return true;
+      }
+      return preset !== "never" && this.expiryPresetDays[preset] <= maxDays;
+    });
+  }
+
+  /**
+   * What a create dialog needs and cannot know, for one caller: the expiry
+   * policy (server-only configuration) and the caller's permission ceiling.
+   *
+   * The ceiling is `SecurityProvider.permissionCatalogueFor(user)` on the
+   * calling identity itself, so a scoped caller sees its scope and a UI built
+   * from it can only narrow. It takes no userId, admins included.
+   *
+   * A role the account holds that no longer exists in the code throws
+   * `SecurityError`, and that is deliberate: `$secure` throws the same on
+   * every permission-checked route, so such an account is already broken
+   * everywhere, and swallowing it here would hide that behind a quietly
+   * narrow ceiling on one screen.
+   */
+  public optionsFor(
+    user: Pick<UserAccount, "roles" | "permissionScope"> & { realm?: string },
+  ): ApiKeyOptionsResponse {
+    const presets = this.expiryPresets();
+    const configured = this.parameters.get("defaultExpiresIn");
+
+    return {
+      expiry: {
+        // The configured default when the cap admits it, else the longest
+        // preset it does: never a preselection the server then refuses.
+        default: presets.includes(configured)
+          ? configured
+          : presets[presets.length - 1],
+        maxDays: this.parameters.get("maxExpiryDays"),
+        presets,
+      },
+      permissions: this.securityProvider.permissionCatalogueFor({
+        roles: user.roles ?? [],
+        realm: user.realm,
+        permissionScope: user.permissionScope,
+      }),
+    };
   }
 
   /**

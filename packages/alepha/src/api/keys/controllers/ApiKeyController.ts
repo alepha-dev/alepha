@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
+import { apiKeyOptionsResponseSchema } from "../schemas/apiKeyOptionsResponseSchema.ts";
 import { createApiKeyBodySchema } from "../schemas/createApiKeyBodySchema.ts";
 import { createApiKeyResponseSchema } from "../schemas/createApiKeyResponseSchema.ts";
 import { listApiKeyResponseSchema } from "../schemas/listApiKeyResponseSchema.ts";
@@ -57,6 +58,22 @@ export class ApiKeyController {
         expiresAt: apiKey.expiresAt,
       };
     },
+  });
+
+  /**
+   * What the create dialog cannot guess: the expiry presets the policy admits
+   * (with the default to preselect) and the permissions the caller may put in
+   * a key's scope, which is its own ceiling, scope included.
+   */
+  public readonly getApiKeyOptions = $action({
+    path: `${this.url}/options`,
+    group: this.group,
+    description: "Expiry policy and grantable permissions for a new API key",
+    use: [$secure({ permissions: ["api-key:create"] })],
+    schema: {
+      response: apiKeyOptionsResponseSchema,
+    },
+    handler: (request) => this.apiKeyService.optionsFor(request.user),
   });
 
   /**

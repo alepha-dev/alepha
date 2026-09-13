@@ -17,6 +17,7 @@ export * from "./schemas/adminApiKeyOwnerSchema.ts";
 export * from "./schemas/adminApiKeyQuerySchema.ts";
 export * from "./schemas/adminApiKeyResourceSchema.ts";
 export * from "./schemas/apiKeyExpiresInSchema.ts";
+export * from "./schemas/apiKeyOptionsResponseSchema.ts";
 export * from "./schemas/apiKeyStatusSchema.ts";
 export * from "./schemas/createApiKeyBodySchema.ts";
 export * from "./schemas/createApiKeyResponseSchema.ts";

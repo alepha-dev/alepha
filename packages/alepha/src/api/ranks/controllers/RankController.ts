@@ -1,5 +1,9 @@
 import { $inject, z } from "alepha";
-import { $secure, SecurityProvider } from "alepha/security";
+import {
+  $secure,
+  permissionCatalogueSchema,
+  SecurityProvider,
+} from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { RankResourceProvider } from "../providers/RankResourceProvider.ts";
@@ -39,47 +43,11 @@ export class RankController {
     method: "GET",
     path: "/ranks/catalogue",
     schema: {
-      response: z.object({
-        groups: z.array(
-          z.object({
-            name: z.text(),
-            label: z.text().optional(),
-            order: z.integer().optional(),
-            permissions: z.array(
-              z.object({
-                name: z.text(),
-                label: z.text().optional(),
-                description: z.text().optional(),
-              }),
-            ),
-          }),
-        ),
-      }),
+      response: permissionCatalogueSchema,
     },
-    handler: async () => ({
-      groups: this.security.permissionCatalogue().map((group) => ({
-        name: group.name,
-        ...(group.label === undefined ? {} : { label: group.label }),
-        ...(group.order === undefined ? {} : { order: group.order }),
-        permissions: group.permissions.map((permission) => ({
-          // ⚠️ The FULL `group:name`, not the registry's bare `name`.
-          // This is the string a rank definition stores and the string the
-          // write path validates, so a matrix built from a bare `read` sends
-          // back a permission nothing recognises - and every cell in it reads
-          // as one nobody may grant, which is what it looked like the first
-          // time this shipped.
-          name: permission.group
-            ? `${permission.group}:${permission.name}`
-            : permission.name,
-          ...(permission.label === undefined
-            ? {}
-            : { label: permission.label }),
-          ...(permission.description === undefined
-            ? {}
-            : { description: permission.description }),
-        })),
-      })),
-    }),
+    // The full `group:name` on every permission: see
+    // `SecurityProvider.permissionCatalogueFor`.
+    handler: async () => this.security.permissionCatalogueFor(),
   });
 
   /**
