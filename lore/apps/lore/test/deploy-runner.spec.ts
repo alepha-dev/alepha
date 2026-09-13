@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
 import { DeployRunner } from "../src/api/services/DeployRunner.ts";
-import { gzip, tar } from "./fixtures/artifactTarball.ts";
+import { gzip, type TarEntry, tar } from "./fixtures/artifactTarball.ts";
 
 /**
  * The runner, driven end to end with only Cloudflare faked.
@@ -57,7 +57,10 @@ describe("deploying an artifact from inside the Worker", () => {
     await alepha.stop();
   });
 
-  const packed = async (resources: Record<string, boolean> = {}) =>
+  const packed = async (
+    resources: Record<string, boolean> = {},
+    extra: Record<string, string | TarEntry> = {},
+  ) =>
     await gzip(
       tar({
         // A complete manifest, because `buildManifestSchema` is strict and
@@ -92,6 +95,7 @@ describe("deploying an artifact from inside the Worker", () => {
         "dist/index.js": "export default { fetch: () => new Response('ok') };",
         "migrations/sqlite/0001_init/migration.sql":
           "CREATE TABLE t (id integer);",
+        ...extra,
       }),
     );
 
@@ -103,7 +107,14 @@ describe("deploying an artifact from inside the Worker", () => {
    */
   const withFakeCloudflare = async (bytes: Uint8Array) => {
     const calls: string[] = [];
-    let uploaded: { scriptName?: string; bindings?: any[] } = {};
+    let uploaded: {
+      scriptName?: string;
+      bindings?: any[];
+      assets?: {
+        manifest: Record<string, unknown>;
+        config?: Record<string, unknown>;
+      };
+    } = {};
 
     const provision = {
       ensureD1: async (name: string) => {
@@ -129,7 +140,7 @@ describe("deploying an artifact from inside the Worker", () => {
     };
 
     const deploy = {
-      deploy: async (plan: { scriptName: string; bindings?: any[] }) => {
+      deploy: async (plan: typeof uploaded & { scriptName: string }) => {
         calls.push(`deploy:${plan.scriptName}`);
         uploaded = plan;
       },
@@ -233,6 +244,45 @@ describe("deploying an artifact from inside the Worker", () => {
     await runner.run(request({ env: "pr-482" }) as never);
 
     expect(calls).toContain("deploy:acme-my-app-pr-482");
+  });
+
+  /**
+   * ⚠️ **The archive path, which is the one `apps/docs` deploys through.** Its
+   * `_headers` was listed in the asset manifest like any file, so Cloudflare
+   * served `https://alepha.dev/_headers` as a page and applied none of it. The
+   * adapter spec covers a deploy off a disk; this is the runner's own first
+   * pass, which never writes `dist/public` to a filesystem at all.
+   */
+  it("sends _headers and _redirects as asset config, and uploads none of the three config files", async ({
+    expect,
+  }) => {
+    const headers = "/*\n  X-Content-Type-Options: nosniff\n";
+    const redirects = "/old /new 301\n";
+    const { runner, uploaded } = await withFakeCloudflare(
+      await packed(
+        {},
+        {
+          // A directory entry, as `alepha pack` writes one: it is what makes
+          // the build see a `public/` and emit an `assets` block at all.
+          "dist/public/": { typeflag: "5" },
+          "dist/public/index.html": "<!doctype html>",
+          "dist/public/_headers": headers,
+          "dist/public/_redirects": redirects,
+          "dist/public/.assetsignore": "*.map\n",
+        },
+      ),
+    );
+
+    await runner.run(request() as never);
+
+    const assets = uploaded().assets!;
+    // The manifest is the whole upload: Cloudflare asks for files by the
+    // hashes it names, and the second pass streams only what it is asked for.
+    expect(Object.keys(assets.manifest)).toEqual(["/index.html"]);
+    expect(assets.config).toMatchObject({
+      _headers: headers,
+      _redirects: redirects,
+    });
   });
 
   it("runs with no deployment row at all", async ({ expect }) => {
