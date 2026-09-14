@@ -4,19 +4,10 @@ void React;
 
 import { type ZObject, type ZType, z } from "alepha";
 import { useAlepha } from "alepha/react";
-import {
-  type BaseInputField,
-  type FormModel,
-  isObjectOrUnionOfObjects,
-  useFieldValue,
-  useFormState,
-} from "alepha/react/form";
+import { type FormModel, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { resolveSchemaControl } from "alepha/react/ui";
-import { AlertCircle, X } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 
-import { Button } from "../core/Button.tsx";
 import {
   Card,
   CardContent,
@@ -24,114 +15,17 @@ import {
   CardFooter,
   CardTitle,
 } from "../core/Card.tsx";
-import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
 import { cn } from "../core/utils.ts";
-import { SettingsHeading } from "../settings/SettingsHeading.tsx";
-import {
-  Control,
-  type ControlProps,
-  readSchemaControl,
-  useDynamicControlRefresh,
-} from "./Control.tsx";
+import { AutoFormBottomBar } from "./AutoFormBottomBar.tsx";
+import { AutoFormGroupBlock } from "./AutoFormGroupBlock.tsx";
+import { autoGroupSchema } from "./autoFormGroups.ts";
+import type { ControlProps } from "./Control.tsx";
 import {
   FormFieldAutoSaveProvider,
   FormFieldLayoutProvider,
   FormFieldRequiredMarkerProvider,
 } from "./FormField.tsx";
-import { spanClass, widthFor } from "./grid.tsx";
 import { iconFor } from "./iconHint.tsx";
-
-/**
- * Detect a `z.string()` schema (incl. optional/nullable wrappers) so the
- * auto-save effect can skip keystroke commits on text fields.
- */
-function isStringSchema(schema: unknown): boolean {
-  if (!schema || typeof schema !== "object") return false;
-  // Zod, not JSON Schema: `z.string().optional()` has no `type: "string"`,
-  // so the optional text fields of a form used to auto-save every keystroke.
-  const inner = z.schema.unwrap(schema as ZType);
-  if (z.schema.isString(inner)) return true;
-  if (z.schema.isUnion(inner)) {
-    return z.schema.options(inner).some(isStringSchema);
-  }
-  return false;
-}
-
-/**
- * Detect an enum schema (incl. optional/nullable wrappers). Enum fields
- * render as a `<Select>`, so they must auto-commit on change like any
- * other select — never get lumped in with free-text string fields.
- */
-function isEnumSchema(schema: unknown): boolean {
-  if (!schema || typeof schema !== "object") return false;
-  const inner = z.schema.unwrap(schema as ZType);
-  if (z.schema.isEnum(inner)) return true;
-  if (z.schema.isUnion(inner)) {
-    return z.schema.options(inner).some(isEnumSchema);
-  }
-  return false;
-}
-
-/**
- * Resolve the effective `<Control>` config for a field, merging the
- * `fields` map with any per-field override carried on a `groups` entry —
- * the same precedence `GroupBlock` applies when rendering.
- */
-function resolveControlConfig(
-  name: string,
-  fields: Record<string, unknown> | undefined,
-  groups: AutoFormGroup[] | undefined,
-): Record<string, unknown> {
-  const fromMap = (fields?.[name] as Record<string, unknown>) ?? {};
-  let fromGroup: Record<string, unknown> = {};
-  for (const group of groups ?? []) {
-    for (const field of group.fields) {
-      if (typeof field === "object" && field.name === name) {
-        fromGroup = field as Record<string, unknown>;
-      }
-    }
-  }
-  return { ...fromMap, ...fromGroup };
-}
-
-export interface AutoFormGroup {
-  /**
-   * Group title shown in the header.
-   */
-  title?: string;
-  /**
-   * One line under the title, for context the fields should not each repeat.
-   *
-   * Only rendered in `layout="row"`, where the heading sits above the card
-   * and there is room for it — the boxed group bar the grid layout uses is a
-   * single line by construction.
-   */
-  description?: string;
-  /**
-   * Icon name (lucide) for the group header.
-   */
-  icon?: string;
-  /**
-   * Visibility predicate. Group is omitted when this returns false.
-   */
-  can?: () => boolean;
-  /**
-   * Field names from the form schema. Each renders as a `<Control>`.
-   * Use the object form `{ name, ...controlProps }` for per-field overrides
-   * (width, icon, custom, etc.).
-   */
-  fields: Array<
-    string | (Partial<Omit<ControlProps, "input">> & { name: string })
-  >;
-}
-
-export interface AutoFormAction {
-  label: string;
-  icon?: string;
-  variant?: "default" | "outline" | "ghost" | "destructive" | "secondary";
-  onClick: () => void | Promise<void>;
-  disabled?: boolean;
-}
 
 export interface AutoFormProps<T extends ZObject> {
   /**
@@ -322,7 +216,7 @@ export interface AutoFormProps<T extends ZObject> {
  * bar. Every input field is resolved through `<Control>`, so schemas
  * carrying `$control` metadata configure themselves.
  */
-export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
+export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
   const { tr } = useI18n();
   const { dirty, loading } = useFormState(props.form, ["dirty", "loading"]);
   const inputs = props.form.input as Record<string, never>;
@@ -437,7 +331,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
     !props.card &&
     !skipBottomBar &&
     resolvedGroups.length ? (
-      <BottomBar {...bottomBarProps} bare />
+      <AutoFormBottomBar {...bottomBarProps} bare />
     ) : undefined;
 
   const fieldGroups = (
@@ -445,7 +339,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
       <FormFieldRequiredMarkerProvider value={props.requiredMarker ?? true}>
         <FormFieldAutoSaveProvider value={autoSaveEnabled}>
           {resolvedGroups.map((group, gi) => (
-            <GroupBlock
+            <AutoFormGroupBlock
               key={gi}
               group={group}
               inputs={inputs}
@@ -529,7 +423,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
           </CardContent>
           {!skipBottomBar && (
             <CardFooter>
-              <BottomBar {...bottomBarProps} bare />
+              <AutoFormBottomBar {...bottomBarProps} bare />
             </CardFooter>
           )}
         </Card>
@@ -568,482 +462,101 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
         {props.footer}
 
         {!skipBottomBar && !inCardBottomBar && (
-          <BottomBar {...bottomBarProps} />
+          <AutoFormBottomBar {...bottomBarProps} />
         )}
       </div>
     </form>
   );
-}
+};
 
-// ──────────────────────────────────────────────────────────────────────
-
-interface GroupItem {
-  name: string;
-  input: BaseInputField;
-  props: Partial<ControlProps>;
-}
-
-interface GroupBlockProps {
-  group: AutoFormGroup;
-  inputs: Record<string, never>;
-  fields?: Partial<Record<string, Partial<Omit<ControlProps, "input">>>>;
-  i18nPrefix?: string;
-  disabled?: boolean;
-  multiGroup?: boolean;
-  layout: "stack" | "row";
-  gridClassName?: string;
+export interface AutoFormGroup {
   /**
-   * The form's action bar, rendered as this group's last divided row. Set by
-   * `AutoForm` on the *last* group in `layout="row"`; `undefined` everywhere
-   * else, including every group in the grid layout.
+   * Group title shown in the header.
    */
-  bottomBar?: ReactNode;
+  title?: string;
+  /**
+   * One line under the title, for context the fields should not each repeat.
+   *
+   * Only rendered in `layout="row"`, where the heading sits above the card
+   * and there is room for it — the boxed group bar the grid layout uses is a
+   * single line by construction.
+   */
+  description?: string;
+  /**
+   * Icon name (lucide) for the group header.
+   */
+  icon?: string;
+  /**
+   * Visibility predicate. Group is omitted when this returns false.
+   */
+  can?: () => boolean;
+  /**
+   * Field names from the form schema. Each renders as a `<Control>`.
+   * Use the object form `{ name, ...controlProps }` for per-field overrides
+   * (width, icon, custom, etc.).
+   */
+  fields: Array<
+    string | (Partial<Omit<ControlProps, "input">> & { name: string })
+  >;
+}
+
+export interface AutoFormAction {
+  label: string;
+  icon?: string;
+  variant?: "default" | "outline" | "ghost" | "destructive" | "secondary";
+  onClick: () => void | Promise<void>;
+  disabled?: boolean;
 }
 
 /**
- * One field of the grid: the cell, sized, and the control inside it.
- *
- * ⚠️ Its own component rather than a `<div>` in `GroupBlock`'s loop, and that
- * is the whole point of it. Sizing a cell means ASKING the field's `$control`
- * how wide it wants to be, and a function-form `$control` can only be asked
- * with `{ form, value }` and re-asked when another field changes - two hooks,
- * which cannot be called inside a `.map`.
- *
- * Before this, the grid was computed from the STATIC schema while `Control`
- * resolved the same `$control` DYNAMICALLY, and the two disagreed in both
- * directions: a field whose width came from a function silently fell back to
- * the 33% default (`widthFor` reads `.width` off the raw value, and a function
- * has none), and a field the function had hidden left its cell behind, holding
- * columns for a control that rendered nothing.
+ * Detect a `z.string()` schema (incl. optional/nullable wrappers) so the
+ * auto-save effect can skip keystroke commits on text fields.
  */
-const GroupGridField = (props: {
-  item: GroupItem;
-  gridClassName?: string;
-  disabled?: boolean;
-}) => {
-  const { item } = props;
-  const [value] = useFieldValue(item.input);
-  useDynamicControlRefresh(item.input);
-
-  const resolved = resolveSchemaControl(readSchemaControl(item.input), {
-    form: item.input.form,
-    value,
-  });
-
-  // `null` is the field saying it is not here AT ALL, so the cell goes with
-  // it and the grid repacks.
-  if (resolved === null) return null;
-
-  // `resolved.width` first, matching the precedence `Control` applies when it
-  // merges `{ ...props, ...resolved }`: what the schema asks for beats what a
-  // `fields` entry passed in.
-  const width = widthFor(
-    item.input,
-    (resolved.width ?? item.props.width) as number | undefined,
-  );
-
-  // `hidden` is the other answer: the field is here, it just draws nothing.
-  // The cell stays, at its own width, so the fields around it do not move
-  // while it comes and goes. That is the whole difference from `false`, and
-  // it is why the width has to survive the resolve.
-  const hidden = !!resolved.hidden;
-
-  return (
-    <div
-      className={
-        // Responsive grid: each field is one cell. Default: 12-col span from
-        // width heuristics. A caller-supplied grid keeps its own column count
-        // for scalars, but COMPLEX fields (an object card, a list of object
-        // editors) still claim the whole row — squeezing one into a third of a
-        // row is unreadable, and the heuristic already knows which those are
-        // (width 100).
-        props.gridClassName
-          ? width >= 100
-            ? "col-span-full"
-            : undefined
-          : spanClass(width)
-      }
-    >
-      {hidden ? null : (
-        <Control
-          input={item.input}
-          {...item.props}
-          disabled={props.disabled || item.props.disabled}
-        />
-      )}
-    </div>
-  );
-};
-
-const GroupBlock = (props: GroupBlockProps) => {
-  const { group } = props;
-  const { tr } = useI18n();
-  const Icon = group.icon ? iconFor(group.icon) : undefined;
-
-  const items = group.fields
-    .map((entry) => {
-      const name = typeof entry === "string" ? entry : entry.name;
-      const override =
-        typeof entry === "object" ? (entry as Partial<ControlProps>) : {};
-      const input = props.inputs[name];
-      if (!input) return null;
-      const fromMap = props.fields?.[name] ?? {};
-      const merged: Partial<ControlProps> = {
-        ...fromMap,
-        ...override,
-      };
-      // i18nPrefix: fill label/description from the dictionary when neither
-      // the override nor the schema already provides one. A missing key
-      // makes `tr` echo the key back (an empty `default` is falsy, so the
-      // provider can't substitute it) — guard with `!== key` so an absent
-      // entry leaves the Control to fall back to `schema.title ??
-      // prettyName(field)`, preserving current behaviour.
-      if (props.i18nPrefix && merged.label === undefined) {
-        const key = `${props.i18nPrefix}.${name}`;
-        const label = tr(key, { default: "" });
-        if (label && label !== key) merged.label = label;
-      }
-      if (props.i18nPrefix && merged.description === undefined) {
-        const key = `${props.i18nPrefix}.${name}.desc`;
-        const desc = tr(key, { default: "" });
-        if (desc && desc !== key) merged.description = desc;
-      }
-      // Hand the extended prefix down so an object's children and an array's
-      // item fields resolve their own labels/help
-      // (`parameters.x.payg.dailyCapCents.desc`).
-      if (props.i18nPrefix && merged.i18nPrefix === undefined) {
-        merged.i18nPrefix = `${props.i18nPrefix}.${name}`;
-      }
-      return { name, input, props: merged };
-    })
-    .filter(Boolean) as GroupItem[];
-
-  // `!props.bottomBar`: a group carrying the action bar still renders when it
-  // has no resolvable fields, or the form would silently lose its submit
-  // button rather than merely render empty.
-  if (!items.length && !props.multiGroup && !props.bottomBar) return null;
-
-  // Naked group: no title, no icon → no card chrome (lets solo complex
-  // fields render with just their own header).
-  const isNaked = !group.title && !Icon;
-
-  // Row layout: each group becomes a divider-stacked card, every Control
-  // takes a full row through its own FormField row layout (via context).
-  if (props.layout === "row") {
-    const hasHeading = !!(group.title || group.description);
-    return (
-      <div className="shrink-0">
-        {hasHeading && (
-          // `SettingsHeading` rather than a local span pair: this is the same
-          // heading `SettingsSection` renders, and the whole reason that
-          // component exists is that there be exactly one of it. `items-start`
-          // + `mt-0.5` keeps the icon on the title line when a description
-          // wraps a second one under it.
-          <div className="mb-2 flex items-start gap-2">
-            {Icon && (
-              <Icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            )}
-            <SettingsHeading
-              title={group.title}
-              description={group.description}
-            />
-          </div>
-        )}
-        <div className="bg-card divide-y rounded-lg border shadow-sm">
-          {items.map((it) => (
-            <Control
-              key={it.name}
-              input={it.input}
-              {...it.props}
-              disabled={props.disabled || it.props.disabled}
-            />
-          ))}
-          {props.bottomBar && (
-            // Same `px-4 py-3` every row carries, so the action row sits on
-            // the card's own rhythm and `divide-y` draws its rule flush.
-            <div className="px-4 py-3">{props.bottomBar}</div>
-          )}
-        </div>
-      </div>
-    );
+function isStringSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== "object") return false;
+  // Zod, not JSON Schema: `z.string().optional()` has no `type: "string"`,
+  // so the optional text fields of a form used to auto-save every keystroke.
+  const inner = z.schema.unwrap(schema as ZType);
+  if (z.schema.isString(inner)) return true;
+  if (z.schema.isUnion(inner)) {
+    return z.schema.options(inner).some(isStringSchema);
   }
-
-  // `shrink-0` on every group root, titled or naked. Under `fill` the groups
-  // are flex items of a `CardContent` that has a definite height, and per the
-  // flexbox automatic-minimum-size rule an item whose computed `overflow` is
-  // not `visible` gets an auto min size of 0. The titled group is the only one
-  // carrying `overflow-hidden`, so it was the only child that could give way:
-  // once the expanded object groups overflowed the card it absorbed all of it
-  // and collapsed to nothing. `CardContent` already asked for `overflow-y-auto`
-  // and now gets to do the scrolling itself.
-  const wrapperCls = cn(
-    "shrink-0",
-    props.multiGroup && !isNaked && "overflow-hidden rounded-md border",
-  );
-
-  return (
-    <div className={wrapperCls}>
-      {props.multiGroup && !isNaked && (
-        <div className="bg-muted/40 flex items-center gap-2 border-b px-3 py-2">
-          {Icon && <Icon className="text-muted-foreground size-4" />}
-          {group.title && (
-            <span className="text-sm font-medium">{group.title}</span>
-          )}
-        </div>
-      )}
-      <div
-        className={cn(
-          "grid gap-3",
-          props.gridClassName ?? "grid-cols-12",
-          !isNaked && "p-3",
-        )}
-      >
-        {items.map((it) => (
-          <GroupGridField
-            key={it.name}
-            item={it}
-            gridClassName={props.gridClassName}
-            disabled={props.disabled}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ──────────────────────────────────────────────────────────────────────
-
-interface BottomBarProps {
-  form: FormModel<ZObject>;
-  dirty?: boolean;
-  loading?: boolean;
-  disabled?: boolean;
-  disabledIfPristine?: boolean;
-  submitLabel?: string;
-  noSubmit?: boolean;
-  onCancel?: () => void;
-  skipReset?: boolean;
-  actions?: AutoFormAction[];
-  /**
-   * Drop the standalone chrome (border / rounded / background / padding) so
-   * the bar slots into a `CardFooter`, which provides that chrome itself.
-   */
-  bare?: boolean;
+  return false;
 }
 
-const BottomBar = (props: BottomBarProps) => {
-  const { tr } = useI18n();
-  return (
-    <div
-      className={
-        props.bare
-          ? "flex w-full items-center gap-2"
-          : "bg-card flex items-center gap-2 rounded-md border p-2"
-      }
-    >
-      {props.onCancel && (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={props.onCancel}
-          disabled={props.disabled}
-        >
-          <X className="mr-1 size-4" />
-          {tr("autoForm.cancel", { default: "Cancel" })}
-        </Button>
-      )}
-      {!props.skipReset && (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => props.form.reset()}
-          disabled={props.disabled || !props.dirty}
-        >
-          {/* No icon, deliberately. The submit button next to it carries none
-              — a glyph would have to be either a dated floppy disk or a tick
-              that reads as "done" rather than "do it" — and a bar where only
-              some buttons are decorated reads as unfinished rather than as a
-              hierarchy. `Button` still shows a spinner while submitting,
-              which is the one icon here that carries information. */}
-          {tr("autoForm.reset", { default: "Reset" })}
-        </Button>
-      )}
-      {props.actions?.map((action, i) => {
-        const Icon = action.icon ? iconFor(action.icon) : undefined;
-        return (
-          <Button
-            key={i}
-            type="button"
-            variant={action.variant ?? "ghost"}
-            onClick={() => action.onClick()}
-            disabled={props.disabled || action.disabled}
-          >
-            {Icon && <Icon className="mr-1 size-4" />}
-            {action.label}
-          </Button>
-        );
-      })}
-
-      <div className="ml-auto flex items-center gap-2">
-        <FormErrorPopover form={props.form} />
-        {!props.noSubmit && (
-          <Button
-            type="submit"
-            loading={props.loading}
-            disabled={
-              props.disabled || (props.disabledIfPristine && !props.dirty)
-            }
-          >
-            {props.submitLabel ?? tr("autoForm.save", { default: "Save" })}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ──────────────────────────────────────────────────────────────────────
-
-interface FormErrorPopoverProps {
-  form: FormModel<ZObject>;
-}
-
-const FormErrorPopover = (props: FormErrorPopoverProps) => {
-  const { error } = useFormState(props.form, ["error"]);
-  const { tr } = useI18n();
-  const [open, setOpen] = useState(false);
-  // Close the popover when the error clears. Guarded on `open`, so it settles
-  // in one pass and does not need an effect.
-  if (!error && open) {
-    setOpen(false);
+/**
+ * Detect an enum schema (incl. optional/nullable wrappers). Enum fields
+ * render as a `<Select>`, so they must auto-commit on change like any
+ * other select — never get lumped in with free-text string fields.
+ */
+function isEnumSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== "object") return false;
+  const inner = z.schema.unwrap(schema as ZType);
+  if (z.schema.isEnum(inner)) return true;
+  if (z.schema.isUnion(inner)) {
+    return z.schema.options(inner).some(isEnumSchema);
   }
-
-  if (!error) return null;
-
-  const items = collectErrors(error);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={tr("autoForm.errors", { default: "Form errors" })}
-            className="text-destructive"
-          />
-        }
-      >
-        <AlertCircle className="size-4" />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-2">
-        <p className="text-destructive px-2 py-1 text-sm font-medium">
-          {items.length === 1
-            ? tr("autoForm.error", { default: "Error" })
-            : tr("autoForm.errors", { default: "Errors" })}
-        </p>
-        <ul className="flex flex-col gap-1">
-          {items.map((it, i) => (
-            <li key={i}>
-              <button
-                type="button"
-                onClick={() => focusError(it.path, props.form.id)}
-                className="hover:bg-accent w-full rounded px-2 py-1 text-left text-xs"
-              >
-                <span className="font-medium">
-                  {it.path || tr("autoForm.formLabel", { default: "Form" })}
-                </span>
-                <span className="text-muted-foreground"> — {it.message}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </PopoverContent>
-    </Popover>
-  );
-};
-
-interface ErrorItem {
-  path: string;
-  message: string;
+  return false;
 }
 
-const collectErrors = (error: Error): ErrorItem[] => {
-  const anyErr = error as Error & {
-    value?: { message?: string; path?: string };
-  };
-  const path = anyErr.value?.path ?? "";
-  const message = anyErr.value?.message ?? error.message ?? "Invalid";
-  return [{ path, message }];
-};
-
-const focusError = (path: string, formId: string) => {
-  const segments = path.split("/").filter(Boolean);
-  if (segments.length === 0) return;
-  const dotted = segments.join(".");
-  // ControlArray names its item fields `items[0].email` and joins their ids
-  // with `-`; the dotted forms are what every other control renders.
-  const bracketed = segments
-    .map((segment, i) =>
-      i === 0
-        ? segment
-        : /^\d+$/.test(segment)
-          ? `[${segment}]`
-          : `.${segment}`,
-    )
-    .join("");
-  const el =
-    document.getElementById(`${formId}-${dotted}`) ??
-    document.getElementById(`${formId}-${segments.join("-")}`) ??
-    document.querySelector<HTMLElement>(`[name="${dotted}"]`) ??
-    document.querySelector<HTMLElement>(`[name="${bracketed}"]`);
-  el?.focus();
-};
-
-// ──────────────────────────────────────────────────────────────────────
-
-const autoGroupSchema = (
-  schema: ZObject,
-  opts: {
-    defaultTitle?: string;
-    defaultIcon?: string;
-    /**
-     * Translator for the fallback group title (the helper is hook-free).
-     */
-    tr?: (key: string, options?: { default?: string }) => string;
-  },
-): AutoFormGroup[] => {
-  const general: AutoFormGroup = {
-    title:
-      opts.defaultTitle ??
-      opts.tr?.("autoForm.general", { default: "General" }) ??
-      "General",
-    icon: opts.defaultIcon ?? "cog",
-    fields: [],
-  };
-  const groups: AutoFormGroup[] = [];
-
-  for (const [key, prop] of Object.entries(z.schema.shape(schema))) {
-    // Classify the unwrapped schema: an optional object is still an object.
-    const inner = z.schema.unwrap(prop);
-    const isObject = z.schema.isObject(inner);
-    // An array of a UNION of objects is a complex field too — without this it
-    // lands in the "General" grid and gets a third of a row to render a list
-    // of object editors in.
-    const isArrayOfObjects =
-      z.schema.isArray(inner) &&
-      isObjectOrUnionOfObjects(z.schema.element(inner));
-    if (isObject || isArrayOfObjects) {
-      // Solo complex fields render their own header (label + description +
-      // chevron + add/init), so we skip the group bar to avoid a
-      // duplicate title row.
-      groups.push({ fields: [key] });
-    } else {
-      general.fields.push(key);
+/**
+ * Resolve the effective `<Control>` config for a field, merging the
+ * `fields` map with any per-field override carried on a `groups` entry —
+ * the same precedence `AutoFormGroupBlock` applies when rendering.
+ */
+function resolveControlConfig(
+  name: string,
+  fields: Record<string, unknown> | undefined,
+  groups: AutoFormGroup[] | undefined,
+): Record<string, unknown> {
+  const fromMap = (fields?.[name] as Record<string, unknown>) ?? {};
+  let fromGroup: Record<string, unknown> = {};
+  for (const group of groups ?? []) {
+    for (const field of group.fields) {
+      if (typeof field === "object" && field.name === name) {
+        fromGroup = field as Record<string, unknown>;
+      }
     }
   }
-
-  if (general.fields.length === 0) return groups;
-  return [general, ...groups];
-};
+  return { ...fromMap, ...fromGroup };
+}

@@ -11,69 +11,15 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { ListChecks, Loader2 } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
-import {
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-  Combobox as ComboboxRoot,
-  ComboboxTrigger,
-} from "../core/Combobox.tsx";
 import { Segmented } from "../core/Segmented.tsx";
-import { cn } from "../core/utils.ts";
-import {
-  ControlClearButton,
-  type ControlTriggerSize,
-  TRIGGER_CLASSES,
-  TRIGGER_MINIMAL_CLASSES,
-  TRIGGER_SIZES,
-  TRIGGER_WRAPPER_CLASSES,
-} from "./fieldTrigger.tsx";
+import { ControlSelectCombobox } from "./ControlSelectCombobox.tsx";
+import { optValue } from "./controlSelectOptions.ts";
+import type { ControlTriggerSize } from "./fieldTrigger.tsx";
 import { FormField } from "./FormField.tsx";
 import type { IconComponent } from "./iconHint.tsx";
-
-export type SelectOption =
-  | string
-  | {
-      value: string;
-      label: string;
-      /**
-       * Optional secondary line shown under the label in the dropdown.
-       */
-      description?: string;
-      /**
-       * Optional small badge rendered next to the label.
-       */
-      tag?: string;
-      /**
-       * Optional icon/element rendered before the label, in both the
-       * dropdown row and (for single-select) the trigger when selected.
-       */
-      icon?: ReactNode;
-      /**
-       * When true, the row is non-interactive — can't be selected if
-       * not selected, can't be deselected if selected. Useful for
-       * default/mandatory entries (e.g. the base "user" role).
-       */
-      disabled?: boolean;
-    };
-
-type LoaderMode = "static" | "short" | "long";
-
-/**
- * How tall and how loud a select trigger is.
- *
- * The kit's own scale, kept under this name because `Control` and a long tail
- * of callers already spell it `size="xs"` on a select. The table behind it,
- * and the trigger box it sizes, are `control-base/field-trigger`'s - shared
- * with the two calendar controls, which used to draw a button instead.
- */
-export type ControlSelectSize = ControlTriggerSize;
 
 export interface ControlSelectProps {
   /**
@@ -244,64 +190,6 @@ export interface ControlSelectProps {
   popupClassName?: string;
 }
 
-/**
- * Internal sentinel for the "select every match" row. Same reasoning as
- * `CLEAR_VALUE`: it never reaches a caller, because it is expanded into the
- * matching values before `onChange` is called.
- */
-const SELECT_ALL_VALUE = "__alepha_select_all__";
-
-/**
- * Static option count above which the dropdown grows a search input. Below it
- * the very same combobox renders without one — the threshold decides whether
- * you can type, never which control you get.
- */
-// Past this many rows, scanning by eye stops being realistic and the popup
-// grows a search field. Raised 20 -> 50 with the multi-select rework: the old
-// value put a search box on lists a reader takes in at a glance.
-const SEARCH_THRESHOLD = 50;
-
-const optValue = (o: SelectOption) => (typeof o === "string" ? o : o.value);
-const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
-const optDesc = (o: SelectOption) =>
-  typeof o === "string" ? undefined : o.description;
-const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
-const optDisabled = (o: SelectOption) =>
-  typeof o === "string" ? false : Boolean(o.disabled);
-const optIcon = (o: SelectOption): ReactNode =>
-  typeof o === "string" ? undefined : o.icon;
-
-/**
- * Friendly label for plain string options: "optional" → "Optional",
- * "in_progress" → "In Progress". Custom `{ value, label }` items pass through
- * untouched.
- */
-const titlecase = (s: string) =>
-  s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-/**
- * What one segment shows.
- *
- * ⚠️ The option's `icon` is rendered HERE rather than dropped, which is what
- * this path did until #Q2049. `SegmentedOption.label` is a `ReactNode`, so
- * there was never a reason for it: an option list carrying icons for the
- * dropdown carried them for the segments too, and dropping them silently
- * made a caller choose between two shapes for one list.
- */
-const segmentedLabel = (o: SelectOption): ReactNode => {
-  if (typeof o === "string") {
-    return titlecase(o);
-  }
-  if (!o.icon) {
-    return o.label;
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {o.icon}
-      {o.label}
-    </span>
-  );
-};
-
 export const ControlSelect = (props: ControlSelectProps) => {
   const { tr } = useI18n();
   const form = useFormState(props.input, ["error"]);
@@ -464,7 +352,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
       error={meta.error}
       required={meta.required}
     >
-      <Combobox
+      <ControlSelectCombobox
         id={meta.id}
         data={data}
         loading={loading}
@@ -494,9 +382,10 @@ export const ControlSelect = (props: ControlSelectProps) => {
         popupClassName={props.popupClassName}
         // An optional field must also be able to go back to empty without a
         // dedicated row: Base UI never emits `null`, so re-pressing the
-        // selected row deselects (see `handleSingle`). A required field keeps
-        // its value — clearing it would only produce a validation error the
-        // user cannot see yet.
+        // selected row deselects (see `handleSingle` in
+        // `ControlSelectCombobox.tsx`). A required field keeps its value —
+        // clearing it would only produce a validation error the user cannot
+        // see yet.
         deselectable={props.clearable || !meta.required}
         // Multi shows this muted when nothing is picked, so it reaches the
         // trigger whether or not the field is `clearable` — a multi-select
@@ -511,605 +400,84 @@ export const ControlSelect = (props: ControlSelectProps) => {
   );
 };
 
-interface ComboboxProps {
-  id?: string;
-  data: SelectOption[];
-  loading: boolean;
-  multi: boolean;
-  /**
-   * Render the search input. When false the popup is the list alone — the
-   * shape a short static list gets. Multi-select ignores it: its input is the
-   * chips box itself, and it is the only way to open and type.
-   */
-  searchable: boolean;
-  disabled?: boolean;
-  value: unknown;
-  onChange: (v: unknown) => void;
-  coerce: (v: string) => unknown;
-  onSearch?: (q: string) => void;
-  createNewEntry?: ControlSelectProps["createNewEntry"];
-  icon?: IconComponent;
-  triggerClassName?: string;
-  /**
-   * Trigger height and type scale. Defaults to `default`.
-   */
-  size?: ControlSelectSize;
-  /**
-   * Render the trigger borderless and transparent, so it reads as the row it
-   * sits on rather than as a form field.
-   */
-  minimal?: boolean;
-  triggerProps?: HTMLAttributes<HTMLElement>;
-  /**
-   * Trigger text when nothing is selected. Mirrors the native-Select path,
-   * where a `clearable` field shows its `clearLabel` (e.g. "All zones") as the
-   * empty placeholder. Defaults to "Select…".
-   */
-  placeholder?: string;
-  /**
-   * Empty is a meaningful choice for this field, so say so and offer it: the
-   * trigger shows {@link clearLabel} while nothing is selected, and carries
-   * an `x` to get back there once something is.
-   *
-   * ⚠️ It used to PREPEND A ROW saying the same thing, which is why the two
-   * names still read that way at some call sites. That row was drawn as a
-   * pickable option with a check mark, so "All states" looked like a third
-   * state rather than the absence of a filter (feedback #2098).
-   */
-  clearable?: boolean;
-  /**
-   * What empty is called on this field (e.g. "All zones"), shown as the
-   * trigger's placeholder.
-   */
-  clearLabel?: string;
-  /**
-   * See `ControlSelectProps.countLabel`.
-   */
-  countLabel?: (count: number) => string;
-  /**
-   * Allow the single-select value to be unset by pressing the row that is
-   * already selected. Set for optional (and `clearable`) fields only.
-   */
-  deselectable?: boolean;
-  /**
-   * See `ControlSelectProps.popupHeader`.
-   */
-  popupHeader?: ReactNode;
-  /**
-   * See `ControlSelectProps.triggerPrefix`.
-   */
-  triggerPrefix?: ReactNode;
-  /**
-   * See `ControlSelectProps.popupClassName`.
-   */
-  popupClassName?: string;
-}
-
-/**
- * Normalized option used as the Base UI `Combobox.Item` value. Because the
- * shape is `{ value, label }`, Base UI uses `label` for display/search and
- * `value` for selection automatically — which is what makes the popup search
- * match the visible label rather than the raw id.
- */
-interface ComboOption {
-  value: string;
-  label: string;
-  description?: string;
-  tag?: string;
-  icon?: ReactNode;
-  disabled?: boolean;
-  /**
-   * Marks the synthetic "create new" row injected by `createNewEntry`.
-   */
-  create?: boolean;
-  /**
-   * Marks the synthetic "select every match" row a multi-select offers while
-   * a query is narrowing the list.
-   */
-  selectAll?: boolean;
-  /**
-   * The raw query that produced a `create` row (used as the new entry's label).
-   */
-  query?: string;
-}
-
-/**
- * Searchable single/multi select built on the Base UI `Combobox` primitive.
- *
- * Composed in the "select-like" shape: a button trigger that shows the current
- * value, with the search `<input>` living inside the popup. We disable Base
- * UI's internal filtering (`filter={null}`) and filter in JS so the same code
- * path serves static lists, server-driven (`onSearch`) lists, and the
- * `createNewEntry` affordance.
- */
-function Combobox(props: ComboboxProps) {
-  const { tr } = useI18n();
-  const sizeClasses = TRIGGER_SIZES[props.size ?? "default"];
-  const [query, setQuery] = useState("");
-  // Remembers labels for values the user has picked, so the trigger/chips keep
-  // a human label even after the source option drops out of a server-filtered
-  // `data` set — or for freshly created entries that never existed in `data`.
-  const labelCache = useRef(new Map<string, string>());
-
-  const dataOptions: ComboOption[] = props.data.map((o) => ({
-    value: optValue(o),
-    label: optLabel(o),
-    description: optDesc(o),
-    tag: optTag(o),
-    icon: optIcon(o),
-    disabled: optDisabled(o),
-  }));
-
-  const selected: string[] = props.multi
-    ? Array.isArray(props.value)
-      ? (props.value as unknown[]).map(String)
-      : []
-    : props.value != null
-      ? // Coercion at a boundary: the value is a form/route/chart primitive whose
-        // declared type is wider than what can reach here.
-        // oxlint-disable-next-line typescript/no-base-to-string
-        [String(props.value)]
-      : [];
-
-  const labelFor = (val: string) =>
-    dataOptions.find((o) => o.value === val)?.label ??
-    labelCache.current.get(val) ??
-    val;
-
-  /**
-   * Rows for values that are selected and have no option to be selected FROM.
-   *
-   * ⚠️ Without these the popup lists strictly `props.data`, so a selected
-   * value absent from it is counted by the trigger, ticked nowhere, and
-   * **cannot be deselected from the list it is missing from** (feedback
-   * #2115). Two ways in, and the component was already half-aware of both -
-   * `labelCache` exists for exactly these values and says so:
-   *
-   * - **`createNewEntry`.** A created entry never existed in `data`, and the
-   *   caller usually cannot add it: the common declaration is a static
-   *   `items: [...]` inside a zod `.meta({ $control })`, which has no state
-   *   to append to, and `useForm` anchors its schema at mount anyway. So the
-   *   feature was broken by construction for every such caller rather than
-   *   missing in one demo page.
-   * - **`onSearch` / server mode.** The upstream query narrows `data`, so
-   *   picking A and then typing something that excludes it takes A's row away
-   *   while the trigger still counts it.
-   *
-   * Labelled through `labelFor`, which is why the cache is read there and not
-   * here: a created value's label is whatever was typed, and a server-dropped
-   * one's is whatever it had when it was picked.
-   *
-   * **Pinned above the real options**, rather than interleaved: a created
-   * value has no place in the source list's order, and inventing one would
-   * imply an ordering `data` does not have.
-   */
-  const orphans: ComboOption[] = selected
-    .filter((val) => !dataOptions.some((o) => o.value === val))
-    .map((val) => ({ value: val, label: labelFor(val) }));
-
-  /**
-   * What the popup may show: the orphans, then `props.data`.
-   *
-   * ⚠️ The injection is here rather than in `filtered`, and that is what makes
-   * `showCreate` stop offering a Create row for a value that has already been
-   * created - its guard reads `options`.
-   */
-  const options: ComboOption[] = orphans.length
-    ? [...orphans, ...dataOptions]
-    : dataOptions;
-
-  // Server mode (`onSearch`) filters upstream; for static lists we filter on
-  // the visible label — never the value/id (that was the cmdk bug).
-  const serverMode = Boolean(props.onSearch);
-  const q = query.trim().toLowerCase();
-  const matchesQuery = (o: ComboOption) => o.label.toLowerCase().includes(q);
-
-  // ⚠️ An orphan is filtered by the typed query like any other row, which is a
-  // DECISION rather than an accident of where the injection happens: a search
-  // that kept showing rows it did not match would stop being a search. With an
-  // empty query every orphan is shown, which is the case that matters - it is
-  // how a created value is deselected.
-  //
-  // And it is filtered HERE even in server mode. The server narrowed `data`
-  // and knows nothing about a row this component invented, so leaving orphans
-  // out of the local pass would make the same typed query mean two different
-  // things in one list.
-  const filtered = [
-    ...(q ? orphans.filter(matchesQuery) : orphans),
-    ...(serverMode || !q ? dataOptions : dataOptions.filter(matchesQuery)),
-  ];
-
-  const showCreate =
-    Boolean(props.createNewEntry) &&
-    q.length > 0 &&
-    !options.some((o) => o.value === query || o.label.toLowerCase() === q) &&
-    !selected.includes(query);
-
-  const createOption: ComboOption | undefined = showCreate
-    ? (() => {
-        const built =
-          typeof props.createNewEntry === "function"
-            ? props.createNewEntry(query)
-            : { value: query, label: query };
-        return {
-          value: built.value,
-          label: built.label,
-          create: true,
-          query,
-        };
-      })()
-    : undefined;
-
-  // ⚠️ There is no synthetic "no selection" ROW any more.
-  //
-  // A `clearable` single-select used to inject one - "All states", "Everyone",
-  // "All sigils" - at the top of its list. It said the same thing the trigger
-  // already says when the field is empty, a second time, as a pickable option
-  // carrying a check mark, so "all" read as a third state a release could be
-  // in rather than as the absence of a filter (feedback #2092, then #2098).
-  //
-  // The empty state is now expressed ONCE, on the trigger, via `clearLabel`
-  // as its placeholder. Clearing a chosen value is re-clicking it, which
-  // `deselectable` already implements and
-  // `ControlSelectDeselect.browser.spec.tsx` already covers.
-  //
-  // `clearable` therefore no longer adds a row. It still means "this field
-  // may be empty": it is what puts `clearLabel` on the trigger and what makes
-  // a REQUIRED field deselectable.
-
-  /**
-   * "Select every match" — the row that makes a typed prefix a filter clause
-   * rather than a way to find one item.
-   *
-   * Areas are named by import path (`lore/quests`, `lore/folios`, `lore/ui`),
-   * so the prefix is the meaningful unit and "everything under lore/" took
-   * eight separate picks (feedback #2009). Typing `lore/` and pressing one row
-   * is the whole feature.
-   *
-   * ⚠️ It resolves to the individual values, deliberately, rather than
-   * becoming a pattern the query carries. Two consequences, and both are the
-   * point: the caller's schema and endpoint are untouched (a list of values is
-   * what they already take), and the chips stay honest - what is filtered is
-   * exactly what is shown, so removing one of the eight is an ordinary
-   * gesture rather than an escape from a prefix.
-   *
-   * Only when it would do something: multi-select, a non-empty query, and at
-   * least two matches that are not already selected. One match is what
-   * pressing the row itself does.
-   */
-  const unselectedMatches = props.multi
-    ? filtered.filter((o) => !o.disabled && !selected.includes(o.value))
-    : [];
-
-  const selectAllRow: ComboOption | undefined =
-    props.multi && q.length > 0 && unselectedMatches.length > 1
-      ? {
-          value: SELECT_ALL_VALUE,
-          label: tr("controlSelect.selectAll", {
-            default: `Select ${unselectedMatches.length} matching "${query}"`,
-            args: [String(unselectedMatches.length), query],
-          }),
-          selectAll: true,
-        }
-      : undefined;
-
-  const items: ComboOption[] = [
-    ...(selectAllRow ? [selectAllRow] : []),
-    ...filtered,
-    ...(createOption ? [createOption] : []),
-  ];
-
-  // Reconstruct option objects for the controlled value. Base UI matches them
-  // back to list items via `isItemEqualToValue` (by `value`), so identity
-  // across renders doesn't matter.
-  const toValueObject = (val: string): ComboOption =>
-    options.find((o) => o.value === val) ?? {
-      value: val,
-      label: labelFor(val),
+export type SelectOption =
+  | string
+  | {
+      value: string;
+      label: string;
+      /**
+       * Optional secondary line shown under the label in the dropdown.
+       */
+      description?: string;
+      /**
+       * Optional small badge rendered next to the label.
+       */
+      tag?: string;
+      /**
+       * Optional icon/element rendered before the label, in both the
+       * dropdown row and (for single-select) the trigger when selected.
+       */
+      icon?: ReactNode;
+      /**
+       * When true, the row is non-interactive — can't be selected if
+       * not selected, can't be deselected if selected. Useful for
+       * default/mandatory entries (e.g. the base "user" role).
+       */
+      disabled?: boolean;
     };
 
-  const cbValue = props.multi
-    ? selected.map(toValueObject)
-    : selected[0]
-      ? toValueObject(selected[0])
-      : // Empty is EMPTY. It used to resolve to the clear row so that row
-        // carried a check mark; with no such row, nothing is selected and the
-        // trigger shows `clearLabel` as its placeholder.
-        null;
+type LoaderMode = "static" | "short" | "long";
 
-  const remember = (o: ComboOption) => {
-    if (o.create) labelCache.current.set(o.value, o.query ?? o.value);
-    else labelCache.current.set(o.value, o.label);
-  };
+/**
+ * How tall and how loud a select trigger is.
+ *
+ * The kit's own scale, kept under this name because `Control` and a long tail
+ * of callers already spell it `size="xs"` on a select. The table behind it,
+ * and the trigger box it sizes, are `control-base/field-trigger`'s - shared
+ * with the two calendar controls, which used to draw a button instead.
+ */
+export type ControlSelectSize = ControlTriggerSize;
 
-  const handleSingle = (o: ComboOption | null) => {
-    // `null` still arrives from Base UI's own clearing paths (Escape on an
-    // open popup, a controlled reset). There is no longer a synthetic clear
-    // ROW that could arrive here as an option - the label lives on the
-    // trigger and nowhere else since feedback #2098.
-    if (!o) {
-      props.onChange(undefined);
-      setQuery("");
-      return;
-    }
-    // Base UI's single-select `Combobox` re-selects on every item press — its
-    // `handleSelection` calls `setSelectedValue(itemValue)` unconditionally and
-    // never emits `null` — so pressing the checked row was a no-op and an
-    // optional field had no way back to empty. Toggle it off here, the way the
-    // multi path already does via its chips.
-    if (props.deselectable && !o.create && selected[0] === o.value) {
-      props.onChange(undefined);
-      setQuery("");
-      return;
-    }
-    remember(o);
-    props.onChange(props.coerce(o.value));
-    setQuery("");
-  };
+/**
+ * Static option count above which the dropdown grows a search input. Below it
+ * the very same combobox renders without one — the threshold decides whether
+ * you can type, never which control you get.
+ */
+// Past this many rows, scanning by eye stops being realistic and the popup
+// grows a search field. Raised 20 -> 50 with the multi-select rework: the old
+// value put a search box on lists a reader takes in at a glance.
+const SEARCH_THRESHOLD = 50;
 
-  const handleMulti = (list: ComboOption[]) => {
-    // The "select every match" row arrives here as one more selected item.
-    // Swap it for the values it stands for, so the sentinel never leaves this
-    // component and the chips show the real areas rather than a prefix.
-    const expanded = list.flatMap((o) =>
-      o.selectAll ? unselectedMatches : [o],
-    );
-    // Base UI can hand the same option back twice when the expansion overlaps
-    // something already selected.
-    const seen = new Set<string>();
-    const unique = expanded.filter((o) =>
-      seen.has(o.value) ? false : (seen.add(o.value), true),
-    );
-    for (const o of unique) remember(o);
-    props.onChange(unique.map((o) => props.coerce(o.value)));
-    setQuery("");
-  };
-
-  const emptyLabel =
-    props.placeholder ?? tr("controlSelect.select", { default: "Select…" });
-
-  /**
-   * Value, then count.
-   *
-   * One selection names itself; two or more collapse to a count. That is what
-   * keeps a filter row at a FIXED width: chips grew the trigger with every
-   * pick and then truncated, so the control both moved its neighbours and
-   * stopped saying what it was filtering on. A count does neither, and the
-   * single-selection case — much the commonest — still reads as the value.
-   */
-  const triggerLabel = props.multi
-    ? selected.length === 0
-      ? emptyLabel
-      : selected.length === 1
-        ? labelFor(selected[0])
-        : (props.countLabel?.(selected.length) ??
-          tr("controlSelect.count", {
-            default: `${selected.length} selected`,
-            args: [String(selected.length)],
-          }))
-    : selected[0]
-      ? labelFor(selected[0])
-      : emptyLabel;
-
-  /**
-   * The `x` that puts a `clearable` field back to empty in one click.
-   *
-   * ⚠️ This is the affordance the injected clear ROW used to be, moved to
-   * where it belongs (feedback #2098). Deleting the row made the empty state
-   * a placeholder rather than a third pickable value, which is what the
-   * report asked for.
-   *
-   * ## Why the `x` and not the row, stated properly
-   *
-   * An earlier version of this comment said the `x` had to exist because
-   * `epics.spec.ts` went red when the row was deleted. **That was circular
-   * and is corrected here.** The spec went red because its SELECTOR named a
-   * node that no longer existed; the fix could equally have been one line
-   * re-clicking the selected release. A broken locator is not a usability
-   * finding.
-   *
-   * The real reasons, none of which that argument gave:
-   *
-   * - **Re-click-to-deselect is counter-conventional, not merely quiet.** In
-   *   a native `select`, and in almost every combobox people use daily,
-   *   clicking the chosen option confirms and closes. No learned model says
-   *   it removes the value, so it is neither discovered by accident nor
-   *   retained after being shown once.
-   * - **"Reset filters" is not a fallback.** It is all or nothing. With
-   *   status, area and release all set, dropping just the release is a
-   *   different intent, and `AlephaTable`'s menu has no per-filter escape.
-   * - **It costs nothing at rest**, since `showClear` needs a selection.
-   *
-   * ## No row comes back, at any size
-   *
-   * Feedback #2113 proposed a `None` row for `minimal`/`xs`, and the owner
-   * dropped it the same day: this control had already been changed twice in
-   * opposite directions, and keeping the row out leaves that sweep intact.
-   * The `x` is the one answer everywhere it is drawn.
-   *
-   * ## `clearable`, not `deselectable`
-   *
-   * `deselectable` is `clearable || !meta.required`, so a large set of
-   * optional fields accept re-click-to-clear and show no `x`: the component
-   * holds both positions at once, that re-click suffices there and not here.
-   *
-   * That is a judgment call rather than a principle, and it is deliberate:
-   * `clearable` is the caller saying empty is a meaningful state worth
-   * ADVERTISING, so an ordinary optional field in a form keeps the trigger it
-   * has today rather than growing a control for a state nobody is looking
-   * for. Written down because it was previously undocumented, and an
-   * undocumented asymmetry reads as an oversight to whoever finds it next.
-   */
-  const showClear =
-    Boolean(props.clearable) && selected.length > 0 && !props.disabled;
-
-  // The list (loading / empty / items) is identical for single and multi, and
-  // so is the trigger now, so render it once.
-  const popupBody = props.loading ? (
-    <div className="text-muted-foreground flex items-center justify-center gap-2 p-4 text-sm">
-      <Loader2 className="size-4 animate-spin" />{" "}
-      {tr("controlSelect.loading", { default: "Loading…" })}
-    </div>
-  ) : (
-    <>
-      <ComboboxEmpty>
-        {props.createNewEntry
-          ? ""
-          : tr("controlSelect.noResults", { default: "No results." })}
-      </ComboboxEmpty>
-      <ComboboxList>
-        {(opt: ComboOption) =>
-          opt.selectAll ? (
-            <ComboboxItem key="__select_all__" value={opt}>
-              <ListChecks className="mr-2 size-4 shrink-0" />
-              <span className="truncate font-medium">{opt.label}</span>
-            </ComboboxItem>
-          ) : opt.create ? (
-            <ComboboxItem key={`__create__${opt.value}`} value={opt}>
-              <span className="mr-2">+</span>
-              {tr("controlSelect.create", {
-                default: `Create "${opt.query}"`,
-                args: [String(opt.query ?? "")],
-              })}
-            </ComboboxItem>
-          ) : (
-            <ComboboxItem key={opt.value} value={opt} disabled={opt.disabled}>
-              {opt.icon && (
-                <span className="mr-2 flex shrink-0 items-center">
-                  {opt.icon}
-                </span>
-              )}
-              <div className="flex min-w-0 flex-1 flex-col">
-                <div className="flex items-center gap-1.5">
-                  {opt.tag && (
-                    <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] tracking-wide uppercase">
-                      {opt.tag}
-                    </span>
-                  )}
-                  <span className="truncate">{opt.label}</span>
-                </div>
-                {opt.description && (
-                  <span className="text-muted-foreground truncate text-xs">
-                    {opt.description}
-                  </span>
-                )}
-              </div>
-            </ComboboxItem>
-          )
-        }
-      </ComboboxList>
-    </>
-  );
-
+/**
+ * Friendly label for plain string options: "optional" → "Optional",
+ * "in_progress" → "In Progress". Custom `{ value, label }` items pass through
+ * untouched.
+ */
+const titlecase = (s: string) =>
+  s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+/**
+ * What one segment shows.
+ *
+ * ⚠️ The option's `icon` is rendered HERE rather than dropped, which is what
+ * this path did until #Q2049. `SegmentedOption.label` is a `ReactNode`, so
+ * there was never a reason for it: an option list carrying icons for the
+ * dropdown carried them for the segments too, and dropping them silently
+ * made a caller choose between two shapes for one list.
+ */
+const segmentedLabel = (o: SelectOption): ReactNode => {
+  if (typeof o === "string") {
+    return titlecase(o);
+  }
+  if (!o.icon) {
+    return o.label;
+  }
   return (
-    <ComboboxRoot
-      items={items as never}
-      multiple={props.multi}
-      disabled={props.disabled}
-      value={cbValue as never}
-      onValueChange={
-        (props.multi
-          ? (v: ComboOption[]) => handleMulti(v)
-          : (v: ComboOption | null) => handleSingle(v)) as never
-      }
-      isItemEqualToValue={
-        ((a: ComboOption, b: ComboOption) => a.value === b.value) as never
-      }
-      filter={null}
-      // Base UI leaves `autoHighlight` off by default, so nothing is
-      // highlighted while typing and Enter has no target — the user has to
-      // click a row (including the `createNewEntry` one). Highlighting the
-      // first match makes Enter pick it, which is what a search field is
-      // expected to do. It only engages while the query is non-empty, so
-      // opening the popup still starts with no preselection.
-      autoHighlight
-      onInputValueChange={(v) => {
-        setQuery(v);
-        props.onSearch?.(v);
-      }}
-    >
-      {/* One trigger for single AND multi. Multi used to render a bordered
-          chips box instead, which made it a different-looking control for the
-          same job, grew with every pick, and forced a search field on because
-          the chips input was the only way to open the popup.
-
-          Wrapped so the clear button below can sit ON the trigger without
-          being INSIDE it: a button nested in a button is invalid, and Base
-          UI renders this trigger as a real `<button>`. */}
-      <div className={TRIGGER_WRAPPER_CLASSES}>
-        <ComboboxTrigger
-          id={props.id}
-          disabled={props.disabled}
-          {...props.triggerProps}
-          className={cn(
-            TRIGGER_CLASSES,
-            sizeClasses.trigger,
-            sizeClasses.chevron,
-            props.minimal && TRIGGER_MINIMAL_CLASSES,
-            // Muted means "nothing chosen yet", and now that is simply
-            // "nothing selected" for every shape.
-            //
-            // It used to carve out `clearable` singles, because for those empty
-            // WAS a selected value - the injected clear row - and muting it made
-            // one filter look unset while its neighbour looked set for the same
-            // meaning. That row is gone (see `items`), so empty is empty and
-            // reads as a placeholder everywhere.
-            selected.length === 0 && "text-muted-foreground",
-            props.triggerClassName,
-          )}
-        >
-          {/* The room for the clear button, per size - see `clearGap` in
-              TRIGGER_SIZES for why it is a margin here and not padding on the
-              trigger. */}
-          <span
-            className={cn(
-              "flex min-w-0 items-center gap-2",
-              showClear && sizeClasses.clearGap,
-            )}
-          >
-            {props.icon && (
-              <props.icon
-                className={cn(
-                  "text-muted-foreground shrink-0",
-                  sizeClasses.icon,
-                )}
-              />
-            )}
-            {/*
-              The prefix rides in the SAME text run as the label, separated by
-              an ordinary space. As a flex sibling it was spaced by the row's
-              `gap-2`, 8px, while the words inside it were a font space apart,
-              so "Status not Active" read "Status not  Active". One run makes
-              every gap the same space, and truncation eats from the end of
-              the value rather than squeezing the two apart.
-            */}
-            <span className="truncate">
-              {props.triggerPrefix && selected.length > 0 && (
-                <span className="text-muted-foreground">
-                  {props.triggerPrefix}{" "}
-                </span>
-              )}
-              {triggerLabel}
-            </span>
-          </span>
-        </ComboboxTrigger>
-        {showClear && (
-          <ControlClearButton
-            size={props.size}
-            onClick={() => props.onChange(props.multi ? [] : undefined)}
-          />
-        )}
-      </div>
-      <ComboboxContent className={props.popupClassName}>
-        {props.popupHeader}
-        {props.searchable && (
-          <ComboboxInput showTrigger={false} placeholder="Search…" />
-        )}
-        {popupBody}
-      </ComboboxContent>
-    </ComboboxRoot>
+    <span className="inline-flex items-center gap-1.5">
+      {o.icon}
+      {o.label}
+    </span>
   );
-}
+};
 
 const useAsyncLoader = (
   loader: ControlSelectProps["loader"],
