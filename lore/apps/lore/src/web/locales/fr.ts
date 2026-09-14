@@ -367,6 +367,7 @@ export default {
   "board.bulk.shelved": "$1 mise(s) de côté.",
   "board.bulk.unshelved": "$1 reprise(s).",
   "board.bulk.deleted": "$1 supprimée(s).",
+  "board.bulk.readied": "$1 marquée(s) comme prête(s).",
   "board.bulk.released": "$1 ajoutée(s) à $2.",
   "board.bulk.failed": "$1 n'ont pas pu être mises à jour.",
   "board.bulk.shelve.none":
@@ -2069,6 +2070,12 @@ export default {
   "epic.bulk.delete.confirm": "Supprimer $1 épopées",
   "epic.bulk.delete.description":
     "Leurs quêtes et folios sont conservés, détachés de celles-ci. Cette action est irréversible.",
+  "epic.bulk.ready.title": "Marquer $1 épopées comme prêtes ?",
+  "epic.bulk.ready.confirm": "Marquer $1 épopées comme prêtes",
+  "epic.bulk.ready.description":
+    "Leurs quêtes passent dans le backlog, où le reste du projet peut les prendre. La première quête acceptée dans une épopée la démarre et fige sa liste de quêtes.",
+  "epic.bulk.ready.descriptionNamed":
+    "Marquer $1 comme prêtes place leurs quêtes dans le backlog, où le reste du projet peut les prendre. La première quête acceptée dans une épopée la démarre et fige sa liste de quêtes.",
   "epic.list.column.status": "Statut",
   "epic.list.column.progress": "Progression",
   "epic.create": "Nouvelle épopée",

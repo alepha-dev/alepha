@@ -312,6 +312,7 @@ export default {
   "board.bulk.shelved": "$1 shelved.",
   "board.bulk.unshelved": "$1 unshelved.",
   "board.bulk.deleted": "$1 deleted.",
+  "board.bulk.readied": "$1 marked as ready.",
   "board.bulk.released": "$1 added to $2.",
   "board.bulk.failed": "$1 could not be updated.",
   "board.bulk.shelve.none":
@@ -2085,6 +2086,12 @@ export default {
   "epic.bulk.delete.confirm": "Delete $1 epics",
   "epic.bulk.delete.description":
     "Their quests and folios stay, detached from them. This cannot be undone.",
+  "epic.bulk.ready.title": "Mark $1 epics as ready?",
+  "epic.bulk.ready.confirm": "Mark $1 epics as ready",
+  "epic.bulk.ready.description":
+    "Their quests go in the backlog, where the rest of the project can pick them up. The first quest accepted in an epic starts it and freezes its list of quests.",
+  "epic.bulk.ready.descriptionNamed":
+    "Marking $1 as ready puts their quests in the backlog, where the rest of the project can pick them up. The first quest accepted in an epic starts it and freezes its list of quests.",
   "epic.list.column.status": "Status",
   "epic.list.column.progress": "Progress",
   "epic.create": "New Epic",

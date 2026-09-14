@@ -293,10 +293,18 @@ const ProjectEpics = () => {
   // can leave the selection with nothing to do, which is why both are
   // pushed conditionally rather than rendered disabled.
   //
-  // ⚠️ No bulk Mark as ready. The row menu keeps it because deciding that a
-  // spec is done is a per-epic decision with a per-epic confirmation, and a
-  // selection mixing draft, ready and started epics would have to refuse
-  // most of what it held.
+  // Bulk Mark as ready exists for an ALL-DRAFT selection only (feedback
+  // #P2198, #Q2339). It was refused with #Q2223 for two reasons, and each is
+  // now answered rather than ignored, so do not "restore" the old rule:
+  //
+  // - a selection mixing draft, ready and started epics would have to refuse
+  //   most of what it held: the entry is `visible` only when every selected
+  //   epic is a draft, so it is hidden, never offered and then refused;
+  // - deciding that a spec is done is a per-epic decision: the one
+  //   confirmation names how many epics become ready, and which ones when
+  //   the list is short enough to read.
+  //
+  // Back to draft for an all-ready selection was not asked for.
   //
   // Every entry refreshes and then clears, in that order: a selection that
   // survives a delete points at rows that no longer exist. `ctx.refresh()`
@@ -372,6 +380,64 @@ const ProjectEpics = () => {
               ctx.clearSelection();
             },
           })),
+    });
+  }
+
+  if (epicApi.setEpicStatus.can()) {
+    bulkActions.push({
+      icon: Play,
+      label: tr("epic.status.actions.markReady"),
+      visible: (selected) =>
+        selected.length > 0 &&
+        selected.every((epic) => epic.status === "draft"),
+      onClick: async (selected, ctx) => {
+        const n = String(selected.length);
+        // One epic asks the row menu's own question, word for word. A few
+        // are named, since they fit in a dialog; past that the count is the
+        // honest summary and the selection is on screen behind it.
+        const confirmed = await dialog.confirm(
+          selected.length === 1
+            ? {
+                title: tr("epic.ready.title"),
+                description: tr("epic.ready.confirm", {
+                  args: [selected[0].title],
+                }),
+                confirmLabel: tr("epic.status.actions.markReady"),
+                cancelLabel: tr("common.cancel"),
+              }
+            : {
+                title: tr("epic.bulk.ready.title", { args: [n] }),
+                description:
+                  selected.length <= 3
+                    ? tr("epic.bulk.ready.descriptionNamed", {
+                        args: [
+                          selected.map((epic) => `"${epic.title}"`).join(", "),
+                        ],
+                      })
+                    : tr("epic.bulk.ready.description"),
+                confirmLabel: tr("epic.bulk.ready.confirm", { args: [n] }),
+                cancelLabel: tr("common.cancel"),
+              },
+        );
+        if (!confirmed) return;
+        // The row menu's own write, once per epic. A refusal on one row (a
+        // parallel session already started it, say) lands in the report
+        // instead of being swallowed by the others.
+        const outcome = await settleBulk(
+          selected.map((epic) => epic.id),
+          (id) =>
+            epicApi.setEpicStatus({
+              params: { id },
+              body: { status: "ready" },
+            }),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.readied", { args: [String(outcome.done.length)] }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
     });
   }
 
