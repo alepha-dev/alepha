@@ -1,7 +1,6 @@
-import { useClient } from "alepha/react";
+import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { UserDeletionHook } from "@/api/hooks/UserDeletionHook.ts";
@@ -34,35 +33,25 @@ const AccountDeleteWarning = () => {
   const api = useClient<UserDeletionHook>();
   const estateApi = useClient<EstateController>();
   const { tr } = useI18n<I18n, "en">();
-  const [count, setCount] = useState<number | undefined>();
-  const [estates, setEstates] = useState<
-    { estates: number; projects: number } | undefined
-  >();
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .countMyAuthoredQuests()
-      .then((result) => {
-        if (!cancelled) {
-          setCount(result.count);
-        }
-      })
-      // A failed count must not block the dialog — the deletion itself is
-      // still gated by the hook and the confirmation phrase.
-      .catch(() => undefined);
-    estateApi
-      .countMyEstates()
-      .then((result) => {
-        if (!cancelled) {
-          setEstates(result);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [api, estateApi]);
+  // Two queries, so the counts fail independently. Each is quiet on failure,
+  // on purpose: a failed count must not block the dialog or add a toast over
+  // it, since the deletion itself is still gated by the hook and the
+  // confirmation phrase. The warning simply leaves that line out.
+  const count = useQuery(
+    {
+      handler: () => api.countMyAuthoredQuests(),
+      onError: () => {},
+    },
+    [api],
+  ).data?.count;
+  const estates = useQuery(
+    {
+      handler: () => estateApi.countMyEstates(),
+      onError: () => {},
+    },
+    [estateApi],
+  ).data;
 
   const lines: string[] = [];
   if (count) {

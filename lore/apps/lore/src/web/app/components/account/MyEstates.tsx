@@ -1,10 +1,10 @@
 import { Button, useToast } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
-import { useClient } from "alepha/react";
+import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { CreateEstateBody } from "@/api/schemas/createEstateBodySchema.ts";
@@ -63,22 +63,16 @@ const MyEstates = () => {
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
   const [openId, setOpenId] = useState<string | undefined>();
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .listMyEstates()
-      .then((res) => {
-        if (!cancelled) setItems(res.items);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          toaster.error(error instanceof Error ? error.message : String(error));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
+  // Local state seeded by the read, because create, the drawer's writes and
+  // delete patch the list in place. A failed read is toasted by the root
+  // `ActionErrorToaster`.
+  useQuery(
+    {
+      handler: () => api.listMyEstates(),
+      onSuccess: (res) => setItems(res.items),
+    },
+    [api],
+  );
 
   // Resolved from the list rather than held as its own copy, so a switch
   // saved in the drawer redraws it from the same row the list shows.
@@ -88,6 +82,10 @@ const MyEstates = () => {
    * Rethrows rather than reporting: the dialog stays open and renders a
    * refusal beside the field it concerns, which a toast cannot do and which
    * is the whole point of checking the token before the row exists (#1630).
+   *
+   * ⚠️ A plain function, not a `useAction` run, on purpose (#E59): the create
+   * dialog awaits it from its own action and needs a refusal to reject, which
+   * a `run()` resolving `undefined` would not do.
    */
   const create = async (body: CreateEstateBody) => {
     const minted = await api.createEstate({ body });

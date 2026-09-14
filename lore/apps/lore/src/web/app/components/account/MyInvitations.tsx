@@ -1,6 +1,6 @@
 import { Badge, Button, useToast } from "@alepha/ui";
 import { SettingsHeading } from "@alepha/ui/settings";
-import { useAlepha, useClient } from "alepha/react";
+import { useAction, useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Check, Mail, X } from "lucide-react";
@@ -28,44 +28,46 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   const [items, setItems] = useState<Inbox>(props.invitations);
-  const [busyId, setBusyId] = useState<string | undefined>(undefined);
 
-  const accept = async (id: string, projectId: string) => {
-    setBusyId(id);
-    try {
-      await invitationApi.acceptInvitation({ params: { id } });
-      const overview = await projectApi.getHomeOverview();
-      alepha.store.set(userProjectsAtom, overview);
-      setItems((prev) => prev.filter((it) => it.id !== id));
-      toaster.success(tr("invitations.accepted"));
-      // The invitation carries the project's id, but the URL takes its slug.
-      // The overview was just refreshed and now includes the project we joined,
-      // so read it from there rather than adding a lookup endpoint.
-      const joined = overview.projects.find(
-        (it) => String(it.id) === projectId,
-      );
-      if (joined) {
-        await router.push("project", { params: { projectSlug: joined.slug } });
-      }
-    } catch (error: any) {
-      toaster.error(error?.message ?? tr("invitations.accept.error"));
-    } finally {
-      setBusyId(undefined);
-    }
-  };
+  const accept = useAction<[id: string, projectId: string], void>(
+    {
+      handler: async (id, projectId) => {
+        await invitationApi.acceptInvitation({ params: { id } });
+        const overview = await projectApi.getHomeOverview();
+        alepha.store.set(userProjectsAtom, overview);
+        setItems((prev) => prev.filter((it) => it.id !== id));
+        toaster.success(tr("invitations.accepted"));
+        // The invitation carries the project's id, but the URL takes its slug.
+        // The overview was just refreshed and now includes the project we
+        // joined, so read it from there rather than adding a lookup endpoint.
+        const joined = overview.projects.find(
+          (it) => String(it.id) === projectId,
+        );
+        if (joined) {
+          await router.push("project", {
+            params: { projectSlug: joined.slug },
+          });
+        }
+      },
+    },
+    [invitationApi, projectApi, alepha, router, toaster, tr],
+  );
 
-  const decline = async (id: string) => {
-    setBusyId(id);
-    try {
-      await invitationApi.declineInvitation({ params: { id } });
-      setItems((prev) => prev.filter((it) => it.id !== id));
-      toaster.show(tr("invitations.declined"), "warning");
-    } catch (error: any) {
-      toaster.error(error?.message ?? tr("invitations.decline.error"));
-    } finally {
-      setBusyId(undefined);
-    }
-  };
+  const decline = useAction<[id: string], void>(
+    {
+      handler: async (id) => {
+        await invitationApi.declineInvitation({ params: { id } });
+        setItems((prev) => prev.filter((it) => it.id !== id));
+        toaster.show(tr("invitations.declined"), "warning");
+      },
+    },
+    [invitationApi, toaster, tr],
+  );
+
+  // Page-wide, not per row: `run()` drops a call made while another is in
+  // flight, so a second row's button left enabled would do nothing when
+  // clicked. Every button waits for the answer instead.
+  const busy = accept.loading || decline.loading;
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -119,15 +121,17 @@ const MyInvitations = (props: MyInvitationsProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => decline(invitation.id)}
-                  disabled={busyId === invitation.id}
+                  onClick={() => void decline.run(invitation.id)}
+                  disabled={busy}
                 >
                   <X className="size-3.5" /> {tr("invitations.decline")}
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => accept(invitation.id, invitation.resourceId)}
-                  disabled={busyId === invitation.id}
+                  onClick={() =>
+                    void accept.run(invitation.id, invitation.resourceId)
+                  }
+                  disabled={busy}
                 >
                   <Check className="size-3.5" /> {tr("invitations.accept")}
                 </Button>

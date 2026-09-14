@@ -1865,7 +1865,6 @@ export default {
   "account.notifications.categories": "Kinds of message",
   "account.notifications.categories.description":
     "These apply to both channels.",
-  "account.notifications.saveFailed": "Could not save your preferences.",
   // ⚠️ Read by `categoryLabel`, which derives the key from the category a
   // template registers. A category with no key here renders as its raw name.
   "account.notifications.category.feedback": "Your reports",
@@ -2316,8 +2315,6 @@ export default {
   "invitations.decline": "Decline",
   "invitations.accepted": "You have joined the project!",
   "invitations.declined": "Invitation declined.",
-  "invitations.accept.error": "Failed to accept invitation",
-  "invitations.decline.error": "Failed to decline invitation",
 
   // --- /account/feedback ----------------------------------------------------
   "myFeedback.title": "Submitted feedback",
@@ -2348,7 +2345,6 @@ export default {
   "myFeedback.edit.description.placeholder": "Describe your request",
   "myFeedback.edit.required": "Title and description are required.",
   "myFeedback.edit.saved": "Feedback updated.",
-  "myFeedback.edit.error": "Failed to update feedback.",
   "feedback.status.pending": "Pending",
   "feedback.status.accepted": "Accepted",
   "feedback.status.rejected": "Rejected",
