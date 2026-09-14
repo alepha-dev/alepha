@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { Alepha, z } from "alepha";
+import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
@@ -8,6 +8,7 @@ import { Ghost } from "lucide-react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AlephaTable } from "../AlephaTable.tsx";
+import type { AlephaTableFilterFields } from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -18,9 +19,9 @@ const columns = {
   title: { label: "Title", cell: (r: Row) => r.title },
 };
 
-const filtersSchema = z.object({
-  search: z.string().optional(),
-});
+const filterFields = {
+  search: { preset: "search" },
+} satisfies AlephaTableFilterFields;
 
 /**
  * An empty page has two readings, and the table has to tell them apart.
@@ -66,10 +67,10 @@ describe("AlephaTable (empty states)", () => {
     // nothing has filtered nothing, and telling them to adjust a filter they
     // never set is the failure this case exists to catch.
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof filterFields>
         data={[]}
         columns={columns}
-        filters={{ schema: filtersSchema, render: () => null }}
+        filters={{ fields: filterFields, render: () => null }}
       />,
     );
 
@@ -79,11 +80,11 @@ describe("AlephaTable (empty states)", () => {
 
   it("says nothing matched once a filter carries a value", async () => {
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof filterFields>
         data={[]}
         columns={columns}
         filters={{
-          schema: filtersSchema,
+          fields: filterFields,
           seedValues: { search: "nobody" },
           render: () => null,
         }}
@@ -106,16 +107,16 @@ describe("AlephaTable (empty states)", () => {
     // disagree - a counter that never flipped here would be the same bug
     // with a different cause.
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof filterFields>
         data={[{ id: 1, title: "club" }]}
         columns={columns}
         filters={{
-          schema: filtersSchema,
+          fields: filterFields,
           seedValues: { search: "nobody" },
           render: () => null,
         }}
         filter={(row, values) =>
-          !values.search || row.title.includes(String(values.search))
+          !values.search || row.title.includes(values.search)
         }
         emptyState={{ title: "No apps yet" }}
         noMatchState={{ title: "No app matches" }}
@@ -170,11 +171,11 @@ describe("AlephaTable (empty states)", () => {
 
   it("takes per-mode wording from noMatchState, keeping its default description", async () => {
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof filterFields>
         data={[]}
         columns={columns}
         filters={{
-          schema: filtersSchema,
+          fields: filterFields,
           seedValues: { search: "nobody" },
           render: () => null,
         }}

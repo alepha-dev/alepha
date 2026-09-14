@@ -1,7 +1,7 @@
 import { Badge, Button, useToast, cn } from "@alepha/ui";
 import {
   AlephaTable,
-  type AlephaTableFilterField,
+  type AlephaTableFilterBarField,
   AlephaTableFilterBar,
 } from "@alepha/ui/table";
 import { z } from "alepha";
@@ -97,7 +97,7 @@ const filtersSchema = z.object({
  * `active` in the dataset and in the query, and only the label reads "Active".
  * Capitalizing the value instead would leave the filter matching no row.
  */
-const FILTER_FIELDS: AlephaTableFilterField[] = [
+const FILTER_FIELDS: AlephaTableFilterBarField[] = [
   {
     key: "status",
     label: "Status",

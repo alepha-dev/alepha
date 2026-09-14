@@ -16,6 +16,7 @@ import { AlephaTableColumnPicker } from "./AlephaTableColumnPicker.tsx";
 import { AlephaTableFilterDialog } from "./AlephaTableFilterDialog.tsx";
 import { AlephaTableFilterMenu } from "./AlephaTableFilterMenu.tsx";
 import type {
+  AlephaTableFilterFields,
   AlephaTableFilters,
   ColumnDef,
   TableAction,
@@ -23,9 +24,9 @@ import type {
 
 export interface AlephaTableToolbarProps<T> {
   columns: Record<string, ColumnDef<T>>;
-  filters?: AlephaTableFilters;
+  filters?: AlephaTableFilters<AlephaTableFilterFields>;
   /**
-   * The filter form the table reads: its own, or the caller's legacy one.
+   * The table's own filter form.
    */
   form?: FormModel<ZObject>;
   toolbar?: ReactNode;
@@ -128,7 +129,7 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
     <div className="bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
       {props.filters && form && !isMobile ? (
         <form {...form.props} className="flex flex-1 flex-wrap items-end gap-2">
-          {props.filters.render(form)}
+          {props.filters.render?.(form)}
         </form>
       ) : (
         <div className="flex flex-1" />
@@ -211,7 +212,7 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
               onReset={resetFilters}
               onShare={canShare ? shareFilters : undefined}
             >
-              {props.filters.render(form)}
+              {props.filters.render?.(form)}
             </AlephaTableFilterDialog>
           )}
           {showColumnPicker && (

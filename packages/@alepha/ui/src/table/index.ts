@@ -16,7 +16,14 @@ export { AlephaTable, type AlephaTableProps } from "./AlephaTable.tsx";
 export type { AlephaTableBaseProps } from "./alephaTableBaseProps.ts";
 export type {
   AlephaTableEmptyState,
+  AlephaTableFilterField,
+  AlephaTableFilterFieldOptions,
+  AlephaTableFilterFields,
+  AlephaTableFilterMode,
+  AlephaTableFilterPreset,
   AlephaTableFilters,
+  AlephaTableFilterValues,
+  AlephaTableNoFilterFields,
   AlephaTablePersistedFacets,
   AlephaTableSource,
   BulkAction,
@@ -37,9 +44,10 @@ export {
 export {
   AlephaTableFilterBar,
   type AlephaTableFilterBarProps,
+  type AlephaTableFilterBarField,
   type AlephaTableFilterBarSearch,
-  type AlephaTableFilterField,
 } from "./AlephaTableFilterBar.tsx";
+export { alephaTableFilterKeys } from "./alephaTableFilterFields.ts";
 export {
   AlephaTableFilterDialog,
   type AlephaTableFilterDialogProps,
@@ -48,6 +56,11 @@ export {
   AlephaTableFilterMenu,
   type AlephaTableFilterMenuProps,
 } from "./AlephaTableFilterMenu.tsx";
+export type {
+  AlephaTableFilterOperatorOption,
+  AlephaTableFilterOperatorPreset,
+  AlephaTableFilterOperatorValue,
+} from "./AlephaTableFilterOperator.tsx";
 export { paginateLocal, type PaginateLocalOptions } from "./paginateLocal.ts";
 export {
   PermissionMatrix,

@@ -23,6 +23,8 @@ import {
 } from "./alephaTablePersistence.ts";
 import { AlephaTableToolbar } from "./AlephaTableToolbar.tsx";
 import type {
+  AlephaTableFilterFields,
+  AlephaTableNoFilterFields,
   AlephaTableSource,
   BulkActionContext,
   ColumnDef,
@@ -35,10 +37,37 @@ import { useAlephaTableFilterForm } from "./useAlephaTableFilterForm.ts";
 import { useAlephaTableRefresh } from "./useAlephaTableRefresh.ts";
 import { useTableSelection } from "./useTableSelection.ts";
 
-export type AlephaTableProps<T> = AlephaTableBaseProps<T> &
-  AlephaTableSource<T>;
+export type AlephaTableProps<
+  T,
+  F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
+> = AlephaTableBaseProps<T, F> & AlephaTableSource<T, F>;
 
-export const AlephaTable = <T,>(props: AlephaTableProps<T>) => {
+/**
+ * A data table: server-side or static rows, sorting, filters, row and bulk
+ * actions, persisted preferences.
+ *
+ * `T` is the row. `F` is the type of `filters.fields`, written as
+ * `typeof filterFields` beside the row type, which is what types `fetch`'s
+ * filters, the `data` predicate, `initialValues`, `seedValues` and
+ * `fromQuery`. It defaults to no filters at all, so a table given `fields`
+ * without it does not compile.
+ */
+export const AlephaTable = <
+  T,
+  const F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
+>(
+  props: AlephaTableProps<T, F>,
+) => {
+  /**
+   * The props, with their filters read untyped. The parts below enumerate
+   * filter keys at runtime and never read one by name, so the type of `F` is
+   * the call site's business and one cast here keeps it out of every hook.
+   */
+  const untyped = props as unknown as AlephaTableProps<
+    T,
+    AlephaTableFilterFields
+  >;
+
   /**
    * `persistenceKey`, once per facet.
    *
@@ -80,7 +109,11 @@ export const AlephaTable = <T,>(props: AlephaTableProps<T>) => {
    */
   const isMobile = useIsMobile();
 
-  const form = useAlephaTableFilterForm({ props, filtersKey, alepha });
+  const { form, definition: filterDefinition } = useAlephaTableFilterForm({
+    props: untyped,
+    filtersKey,
+    alepha,
+  });
 
   const {
     page,
@@ -97,12 +130,20 @@ export const AlephaTable = <T,>(props: AlephaTableProps<T>) => {
     setIsRefreshing,
     toggleSort,
     setSortTo,
-  } = useAlephaTableData({ props, size, setSize, sortKey, form, alepha });
+  } = useAlephaTableData({
+    props: untyped,
+    size,
+    setSize,
+    sortKey,
+    form,
+    alepha,
+  });
 
   const { refresh, handleRefreshClick, resetFilters, canShare, shareFilters } =
     useAlephaTableRefresh({
-      props,
+      props: untyped,
       form,
+      filterKeys: filterDefinition?.keys ?? [],
       filtersKey,
       alepha,
       toast,
@@ -187,7 +228,7 @@ export const AlephaTable = <T,>(props: AlephaTableProps<T>) => {
     reorderColumn,
     toggleColumn,
     orderAnnouncement,
-  } = useAlephaTableColumns({ props, columnsKey, tr });
+  } = useAlephaTableColumns({ props: untyped, columnsKey, tr });
 
   /**
    * ⚠️ A changed `persistenceKey` is a changed SCOPE, and this is where that
@@ -293,7 +334,7 @@ export const AlephaTable = <T,>(props: AlephaTableProps<T>) => {
         {showToolbar && (
           <AlephaTableToolbar<T>
             columns={props.columns}
-            filters={props.filters}
+            filters={untyped.filters}
             form={form}
             toolbar={props.toolbar}
             actions={props.actions}

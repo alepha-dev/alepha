@@ -8,6 +8,7 @@ import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AlephaTable } from "../AlephaTable.tsx";
+import type { AlephaTableFilterFields } from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -33,10 +34,13 @@ const pageOf = (rows: Row[]) => ({
   },
 });
 
-const filterSchema = z.object({
-  search: z.text().optional(),
-  status: z.array(z.enum(["new", "triaged", "done"])).optional(),
-});
+const filterFields = {
+  search: { preset: "search" },
+  status: {
+    schema: z.array(z.enum(["new", "triaged", "done"])),
+    operators: "is",
+  },
+} satisfies AlephaTableFilterFields;
 
 class App {
   list = $page({
@@ -91,10 +95,10 @@ describe("AlephaTable (share filters)", () => {
     onFetch?: (filters?: Record<string, any>) => void,
     fromQuery = true,
   ) => (
-    <AlephaTable<Row>
+    <AlephaTable<Row, typeof filterFields>
       columns={columns}
       filters={{
-        schema: filterSchema,
+        fields: filterFields,
         fromQuery,
         render: () => null,
       }}
@@ -117,6 +121,49 @@ describe("AlephaTable (share filters)", () => {
     await mount("/list?status=new", table());
     await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
 
+    await openFilterMenu();
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Share/ }));
+
+    await waitFor(() => expect(copied.length).toBe(1));
+    expect(copied[0]).toBe(`${window.location.origin}/list?status=new`);
+  });
+
+  it("carries a field's operator under its generated name", async () => {
+    await mount("/list?status=new&statusOp=not", table());
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+
+    await openFilterMenu();
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Share/ }));
+
+    await waitFor(() => expect(copied.length).toBe(1));
+    expect(copied[0]).toBe(
+      `${window.location.origin}/list?status=new&statusOp=not`,
+    );
+  });
+
+  it("drops an operator the reader has since cleared from the link they arrived on", async () => {
+    // Every filter key is cleared before the current values are written,
+    // operator keys included: a lingering `statusOp=not` would invert the
+    // filter for whoever opens the link.
+    const handle: { clearOperator?: () => void } = {};
+    await mount(
+      "/list?status=new&statusOp=not",
+      <AlephaTable<Row, typeof filterFields>
+        columns={columns}
+        filters={{
+          fields: filterFields,
+          fromQuery: true,
+          render: (form) => {
+            handle.clearOperator = () => form.input.statusOp.set(undefined);
+            return null;
+          },
+        }}
+        fetch={async () => pageOf([{ id: 1, title: "Alpha" }])}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+
+    act(() => handle.clearOperator?.());
     await openFilterMenu();
     fireEvent.click(await screen.findByRole("menuitem", { name: /Share/ }));
 
@@ -255,10 +302,10 @@ describe("AlephaTable (filters that are not linkable)", () => {
   };
 
   const plainTable = (
-    <AlephaTable<Row>
+    <AlephaTable<Row, typeof filterFields>
       columns={columns}
       filters={{
-        schema: filterSchema,
+        fields: filterFields,
         initialValues: { search: "auth" },
         render: () => null,
       }}

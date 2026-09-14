@@ -8,10 +8,14 @@ import {
   reconcileOrder,
   writePersisted,
 } from "./alephaTablePersistence.ts";
-import type { AlephaTableSource } from "./alephaTableTypes.ts";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableSource,
+} from "./alephaTableTypes.ts";
 
 export interface UseAlephaTableColumnsOptions<T> {
-  props: AlephaTableBaseProps<T> & AlephaTableSource<T>;
+  props: AlephaTableBaseProps<T, AlephaTableFilterFields> &
+    AlephaTableSource<T, AlephaTableFilterFields>;
   /**
    * The key the column visibility and order are persisted under, or
    * `undefined` when the table does not store them.

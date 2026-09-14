@@ -7,6 +7,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AlephaTable } from "../AlephaTable.tsx";
+import type { AlephaTableFilterFields } from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -54,8 +55,31 @@ describe("AlephaTable (persisted filters that changed shape)", () => {
     );
   };
 
-  const arrayFilters = z.object({
-    state: z.array(z.enum(["open", "released"])).optional(),
+  const arrayFields = {
+    state: { schema: z.array(z.enum(["open", "released"])) },
+  } satisfies AlephaTableFilterFields;
+
+  const scalarFields = {
+    state: { schema: z.enum(["open", "released"]) },
+  } satisfies AlephaTableFilterFields;
+
+  const operatorFields = {
+    state: { schema: z.array(z.enum(["open", "released"])), operators: "is" },
+  } satisfies AlephaTableFilterFields;
+
+  const pageOf = (content: Row[]) => ({
+    content,
+    page: {
+      number: 0,
+      size: 20,
+      offset: 0,
+      numberOfElements: content.length,
+      totalElements: content.length,
+      totalPages: 1,
+      isEmpty: content.length === 0,
+      isFirst: true,
+      isLast: true,
+    },
   });
 
   it("wraps a stored scalar for a filter that is now an array", async () => {
@@ -67,26 +91,13 @@ describe("AlephaTable (persisted filters that changed shape)", () => {
 
     const seen: Array<Record<string, any> | undefined> = [];
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof arrayFields>
         persistenceKey="probe"
         columns={columns}
-        filters={{ schema: arrayFilters, render: () => null }}
+        filters={{ fields: arrayFields, render: () => null }}
         fetch={async ({ filters }) => {
           seen.push(filters);
-          return {
-            content: rows,
-            page: {
-              number: 0,
-              size: 20,
-              offset: 0,
-              numberOfElements: rows.length,
-              totalElements: rows.length,
-              totalPages: 1,
-              isEmpty: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
+          return pageOf(rows);
         }}
       />,
     );
@@ -105,31 +116,13 @@ describe("AlephaTable (persisted filters that changed shape)", () => {
 
     const seen: Array<Record<string, any> | undefined> = [];
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof scalarFields>
         persistenceKey="probe"
         columns={columns}
-        filters={{
-          schema: z.object({
-            state: z.enum(["open", "released"]).optional(),
-          }),
-          render: () => null,
-        }}
+        filters={{ fields: scalarFields, render: () => null }}
         fetch={async ({ filters }) => {
           seen.push(filters);
-          return {
-            content: rows,
-            page: {
-              number: 0,
-              size: 20,
-              offset: 0,
-              numberOfElements: rows.length,
-              totalElements: rows.length,
-              totalPages: 1,
-              isEmpty: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
+          return pageOf(rows);
         }}
       />,
     );
@@ -151,26 +144,13 @@ describe("AlephaTable (persisted filters that changed shape)", () => {
 
     const seen: Array<Record<string, any> | undefined> = [];
     await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof arrayFields>
         persistenceKey="probe"
         columns={columns}
-        filters={{ schema: arrayFilters, render: () => null }}
+        filters={{ fields: arrayFields, render: () => null }}
         fetch={async ({ filters }) => {
           seen.push(filters);
-          return {
-            content: rows,
-            page: {
-              number: 0,
-              size: 20,
-              offset: 0,
-              numberOfElements: rows.length,
-              totalElements: rows.length,
-              totalPages: 1,
-              isEmpty: false,
-              isFirst: true,
-              isLast: true,
-            },
-          };
+          return pageOf(rows);
         }}
       />,
     );
@@ -178,5 +158,32 @@ describe("AlephaTable (persisted filters that changed shape)", () => {
     await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
     expect(seen[0]).not.toHaveProperty("retired");
     expect(seen[0]?.state).toEqual(["open"]);
+  });
+
+  it("restores a stored operator under the name it was stored with", async () => {
+    // `<key>Op` is generated from `operators` now rather than declared by
+    // hand. A reader's stored "is not" was written under that name before
+    // the change, and has to come back under it.
+    window.localStorage.setItem(
+      "probe.filters",
+      JSON.stringify({ state: ["open"], stateOp: "not" }),
+    );
+
+    const seen: Array<Record<string, any> | undefined> = [];
+    await mount(
+      <AlephaTable<Row, typeof operatorFields>
+        persistenceKey="probe"
+        columns={columns}
+        filters={{ fields: operatorFields, render: () => null }}
+        fetch={async ({ filters }) => {
+          seen.push(filters);
+          return pageOf(rows);
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    expect(seen[0]?.state).toEqual(["open"]);
+    expect(seen[0]?.stateOp).toBe("not");
   });
 });

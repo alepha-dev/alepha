@@ -1,6 +1,21 @@
-import type { Page, ZObject } from "alepha";
+import type {
+  Infer,
+  Page,
+  ZObject,
+  ZodOptional,
+  ZodString,
+  ZType,
+} from "alepha";
 import type { FormModel } from "alepha/react/form";
 import type { ComponentType, ReactNode, SVGProps } from "react";
+
+import type { ControlProps } from "../form/Control.tsx";
+import type { SelectOption } from "../form/ControlSelect.tsx";
+import type {
+  AlephaTableFilterOperatorOption,
+  AlephaTableFilterOperatorPreset,
+  AlephaTableFilterOperatorValue,
+} from "./AlephaTableFilterOperator.tsx";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -280,6 +295,211 @@ export interface AlephaTablePersistedFacets {
 }
 
 /**
+ * How a filter reaches the bar.
+ *
+ * - `"optional"`, the default: off the bar until the reader adds it, or until
+ *   it holds a value.
+ * - `"default"`: on the bar from the start, empty, and removable like any
+ *   other. It carries no value; that is `initialValues`.
+ * - `"locked"`: always on the bar and never removable. In the Alepha
+ *   ecosystem only the search box is locked, through `preset: "search"`.
+ *
+ * Read once, at mount.
+ */
+export type AlephaTableFilterMode = "optional" | "default" | "locked";
+
+/**
+ * A ready-made filter. `"search"` is a locked text box with the kit's
+ * translated "Search" placeholder and the `Search` icon; its schema is
+ * `z.string()`. Any property written beside it wins.
+ */
+export type AlephaTableFilterPreset = "search";
+
+/**
+ * What every filter field may say about itself, whether it carries a schema
+ * or a preset.
+ */
+export interface AlephaTableFilterFieldOptions {
+  /**
+   * What the filter is called: the add menu's item, the muted name on a set
+   * trigger, and the accessible name of its control. Read every render.
+   */
+  label?: string;
+  /**
+   * A sentence about what the filter matches. Read every render.
+   */
+  description?: string;
+  /**
+   * Shown while the filter is empty. Read every render.
+   */
+  placeholder?: string;
+  /**
+   * Read every render.
+   */
+  icon?: IconType;
+  /**
+   * The options of a list filter, for live data (an atom, a fetch). Without
+   * it, an enum schema gives the options. Read every render.
+   */
+  items?: SelectOption[];
+  /**
+   * The label of one option an enum schema gives. Its argument is `any` in
+   * the hoisted form; annotate it where a label map needs the literal type.
+   * Read every render.
+   */
+  optionLabel?: (value: any) => string;
+  /**
+   * How the value may be compared: a preset labelled by the kit, or a list of
+   * your own with the default FIRST. The table adds `<key>Op` to its schema,
+   * to `fromQuery`, persistence and the Share link, and to the type `fetch`
+   * reads. A list's values type as `string` unless it is written `as const`.
+   */
+  operators?:
+    | AlephaTableFilterOperatorPreset
+    | readonly AlephaTableFilterOperatorOption[];
+  /**
+   * The key the operator is stored and sent under. Defaults to `<key>Op`. It
+   * types as a key of the filters only when written as a literal
+   * (`"tagOperator" as const`).
+   */
+  operatorKey?: string;
+  /**
+   * The filter has nothing to offer yet (a project with no areas). Set this
+   * rather than dropping the key: the key set is read once, at mount. Read
+   * every render.
+   */
+  hidden?: boolean;
+  /**
+   * See {@link AlephaTableFilterMode}. `"optional"` when absent.
+   */
+  mode?: AlephaTableFilterMode;
+  /**
+   * Anything else `Control` takes: `clearLabel`, `countLabel`, `searchable`,
+   * `inputProps`.
+   */
+  control?: Omit<ControlProps, "input" | "label">;
+}
+
+/**
+ * One filter of an `AlephaTable`: its schema, and how the bar draws it.
+ *
+ * A field carries a `schema`, a `preset`, or both. The table wraps the schema
+ * in `.optional()` itself, since every filter is optional by nature.
+ */
+export type AlephaTableFilterField =
+  | (AlephaTableFilterFieldOptions & {
+      schema: ZType;
+      preset?: AlephaTableFilterPreset;
+    })
+  | (AlephaTableFilterFieldOptions & {
+      schema?: ZType;
+      preset: AlephaTableFilterPreset;
+    });
+
+/**
+ * A table's filters, keyed by the name each one is sent under. Declared as a
+ * `const` in the component body, so `tr()` and atoms work, and passed with its
+ * type:
+ *
+ * ```tsx
+ * const filterFields = {
+ *   search: { preset: "search" },
+ *   status: {
+ *     schema: z.array(questStatusSchema),
+ *     label: "Status",
+ *     operators: "is",
+ *   },
+ * } satisfies AlephaTableFilterFields;
+ *
+ * <AlephaTable<Quest, typeof filterFields>
+ *   filters={{ fields: filterFields }}
+ *   fetch={({ filters }) => api.list({ query: filters })}
+ * />
+ * ```
+ */
+export type AlephaTableFilterFields = Record<string, AlephaTableFilterField>;
+
+/**
+ * The default for a table's filter fields: none.
+ *
+ * A record of `never` rather than a permissive one, so an inline `fields`
+ * under a bare `<AlephaTable<Row>>` is a compile error instead of a fetcher
+ * whose filters silently type as `any`. TypeScript has no partial inference
+ * of type arguments: with the row type written, the fields type is the
+ * default, never what was passed.
+ */
+export type AlephaTableNoFilterFields = { [key: string]: never };
+
+/**
+ * The operator key a field adds, or `never` for a field without operators.
+ */
+export type AlephaTableFilterOperatorKey<
+  K extends string,
+  Field,
+> = Field extends { operators: any }
+  ? Field extends { operatorKey: infer OK extends string }
+    ? string extends OK
+      ? never
+      : OK
+    : `${K}Op`
+  : never;
+
+/**
+ * The values a field's operator key accepts.
+ */
+export type AlephaTableFilterOperatorValues<Field> = Field extends {
+  operators: infer O;
+}
+  ? O extends AlephaTableFilterOperatorPreset
+    ? AlephaTableFilterOperatorValue<O>
+    : O extends readonly { value: infer V }[]
+      ? V
+      : never
+  : never;
+
+/**
+ * The schema a field is read with: its own, or `z.string()` for a preset.
+ */
+export type AlephaTableFilterFieldSchema<Field> = Field extends {
+  schema: infer S extends ZType;
+}
+  ? S
+  : ZodString;
+
+/**
+ * The filter values of a table, as `fetch`, the `data` predicate,
+ * `initialValues` and `seedValues` read them: one optional key per field, and
+ * one per operator key. Untyped fields read as `Record<string, any>`.
+ */
+export type AlephaTableFilterValues<F> = string extends keyof F
+  ? Record<string, any>
+  : {
+      [K in keyof F & string]?: Infer<AlephaTableFilterFieldSchema<F[K]>>;
+    } & {
+      [
+        K in keyof F & string as AlephaTableFilterOperatorKey<K, F[K]>
+      ]?: AlephaTableFilterOperatorValues<F[K]>;
+    };
+
+/**
+ * The `z.object` the table builds from its fields, as a type: what `render`'s
+ * form is typed with.
+ */
+export type AlephaTableFilterSchema<F> = string extends keyof F
+  ? ZObject
+  : ZObject<
+      {
+        [K in keyof F & string]: ZodOptional<
+          AlephaTableFilterFieldSchema<F[K]>
+        >;
+      } & {
+        [
+          K in keyof F & string as AlephaTableFilterOperatorKey<K, F[K]>
+        ]: ZodOptional<ZodString>;
+      }
+    >;
+
+/**
  * High-level filter slot. AlephaTable creates the `useForm` internally,
  * wraps `render`'s output in a `<form>` element, persists values under
  * `persistenceKey` when set, and refetches on submit (and on every
@@ -288,9 +508,26 @@ export interface AlephaTablePersistedFacets {
  * The render function receives the typed form so callers wire inputs
  * with `form.input.<field>` exactly like a hand-rolled `useForm`.
  */
-export interface AlephaTableFilters {
-  schema: ZObject;
-  initialValues?: Record<string, any>;
+export interface AlephaTableFilters<
+  F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
+> {
+  /**
+   * The filters, as a record of fields each carrying its own schema. See
+   * {@link AlephaTableFilterFields}.
+   *
+   * The key set, each schema, each preset and each mode are read ONCE, at
+   * mount: persistence, `fromQuery` and the form all anchor there. Every other
+   * property is read on every render. A key set that changes after mount is
+   * warned about in development, because the change would otherwise do
+   * nothing.
+   */
+  fields?: F;
+  /**
+   * Legacy: the filter form's schema, written by hand. Ignored when `fields`
+   * is set.
+   */
+  schema?: ZObject;
+  initialValues?: Partial<AlephaTableFilterValues<F>>;
   /**
    * Filter values that outrank the persisted ones on mount.
    *
@@ -311,14 +548,17 @@ export interface AlephaTableFilters {
    * the resulting values (seed included) become the stored choice, which is
    * the right moment for it: that is the reader choosing.
    */
-  seedValues?: Record<string, any>;
+  seedValues?: Partial<AlephaTableFilterValues<F>>;
   /**
    * Fill the filters from the URL query on arrival.
    *
-   * `true` reads every param whose name matches a key of `schema`; an array
-   * narrows that to the keys it names. Params the schema does not declare are
-   * ignored, so the page keeps owning its own (`?tab=`, a locale, a tracking
-   * param). Multi-value filters are comma-joined: `?status=new,triaged`.
+   * `true` reads every param whose name matches a filter key, operator keys
+   * included (`?status=done&statusOp=not`); an array narrows that to the keys
+   * it names, and a field named there brings its operator key along, since a
+   * link read without its operator means the opposite of what it said. Params
+   * the filters do not declare are ignored, so the page keeps owning its own
+   * (`?tab=`, a locale, a tracking param). Multi-value filters are
+   * comma-joined: `?status=new,triaged`.
    *
    * Read once, at mount, and landed in the same slot as {@link seedValues} —
    * above the reader's stored filters, below an explicit `seedValues` the
@@ -337,8 +577,12 @@ export interface AlephaTableFilters {
    * Off by default. A page's query params are not its table's filters until
    * the page says so.
    */
-  fromQuery?: boolean | readonly string[];
-  render: (form: FormModel<ZObject>) => ReactNode;
+  fromQuery?: boolean | readonly (keyof AlephaTableFilterValues<F> & string)[];
+  /**
+   * Draw the filter controls yourself, from the table's form. Optional: a
+   * table given `fields` and no `render` has the kit draw them.
+   */
+  render?: (form: FormModel<AlephaTableFilterSchema<F>>) => ReactNode;
 }
 
 export interface SortState {
@@ -346,11 +590,14 @@ export interface SortState {
   direction: "asc" | "desc";
 }
 
-export type TableFetcher<T> = (params: {
+export type TableFetcher<
+  T,
+  F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
+> = (params: {
   page: number;
   size: number;
   sort?: string;
-  filters?: Record<string, any>;
+  filters?: AlephaTableFilterValues<F>;
 }) => Promise<Page<T>>;
 
 /**
@@ -362,13 +609,16 @@ export type TableFetcher<T> = (params: {
  * closure goes stale the moment the caller's array changes. Static rows
  * therefore bypass the fetch path entirely and are derived synchronously.
  */
-export type AlephaTableSource<T> =
+export type AlephaTableSource<
+  T,
+  F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
+> =
   | {
       /**
        * Fetcher invoked with paging + sort + filters. Should return an
        * Alepha `Page<T>`.
        */
-      fetch: TableFetcher<T>;
+      fetch: TableFetcher<T, F>;
       data?: never;
       filter?: never;
     }
@@ -393,6 +643,6 @@ export type AlephaTableSource<T> =
        * spanning several columns, a range, a joined label. Only ever
        * called with filter values that are actually set.
        */
-      filter?: (item: T, filters: Record<string, any>) => boolean;
+      filter?: (item: T, filters: AlephaTableFilterValues<F>) => boolean;
       fetch?: never;
     };

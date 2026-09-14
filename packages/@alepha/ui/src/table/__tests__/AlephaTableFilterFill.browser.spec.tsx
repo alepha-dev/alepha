@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Control } from "../../form/Control.tsx";
 import { AlephaTable } from "../AlephaTable.tsx";
+import type { AlephaTableFilterFields } from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -19,6 +20,11 @@ const columns = {
 };
 
 const rows: Row[] = [{ id: 1, title: "Alpha" }];
+
+const filterFields = {
+  createdAt: { schema: z.dateRange() },
+  status: { schema: z.enum(["open", "closed"]) },
+} satisfies AlephaTableFilterFields;
 
 /**
  * The filter bar fills every field it holds, whatever shape that field is.
@@ -83,14 +89,11 @@ describe("AlephaTable (filter bar fill)", () => {
 
   it("reaches a date trigger, not only inputs and comboboxes", async () => {
     const { container } = await mount(
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof filterFields>
         data={rows}
         columns={columns}
         filters={{
-          schema: z.object({
-            createdAt: z.dateRange().optional(),
-            status: z.enum(["open", "closed"]).optional(),
-          }),
+          fields: filterFields,
           render: (form) => (
             <>
               <Control

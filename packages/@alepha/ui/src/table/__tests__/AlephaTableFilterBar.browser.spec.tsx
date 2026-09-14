@@ -6,9 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { Alepha, z } from "alepha";
-import type { ZObject } from "alepha";
 import { AlephaContext } from "alepha/react";
-import type { FormModel } from "alepha/react/form";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
@@ -16,6 +14,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AlephaTable } from "../AlephaTable.tsx";
 import { AlephaTableFilterBar } from "../AlephaTableFilterBar.tsx";
+import type { AlephaTableFilterFields } from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -28,12 +27,11 @@ const columns = {
 
 const rows: Row[] = [{ id: 1, title: "Alpha" }];
 
-const schema = z.object({
-  search: z.string().optional(),
-  status: z.enum(["open", "closed"]).optional(),
-  statusOp: z.enum(["is", "not"]).optional(),
-  owner: z.string().optional(),
-});
+const filterFields = {
+  search: { preset: "search" },
+  status: { schema: z.enum(["open", "closed"]), operators: "is" },
+  owner: { schema: z.string() },
+} satisfies AlephaTableFilterFields;
 
 /**
  * `AlephaTableFilterBar`, through `AlephaTable`: the three behaviours that
@@ -66,17 +64,22 @@ describe("AlephaTableFilterBar", () => {
    * Owner text filter, seeded with `seed`. Returns the form the bar was
    * handed, so a spec can empty a value the way the list itself would.
    */
-  const mount = async (seed?: Record<string, unknown>) => {
+  const mount = async (seed?: {
+    status?: "open" | "closed";
+    statusOp?: "is" | "not";
+  }) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     await alepha.start();
-    const handle: { form?: FormModel<ZObject> } = {};
+    const handle: {
+      form?: { currentValues?: Record<string, any>; input: unknown };
+    } = {};
     render(
       <AlephaContext.Provider value={alepha}>
-        <AlephaTable<Row>
+        <AlephaTable<Row, typeof filterFields>
           data={rows}
           columns={columns}
           filters={{
-            schema,
+            fields: filterFields,
             seedValues: seed,
             render: (form) => {
               handle.form = form;

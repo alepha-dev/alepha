@@ -1,10 +1,10 @@
-import type { ZObject } from "alepha";
-import type { FormModel } from "alepha/react/form";
 import type { ReactNode } from "react";
 
 import type {
   AlephaTableEmptyState,
+  AlephaTableFilterFields,
   AlephaTableFilters,
+  AlephaTableNoFilterFields,
   AlephaTablePersistedFacets,
   BulkAction,
   BulkMenuAction,
@@ -61,7 +61,10 @@ import type {
  * where the page's other navigation is.
  */
 
-export interface AlephaTableBaseProps<T> {
+export interface AlephaTableBaseProps<
+  T,
+  F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
+> {
   /**
    * Column definitions, keyed by the property name they read from.
    */
@@ -131,11 +134,8 @@ export interface AlephaTableBaseProps<T> {
    * High-level filter form. AlephaTable owns the `useForm`, renders the
    * inputs inside a `<form>` in the toolbar, and refetches on
    * submit/change.
-   *
-   * Mutually exclusive with `form` (legacy: caller-owned form). When
-   * both are passed, `filters` wins.
    */
-  filters?: AlephaTableFilters;
+  filters?: AlephaTableFilters<F>;
   /**
    * When set, filter values, column visibility, and sort state are
    * persisted to `localStorage` under this key. Pick a key that's
@@ -253,12 +253,6 @@ export interface AlephaTableBaseProps<T> {
    * persistence layer beyond `persistenceKey` (e.g. URL state).
    */
   onSortChange?: (sort: SortState | null) => void;
-  /**
-   * Legacy: caller-owned filter form. Prefer `filters` (which has
-   * AlephaTable own the form). When `filters` is set, this prop is
-   * ignored.
-   */
-  form?: FormModel<ZObject>;
   /**
    * When true (default when `filters` is set), the table refetches on
    * every `form:change` event, debounced by 250ms. Set to `false` to

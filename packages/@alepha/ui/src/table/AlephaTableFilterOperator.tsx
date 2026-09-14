@@ -84,3 +84,26 @@ export type AlephaTableFilterOperatorPreset =
   | "is"
   | "any-none"
   | "any-all-none";
+
+/**
+ * The values each operator preset carries, the default FIRST, declared once.
+ *
+ * Three readers agree on them through this table and nothing else: the schema
+ * the table builds for a field's `<key>Op`, the type `fetch` reads that key
+ * as, and the bar's switch, which only adds the labels. They used to be
+ * string literals inside the bar, interleaved with their `tr()` calls, so a
+ * value renamed there would have left the filter schema refusing the
+ * operator the switch had just written.
+ */
+export const ALEPHA_TABLE_FILTER_OPERATORS = {
+  is: ["is", "not"],
+  "any-none": ["any", "none"],
+  "any-all-none": ["any", "all", "none"],
+} as const satisfies Record<AlephaTableFilterOperatorPreset, readonly string[]>;
+
+/**
+ * The values one operator preset carries: `"is" | "not"` for `is`.
+ */
+export type AlephaTableFilterOperatorValue<
+  P extends AlephaTableFilterOperatorPreset,
+> = (typeof ALEPHA_TABLE_FILTER_OPERATORS)[P][number];

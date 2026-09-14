@@ -17,7 +17,10 @@ import type {
   AlephaTableFilterOperatorOption,
   AlephaTableFilterOperatorPreset,
 } from "./AlephaTableFilterOperator.tsx";
-import { AlephaTableFilterOperator } from "./AlephaTableFilterOperator.tsx";
+import {
+  ALEPHA_TABLE_FILTER_OPERATORS,
+  AlephaTableFilterOperator,
+} from "./AlephaTableFilterOperator.tsx";
 
 export interface AlephaTableFilterBarProps {
   /**
@@ -37,7 +40,7 @@ export interface AlephaTableFilterBarProps {
    * filter that has nothing to offer yet (a project with no areas) leaves it
    * out of this array rather than hiding it.
    */
-  fields: AlephaTableFilterField[];
+  fields: AlephaTableFilterBarField[];
 }
 
 /**
@@ -104,50 +107,46 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
     return Array.isArray(value) ? value.length > 0 : Boolean(value);
   };
 
-  const operatorKeyOf = (field: AlephaTableFilterField) =>
+  const operatorKeyOf = (field: AlephaTableFilterBarField) =>
     field.operatorKey ?? `${field.key}Op`;
 
   const operatorsOf = (
-    field: AlephaTableFilterField,
+    field: AlephaTableFilterBarField,
   ): AlephaTableFilterOperatorOption[] | undefined => {
-    if (!field.operators || Array.isArray(field.operators)) {
-      return field.operators;
+    if (!field.operators || typeof field.operators !== "string") {
+      return field.operators as AlephaTableFilterOperatorOption[] | undefined;
     }
+    // The values come from the one table the filter schema is built from; only
+    // the words are this bar's. A value is labelled the same in every preset
+    // it appears in, so one entry per value covers all three.
     const not = tr("alephaTable.operator.prefixNot", { default: "not" });
-    const anyOf = tr("alephaTable.operator.anyOf", { default: "any of" });
-    const noneOf = tr("alephaTable.operator.noneOf", { default: "none of" });
-    switch (field.operators) {
-      case "is":
-        return [
-          {
-            value: "is",
-            label: tr("alephaTable.operator.is", { default: "is" }),
-          },
-          {
-            value: "not",
-            label: tr("alephaTable.operator.isNot", { default: "is not" }),
-            prefix: not,
-          },
-        ];
-      case "any-none":
-        return [
-          { value: "any", label: anyOf },
-          { value: "none", label: noneOf, prefix: not },
-        ];
-      case "any-all-none":
-        return [
-          { value: "any", label: anyOf },
-          {
-            value: "all",
-            label: tr("alephaTable.operator.allOf", { default: "all of" }),
-            prefix: tr("alephaTable.operator.prefixAll", { default: "all" }),
-          },
-          { value: "none", label: noneOf, prefix: not },
-        ];
-    }
+    const labels: Record<
+      string,
+      Omit<AlephaTableFilterOperatorOption, "value">
+    > = {
+      is: { label: tr("alephaTable.operator.is", { default: "is" }) },
+      not: {
+        label: tr("alephaTable.operator.isNot", { default: "is not" }),
+        prefix: not,
+      },
+      any: { label: tr("alephaTable.operator.anyOf", { default: "any of" }) },
+      all: {
+        label: tr("alephaTable.operator.allOf", { default: "all of" }),
+        prefix: tr("alephaTable.operator.prefixAll", { default: "all" }),
+      },
+      none: {
+        label: tr("alephaTable.operator.noneOf", { default: "none of" }),
+        prefix: not,
+      },
+    };
+    return ALEPHA_TABLE_FILTER_OPERATORS[field.operators].map((value) => ({
+      value,
+      label: labels[value]?.label ?? value,
+      prefix: labels[value]?.prefix,
+    }));
   };
 
-  const operatorOf = (field: AlephaTableFilterField) => {
+  const operatorOf = (field: AlephaTableFilterBarField) => {
     const operators = operatorsOf(field);
     return (
       operators?.find(
@@ -159,7 +158,7 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
   // A filter goes back to its default operator as its value goes: an
   // operator standing with nothing to qualify still counts as a filter in the
   // table's reset button and badge, while narrowing nothing.
-  const clearField = (field: AlephaTableFilterField) => {
+  const clearField = (field: AlephaTableFilterBarField) => {
     inputs[field.key]?.set(undefined);
     if (field.operators) inputs[operatorKeyOf(field)]?.set(undefined);
   };
@@ -343,7 +342,7 @@ export interface AlephaTableFilterBarSearch {
   control?: Omit<ControlProps, "input" | "label">;
 }
 
-export interface AlephaTableFilterField {
+export interface AlephaTableFilterBarField {
   /**
    * The form field this filter writes.
    */
@@ -370,7 +369,7 @@ export interface AlephaTableFilterField {
    */
   operators?:
     | AlephaTableFilterOperatorPreset
-    | AlephaTableFilterOperatorOption[];
+    | readonly AlephaTableFilterOperatorOption[];
   /**
    * The form field the operator is stored in. Defaults to `<key>Op`.
    */

@@ -1,4 +1,4 @@
-import { type Alepha, type ZObject, z } from "alepha";
+import type { Alepha, ZObject } from "alepha";
 import type { FormModel } from "alepha/react/form";
 import type { I18nProvider } from "alepha/react/i18n";
 import {
@@ -12,12 +12,21 @@ import {
 import type { Toast } from "../core/useToast.tsx";
 import type { AlephaTableBaseProps } from "./alephaTableBaseProps.ts";
 import { writePersisted } from "./alephaTablePersistence.ts";
-import type { AlephaTableSource } from "./alephaTableTypes.ts";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableSource,
+} from "./alephaTableTypes.ts";
 import { cleanFilterValues, shareFiltersUrl } from "./queryFilters.ts";
 
 export interface UseAlephaTableRefreshOptions<T> {
-  props: AlephaTableBaseProps<T> & AlephaTableSource<T>;
+  props: AlephaTableBaseProps<T, AlephaTableFilterFields> &
+    AlephaTableSource<T, AlephaTableFilterFields>;
   form: FormModel<ZObject> | undefined;
+  /**
+   * Every filter key, operator keys included, as read at mount. Reset clears
+   * each of them and Share rewrites each of them.
+   */
+  filterKeys: readonly string[];
   /**
    * The key the filter values are persisted under, or `undefined` when the
    * table does not store them.
@@ -46,6 +55,7 @@ export const useAlephaTableRefresh = <T>(
   const {
     props,
     form,
+    filterKeys,
     filtersKey,
     alepha,
     toast,
@@ -85,14 +95,13 @@ export const useAlephaTableRefresh = <T>(
     // doesn't emit `form:change` for deleted keys, so inputs stay
     // visually populated and subscribers don't refetch. Explicit set
     // keeps everyone in sync.
-    const keys = Object.keys(z.schema.shape(props.filters.schema));
-    for (const key of keys) {
+    for (const key of filterKeys) {
       const input = (form.input as Record<string, { set?: (v: any) => void }>)[
         key
       ];
       input?.set?.(undefined);
     }
-  }, [form, props.filters]);
+  }, [form, props.filters, filterKeys]);
 
   /**
    * Copy a link that opens this table with these filters.
@@ -114,7 +123,7 @@ export const useAlephaTableRefresh = <T>(
     if (!props.filters || !form) return;
     const url = shareFiltersUrl(
       window.location.href,
-      Object.keys(z.schema.shape(props.filters.schema)),
+      filterKeys,
       cleanFilterValues(form.currentValues ?? {}),
     );
     try {
@@ -126,7 +135,7 @@ export const useAlephaTableRefresh = <T>(
       // A denied clipboard permission, or an insecure origin. Nothing here
       // is worth an error toast the reader cannot act on.
     }
-  }, [form, props.filters, toast, tr]);
+  }, [form, props.filters, filterKeys, toast, tr]);
 
   // -- Form event subscriptions ---------------------------------------------
 

@@ -12,12 +12,17 @@ import {
 
 import type { AlephaTableBaseProps } from "./alephaTableBaseProps.ts";
 import { persistedSort, writePersisted } from "./alephaTablePersistence.ts";
-import type { AlephaTableSource } from "./alephaTableTypes.ts";
-import type { ColumnDef, SortState } from "./alephaTableTypes.ts";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableSource,
+  ColumnDef,
+  SortState,
+} from "./alephaTableTypes.ts";
 import { paginateLocal } from "./paginateLocal.ts";
 
 export interface UseAlephaTableDataOptions<T> {
-  props: AlephaTableBaseProps<T> & AlephaTableSource<T>;
+  props: AlephaTableBaseProps<T, AlephaTableFilterFields> &
+    AlephaTableSource<T, AlephaTableFilterFields>;
   /**
    * The page size and its setter. The state is declared in `AlephaTable`,
    * first of all its hooks; this hook changes it from the footer's picker.

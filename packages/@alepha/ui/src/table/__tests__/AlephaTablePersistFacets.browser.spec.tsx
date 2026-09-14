@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Alepha, z } from "alepha";
+import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
@@ -7,7 +7,10 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AlephaTable } from "../AlephaTable.tsx";
-import type { AlephaTablePersistedFacets } from "../alephaTableTypes.ts";
+import type {
+  AlephaTableFilterFields,
+  AlephaTablePersistedFacets,
+} from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -19,9 +22,9 @@ const columns = {
   extra: { label: "Extra", defaultHidden: true, cell: () => "x" },
 };
 
-const filtersSchema = z.object({
-  search: z.string().optional(),
-});
+const filterFields = {
+  search: { preset: "search" },
+} satisfies AlephaTableFilterFields;
 
 const pageOf = (rows: Row[]) => ({
   content: rows,
@@ -94,17 +97,14 @@ describe("AlephaTable (per-facet persistence)", () => {
     seen: Array<{ sort?: string; filters?: Record<string, any> }>,
     persist?: AlephaTablePersistedFacets,
   ) => (
-    <AlephaTable<Row>
+    <AlephaTable<Row, typeof filterFields>
       persistenceKey="probe"
       {...(persist ? { persist } : {})}
       columns={columns}
       filters={{
-        schema: filtersSchema,
+        fields: filterFields,
         render: (form) => (
-          <button
-            type="button"
-            onClick={() => (form.input as any).search.set("typed")}
-          >
+          <button type="button" onClick={() => form.input.search.set("typed")}>
             set search
           </button>
         ),
