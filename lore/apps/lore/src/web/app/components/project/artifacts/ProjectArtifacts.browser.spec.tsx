@@ -84,7 +84,7 @@ const group = (over: Record<string, unknown> = {}) => ({
  * The project Artifacts page (feedback #2111).
  *
  * Two things are worth a spec here and neither is the table itself, which is
- * `AlephaTable`'s own: what a project with NO artifacts is told, and that
+ * `DataTable`'s own: what a project with NO artifacts is told, and that
  * `truncated` reaches the reader. The second is the one that would fail
  * silently - a client-side pager cannot narrow a read it has already made, so
  * a swallowed `truncated` shows a subset under a footer stating a total.
@@ -221,7 +221,7 @@ describe("ProjectArtifacts", () => {
    * handed the command to push their first - which is both wrong and
    * unhelpful, since the fix is to clear the filter.
    *
-   * `AlephaTable` chooses on `activeFilterCount`, which is state only it
+   * `DataTable` chooses on `activeFilterCount`, which is state only it
    * holds. See [[#F1216]].
    */
   it("says no match when a filter empties the list, not nothing pushed", async ({
@@ -423,7 +423,7 @@ describe("ProjectArtifacts", () => {
   /**
    * The filter predicate, through the real table rather than by calling it.
    *
-   * `search` is the one that could not be left to `AlephaTable`'s built-in
+   * `search` is the one that could not be left to `DataTable`'s built-in
    * field matching, which pairs a filter with the same-named property: this
    * one spans the tag AND the commit, so the page supplies a predicate and
    * that predicate owns all three filters.

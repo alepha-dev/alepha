@@ -9,9 +9,9 @@ import {
   useToast,
 } from "@alepha/ui";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
@@ -42,7 +42,7 @@ import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import BlightSourceCell from "./BlightSourceCell.tsx";
 
 /**
- * Owner-facing Blights inbox, built on {@link AlephaTable}.
+ * Owner-facing Blights inbox, built on {@link DataTable}.
  *
  * The `listBlights` endpoint returns the full deduplicated list (crashes are
  * folded by root cause, so the row count stays small), so sort + paging are
@@ -138,10 +138,10 @@ const ProjectBlights = () => {
       hidden: sigilOptions.length === 0,
       control: { clearLabel: tr("blights.filter.allSigils") },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   // Fetch the full list, keep the sidebar badge in sync, then sort + slice
-  // client-side into the `Page` shape AlephaTable consumes.
+  // client-side into the `Page` shape DataTable consumes.
   const fetchBlights = async ({
     page,
     size,
@@ -151,7 +151,7 @@ const ProjectBlights = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: AlephaTableFilterValues<typeof filterFields>;
+    filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<BlightResource>> => {
     if (!project) {
       return emptyPage(page, size);
@@ -210,7 +210,7 @@ const ProjectBlights = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<BlightResource, typeof filterFields>
+      <DataTable<BlightResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={project ? `lor.blights.${project.id}` : "lor.blights"}
         defaultSort={{ field: "count", direction: "desc" }}
@@ -221,7 +221,7 @@ const ProjectBlights = () => {
         }}
         // ⚠️ `toolbar`, not `actions`: `AgentPromptsMenu` is a dropdown
         // trigger rather than a button that acts on click, which is the
-        // distinction `AlephaTable`'s own note draws between the two slots.
+        // distinction `DataTable`'s own note draws between the two slots.
         //
         // Two switches, like the feedback inbox: the menu renders nothing
         // when the project has `agentPrompts` off, and this passes no items

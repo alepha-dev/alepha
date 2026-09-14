@@ -1,9 +1,9 @@
 import { Badge } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -36,14 +36,14 @@ export const AdminEstates = () => {
       placeholder: "Search estates…",
       control: { inputProps: { "aria-label": "Search estates by slug" } },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       return client.findEstates({
         query: {
@@ -76,7 +76,7 @@ export const AdminEstates = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminEstateResource, typeof filterFields>
+      <DataTable<AdminEstateResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="lore.admin.estates"
         fetch={fetcher}

@@ -1,5 +1,5 @@
 import { TimeAgo, Button } from "@alepha/ui";
-import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
@@ -73,7 +73,7 @@ import { appUrl, appUrlLabel } from "./appUrl.ts";
  * ## Static-data mode, so there is no second request
  *
  * `currentInstancesAtom` is already filled by the project route's own loader,
- * and `AlephaTable` filters, sorts and pages an array it is handed in memory.
+ * and `DataTable` filters, sorts and pages an array it is handed in memory.
  * ⚠️ `refresh()` does not re-fire anything in this mode; a page that creates or
  * deletes has to hand the table a new array, which is what `AppCreateDialog`
  * and the Settings tab's delete both do.
@@ -234,7 +234,7 @@ const ProjectApps = () => {
       hidden: versionOptions.length === 0,
       control: { clearLabel: tr("apps.filter.version") },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const openInstance = (instance: AppInstanceResource) =>
     void router.push("app", {
@@ -285,7 +285,7 @@ const ProjectApps = () => {
       // the inset went with it and this page starts where its siblings do.
       className="flex min-h-0 flex-1 flex-col overflow-hidden p-2"
     >
-      <AlephaTable<AppInstanceResource, typeof filterFields>
+      <DataTable<AppInstanceResource, typeof filterFields>
         className="min-h-0 flex-1"
         data={instances}
         persistenceKey={`lor.apps.${project.id}`}

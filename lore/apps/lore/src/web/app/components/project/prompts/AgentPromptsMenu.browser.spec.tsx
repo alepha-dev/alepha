@@ -170,7 +170,7 @@ describe("AgentPromptsMenu", () => {
   /**
    * ⚠️ Callers build their entries under status gates, so a `done` epic
    * hands over an empty list. A button that opens an empty menu is worse
-   * than no button, which is the same rule `AlephaTable` applies to a group
+   * than no button, which is the same rule `DataTable` applies to a group
    * with no children.
    */
   it("renders nothing at all when it has no entries", async () => {

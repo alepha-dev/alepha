@@ -235,7 +235,7 @@ describe("AppCreateDialog", () => {
   });
 
   /**
-   * `ProjectApps` runs `AlephaTable` in static-data mode over this atom, where
+   * `ProjectApps` runs `DataTable` in static-data mode over this atom, where
    * `refresh()` re-fires nothing. A create that does not hand the table a new
    * array leaves the row invisible until a reload, which reads as a broken
    * create.

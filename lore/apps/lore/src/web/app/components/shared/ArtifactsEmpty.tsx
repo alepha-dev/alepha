@@ -35,7 +35,7 @@ export interface ArtifactsEmptyProps {
  * and was already at the length nobody reads.
  *
  * The icon and the title come from whatever frames this. On the project page
- * that is `AlephaTable`'s own `emptyState`; on an app's tab it is the card
+ * that is `DataTable`'s own `emptyState`; on an app's tab it is the card
  * header above it. Rendering either here would double one of them.
  *
  * ## ⚠️ One component, where there were two
@@ -66,7 +66,7 @@ const ArtifactsEmpty = (props: ArtifactsEmptyProps) => {
      * components this merged did (feedback #P2156).
      *
      * The two callers are framed differently and both are right:
-     * `ProjectArtifacts` hands this to `AlephaTable`'s empty state, which is
+     * `ProjectArtifacts` hands this to `DataTable`'s empty state, which is
      * `items-center text-center`; `AppArtifactsList` renders it in a card
      * under a left-aligned header, beside left-aligned loading and error
      * lines. So this declares neither and inherits both.

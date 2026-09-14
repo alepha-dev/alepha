@@ -899,7 +899,7 @@ export class AppRouter {
         throw new NotFoundError("Apps are not enabled for this project");
       }
       // No fetch here on purpose. The page hands `listBlights` to an
-      // `AlephaTable`, which owns paging/sort/filters and therefore always
+      // `DataTable`, which owns paging/sort/filters and therefore always
       // issues its own call with its own query — so a copy fetched here was
       // read by nothing and thrown away on every visit. The badge does not
       // need it either: the parent `project` loader already seeds
@@ -1429,7 +1429,7 @@ export class AppRouter {
        *
        * ⚠️ Typed as free text, not the status enum, and not as arrays. A
        * schema that rejects an unknown value turns a stale bookmark into an
-       * error page; AlephaTable decodes each param against the table's own
+       * error page; DataTable decodes each param against the table's own
        * filter schema and drops what it refuses, so a bad value degrades to
        * the unfiltered list.
        */
@@ -1559,7 +1559,7 @@ export class AppRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Epics`,
     }),
-    // No loader: `ProjectEpics` is an AlephaTable, which owns its own
+    // No loader: `ProjectEpics` is an DataTable, which owns its own
     // fetch (filters, sort and page are its state, not the route's). A
     // loader here would fetch the list a second time and then have it
     // discarded on mount. Same arrangement as `projectBlights`.

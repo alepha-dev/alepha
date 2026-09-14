@@ -1,8 +1,8 @@
 import { Badge, Button } from "@alepha/ui";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
   type BulkAction,
   type RowActionEntry,
 } from "@alepha/ui/table";
@@ -38,7 +38,7 @@ import { useDeleteRelease } from "./useDeleteRelease.ts";
 import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
 
 /**
- * Every release in the project, built on {@link AlephaTable}.
+ * Every release in the project, built on {@link DataTable}.
  *
  * It was a hand-rolled card list with an OPEN heading, a RELEASED heading and
  * an inline create form, while Epics next door had search, filters, sortable
@@ -209,7 +209,7 @@ const ProjectReleases = () => {
       ],
       control: { clearLabel: tr("release.filter.allStates") },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetchReleases = async ({
     page,
@@ -220,7 +220,7 @@ const ProjectReleases = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: AlephaTableFilterValues<typeof filterFields>;
+    filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<ReleaseResource>> => {
     const all = await releaseApi.getReleases({
       params: { projectId: project.id },
@@ -263,7 +263,7 @@ const ProjectReleases = () => {
     };
   };
 
-  // ⚠️ This array is the table's CHECKBOX COLUMN. `AlephaTable` derives
+  // ⚠️ This array is the table's CHECKBOX COLUMN. `DataTable` derives
   // `hasCheckbox` from it being non-empty, the way the Epics list documents,
   // and Delete is the only bulk action here. So a rank that may not delete
   // gets `[]`, and with it the table exactly as it was before bulk delete
@@ -298,7 +298,7 @@ const ProjectReleases = () => {
         suggestedTag={suggestedReleaseTag(allReleases.current)}
       />
 
-      <AlephaTable<ReleaseResource, typeof filterFields>
+      <DataTable<ReleaseResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.releases.${project.id}`}
         bulkActions={bulkActions}

@@ -1,8 +1,8 @@
 import { TimeAgo, Badge, useDialog, useToast } from "@alepha/ui";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
   type BulkAction,
   type BulkMenuAction,
 } from "@alepha/ui/table";
@@ -55,7 +55,7 @@ import {
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 
 /**
- * The Epics list, built on {@link AlephaTable}.
+ * The Epics list, built on {@link DataTable}.
  *
  * `getEpics` returns the project's whole list in one response — an epic is
  * a bounded initiative, so a project has tens of them, not thousands — so
@@ -175,7 +175,7 @@ const ProjectEpics = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: AlephaTableFilterValues<typeof filterFields>;
+    filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<EpicResource>> => {
     const all = await epicApi.getEpics({ params: { projectId: project.id } });
 
@@ -251,7 +251,7 @@ const ProjectEpics = () => {
   };
 
   // Bulk over a selection, the Quests table's shape (feedback #2086). The
-  // checkbox column exists because this array is not empty - `AlephaTable`
+  // checkbox column exists because this array is not empty - `DataTable`
   // derives `hasCheckbox` from it - so gating an entry out on permissions
   // can leave the selection with nothing to do, which is why both are
   // pushed conditionally rather than rendered disabled.
@@ -356,7 +356,7 @@ const ProjectEpics = () => {
           tr("board.filter.releaseCount", { args: [String(n)] }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const bulkActions: Array<
     BulkAction<EpicResource> | BulkMenuAction<EpicResource>
@@ -493,7 +493,7 @@ const ProjectEpics = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<EpicResource, typeof filterFields>
+      <DataTable<EpicResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.epics.${project.id}`}
         bulkActions={bulkActions}
@@ -623,7 +623,7 @@ const ProjectEpics = () => {
           // NOT on a draft one: its quests refuse to be accepted, and
           // whether the spec is done is the owner's call, not the agent's.
           // A completed epic gets neither, so the group has no children and
-          // `AlephaTable` renders nothing for it.
+          // `DataTable` renders nothing for it.
           //
           // Nothing here calls `setEpicStatus`.
           ...(agentPrompt.enabled

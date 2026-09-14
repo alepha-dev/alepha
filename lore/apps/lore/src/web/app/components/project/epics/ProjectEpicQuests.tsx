@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -72,7 +72,7 @@ export interface ProjectEpicQuestsProps {
  * given half a viewport and no way to grow was the smaller half of a
  * scrolling page.
  *
- * `AlephaTable` in static-data mode, not fetch mode, and that is the whole
+ * `DataTable` in static-data mode, not fetch mode, and that is the whole
  * reason the mode exists. `ProjectEpic` loads the epic's quests once and
  * hands the same array to the aside rollup, the flow graph, the tab count
  * and this table; a table that fetched for itself would be a second source
@@ -121,7 +121,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
      * `DetailLayout`: it already hands its children a bounded height (670
      * inside a 726 column, once its own 56px header is taken). The chain
      * stopped one level LOWER, at the `Card` and `CardContent`, which had
-     * no `min-h-0 flex-1`, so `AlephaTable`'s body container - which is
+     * no `min-h-0 flex-1`, so `DataTable`'s body container - which is
      * already `overflow-auto` - measured 1020 tall in a 1020 box and had
      * nothing to scroll. This tab scrolled instead, taking the table's
      * header row and its pager with it.
@@ -146,7 +146,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
               {tr("epic.quests.loading")}
             </div>
           ) : (
-            <AlephaTable<QuestResource>
+            <DataTable<QuestResource>
               // The last link of the chain, and the same one every
               // standalone list page uses.
               className="min-h-0 flex-1"

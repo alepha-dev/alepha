@@ -166,7 +166,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
-    // AlephaTable persists its visible-column set per `persistenceKey`, and
+    // DataTable persists its visible-column set per `persistenceKey`, and
     // writes it on every mount. Without this, the set one test seeds is the
     // set the next one renders with.
     window.localStorage.clear();

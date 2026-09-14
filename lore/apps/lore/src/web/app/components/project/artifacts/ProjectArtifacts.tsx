@@ -1,5 +1,5 @@
 import { TimeAgo, Badge } from "@alepha/ui";
-import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
@@ -246,7 +246,7 @@ const ProjectArtifacts = () => {
           tr("artifacts.filter.formatCount", { args: [String(n)] }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   return (
     <div
@@ -261,7 +261,7 @@ const ProjectArtifacts = () => {
 
         ⚠️ The EMPTY state is the table's now (feedback #P2130). The page used
         to paint its own panel whenever `rows.length === 0`, which collapsed
-        `AlephaTable`'s two states into one: a reader whose filters excluded
+        `DataTable`'s two states into one: a reader whose filters excluded
         everything was told the project had no artifacts, and offered the
         command to push their first. See [[#F1216]] - the table chooses
         between them on `activeFilterCount`, which a page-level branch cannot
@@ -285,7 +285,7 @@ const ProjectArtifacts = () => {
               <span>{tr("artifacts.truncated")}</span>
             </div>
           )}
-          <AlephaTable<ArtifactRow, typeof filterFields>
+          <DataTable<ArtifactRow, typeof filterFields>
             className="min-h-0 flex-1"
             persistenceKey={`lor.artifacts.${project.id}`}
             data={rows}
@@ -295,7 +295,7 @@ const ProjectArtifacts = () => {
              * ⚠️ Two states, never `emptyMessage`. That prop is the one-line
              * escape hatch: it replaces the title in BOTH states and
              * suppresses the description, which is precisely the collapse
-             * this quest undid. `AlephaTable` picks between these on
+             * this quest undid. `DataTable` picks between these on
              * `activeFilterCount`.
              */
             emptyState={{

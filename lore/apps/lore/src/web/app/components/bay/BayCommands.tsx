@@ -1,5 +1,5 @@
 import { Badge, useToast } from "@alepha/ui";
-import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -93,11 +93,11 @@ const BayCommands = (props: BayCommandsProps) => {
       label: tr("bay.commands.filter.status"),
       placeholder: tr("bay.commands.filter.status"),
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AlephaTable<EstateCommandListItem, typeof filterFields>
+      <DataTable<EstateCommandListItem, typeof filterFields>
         className="min-h-0 flex-1"
         data={items}
         emptyState={{
