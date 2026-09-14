@@ -25,17 +25,21 @@ export interface AlephaTableFilterDialogProps {
    */
   form: FormModel<any>;
   /**
-   * The caller's `filters.render(form)` output, already invoked. Passing the
-   * rendered nodes rather than the callback keeps this component unaware of
-   * the `AlephaTableFilters` shape.
+   * The filter controls, already rendered: the bar in its `dialog` variant,
+   * or the caller's `filters.render(form)` output. Passing nodes rather than a
+   * callback keeps this component unaware of the `AlephaTableFilters` shape.
    */
   children: ReactNode;
   /**
    * How many filters currently narrow the list. Renders as a badge on the
-   * trigger, and gates both footer actions: neither sharing nor clearing
-   * means anything with nothing set.
+   * trigger, and gates Share: sharing means nothing with nothing set.
    */
   activeCount: number;
+  /**
+   * Whether Reset would change anything: a value set, or a bar that differs
+   * from its declaration. Share stays about values.
+   */
+  canReset: boolean;
   onReset: () => void;
   /**
    * Copy a link that reopens the list with these filters. Same action as the
@@ -148,7 +152,7 @@ export const AlephaTableFilterDialog = (
           <Button
             type="button"
             variant="outline"
-            disabled={props.activeCount === 0}
+            disabled={!props.canReset}
             onClick={props.onReset}
           >
             {tr("alephaTable.resetFilters", { default: "Reset filters" })}

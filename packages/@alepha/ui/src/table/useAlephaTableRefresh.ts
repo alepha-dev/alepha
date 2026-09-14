@@ -28,6 +28,11 @@ export interface UseAlephaTableRefreshOptions<T> {
    */
   filterKeys: readonly string[];
   /**
+   * Put the bar back to its declaration. Reset filters is one act: the
+   * values empty and the bar returns to what the table declares, together.
+   */
+  resetShownFilters: () => void;
+  /**
    * The key the filter values are persisted under, or `undefined` when the
    * table does not store them.
    */
@@ -56,6 +61,7 @@ export const useAlephaTableRefresh = <T>(
     props,
     form,
     filterKeys,
+    resetShownFilters,
     filtersKey,
     alepha,
     toast,
@@ -101,7 +107,8 @@ export const useAlephaTableRefresh = <T>(
       ];
       input?.set?.(undefined);
     }
-  }, [form, props.filters, filterKeys]);
+    resetShownFilters();
+  }, [form, props.filters, filterKeys, resetShownFilters]);
 
   /**
    * Copy a link that opens this table with these filters.

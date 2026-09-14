@@ -1,6 +1,10 @@
 import { type ZObject, z } from "alepha";
 
-import type { ColumnDef, SortState } from "./alephaTableTypes.ts";
+import type {
+  AlephaTableFilterMode,
+  ColumnDef,
+  SortState,
+} from "./alephaTableTypes.ts";
 
 /**
  * Synchronous localStorage read. Returns undefined on miss or error.
@@ -169,3 +173,67 @@ export const persistedOrder = <T>(
     key ? readPersisted<string[]>(key, "columnOrder") : undefined,
     Object.keys(columns),
   );
+
+/**
+ * Which filters a reader changed on the bar against the declaration: the
+ * optional ones they added, and the default ones they removed.
+ */
+export interface PersistedFilterVisibility {
+  added: string[];
+  removed: string[];
+}
+
+/**
+ * The filters a table puts on the bar from the start: every `default` field.
+ * A locked field is drawn regardless, and is not part of the set.
+ */
+export const declaredShownFilters = (
+  modes: Record<string, AlephaTableFilterMode>,
+): string[] => Object.keys(modes).filter((key) => modes[key] === "default");
+
+/**
+ * The filters on the bar for one scope: the declaration, with the reader's
+ * stored change applied to it.
+ *
+ * Stored as a CHANGE rather than as a list, for the reason `reconcileOrder`
+ * gives for columns: a list is a snapshot of the fields as they were, and a
+ * `default` field added in a later release is missing from it, so a stored
+ * list would hide the very filter that release meant to show. Reconciled on
+ * read: a key no longer declared is dropped, an added key that is no longer
+ * optional and a removed key that is no longer default do nothing, and a
+ * locked key ignores both.
+ */
+export const persistedShownFilters = (
+  key: string | undefined,
+  modes: Record<string, AlephaTableFilterMode>,
+): string[] => {
+  const declared = declaredShownFilters(modes);
+  const stored = key
+    ? readPersisted<Partial<PersistedFilterVisibility>>(key, "filterVisibility")
+    : undefined;
+  if (!stored) return declared;
+  const listOf = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  const removed = new Set(
+    listOf(stored.removed).filter((k) => modes[k] === "default"),
+  );
+  const added = listOf(stored.added).filter((k) => modes[k] === "optional");
+  return [...declared.filter((k) => !removed.has(k)), ...added];
+};
+
+/**
+ * The change a set of shown filters makes against the declaration, or
+ * `undefined` when it makes none, which `writePersisted` turns into a delete.
+ */
+export const filterVisibilityChange = (
+  shown: readonly string[],
+  modes: Record<string, AlephaTableFilterMode>,
+): PersistedFilterVisibility | undefined => {
+  const added = shown.filter((k) => modes[k] === "optional");
+  const removed = declaredShownFilters(modes).filter((k) => !shown.includes(k));
+  return added.length === 0 && removed.length === 0
+    ? undefined
+    : { added, removed };
+};

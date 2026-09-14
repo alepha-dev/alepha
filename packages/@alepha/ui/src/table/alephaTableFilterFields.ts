@@ -1,5 +1,6 @@
 import { AlephaError, type ZObject, type ZType, z } from "alepha";
 
+import type { AlephaTableFilterBarField } from "./AlephaTableFilterBar.tsx";
 import { ALEPHA_TABLE_FILTER_OPERATORS } from "./AlephaTableFilterOperator.tsx";
 import type {
   AlephaTableFilterField,
@@ -111,4 +112,28 @@ export const buildAlephaTableFilterSchema = (
     }
   }
   return z.object(shape);
+};
+
+/**
+ * The record, as the bar's array: each field with its key, the schema the
+ * table built at mount, and the mode it read then.
+ *
+ * Called every render, so the UI properties (`label`, `items`, `hidden`...)
+ * are the current ones while the schema and the mode stay the mount's. A key
+ * the table did not mount with is left out: the form holds no field for it,
+ * and the dev warning has already said so.
+ */
+export const alephaTableFilterBarFields = (
+  fields: AlephaTableFilterFields,
+  definition: { schema: ZObject; modes: Record<string, AlephaTableFilterMode> },
+): AlephaTableFilterBarField[] => {
+  const shape = z.schema.shape(definition.schema);
+  return Object.entries(fields)
+    .filter(([key]) => key in definition.modes)
+    .map(([key, field]) => ({
+      ...field,
+      key,
+      schema: shape[key],
+      mode: definition.modes[key],
+    }));
 };

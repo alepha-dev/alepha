@@ -13,7 +13,9 @@ import {
 } from "../core/Tooltip.tsx";
 import { cn } from "../core/utils.ts";
 import { AlephaTableColumnPicker } from "./AlephaTableColumnPicker.tsx";
+import { AlephaTableFilterBar } from "./AlephaTableFilterBar.tsx";
 import { AlephaTableFilterDialog } from "./AlephaTableFilterDialog.tsx";
+import { alephaTableFilterBarFields } from "./alephaTableFilterFields.ts";
 import { AlephaTableFilterMenu } from "./AlephaTableFilterMenu.tsx";
 import type {
   AlephaTableFilterFields,
@@ -21,6 +23,7 @@ import type {
   ColumnDef,
   TableAction,
 } from "./alephaTableTypes.ts";
+import type { AlephaTableFilterDefinition } from "./useAlephaTableFilterForm.ts";
 
 export interface AlephaTableToolbarProps<T> {
   columns: Record<string, ColumnDef<T>>;
@@ -29,13 +32,28 @@ export interface AlephaTableToolbarProps<T> {
    * The table's own filter form.
    */
   form?: FormModel<ZObject>;
+  /**
+   * What the filters are, as read at mount. The bar is drawn from it and from
+   * `filters.fields`, read every render.
+   */
+  filterDefinition?: AlephaTableFilterDefinition;
+  /**
+   * Which filters are on the bar. The table's state; see
+   * `useAlephaTableFilterVisibility`.
+   */
+  shownFilters: readonly string[];
+  onShownFiltersChange: (shown: string[], act: boolean) => void;
+  /**
+   * Whether Reset filters would change anything: a value set, or a bar that
+   * differs from its declaration.
+   */
+  canResetFilters: boolean;
   toolbar?: ReactNode;
   actions?: TableAction[];
   isMobile: boolean;
   showColumnPicker: boolean;
   showActionsMenu: boolean;
   activeFilterCount: number;
-  hasActiveFilters: boolean;
   /**
    * Whether the table reads its filters back from the query, which is what
    * makes a shared link worth copying.
@@ -66,7 +84,6 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
     showColumnPicker,
     showActionsMenu,
     activeFilterCount,
-    hasActiveFilters,
     canShare,
     resetFilters,
     shareFilters,
@@ -78,6 +95,29 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
     handleRefreshClick,
   } = props;
   const { tr } = useI18n();
+
+  /**
+   * The filter controls, in either place. With `render`, the caller draws
+   * them and the bar is not mounted; without it, the table draws the bar from
+   * `fields`. A legacy `schema` with no `render` draws nothing.
+   */
+  const filterControls = (variant: "bar" | "dialog") => {
+    if (!props.filters || !form) return null;
+    if (props.filters.render) return props.filters.render(form);
+    if (!props.filters.fields || !props.filterDefinition) return null;
+    return (
+      <AlephaTableFilterBar
+        form={form}
+        fields={alephaTableFilterBarFields(
+          props.filters.fields,
+          props.filterDefinition,
+        )}
+        shown={props.shownFilters}
+        onShownChange={props.onShownFiltersChange}
+        variant={variant}
+      />
+    );
+  };
 
   return (
     // `bg-muted`, paired with the pagination footer below: the filter bar
@@ -129,7 +169,7 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
     <div className="bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
       {props.filters && form && !isMobile ? (
         <form {...form.props} className="flex flex-1 flex-wrap items-end gap-2">
-          {props.filters.render?.(form)}
+          {filterControls("bar")}
         </form>
       ) : (
         <div className="flex flex-1" />
@@ -209,10 +249,11 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
             <AlephaTableFilterDialog
               form={form}
               activeCount={activeFilterCount}
+              canReset={props.canResetFilters}
               onReset={resetFilters}
               onShare={canShare ? shareFilters : undefined}
             >
-              {props.filters.render?.(form)}
+              {filterControls("dialog")}
             </AlephaTableFilterDialog>
           )}
           {showColumnPicker && (
@@ -233,6 +274,7 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
           {showActionsMenu && props.filters && !isMobile && canShare && (
             <AlephaTableFilterMenu
               activeCount={activeFilterCount}
+              canReset={props.canResetFilters}
               onShare={shareFilters}
               onReset={resetFilters}
             />
@@ -254,7 +296,7 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
                     aria-label={tr("alephaTable.resetFilters", {
                       default: "Reset filters",
                     })}
-                    disabled={!hasActiveFilters}
+                    disabled={!props.canResetFilters}
                     onClick={resetFilters}
                   />
                 }

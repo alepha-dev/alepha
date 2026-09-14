@@ -34,6 +34,7 @@ import { cleanFilterValues } from "./queryFilters.ts";
 import { useAlephaTableColumns } from "./useAlephaTableColumns.ts";
 import { useAlephaTableData } from "./useAlephaTableData.ts";
 import { useAlephaTableFilterForm } from "./useAlephaTableFilterForm.ts";
+import { useAlephaTableFilterVisibility } from "./useAlephaTableFilterVisibility.ts";
 import { useAlephaTableRefresh } from "./useAlephaTableRefresh.ts";
 import { useTableSelection } from "./useTableSelection.ts";
 
@@ -115,6 +116,11 @@ export const AlephaTable = <
     alepha,
   });
 
+  const filterVisibility = useAlephaTableFilterVisibility({
+    definition: filterDefinition,
+    filtersKey,
+  });
+
   const {
     page,
     setPage,
@@ -144,6 +150,7 @@ export const AlephaTable = <
       props: untyped,
       form,
       filterKeys: filterDefinition?.keys ?? [],
+      resetShownFilters: filterVisibility.resetShown,
       filtersKey,
       alepha,
       toast,
@@ -277,6 +284,10 @@ export const AlephaTable = <
     // keyed on `persistenceKey` fire in one flush, so an order left behind
     // here would be written back under the INCOMING key.
     setColumnOrder(persistedOrder(columnsKey, props.columns));
+    // Which filters are on the bar is the scope's too, and read here for the
+    // same reason: the project just opened must not show the bar of the one
+    // just left.
+    filterVisibility.rereadShown(filtersKey);
     setRefreshKey((k) => k + 1);
   }
 
@@ -307,6 +318,13 @@ export const AlephaTable = <
     return Object.keys(cleanFilterValues(form.currentValues ?? {})).length;
   }, [props.filters, form, refreshKey]);
   const hasActiveFilters = activeFilterCount > 0;
+  /**
+   * Whether Reset filters would change anything: a value set, or a bar that
+   * is not the one the table declares. Not the count alone, or a reader who
+   * removed a default filter would have no way to bring it back.
+   */
+  const canResetFilters =
+    hasActiveFilters || filterVisibility.differsFromDeclaration;
 
   // The empty state is showing, as opposed to the skeleton that also renders
   // on `data.length === 0`. Read by the `<Table>` height as well as the body,
@@ -336,13 +354,16 @@ export const AlephaTable = <
             columns={props.columns}
             filters={untyped.filters}
             form={form}
+            filterDefinition={filterDefinition}
+            shownFilters={filterVisibility.shown}
+            onShownFiltersChange={filterVisibility.setShown}
+            canResetFilters={canResetFilters}
             toolbar={props.toolbar}
             actions={props.actions}
             isMobile={isMobile}
             showColumnPicker={showColumnPicker}
             showActionsMenu={showActionsMenu}
             activeFilterCount={activeFilterCount}
-            hasActiveFilters={hasActiveFilters}
             canShare={canShare}
             resetFilters={resetFilters}
             shareFilters={shareFilters}

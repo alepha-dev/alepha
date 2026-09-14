@@ -11,8 +11,8 @@ import {
 
 export interface AlephaTableFilterMenuProps {
   /**
-   * How many filters currently narrow the list. Gates both items: neither
-   * sharing nor clearing means anything with nothing set.
+   * How many filters currently narrow the list. Gates Share: sharing means
+   * nothing with nothing set.
    *
    * It is deliberately NOT drawn on the trigger, unlike
    * {@link AlephaTableFilterDialog}'s. That dialog badges its trigger because
@@ -21,6 +21,12 @@ export interface AlephaTableFilterMenuProps {
    * count beside it says the same thing twice and reads as a notification.
    */
   activeCount: number;
+  /**
+   * Whether Reset would change anything. Not `activeCount` alone: a bar the
+   * reader rearranged (a default filter removed, an optional one added) is
+   * something to reset while no value is set.
+   */
+  canReset: boolean;
   onShare: () => void;
   onReset: () => void;
 }
@@ -68,7 +74,7 @@ export const AlephaTableFilterMenu = (props: AlephaTableFilterMenuProps) => {
           <Share2 className="size-4" />
           {tr("alephaTable.shareFilters", { default: "Share filters" })}
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={idle} onClick={props.onReset}>
+        <DropdownMenuItem disabled={!props.canReset} onClick={props.onReset}>
           <FunnelX className="size-4" />
           {tr("alephaTable.resetFilters", { default: "Reset filters" })}
         </DropdownMenuItem>
