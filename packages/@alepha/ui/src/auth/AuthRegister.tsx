@@ -190,6 +190,10 @@ export const AuthRegister = (props: AuthRegisterProps) => {
     initialValues: props.lockedEmail
       ? ({ email: props.lockedEmail } as never)
       : undefined,
+    // Handled here: every error this form throws is rendered by the page itself,
+    // under its field or in the alert above the form. Without an `onError`,
+    // a mounted `ActionErrorToaster` toasted the same sentence a second time.
+    onError: () => {},
     handler: async (data) => {
       try {
         const intent = await userCtrl.createRegistrationIntent({

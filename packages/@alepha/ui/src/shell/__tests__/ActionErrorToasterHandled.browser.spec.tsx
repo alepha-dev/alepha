@@ -262,6 +262,46 @@ describe("ActionErrorToaster and handled errors", () => {
   });
 
   /**
+   * Components reading one keyed `useQuery` share its request, so one
+   * rejection reaches each of them and each emits the event with the same
+   * error (#Q2317). Lore's bay pages read one inventory from several panels.
+   */
+  it("toasts a failure shared by two readers of one keyed query once", async () => {
+    let calls = 0;
+    const Panel = () => {
+      useQuery(
+        {
+          key: ["shared-inventory"],
+          handler: async () => {
+            calls++;
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            throw new Error("Inventory unreachable, shared");
+          },
+        },
+        [],
+      );
+      return null;
+    };
+    await mount(
+      <>
+        <Panel />
+        <Panel />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByText("Inventory unreachable, shared")).toHaveLength(
+        1,
+      ),
+    );
+    await settle();
+    expect(calls).toBe(1);
+    expect(screen.getAllByText("Inventory unreachable, shared")).toHaveLength(
+      1,
+    );
+  });
+
+  /**
    * The real `AdminFiles`: its bucket stats query passes `onError: () => {}`,
    * because the bucket filter degrades to empty without them.
    * `ShowcaseFilesController` in `apps/ui` relies on that leaving "no error

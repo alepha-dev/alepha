@@ -1,4 +1,4 @@
-import { useDialog, useToast } from "@alepha/ui";
+import { useDialog } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
 import { AlephaError, z } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
@@ -60,7 +60,6 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const toaster = useToast();
   const router = useRouter<AppRouter>();
   /**
    * The same class the server derives slugs with, so the handler's "did this
@@ -143,16 +142,14 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           // Slugs are unique across the whole instance, so a name can be taken
           // by a project the viewer cannot even see.
           //
-          // Toasted, not just re-thrown. A throw now also reaches the action
-          // row's error popover, but that is an icon the user has to click;
-          // while this form ran on `autoSave` there was no action row at all
-          // and a throw reached nothing, so the rename failed in total
-          // silence. Caught by the "a name already taken is refused" e2e,
+          // Rethrown with a sentence worth reading, and not toasted here: the
+          // root `ActionErrorToaster` shows a form's unhandled error, once.
+          // It was toasted by hand while nothing listened, since a throw
+          // alone reached only the action row's popover, an icon the user has
+          // to click. Caught by the "a name already taken is refused" e2e,
           // which asserted on a message that was never on the page.
           if (HttpError.is(error, 409)) {
-            const message = tr("project.update.slug.taken");
-            toaster.error(message);
-            throw new AlephaError(message);
+            throw new AlephaError(tr("project.update.slug.taken"));
           }
           throw error;
         });

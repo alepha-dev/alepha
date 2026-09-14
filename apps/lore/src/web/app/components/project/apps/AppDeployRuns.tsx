@@ -52,6 +52,9 @@ const AppDeployRuns = (props: AppDeployRunsProps) => {
             instanceId: props.instanceId,
           },
         }),
+      // Handled: the card renders its own error state below, so the root
+      // `ActionErrorToaster` must not toast the same failure on top of it.
+      onError: () => {},
     },
     [props.projectId, props.instanceId, props.reloadToken],
   );

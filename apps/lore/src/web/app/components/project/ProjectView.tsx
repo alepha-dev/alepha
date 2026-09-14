@@ -300,6 +300,10 @@ const ProjectView = () => {
         // `Layout` mounts the bar at the root, which is the only place it can
         // see the transitions that enter and leave this shell. Leaving the
         // default on would draw a second, identical one on top of it.
+        //
+        // No `actionErrorToaster={false}` beside it, although `Layout` mounts
+        // that listener at the root too: `embedded` already skips the shell's
+        // own `Toaster` and `ActionErrorToaster`, and the prop is ignored.
         progress={false}
         variant="inset"
         // The page surface. Defined in `main.css` rather than inline because

@@ -1054,7 +1054,6 @@ export const uiFr: Record<string, string> = {
     "Affichée à côté de votre nom partout où vous apparaissez.",
   "account.profile.pictureTitle": "Photo de profil",
   "account.profile.roles": "Rôles",
-  "account.profile.updateError": "Impossible de mettre à jour votre profil",
   "account.profile.updated": "Profil mis à jour",
   "account.profile.username": "Nom d'utilisateur",
   "account.profile.usernameDescription": "Unique sur ce site.",

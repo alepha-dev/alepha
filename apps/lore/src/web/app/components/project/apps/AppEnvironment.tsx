@@ -57,6 +57,9 @@ const AppEnvironment = () => {
           params: { projectId: project.id, instanceId: instance.id },
         });
       },
+      // Handled: the card renders its own error state below, so the root
+      // `ActionErrorToaster` must not toast the same failure on top of it.
+      onError: () => {},
     },
     [project?.id, instance?.id],
   );

@@ -123,6 +123,10 @@ export const AuthLogin = (props: AuthLoginProps) => {
       identifier: z.string().min(1),
       password: z.string().min(settings.passwordPolicy?.minLength || 6),
     }),
+    // Handled here: every error this form throws is rendered by the page itself,
+    // under its field or in the alert above the form. Without an `onError`,
+    // a mounted `ActionErrorToaster` toasted the same sentence a second time.
+    onError: () => {},
     handler: async (data) => {
       if (!credentialsProvider) {
         throw new AlephaError("Credentials provider not configured");
@@ -148,10 +152,13 @@ export const AuthLogin = (props: AuthLoginProps) => {
           setChallenge(err.data);
           return;
         }
-        if (
-          err instanceof HttpError &&
-          err.error === "InvalidCredentialsError"
-        ) {
+        // A 401 from the password grant is a refused password. Matched on the
+        // status, not on `err.error`: `InvalidCredentialsError` names itself
+        // `UnauthorizedError`, so the wire never carries its class name, and
+        // the name check this replaced never matched. A wrong password reached
+        // the alert as an untranslated "Invalid credentials" instead of the
+        // password field.
+        if (HttpError.is(err, 401)) {
           throw new FormValidationError({
             message: tr("auth.login.invalid", {
               default: "Invalid identifier or password",

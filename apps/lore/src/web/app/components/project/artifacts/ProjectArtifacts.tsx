@@ -114,6 +114,9 @@ const ProjectArtifacts = () => {
           params: { projectId: project.id },
         });
       },
+      // Handled: the page renders its own error state, so the root
+      // `ActionErrorToaster` must not toast the same failure on top of it.
+      onError: () => {},
     },
     [project?.id],
   );
