@@ -92,7 +92,15 @@ export interface KanbanColumnProps {
    * cannot compose — Completed, where a card would have to be created and
    * immediately finished to belong there.
    */
-  onCompose?: (title: string, position: "head" | "foot") => Promise<void>;
+  onCompose?: (
+    title: string,
+    position: "head" | "foot",
+  ) => Promise<boolean | undefined>;
+  /**
+   * True while a card is being composed in any column: the board holds one
+   * compose action, so every composer waits for it (#E59 rule 10).
+   */
+  composing?: boolean;
   /**
    * How long each card has sat here, by quest id.
    */
@@ -276,6 +284,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             <KanbanColumnComposer
               position="head"
               onCreate={(title) => props.onCompose!(title, "head")}
+              disabled={props.composing}
             />
           )}
           {quests.length === 0 && (
@@ -302,6 +311,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             <KanbanColumnComposer
               position="foot"
               onCreate={(title) => props.onCompose!(title, "foot")}
+              disabled={props.composing}
             />
           )}
           {hasMore && (

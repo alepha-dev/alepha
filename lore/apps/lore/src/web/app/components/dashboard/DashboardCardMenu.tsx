@@ -14,6 +14,11 @@ export interface DashboardCardMenuProps {
   onChangeScope: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /**
+   * True while a card write runs: the menu's writes are held until it lands,
+   * since `run()` would drop a second one in silence (#E59 rule 10).
+   */
+  busy?: boolean;
 }
 
 /**
@@ -49,12 +54,16 @@ const DashboardCardMenu = (props: DashboardCardMenuProps) => {
           <Crosshair className="text-muted-foreground size-3.5" />
           {tr("dashboard.card.scope")}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={props.onDuplicate}>
+        <DropdownMenuItem disabled={props.busy} onClick={props.onDuplicate}>
           <Copy className="text-muted-foreground size-3.5" />
           {tr("dashboard.card.duplicate")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={props.onRemove}>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={props.busy}
+          onClick={props.onRemove}
+        >
           <Trash2 className="size-3.5" />
           {tr("dashboard.card.delete")}
         </DropdownMenuItem>

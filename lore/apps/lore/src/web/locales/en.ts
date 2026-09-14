@@ -1065,7 +1065,6 @@ export default {
     "Create an area first: a quest has to belong to one.",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
-  "kanban.error.actionFailed": "Action failed",
 
   "quest.view.unassign.title": "Unassign this quest",
   "quest.view.unassign.confirm":

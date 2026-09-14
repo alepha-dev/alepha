@@ -86,6 +86,11 @@ export interface DashboardCatalogueProps {
     card: DashboardCardResource,
     input: { scope: DashboardScope; filters: Record<string, unknown> },
   ) => void;
+  /**
+   * True while the board's add or update runs: Save waits for it (#E59 rule
+   * 10).
+   */
+  busy?: boolean;
 }
 
 /**
@@ -352,7 +357,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
             <DrawerFooter className="px-6 pt-4 pb-6">
               <Button
                 onClick={save}
-                disabled={!canSave}
+                disabled={!canSave || props.busy}
                 data-testid="dashboard-catalogue-save"
                 className="h-9 rounded-[9px]"
               >
