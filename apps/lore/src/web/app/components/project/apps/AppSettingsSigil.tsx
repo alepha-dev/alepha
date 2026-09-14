@@ -7,7 +7,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { KeyRound, RefreshCw, Trash2 } from "lucide-react";
@@ -76,17 +76,6 @@ const AppSettingsSigil = () => {
    * dismissed; nothing can produce it again.
    */
   const [freshToken, setFreshToken] = useState<string | undefined>();
-  const [busy, setBusy] = useState(false);
-
-  if (!project || !instance) {
-    return null;
-  }
-
-  const collectsFeedback = hasCapability(project, "support");
-
-  const isOwner = can("sigil:manage");
-  const sigil = instance.sigil;
-  const label = `${instance.app}/${instance.env}`;
 
   /**
    * Writes one instance back into both atoms.
@@ -96,98 +85,118 @@ const AppSettingsSigil = () => {
    * page's own loader always fills it, so that branch is a type guard rather
    * than a real case.
    */
-  const writeInstance = (next: typeof instance) => {
+  const writeInstance = (next: NonNullable<typeof instance>) => {
     setInstance(next);
     setInstances(
       (instances ?? []).map((it) => (it.id === next.id ? next : it)),
     );
   };
 
-  const create = async () => {
-    setBusy(true);
-    try {
-      const created = await sigilApi.createSigil({
-        params: { projectId: project.id },
-        body: { app: instance.app, env: instance.env },
-      });
-      setFreshToken(created.token);
-      // Built field by field rather than spread: the response is a sigil
-      // resource and the atom holds an instance carrying a narrower summary of
-      // one, so a spread would put fields where the schema refuses them.
-      writeInstance({
-        ...instance,
-        sigilId: created.id,
-        sigil: {
-          id: created.id,
-          tokenPrefix: created.tokenPrefix,
-          kinds: created.kinds,
-          createdAt: created.createdAt,
-        },
-      });
-      toaster.success(tr("sigils.toast.created"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+  // One `useAction` per control (#E59, #Q2329). A refusal is the server's
+  // sentence, toasted by the root `ActionErrorToaster`; the two confirmations
+  // live in their handlers, so backing out sends nothing.
+  const createAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project || !instance) return;
+        const created = await sigilApi.createSigil({
+          params: { projectId: project.id },
+          body: { app: instance.app, env: instance.env },
+        });
+        setFreshToken(created.token);
+        // Built field by field rather than spread: the response is a sigil
+        // resource and the atom holds an instance carrying a narrower summary
+        // of one, so a spread would put fields where the schema refuses them.
+        writeInstance({
+          ...instance,
+          sigilId: created.id,
+          sigil: {
+            id: created.id,
+            tokenPrefix: created.tokenPrefix,
+            kinds: created.kinds,
+            createdAt: created.createdAt,
+          },
+        });
+        toaster.success(tr("sigils.toast.created"));
+      },
+    },
+    [sigilApi, project, instance, instances, toaster, tr],
+  );
 
-  const rotate = async () => {
-    if (!sigil) return;
-    const confirmed = await dialog.confirm({
-      title: tr("sigils.rotate.confirmTitle", { args: [label] }),
-      description: tr("sigils.rotate.confirmDescription"),
-      confirmLabel: tr("sigils.rotate.confirm"),
-    });
-    if (!confirmed) return;
+  const rotateAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const sigil = instance?.sigil;
+        if (!project || !instance || !sigil) return;
+        const confirmed = await dialog.confirm({
+          title: tr("sigils.rotate.confirmTitle", {
+            args: [`${instance.app}/${instance.env}`],
+          }),
+          description: tr("sigils.rotate.confirmDescription"),
+          confirmLabel: tr("sigils.rotate.confirm"),
+        });
+        if (!confirmed) return;
 
-    setBusy(true);
-    try {
-      const rotated = await sigilApi.rotateSigil({
-        params: { projectId: project.id, sigilId: sigil.id },
-      });
-      setFreshToken(rotated.token);
-      // The prefix names the credential everywhere it is shown, and rotation
-      // changed it.
-      writeInstance({
-        ...instance,
-        sigil: { ...sigil, tokenPrefix: rotated.tokenPrefix },
-      });
-      toaster.success(tr("sigils.toast.rotated"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+        const rotated = await sigilApi.rotateSigil({
+          params: { projectId: project.id, sigilId: sigil.id },
+        });
+        setFreshToken(rotated.token);
+        // The prefix names the credential everywhere it is shown, and rotation
+        // changed it.
+        writeInstance({
+          ...instance,
+          sigil: { ...sigil, tokenPrefix: rotated.tokenPrefix },
+        });
+        toaster.success(tr("sigils.toast.rotated"));
+      },
+    },
+    [sigilApi, project, instance, instances, dialog, toaster, tr],
+  );
 
-  const remove = async () => {
-    if (!sigil) return;
-    const confirmed = await dialog.confirm({
-      title: tr("sigils.delete.confirmTitle", { args: [label] }),
-      description: tr("sigils.delete.confirmDescription"),
-      confirmLabel: tr("sigils.delete.confirm"),
-      destructive: true,
-    });
-    if (!confirmed) return;
+  const removeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const sigil = instance?.sigil;
+        if (!project || !instance || !sigil) return;
+        const confirmed = await dialog.confirm({
+          title: tr("sigils.delete.confirmTitle", {
+            args: [`${instance.app}/${instance.env}`],
+          }),
+          description: tr("sigils.delete.confirmDescription"),
+          confirmLabel: tr("sigils.delete.confirm"),
+          destructive: true,
+        });
+        if (!confirmed) return;
 
-    setBusy(true);
-    try {
-      await sigilApi.deleteSigil({
-        params: { projectId: project.id, sigilId: sigil.id },
-      });
-      // ⚠️ The instance survives, with its link cleared. The four unlocked tabs
-      // disappear with the credential, so the tab bar re-renders around a page
-      // that is still there.
-      const { sigil: _removed, sigilId: _link, ...rest } = instance;
-      writeInstance(rest);
-      toaster.success(tr("sigils.toast.deleted"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+        await sigilApi.deleteSigil({
+          params: { projectId: project.id, sigilId: sigil.id },
+        });
+        // ⚠️ The instance survives, with its link cleared. The four unlocked
+        // tabs disappear with the credential, so the tab bar re-renders around
+        // a page that is still there.
+        const { sigil: _removed, sigilId: _link, ...rest } = instance;
+        writeInstance(rest);
+        toaster.success(tr("sigils.toast.deleted"));
+      },
+    },
+    [sigilApi, project, instance, instances, dialog, toaster, tr],
+  );
+
+  // Page-wide: the section's three controls wait while any of them runs.
+  const busy =
+    createAction.loading || rotateAction.loading || removeAction.loading;
+  const create = createAction.run;
+  const rotate = rotateAction.run;
+  const remove = removeAction.run;
+
+  if (!project || !instance) {
+    return null;
+  }
+
+  const collectsFeedback = hasCapability(project, "support");
+
+  const isOwner = can("sigil:manage");
+  const sigil = instance.sigil;
 
   /**
    * Wrapped in a span rather than handed to `render`: a disabled control

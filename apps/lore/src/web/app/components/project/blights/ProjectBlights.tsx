@@ -9,12 +9,13 @@ import {
   useToast,
 } from "@alepha/ui";
 import {
+  type BulkActionContext,
   DataTable,
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -78,6 +79,118 @@ const ProjectBlights = () => {
   const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
+
+  // One `useAction` per triage verb (#E59, #Q2329). A refusal is the server's
+  // sentence, toasted by the root `ActionErrorToaster`; follow-ups (the
+  // refresh, the navigation) run inside the handler, so none follows a
+  // failure.
+  const deleteManyAction = useAction<
+    [selected: BlightResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        if (!project || selected.length === 0) return;
+        const ok = await dialog.confirm({
+          title: tr("blights.deleteSelectedConfirm", {
+            args: [String(selected.length)],
+          }),
+          confirmLabel: tr("blights.action.delete"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await blightApi.deleteBlights({
+          params: { projectId: project.id },
+          body: { ids: selected.map((b) => b.id) },
+        });
+        toaster.success(
+          tr("blights.toast.deletedMany", {
+            args: [String(res.deleted)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [blightApi, project, dialog, toaster, tr],
+  );
+
+  const resolveAction = useAction<
+    [blight: BlightResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (blight, refresh) => {
+        if (!project) return;
+        await blightApi.resolveBlight({
+          params: { projectId: project.id, blightId: blight.id },
+        });
+        toaster.success(tr("blights.toast.resolved"));
+        refresh();
+      },
+    },
+    [blightApi, project, toaster, tr],
+  );
+
+  const forwardAction = useAction<
+    [blight: BlightResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (blight, refresh) => {
+        if (!project) return;
+        const res = await blightApi.forwardBlightToQuest({
+          params: { projectId: project.id, blightId: blight.id },
+        });
+        toaster.success(
+          tr("blights.toast.forwarded", {
+            args: [formatReference("quest", res.questShortId)],
+          }),
+        );
+        refresh();
+        void router.push("projectQuest", {
+          params: {
+            projectSlug: project.slug,
+            shortId: String(res.questShortId),
+          },
+        });
+      },
+    },
+    [blightApi, project, router, toaster, tr],
+  );
+
+  const deleteAction = useAction<
+    [blight: BlightResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (blight, refresh) => {
+        if (!project) return;
+        const ok = await dialog.confirm({
+          title: tr("blights.deleteConfirm"),
+          confirmLabel: tr("blights.action.delete"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await blightApi.deleteBlight({
+          params: { projectId: project.id, blightId: blight.id },
+        });
+        toaster.success(tr("blights.toast.deleted"));
+        refresh();
+      },
+    },
+    [blightApi, project, dialog, toaster, tr],
+  );
+
+  // Page-wide: every triage control waits while any verb runs, since `run()`
+  // drops a call made while its own is in flight.
+  const busy =
+    deleteManyAction.loading ||
+    resolveAction.loading ||
+    forwardAction.loading ||
+    deleteAction.loading;
 
   const renderStatus = (status: string) => {
     if (status === "resolved") {
@@ -251,35 +364,12 @@ const ProjectBlights = () => {
                   icon: Trash2,
                   label: tr("blights.action.deleteSelected"),
                   destructive: true,
-                  onClick: async (selected, { refresh, clearSelection }) => {
-                    if (!project || selected.length === 0) return;
-                    const ok = await dialog.confirm({
-                      title: tr("blights.deleteSelectedConfirm", {
-                        args: [String(selected.length)],
-                      }) as string,
-                      confirmLabel: tr("blights.action.delete"),
-                      cancelLabel: tr("common.cancel"),
-                      destructive: true,
-                    });
-                    if (!ok) return;
-                    try {
-                      const res = await blightApi.deleteBlights({
-                        params: { projectId: project.id },
-                        body: { ids: selected.map((b) => b.id) },
-                      });
-                      toaster.success(
-                        tr("blights.toast.deletedMany", {
-                          args: [String(res.deleted)],
-                        }),
-                      );
-                      clearSelection();
-                      refresh();
-                    } catch (error) {
-                      toaster.error(
-                        error instanceof Error ? error.message : String(error),
-                      );
-                    }
-                  },
+                  // Hidden while a triage verb runs: the bulk bar has no
+                  // disabled state, and a second click would be dropped by
+                  // `run()` without a word.
+                  visible: () => !busy,
+                  onClick: (selected, ctx) =>
+                    void deleteManyAction.run(selected, ctx),
                 },
               ]
         }
@@ -351,64 +441,20 @@ const ProjectBlights = () => {
                   {
                     icon: CheckCircle2,
                     label: tr("blights.action.resolve"),
-                    onClick: async (
+                    disabled: () => busy,
+                    onClick: (
                       blight: BlightResource,
                       { refresh }: { refresh: () => void },
-                    ) => {
-                      if (!project) return;
-                      try {
-                        await blightApi.resolveBlight({
-                          params: {
-                            projectId: project.id,
-                            blightId: blight.id,
-                          },
-                        });
-                        toaster.success(tr("blights.toast.resolved"));
-                        refresh();
-                      } catch (error) {
-                        toaster.error(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                        );
-                      }
-                    },
+                    ) => void resolveAction.run(blight, refresh),
                   },
                   {
                     icon: Send,
                     label: tr("blights.action.forward"),
-                    onClick: async (
+                    disabled: () => busy,
+                    onClick: (
                       blight: BlightResource,
                       { refresh }: { refresh: () => void },
-                    ) => {
-                      if (!project) return;
-                      try {
-                        const res = await blightApi.forwardBlightToQuest({
-                          params: {
-                            projectId: project.id,
-                            blightId: blight.id,
-                          },
-                        });
-                        toaster.success(
-                          tr("blights.toast.forwarded", {
-                            args: [formatReference("quest", res.questShortId)],
-                          }),
-                        );
-                        refresh();
-                        void router.push("projectQuest", {
-                          params: {
-                            projectSlug: project.slug,
-                            shortId: String(res.questShortId),
-                          },
-                        });
-                      } catch (error) {
-                        toaster.error(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                        );
-                      }
-                    },
+                    ) => void forwardAction.run(blight, refresh),
                   },
                 ]),
             ...(!canTriage
@@ -418,35 +464,11 @@ const ProjectBlights = () => {
                     icon: Trash2,
                     label: tr("blights.action.delete"),
                     destructive: true,
-                    onClick: async (
+                    disabled: () => busy,
+                    onClick: (
                       blight: BlightResource,
                       { refresh }: { refresh: () => void },
-                    ) => {
-                      if (!project) return;
-                      const ok = await dialog.confirm({
-                        title: tr("blights.deleteConfirm"),
-                        confirmLabel: tr("blights.action.delete"),
-                        cancelLabel: tr("common.cancel"),
-                        destructive: true,
-                      });
-                      if (!ok) return;
-                      try {
-                        await blightApi.deleteBlight({
-                          params: {
-                            projectId: project.id,
-                            blightId: blight.id,
-                          },
-                        });
-                        toaster.success(tr("blights.toast.deleted"));
-                        refresh();
-                      } catch (error) {
-                        toaster.error(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                        );
-                      }
-                    },
+                    ) => void deleteAction.run(blight, refresh),
                   },
                 ]),
           ];

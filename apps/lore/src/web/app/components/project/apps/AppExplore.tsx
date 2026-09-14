@@ -33,6 +33,12 @@ export const AppExplore = () => {
 
   // Memoised on the two ids: the transport is an effect dependency inside the
   // panel, so a fresh object each render would re-fire every query forever.
+  //
+  // ⚠️ Plain calls, not `useAction` or `useQuery`, on purpose (#E59, #Q2329).
+  // `AdminAnalytics` awaits these two and reads their answers
+  // (`AdminAnalytics.tsx`, `useAnalyticsQuery.ts`), so they must keep
+  // resolving the data and rejecting on failure; a `run()` resolves
+  // `undefined` on failure and the panel would read that as an empty answer.
   const transport = useMemo<AnalyticsTransport | undefined>(() => {
     if (projectId === undefined || sigilId === undefined) {
       return undefined;

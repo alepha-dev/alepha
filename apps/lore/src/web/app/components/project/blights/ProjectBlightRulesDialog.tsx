@@ -8,10 +8,10 @@ import {
   Input,
   useToast,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { BlightController } from "@/api/controllers/BlightController.ts";
 import type { BlightRuleResource } from "@/api/schemas/blightRuleResourceSchema.ts";
@@ -39,24 +39,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
   const canManage = blightApi.createBlightRule.can();
   const toaster = useToast();
 
-  const [rules, setRules] = useState<BlightRuleResource[]>([]);
   const [pattern, setPattern] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await blightApi.listBlightRules({
-        params: { projectId: props.projectId },
-      });
-      setRules(res.items);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Clear the input on the closed → open transition. During render, so the
   // dialog never shows the previous session's pattern.
@@ -68,46 +51,55 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
     }
   }
 
-  // Reload the rule list every time the dialog opens.
-  useEffect(() => {
-    if (!props.open) return;
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because the loader flips
-    // `loading` before its first await.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void load();
-  }, [props.open, props.projectId]);
+  // Re-read every time the dialog opens: `enabled` follows `open`, and with no
+  // `staleTime` a cached list never skips the read (#E59, #Q2329). Keyed, so
+  // the two writes below refresh it through `invalidates`. A failed read is
+  // toasted by the root `ActionErrorToaster`.
+  const rulesQuery = useQuery(
+    {
+      key: ["blight-rules", props.projectId],
+      enabled: props.open,
+      keepPreviousData: true,
+      handler: () =>
+        blightApi.listBlightRules({ params: { projectId: props.projectId } }),
+    },
+    [blightApi, props.projectId],
+  );
+  const rules = rulesQuery.data?.items ?? [];
+  const loading = rulesQuery.loading && !rulesQuery.data;
 
-  const add = async () => {
-    const value = pattern.trim();
-    if (!value) return;
-    setSaving(true);
-    try {
-      const created = await blightApi.createBlightRule({
-        params: { projectId: props.projectId },
-        body: { pattern: value },
-      });
-      setRules((prev) => [created, ...prev]);
-      setPattern("");
-      toaster.success(tr("blights.rules.toast.added"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const addAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const value = pattern.trim();
+        if (!value) return;
+        await blightApi.createBlightRule({
+          params: { projectId: props.projectId },
+          body: { pattern: value },
+        });
+        setPattern("");
+        toaster.success(tr("blights.rules.toast.added"));
+      },
+      invalidates: [["blight-rules", props.projectId]],
+    },
+    [blightApi, pattern, props.projectId, toaster, tr],
+  );
 
-  const remove = async (rule: BlightRuleResource) => {
-    try {
-      await blightApi.deleteBlightRule({
-        params: { projectId: props.projectId, ruleId: rule.id },
-      });
-      setRules((prev) => prev.filter((r) => r.id !== rule.id));
-      toaster.success(tr("blights.rules.toast.removed"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const removeAction = useAction<[rule: BlightRuleResource], void>(
+    {
+      handler: async (rule) => {
+        await blightApi.deleteBlightRule({
+          params: { projectId: props.projectId, ruleId: rule.id },
+        });
+        toaster.success(tr("blights.rules.toast.removed"));
+      },
+      invalidates: [["blight-rules", props.projectId]],
+    },
+    [blightApi, props.projectId, toaster, tr],
+  );
+
+  // Page-wide: both writes wait while either runs.
+  const saving = addAction.loading || removeAction.loading;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -123,7 +115,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
           className="flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            void add();
+            void addAction.run();
           }}
         >
           <Input
@@ -163,8 +155,8 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
                   variant="ghost"
                   size="icon"
                   className="text-destructive shrink-0"
-                  disabled={!canManage}
-                  onClick={() => void remove(rule)}
+                  disabled={saving || !canManage}
+                  onClick={() => void removeAction.run(rule)}
                   aria-label={tr("blights.rules.remove")}
                 >
                   <Trash2 className="size-4" />
