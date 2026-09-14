@@ -175,9 +175,6 @@ describe("AlephaTable (filters seeded from the query)", () => {
   it("outranks the filter the reader stored last time", async () => {
     // A link that lost to a filter set last week would be a link that does
     // nothing. Same precedence `seedValues` already has.
-    //
-    // ⚠️ The one case still written against the legacy `filters.schema`, so
-    // that path keeps a spec until #Q2321 deletes both.
     window.localStorage.setItem(
       "tbl.filters",
       JSON.stringify({ status: ["done"] }),
@@ -186,16 +183,12 @@ describe("AlephaTable (filters seeded from the query)", () => {
 
     await mount(
       "/list?status=new",
-      <AlephaTable<Row>
+      <AlephaTable<Row, typeof filterFields>
         columns={columns}
         persistenceKey="tbl"
         filters={{
-          schema: z.object({
-            search: z.text().optional(),
-            status: z.array(z.enum(["new", "triaged", "done"])).optional(),
-          }),
+          fields: filterFields,
           fromQuery: true,
-          render: () => null,
         }}
         fetch={async (params) => {
           seen.push(params.filters);

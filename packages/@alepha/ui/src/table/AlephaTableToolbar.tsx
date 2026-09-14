@@ -99,12 +99,12 @@ export const AlephaTableToolbar = <T,>(props: AlephaTableToolbarProps<T>) => {
   /**
    * The filter controls, in either place. With `render`, the caller draws
    * them and the bar is not mounted; without it, the table draws the bar from
-   * `fields`. A legacy `schema` with no `render` draws nothing.
+   * `fields`.
    */
   const filterControls = (variant: "bar" | "dialog") => {
     if (!props.filters || !form) return null;
     if (props.filters.render) return props.filters.render(form);
-    if (!props.filters.fields || !props.filterDefinition) return null;
+    if (!props.filterDefinition) return null;
     return (
       <AlephaTableFilterBar
         form={form}

@@ -155,21 +155,25 @@ describe("AlephaTable filter fields", () => {
       expect(true).toBe(true);
     });
 
-    it("keeps a table without fields untyped, as before", () => {
-      const probe = () => (
+    it("has no hand-written schema any more, and a table without filters needs no type", () => {
+      const probes = () => [
         <AlephaTable<Row>
+          key="none"
           columns={columns}
+          fetch={async () => pageOf([])}
+        />,
+        <AlephaTable<Row, typeof filterFields>
+          key="retired"
+          columns={columns}
+          data={[]}
           filters={{
+            fields: filterFields,
+            // @ts-expect-error the retired `filters.schema`: the table builds the schema from `fields`
             schema: z.object({ search: z.string().optional() }),
-            initialValues: { search: "auth" },
           }}
-          fetch={async ({ filters }) => {
-            void filters?.anything;
-            return pageOf([]);
-          }}
-        />
-      );
-      void probe;
+        />,
+      ];
+      void probes;
       expect(true).toBe(true);
     });
   });

@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
@@ -13,8 +7,10 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AlephaTable } from "../AlephaTable.tsx";
-import { AlephaTableFilterBar } from "../AlephaTableFilterBar.tsx";
-import type { AlephaTableFilterFields } from "../alephaTableTypes.ts";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableFilterValues,
+} from "../alephaTableTypes.ts";
 
 interface Row {
   id: number;
@@ -25,22 +21,29 @@ const columns = {
   title: { label: "Title", cell: (r: Row) => r.title },
 };
 
-const rows: Row[] = [{ id: 1, title: "Alpha" }];
-
 const filterFields = {
   search: { preset: "search" },
-  status: { schema: z.enum(["open", "closed"]), operators: "is" },
-  owner: { schema: z.string() },
+  status: {
+    schema: z.enum(["open", "closed"]),
+    label: "Status",
+    operators: "is",
+    items: [
+      { value: "open", label: "Open" },
+      { value: "closed", label: "Closed" },
+    ],
+  },
+  owner: { schema: z.string(), label: "Owner" },
 } satisfies AlephaTableFilterFields;
 
+type Filters = AlephaTableFilterValues<typeof filterFields>;
+
 /**
- * `AlephaTableFilterBar`, through `AlephaTable`: the three behaviours that
- * are state rather than markup, and so the three a refactor can break without
- * a type error.
+ * The table's filter bar: the three behaviours that are state rather than
+ * markup, and so the three a refactor can break without a type error.
  *
- * - A filter holding a value is on the bar however it got that value. The
- *   shown list is the bar's own state and starts empty on every mount, while
- *   the values come back from persistence, a link or a seed; keyed on the
+ * - A filter holding a value is on the bar however it got that value. Which
+ *   filters are shown starts from the declaration on every mount, while the
+ *   values come back from persistence, a link or a seed; keyed on the shown
  *   state alone, the table stayed filtered behind an empty bar.
  * - The button is staged: it clears a set filter, and removes an empty one.
  * - An operator goes back to its default when its value empties by any
@@ -57,57 +60,46 @@ describe("AlephaTableFilterBar", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
+    window.localStorage.clear();
   });
 
   /**
-   * Mounts a table whose bar has a Status list (with is / is not) and an
-   * Owner text filter, seeded with `seed`. Returns the form the bar was
-   * handed, so a spec can empty a value the way the list itself would.
+   * Mounts a table whose bar has the search box, a Status list (with is / is
+   * not) and an Owner text filter, both optional, seeded with `seed`. Returns
+   * the last filters the table fetched with, so a spec can read what the form
+   * holds after an interaction.
    */
-  const mount = async (seed?: {
-    status?: "open" | "closed";
-    statusOp?: "is" | "not";
-  }) => {
+  const mount = async (seed?: Filters) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     await alepha.start();
-    const handle: {
-      form?: { currentValues?: Record<string, any>; input: unknown };
-    } = {};
+    const seen: Array<Filters | undefined> = [];
     render(
       <AlephaContext.Provider value={alepha}>
         <AlephaTable<Row, typeof filterFields>
-          data={rows}
           columns={columns}
-          filters={{
-            fields: filterFields,
-            seedValues: seed,
-            render: (form) => {
-              handle.form = form;
-              return (
-                <AlephaTableFilterBar
-                  form={form}
-                  search={{}}
-                  fields={[
-                    {
-                      key: "status",
-                      label: "Status",
-                      operators: "is",
-                      items: [
-                        { value: "open", label: "Open" },
-                        { value: "closed", label: "Closed" },
-                      ],
-                    },
-                    { key: "owner", label: "Owner" },
-                  ]}
-                />
-              );
-            },
+          filters={{ fields: filterFields, seedValues: seed }}
+          fetch={async ({ filters }) => {
+            seen.push({ ...filters });
+            return {
+              content: [{ id: 1, title: "Alpha" }],
+              page: {
+                number: 0,
+                size: 20,
+                offset: 0,
+                numberOfElements: 1,
+                totalElements: 1,
+                totalPages: 1,
+                isEmpty: false,
+                isFirst: true,
+                isLast: true,
+              },
+            };
           }}
         />
       </AlephaContext.Provider>,
     );
     await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
-    return handle;
+    return { last: () => seen.at(-1) };
   };
 
   const slot = (key: string) =>
@@ -134,24 +126,22 @@ describe("AlephaTableFilterBar", () => {
   });
 
   it("shows a filter holding only an operator, and keeps the operator", async () => {
-    const handle = await mount({ statusOp: "not" });
+    const { last } = await mount({ statusOp: "not" });
 
     await waitFor(() => expect(slot("status")).toBeTruthy());
     // Restored on mount is not "emptied": nothing held a value before.
-    expect(handle.form?.currentValues?.statusOp).toBe("not");
+    expect(last()?.statusOp).toBe("not");
   });
 
   it("clears a set filter first, and removes it on the second press", async () => {
-    const handle = await mount({ status: "open" });
+    const { last } = await mount({ status: "open" });
     await waitFor(() => expect(slot("status")).toBeTruthy());
 
     fireEvent.click(
       screen.getByRole("button", { name: "Clear value: Status" }),
     );
 
-    await waitFor(() =>
-      expect(handle.form?.currentValues?.status).toBeUndefined(),
-    );
+    await waitFor(() => expect(last()?.status).toBeUndefined());
     // Still on the bar, now offering the second act.
     expect(slot("status")).toBeTruthy();
 
@@ -163,23 +153,20 @@ describe("AlephaTableFilterBar", () => {
   });
 
   it("resets the operator when the value empties without the button", async () => {
-    const handle = await mount({ status: "open", statusOp: "not" });
+    const { last } = await mount({ status: "open", statusOp: "not" });
     await waitFor(() => expect(slot("status")).toBeTruthy());
 
-    // What unticking the last value inside the list does: the value goes,
-    // and nothing else is told.
-    act(() => {
-      (
-        handle.form!.input as unknown as Record<
-          string,
-          { set: (value: unknown) => void }
-        >
-      ).status.set(undefined);
-    });
-
-    await waitFor(() =>
-      expect(handle.form?.currentValues?.statusOp).toBeUndefined(),
+    // A route that empties the value and tells nothing else: the select's own
+    // cross, which the bar's box hides in a browser but which is still in the
+    // markup, and still what a keyboard or an unticked option amounts to.
+    const ownClear = slot("status")!.querySelector<HTMLElement>(
+      '[data-slot="combobox-clear"], [data-slot="control-clear"]',
     );
+    expect(ownClear).toBeTruthy();
+    fireEvent.click(ownClear!);
+
+    await waitFor(() => expect(last()?.statusOp).toBeUndefined());
+    expect(last()?.status).toBeUndefined();
     // Emptied, not removed: the reader is still looking at it.
     expect(slot("status")).toBeTruthy();
   });

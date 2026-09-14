@@ -280,8 +280,9 @@ export interface AlephaTableEmptyState {
  */
 export interface AlephaTablePersistedFacets {
   /**
-   * The filter form's values. Off means the table opens unfiltered every
-   * time, whatever the reader last typed.
+   * The filter form's values, and which filters are on the bar. Off means the
+   * table opens unfiltered, on the bar its fields declare, every time,
+   * whatever the reader last typed or added.
    */
   filters?: boolean;
   /**
@@ -500,13 +501,52 @@ export type AlephaTableFilterSchema<F> = string extends keyof F
     >;
 
 /**
- * High-level filter slot. AlephaTable creates the `useForm` internally,
- * wraps `render`'s output in a `<form>` element, persists values under
- * `persistenceKey` when set, and refetches on submit (and on every
- * change, debounced, by default).
+ * A table's filters: the fields, and how they are seeded.
  *
- * The render function receives the typed form so callers wire inputs
- * with `form.input.<field>` exactly like a hand-rolled `useForm`.
+ * The table builds its filter form from the fields, draws them on its filter
+ * bar (in the toolbar, and in a dialog on a phone), persists the values under
+ * `persistenceKey` when set, and refetches on every change, debounced.
+ *
+ * Declare the fields as a `const` in the component body, so `tr()` and atoms
+ * work, and pass its type beside the row's: that is what types `fetch`'s
+ * filters, the `data` predicate, `initialValues`, `seedValues` and
+ * `fromQuery`.
+ *
+ * ```tsx
+ * const filterFields = {
+ *   search: { preset: "search" },
+ *   status: {
+ *     schema: z.array(questStatusSchema),
+ *     label: "Status",
+ *     icon: CircleDot,
+ *     operators: "is", // the table adds `statusOp`
+ *     optionLabel: (status: QuestStatus) => statusLabel(status),
+ *   },
+ *   area: {
+ *     schema: z.array(z.string()),
+ *     label: "Area",
+ *     items: areaItems, // live, from an atom
+ *     hidden: areaItems.length === 0,
+ *   },
+ * } satisfies AlephaTableFilterFields;
+ *
+ * <AlephaTable<Quest, typeof filterFields>
+ *   filters={{ fields: filterFields, fromQuery: true }}
+ *   fetch={({ filters }) => api.list({ query: filters })}
+ * />
+ * ```
+ *
+ * **Where a filter starts is its `mode`.** `"optional"`, the default, is off
+ * the bar until the reader adds it from the funnel-plus menu. `"default"` is
+ * on the bar from the start, empty, and removable. `"locked"` is always on the
+ * bar and never removable; in the Alepha ecosystem only the search box is,
+ * through `preset: "search"`. A filter holding a value is on the bar whatever
+ * its mode, and so is a `hidden` one.
+ *
+ * **Which filters are on the bar is remembered** under `persistenceKey`,
+ * behind the `filters` facet, as the optional filters the reader added and
+ * the default ones they removed. Reset filters empties every value and returns
+ * the bar to the modes.
  */
 export interface AlephaTableFilters<
   F extends AlephaTableFilterFields = AlephaTableNoFilterFields,
@@ -521,12 +561,7 @@ export interface AlephaTableFilters<
    * warned about in development, because the change would otherwise do
    * nothing.
    */
-  fields?: F;
-  /**
-   * Legacy: the filter form's schema, written by hand. Ignored when `fields`
-   * is set.
-   */
-  schema?: ZObject;
+  fields: F;
   initialValues?: Partial<AlephaTableFilterValues<F>>;
   /**
    * Filter values that outrank the persisted ones on mount.
@@ -579,8 +614,13 @@ export interface AlephaTableFilters<
    */
   fromQuery?: boolean | readonly (keyof AlephaTableFilterValues<F> & string)[];
   /**
-   * Draw the filter controls yourself, from the table's form. Optional: a
-   * table given `fields` and no `render` has the kit draw them.
+   * Draw the filter controls yourself, from the table's form typed from
+   * `fields`, instead of the table's filter bar. The escape hatch, for a
+   * control the bar cannot draw.
+   *
+   * With `render`, only each field's `schema` and `preset` are read; the
+   * properties that describe the bar (`label`, `icon`, `items`, `mode` and the
+   * rest) are ignored.
    */
   render?: (form: FormModel<AlephaTableFilterSchema<F>>) => ReactNode;
 }

@@ -388,6 +388,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - **Never write code outside classes** — no standalone functions or constants in service files. Everything is a class method so it stays substitutable via DI for testing.
 - **No `_` prefix on class members** — use descriptive names.
 - **One schema per file** — never declare multiple schemas in one file.
+  - **The one exemption is a table filter's `schema`**, written inline in the `filters.fields` record an `AlephaTable` declares in its component body (`status: { schema: z.array(questStatusSchema), ... }`). Two conditions hold it in place. A schema that names a domain type is imported from its own file rather than redeclared (`questStatusSchema`, never a hand-written copy of its values). And only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel. `alepha/api/keys` exports controllers and entities, and `@alepha/commerce`'s `entities/orders.ts` imports `alepha/orm` at runtime, which is why `orderStatusEnum` lives in `src/schemas/orderStatusSchema.ts`. Enforced by review; `check:conventions` does not check it.
 
 ### Typing traps
 

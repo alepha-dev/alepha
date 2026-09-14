@@ -3,13 +3,11 @@ import type { FormModel } from "alepha/react/form";
 import { useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Search } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { FilterSlot } from "../core/FilterSlot.tsx";
-import type { ControlProps } from "../form/Control.tsx";
 import { Control } from "../form/Control.tsx";
 import type { SelectOption } from "../form/ControlSelect.tsx";
-import type { IconComponent } from "../form/iconHint.tsx";
 import type { AlephaTableFilterAddType } from "./AlephaTableFilterAdd.tsx";
 import { AlephaTableFilterAdd } from "./AlephaTableFilterAdd.tsx";
 import { AlephaTableFilterControl } from "./AlephaTableFilterControl.tsx";
@@ -32,36 +30,25 @@ export interface AlephaTableFilterBarProps {
   form: FormModel<ZObject>;
 
   /**
-   * The search box: always on the bar, never removable, and cleared by its
-   * own in-field cross. Omit for a bar without one.
-   *
-   * For a page that still mounts the bar from `filters.render`. A table given
-   * `filters.fields` writes its search box as `preset: "search"` instead.
-   */
-  search?: AlephaTableFilterBarSearch;
-
-  /**
    * Every filter, in declaration order: the order the bar draws them in and
    * the add menu lists them in.
    */
   fields: AlephaTableFilterBarField[];
 
   /**
-   * Which filters are on the bar, when the caller owns that state. The table
-   * does, because three things write it: this bar, Reset filters and
-   * persistence. Absent, the bar keeps it itself, starting from the
-   * `default` fields.
+   * Which filters are on the bar. The table's state, not the bar's, because
+   * three things write it: this bar, Reset filters and persistence.
    *
    * A locked field is drawn whether or not it is in here.
    */
-  shown?: readonly string[];
+  shown: readonly string[];
 
   /**
    * The shown filters changed. `act` is true for the reader's own add or
    * remove, and false when a filter joined the bar because it holds a value:
    * that is not the reader choosing anything, and must not be stored.
    */
-  onShownChange?: (shown: string[], act: boolean) => void;
+  onShownChange: (shown: string[], act: boolean) => void;
 
   /**
    * `"dialog"` draws every filter, each like a locked field, and no add menu:
@@ -98,8 +85,8 @@ export interface AlephaTableFilterBarProps {
  * all. See `AlephaTableFilterOperator` for why it is one switch rather than an
  * EQUAL toggle beside an OR/AND one.
  *
- * Internal to the table from #E58 on: a table given `fields` and no
- * `filters.render` mounts it, in the toolbar and in the phone dialog.
+ * Internal to the table: a table given `fields` and no `filters.render`
+ * mounts it, in the toolbar and in the phone dialog.
  *
  * Built and settled on the `apps/ui` showcase (`/blocks/table`) in #Q2308.
  */
@@ -109,13 +96,7 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
   const dialog = props.variant === "dialog";
   const modeOf = (field: AlephaTableFilterBarField): AlephaTableFilterMode =>
     field.mode ?? (field.preset === "search" ? "locked" : "optional");
-  const [ownShown, setOwnShown] = useState<string[]>(() =>
-    props.fields
-      .filter((field) => modeOf(field) === "default")
-      .map((field) => field.key),
-  );
-  const controlled = props.shown !== undefined;
-  const shown = props.shown ?? ownShown;
+  const shown = props.shown;
   const root = useRef<HTMLDivElement>(null);
   // The filter to open once React has put it on screen. A REF, not state: the
   // effect below both reads and clears it, and clearing it with `setState`
@@ -128,11 +109,6 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
     string,
     { set: (value: unknown) => void } | undefined
   >;
-
-  const setShown = (next: string[], act: boolean) => {
-    if (!controlled) setOwnShown(next);
-    props.onShownChange?.(next, act);
-  };
 
   const isSet = (key: string): boolean => {
     const value = values[key];
@@ -331,20 +307,14 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
         )
         .map((field) => field.key);
 
-  // Our own state is set during render, which React supports for state
-  // derived from props: it re-renders before committing, with no frame of the
-  // bar without the filter. The guard stops it looping - it only fires while
-  // something is missing, and the update adds exactly that.
-  if (!controlled && unshown.length > 0) {
-    setOwnShown([...shown, ...unshown]);
-  }
-
   // The table's state cannot be set from this component's render, so it is
   // set in a LAYOUT effect: React flushes that update synchronously, before
-  // the browser paints, so no frame shows the bar without the filter either.
+  // the browser paints, so no frame shows the bar without the filter. The
+  // guard stops it looping - it only fires while something is missing, and
+  // the update adds exactly that.
   useLayoutEffect(() => {
-    if (controlled && unshown.length > 0) {
-      props.onShownChange?.([...shown, ...unshown], false);
+    if (unshown.length > 0) {
+      props.onShownChange([...shown, ...unshown], false);
     }
   });
 
@@ -363,33 +333,10 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
         ...props.fields.filter((field) => !isLocked(field)),
       ];
 
-  const searchKey = props.search?.key ?? "search";
-  const searchPlaceholder =
-    props.search?.placeholder ??
-    tr("alephaTable.search", { default: "Search" });
-
   return (
     // `contents`, so the slots are items of the table's own wrapping row (and
     // of the phone dialog's grid) exactly as a caller's bare fragment is.
     <div ref={root} className="contents">
-      {props.search && (
-        <FilterSlot>
-          {/*
-            Given neither `onClear` nor `onRemove`: the container draws no
-            button, and the input keeps its own classic cross.
-          */}
-          <AlephaTableFilterControl label={searchPlaceholder}>
-            <Control
-              {...props.search.control}
-              input={inputs[searchKey] as never}
-              label=""
-              icon={props.search.icon ?? Search}
-              placeholder={searchPlaceholder}
-            />
-          </AlephaTableFilterControl>
-        </FilterSlot>
-      )}
-
       {ordered
         .filter((field) => drawn(field))
         .map((field) => {
@@ -414,7 +361,7 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
                     removable
                       ? () => {
                           clearField(field);
-                          setShown(
+                          props.onShownChange(
                             shown.filter((key) => key !== field.key),
                             true,
                           );
@@ -480,29 +427,13 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
             }))}
           onAdd={(key) => {
             pendingOpen.current = key;
-            setShown([...shown, key], true);
+            props.onShownChange([...shown, key], true);
           }}
         />
       )}
     </div>
   );
 };
-
-export interface AlephaTableFilterBarSearch {
-  /**
-   * The form field. Defaults to `search`.
-   */
-  key?: string;
-  /**
-   * Defaults to the kit's "Search".
-   */
-  placeholder?: string;
-  icon?: IconComponent;
-  /**
-   * Anything else `Control` takes, such as `inputProps` for a test id.
-   */
-  control?: Omit<ControlProps, "input" | "label">;
-}
 
 /**
  * One filter of the bar: a field of `filters.fields` with its key, as the

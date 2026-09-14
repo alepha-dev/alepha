@@ -131,14 +131,15 @@ export interface AlephaTableBaseProps<
    */
   refreshSignal?: number | string;
   /**
-   * High-level filter form. AlephaTable owns the `useForm`, renders the
-   * inputs inside a `<form>` in the toolbar, and refetches on
-   * submit/change.
+   * The table's filters, as a record of fields. AlephaTable owns the form,
+   * draws the fields on its filter bar in the toolbar (behind a dialog on a
+   * phone), and refetches as they change. See {@link AlephaTableFilters} for
+   * the call-site form, the modes and what is remembered.
    */
   filters?: AlephaTableFilters<F>;
   /**
-   * When set, filter values, column visibility, and sort state are
-   * persisted to `localStorage` under this key. Pick a key that's
+   * When set, filter values, the filters on the bar, column visibility, and
+   * sort state are persisted to `localStorage` under this key. Pick a key that's
    * unique per page and per scope (e.g. `"admin.users"`,
    * `\`lor.board.${campaignId}\``).
    *

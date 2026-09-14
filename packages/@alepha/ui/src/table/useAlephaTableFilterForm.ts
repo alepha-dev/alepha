@@ -46,7 +46,7 @@ export interface AlephaTableFilterDefinition {
    */
   keys: string[];
   /**
-   * The mode of each field, keyed by field. Empty for a legacy `schema`.
+   * The mode of each field, keyed by field.
    */
   modes: Record<string, AlephaTableFilterMode>;
 }
@@ -68,25 +68,20 @@ export const useAlephaTableFilterForm = <T>(
    *
    * `useForm` captures its schema at mount and persistence and `fromQuery`
    * are read at mount, so a key set that moved later would be a filter the
-   * form cannot hold. Built from `fields` when given, and taken as written
-   * from the legacy `schema` otherwise.
+   * form cannot hold.
    */
   const definition = useMemo<AlephaTableFilterDefinition | undefined>(() => {
-    const filters = props.filters;
-    if (!filters) return undefined;
-    if (filters.fields) {
-      const modes: Record<string, AlephaTableFilterMode> = {};
-      for (const [key, field] of Object.entries(filters.fields)) {
-        modes[key] = alephaTableFilterMode(field);
-      }
-      return {
-        schema: buildAlephaTableFilterSchema(filters.fields),
-        keys: alephaTableFilterKeys(filters.fields),
-        modes,
-      };
+    const fields = props.filters?.fields;
+    if (!fields) return undefined;
+    const modes: Record<string, AlephaTableFilterMode> = {};
+    for (const [key, field] of Object.entries(fields)) {
+      modes[key] = alephaTableFilterMode(field);
     }
-    const schema = filters.schema ?? EMPTY_FILTERS_SCHEMA;
-    return { schema, keys: Object.keys(z.schema.shape(schema)), modes: {} };
+    return {
+      schema: buildAlephaTableFilterSchema(fields),
+      keys: alephaTableFilterKeys(fields),
+      modes,
+    };
   }, []);
 
   /**
@@ -143,19 +138,17 @@ export const useAlephaTableFilterForm = <T>(
     )?.query;
     if (!query) return undefined;
     let keys: readonly string[] = definition.keys;
-    if (Array.isArray(fromQuery)) {
-      const fields = props.filters?.fields;
-      keys = fields
-        ? fromQuery.flatMap((key) => {
-            const field = fields[key];
-            const operatorKey = field
-              ? alephaTableFilterOperatorKey(key, field)
-              : undefined;
-            return operatorKey && !fromQuery.includes(operatorKey)
-              ? [key, operatorKey]
-              : [key];
-          })
-        : fromQuery;
+    const fields = props.filters?.fields;
+    if (Array.isArray(fromQuery) && fields) {
+      keys = fromQuery.flatMap((key) => {
+        const field = fields[key];
+        const operatorKey = field
+          ? alephaTableFilterOperatorKey(key, field)
+          : undefined;
+        return operatorKey && !fromQuery.includes(operatorKey)
+          ? [key, operatorKey]
+          : [key];
+      });
     }
     return queryToFilters(alepha, definition.schema, query, keys);
   }, []);
