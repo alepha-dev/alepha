@@ -519,6 +519,46 @@ describe("changelog", () => {
       expect(output).toContain("### Spike");
     });
 
+    /**
+     * #Q2292: a subject holding two globs is a valid CommonMark emphasis span,
+     * and oxfmt rewrote `app_instance_*, and sigil_*` into
+     * `app_instance__, and sigil__` on every lint. Escaped, it is a literal on
+     * both sides; a code span is never touched.
+     */
+    test("escapes the emphasis markers of a subject, outside code spans", async () => {
+      const output = await render([
+        "abc12345 feat(lore): MCP grows app_instance_*, and sigil_* keeps working",
+        "def45678 fix(cli): the `**/*.ts` glob and _underscored_ snake_case_name",
+        "0a1b2c3d fix(orm): a C:\\path and a \\* literal",
+      ]);
+
+      expect(output).toContain(
+        "- **lore**: MCP grows app_instance\\_\\*, and sigil\\_\\* keeps working (`abc12345`)",
+      );
+      expect(output).toContain(
+        "- **cli**: the `**/*.ts` glob and \\_underscored\\_ snake_case_name (`def45678`)",
+      );
+      expect(output).toContain(
+        "- **orm**: a C:\\\\path and a \\\\\\* literal (`0a1b2c3d`)",
+      );
+    });
+
+    test("escapes a breaking change's prose the same way", async () => {
+      const output = await render([
+        {
+          line: "def45678 feat(core): rework the store",
+          body: [
+            "Breaking changes",
+            "- store_* keys and cache_* keys moved",
+          ].join("\n"),
+        },
+      ]);
+
+      expect(output).toContain(
+        "- **core**: store\\_\\* keys and cache\\_\\* keys moved (`def45678`)",
+      );
+    });
+
     test("should publish nothing outside the scope allowlist", async () => {
       const output = await render(
         ["abc12345 feat(lore): internal", "def45678 feat(orm): published"],
