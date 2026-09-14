@@ -354,6 +354,33 @@ class AppRouter {
 
 `<NestedView />` renders the matched child page. It supports an optional `errorBoundary` prop.
 
+### When a page remounts
+
+Each page in the matched stack is keyed by its own path, compiled from the params it matched: `/epics/51` and `/epics/50` are two keys, so navigating from one to the other **remounts** the epic page and everything below it. The layouts above it keep their key and their state. This is the Next.js App Router behaviour.
+
+| navigation                              | page below the change | layouts above |
+| --------------------------------------- | --------------------- | ------------- |
+| a param changes (`/epics/51` to `/50`)  | remounted             | kept          |
+| only the query changes (`?tab=history`) | kept, loader re-runs  | kept          |
+| `router.invalidate()`                   | kept, loader re-runs  | kept          |
+
+So a component may seed local state from its props, and a different record always starts fresh:
+
+```tsx
+const Epic = (props: { epic: Epic }) => {
+  // Safe across `/epics/51` to `/epics/50`: the page remounts.
+  const [draft, setDraft] = useState(props.epic.title);
+  // ...
+};
+```
+
+Two consequences to design around:
+
+- **State that must survive a param change lives in the parent layout.** A tree beside a document, a selected tab, a scroll position: put it in the layout that has no param (`/folios`, not `/folios/:id`) and let the child page read it, through a context scoped to that layout or an `$atom`.
+- **`invalidate()` and a query change do not remount.** The loader re-runs and hands the mounted page new props, so a `useState(props.x)` still holds the value it was seeded with. Read the prop directly where it must follow a reload.
+
+A page with a `:param` in its path and no `schema.params` behaves the same way: its identity is compiled from the raw URL segment, so `/users/1` to `/users/2` remounts it and re-runs its loader.
+
 ### Ready-made routers from `@alepha/ui`
 
 Three routers ship whole surfaces you can mount instead of rebuilding:
