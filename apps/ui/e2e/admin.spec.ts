@@ -111,7 +111,7 @@ test.describe("admin pages", () => {
 
     // Add Revoked to the filter and the revoked key appears, without a revoke
     // action of its own.
-    await page.getByRole("combobox").filter({ hasText: "3 selected" }).click();
+    await page.getByRole("combobox").filter({ hasText: "3 values" }).click();
     await page.getByRole("option", { name: "Revoked", exact: true }).click();
     await page.keyboard.press("Escape");
     await expect(table.getByText("Laptop scratch")).toBeVisible();

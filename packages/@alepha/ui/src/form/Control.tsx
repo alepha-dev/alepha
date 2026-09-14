@@ -265,12 +265,18 @@ export interface ControlProps {
    */
   clearLabel?: string;
   /**
-   * Trigger text for a multi-select holding two or more values, e.g.
+   * Trigger text for a multi-select whose selection is too long to name, e.g.
    * `(n) => \`${n} status\``. One selection always shows the value itself, so
-   * this is only ever asked for the collapsed case. Defaults to
-   * `"{n} selected"`.
+   * this is only ever asked for two or more past `maxTriggerLength`. Defaults
+   * to `"{n} values"`.
    */
   countLabel?: (count: number) => string;
+  /**
+   * Forwarded to `ControlSelect`: the longest joined text a multi-select
+   * trigger names its selection with before it collapses to `countLabel`.
+   * Defaults to 20.
+   */
+  maxTriggerLength?: number;
   /**
    * Forwarded to `ControlSelect` — extra className on the trigger.
    * Useful for sizing filter chips inline.
@@ -520,6 +526,7 @@ export const Control = (props: ControlProps) => {
         clearable={merged.clearable}
         clearLabel={merged.clearLabel}
         countLabel={merged.countLabel}
+        maxTriggerLength={merged.maxTriggerLength}
         // Dropped here until now, so a picker that needed to name its own
         // empty state ("Pick an epic…") could not be a `Control` at all.
         placeholder={merged.placeholder}

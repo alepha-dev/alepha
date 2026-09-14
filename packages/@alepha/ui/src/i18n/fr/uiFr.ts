@@ -70,6 +70,7 @@ export const uiFr: Record<string, string> = {
   "dataTable.noMatchDescription": "Essayez d'ajuster ou d'effacer les filtres.",
   "dataTable.addFilter": "Ajouter un filtre",
   "dataTable.filterBy": "Filtrer par",
+  "dataTable.filterName": "$1 :",
   "dataTable.filterType.date": "date",
   "dataTable.filterType.list": "liste",
   "dataTable.filterType.text": "texte",
@@ -131,7 +132,7 @@ export const uiFr: Record<string, string> = {
 
   // Select, combobox and boolean controls.
   "controlSelect.clear": "Effacer la sélection",
-  "controlSelect.count": "$1 sélectionnés",
+  "controlSelect.count": "$1 valeurs",
   "controlSelect.create": "Créer « $1 »",
   "controlSelect.selectAll": "Sélectionner les $1 résultats de « $2 »",
   "controlSelect.loading": "Chargement…",

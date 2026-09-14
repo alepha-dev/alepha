@@ -147,8 +147,6 @@ const ProjectActivityPage = () => {
       })),
       control: {
         clearLabel: tr("activity.filter.allResources"),
-        countLabel: (n: number) =>
-          tr("activity.filter.typeCount", { args: [String(n)] }),
       },
     },
     action: {
@@ -165,8 +163,6 @@ const ProjectActivityPage = () => {
       })),
       control: {
         clearLabel: tr("activity.filter.allActions"),
-        countLabel: (n: number) =>
-          tr("activity.filter.actionCount", { args: [String(n)] }),
       },
     },
     /**

@@ -111,12 +111,19 @@ export interface ControlSelectProps {
    */
   clearLabel?: string;
   /**
-   * Trigger text for a multi-select holding two or more values, e.g.
+   * Trigger text for a multi-select whose selection is too long to name, e.g.
    * `(n) => \`${n} status\``. One selection always shows the value itself, so
-   * this is only ever asked for the collapsed case. Defaults to
-   * `"{n} selected"`.
+   * this is only ever asked for two or more past `maxTriggerLength`. Defaults
+   * to `"{n} values"`.
    */
   countLabel?: (count: number) => string;
+  /**
+   * The longest joined text, in characters, a multi-select trigger names its
+   * selection with ("Draft, Ready") before it collapses to `countLabel`.
+   * Defaults to 20, which suits a filter chip; a full-width form field has
+   * room for more.
+   */
+  maxTriggerLength?: number;
   /**
    * Trigger text when nothing is selected, e.g. "Pick an epic…". Defaults to
    * the `clearLabel` on a `clearable` or multi field (where empty IS a
@@ -183,7 +190,7 @@ export interface ControlSelectProps {
    *
    * The popup is sized from its trigger by default (`--anchor-width`), and it
    * keeps following that width while open. A trigger whose text changes as
-   * the reader picks - a `triggerPrefix` appearing, "2 selected" replacing a
+   * the reader picks - a `triggerPrefix` appearing, "2 values" replacing a
    * name - therefore resizes the popup under their cursor. `w-max` with a
    * floor (`w-max min-w-48`) sizes it from its own content instead.
    */
@@ -377,6 +384,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
         clearable={props.clearable}
         clearLabel={clearLabel}
         countLabel={props.countLabel}
+        maxTriggerLength={props.maxTriggerLength}
         popupHeader={props.popupHeader}
         triggerPrefix={props.triggerPrefix}
         popupClassName={props.popupClassName}

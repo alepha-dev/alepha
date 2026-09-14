@@ -178,13 +178,13 @@ describe("DataTable (a date range on the filter bar)", () => {
     fireEvent.click((await days())[9]!);
 
     await waitFor(() =>
-      expect(trigger()?.textContent?.startsWith("Created ")).toBe(true),
+      expect(trigger()?.textContent?.startsWith("Created: ")).toBe(true),
     );
-    // Muted, in the same run as the range, like "Status Active".
+    // Muted, in the same run as the range, like "Status: Active".
     const prefix = trigger()?.querySelector(
       ".truncate > .text-muted-foreground",
     );
-    expect(prefix?.textContent?.trim()).toBe("Created");
+    expect(prefix?.textContent?.trim()).toBe("Created:");
   });
 
   it("draws no prefix on an empty range, whose placeholder names it", async () => {
@@ -193,7 +193,7 @@ describe("DataTable (a date range on the filter bar)", () => {
     click();
 
     await waitFor(() => expect(trigger()).toBeTruthy());
-    expect(trigger()?.textContent).not.toContain("Created ");
+    expect(trigger()?.textContent).not.toContain("Created:");
   });
 
   it("strips the trigger's own frame inside the bar's box", async () => {

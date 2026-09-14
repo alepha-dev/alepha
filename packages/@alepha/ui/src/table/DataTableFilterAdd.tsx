@@ -12,6 +12,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "../core/DropdownMenu.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 
 export interface DataTableFilterAddProps {
   /**
@@ -71,28 +72,42 @@ export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            // Minimal, and the SAME SIZE as the bar's other icon buttons -
-            // the column picker, the filter menu, the refresh. Ghost rather
-            // than outlined because an outlined 36px button beside a row of
-            // outlined 36px controls read as an empty filter box, which is
-            // the one thing it is not; but the footprint has to match the
-            // other chrome in the bar or it reads as a different class of
-            // control again, just in the other direction. `h-9 w-9` and a
-            // `size-4` icon are exactly what `DataTable` gives its own
-            // toolbar buttons.
-            className="text-muted-foreground hover:text-foreground h-9 w-9 shrink-0 p-0"
-            aria-label={label}
-          />
-        }
-      >
-        <FunnelPlus className="size-4" />
-      </DropdownMenuTrigger>
+      {/*
+        The dropdown trigger AND a tooltip trigger, composed the way
+        `DataTableColumnPicker` does it: without the tooltip this was the one
+        icon-only button in the bar that never said what it does. The
+        `TooltipProvider` is the toolbar's.
+      */}
+      <Tooltip>
+        <DropdownMenuTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  // Minimal, and the SAME SIZE as the bar's other icon
+                  // buttons - the column picker, the filter menu, the
+                  // refresh. Ghost rather than outlined because an outlined
+                  // 36px button beside a row of outlined 36px controls read
+                  // as an empty filter box, which is the one thing it is not;
+                  // but the footprint has to match the other chrome in the
+                  // bar or it reads as a different class of control again,
+                  // just in the other direction. `h-9 w-9` and a `size-4`
+                  // icon are exactly what `DataTable` gives its own toolbar
+                  // buttons.
+                  className="text-muted-foreground hover:text-foreground h-9 w-9 shrink-0 p-0"
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <FunnelPlus className="size-4" />
+        </DropdownMenuTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="start">
         {/*
           A real `DropdownMenuGroup`, not a bare label above the items.
