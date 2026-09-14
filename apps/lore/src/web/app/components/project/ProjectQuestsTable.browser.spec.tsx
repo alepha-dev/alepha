@@ -1,4 +1,5 @@
-import { DialogProvider } from "@alepha/ui";
+import { DialogProvider, Toaster } from "@alepha/ui";
+import { ActionErrorToaster } from "@alepha/ui/shell";
 import {
   fireEvent,
   render,
@@ -72,6 +73,10 @@ class FakeLinkProvider extends LinkProvider {
    * else entirely, so the assertion is on what was sent.
    */
   updates: Array<Record<string, unknown>> = [];
+  /**
+   * How many times `deleteQuest` was asked. It always refuses.
+   */
+  deletes = 0;
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -97,6 +102,10 @@ class FakeLinkProvider extends LinkProvider {
           this.quests.push(quest);
           this.created.push(config.body.title);
           return quest;
+        }),
+        deleteQuest: action(async () => {
+          this.deletes += 1;
+          throw new Error("This quest is in a published release (spec)");
         }),
         updateQuestById: action(
           async (config: {
@@ -242,6 +251,8 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
+          <Toaster visibleToasts={20} />
+          <ActionErrorToaster />
           <ProjectQuestsTable />
         </DialogProvider>
       </AlephaContext.Provider>,
@@ -729,6 +740,42 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
 
       await waitFor(() => expect(links.updates).toHaveLength(1));
       expect(links.updates[0]).toEqual({ releaseId: null });
+    });
+  });
+  /**
+   * A row action runs `useQuestMutations` inside a `useAction` (#E59,
+   * #Q2331). `DataTable` fires row actions without awaiting them, so a
+   * refused delete used to be an unhandled rejection that said nothing; the
+   * root listener now says why, exactly once, and the row stays.
+   */
+  describe("a refused row delete", () => {
+    it("toasts exactly once, and keeps the row", async () => {
+      await mount();
+      const links = alepha!.inject(FakeLinkProvider);
+
+      const row = screen.getByRole("link", { name: /^#Q1 - / }).closest("tr");
+      fireEvent.click(
+        within(row!).getByRole("button", { name: "Open row actions" }),
+      );
+      const remove = await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (item) => item.textContent === "Delete quest",
+        );
+        if (!found) throw new Error("not open yet");
+        return found;
+      });
+      fireEvent.click(remove);
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(
+        within(confirm).getAllByRole("button").at(-1) as HTMLElement,
+      );
+
+      const message = "This quest is in a published release (spec)";
+      await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(screen.getAllByText(message)).toHaveLength(1);
+      expect(links.deletes).toBe(1);
+      expect(screen.getByRole("link", { name: /^#Q1 - / })).toBeTruthy();
     });
   });
 });

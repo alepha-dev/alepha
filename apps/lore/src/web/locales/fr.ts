@@ -239,6 +239,8 @@ export default {
     "Copier la référence markdown",
   "folios.editor.inspector.attachments-total": "$1 fichiers · $2",
   "folios.editor.inspector.attachments-upload-failed": "Échec de l'envoi",
+  "folios.editor.inspector.attachments-busy":
+    "Attendez la fin de l'envoi en cours",
   "folios.editor.inspector.attachments-confirm-delete-title":
     "Supprimer le fichier ?",
   "folios.editor.inspector.attachments-confirm-delete":

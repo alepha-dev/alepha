@@ -1,6 +1,6 @@
-import { useClient, useStore } from "alepha/react";
+import { useClient, useQuery, useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
@@ -29,7 +29,6 @@ import { preloadQuestView } from "../project/quest/LazyQuestView.tsx";
 const ProjectKanbanPage = () => {
   const [project] = useStore(currentProjectAtom);
   const kanbanApi = useClient<KanbanController>();
-  const [quests, setQuests] = useState<QuestResource[] | undefined>(undefined);
 
   // Every card on this board opens `QuestView` behind a chunk boundary.
   // Fetching that chunk while the board is being read is what keeps the
@@ -38,27 +37,34 @@ const ProjectKanbanPage = () => {
     preloadQuestView();
   }, []);
 
-  useEffect(() => {
-    if (!project) {
-      return;
-    }
-    let cancelled = false;
-    kanbanApi
-      .getBoard({ params: { projectId: project.id } })
-      .then((board) => {
-        if (!cancelled) {
-          setQuests(board.quests);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setQuests([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [project?.id]);
+  // The board's first read, a `useQuery` (#E59, #Q2331). Keyless on purpose:
+  // `KanbanBoard` seeds its own state from this once and fetches itself from
+  // then on, so a cached board handed to a remount would be a stale seed.
+  // The answer carries the project it was read for, so a project switch
+  // never seeds one project's board with another's cards.
+  //
+  // A failed read toasts now, and the board still renders, empty, as it did:
+  // its own reload is one gesture away.
+  const boardQuery = useQuery(
+    {
+      enabled: !!project,
+      handler: async () => ({
+        projectId: project?.id,
+        quests: (
+          await kanbanApi.getBoard({
+            params: { projectId: project?.id as number },
+          })
+        ).quests,
+      }),
+    },
+    [kanbanApi, project?.id],
+  );
+  const quests: QuestResource[] | undefined =
+    boardQuery.data?.projectId === project?.id
+      ? boardQuery.data?.quests
+      : boardQuery.error
+        ? NO_QUESTS
+        : undefined;
 
   if (!project || !quests) {
     return null;
@@ -80,3 +86,9 @@ const ProjectKanbanPage = () => {
 };
 
 export default ProjectKanbanPage;
+
+/**
+ * The board a failed first read renders: empty, with its own reload one
+ * gesture away.
+ */
+const NO_QUESTS: QuestResource[] = [];

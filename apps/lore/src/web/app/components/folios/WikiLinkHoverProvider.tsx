@@ -1,5 +1,5 @@
 import { FileImage, formatBytes } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   type RefObject,
@@ -211,7 +211,6 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const [releases] = useStore(currentReleasesAtom);
 
   const [hover, setHover] = useState<HoverState | null>(null);
-  const cache = useRef(new Map<string, Preview>());
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
@@ -392,7 +391,6 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           state={hover}
           projectId={projectId}
           attachmentByUuid={attachmentByUuid}
-          cache={cache.current}
           folioApi={folioApi}
           questApi={questApi}
           epicApi={epicApi}
@@ -478,7 +476,6 @@ interface HoverCardPopoverProps {
   state: HoverState;
   projectId: number;
   attachmentByUuid: Map<string, AttachmentRef>;
-  cache: Map<string, Preview>;
   folioApi: ReturnType<typeof useClient<FolioController>>;
   questApi: ReturnType<typeof useClient<QuestController>>;
   epicApi: ReturnType<typeof useClient<EpicController>>;
@@ -503,7 +500,6 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
     state,
     projectId,
     attachmentByUuid,
-    cache,
     folioApi,
     questApi,
     epicApi,
@@ -512,62 +508,64 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
   } = props;
   const { tr } = useI18n<I18n, "en">();
   const key = targetKey(state.target);
-  const [data, setData] = useState<Preview | null>(
-    () => cache.get(key) ?? null,
-  );
-  const [loading, setLoading] = useState(!cache.has(key));
+  const target = state.target;
 
-  useEffect(() => {
-    if (cache.has(key)) {
-      // Cache-hit branch of the preview fetch. The cache is a module-level Map
-      // mutated by other instances of this hook, so a render-phase read could
-      // return a different answer than the commit that follows it.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setData(cache.get(key) ?? null);
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    setLoading(true);
-    void (async () => {
-      try {
-        if (state.target.kind === "folio") {
+  /**
+   * The four references that need a request, read through one `useQuery`
+   * keyed on the reference (#E59, #Q2331). The five-minute `staleTime` is
+   * `useElementLinks`' own, for the same references: a second hover of the
+   * same link inside it sends nothing, which the hand-kept `Map` this
+   * replaced also did, and which a query without a `staleTime` would not.
+   *
+   * Quiet on failure: the card says the preview is unavailable, which is
+   * the whole of what a reader needs from a hover.
+   */
+  const remote =
+    target.kind === "folio" ||
+    target.kind === "quest" ||
+    target.kind === "epic" ||
+    target.kind === "feedback";
+  const previewQuery = useQuery<Preview | null>(
+    {
+      key: ["wikilink-preview", projectId, key],
+      enabled: remote,
+      staleTime: [5, "minutes"],
+      handler: async () => {
+        if (target.kind === "folio") {
           const folio = (await folioApi.getByShortId({
-            params: { projectId, shortId: state.target.shortId },
+            params: { projectId, shortId: target.shortId },
           })) as Folio;
           // A protected folio's content is its encryption envelope; the
           // preview used to paint the first 600 characters of that JSON.
           const body = folio.protected
             ? ""
             : stripMarkdown(folio.content ?? "");
-          const preview: FolioPreview = {
+          return {
             kind: "folio",
             title: folio.title,
             summary: folio.summary || undefined,
             bodyPreview: body.split("\n").slice(0, 10).join("\n").slice(0, 600),
-          };
-          cache.set(key, preview);
-          if (alive) setData(preview);
-        } else if (state.target.kind === "quest") {
+          } satisfies FolioPreview;
+        }
+        if (target.kind === "quest") {
           const quest = (await questApi.getQuestByShortId({
-            params: { projectId, shortId: state.target.shortId },
+            params: { projectId, shortId: target.shortId },
           })) as QuestResource;
-          const preview: QuestPreview = {
+          return {
             kind: "quest",
             title: quest.title,
             area: quest.area,
             priority: quest.priority,
             status: quest.metadata.status,
             shortId: quest.shortId,
-          };
-          cache.set(key, preview);
-          if (alive) setData(preview);
-        } else if (state.target.kind === "epic") {
+          } satisfies QuestPreview;
+        }
+        if (target.kind === "epic") {
           // `shortId` on an epic target IS its `number` — see `EpicRef`.
           const epic = await epicApi.getEpicByNumber({
-            params: { projectId, number: state.target.shortId },
+            params: { projectId, number: target.shortId },
           });
-          const preview: EpicPreview = {
+          return {
             kind: "epic",
             title: epic.title,
             number: epic.number,
@@ -576,78 +574,60 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
               completed: epic.progress.completed,
               total: epic.progress.total,
             },
-          };
-          cache.set(key, preview);
-          if (alive) setData(preview);
-        } else if (state.target.kind === "feedback") {
+          } satisfies EpicPreview;
+        }
+        if (target.kind === "feedback") {
           const item = await feedbackApi.getFeedbackByShortId({
-            params: { projectId, shortId: state.target.shortId },
+            params: { projectId, shortId: target.shortId },
           });
-          const preview: FeedbackPreview = {
+          return {
             kind: "feedback",
             title: item.title,
             status: item.status,
             shortId: item.shortId,
-          };
-          cache.set(key, preview);
-          if (alive) setData(preview);
-        } else if (state.target.kind === "release") {
-          const tag = state.target.tag;
-          const release = releases.find((r) => r.tag === tag);
-          if (!release) {
-            if (alive) setData(null);
-            return;
-          }
-          const preview: ReleasePreview = {
-            kind: "release",
-            title: release.title,
-            number: release.number,
-            tag: release.tag,
-            released: release.releasedAt != null,
-          };
-          cache.set(key, preview);
-          if (alive) setData(preview);
-        } else if (state.target.kind === "attachment") {
-          const attachment = attachmentByUuid.get(state.target.fileId);
-          if (!attachment) {
-            if (alive) setData(null);
-            return;
-          }
-          const preview: AttachmentPreview = {
-            kind: "attachment",
-            name: attachment.name,
-            size: attachment.size,
-            mime: attachment.mime,
-            fileId: attachment.fileId,
-          };
-          cache.set(key, preview);
-          if (alive) setData(preview);
-        } else {
-          // Broken — nothing to fetch; the popover renders the reason
-          // straight from `state.target.reason` below.
-          if (alive) setData(null);
+          } satisfies FeedbackPreview;
         }
-      } catch {
-        if (alive) setData(null);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [
-    key,
-    state.target,
-    projectId,
-    attachmentByUuid,
-    cache,
-    folioApi,
-    questApi,
-    epicApi,
-    feedbackApi,
-    releases,
-  ]);
+        return null;
+      },
+      onError: () => {},
+    },
+    [projectId, key, folioApi, questApi, epicApi, feedbackApi],
+  );
+
+  /**
+   * The two references answered from what the page already holds: a
+   * release by tag from the layout's atom, an attachment by id from the
+   * folio's own list. A broken one has nothing to show; the popover renders
+   * the reason straight from `state.target.reason` below.
+   */
+  const local = (): Preview | null => {
+    if (target.kind === "release") {
+      const release = releases.find((r) => r.tag === target.tag);
+      if (!release) return null;
+      return {
+        kind: "release",
+        title: release.title,
+        number: release.number,
+        tag: release.tag,
+        released: release.releasedAt != null,
+      } satisfies ReleasePreview;
+    }
+    if (target.kind === "attachment") {
+      const attachment = attachmentByUuid.get(target.fileId);
+      if (!attachment) return null;
+      return {
+        kind: "attachment",
+        name: attachment.name,
+        size: attachment.size,
+        mime: attachment.mime,
+        fileId: attachment.fileId,
+      } satisfies AttachmentPreview;
+    }
+    return null;
+  };
+
+  const data: Preview | null = remote ? (previewQuery.data ?? null) : local();
+  const loading = remote && previewQuery.loading && !previewQuery.data;
 
   // Position: anchor's bounding rect, popover below the link with a
   // small gap. Fixed positioning + viewport math so it stays put on
