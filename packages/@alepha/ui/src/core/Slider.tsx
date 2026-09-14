@@ -2,14 +2,10 @@ import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 
 import { cn } from "./utils.ts";
 
-function Slider({
-  className,
-  defaultValue,
-  value,
-  min = 0,
-  max = 100,
-  ...props
-}: SliderPrimitive.Root.Props) {
+export type SliderProps = SliderPrimitive.Root.Props;
+
+const Slider = (props: SliderProps) => {
+  const { className, defaultValue, value, min = 0, max = 100, ...rest } = props;
   const _values = Array.isArray(value)
     ? value
     : Array.isArray(defaultValue)
@@ -25,7 +21,7 @@ function Slider({
       min={min}
       max={max}
       thumbAlignment="edge"
-      {...props}
+      {...rest}
     >
       <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
         <SliderPrimitive.Track
@@ -47,6 +43,6 @@ function Slider({
       </SliderPrimitive.Control>
     </SliderPrimitive.Root>
   );
-}
+};
 
 export { Slider };

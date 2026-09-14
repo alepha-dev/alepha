@@ -9,4 +9,9 @@
  * @module alepha.ui.calendar
  */
 
-export { Calendar, CalendarDayButton } from "./Calendar.tsx";
+export {
+  Calendar,
+  type CalendarProps,
+  CalendarDayButton,
+  type CalendarDayButtonProps,
+} from "./Calendar.tsx";

@@ -44,7 +44,7 @@ export const usePanelWidth = (): PanelWidthApi => {
       // After the commit, not in a lazy initialiser: a width read during the
       // first render would differ from the one the server rendered, and a
       // hydration mismatch costs more than one extra paint.
-      // oxlint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect -- reads localStorage after the commit, see the comment above
       if (stored) setWidth(clamp(Number(stored)));
     } catch {
       // Private mode, or storage denied. The default is a fine answer.

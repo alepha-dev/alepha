@@ -142,7 +142,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
     // holds, and the entries it keeps were filled in by the upload requests this
     // same effect issues. It is the cache for an external system, not derived
     // state; the updater already no-ops when nothing changed.
-    // oxlint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect -- reconciles a cache for an external system, see the comment above
     setMeta((current) => {
       let changed = false;
       const next = new Map(current);
@@ -471,7 +471,12 @@ export const ControlUpload = (props: ControlUploadProps) => {
   );
 };
 
-const ItemThumb = (props: { url: string; alt: string }) => {
+export interface ItemThumbProps {
+  url: string;
+  alt: string;
+}
+
+const ItemThumb = (props: ItemThumbProps) => {
   const [broken, setBroken] = useState(false);
   if (broken) {
     return (

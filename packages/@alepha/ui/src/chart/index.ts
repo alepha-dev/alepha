@@ -11,9 +11,13 @@
 export {
   type ChartConfig,
   ChartContainer,
+  type ChartContainerProps,
   ChartLegend,
   ChartLegendContent,
+  type ChartLegendContentProps,
   ChartStyle,
+  type ChartStyleProps,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartTooltipContentProps,
 } from "./Chart.tsx";

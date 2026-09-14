@@ -51,7 +51,7 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
 
   useEffect(() => {
     const id = props.executionId;
-    // oxlint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect -- clears the previous execution before fetching the next id's
     setExecution(undefined);
     setMissing(false);
     if (!id) return;

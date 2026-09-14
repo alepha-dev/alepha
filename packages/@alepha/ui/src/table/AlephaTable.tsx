@@ -132,7 +132,7 @@ export const AlephaTable = <T,>(props: AlephaTableProps<T>) => {
         const id = (item as { id?: unknown })?.id;
         // Coercion at a boundary: the value is a form/route/chart primitive
         // whose declared type is wider than what can reach here.
-        // oxlint-disable-next-line typescript/no-base-to-string
+        // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
         return id != null ? String(id) : `page-${page}-row-${index}`;
       }),
     [data, page, props.rowKey],

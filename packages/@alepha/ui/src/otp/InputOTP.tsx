@@ -4,13 +4,12 @@ import * as React from "react";
 
 import { cn } from "../core/utils.ts";
 
-function InputOTP({
-  className,
-  containerClassName,
-  ...props
-}: React.ComponentProps<typeof OTPInput> & {
+export type InputOTPProps = React.ComponentProps<typeof OTPInput> & {
   containerClassName?: string;
-}) {
+};
+
+const InputOTP = (props: InputOTPProps) => {
+  const { className, containerClassName, ...rest } = props;
   return (
     <OTPInput
       data-slot="input-otp"
@@ -20,12 +19,15 @@ function InputOTP({
       )}
       spellCheck={false}
       className={cn("disabled:cursor-not-allowed", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
+export type InputOTPGroupProps = React.ComponentProps<"div">;
+
+const InputOTPGroup = (props: InputOTPGroupProps) => {
+  const { className, ...rest } = props;
   return (
     <div
       data-slot="input-otp-group"
@@ -33,18 +35,17 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
         "has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:has-aria-invalid:ring-destructive/40 flex items-center rounded-lg has-aria-invalid:ring-3",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function InputOTPSlot({
-  index,
-  className,
-  ...props
-}: React.ComponentProps<"div"> & {
+export type InputOTPSlotProps = React.ComponentProps<"div"> & {
   index: number;
-}) {
+};
+
+const InputOTPSlot = (props: InputOTPSlotProps) => {
+  const { index, className, ...rest } = props;
   const inputOTPContext = React.useContext(OTPInputContext);
   const { char, hasFakeCaret, isActive } = inputOTPContext?.slots[index] ?? {};
 
@@ -56,7 +57,7 @@ function InputOTPSlot({
         "border-input aria-invalid:border-destructive data-[active=true]:border-ring data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[active=true]:aria-invalid:ring-destructive/40 relative flex size-8 items-center justify-center border-y border-r text-sm transition-all outline-none first:rounded-l-lg first:border-l last:rounded-r-lg data-[active=true]:z-10 data-[active=true]:ring-3",
         className,
       )}
-      {...props}
+      {...rest}
     >
       {char}
       {hasFakeCaret && (
@@ -66,9 +67,11 @@ function InputOTPSlot({
       )}
     </div>
   );
-}
+};
 
-function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
+export type InputOTPSeparatorProps = React.ComponentProps<"div">;
+
+const InputOTPSeparator = (props: InputOTPSeparatorProps) => {
   return (
     <div
       data-slot="input-otp-separator"
@@ -79,6 +82,6 @@ function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
       <MinusIcon />
     </div>
   );
-}
+};
 
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator };

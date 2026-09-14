@@ -25,6 +25,10 @@ type ChartContextProps = {
   config: ChartConfig;
 };
 
+/**
+ * Context exemption: the parts of ONE chart share its config. Two charts on a
+ * page need two values, and an `$atom` holds one per container.
+ */
 const ChartContext = React.createContext<ChartContextProps | null>(null);
 
 function useChart() {
@@ -37,14 +41,7 @@ function useChart() {
   return context;
 }
 
-function ChartContainer({
-  id,
-  className,
-  children,
-  config,
-  initialDimension = INITIAL_DIMENSION,
-  ...props
-}: React.ComponentProps<"div"> & {
+export type ChartContainerProps = React.ComponentProps<"div"> & {
   config: ChartConfig;
   children: React.ComponentProps<
     typeof RechartsPrimitive.ResponsiveContainer
@@ -53,7 +50,17 @@ function ChartContainer({
     width: number;
     height: number;
   };
-}) {
+};
+
+const ChartContainer = (props: ChartContainerProps) => {
+  const {
+    id,
+    className,
+    children,
+    config,
+    initialDimension = INITIAL_DIMENSION,
+    ...rest
+  } = props;
   const uniqueId = React.useId();
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
   // Memoised so every consumer of the context does not re-render on each
@@ -70,7 +77,7 @@ function ChartContainer({
           "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border flex aspect-video justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden",
           className,
         )}
-        {...props}
+        {...rest}
       >
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer
@@ -81,9 +88,12 @@ function ChartContainer({
       </div>
     </ChartContext.Provider>
   );
-}
+};
 
-const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+export type ChartStyleProps = { id: string; config: ChartConfig };
+
+const ChartStyle = (props: ChartStyleProps) => {
+  const { id, config } = props;
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme ?? config.color,
   );
@@ -118,21 +128,9 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
-function ChartTooltipContent({
-  active,
-  payload,
-  className,
-  indicator = "dot",
-  hideLabel = false,
-  hideIndicator = false,
-  label,
-  labelFormatter,
-  labelClassName,
-  formatter,
-  color,
-  nameKey,
-  labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+export type ChartTooltipContentProps = React.ComponentProps<
+  typeof RechartsPrimitive.Tooltip
+> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean;
     hideIndicator?: boolean;
@@ -145,7 +143,24 @@ function ChartTooltipContent({
       TooltipNameType
     >,
     "accessibilityLayer"
-  >) {
+  >;
+
+const ChartTooltipContent = (props: ChartTooltipContentProps) => {
+  const {
+    active,
+    payload,
+    className,
+    indicator = "dot",
+    hideLabel = false,
+    hideIndicator = false,
+    label,
+    labelFormatter,
+    labelClassName,
+    formatter,
+    color,
+    nameKey,
+    labelKey,
+  } = props;
   const { config } = useChart();
 
   const tooltipLabel = React.useMemo(() => {
@@ -156,7 +171,7 @@ function ChartTooltipContent({
     const [item] = payload;
     // Coercion at a boundary: the value is a form/route/chart primitive whose
     // declared type is wider than what can reach here.
-    // oxlint-disable-next-line typescript/restrict-template-expressions
+    // oxlint-disable-next-line typescript/restrict-template-expressions -- a coercion at a boundary, see the comment above
     const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value =
@@ -207,7 +222,7 @@ function ChartTooltipContent({
           .map((item, index) => {
             // Coercion at a boundary: the value is a form/route/chart primitive whose
             // declared type is wider than what can reach here.
-            // oxlint-disable-next-line typescript/restrict-template-expressions
+            // oxlint-disable-next-line typescript/restrict-template-expressions -- a coercion at a boundary, see the comment above
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color ?? item.payload?.fill ?? item.color;
@@ -276,20 +291,23 @@ function ChartTooltipContent({
       </div>
     </div>
   );
-}
+};
 
 const ChartLegend = RechartsPrimitive.Legend;
 
-function ChartLegendContent({
-  className,
-  hideIcon = false,
-  payload,
-  verticalAlign = "bottom",
-  nameKey,
-}: React.ComponentProps<"div"> & {
+export type ChartLegendContentProps = React.ComponentProps<"div"> & {
   hideIcon?: boolean;
   nameKey?: string;
-} & RechartsPrimitive.DefaultLegendContentProps) {
+} & RechartsPrimitive.DefaultLegendContentProps;
+
+const ChartLegendContent = (props: ChartLegendContentProps) => {
+  const {
+    className,
+    hideIcon = false,
+    payload,
+    verticalAlign = "bottom",
+    nameKey,
+  } = props;
   const { config } = useChart();
 
   if (!payload?.length) {
@@ -309,7 +327,7 @@ function ChartLegendContent({
         .map((item, index) => {
           // Coercion at a boundary: the value is a form/route/chart primitive whose
           // declared type is wider than what can reach here.
-          // oxlint-disable-next-line typescript/restrict-template-expressions
+          // oxlint-disable-next-line typescript/restrict-template-expressions -- a coercion at a boundary, see the comment above
           const key = `${nameKey ?? item.dataKey ?? "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
@@ -336,7 +354,7 @@ function ChartLegendContent({
         })}
     </div>
   );
-}
+};
 
 function getPayloadConfigFromPayload(
   config: ChartConfig,

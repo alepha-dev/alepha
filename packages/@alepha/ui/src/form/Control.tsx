@@ -460,7 +460,7 @@ export const Control = (props: ControlProps) => {
         description={merged.description ?? props.description}
         slider={merged.slider}
         disabled={merged.disabled}
-        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
         autoFocus={merged.autoFocus}
       />,
     );
@@ -645,7 +645,7 @@ export const Control = (props: ControlProps) => {
           disabled={merged.disabled}
           maxLength={maxLength || undefined}
           autoComplete={merged.autoComplete}
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
           autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
@@ -672,7 +672,7 @@ export const Control = (props: ControlProps) => {
         required={meta.required}
         disabled={merged.disabled}
         autoComplete={merged.autoComplete}
-        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
         autoFocus={merged.autoFocus}
         inputProps={merged.inputProps}
         icon={resolveIcon(merged.icon, "password")}
@@ -745,7 +745,7 @@ export const Control = (props: ControlProps) => {
           type={htmlType}
           disabled={merged.disabled}
           autoComplete={autoComplete}
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
           autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}

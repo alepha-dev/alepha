@@ -13,13 +13,21 @@ export type FormFieldLayout = "stack" | "row";
  * Ambient layout for every nested `<FormField>`. Defaults to `"stack"`.
  * `<AutoForm layout="row">` wraps its tree in this context so every Control
  * variant renders as a settings-style row without prop drilling.
+ *
+ * Context exemption: a container's configuration for the fields inside it.
+ * Two forms with different layouts on one page need two values, and an
+ * `$atom` holds one per container.
  */
 const FormFieldLayoutContext = createContext<FormFieldLayout>("stack");
 
-export const FormFieldLayoutProvider = (props: {
+export interface FormFieldLayoutProviderProps {
   value: FormFieldLayout;
   children: ReactNode;
-}) => {
+}
+
+export const FormFieldLayoutProvider = (
+  props: FormFieldLayoutProviderProps,
+) => {
   return (
     <FormFieldLayoutContext.Provider value={props.value}>
       {props.children}
@@ -42,13 +50,20 @@ export function useFormFieldLayout(): FormFieldLayout {
  * Ambient flag enabling the inline save (tick) affordance on text Controls.
  * Set by `<AutoForm autoSave>`; standalone Controls never show the tick
  * unless explicitly placed inside this provider.
+ *
+ * Context exemption: a form's own setting for the fields inside it; two forms
+ * on one page may disagree.
  */
 const FormFieldAutoSaveContext = createContext<boolean>(false);
 
-export const FormFieldAutoSaveProvider = (props: {
+export interface FormFieldAutoSaveProviderProps {
   value: boolean;
   children: ReactNode;
-}) => {
+}
+
+export const FormFieldAutoSaveProvider = (
+  props: FormFieldAutoSaveProviderProps,
+) => {
   return (
     <FormFieldAutoSaveContext.Provider value={props.value}>
       {props.children}
@@ -74,13 +89,20 @@ export function useFormFieldAutoSave(): boolean {
  * first place — `aria-required` on the input does, and it is set from the
  * schema regardless of this flag. Hiding the marker must never be the reason a
  * field stops announcing that it is required.
+ *
+ * Context exemption: a form's own setting for the fields inside it; two forms
+ * on one page may disagree.
  */
 const FormFieldRequiredMarkerContext = createContext<boolean>(true);
 
-export const FormFieldRequiredMarkerProvider = (props: {
+export interface FormFieldRequiredMarkerProviderProps {
   value: boolean;
   children: ReactNode;
-}) => {
+}
+
+export const FormFieldRequiredMarkerProvider = (
+  props: FormFieldRequiredMarkerProviderProps,
+) => {
   return (
     <FormFieldRequiredMarkerContext.Provider value={props.value}>
       {props.children}
@@ -159,6 +181,10 @@ export interface FormFieldA11y {
   describedBy?: string;
 }
 
+/**
+ * Context exemption: the ids and invalid state one `FormField` hands the
+ * widget inside it. Every field on a page has its own.
+ */
 const FormFieldA11yContext = createContext<FormFieldA11y>({});
 
 /**

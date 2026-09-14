@@ -512,11 +512,11 @@ const useAsyncLoader = (
 
           // Coercion at a boundary: the value is a form/route/chart primitive whose
           // declared type is wider than what can reach here.
-          // oxlint-disable-next-line typescript/no-base-to-string
+          // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
           if (!isShort && defaultValue != null && String(defaultValue) !== "") {
             // Coercion at a boundary: the value is a form/route/chart primitive whose
             // declared type is wider than what can reach here.
-            // oxlint-disable-next-line typescript/no-base-to-string
+            // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
             const resolved = await loader("", [String(defaultValue)]);
             if (resolved.length > 0) {
               setData((prev) => {

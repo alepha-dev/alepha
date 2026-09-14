@@ -129,7 +129,7 @@ export const ControlNumber = (props: ControlNumberProps) => {
           max={max}
           step={props.step}
           disabled={props.disabled}
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- a caller-requested autofocus, see `autoFocus` in form/Control.tsx
           autoFocus={props.autoFocus}
           value={value ?? ""}
           onChange={(e) => {

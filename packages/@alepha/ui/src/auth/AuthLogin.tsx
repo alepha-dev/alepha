@@ -262,7 +262,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
                 input={form.input.identifier}
                 icon={identifierIcon}
                 autoComplete={identifierAutoComplete}
-                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- a caller-requested autofocus, see `autoFocus` in form/Control.tsx
                 autoFocus={autoFocusIdentifier}
               />
               <Control

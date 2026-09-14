@@ -101,7 +101,7 @@ interface ThumbRect {
   slide: boolean;
 }
 
-export function Segmented(props: SegmentedProps) {
+export const Segmented = (props: SegmentedProps) => {
   const {
     options,
     value: controlled,
@@ -183,7 +183,7 @@ export function Segmented(props: SegmentedProps) {
   React.useLayoutEffect(() => {
     // Measures the DOM after it has been committed — there is nothing to
     // derive during render, the geometry does not exist yet.
-    // oxlint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect -- measures committed DOM, nothing to derive during render
     measureThumb();
   }, [measureThumb, options.length, size, fullWidth]);
 
@@ -302,4 +302,4 @@ export function Segmented(props: SegmentedProps) {
       })}
     </div>
   );
-}
+};

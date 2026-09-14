@@ -90,20 +90,18 @@ const badgeVariants = cva(
   },
 );
 
-function Badge({
-  className,
-  variant = "default",
-  tone,
-  render,
-  ...props
-}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+export type BadgeProps = useRender.ComponentProps<"span"> &
+  VariantProps<typeof badgeVariants>;
+
+const Badge = (props: BadgeProps) => {
+  const { className, variant = "default", tone, render, ...rest } = props;
   return useRender({
     defaultTagName: "span",
     props: mergeProps<"span">(
       {
         className: cn(badgeVariants({ variant, tone }), className),
       },
-      props,
+      rest,
     ),
     render,
     state: {
@@ -112,7 +110,7 @@ function Badge({
       tone,
     },
   });
-}
+};
 
 /**
  * The semantic hues a `tint` badge can wear.

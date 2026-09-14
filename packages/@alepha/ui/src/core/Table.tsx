@@ -2,7 +2,10 @@ import * as React from "react";
 
 import { cn } from "./utils.ts";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+export type TableProps = React.ComponentProps<"table">;
+
+const Table = (props: TableProps) => {
+  const { className, ...rest } = props;
   return (
     <div
       data-slot="table-container"
@@ -11,13 +14,16 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
+        {...rest}
       />
     </div>
   );
-}
+};
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+export type TableHeaderProps = React.ComponentProps<"thead">;
+
+const TableHeader = (props: TableHeaderProps) => {
+  const { className, ...rest } = props;
   return (
     <thead
       data-slot="table-header"
@@ -25,22 +31,28 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
       // hover: a header is not actionable, so lighting up under the cursor
       // promised an interaction it does not have.
       className={cn("bg-muted/50 [&_tr]:border-b", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+export type TableBodyProps = React.ComponentProps<"tbody">;
+
+const TableBody = (props: TableBodyProps) => {
+  const { className, ...rest } = props;
   return (
     <tbody
       data-slot="table-body"
       className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+export type TableFooterProps = React.ComponentProps<"tfoot">;
+
+const TableFooter = (props: TableFooterProps) => {
+  const { className, ...rest } = props;
   return (
     <tfoot
       data-slot="table-footer"
@@ -48,12 +60,15 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
         "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+export type TableRowProps = React.ComponentProps<"tr">;
+
+const TableRow = (props: TableRowProps) => {
+  const { className, ...rest } = props;
   return (
     <tr
       data-slot="table-row"
@@ -61,12 +76,15 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
         "hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+export type TableHeadProps = React.ComponentProps<"th">;
+
+const TableHead = (props: TableHeadProps) => {
+  const { className, ...rest } = props;
   return (
     <th
       data-slot="table-head"
@@ -74,12 +92,15 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
         "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+export type TableCellProps = React.ComponentProps<"td">;
+
+const TableCell = (props: TableCellProps) => {
+  const { className, ...rest } = props;
   return (
     <td
       data-slot="table-cell"
@@ -87,23 +108,23 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
         "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function TableCaption({
-  className,
-  ...props
-}: React.ComponentProps<"caption">) {
+export type TableCaptionProps = React.ComponentProps<"caption">;
+
+const TableCaption = (props: TableCaptionProps) => {
+  const { className, ...rest } = props;
   return (
     <caption
       data-slot="table-caption"
       className={cn("text-muted-foreground mt-4 text-sm", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
 export {
   Table,

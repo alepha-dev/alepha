@@ -72,14 +72,24 @@ interface DialogApi {
   prompt: (options: PromptOptions) => Promise<string | null>;
 }
 
+/**
+ * Context exemption: `useHasDialogProvider()` asks whether a provider is
+ * ABOVE this point in the tree, and `AccountLayout` mounts its own only when
+ * none is. An `$atom` cannot answer a question about tree position, and two
+ * mounted hosts reading one atom would draw the same dialog twice.
+ */
 const Ctx = createContext<DialogApi | null>(null);
+
+export interface DialogProviderProps {
+  children: ReactNode;
+}
 
 /**
  * Provides imperative dialog primitives (`confirm`, `alert`, `prompt`)
  * through {@link useDialog}. Mount once near the root:
  * `<DialogProvider>{children}</DialogProvider>`.
  */
-export const DialogProvider = (props: { children: ReactNode }) => {
+export const DialogProvider = (props: DialogProviderProps) => {
   const { tr } = useI18n();
   const [pending, setPending] = useState<Pending | null>(null);
   const [promptValue, setPromptValue] = useState("");

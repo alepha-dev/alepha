@@ -22,19 +22,22 @@ import { cn } from "../core/utils.ts";
 // own default (en-US).
 const LOCALE_BY_LANG: Record<string, Locale> = { fr, es, en: enUS };
 
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  captionLayout = "label",
-  buttonVariant = "ghost",
-  locale,
-  formatters,
-  components,
-  ...props
-}: React.ComponentProps<typeof DayPicker> & {
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
-}) {
+};
+
+const Calendar = (props: CalendarProps) => {
+  const {
+    className,
+    classNames,
+    showOutsideDays = true,
+    captionLayout = "label",
+    buttonVariant = "ghost",
+    locale,
+    formatters,
+    components,
+    ...rest
+  } = props;
   const defaultClassNames = getDefaultClassNames();
   const { lang } = useI18n();
   const resolvedLocale = locale ?? LOCALE_BY_LANG[lang];
@@ -116,7 +119,7 @@ function Calendar({
         ),
         day: cn(
           "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)",
-          props.showWeekNumber
+          rest.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
             : "[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)",
           defaultClassNames.day,
@@ -190,18 +193,17 @@ function Calendar({
         },
         ...components,
       }}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function CalendarDayButton({
-  className,
-  day,
-  modifiers,
-  locale,
-  ...props
-}: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
+export type CalendarDayButtonProps = React.ComponentProps<typeof DayButton> & {
+  locale?: Partial<Locale>;
+};
+
+const CalendarDayButton = (props: CalendarDayButtonProps) => {
+  const { className, day, modifiers, locale, ...rest } = props;
   const defaultClassNames = getDefaultClassNames();
 
   const ref = React.useRef<HTMLButtonElement>(null);
@@ -228,9 +230,9 @@ function CalendarDayButton({
         defaultClassNames.day,
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
 export { Calendar, CalendarDayButton };

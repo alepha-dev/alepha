@@ -80,7 +80,7 @@ export const resolveComboboxItems = (
     : props.value != null
       ? // Coercion at a boundary: the value is a form/route/chart primitive whose
         // declared type is wider than what can reach here.
-        // oxlint-disable-next-line typescript/no-base-to-string
+        // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
         [String(props.value)]
       : [];
 
