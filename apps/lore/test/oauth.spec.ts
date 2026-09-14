@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
 import { AppSecurityProvider } from "../src/api/providers/AppSecurityProvider.ts";
+import { LoreOAuthScopes } from "../src/api/security/LoreOAuthScopes.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
 /**
@@ -62,6 +63,7 @@ const setup = async (): Promise<TestContext> => {
     realm: "users",
     resource: "/mcp",
     loginPath: "/auth/login",
+    scopes: LoreOAuthScopes.SCOPES,
   });
 
   alepha.with(LoreApi);
@@ -82,10 +84,11 @@ const setup = async (): Promise<TestContext> => {
 
 async function createTestUser(
   ctx: TestContext,
+  roles: string[] = ["user"],
 ): Promise<{ id: string; roles: string[] }> {
   const fakeUser = ctx.fakeProvider.generate(userDataSchema);
   const response = await ctx.adminUserController.createUser.fetch(
-    { body: { ...fakeUser, roles: ["user"] } },
+    { body: { ...fakeUser, roles } },
     { user: adminUser },
   );
   return { id: response.data.id, roles: response.data.roles };
@@ -291,6 +294,65 @@ describe("OAuth 2.1 authorization server", () => {
 
     // The access token is a realm JWT — the existing /mcp JWT resolver must
     // accept it with no transport changes.
+    const mcp = await fetch(`${ctx.baseUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "project_list", arguments: {} },
+      }),
+    });
+    const mcpBody = (await mcp.json()) as {
+      error?: unknown;
+      result?: { isError?: boolean };
+    };
+    expect(mcpBody.error).toBeUndefined();
+    expect(mcpBody.result?.isError).not.toBe(true);
+  });
+
+  it("narrows an administrator's mcp token to the member groups", async ({
+    expect,
+  }) => {
+    // Before #Q2307's Lore declarations, a connected app acted with its
+    // user's full roles: an administrator who connected Claude handed it
+    // admin. `mcp` now reaches the project member groups and nothing under
+    // `admin:*`.
+    const redirectUri = "https://claude.ai/cb";
+    const clientId = await registerClient(ctx.baseUrl, redirectUri);
+    const admin = await createTestUser(ctx, ["admin"]);
+    const sessionToken = await createSessionToken(ctx, admin);
+    const { verifier, challenge } = pkce();
+
+    const code = await authorize(ctx.baseUrl, sessionToken, {
+      clientId,
+      redirectUri,
+      challenge,
+    });
+    const token = await exchange(ctx.baseUrl, {
+      grant_type: "authorization_code",
+      code,
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+    });
+    expect(token.status).toBe(200);
+    const accessToken = String(token.json.access_token);
+
+    const listUsers = (bearer: string) =>
+      fetch(`${ctx.baseUrl}/api/users`, {
+        headers: { authorization: `Bearer ${bearer}` },
+      });
+
+    // `admin:user:read`: the administrator's own session still has it.
+    expect((await listUsers(sessionToken)).status).toBe(200);
+    expect((await listUsers(accessToken)).status).toBe(403);
+
+    // And the token still works where a member works.
     const mcp = await fetch(`${ctx.baseUrl}/mcp`, {
       method: "POST",
       headers: {
