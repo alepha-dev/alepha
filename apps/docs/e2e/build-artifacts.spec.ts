@@ -80,6 +80,32 @@ test.describe("Build Artifacts", () => {
       }
     });
 
+    /**
+     * Cloudflare's asset worker decodes each segment of the request path
+     * before it looks a file up, and Bay stats Go's decoded `r.URL.Path`. The
+     * sitemap advertises `/docs/reference-primitives-%24sitemap`, so the file
+     * has to be `reference-primitives-$sitemap.html`. Named after the encoded
+     * pathname, every `$primitive` page was a 404 on alepha.dev (#Q2340).
+     */
+    test("every sitemap URL has a pre-rendered file under the decoded name the edge looks up", async () => {
+      const content = readFileSync(join(distDir, "sitemap.xml"), "utf-8");
+      const locs = [...content.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+        (it) => it[1],
+      );
+      expect(locs.some((it) => it.includes("%24"))).toBe(true);
+
+      const missing = locs.filter((loc) => {
+        const pathname = new URL(loc).pathname;
+        const decoded = pathname
+          .split("/")
+          .map((it) => decodeURIComponent(it))
+          .join("/");
+        const file = decoded === "/" ? "/index.html" : `${decoded}.html`;
+        return !existsSync(join(distDir, file));
+      });
+      expect(missing).toEqual([]);
+    });
+
     test("sitemap.xml is accessible via HTTP", async ({ request }) => {
       const response = await request.get("/sitemap.xml");
       expect(response.status()).toBe(200);

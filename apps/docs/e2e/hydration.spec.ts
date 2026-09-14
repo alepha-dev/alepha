@@ -73,6 +73,42 @@ test.describe("Hydration", () => {
     expect(consoleErrors.filter(isHydrationError)).toHaveLength(0);
   });
 
+  /**
+   * A `$primitive` reference page is linked, and listed in the sitemap, as
+   * `%24`. The edge decodes that before its lookup, so it serves the file
+   * written under the `$` name, and it used to find none: every visit got
+   * the 404 shell and hydrated the real route over it, React #418 (blight
+   * #620, quest #2340). Like the tests around it, the file the edge would
+   * serve is fulfilled here, since the node server renders the URL itself.
+   */
+  test("a $primitive reference page hydrates without errors", async ({
+    page,
+  }) => {
+    const prerendered = readFileSync(
+      join(
+        process.cwd(),
+        "dist/public/docs/reference-primitives-$sitemap.html",
+      ),
+      "utf8",
+    );
+    await page.route("**/docs/reference-primitives-%24sitemap", (route) =>
+      route.fulfill({ contentType: "text/html", body: prerendered }),
+    );
+
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+
+    await page.goto("/docs/reference-primitives-%24sitemap");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+
+    await expect(page.locator("#root")).not.toBeEmpty();
+    await expect(page).toHaveTitle("$sitemap | Alepha");
+    expect(consoleErrors.filter(isHydrationError)).toHaveLength(0);
+  });
+
   test("home page hydrates without errors", async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on("console", (msg) => {

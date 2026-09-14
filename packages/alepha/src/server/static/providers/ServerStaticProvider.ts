@@ -154,21 +154,21 @@ export class ServerStaticProvider {
     };
 
     // 2. create a $route for each file (yes, this could be a lot of routes)
-    const routes = await Promise.all(
-      files.map(async (urlPath) => {
-        const routePath = `${prefix}${encodeURI(urlPath)}`.replace(/\/+/g, "/");
-        this.log.trace(`Mount ${routePath} -> ${urlPath}`);
-        return {
-          silent: options.silent,
-          path: routePath,
-          handler: await this.createFileHandler(
+    const routes = (
+      await Promise.all(
+        files.map(async (urlPath) => {
+          const handler = await this.createFileHandler(
             fileSource,
             urlPath,
             fileOptions,
-          ),
-        };
-      }),
-    );
+          );
+          return this.routePaths(prefix, urlPath).map((routePath) => {
+            this.log.trace(`Mount ${routePath} -> ${urlPath}`);
+            return { silent: options.silent, path: routePath, handler };
+          });
+        }),
+      )
+    ).flat();
 
     for (const route of routes) {
       mount(route);
@@ -221,6 +221,32 @@ export class ServerStaticProvider {
         },
       });
     }
+  }
+
+  /**
+   * Every spelling of the URL a file answers under.
+   *
+   * The router matches a static segment as it arrives, still percent-encoded,
+   * so a file is reachable only under the spellings mounted for it. Two are:
+   *
+   * - `encodeURI`, which leaves the reserved characters (`$`, `&`, `+`, ...)
+   *   as they are, and is what a browser sends for a typed or pasted path;
+   * - `encodeURIComponent` per segment, which escapes them, and is how
+   *   `ReactPageProvider.compile` builds a link from a param.
+   *
+   * ⚠️ Both, because the prerender writes a page's DECODED pathname (what
+   * Cloudflare and Bay look up, both decoding the request first), and the
+   * router links the same page encoded: `reference-primitives-$sitemap.html`
+   * is linked as `%24sitemap`. Mounting one spelling made the other a 404
+   * here while both answered on every other host.
+   */
+  protected routePaths(prefix: string, urlPath: string): string[] {
+    const under = (path: string) => `${prefix}${path}`.replace(/\/+/g, "/");
+    const component = urlPath
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+    return [...new Set([under(encodeURI(urlPath)), under(component)])];
   }
 
   /**

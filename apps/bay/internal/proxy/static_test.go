@@ -17,8 +17,8 @@ import (
 // --target=static` shapes it, and returns a proxy serving it.
 //
 // The filenames are not invented: they are what BuildPrerenderTask actually
-// emits — `${dist}${pathname === "/" ? "/index" : pathname}.html` — verified
-// against apps/docs, whose 303 pages land as `changelog.html` and
+// emits, `${dist}${pathname === "/" ? "/index" : decoded(pathname)}.html`,
+// verified against apps/docs, whose pages land as `changelog.html` and
 // `docs/<slug>.html`, flat, with no directory indexes anywhere.
 func staticSite(t *testing.T, files map[string]string) *Proxy {
 	t.Helper()
@@ -108,6 +108,28 @@ func TestStaticSiteResolvesANestedExtensionlessPath(t *testing.T) {
 
 	if status != http.StatusOK || body != "guide" {
 		t.Fatalf("got %d %q, want 200 \"guide\"", status, body)
+	}
+}
+
+func TestStaticSiteResolvesAnEncodedPathToItsDecodedHtmlFile(t *testing.T) {
+	// The prerender writes a page under its DECODED pathname, since Cloudflare
+	// decodes the request before its asset lookup: the `$sitemap` reference
+	// page is `reference-primitives-$sitemap.html`. The router links it as
+	// `%24sitemap` and a browser sends a typed `$` verbatim, so both spellings
+	// must reach the one file, as they do on Cloudflare.
+	p := staticSite(t, map[string]string{
+		"index.html": "home",
+		"docs/reference-primitives-$sitemap.html": "sitemap",
+	})
+
+	for _, path := range []string{
+		"/docs/reference-primitives-%24sitemap",
+		"/docs/reference-primitives-$sitemap",
+	} {
+		status, body := get(t, p, path)
+		if status != http.StatusOK || body != "sitemap" {
+			t.Errorf("%s: got %d %q, want 200 \"sitemap\"", path, status, body)
+		}
 	}
 }
 

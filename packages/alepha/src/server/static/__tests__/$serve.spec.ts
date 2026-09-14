@@ -31,6 +31,7 @@ beforeAll(async () => {
   await writeFile(join(tempTestDir, "script.js"), "console.log('test');");
   await writeFile(join(tempTestDir, ".secret"), "should-not-be-served");
   await writeFile(join(tempTestDir, tempWeirdFileName), "ok");
+  await writeFile(join(tempTestDir, "primitive-$sitemap.html"), "sitemap");
 
   // Create pre-compressed versions
   const cssContent = "body { color: blue; }";
@@ -87,6 +88,22 @@ describe("alepha/server/static", () => {
     const r2 = await fetch(`${hostname}/${encodeURI(tempWeirdFileName)}`);
     expect(r2.status).toBe(200);
     expect(await r2.text()).toBe("ok");
+  });
+
+  test("should serve a file whose name holds $ under both spellings", async () => {
+    // The prerender writes a page's DECODED pathname, since that is what
+    // Cloudflare and Bay look up. The router links it as `%24`, and a browser
+    // sends `$` verbatim: the file has to answer both, as it does on those
+    // hosts.
+    const { hostname } = await setupServer({});
+
+    const decoded = await fetch(`${hostname}/primitive-$sitemap.html`);
+    expect(decoded.status).toBe(200);
+    expect(await decoded.text()).toBe("sitemap");
+
+    const encoded = await fetch(`${hostname}/primitive-%24sitemap.html`);
+    expect(encoded.status).toBe(200);
+    expect(await encoded.text()).toBe("sitemap");
   });
 
   test("should serve index.html for root path", async () => {
