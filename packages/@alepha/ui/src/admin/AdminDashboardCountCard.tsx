@@ -1,6 +1,6 @@
+import { useQuery } from "alepha/react";
 import { Link } from "alepha/react/router";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
 
 import {
   Card,
@@ -49,25 +49,22 @@ export interface AdminDashboardCountCardProps {
 export const AdminDashboardCountCard = (
   props: AdminDashboardCountCardProps,
 ) => {
-  const [value, setValue] = useState<number | undefined>(undefined);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    props
-      .load()
-      .then((n) => {
-        if (alive) setValue(n);
-      })
-      .catch(() => {
-        if (alive) setFailed(true);
-      });
-    return () => {
-      alive = false;
-    };
-    // `load` is a fresh closure on every render of the parent, so depending on
-    // it would refetch forever. The href identifies the count instead.
-  }, [props.href]);
+  const query = useQuery(
+    {
+      // The href identifies the count. `load` is a fresh closure on every
+      // render of the parent, so it is not a dependency: the query reads the
+      // latest one when it runs, and a re-render does not refetch.
+      key: ["admin-dashboard-count", props.href],
+      handler: () => props.load(),
+      // Quiet on purpose, as `load` says: one unreachable count renders a dash,
+      // not a toast. `onError` marks the failure handled, so a mounted
+      // `ActionErrorToaster` skips it while error reporting still reads it.
+      onError: () => {},
+    },
+    [props.href],
+  );
+  const value = query.data;
+  const failed = query.error !== undefined;
 
   return (
     <Card>
