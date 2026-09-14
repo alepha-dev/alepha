@@ -10,7 +10,7 @@ import {
   Textarea,
   useToast,
 } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
 import { Loader2, Paperclip } from "lucide-react";
@@ -58,12 +58,10 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
 
   // Row click opens this drawer for any feedback, but editing is pending-only
   // (the server enforces it too). Non-pending feedback render read-only.
   const readOnly = !props.feedback || props.feedback.status !== "pending";
-  const disabled = saving || readOnly;
 
   // Re-seed the form whenever a different feedback is opened. Adjusted during
   // render rather than from an effect, so the drawer never paints one frame of
@@ -76,28 +74,29 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
     setTags(props.feedback.tags ?? []);
   }
 
-  const save = async () => {
-    if (!props.feedback) return;
-    const trimmedTitle = title.trim();
-    const trimmedDescription = description.trim();
-    if (!trimmedTitle || !trimmedDescription) {
-      toaster.error(tr("myFeedback.edit.required"));
-      return;
-    }
-    setSaving(true);
-    try {
-      await feedbackApi.updateMyFeedback({
-        params: { feedbackId: props.feedback.id },
-        body: { title: trimmedTitle, description: trimmedDescription, tags },
-      });
-      toaster.success(tr("myFeedback.edit.saved"));
-      props.onSaved();
-    } catch (error: any) {
-      toaster.error(error?.message ?? tr("myFeedback.edit.error"));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const saveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!props.feedback) return;
+        const trimmedTitle = title.trim();
+        const trimmedDescription = description.trim();
+        if (!trimmedTitle || !trimmedDescription) {
+          toaster.error(tr("myFeedback.edit.required"));
+          return;
+        }
+        await feedbackApi.updateMyFeedback({
+          params: { feedbackId: props.feedback.id },
+          body: { title: trimmedTitle, description: trimmedDescription, tags },
+        });
+        toaster.success(tr("myFeedback.edit.saved"));
+        props.onSaved();
+      },
+    },
+    [feedbackApi, props.feedback, props.onSaved, title, description, tags],
+  );
+  const save = () => void saveAction.run();
+  const saving = saveAction.loading;
+  const disabled = saving || readOnly;
 
   return (
     <Sheet

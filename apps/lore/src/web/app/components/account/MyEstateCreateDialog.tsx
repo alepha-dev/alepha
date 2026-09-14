@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui";
+import { useAction } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -58,7 +59,6 @@ export interface MyEstateCreateDialogProps {
 const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [draft, setDraft] = useState<EstateCreateDraft>(emptyEstateDraft);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<
     { message: string; field?: "accountId" | "token" } | undefined
   >();
@@ -71,25 +71,28 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
     setError(undefined);
   };
 
-  const submit = async () => {
-    if (!valid || busy) return;
-    setBusy(true);
-    setError(undefined);
-    try {
-      await props.onSubmit(estateDraftBody(draft));
-      reset();
-    } catch (caught) {
+  const submitAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!valid) return;
+        setError(undefined);
+        await props.onSubmit(estateDraftBody(draft));
+        reset();
+      },
       // Kept open, with the sentence beside the field: the person hitting a
       // Cloudflare refusal is the one least equipped to diagnose it, and a
-      // toast is gone before they have read it.
-      setError({
-        message: estateErrorMessage(caught),
-        field: estateErrorField(caught),
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
+      // toast is gone before they have read it. Handled here, so the root
+      // `ActionErrorToaster` adds nothing.
+      onError: (caught) =>
+        setError({
+          message: estateErrorMessage(caught),
+          field: estateErrorField(caught),
+        }),
+    },
+    [valid, draft, props.onSubmit],
+  );
+  const busy = submitAction.loading;
+  const submit = () => void submitAction.run();
 
   return (
     <Dialog
@@ -112,7 +115,7 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            void submit();
+            submit();
           }}
         >
           <EstateCreateFields

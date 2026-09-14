@@ -1,12 +1,12 @@
-import { Switch, useToast } from "@alepha/ui";
+import { Switch } from "@alepha/ui";
 import {
   SettingsHeading,
   SettingsRow,
   SettingsSection,
 } from "@alepha/ui/settings";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { NotificationPreferenceController } from "@/api/controllers/NotificationPreferenceController.ts";
 import type { NotificationPreferenceResource } from "@/api/schemas/notificationPreferenceResourceSchema.ts";
@@ -41,46 +41,41 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 const MyNotifications = () => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<NotificationPreferenceController>();
-  const toast = useToast();
 
   const [prefs, setPrefs] = useState<NotificationPreferenceResource>();
-  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    api
-      .getMyNotificationPreferences()
-      .then((row) => {
-        if (alive) setPrefs(row);
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [api]);
+  // Local state seeded by the read, because a save patches it before the
+  // server answers. A failed read toasts: the page renders nothing without it.
+  useQuery(
+    {
+      handler: () => api.getMyNotificationPreferences(),
+      onSuccess: (row) => setPrefs(row),
+    },
+    [api],
+  );
 
-  const save = async (patch: {
-    emailEnabled?: boolean;
-    mutedCategories?: string[];
-  }) => {
-    // Optimistic, so the switch answers the click. The server is the
-    // authority and its answer replaces this a moment later.
-    setPrefs((current) => (current ? { ...current, ...patch } : current));
-    setBusy(true);
-    try {
-      const saved = await api.updateMyNotificationPreferences({ body: patch });
-      setPrefs(saved);
-    } catch {
-      toast.error(tr("account.notifications.saveFailed"));
-      // Put back what the server still believes.
-      const row = await api
-        .getMyNotificationPreferences()
-        .catch(() => undefined);
-      if (row) setPrefs(row);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const save = useAction<
+    [patch: { emailEnabled?: boolean; mutedCategories?: string[] }],
+    void
+  >(
+    {
+      handler: async (patch) => {
+        // Optimistic, so the switch answers the click. The server is the
+        // authority and its answer replaces this a moment later; a refusal
+        // puts back what was on screen and rethrows, which is what toasts.
+        const previous = prefs;
+        setPrefs((current) => (current ? { ...current, ...patch } : current));
+        try {
+          setPrefs(await api.updateMyNotificationPreferences({ body: patch }));
+        } catch (error) {
+          setPrefs(previous);
+          throw error;
+        }
+      },
+    },
+    [api, prefs],
+  );
+  const busy = save.loading;
 
   if (!prefs) {
     return null;
@@ -90,7 +85,7 @@ const MyNotifications = () => {
     const muted = wanted
       ? prefs.mutedCategories.filter((it) => it !== category)
       : [...prefs.mutedCategories, category];
-    void save({ mutedCategories: muted });
+    void save.run({ mutedCategories: muted });
   };
 
   return (
@@ -111,7 +106,7 @@ const MyNotifications = () => {
           <Switch
             checked={prefs.emailEnabled}
             disabled={busy}
-            onCheckedChange={(value) => void save({ emailEnabled: value })}
+            onCheckedChange={(value) => void save.run({ emailEnabled: value })}
             aria-label={tr("account.notifications.email")}
           />
         </SettingsRow>

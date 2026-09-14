@@ -11,7 +11,7 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -83,162 +83,174 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   const router = useRouter<AppRouter>();
   const api = useClient<EstateController>();
   const projectEstateApi = useClient<ProjectEstateController>();
-  const [busy, setBusy] = useState(false);
   // Lives only as long as the drawer, never prefilled and never echoed.
   const [token, setToken] = useState("");
   const [credentialError, setCredentialError] = useState<string | undefined>();
   const estate = props.estate;
   const isCloudflare = estate?.type === "cloudflare";
 
-  const fail = (error: unknown) =>
-    toaster.error(error instanceof Error ? error.message : String(error));
+  // One `useAction` per write. A refusal is not caught here: the root
+  // `ActionErrorToaster` shows the server's message, except for the two
+  // credential writes, which render theirs beside the field (their `onError`).
+  const updateAction = useAction<[body: EstateSwitches], void>(
+    {
+      handler: async (body) => {
+        if (!estate) return;
+        const updated = await api.updateEstate({
+          params: { estateId: estate.id },
+          body,
+        });
+        props.onChanged({ ...updated, projects: estate.projects });
+      },
+    },
+    [api, estate, props.onChanged],
+  );
 
-  const update = async (body: EstateSwitches) => {
-    if (!estate) return;
-    setBusy(true);
-    try {
-      const updated = await api.updateEstate({
-        params: { estateId: estate.id },
-        body,
-      });
-      props.onChanged({ ...updated, projects: estate.projects });
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const rotate = async () => {
-    if (!estate) return;
-    const ok = await dialog.confirm({
-      title: tr("account.estates.rotate.confirmTitle", { args: [estate.slug] }),
-      description: tr("account.estates.rotate.confirmDescription"),
-      confirmLabel: tr("account.estates.rotate.confirm"),
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      const minted = await api.rotateEstate({
-        params: { estateId: estate.id },
-      });
-      const { secret, ...rotated } = minted;
-      props.onChanged({ ...rotated, projects: estate.projects });
-      // Rotation only reaches a bay estate, so a secret always comes back;
-      // the field is optional because a cloudflare create mints nothing, and
-      // the guard is what makes that impossible to forget here.
-      if (secret) {
-        props.onSecret(secret);
-      }
-      toaster.success(tr("account.estates.toast.rotated"));
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const rotateAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate) return;
+        const ok = await dialog.confirm({
+          title: tr("account.estates.rotate.confirmTitle", {
+            args: [estate.slug],
+          }),
+          description: tr("account.estates.rotate.confirmDescription"),
+          confirmLabel: tr("account.estates.rotate.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        const minted = await api.rotateEstate({
+          params: { estateId: estate.id },
+        });
+        const { secret, ...rotated } = minted;
+        props.onChanged({ ...rotated, projects: estate.projects });
+        // Rotation only reaches a bay estate, so a secret always comes back;
+        // the field is optional because a cloudflare create mints nothing, and
+        // the guard is what makes that impossible to forget here.
+        if (secret) {
+          props.onSecret(secret);
+        }
+        toaster.success(tr("account.estates.toast.rotated"));
+      },
+    },
+    [api, estate, dialog, props.onChanged, props.onSecret, toaster, tr],
+  );
 
   /**
    * Replaces the pasted token, all or nothing.
    *
    * Nothing is revealed afterwards: this is a write, not a mint. The field
    * is a password input with autocomplete off for the same reason the
-   * create dialog's is, and it is cleared whether the save worked or not.
+   * create dialog's is.
    */
-  const replace = async () => {
-    if (!estate || !token.trim()) return;
-    setBusy(true);
-    setCredentialError(undefined);
-    try {
-      const updated = await api.replaceEstateCredential({
-        params: { estateId: estate.id },
-        body: { token: token.trim() },
-      });
-      setToken("");
-      props.onChanged({ ...updated, projects: estate.projects });
-      toaster.success(tr("estates.credential.replaced"));
-    } catch (error) {
+  const replaceAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate || !token.trim()) return;
+        setCredentialError(undefined);
+        const updated = await api.replaceEstateCredential({
+          params: { estateId: estate.id },
+          body: { token: token.trim() },
+        });
+        setToken("");
+        props.onChanged({ ...updated, projects: estate.projects });
+        toaster.success(tr("estates.credential.replaced"));
+      },
       // Beside the field, not a toast: a refusal here names a permission the
       // owner has to add at Cloudflare, and it has to still be on screen
       // while they go and do it.
-      setCredentialError(estateErrorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+      onError: (error) => setCredentialError(estateErrorMessage(error)),
+    },
+    [api, estate, token, props.onChanged, toaster, tr],
+  );
 
   /**
    * Ask Cloudflare again, now, rather than waiting for the nightly sweep.
    */
-  const recheck = async () => {
-    if (!estate) return;
-    setBusy(true);
-    setCredentialError(undefined);
-    try {
-      const updated = await api.checkEstateCredential({
-        params: { estateId: estate.id },
-      });
-      props.onChanged({ ...updated, projects: estate.projects });
-      toaster.success(tr("estates.credential.checkedNow"));
-    } catch (error) {
-      setCredentialError(estateErrorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const recheckAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate) return;
+        setCredentialError(undefined);
+        const updated = await api.checkEstateCredential({
+          params: { estateId: estate.id },
+        });
+        props.onChanged({ ...updated, projects: estate.projects });
+        toaster.success(tr("estates.credential.checkedNow"));
+      },
+      onError: (error) => setCredentialError(estateErrorMessage(error)),
+    },
+    [api, estate, props.onChanged, toaster, tr],
+  );
 
-  const remove = async () => {
-    if (!estate) return;
-    const ok = await dialog.confirm({
-      title: tr("account.estates.delete.confirmTitle", { args: [estate.slug] }),
-      description: tr("account.estates.delete.confirmDescription"),
-      confirmLabel: tr("account.estates.delete.confirm"),
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await api.deleteEstate({ params: { estateId: estate.id } });
-      props.onDeleted(estate.id);
-      // The estate this drawer is about no longer exists, so it cannot stay
-      // open over it.
-      props.onOpenChange(false);
-      toaster.success(tr("account.estates.toast.deleted"));
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const removeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate) return;
+        const ok = await dialog.confirm({
+          title: tr("account.estates.delete.confirmTitle", {
+            args: [estate.slug],
+          }),
+          description: tr("account.estates.delete.confirmDescription"),
+          confirmLabel: tr("account.estates.delete.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await api.deleteEstate({ params: { estateId: estate.id } });
+        props.onDeleted(estate.id);
+        // The estate this drawer is about no longer exists, so it cannot stay
+        // open over it.
+        props.onOpenChange(false);
+        toaster.success(tr("account.estates.toast.deleted"));
+      },
+    },
+    [api, estate, dialog, props.onDeleted, props.onOpenChange, toaster, tr],
+  );
 
-  const detach = async (loan: OwnedEstateResource["projects"][number]) => {
-    if (!estate) return;
-    const ok = await dialog.confirm({
-      title: tr("account.estates.detach.confirmTitle", {
-        args: [estate.slug, loan.title],
-      }),
-      description: tr("estates.detach.confirmDescription"),
-      confirmLabel: tr("estates.detach.confirm"),
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await projectEstateApi.detachEstate({
-        params: { projectId: loan.id, estateId: estate.id },
-      });
-      props.onChanged({
-        ...estate,
-        projects: estate.projects.filter((item) => item.id !== loan.id),
-      });
-      toaster.success(tr("estates.toast.detached"));
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const detachAction = useAction<
+    [loan: OwnedEstateResource["projects"][number]],
+    void
+  >(
+    {
+      handler: async (loan) => {
+        if (!estate) return;
+        const ok = await dialog.confirm({
+          title: tr("account.estates.detach.confirmTitle", {
+            args: [estate.slug, loan.title],
+          }),
+          description: tr("estates.detach.confirmDescription"),
+          confirmLabel: tr("estates.detach.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await projectEstateApi.detachEstate({
+          params: { projectId: loan.id, estateId: estate.id },
+        });
+        props.onChanged({
+          ...estate,
+          projects: estate.projects.filter((item) => item.id !== loan.id),
+        });
+        toaster.success(tr("estates.toast.detached"));
+      },
+    },
+    [projectEstateApi, estate, dialog, props.onChanged, toaster, tr],
+  );
+
+  const update = updateAction.run;
+  const rotate = rotateAction.run;
+  const replace = replaceAction.run;
+  const recheck = recheckAction.run;
+  const remove = removeAction.run;
+  const detach = detachAction.run;
+  // Page-wide: every control of the drawer waits while any write runs, since
+  // `run()` drops a call made while its own is in flight.
+  const busy =
+    updateAction.loading ||
+    rotateAction.loading ||
+    replaceAction.loading ||
+    recheckAction.loading ||
+    removeAction.loading ||
+    detachAction.loading;
 
   return (
     <Sheet

@@ -2,10 +2,10 @@ import { TimeAgo, Badge, useDialog } from "@alepha/ui";
 import { SettingsHeading } from "@alepha/ui/settings";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { CircleDot, FolderKanban, Trash } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
@@ -31,9 +31,6 @@ const MyFeedback = () => {
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
 
-  const [projectOptions, setProjectOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
   const [editing, setEditing] = useState<MyFeedbackResource | undefined>(
     undefined,
   );
@@ -42,16 +39,41 @@ const MyFeedback = () => {
   // sort survive the remount because they persist under `persistenceKey`.
   const [tableKey, setTableKey] = useState(0);
 
-  useEffect(() => {
-    feedbackApi
-      .listMyFeedbackProjects()
-      .then((res) =>
-        setProjectOptions(
-          res.items.map((c) => ({ label: c.title, value: String(c.id) })),
-        ),
-      )
-      .catch(() => null);
-  }, []);
+  // The project filter's options. Quiet on failure, on purpose: the filter
+  // hides itself when it has nothing to offer, and the list still works.
+  const projects = useQuery(
+    {
+      handler: () => feedbackApi.listMyFeedbackProjects(),
+      onError: () => {},
+    },
+    [feedbackApi],
+  ).data;
+  // Memoised on the response, so the filter's `items` keeps its identity
+  // across renders the way the state it replaced did.
+  const projectOptions = useMemo(
+    () =>
+      (projects?.items ?? []).map((c) => ({
+        label: c.title,
+        value: String(c.id),
+      })),
+    [projects],
+  );
+
+  const withdraw = useAction<[feedbackId: number, refresh: () => void], void>(
+    {
+      handler: async (feedbackId, refresh) => {
+        const confirmed = await dialog.confirm({
+          title: tr("myFeedback.delete.title"),
+          description: tr("myFeedback.delete.description"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await feedbackApi.deleteMyFeedback({ params: { feedbackId } });
+        refresh();
+      },
+    },
+    [feedbackApi, dialog, tr],
+  );
 
   /**
    * The reporter's filters, mirroring the project board: search, status and a
@@ -206,21 +228,13 @@ const MyFeedback = () => {
                   icon: Trash,
                   label: tr("myFeedback.action.delete"),
                   destructive: true,
-                  onClick: async (
+                  // Held while a withdrawal runs, on every row: a second one
+                  // would be dropped by `run()` without a word.
+                  disabled: () => withdraw.loading,
+                  onClick: (
                     _p: MyFeedbackResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    const confirmed = await dialog.confirm({
-                      title: tr("myFeedback.delete.title"),
-                      description: tr("myFeedback.delete.description"),
-                      destructive: true,
-                    });
-                    if (!confirmed) return;
-                    await feedbackApi.deleteMyFeedback({
-                      params: { feedbackId: p.id },
-                    });
-                    refresh();
-                  },
+                  ) => void withdraw.run(p.id, refresh),
                 },
               ]
             : []

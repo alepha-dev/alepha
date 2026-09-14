@@ -1851,8 +1851,6 @@ export default {
   "account.notifications.categories": "Types de message",
   "account.notifications.categories.description":
     "Ces réglages valent pour les deux canaux.",
-  "account.notifications.saveFailed":
-    "Impossible d'enregistrer vos préférences.",
   "account.notifications.category.feedback": "Vos demandes",
   "account.notifications.category.feedback.description":
     "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",
@@ -2298,8 +2296,6 @@ export default {
   "invitations.decline": "Refuser",
   "invitations.accepted": "Vous avez rejoint le projet !",
   "invitations.declined": "Invitation refusée.",
-  "invitations.accept.error": "Impossible d'accepter l'invitation",
-  "invitations.decline.error": "Impossible de refuser l'invitation",
 
   // --- /account/feedback ----------------------------------------------------
   "myFeedback.title": "Retours envoyés",
@@ -2330,7 +2326,6 @@ export default {
   "myFeedback.edit.description.placeholder": "Décrivez votre demande",
   "myFeedback.edit.required": "Le titre et la description sont obligatoires.",
   "myFeedback.edit.saved": "Retour mis à jour.",
-  "myFeedback.edit.error": "Impossible de mettre à jour le retour.",
   "feedback.status.pending": "En attente",
   "feedback.status.accepted": "Accepté",
   "feedback.status.rejected": "Refusé",
