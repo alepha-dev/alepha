@@ -27,6 +27,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
+import CommitLink from "../../shared/CommitLink.tsx";
 
 /**
  * One artifact, flattened out of the endpoint's groups.
@@ -481,7 +482,10 @@ const ProjectArtifacts = () => {
                         className="size-3.5 shrink-0"
                         aria-hidden
                       />
-                      {row.commitSha.slice(0, 7)}
+                      <CommitLink
+                        sha={row.commitSha}
+                        repositoryUrl={project?.repositoryUrl}
+                      />
                     </span>
                   ) : (
                     "—"

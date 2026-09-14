@@ -77,6 +77,7 @@ describe("AppArtifacts", () => {
   const show = async (
     instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
+    repositoryUrl?: string,
   ) => {
     cleanup();
     const alepha = await mount();
@@ -84,10 +85,10 @@ describe("AppArtifacts", () => {
     // The list reads the project for its id and its slug, so without this it
     // would stay disabled and every case below would pass by not running the
     // code it is about.
-    alepha.store.set(
-      currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }) as never,
-    );
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ title: "Alepha", slug: "alepha" }),
+      repositoryUrl,
+    } as never);
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
     return {
@@ -377,6 +378,50 @@ describe("AppArtifacts", () => {
     const card = getByTestId("app-artifacts").textContent ?? "";
     expect(card).toContain("N/A");
     expect(card).not.toContain("NaN");
+  });
+
+  /**
+   * The row's commit links to the repository the way the quest rail does
+   * (feedback #P2201, #Q2336), and stays text without one.
+   */
+  it("links the commit to the project's repository when it has one", async ({
+    expect,
+  }) => {
+    const row = (repositoryUrl?: string) =>
+      show(
+        instanceOf(),
+        listing([
+          {
+            app: "docs-production",
+            tag: "1.2.4",
+            pushedAt: "2026-08-30T10:00:00.000Z",
+            commitSha: "0b35cb375ff",
+            variants: [
+              {
+                id: "00000000-0000-4000-8000-000000000013",
+                projectId: 1,
+                app: "docs-production",
+                tag: "1.2.4",
+                runtime: "node",
+                format: "archive",
+                sha256: "d".repeat(64),
+                size: 1_000_000,
+                createdAt: "2026-08-30T10:00:00.000Z",
+                updatedAt: "2026-08-30T10:00:00.000Z",
+              },
+            ],
+          },
+        ]),
+        repositoryUrl,
+      );
+
+    const linked = await row("https://github.com/alepha-dev/alepha");
+    expect(
+      (await linked.findByText("0b35cb3")).closest("a")?.getAttribute("href"),
+    ).toBe("https://github.com/alepha-dev/alepha/commit/0b35cb375ff");
+
+    const unlinked = await row();
+    expect((await unlinked.findByText("0b35cb3")).closest("a")).toBeNull();
   });
 
   it("shows no commit when the push named none", async ({ expect }) => {
