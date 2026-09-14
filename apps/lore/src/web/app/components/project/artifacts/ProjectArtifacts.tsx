@@ -1,4 +1,4 @@
-import { FilterSlot, Badge } from "@alepha/ui";
+import { FilterSlot, TimeAgo, Badge } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { AlephaTable } from "@alepha/ui/table";
 import { z } from "alepha";
@@ -467,8 +467,18 @@ const ProjectArtifacts = () => {
               pushedAt: {
                 label: tr("artifacts.table.pushed"),
                 sortable: true,
+                // A push is an event, so its age is the answer and the exact
+                // instant is the hover (feedback #P2202). The sort reads the
+                // row's ISO value, never this cell, so it stays on the instant.
                 cell: (row) =>
-                  row.pushedAt ? l(row.pushedAt, { date: "lll" }) : "—",
+                  row.pushedAt ? (
+                    <TimeAgo
+                      value={row.pushedAt}
+                      className="text-muted-foreground text-xs"
+                    />
+                  ) : (
+                    "N/A"
+                  ),
               },
               commitSha: {
                 label: tr("artifacts.table.commit"),
