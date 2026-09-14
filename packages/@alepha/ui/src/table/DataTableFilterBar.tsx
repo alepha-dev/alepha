@@ -383,9 +383,16 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
                       ...field.control?.inputProps,
                     }}
                     // The filter's name, and a non-default operator, muted in
-                    // front of the value: "Status not Active". An empty
-                    // select draws no prefix; its placeholder names it.
-                    triggerPrefix={[label, operator?.prefix]
+                    // front of the value: "Status: not Active". An empty
+                    // select draws no prefix; its placeholder names it. The
+                    // colon is a catalog entry because French spaces it.
+                    triggerPrefix={[
+                      tr("dataTable.filterName", {
+                        default: `${label}:`,
+                        args: [label],
+                      }),
+                      operator?.prefix,
+                    ]
                       .filter(Boolean)
                       .join(" ")}
                     // Sized from its content, not the trigger: the trigger

@@ -156,8 +156,12 @@ export const DataTableFilterControl = (props: DataTableFilterControlProps) => {
         // identical glyph beside the remove one. Only then, though: a filter
         // given neither `onClear` nor `onRemove` draws no button of its own,
         // so its control keeps its classic in-field cross - the search box.
+        //
+        // ⚠️ The margin the trigger keeps for that cross goes with it. Hiding
+        // only the button left 24px of blank between the value and the
+        // chevron, widening every filter that holds a value.
         (props.onClear || props.onRemove) &&
-          '[&_[data-slot="combobox-clear"]]:hidden [&_[data-slot="control-clear"]]:hidden',
+          '[&_[data-slot="combobox-clear"]]:hidden [&_[data-slot="control-clear"]]:hidden [&_[data-slot="trigger-label"]]:mr-0',
       )}
     >
       {/*

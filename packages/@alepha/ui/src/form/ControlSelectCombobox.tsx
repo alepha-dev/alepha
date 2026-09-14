@@ -91,6 +91,10 @@ export interface ControlSelectComboboxProps {
    */
   countLabel?: (count: number) => string;
   /**
+   * See `ControlSelectProps.maxTriggerLength` in `ControlSelect.tsx`.
+   */
+  maxTriggerLength?: number;
+  /**
    * Allow the single-select value to be unset by pressing the row that is
    * already selected. Set for optional (and `clearable`) fields only.
    */
@@ -200,27 +204,64 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
     props.placeholder ?? tr("controlSelect.select", { default: "Select…" });
 
   /**
-   * Value, then count.
+   * The selection's names, in the list's order, joined.
    *
-   * One selection names itself; two or more collapse to a count. That is what
-   * keeps a filter row at a FIXED width: chips grew the trigger with every
-   * pick and then truncated, so the control both moved its neighbours and
-   * stopped saying what it was filtering on. A count does neither, and the
-   * single-selection case — much the commonest — still reads as the value.
+   * The list's order and not the picking order, so the same selection always
+   * reads the same, and a pick never reshuffles the names already shown.
+   * Every selected value has a row in `options` (an orphan is injected for
+   * one `data` lacks), so the index is always found.
    */
+  const names = selected
+    .map((value) => ({
+      value,
+      at: options.findIndex((o) => o.value === value),
+    }))
+    .sort((a, b) => a.at - b.at)
+    .map((entry) => labelFor(entry.value))
+    .join(", ");
+
+  /**
+   * Names while they are short, then a count.
+   *
+   * One selection names itself however long it is: "1 value" is never better.
+   * Two or more are named while the joined text fits `maxTriggerLength`
+   * characters (20 by default), and collapse to a count past it.
+   *
+   * A budget of characters rather than of items: "Draft, Ready" says what a
+   * filter holds where "2 values" makes the reader open it, while
+   * "lore/quests, alepha/orm" would only truncate into a list that looks
+   * shorter than it is. The chips box this replaced did exactly that, growing
+   * with every pick and then truncating. The budget caps the trigger's width
+   * instead, and needs no measuring, so the server renders the same text.
+   *
+   * ⚠️ Characters are not pixels, so the cap is approximate, and a pick that
+   * crosses it shrinks the trigger from names to a count.
+   */
+  const maxTriggerLength = props.maxTriggerLength ?? 20;
   const triggerLabel = props.multi
     ? selected.length === 0
       ? emptyLabel
-      : selected.length === 1
-        ? labelFor(selected[0])
+      : selected.length === 1 || names.length <= maxTriggerLength
+        ? names
         : (props.countLabel?.(selected.length) ??
           tr("controlSelect.count", {
-            default: `${selected.length} selected`,
+            default: `${selected.length} values`,
             args: [String(selected.length)],
           }))
     : selected[0]
       ? labelFor(selected[0])
       : emptyLabel;
+
+  /**
+   * The lone selection's hint, drawn muted ahead of its label, as the row
+   * draws it: "production" alone cannot say which app's was picked. Two or
+   * more selections are named by label only, since a hint per name would
+   * spend the whole `maxTriggerLength` budget on repeats.
+   */
+  const triggerHint =
+    selected.length === 1
+      ? options.find((o) => o.value === selected[0])?.hint
+      : undefined;
 
   /**
    * The `x` that puts a `clearable` field back to empty in one click.
@@ -317,7 +358,15 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
                       {opt.tag}
                     </span>
                   )}
-                  <span className="truncate">{opt.label}</span>
+                  {/* The hint rides in the label's own text run, muted, with
+                      no gap: the caller writes its separator into the hint
+                      ("lore/"), the way the trigger prints "lore/production". */}
+                  <span className="truncate">
+                    {opt.hint && (
+                      <span className="text-muted-foreground">{opt.hint}</span>
+                    )}
+                    {opt.label}
+                  </span>
                 </div>
                 {opt.description && (
                   <span className="text-muted-foreground truncate text-xs">
@@ -392,8 +441,10 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
         >
           {/* The room for the clear button, per size - see `clearGap` in
               TRIGGER_SIZES for why it is a margin here and not padding on the
-              trigger. */}
+              trigger. `trigger-label` lets a container that hides the button
+              (`DataTableFilterControl`) take the room back. */}
           <span
+            data-slot="trigger-label"
             className={cn(
               "flex min-w-0 items-center gap-2",
               showClear && sizeClasses.clearGap,
@@ -420,6 +471,9 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
                 <span className="text-muted-foreground">
                   {props.triggerPrefix}{" "}
                 </span>
+              )}
+              {triggerHint && (
+                <span className="text-muted-foreground">{triggerHint}</span>
               )}
               {triggerLabel}
             </span>

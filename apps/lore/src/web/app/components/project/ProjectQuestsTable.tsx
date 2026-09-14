@@ -216,8 +216,6 @@ const ProjectQuestsTable = () => {
       optionLabel: (status: QuestStatus) => tr(QUEST_STATUS_LABEL_KEYS[status]),
       control: {
         clearLabel: tr("board.filter.allStatuses"),
-        countLabel: (n: number) =>
-          tr("board.filter.statusCount", { args: [String(n)] }),
       },
     },
     area: {
@@ -228,8 +226,6 @@ const ProjectQuestsTable = () => {
       hidden: areaOptions.length === 0,
       control: {
         clearLabel: tr("board.filter.allAreas"),
-        countLabel: (n: number) =>
-          tr("board.filter.areaCount", { args: [String(n)] }),
         // Opted in rather than left to the option count. Areas are named by
         // import path (`lore/quests`, `lore/folios`), so the "select every
         // match" row - the whole of feedback #2009 - only appears once a
@@ -248,8 +244,6 @@ const ProjectQuestsTable = () => {
       operators: "any-all-none",
       control: {
         clearLabel: tr("board.filter.allTags"),
-        countLabel: (n: number) =>
-          tr("board.filter.tagCount", { args: [String(n)] }),
       },
     },
     // The releases' numeric ids, carried as strings because that is what a
@@ -262,8 +256,6 @@ const ProjectQuestsTable = () => {
       hidden: (releases ?? []).length === 0,
       control: {
         clearLabel: tr("board.filter.allReleases"),
-        countLabel: (n: number) =>
-          tr("board.filter.releaseCount", { args: [String(n)] }),
       },
     },
   } satisfies DataTableFilterFields;

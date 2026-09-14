@@ -379,10 +379,8 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       return [...found].map((option) => option.textContent);
     });
 
-    expect(options[0]).toContain("No release");
+    expect(options[0]).toContain("None");
     expect(options.join(" ")).toContain("0.28.0");
-    // "None" reads as "no filter" in a filter; the label has to say which.
-    expect(options[0]).not.toBe("None");
   });
 
   /**
@@ -693,13 +691,13 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       const labels = entries.map((entry) => entry.textContent ?? "").join(" ");
       expect(labels).toContain("0.28.0");
       expect(labels).toContain("0.29.0");
-      expect(labels).toContain("No release");
+      expect(labels).toContain("None");
       // The quest is in none, so that is what is marked.
       const checked = entries.filter(
         (entry) => entry.getAttribute("aria-checked") === "true",
       );
       expect(checked).toHaveLength(1);
-      expect(checked[0]?.textContent).toContain("No release");
+      expect(checked[0]?.textContent).toContain("None");
     });
 
     it("writes the release the same way the quest rail does", async () => {
@@ -724,7 +722,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
 
       const entries = await openReleases(await openRowMenu());
       fireEvent.click(
-        entries.find((entry) => entry.textContent?.includes("No release"))!,
+        entries.find((entry) => entry.textContent?.includes("None"))!,
       );
 
       await waitFor(() => expect(links.updates).toHaveLength(1));

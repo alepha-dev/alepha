@@ -116,8 +116,10 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
           )}
         >
           {/* The room for the clear button - see `clearGap` in TRIGGER_SIZES
-              for why it is a margin here and not padding on the trigger. */}
+              for why it is a margin here and not padding on the trigger, and
+              `ControlSelectCombobox` for `trigger-label`. */}
           <span
+            data-slot="trigger-label"
             className={cn(
               "flex min-w-0 items-center gap-2",
               showClear && size.clearGap,

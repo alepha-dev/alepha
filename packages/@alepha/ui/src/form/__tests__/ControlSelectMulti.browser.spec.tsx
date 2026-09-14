@@ -15,8 +15,9 @@ import { ControlSelect } from "../ControlSelect.tsx";
  * and then truncated, and one that forced a search field on because the chips
  * input was the only way to open the popup.
  *
- * It is the same button trigger as single-select now, labelled "value, then
- * count" — one selection names itself, two or more collapse. Nothing covered
+ * It is the same button trigger as single-select now, labelled "names, then
+ * count": one selection names itself, two or more are named while they fit
+ * `maxTriggerLength` and collapse to a count past it. Nothing covered
  * any of this before, which is exactly how the chips box survived so long.
  */
 describe("ControlSelect multi", () => {
@@ -43,6 +44,7 @@ describe("ControlSelect multi", () => {
   const Probe = (props: {
     items?: (typeof STATUSES)[number][] | string[];
     countLabel?: (n: number) => string;
+    maxTriggerLength?: number;
     createNewEntry?: boolean;
   }) => {
     const form = useForm({
@@ -58,6 +60,7 @@ describe("ControlSelect multi", () => {
           clearable
           clearLabel="All status"
           countLabel={props.countLabel}
+          maxTriggerLength={props.maxTriggerLength}
           createNewEntry={props.createNewEntry}
           items={(props.items ?? STATUSES) as never}
         />
@@ -177,28 +180,69 @@ describe("ControlSelect multi", () => {
     expect(ui.queryByRole("option", { name: "All status" })).toBeNull();
   });
 
-  it("names the value at one selection, and counts past that", async () => {
+  /**
+   * Opens the popup, picks the row, and waits for the form to hold `value`,
+   * the whole selection so far, comma-joined.
+   */
+  const pick = async (
+    ui: ReturnType<typeof render>,
+    name: RegExp,
+    value: string,
+  ) => {
+    openPopup(ui);
+    fireEvent.click(await ui.findByRole("option", { name }));
+    await waitFor(() => {
+      expect(ui.getByTestId("value").textContent).toBe(value);
+    });
+  };
+
+  it("names the value at one selection, however long", async () => {
+    const alepha = await start();
+    const ui = mount(
+      alepha,
+      <Probe
+        items={[
+          { value: "long", label: "Waiting on an upstream release" },
+          ...STATUSES,
+        ]}
+      />,
+    );
+
+    await pick(ui, /Waiting on/, "long");
+    // "1 value" is never better than the value, whatever the budget says.
+    expect(trigger(ui).textContent).toContain("Waiting on an upstream release");
+  });
+
+  it("names two values in the list's order while they fit 20 characters", async () => {
     const alepha = await start();
     const ui = mount(alepha, <Probe />);
 
-    openPopup(ui);
-    fireEvent.click(await ui.findByRole("option", { name: /In progress/ }));
-    await waitFor(() => {
-      expect(ui.getByTestId("value").textContent).toBe("accepted");
-    });
-    // One selection reads as the value — the commonest case, and the reason
-    // a bare count everywhere would have been worse than chips.
-    expect(trigger(ui).textContent).toContain("In progress");
+    await pick(ui, /Shelved/, "shelved");
+    await pick(ui, /In progress/, "shelved,accepted");
+    // Picked Shelved first, listed after In progress: the list's order wins.
+    // "In progress, Shelved" is exactly 20 characters, the budget's edge.
+    expect(trigger(ui).textContent).toContain("In progress, Shelved");
+  });
 
-    openPopup(ui);
-    fireEvent.click(await ui.findByRole("option", { name: /Completed/ }));
-    await waitFor(() => {
-      expect(ui.getByTestId("value").textContent).toBe("accepted,completed");
-    });
-    expect(trigger(ui).textContent).toContain("2 selected");
-    // The collapse is the point: the label must stop naming values so the
-    // trigger keeps a fixed width.
+  it("counts once the names pass 20 characters", async () => {
+    const alepha = await start();
+    const ui = mount(alepha, <Probe />);
+
+    await pick(ui, /In progress/, "accepted");
+    await pick(ui, /Completed/, "accepted,completed");
+    // "In progress, Completed" is 21: one over, so a count, and no names left
+    // behind to truncate.
+    expect(trigger(ui).textContent).toContain("2 values");
     expect(trigger(ui).textContent).not.toContain("In progress");
+  });
+
+  it("takes a caller's maxTriggerLength", async () => {
+    const alepha = await start();
+    const ui = mount(alepha, <Probe maxTriggerLength={40} />);
+
+    await pick(ui, /In progress/, "accepted");
+    await pick(ui, /Completed/, "accepted,completed");
+    expect(trigger(ui).textContent).toContain("In progress, Completed");
   });
 
   it("honors a caller's countLabel", async () => {
@@ -285,7 +329,7 @@ describe("ControlSelect multi", () => {
       });
 
       // The report, exactly: the trigger says three and the list has to agree.
-      expect(trigger(ui).textContent).toContain("3 selected");
+      expect(trigger(ui).textContent).toContain("3 values");
       openPopup(ui);
       await waitFor(() => {
         expect(selectedRows(ui)).toHaveLength(3);
