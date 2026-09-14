@@ -47,10 +47,13 @@ const AppEnvironment = () => {
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
 
-  const { data, loading, error, refetch } = useQuery(
+  const { data, loading, error } = useQuery(
     {
       enabled: Boolean(project && instance),
+      // Invalidated by `AppEnvironmentAdd` and `AppEnvironmentRow` (#E59,
+      // #Q2329), and kept on screen while it is re-read after one of them.
       key: ["app-secrets", project?.id, instance?.id],
+      keepPreviousData: true,
       handler: async () => {
         if (!project || !instance) return undefined;
         return await secretApi.listAppSecrets({
@@ -108,7 +111,6 @@ const AppEnvironment = () => {
                   projectId={project.id}
                   instanceId={instance.id}
                   canWrite={canDeploy}
-                  onChanged={refetch}
                 />
               ))}
             </div>
@@ -117,11 +119,7 @@ const AppEnvironment = () => {
       </Card>
 
       {canDeploy ? (
-        <AppEnvironmentAdd
-          projectId={project.id}
-          instanceId={instance.id}
-          onSaved={refetch}
-        />
+        <AppEnvironmentAdd projectId={project.id} instanceId={instance.id} />
       ) : (
         <p className="text-muted-foreground text-sm">
           {tr("app.environment.ownerOnly")}

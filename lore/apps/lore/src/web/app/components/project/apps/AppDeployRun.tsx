@@ -1,5 +1,5 @@
 import { TimeAgo, Badge, Button, useDialog, useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 
@@ -18,7 +18,6 @@ export interface AppDeployRunProps {
    */
   live: boolean;
   onFollow: () => void;
-  onChanged: () => void;
 }
 
 /**
@@ -49,7 +48,6 @@ const AppDeployRun = (props: AppDeployRunProps) => {
   const toaster = useToast();
   const dialog = useDialog();
   const deployApi = useClient<DeployController>();
-  const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
 
   const run = props.run;
@@ -88,61 +86,70 @@ const AppDeployRun = (props: AppDeployRunProps) => {
             ? tr("app.deploy.status.cancelled")
             : tr("app.deploy.status.queued");
 
-  const rollback = async () => {
-    setBusy(true);
-    try {
-      const plan = (await deployApi.planDeploymentRollback({
-        params: { projectId: props.projectId, deploymentId: String(run.id) },
-      })) as Record<string, any>;
-
-      const migrations = Number(plan.migrationsSince ?? 0);
-      const confirmed = await dialog.confirm({
-        title: tr("app.deploy.rollback.title", { args: [String(run.tag)] }),
-        description: [
-          plan.path === "version"
-            ? tr("app.deploy.rollback.fast")
-            : (plan.reason ?? tr("app.deploy.rollback.slow")),
-          // ⚠️ The warning the dialog exists for. Code goes back; the schema
-          // does not.
-          migrations > 0
-            ? tr("app.deploy.rollback.migrations", {
-                args: [String(migrations)],
-              })
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" "),
-        confirmLabel: tr("app.deploy.rollback.confirm"),
-        destructive: migrations > 0,
-      });
-      if (!confirmed) {
-        return;
-      }
-
-      if (plan.path === "version") {
-        await deployApi.rollbackDeployment({
+  /**
+   * The plan, the confirmation and the rollback, as one `useAction` (#E59,
+   * #Q2329): the dialog is part of the action, so cancelling it returns from
+   * the handler and sends nothing. A refusal at any step is the server's
+   * sentence, shown by the root `ActionErrorToaster`.
+   */
+  const rollbackAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const plan = (await deployApi.planDeploymentRollback({
           params: { projectId: props.projectId, deploymentId: String(run.id) },
-          body: { acknowledgeMigrations: migrations > 0 },
+        })) as Record<string, any>;
+
+        const migrations = Number(plan.migrationsSince ?? 0);
+        const confirmed = await dialog.confirm({
+          title: tr("app.deploy.rollback.title", { args: [String(run.tag)] }),
+          description: [
+            plan.path === "version"
+              ? tr("app.deploy.rollback.fast")
+              : (plan.reason ?? tr("app.deploy.rollback.slow")),
+            // ⚠️ The warning the dialog exists for. Code goes back; the schema
+            // does not.
+            migrations > 0
+              ? tr("app.deploy.rollback.migrations", {
+                  args: [String(migrations)],
+                })
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
+          confirmLabel: tr("app.deploy.rollback.confirm"),
+          destructive: migrations > 0,
         });
-      } else {
-        // The fallback, and it is a plain deploy of the same tag: there is no
-        // version to point at, so the bytes have to go up again.
-        await deployApi.startDeploy({
-          params: {
-            projectId: props.projectId,
-            instanceId: String(run.instanceId),
-          },
-          body: { tag: String(run.tag) },
-        });
-      }
-      toaster.success(tr("app.deploy.rollback.started"));
-      props.onChanged();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+        if (!confirmed) {
+          return;
+        }
+
+        if (plan.path === "version") {
+          await deployApi.rollbackDeployment({
+            params: {
+              projectId: props.projectId,
+              deploymentId: String(run.id),
+            },
+            body: { acknowledgeMigrations: migrations > 0 },
+          });
+        } else {
+          // The fallback, and it is a plain deploy of the same tag: there is
+          // no version to point at, so the bytes have to go up again.
+          await deployApi.startDeploy({
+            params: {
+              projectId: props.projectId,
+              instanceId: String(run.instanceId),
+            },
+            body: { tag: String(run.tag) },
+          });
+        }
+        toaster.success(tr("app.deploy.rollback.started"));
+      },
+      // The new run joins the list. A cancelled dialog resolves the handler
+      // too, so it re-reads the list as well, which costs one read.
+      invalidates: [["app-deployments", props.projectId]],
+    },
+    [deployApi, dialog, props.projectId, run, toaster, tr],
+  );
 
   return (
     <div className="flex flex-col gap-1.5 py-2.5">
@@ -172,8 +179,8 @@ const AppDeployRun = (props: AppDeployRunProps) => {
             <Button
               variant="outline"
               size="sm"
-              disabled={busy}
-              onClick={rollback}
+              disabled={rollbackAction.loading}
+              onClick={() => void rollbackAction.run()}
               data-testid={`app-deploy-rollback-${run.id}`}
             >
               {tr("app.deploy.rollback")}

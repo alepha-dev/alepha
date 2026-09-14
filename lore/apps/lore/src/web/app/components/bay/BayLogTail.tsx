@@ -1,5 +1,5 @@
-import { Button, Card, CardContent, useToast } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { Button, Card, CardContent } from "@alepha/ui";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ScrollText } from "lucide-react";
 import { useState } from "react";
@@ -40,59 +40,61 @@ export interface BayLogTailProps {
  */
 const BayLogTail = (props: BayLogTailProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const commandApi = useClient<EstateCommandController>();
   const [estate] = useStore(currentEstateAtom);
 
-  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EstateCommandResult | undefined>();
   const [note, setNote] = useState<string | undefined>();
+
+  // A `useAction` (#E59, #Q2329): a refused enqueue is the server's sentence,
+  // shown by the root `ActionErrorToaster`, and a second click while a tail is
+  // being fetched is dropped by `run()` itself.
+  const fetchAction = useAction<[], void>(
+    {
+      handler: async ({ signal }) => {
+        if (!estate) return;
+        setResult(undefined);
+        setNote(undefined);
+        const command = await commandApi.enqueueEstateCommand({
+          params: { estateId: estate.id },
+          body: {
+            kind: "logs",
+            app: props.app,
+            environment: props.env,
+            lines: LINES,
+          },
+        });
+
+        // Polled rather than awaited: the machine answers over its own
+        // connection, and the blob appears on the row when it does. The
+        // window is the command's own timeout, so a machine that never
+        // answers stops this rather than leaving a spinner forever, and an
+        // unmount aborts the signal, which stops it too.
+        for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+          if (signal.aborted) return;
+          try {
+            const file = await commandApi.getEstateCommandResult({
+              params: { estateId: estate.id, commandId: command.id },
+            });
+            setResult(JSON.parse(await (file as unknown as Blob).text()));
+            return;
+          } catch {
+            // 404 until the machine uploads. Any other failure surfaces when
+            // the window runs out, with the same sentence: there is nothing
+            // to read yet.
+          }
+        }
+        setNote(tr("bay.logs.timeout"));
+      },
+    },
+    [commandApi, estate, props.app, props.env, tr],
+  );
+  const busy = fetchAction.loading;
 
   if (!estate) {
     return null;
   }
-
-  const fetchLogs = async () => {
-    if (busy) return;
-    setBusy(true);
-    setResult(undefined);
-    setNote(undefined);
-    try {
-      const command = await commandApi.enqueueEstateCommand({
-        params: { estateId: estate.id },
-        body: {
-          kind: "logs",
-          app: props.app,
-          environment: props.env,
-          lines: LINES,
-        },
-      });
-
-      // Polled rather than awaited: the machine answers over its own
-      // connection, and the blob appears on the row when it does. The window
-      // is the command's own timeout, so a machine that never answers stops
-      // this rather than leaving a spinner forever.
-      for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-        try {
-          const file = await commandApi.getEstateCommandResult({
-            params: { estateId: estate.id, commandId: command.id },
-          });
-          setResult(JSON.parse(await (file as unknown as Blob).text()));
-          return;
-        } catch {
-          // 404 until the machine uploads. Any other failure surfaces when
-          // the window runs out, with the same sentence: there is nothing to
-          // read yet.
-        }
-      }
-      setNote(tr("bay.logs.timeout"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <Card>
@@ -106,7 +108,7 @@ const BayLogTail = (props: BayLogTailProps) => {
             // refuses too, server-side, which is what actually holds.
             disabled={busy || !estate.online}
             title={estate.online ? undefined : tr("bay.logs.offline")}
-            onClick={() => void fetchLogs()}
+            onClick={() => void fetchAction.run()}
             data-testid="bay-logs-fetch"
           >
             <ScrollText className="size-4" />

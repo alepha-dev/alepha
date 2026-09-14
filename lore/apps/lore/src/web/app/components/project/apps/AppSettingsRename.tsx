@@ -8,7 +8,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { SettingsRow } from "@alepha/ui/settings";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
@@ -66,7 +66,76 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
   const [instances, setInstances] = useStore(currentInstancesAtom);
 
   const [draft, setDraft] = useState(instance?.[props.half] ?? "");
-  const [busy, setBusy] = useState(false);
+
+  // A `useAction` whose handler holds the confirmation and the move (#E59,
+  // #Q2329). The 99-character bound and the 409 on a taken pair arrive as
+  // server messages, toasted by the root listener, with the draft left in
+  // the field to fix.
+  const saveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project || !instance) return;
+        if (draft.trim().toLowerCase() === instance[props.half]) return;
+
+        const confirmed = await dialog.confirm({
+          title: tr("app.settings.rename.confirmTitle", {
+            args: [`${instance.app}/${instance.env}`],
+          }),
+          description: tr("app.settings.rename.confirmDescription"),
+          confirmLabel: tr("app.settings.rename.save"),
+        });
+        if (!confirmed) return;
+
+        const updated = await appApi.updateApp({
+          params: {
+            projectId: project.id,
+            app: instance.app,
+            env: instance.env,
+          },
+          // Only this half. An absent key means "leave it alone", so this row
+          // cannot write a stale copy of the other one.
+          body: { [props.half]: draft.trim() },
+        });
+
+        // Both copies, before the navigation.
+        setInstance(updated);
+        setInstances(
+          (instances ?? []).map((it) => (it.id === updated.id ? updated : it)),
+        );
+        // Back from the server rather than from the draft: both halves are
+        // trimmed and lowercased on the way in, so what was typed and what was
+        // stored are not always the same string.
+        setDraft(updated[props.half]);
+
+        await router.push("appSettings", {
+          params: {
+            projectSlug: project.slug,
+            app: updated.app,
+            env: updated.env,
+          },
+        });
+        toaster.success(
+          tr("app.settings.rename.renamed", {
+            args: [`${updated.app}/${updated.env}`],
+          }),
+        );
+      },
+    },
+    [
+      appApi,
+      project,
+      instance,
+      instances,
+      draft,
+      props.half,
+      dialog,
+      router,
+      toaster,
+      tr,
+    ],
+  );
+  const busy = saveAction.loading;
+  const save = saveAction.run;
 
   if (!project || !instance) {
     return null;
@@ -76,62 +145,6 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
   const stored = instance[props.half];
   const changed = draft.trim().toLowerCase() !== stored;
   const isApp = props.half === "app";
-
-  const save = async () => {
-    if (!changed) {
-      return;
-    }
-
-    const confirmed = await dialog.confirm({
-      title: tr("app.settings.rename.confirmTitle", {
-        args: [`${instance.app}/${instance.env}`],
-      }),
-      description: tr("app.settings.rename.confirmDescription"),
-      confirmLabel: tr("app.settings.rename.save"),
-    });
-    if (!confirmed) return;
-
-    setBusy(true);
-    try {
-      const updated = await appApi.updateApp({
-        params: {
-          projectId: project.id,
-          app: instance.app,
-          env: instance.env,
-        },
-        // Only this half. An absent key means "leave it alone", so this row
-        // cannot write a stale copy of the other one.
-        body: { [props.half]: draft.trim() },
-      });
-
-      // Both copies, before the navigation.
-      setInstance(updated);
-      setInstances(
-        (instances ?? []).map((it) => (it.id === updated.id ? updated : it)),
-      );
-      // Back from the server rather than from the draft: both halves are
-      // trimmed and lowercased on the way in, so what was typed and what was
-      // stored are not always the same string.
-      setDraft(updated[props.half]);
-
-      await router.push("appSettings", {
-        params: {
-          projectSlug: project.slug,
-          app: updated.app,
-          env: updated.env,
-        },
-      });
-      toaster.success(
-        tr("app.settings.rename.renamed", {
-          args: [`${updated.app}/${updated.env}`],
-        }),
-      );
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <SettingsRow

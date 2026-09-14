@@ -6,11 +6,11 @@ import {
 } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Layers, User, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.ts";
@@ -20,6 +20,7 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import { activityResourceHref } from "./activityResourceHref.ts";
 
 /**
@@ -59,45 +60,38 @@ const ProjectActivityPage = () => {
   const projectApi = useClient<ProjectController>();
   const dt = useInject(DateTimeProvider);
 
-  // `undefined` until the member list lands, which is a different answer from
-  // an empty list: see `showPeople`.
-  const [people, setPeople] = useState<
-    { id: string; label: string }[] | undefined
-  >(undefined);
-  const [options, setOptions] = useState<{
-    types: string[];
-    actions: string[];
-  }>({ types: [], actions: [] });
-
-  // The two dropdowns' contents, fetched once per project. The actions come
-  // from the `$audit` DECLARATIONS rather than from the rows, so the list is
-  // complete on a project's first day instead of growing under the reader as
-  // things happen for the first time.
-  useEffect(() => {
-    if (!project) return;
-    let alive = true;
-    void Promise.all([
-      projectApi.getProjectUsers({ params: { id: project.id } }),
-      projectApi.getProjectActivityFilters({ params: { id: project.id } }),
-    ])
-      .then(([users, filters]) => {
-        if (!alive) return;
-        setPeople(
-          users.map((user) => ({
-            id: user.id,
-            label: displayName(user, user.id),
-          })),
-        );
-        setOptions(filters);
-      })
-      .catch(() => {
-        // A filter bar that could not be filled costs the filters, not the
-        // table: the rows below are a separate request and still render.
-      });
-    return () => {
-      alive = false;
-    };
-  }, [project, projectApi]);
+  // The two dropdowns' contents, fetched once per project (#E59, #Q2329). The
+  // members come through `useProjectUsers`, so the request is shared with
+  // every other surface that names a member. The actions come from the
+  // `$audit` DECLARATIONS rather than from the rows, so the list is complete
+  // on a project's first day instead of growing under the reader as things
+  // happen for the first time.
+  //
+  // Both are quiet on purpose: a filter bar that could not be filled costs
+  // the filters, not the table, and the rows below are a separate request
+  // that still renders. `onError` keeps the failure out of the toaster and in
+  // error reporting.
+  const users = useProjectUsers();
+  const people = useMemo(
+    () =>
+      users.map((user) => ({
+        id: user.id,
+        label: displayName(user, user.id),
+      })),
+    [users],
+  );
+  const options = useQuery(
+    {
+      key: ["project-activity-filters", project?.id],
+      enabled: !!project,
+      handler: () =>
+        projectApi.getProjectActivityFilters({
+          params: { id: project?.id as number },
+        }),
+      onError: () => {},
+    },
+    [projectApi, project?.id],
+  ).data ?? { types: [], actions: [] };
 
   /**
    * Whether the people filter is offered at all (feedback #P2178).
@@ -113,7 +107,7 @@ const ProjectActivityPage = () => {
    * that holds a value (#E58), which answers the same problem where it
    * starts: the filter stays on screen, clearable, as long as it narrows.
    */
-  const showPeople = (people?.length ?? 0) > 1;
+  const showPeople = people.length > 1;
 
   /**
    * The three questions and a date: who (an account), resource (the `type`
@@ -131,7 +125,7 @@ const ProjectActivityPage = () => {
       schema: z.string(),
       label: tr("activity.col.who"),
       icon: User,
-      items: (people ?? []).map((person) => ({
+      items: people.map((person) => ({
         label: person.label,
         value: person.id,
       })),
