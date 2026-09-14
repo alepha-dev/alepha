@@ -41,8 +41,8 @@ export interface FolioDocumentProps {
   draft: FolioDraft;
   actions: UseFolioActionsResult;
   /**
-   * Where the menubar row renders — a slot above all three panes, owned by
-   * `FolioWorkspace`.
+   * Where the menubar row renders: a slot above all three panes, owned by
+   * `FolioWorkspaceShell`.
    *
    * It is a portal target purely for LAYOUT now. It used to be a necessity:
    * the menubar had to be created inside MDXEditor's realm, the only place

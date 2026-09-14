@@ -53,7 +53,7 @@ export interface FolioTreeProps {
   onActions?: (actions: FolioTreeActions) => void;
   /**
    * `/folios?dir=<shortId>` - open the tree at that directory. Threaded
-   * from `FolioWorkspace`, which reads it off the URL; see
+   * from `FolioWorkspaceShell`, which reads it off the URL; see
    * `UseFolioTreeModelInput.revealDirectoryShortId`.
    */
   revealDirectoryShortId?: number;
@@ -81,8 +81,8 @@ export interface FolioTreeActions {
  * boxes for overlapping sets is a choice the reader should not have to
  * make. See `shared/spotlight/Spotlight.tsx`.
  *
- * Mounted from `FolioWorkspace.tsx`, NOT from the folio-keyed
- * `FolioWorkspaceContent` — see `useFolioTreeModel`'s file doc for why that
+ * Mounted from `FolioWorkspaceShell.tsx`, in the `/folios` layout, NOT from
+ * the page that remounts per folio: see `useFolioTreeModel`'s file doc for why that
  * placement is load-bearing, not a style choice.
  */
 const FolioTree = (props: FolioTreeProps): ReactElement => {

@@ -62,8 +62,9 @@ export interface UseFolioActionsInput {
    * A callback rather than something this hook does itself: the flow is not
    * one API call, it is create-then-open-the-new-row-in-inline-rename, and
    * only the tree pane's model holds the `renamingId` that second half
-   * needs. The tree mounts one level up, outside the per-folio `key`, so
-   * `FolioWorkspace` threads its published action down.
+   * needs. The tree mounts in the `/folios` layout, above the page that
+   * remounts per folio, so `FolioWorkspace` threads its published action
+   * down from the shell.
    */
   createDirectory: () => void;
   panes: {
@@ -175,8 +176,8 @@ export interface UseFolioActionsResult {
  *
  * ## Why `isProtected`/`isPinned` are local state, not `props.folio.*`
  *
- * `FolioWorkspace` remounts this whole subtree (via a `key` on the folio
- * id) on every folio-to-folio navigation — but NOT on an in-place mutation
+ * The page remounts this whole subtree on every folio-to-folio navigation
+ * (a param change remounts a `$page`, #Q2349), but NOT on an in-place mutation
  * of the SAME folio, like this hook's own `folio.encrypt` or `folio.pin`
  * actions. `props.folio` is a route-loader prop, fixed for the life of this
  * mount; nothing this hook writes refreshes it. If `isProtected` were computed as `!!props.folio?.protected`
@@ -300,8 +301,8 @@ export const useFolioActions = (
   }, [openRow?.updatedAt, openRow?.title, savedAt, adoptTitle]);
 
   // Seeded once from the loader-provided `folio` prop. Safe as an
-  // INITIALIZER only because `FolioWorkspace` remounts this whole subtree
-  // on every folio switch (see the file doc above) — these are the local
+  // INITIALIZER only because the page remounts this whole subtree on every
+  // folio switch (see the file doc above): these are the local
   // source of truth for the rest of this hook's lifetime, not re-derived
   // from `input.folio` on later renders.
   const [isProtected, setIsProtected] = useState<boolean>(
@@ -660,8 +661,9 @@ export const useFolioActions = (
     input.draft.markSaved(saved.updatedAt, values, saved.revisionsChanged);
 
     if (!folio) {
-      // Create mode: `router.push` below changes `FolioWorkspace`'s `key`
-      // from "new" to the folio id, which fully remounts the workspace —
+      // Create mode: `router.push` below moves from `projectFoliosNew` to
+      // `projectFoliosFolio`, a different page, which fully remounts the
+      // document side:
       // the fresh mount's `useFolioDraft` seeds from the NEW page's own
       // loader, which refetches the folio from the server. `getLiveValues()`
       // here is a SECOND, genuinely live read (see its doc) — if the user
@@ -1096,8 +1098,8 @@ export const useFolioActions = (
     },
     // The tree pane owns directory creation - it is the only thing that can
     // put the new row into inline rename, which is the whole flow. It lives
-    // one level up, outside this component's per-folio `key`, so it reaches
-    // here as a callback. `FolioWorkspace`'s empty state has wired the same
+    // in the `/folios` layout, above the page that remounts per folio, so it
+    // reaches here as a callback. `FolioWorkspaceEmpty` has wired the same
     // menu id to the same place all along; only the document path was left
     // on a no-op.
     "folio.newDirectory": () => input.createDirectory(),

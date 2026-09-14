@@ -102,9 +102,9 @@ const useNarrowerThan = (breakpoint: number): boolean => {
  * are the same picture without being the same state (feedback #P2136). See
  * `collapsingBoth`.
  *
- * Lives here rather than in `FolioWorkspace.tsx` because the panes it
- * governs mount at two different depths — the tree directly in the
- * workspace, the inspector inside the folio-keyed content below it — so
+ * Lives here rather than in `FolioWorkspaceShell.tsx` because the panes it
+ * governs mount at two different depths (the tree in the shell, the
+ * inspector inside the page that remounts per folio), so
  * the state has to be above both, and being a hook makes the derivation
  * testable without standing up either pane.
  */
