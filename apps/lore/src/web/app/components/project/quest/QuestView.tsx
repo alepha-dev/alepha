@@ -116,7 +116,7 @@ const QuestView = (props: QuestViewProps) => {
   // The Discussion's composer is a `LoreEditor` now (#Q2014), so the
   // CodeMirror chunk is needed on this page where the read-only description
   // never asked for it. Warmed on mount rather than paid at the first click
-  // in the composer, the same way `FolioWorkspace` warms it.
+  // in the composer, the same way `FolioWorkspaceShell` warms it.
   useEffect(() => {
     preloadMarkdownEditor();
   }, []);

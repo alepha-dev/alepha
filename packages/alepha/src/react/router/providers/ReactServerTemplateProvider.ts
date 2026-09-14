@@ -227,6 +227,9 @@ export class ReactServerTemplateProvider {
     const layers = state.layers.map((layer) => ({
       part: layer.part,
       name: layer.name,
+      // Hydration's reuse check compares identities: without it every layer
+      // would re-run its loader on first load.
+      key: layer.key,
       config: layer.config,
       props: layer.props,
       error: layer.error
