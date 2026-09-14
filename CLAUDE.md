@@ -400,6 +400,8 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ### React components
 
+⚠️ **In `packages/@alepha/ui/src`, `check:conventions` enforces five of these** on every `.tsx` file (specs and fixtures excluded): no `function` component, no props destructured in the parameter list, props typed `props: <Name>Props` with that type exported from the same file, one component per file (the compound primitive families named in the script's `UI_COMPOUND_FILES` excepted), and a `createContext` only under a `Context exemption:` comment. **Everywhere else, apps included, they are still enforced by review.**
+
 - **One component per file.** If a file has two, extract the second. The one exemption is a compound primitive, which keeps its family in one file: `@alepha/ui`'s `src/core/DropdownMenu.tsx` holds the menu and all its parts.
 - **File order:** PROPS interface → COMPONENT → the rest (other interfaces, helpers).
 - **Extracted component naming:** `ParentComponent.tsx` with an inner `Header` becomes `ParentComponentHeader.tsx`.

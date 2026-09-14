@@ -20,11 +20,9 @@ import { AutoFormBottomBar } from "./AutoFormBottomBar.tsx";
 import { AutoFormGroupBlock } from "./AutoFormGroupBlock.tsx";
 import { autoGroupSchema } from "./autoFormGroups.ts";
 import type { ControlProps } from "./Control.tsx";
-import {
-  FormFieldAutoSaveProvider,
-  FormFieldLayoutProvider,
-  FormFieldRequiredMarkerProvider,
-} from "./FormField.tsx";
+import { FormFieldAutoSaveProvider } from "./FormFieldAutoSaveProvider.tsx";
+import { FormFieldLayoutProvider } from "./FormFieldLayoutProvider.tsx";
+import { FormFieldRequiredMarkerProvider } from "./FormFieldRequiredMarkerProvider.tsx";
 import { iconFor } from "./iconHint.tsx";
 
 export interface AutoFormProps<T extends ZObject> {

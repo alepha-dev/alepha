@@ -32,6 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { formatBytes } from "../core/utils.ts";
+import { ControlUploadItemThumb } from "./ControlUploadItemThumb.tsx";
 import { FormField } from "./FormField.tsx";
 import { type ResizeImageOptions, resizeImage } from "./resizeImage.ts";
 
@@ -88,17 +89,6 @@ export interface ControlUploadProps {
    * Disable the dropzone.
    */
   disabled?: boolean;
-}
-
-interface UploadedFileMeta {
-  id: string;
-  name: string;
-  mimeType?: string;
-  size?: number;
-  /**
-   * Object URL for image preview, when applicable.
-   */
-  previewUrl?: string;
 }
 
 /**
@@ -308,7 +298,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
         tabIndex={0}
       >
         {isImage && item?.previewUrl ? (
-          <ItemThumb url={item.previewUrl} alt={item.name ?? id} />
+          <ControlUploadItemThumb url={item.previewUrl} alt={item.name ?? id} />
         ) : (
           <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded">
             <FileIcon className="size-4" />
@@ -471,26 +461,13 @@ export const ControlUpload = (props: ControlUploadProps) => {
   );
 };
 
-export interface ItemThumbProps {
-  url: string;
-  alt: string;
+interface UploadedFileMeta {
+  id: string;
+  name: string;
+  mimeType?: string;
+  size?: number;
+  /**
+   * Object URL for image preview, when applicable.
+   */
+  previewUrl?: string;
 }
-
-const ItemThumb = (props: ItemThumbProps) => {
-  const [broken, setBroken] = useState(false);
-  if (broken) {
-    return (
-      <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded">
-        <FileIcon className="size-4" />
-      </div>
-    );
-  }
-  return (
-    <img
-      src={props.url}
-      alt={props.alt}
-      className="size-7 shrink-0 rounded object-cover"
-      onError={() => setBroken(true)}
-    />
-  );
-};

@@ -1411,4 +1411,228 @@ if (uiViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * `@alepha/ui` keeps the React conventions CLAUDE.md states for components.
+ *
+ * #E51 converted the package: every component an arrow taking named props,
+ * one component per file, Context only under a written exemption. Nothing kept
+ * it that way, so the next primitive written from an upstream example would
+ * have brought `function Button({ className, ...props })` straight back. These
+ * five rules are the part of that a line scan can hold, over `.tsx` files in
+ * `packages/@alepha/ui/src`, specs and fixtures excluded as everywhere else in
+ * this file. Apps are not covered: their drift is a separate decision.
+ *
+ * 1. **Arrow components only**: no column-zero PascalCase `function X(`.
+ * 2. **Props are not destructured in the parameter list**: no `const X = ({`.
+ * 3. **Props are named and exported**: a component that takes props takes
+ *    `props: <Name>Props` (a generic and a default value allowed), declared
+ *    as an `export interface` or `export type` in the same file.
+ * 4. **One component per file**, except the compound primitive families in
+ *    `UI_COMPOUND_FILES`, CLAUDE.md's one exemption.
+ * 5. **`createContext` only with its exemption**: the comment directly above
+ *    the call contains `Context exemption:`, the marker #Q2188 fixed.
+ *
+ * A component is a column-zero `const X = (` (or `= <T,>(`) or `function X(`
+ * whose name is PascalCase, capital then lowercase, so `PAGE_SIZES` is not
+ * one. It is read after `stripLiterals`, so a component inside a template or a
+ * comment is not one either. `const Combobox = ComboboxPrimitive.Root` is an
+ * alias, not a component, and matches neither shape. A `memo(Impl)` wrapper
+ * and its `Impl` are ONE component, named after the wrapper: `Impl` takes the
+ * wrapper's props type (`TreeViewRow`).
+ */
+const UI_REACT_SRC = "packages/@alepha/ui/src/";
+
+/**
+ * The files allowed more than one component: each holds one compound
+ * primitive, a root and the parts that only mean something inside it
+ * (`DropdownMenu` and its content, items, separators). CLAUDE.md, "One
+ * component per file", names this as its one exemption.
+ *
+ * A list rather than a pattern, on purpose. A prefix rule ("`DropdownMenu*`
+ * may live in `DropdownMenu.tsx`") would equally let `AppShellHeader` back
+ * into `AppShell.tsx`, which is the exact file #E51 split. Adding a family
+ * here is a deliberate edit, like adding a subpath.
+ */
+const UI_COMPOUND_FILES = new Set([
+  "core/Alert.tsx",
+  "core/AlertDialog.tsx",
+  "core/Avatar.tsx",
+  "core/Breadcrumb.tsx",
+  "core/ButtonGroup.tsx",
+  "core/Card.tsx",
+  "core/Combobox.tsx",
+  "core/ContextMenu.tsx",
+  "core/Dialog.tsx",
+  "core/Drawer.tsx",
+  "core/DropdownMenu.tsx",
+  "core/Empty.tsx",
+  "core/HoverCard.tsx",
+  "core/InputGroup.tsx",
+  "core/Kbd.tsx",
+  "core/Menubar.tsx",
+  "core/Pagination.tsx",
+  "core/Popover.tsx",
+  "core/Progress.tsx",
+  "core/Sheet.tsx",
+  "core/Sidebar.tsx",
+  "core/Table.tsx",
+  "core/Tabs.tsx",
+  "core/Tooltip.tsx",
+  "chart/Chart.tsx",
+  "calendar/Calendar.tsx",
+  "command/Command.tsx",
+  "otp/InputOTP.tsx",
+  "resizable/Resizable.tsx",
+]);
+
+const reactViolations: string[] = [];
+
+const reactFiles = execFileSync(
+  "git",
+  ["ls-files", "--cached", "--others", "--exclude-standard", UI_REACT_SRC],
+  { encoding: "utf8" },
+)
+  .split("\n")
+  .filter((file) => file.endsWith(".tsx") && existsSync(file))
+  .filter((file) => !/__tests__|\.spec\.|fixtures/.test(file));
+
+const COMPONENT_NAME = "[A-Z][a-z][A-Za-z0-9]*";
+const FUNCTION_COMPONENT = new RegExp(
+  `^(?:export\\s+(?:default\\s+)?)?(?:async\\s+)?function\\s+(${COMPONENT_NAME})\\s*[<(]`,
+);
+const ARROW_COMPONENT = new RegExp(
+  `^(?:export\\s+)?const\\s+(${COMPONENT_NAME})\\s*=\\s*(?:<[^=]*?>\\s*)?\\(`,
+);
+const MEMO_WRAPPER = new RegExp(
+  `^(?:export\\s+)?const\\s+(${COMPONENT_NAME})\\s*=\\s*(?:React\\.)?memo\\(\\s*(${COMPONENT_NAME})\\s*\\)`,
+);
+
+/**
+ * The text between the parameter list's parentheses, starting at the `(` at
+ * `open` in the stripped source. Balanced on `()`, `{}` and `[]`, so a default
+ * value (`= {}`) and a function type inside a generic stay inside.
+ */
+const parameterList = (code: string, open: number): string => {
+  let depth = 0;
+  for (let i = open; i < code.length; i++) {
+    const ch = code[i];
+    if (ch === "(" || ch === "{" || ch === "[") depth++;
+    if (ch === ")" || ch === "}" || ch === "]") depth--;
+    if (depth === 0) return code.slice(open + 1, i);
+  }
+  return code.slice(open + 1);
+};
+
+for (const file of reactFiles) {
+  const rel = file.slice(UI_REACT_SRC.length);
+  const raw = readFileSync(file, "utf8");
+  const code = stripLiterals(raw);
+  const lines = code.split("\n");
+  const lineStarts: number[] = [];
+  lines.reduce((offset, line) => {
+    lineStarts.push(offset);
+    return offset + line.length + 1;
+  }, 0);
+
+  const memoImpl = new Map<string, string>(); // impl -> wrapper
+  for (const line of lines) {
+    const memo = MEMO_WRAPPER.exec(line);
+    if (memo) memoImpl.set(memo[2] as string, memo[1] as string);
+  }
+
+  const components: string[] = [];
+  lines.forEach((line, index) => {
+    const at = `  ${file}:${index + 1}`;
+    const fn = FUNCTION_COMPONENT.exec(line);
+    const arrow = fn ? null : ARROW_COMPONENT.exec(line);
+    if (!fn && !arrow) return;
+    const name = (fn ?? arrow)?.[1] as string;
+    const component = memoImpl.get(name) ?? name;
+    components.push(component);
+
+    if (fn) {
+      reactViolations.push(
+        `${at}\n    → \`function ${name}\`; write it as \`const ${name} = (props: ${component}Props) => { ... }\``,
+      );
+    }
+
+    // The `(` that opens the parameter list: the last one on the matched
+    // head, which follows the name and any generic.
+    const head = (fn ?? arrow)?.[0] as string;
+    const open = (lineStarts[index] as number) + head.lastIndexOf("(");
+    const params = parameterList(code, open).trim().replace(/,$/, "").trim();
+    if (params === "") return;
+
+    if (params.startsWith("{")) {
+      reactViolations.push(
+        `${at}\n    → \`${name}\` destructures its props in the parameter list; take \`props: ${component}Props\` and destructure in the body`,
+      );
+      return;
+    }
+
+    const typed =
+      /^props\??\s*:\s*([A-Za-z_$][\w$]*)\s*(?:<[\s\S]*>)?\s*(?:=[\s\S]*)?$/.exec(
+        params,
+      );
+    const expected = `${component}Props`;
+    if (typed?.[1] !== expected) {
+      reactViolations.push(
+        `${at}\n    → \`${name}\` takes \`${params.replace(/\s+/g, " ").slice(0, 60)}\`; take \`props: ${expected}\``,
+      );
+      return;
+    }
+    if (
+      !new RegExp(`^export\\s+(?:interface|type)\\s+${expected}\\b`, "m").test(
+        code,
+      )
+    ) {
+      reactViolations.push(
+        `${at}\n    → \`${expected}\` is not declared in this file as an \`export interface\` or \`export type\``,
+      );
+    }
+  });
+
+  const distinct = [...new Set(components)];
+  if (distinct.length > 1 && !UI_COMPOUND_FILES.has(rel)) {
+    reactViolations.push(
+      `  ${file}\n    → ${distinct.length} components (${distinct.join(", ")}); one per file, an internal one named with this file's prefix`,
+    );
+  }
+
+  // Rule 5 reads the RAW lines for the comment, and the stripped ones for
+  // the call, so a `createContext` named in prose is not a call.
+  const rawLines = raw.split("\n");
+  lines.forEach((line, index) => {
+    if (!/\bcreateContext\s*[<(]/.test(line)) return;
+    // A call wrapped onto the line after `const X =` has its comment above
+    // the `const`, not above the call.
+    let start = index;
+    while (start > 0 && /[=(]\s*$/.test(lines[start - 1] ?? "")) start--;
+    const comment: string[] = [];
+    for (let i = start - 1; i >= 0; i--) {
+      const text = (rawLines[i] ?? "").trim();
+      if (!/^(\/\/|\/\*|\*)/.test(text)) break;
+      comment.push(text);
+    }
+    if (!comment.some((text) => text.includes("Context exemption:"))) {
+      reactViolations.push(
+        `  ${file}:${index + 1}\n    → \`createContext\` without a \`Context exemption:\` comment directly above it`,
+      );
+    }
+  });
+}
+
+if (reactViolations.length > 0) {
+  console.error(
+    `\n${reactViolations.length} @alepha/ui React convention violation(s):\n\n` +
+      `${reactViolations.join("\n")}\n\n` +
+      "In `@alepha/ui`, a component is an arrow function taking\n" +
+      "`props: <Name>Props`, exported from its own file, one component per file\n" +
+      "(compound primitives excepted, see UI_COMPOUND_FILES), and Context is\n" +
+      "used only under a `Context exemption:` comment. See CLAUDE.md, React\n" +
+      "components.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");

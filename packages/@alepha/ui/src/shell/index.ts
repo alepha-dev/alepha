@@ -25,14 +25,11 @@ export { ButtonDark, type ButtonDarkProps } from "./ButtonDark.tsx";
 export { ButtonInbox, type ButtonInboxProps } from "./ButtonInbox.tsx";
 export { ButtonLanguage, type ButtonLanguageProps } from "./ButtonLanguage.tsx";
 export { ButtonTheme, type ButtonThemeProps } from "./ButtonTheme.tsx";
-export {
-  ButtonUser,
-  type ButtonUserAccountMenuItemProps,
-  type ButtonUserAdminMenuItemProps,
-  type ButtonUserEmailProps,
-  type ButtonUserLogoutMenuItemProps,
-  type ButtonUserProps,
-} from "./ButtonUser.tsx";
+export { ButtonUser, type ButtonUserProps } from "./ButtonUser.tsx";
+export type { ButtonUserAccountMenuItemProps } from "./ButtonUserAccountMenuItem.tsx";
+export type { ButtonUserAdminMenuItemProps } from "./ButtonUserAdminMenuItem.tsx";
+export type { ButtonUserEmailProps } from "./ButtonUserEmail.tsx";
+export type { ButtonUserLogoutMenuItemProps } from "./ButtonUserLogoutMenuItem.tsx";
 export {
   DetailAside,
   type DetailAsideProps,
@@ -45,7 +42,10 @@ export {
   type DetailTab,
 } from "./DetailLayout.tsx";
 export { inboxUnreadAtom } from "./inboxUnreadAtom.ts";
-export { NavigationProgress } from "./NavigationProgress.tsx";
+export {
+  NavigationProgress,
+  type NavigationProgressProps,
+} from "./NavigationProgress.tsx";
 export { NavShell, type NavShellProps } from "./NavShell.tsx";
 export { PlateLayout, type PlateLayoutProps } from "./PlateLayout.tsx";
 export type { PlateTab } from "./PlateTabBar.tsx";
