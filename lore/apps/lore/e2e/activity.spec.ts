@@ -16,7 +16,7 @@ import {
  * `e2e/dashboard.spec.ts` pins the root's own destination from the other
  * side.
  *
- * Since the page became an `DataTable` over scoped `audits` rows, the last
+ * Since the page became a `DataTable` over scoped `audits` rows, the last
  * step also pins the half that no unit test can: that a filter is answered by
  * the SERVER. The unit specs can only assert that the query was built; only a
  * real request proves it was honoured.
