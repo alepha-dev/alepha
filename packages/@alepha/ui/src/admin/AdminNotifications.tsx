@@ -13,7 +13,6 @@ import {
   CircleDot,
   FileText,
   Radio,
-  Search,
   Send,
   Trash2,
   UserRound,
@@ -21,15 +20,20 @@ import {
 import { useCallback, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
-import { FilterSlot } from "../core/FilterSlot.tsx";
 import TimeAgo from "../core/TimeAgo.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
 import { AlephaTable } from "../table/AlephaTable.tsx";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableFilterValues,
+} from "../table/alephaTableTypes.ts";
 import { notificationChannelLabel } from "./adminNotificationsChannelLabel.ts";
 import { AdminNotificationsDetail } from "./AdminNotificationsDetail.tsx";
 import { AdminNotificationsStatusBadge } from "./AdminNotificationsStatusBadge.tsx";
-import { NOTIFICATION_STATUSES } from "./adminNotificationsStatusTones.ts";
+import {
+  NOTIFICATION_STATUSES,
+  type NotificationStatus,
+} from "./adminNotificationsStatusTones.ts";
 import { notificationTemplateLabel } from "./adminNotificationsTemplateLabel.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
@@ -128,12 +132,76 @@ export const AdminNotifications = () => {
     [userClient],
   );
 
+  const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: {
+          // What the box matches, as a hover hint and the field's accessible
+          // description, now that it reads "Search" like every other filter
+          // bar (#Q2231).
+          title: tr("admin.notifications.filterSearch", {
+            default: "Recipient",
+          }),
+        },
+      },
+    },
+    status: {
+      schema: z.enum(NOTIFICATION_STATUSES),
+      label: tr("admin.notifications.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: (status: NotificationStatus) => statusLabels[status],
+      control: {
+        clearLabel: tr("admin.notifications.allStatuses", {
+          default: "All statuses",
+        }),
+      },
+    },
+    // Open, like the column behind it. A closed enum here would reject
+    // `?channel=discord` outright, so a plugin's channel would be listed in
+    // the table and unfilterable.
+    channel: {
+      schema: z.text(),
+      label: tr("admin.notifications.colChannel", { default: "Channel" }),
+      icon: Radio,
+      // Derived from the templates this app registers, which already carry
+      // their own channel list. A hand-written pair could only ever offer
+      // the two the framework ships.
+      items: [...new Set((templates ?? []).flatMap((t) => t.channels))].map(
+        (channel) => ({
+          label: notificationChannelLabel(channel),
+          value: channel,
+        }),
+      ),
+      control: {
+        clearLabel: tr("admin.notifications.allChannels", {
+          default: "All channels",
+        }),
+      },
+    },
+    template: {
+      schema: z.text(),
+      label: tr("admin.notifications.colTemplate", { default: "Template" }),
+      icon: FileText,
+      hidden: (templates ?? []).length === 0,
+      items: (templates ?? []).map((template) => ({
+        label: notificationTemplateLabel(template.name),
+        value: template.name,
+      })),
+      control: {
+        clearLabel: tr("admin.notifications.allTemplates", {
+          default: "All templates",
+        }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: Record<string, any>;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) => {
       const f = params.filters ?? {};
       const page = await client.findNotifications({
@@ -245,113 +313,12 @@ export const AdminNotifications = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<NotificationResource>
+      <AlephaTable<NotificationResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.notifications"
         fetch={fetcher}
         onRowClick={(n) => setSelected({ id: n.id, tab: "details" })}
-        filters={{
-          schema: z.object({
-            search: z.text().optional(),
-            status: z.enum(NOTIFICATION_STATUSES as [string]).optional(),
-            // Open, like the column behind it. A closed enum here would
-            // reject `?channel=discord` outright, so a plugin's channel
-            // would be listed in the table and unfilterable.
-            channel: z.text().optional(),
-            template: z.text().optional(),
-          }),
-          render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("admin.search", { default: "Search" })}
-                  inputProps={{
-                    "aria-label": tr("admin.search", { default: "Search" }),
-                    // What the box matches, as a hover hint and the field's
-                    // accessible description, now that it reads "Search"
-                    // like every other filter bar (#Q2231).
-                    title: tr("admin.notifications.filterSearch", {
-                      default: "Recipient",
-                    }),
-                  }}
-                />
-              </FilterSlot>
-              <div className="w-44">
-                <Control
-                  input={form.input.status}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("admin.notifications.allStatuses", {
-                    default: "All statuses",
-                  })}
-                  triggerClassName="w-full"
-                  items={NOTIFICATION_STATUSES.map((status) => ({
-                    label: statusLabels[status],
-                    value: status,
-                  }))}
-                  inputProps={{
-                    "aria-label": tr("admin.notifications.colStatus", {
-                      default: "Status",
-                    }),
-                  }}
-                />
-              </div>
-              <div className="w-40">
-                <Control
-                  input={form.input.channel}
-                  label=""
-                  clearable
-                  icon={Radio}
-                  clearLabel={tr("admin.notifications.allChannels", {
-                    default: "All channels",
-                  })}
-                  triggerClassName="w-full"
-                  // Derived from the templates this app registers, which
-                  // already carry their own channel list. A hand-written
-                  // pair could only ever offer the two the framework ships.
-                  items={[
-                    ...new Set((templates ?? []).flatMap((t) => t.channels)),
-                  ].map((channel) => ({
-                    label: notificationChannelLabel(channel),
-                    value: channel,
-                  }))}
-                  inputProps={{
-                    "aria-label": tr("admin.notifications.colChannel", {
-                      default: "Channel",
-                    }),
-                  }}
-                />
-              </div>
-              {(templates ?? []).length > 0 && (
-                <div className="w-52">
-                  <Control
-                    input={form.input.template}
-                    label=""
-                    clearable
-                    icon={FileText}
-                    clearLabel={tr("admin.notifications.allTemplates", {
-                      default: "All templates",
-                    })}
-                    triggerClassName="w-full"
-                    items={(templates ?? []).map((template) => ({
-                      label: notificationTemplateLabel(template.name),
-                      value: template.name,
-                    }))}
-                    inputProps={{
-                      "aria-label": tr("admin.notifications.colTemplate", {
-                        default: "Template",
-                      }),
-                    }}
-                  />
-                </div>
-              )}
-            </>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         rowActions={(row) => {
           const user = row.contact ? usersByContact[row.contact] : undefined;
           return [

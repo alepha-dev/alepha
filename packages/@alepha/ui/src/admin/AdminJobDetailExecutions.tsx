@@ -2,7 +2,7 @@ import * as React from "react";
 
 void React;
 
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import type { AdminJobController, JobExecutionRow } from "alepha/api/jobs";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -17,11 +17,13 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 
-import { FilterSlot } from "../core/FilterSlot.tsx";
 import TimeAgo from "../core/TimeAgo.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
 import { AlephaTable } from "../table/AlephaTable.tsx";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableFilterValues,
+} from "../table/alephaTableTypes.ts";
 import { AdminJobsStatusBadge } from "./AdminJobsStatusBadge.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
 import {
@@ -38,14 +40,6 @@ export interface AdminJobDetailExecutionsProps {
 }
 
 const EXEC_POLL_MS = 10_000;
-
-const executionFiltersSchema = z.object({
-  status: z.array(z.string()).optional(),
-  trigger: z.string().optional(),
-  startedAt: z.dateRange().optional(),
-  key: z.string().optional(),
-});
-type ExecutionFilters = Infer<typeof executionFiltersSchema>;
 
 /**
  * A job's executions, paged, sorted and filtered by the server.
@@ -64,23 +58,66 @@ export const AdminJobDetailExecutions = (
   const statusLabels = useJobStatusLabels();
   const jobName = props.jobName;
 
+  const filterFields = {
+    // A filter on the job key, not a search: default, so it is on the bar
+    // from the start, and removable like any other.
+    key: {
+      schema: z.string(),
+      mode: "default",
+      label: tr("admin.jobs.keyFilter", { default: "Key" }),
+      placeholder: tr("admin.jobs.keyFilter", { default: "Key" }),
+      icon: KeyRound,
+    },
+    status: {
+      schema: z.array(z.enum(JOB_EXECUTION_STATUSES)),
+      label: tr("admin.jobs.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: (status: JobExecutionRow["status"]) => statusLabels[status],
+      control: {
+        clearLabel: tr("admin.jobs.statusAll", { default: "All statuses" }),
+      },
+    },
+    trigger: {
+      schema: z.enum(["scheduled", "manual", "code"]),
+      label: tr("admin.jobs.colTriggeredBy", { default: "Triggered by" }),
+      icon: Workflow,
+      items: [
+        {
+          value: "scheduled",
+          label: tr("admin.jobs.triggerScheduled", { default: "Scheduled" }),
+        },
+        {
+          value: "manual",
+          label: tr("admin.jobs.triggerManual", { default: "Manual" }),
+        },
+        {
+          value: "code",
+          label: tr("admin.jobs.triggerCode", { default: "Code" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.jobs.triggerAll", { default: "Any trigger" }),
+      },
+    },
+    startedAt: {
+      schema: z.dateRange(),
+      label: tr("admin.jobs.colStarted", { default: "Started" }),
+      placeholder: tr("admin.jobs.startedAny", {
+        default: "Started any time",
+      }),
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: ExecutionFilters;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) => {
       const f = params.filters;
-      const status = (f?.status ?? []).filter((value) =>
-        (JOB_EXECUTION_STATUSES as string[]).includes(value),
-      ) as JobExecutionRow["status"][];
-      const trigger =
-        f?.trigger === "scheduled" ||
-        f?.trigger === "manual" ||
-        f?.trigger === "code"
-          ? f.trigger
-          : undefined;
+      const status = f?.status ?? [];
+      const trigger = f?.trigger;
       return client.listExecutions({
         params: { name: jobName },
         query: {
@@ -197,82 +234,14 @@ export const AdminJobDetailExecutions = (
   const canBulkDelete = client.deleteExecutions.can();
 
   return (
-    <AlephaTable<JobExecutionRow>
+    <AlephaTable<JobExecutionRow, typeof filterFields>
       className="min-h-0 flex-1"
       persistenceKey={`admin.jobs.detail.${jobName}`}
       pollMs={EXEC_POLL_MS}
       rowKey={(e) => e.id}
       fetch={fetcher}
       onRowClick={(e) => props.onOpen(e)}
-      filters={{
-        schema: executionFiltersSchema,
-        render: (form) => (
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterSlot>
-              <Control
-                input={form.input.key}
-                label=""
-                icon={KeyRound}
-                placeholder={tr("admin.jobs.keyFilter", { default: "Key" })}
-                inputProps={{
-                  "aria-label": tr("admin.jobs.keyFilter", { default: "Key" }),
-                }}
-              />
-            </FilterSlot>
-            <Control
-              input={form.input.status}
-              label=""
-              clearable
-              icon={CircleDot}
-              triggerClassName="w-48"
-              placeholder={tr("admin.jobs.statusAll", {
-                default: "All statuses",
-              })}
-              items={JOB_EXECUTION_STATUSES.map((status) => ({
-                value: status,
-                label: statusLabels[status],
-              }))}
-            />
-            <Control
-              input={form.input.trigger}
-              label=""
-              clearable
-              icon={Workflow}
-              clearLabel={tr("admin.jobs.triggerAll", {
-                default: "Any trigger",
-              })}
-              triggerClassName="w-40"
-              items={[
-                {
-                  value: "scheduled",
-                  label: tr("admin.jobs.triggerScheduled", {
-                    default: "Scheduled",
-                  }),
-                },
-                {
-                  value: "manual",
-                  label: tr("admin.jobs.triggerManual", { default: "Manual" }),
-                },
-                {
-                  value: "code",
-                  label: tr("admin.jobs.triggerCode", { default: "Code" }),
-                },
-              ]}
-            />
-            {/* The calendar control selects itself off the schema's
-                `date-range` format. */}
-            <Control
-              input={form.input.startedAt}
-              label=""
-              clearable
-              triggerClassName="w-64"
-              placeholder={tr("admin.jobs.startedAny", {
-                default: "Started any time",
-              })}
-            />
-          </div>
-        ),
-      }}
+      filters={{ fields: filterFields }}
       columns={{
         status: {
           label: tr("admin.jobs.colStatus", { default: "Status" }),

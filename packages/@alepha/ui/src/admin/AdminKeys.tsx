@@ -4,7 +4,7 @@ import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import type {
   AdminApiKeyController,
   AdminApiKeyResource,
@@ -23,21 +23,31 @@ import { ApiKeyStatusBadge } from "../account/ApiKeyStatusBadge.tsx";
 import { Badge } from "../core/Badge.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
 import { AlephaTable } from "../table/AlephaTable.tsx";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableFilterValues,
+} from "../table/alephaTableTypes.ts";
 import { AdminKeysTokenDialog } from "./AdminKeysTokenDialog.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
-// Filter schema at module scope so its identity stays stable across renders:
-// AlephaTable's internal `useForm` captures it once.
-const keyFiltersSchema = z.object({
-  status: z
-    .array(z.enum(["active", "expiring", "expired", "revoked"]))
-    .optional(),
-});
-type AdminKeyFilters = Infer<typeof keyFiltersSchema>;
+/**
+ * The key statuses the filter offers, in order.
+ *
+ * ⚠️ A local list, checked against `ApiKeyStatus`, and not
+ * `apiKeyStatusSchema` imported from `alepha/api/keys`: that module has no
+ * browser condition and its index exports controllers, entities and
+ * services, so importing a value from it would pull the server into the
+ * admin's bundle. The type import above costs nothing at runtime.
+ */
+const API_KEY_STATUSES = [
+  "active",
+  "expiring",
+  "expired",
+  "revoked",
+] as const satisfies readonly ApiKeyStatus[];
 
 export const AdminKeys = () => {
   const client = useClient<AdminApiKeyController>();
@@ -50,12 +60,39 @@ export const AdminKeys = () => {
   const [ownKeys, setOwnKeys] = useState<ListApiKeyItem[]>([]);
   const [refreshSignal, setRefreshSignal] = useState(0);
 
+  const statusLabel = (status: ApiKeyStatus): string => {
+    switch (status) {
+      case "active":
+        return tr("account.keys.status.active", { default: "Active" });
+      case "expiring":
+        return tr("account.keys.status.expiringLabel", { default: "Expiring" });
+      case "expired":
+        return tr("account.keys.status.expired", { default: "Expired" });
+      case "revoked":
+        return tr("account.keys.status.revoked", { default: "Revoked" });
+    }
+  };
+
+  const filterFields = {
+    // The table's only filter: on the bar from the start, and removable.
+    status: {
+      schema: z.array(z.enum(API_KEY_STATUSES)),
+      mode: "default",
+      label: tr("admin.keys.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: statusLabel,
+      control: {
+        clearLabel: tr("admin.keys.statusAll", { default: "All statuses" }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AdminKeyFilters;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) => {
       const status = params.filters?.status;
       return client.findApiKeys({
@@ -71,19 +108,6 @@ export const AdminKeys = () => {
     },
     [client],
   );
-
-  const statusLabel = (status: ApiKeyStatus): string => {
-    switch (status) {
-      case "active":
-        return tr("account.keys.status.active", { default: "Active" });
-      case "expiring":
-        return tr("account.keys.status.expiringLabel", { default: "Expiring" });
-      case "expired":
-        return tr("account.keys.status.expired", { default: "Expired" });
-      case "revoked":
-        return tr("account.keys.status.revoked", { default: "Revoked" });
-    }
-  };
 
   const revoke = useConfirmedAction<[AdminApiKeyResource, () => void]>(
     {
@@ -147,7 +171,7 @@ export const AdminKeys = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminApiKeyResource>
+      <AlephaTable<AdminApiKeyResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.keys"
         fetch={fetcher}
@@ -172,28 +196,9 @@ export const AdminKeys = () => {
           },
         ]}
         filters={{
-          schema: keyFiltersSchema,
+          fields: filterFields,
           // Today's default, spelled out: every key but the revoked ones.
           initialValues: { status: ["active", "expiring", "expired"] },
-          render: (form) => (
-            <div className="flex flex-wrap items-center gap-2">
-              <Control
-                input={form.input.status}
-                label=""
-                icon={CircleDot}
-                triggerClassName="w-64"
-                clearLabel={tr("admin.keys.statusAll", {
-                  default: "All statuses",
-                })}
-                items={(
-                  ["active", "expiring", "expired", "revoked"] as const
-                ).map((status) => ({
-                  value: status,
-                  label: statusLabel(status),
-                }))}
-              />
-            </div>
-          ),
         }}
         bulkActions={[
           {

@@ -378,7 +378,6 @@ export const uiFr: Record<string, string> = {
   "admin.audits.dateAll": "Toute date",
   "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",
-  "admin.files.bucketPlaceholder": "Bucket",
   "admin.files.bulkDelete": "Supprimer la sélection",
   "admin.files.bulkDeleteConfirm":
     "Supprimer définitivement $1 fichier(s) ? L'opération est irréversible.",
@@ -442,6 +441,8 @@ export const uiFr: Record<string, string> = {
   "admin.jobs.deleteTitle": "Supprimer l'exécution",
   "admin.jobs.deleted": "Exécution supprimée",
   "admin.jobs.domainAll": "Tous les domaines",
+  "admin.jobs.filterDomain": "Domaine",
+  "admin.jobs.filterHealth": "État",
   "admin.jobs.executionMissing": "Cette exécution n'existe plus.",
   "admin.jobs.executionTitle": "Exécution",
   "admin.jobs.healthAll": "Tous les états",
@@ -701,7 +702,6 @@ export const uiFr: Record<string, string> = {
   "admin.payments.colProvider": "Prestataire",
   "admin.payments.colStatus": "Statut",
   "admin.payments.colWhen": "Date",
-  "admin.search": "Rechercher",
   "admin.sessions.bulkRevoke": "Révoquer la sélection",
   "admin.sessions.bulkRevokeConfirm":
     "Révoquer $1 session(s) ? Les utilisateurs concernés seront déconnectés.",
@@ -714,6 +714,8 @@ export const uiFr: Record<string, string> = {
   "admin.sessions.colStarted": "Ouverte le",
   "admin.sessions.colUser": "Utilisateur",
   "admin.sessions.countryAll": "Tous les pays",
+  "admin.sessions.filterCountry": "Pays",
+  "admin.sessions.filterStatus": "Statut",
   "admin.sessions.lastUsed1": "Dernière heure",
   "admin.sessions.lastUsed24": "Dernier jour",
   "admin.sessions.lastUsed168": "Dernière semaine",

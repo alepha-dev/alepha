@@ -4,25 +4,26 @@ import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Check, Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
+import { Check, CircleDot, Eye, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback } from "react";
 
-import { FilterSlot } from "../core/FilterSlot.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { UserAvatar } from "../core/UserAvatar.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
 import { AlephaTable } from "../table/AlephaTable.tsx";
+import type {
+  AlephaTableFilterFields,
+  AlephaTableFilterValues,
+} from "../table/alephaTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUsersRolesPicker } from "./AdminUsersRolesPicker.tsx";
 import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
-import { AdminUsersStatusFilter } from "./AdminUsersStatusFilter.tsx";
 
 export interface AdminUsersProps {
   /**
@@ -45,19 +46,6 @@ export interface AdminUsersProps {
     | "lastLoginAt"
   >;
 }
-
-// Filter schema. Lives at module scope so its identity stays stable
-// across renders: a fresh reference per render would make AlephaTable's
-// internal `useForm` re-anchor the filters on every render.
-const filtersSchema = z.object({
-  search: z.string().optional(),
-  // "" = All status, "verified" = Active + emailVerified, "active" =
-  // enabled, "disabled" = !enabled. Stored as a free-form string (not
-  // enum) so unknown values from old persisted state simply fall back
-  // to "All status" instead of throwing on schema validation.
-  status: z.string().optional(),
-});
-type AdminUserFilters = Infer<typeof filtersSchema>;
 
 type StatusPreset = {
   enabled?: boolean;
@@ -107,12 +95,42 @@ export const AdminUsers = (props: AdminUsersProps) => {
   );
   const availableRoles = rolesQuery.data ?? [];
 
+  const filterFields = {
+    search: { preset: "search" },
+    // Nothing = every user, "verified" = active with a verified email,
+    // "active" = enabled, "disabled" = not enabled. A free-form string rather
+    // than an enum, so an unknown value from an older stored filter maps to
+    // no preset (every user) instead of failing to decode.
+    status: {
+      schema: z.string(),
+      label: tr("admin.users.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      items: [
+        {
+          value: "verified",
+          label: tr("admin.users.statusVerified", { default: "Verified" }),
+        },
+        {
+          value: "active",
+          label: tr("admin.users.statusActive", { default: "Active" }),
+        },
+        {
+          value: "disabled",
+          label: tr("admin.users.statusDisabled", { default: "Disabled" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.users.statusAll", { default: "All status" }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AdminUserFilters;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) => {
       const preset = params.filters?.status
         ? STATUS_PRESETS[params.filters.status]
@@ -298,29 +316,11 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   return (
     <AdminPage>
-      <AlephaTable<UserEntity>
+      <AlephaTable<UserEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
         fetch={fetcher}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("admin.search", { default: "Search" })}
-                  inputProps={{
-                    "aria-label": tr("admin.search", { default: "Search" }),
-                  }}
-                />
-              </FilterSlot>
-              <AdminUsersStatusFilter input={form.input.status} />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         bulkActions={[
           {
             label: tr("admin.users.bulkDisable", {
