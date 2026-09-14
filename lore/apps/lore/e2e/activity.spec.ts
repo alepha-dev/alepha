@@ -117,12 +117,11 @@ test.describe("Activity", () => {
         { timeout: 15_000 },
       );
 
-      // Base UI renders a `Control` as a role=combobox BUTTON, not a native
-      // <select>, so the option is reached by opening the popover.
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: /All resources/i })
-        .click();
+      // Every filter here is optional, so it starts off the bar (#E58) and is
+      // added from the funnel-plus menu. Adding one opens its list, which is
+      // why the option is the next click.
+      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("menuitem", { name: /^Resource/ }).click();
       await page.getByRole("option", { name: "Folio", exact: true }).click();
       await request;
 

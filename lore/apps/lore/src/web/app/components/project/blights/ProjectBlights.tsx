@@ -1,5 +1,4 @@
 import {
-  FilterSlot,
   TimeAgo,
   Badge,
   Dialog,
@@ -9,8 +8,11 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import {
+  AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
+} from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -38,34 +40,6 @@ import { formatReference } from "../../shared/element/typedReference.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import BlightSourceCell from "./BlightSourceCell.tsx";
-
-/**
- * Filter form, owned by AlephaTable: a status multi-select (open / resolved,
- * empty meaning both) and a sigil select (`"all"` or a sigil id). Both are
- * applied client-side over the already-fetched list.
- */
-const blightsFiltersSchema = z.object({
-  /**
-   * An ARRAY, and empty means every status (feedback #2092).
-   *
-   * ⚠️ `all` left the ENUM, not just the dropdown. It was a value standing in
-   * for the absence of a filter, which the convention expresses as an empty
-   * selection - and while it was a state, `fetchBlights` had to branch on it
-   * as though a blight could BE "all".
-   *
-   * The default is still `["open"]`, so the inbox opens on the triage queue
-   * rather than on its whole history.
-   */
-  status: z.array(z.enum(["open", "resolved"])).optional(),
-  /**
-   * Absent means every app, the same way an empty `status` means every
-   * status. It carried a literal `"all"` until feedback #2098: the select
-   * drew it as a row of its own, so "All sigils" sat in the list looking
-   * like an app you could pick, and `fetchBlights` had to branch on a
-   * sigil id that is not one.
-   */
-  sigilId: z.string().optional(),
-});
 
 /**
  * Owner-facing Blights inbox, built on {@link AlephaTable}.
@@ -118,6 +92,54 @@ const ProjectBlights = () => {
     return null;
   };
 
+  /**
+   * Both filters are applied client-side over the already-fetched list, and
+   * both are optional: the inbox has no search box.
+   */
+  const filterFields = {
+    /**
+     * An ARRAY, and empty means every status (feedback #2092).
+     *
+     * ⚠️ `all` left the ENUM, not just the dropdown. It was a value standing
+     * in for the absence of a filter, which the convention expresses as an
+     * empty selection - and while it was a state, `fetchBlights` had to branch
+     * on it as though a blight could BE "all".
+     *
+     * The default is still `["open"]` (`initialValues` below), so the inbox
+     * opens on the triage queue rather than on its whole history, and the
+     * filter holding that value keeps it on the bar.
+     */
+    status: {
+      schema: z.array(z.enum(["open", "resolved"])),
+      label: tr("blights.filter.status"),
+      icon: CircleDot,
+      items: [
+        { label: tr("blights.filter.open"), value: "open" },
+        { label: tr("blights.filter.resolved"), value: "resolved" },
+      ],
+      control: {
+        clearLabel: tr("blights.filter.all"),
+        countLabel: (n: number) =>
+          tr("blights.filter.statusCount", { args: [String(n)] }),
+      },
+    },
+    /**
+     * Absent means every app, the same way an empty `status` means every
+     * status. It carried a literal `"all"` until feedback #2098: the select
+     * drew it as a row of its own, so "All sigils" sat in the list looking
+     * like an app you could pick. The options are filled by the fetcher, so
+     * the filter is hidden until there are some.
+     */
+    sigilId: {
+      schema: z.string(),
+      label: tr("blights.filter.sigil"),
+      icon: AppWindow,
+      items: sigilOptions.map((s) => ({ label: s.label, value: s.id })),
+      hidden: sigilOptions.length === 0,
+      control: { clearLabel: tr("blights.filter.allSigils") },
+    },
+  } satisfies AlephaTableFilterFields;
+
   // Fetch the full list, keep the sidebar badge in sync, then sort + slice
   // client-side into the `Page` shape AlephaTable consumes.
   const fetchBlights = async ({
@@ -129,7 +151,7 @@ const ProjectBlights = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: Record<string, any>;
+    filters?: AlephaTableFilterValues<typeof filterFields>;
   }): Promise<Page<BlightResource>> => {
     if (!project) {
       return emptyPage(page, size);
@@ -138,7 +160,7 @@ const ProjectBlights = () => {
     // Anything else needs the full set, with `resolved` narrowed client-side:
     // an empty selection now means every status, which is the case the old
     // `"all"` value used to name.
-    const statuses = (filters?.status as string[] | undefined) ?? [];
+    const statuses = filters?.status ?? [];
     const openOnly = statuses.length === 1 && statuses[0] === "open";
     const res = await blightApi.listBlights({
       params: { projectId: project.id },
@@ -152,7 +174,7 @@ const ProjectBlights = () => {
     alepha.store.set(currentBlightCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
 
-    const stored = filters?.sigilId as string | undefined;
+    const stored = filters?.sigilId;
     // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
     // machine of anyone who used the inbox before feedback #2098 - filters
     // persist per `persistenceKey`, and `reconcilePersistedFilters` reshapes
@@ -188,49 +210,14 @@ const ProjectBlights = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<BlightResource>
+      <AlephaTable<BlightResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={project ? `lor.blights.${project.id}` : "lor.blights"}
         defaultSort={{ field: "count", direction: "desc" }}
         emptyMessage={tr("blights.empty")}
         filters={{
-          schema: blightsFiltersSchema,
+          fields: filterFields,
           initialValues: { status: ["open"] },
-          render: (form) => (
-            <div className="flex flex-wrap gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.status}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("blights.filter.all")}
-                  countLabel={(n) =>
-                    tr("blights.filter.statusCount", { args: [String(n)] })
-                  }
-                  triggerClassName="w-full"
-                  items={[
-                    { label: tr("blights.filter.open"), value: "open" },
-                    { label: tr("blights.filter.resolved"), value: "resolved" },
-                  ]}
-                />
-              </FilterSlot>
-              <div className="w-52">
-                <Control
-                  input={form.input.sigilId}
-                  label=""
-                  clearable
-                  icon={AppWindow}
-                  clearLabel={tr("blights.filter.allSigils")}
-                  triggerClassName="w-full"
-                  items={sigilOptions.map((s) => ({
-                    label: s.label,
-                    value: s.id,
-                  }))}
-                />
-              </div>
-            </div>
-          ),
         }}
         // ⚠️ `toolbar`, not `actions`: `AgentPromptsMenu` is a dropdown
         // trigger rather than a button that acts on click, which is the

@@ -1,13 +1,16 @@
-import { FilterSlot, TimeAgo, Badge } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { TimeAgo, Badge } from "@alepha/ui";
+import {
+  AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
+} from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Layers, User, Zap } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.ts";
@@ -18,32 +21,6 @@ import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { activityResourceHref } from "./activityResourceHref.ts";
-
-const activityFiltersSchema = z.object({
-  /**
-   * One person at a time, deliberately. A person picker answering "what did
-   * SHE change" is a different question from "which kinds of thing moved",
-   * and a list of two people is a report nobody asks for.
-   */
-  userId: z.string().optional(),
-  /**
-   * ARRAYS, and empty means every value (feedback #2092). Both are the
-   * multi-select case: "quests and epics" and "created or deleted" are
-   * questions a reader has, and a single value could not express either.
-   */
-  type: z.array(z.string()).optional(),
-  action: z.array(z.string()).optional(),
-  /**
-   * When, as a closed range of calendar days.
-   *
-   * `z.dateRange()` makes both ends mandatory, so `.optional()` is the whole
-   * of "no filter" - there is no half-range to represent and no empty end to
-   * strip on the way out. It round-trips through the URL as
-   * `?createdAt=2026-01-01,2026-01-31`, comma-joined by the client and split
-   * back by `coerceStrings` on the server.
-   */
-  createdAt: z.dateRange().optional(),
-});
 
 /**
  * What happened in this project: one row per recorded write, newest first.
@@ -129,26 +106,90 @@ const ProjectActivityPage = () => {
    * ever select every row; and not before the member list has landed, rather
    * than rendering an empty control that may then vanish. Read off the list
    * the dropdown is filled from, so the decision costs no request.
+   *
+   * ⚠️ Hidden, and a stored `userId` still applies. It used to be dropped by
+   * the fetch while the control was hidden, so it could not narrow the table
+   * with nothing on screen to clear it. The bar now draws a hidden filter
+   * that holds a value (#E58), which answers the same problem where it
+   * starts: the filter stays on screen, clearable, as long as it narrows.
    */
   const showPeople = (people?.length ?? 0) > 1;
 
   /**
-   * ⚠️ A stored `userId` must not apply while the control is hidden.
-   * `AlephaTable` persists filters under `persistenceKey`, so one picked while
-   * the project had two members would keep narrowing the table after the
-   * control disappeared, with nothing on screen to clear it. So the fetch
-   * drops it while hidden, and says so here: when the control then turns up
-   * (the member list landing on a multi-member project) the table is asked
-   * once more, so the person shown in the control is the one applied.
+   * The three questions and a date: who (an account), resource (the `type`
+   * column) and what (the `action` column), each one indexed column behind
+   * the `(scopeType, scopeId)` prefix. No search box, and every filter
+   * optional.
    */
-  const droppedUserId = useRef(false);
-  const [refetch, setRefetch] = useState(0);
-  useEffect(() => {
-    if (showPeople && droppedUserId.current) {
-      droppedUserId.current = false;
-      setRefetch((n) => n + 1);
-    }
-  }, [showPeople]);
+  const filterFields = {
+    /**
+     * One person at a time, deliberately. A person picker answering "what
+     * did SHE change" is a different question from "which kinds of thing
+     * moved", and a list of two people is a report nobody asks for.
+     */
+    userId: {
+      schema: z.string(),
+      label: tr("activity.col.who"),
+      icon: User,
+      items: (people ?? []).map((person) => ({
+        label: person.label,
+        value: person.id,
+      })),
+      hidden: !showPeople,
+      control: { clearLabel: tr("activity.filter.allPeople") },
+    },
+    /**
+     * ARRAYS, and empty means every value (feedback #2092). Both are the
+     * multi-select case: "quests and epics" and "created or deleted" are
+     * questions a reader has, and a single value could not express either.
+     */
+    type: {
+      schema: z.array(z.string()),
+      label: tr("activity.col.resource"),
+      icon: Layers,
+      items: options.types.map((type) => ({
+        label: resourceLabel(tr, type),
+        value: type,
+      })),
+      control: {
+        clearLabel: tr("activity.filter.allResources"),
+        countLabel: (n: number) =>
+          tr("activity.filter.typeCount", { args: [String(n)] }),
+      },
+    },
+    action: {
+      schema: z.array(z.string()),
+      label: tr("activity.col.what"),
+      icon: Zap,
+      // The label is capitalized, the value is not: this filter sits beside
+      // the resource one, whose entries are all labels, and `create` between
+      // `Epic` and `Quest` reads as a leaked column value. `value` stays the
+      // stored verb, which is what the query filters on.
+      items: options.actions.map((action) => ({
+        label: capitalize(action),
+        value: action,
+      })),
+      control: {
+        clearLabel: tr("activity.filter.allActions"),
+        countLabel: (n: number) =>
+          tr("activity.filter.actionCount", { args: [String(n)] }),
+      },
+    },
+    /**
+     * When, as a closed range of calendar days.
+     *
+     * `z.dateRange()` makes both ends mandatory, so an absent value is the
+     * whole of "no filter" - there is no half-range to represent and no empty
+     * end to strip on the way out. It round-trips through the URL as
+     * `?createdAt=2026-01-01,2026-01-31`, comma-joined by the client and split
+     * back by `coerceStrings` on the server.
+     */
+    createdAt: {
+      schema: z.dateRange(),
+      label: tr("activity.col.when"),
+      placeholder: tr("activity.filter.anyDate"),
+    },
+  } satisfies AlephaTableFilterFields;
 
   const fetchActivity = async ({
     page,
@@ -159,7 +200,7 @@ const ProjectActivityPage = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: Record<string, any>;
+    filters?: AlephaTableFilterValues<typeof filterFields>;
   }): Promise<Page<ProjectActivityRow>> => {
     if (!project) {
       return emptyPage(page, size);
@@ -167,16 +208,14 @@ const ProjectActivityPage = () => {
     // `""` is what a cleared Control sends, and it is not a filter: sent
     // through, it would select the rows whose column is the empty string,
     // which is none of them.
-    const userId: string | undefined = filters?.userId || undefined;
-    droppedUserId.current = !showPeople && userId !== undefined;
+    const userId = filters?.userId || undefined;
     return await projectApi.getProjectActivity({
       params: { id: project.id },
       query: {
         page,
         size,
         sort,
-        // Only while the control is on screen. See `droppedUserId`.
-        userId: showPeople ? userId : undefined,
+        userId,
         // Comma-joined, which `AuditService.find` splits back into one
         // condition. A single value still produces the `eq` it always did.
         type: filters?.type?.length ? filters.type.join(",") : undefined,
@@ -212,7 +251,7 @@ const ProjectActivityPage = () => {
     // pages lost their gutter, which #Q2291 undid. A page whose body is
     // cards, a form or prose stays at `p-4`.
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<ProjectActivityRow>
+      <AlephaTable<ProjectActivityRow, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.activity.${project.id}`}
         // Newest first, which is the question somebody opening this page is
@@ -220,80 +259,7 @@ const ProjectActivityPage = () => {
         defaultSort={{ field: "createdAt", direction: "desc" }}
         emptyMessage={tr("activity.empty")}
         fetch={fetchActivity}
-        refreshSignal={refetch}
-        filters={{
-          schema: activityFiltersSchema,
-          render: (form) => (
-            <div className="flex flex-wrap gap-2">
-              {showPeople && (
-                <FilterSlot>
-                  <Control
-                    input={form.input.userId}
-                    label=""
-                    clearable
-                    icon={User}
-                    clearLabel={tr("activity.filter.allPeople")}
-                    triggerClassName="w-full"
-                    items={(people ?? []).map((person) => ({
-                      label: person.label,
-                      value: person.id,
-                    }))}
-                  />
-                </FilterSlot>
-              )}
-              <FilterSlot>
-                <Control
-                  input={form.input.type}
-                  label=""
-                  clearable
-                  icon={Layers}
-                  clearLabel={tr("activity.filter.allResources")}
-                  countLabel={(n) =>
-                    tr("activity.filter.typeCount", { args: [String(n)] })
-                  }
-                  triggerClassName="w-full"
-                  items={options.types.map((type) => ({
-                    label: resourceLabel(tr, type),
-                    value: type,
-                  }))}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                <Control
-                  input={form.input.action}
-                  label=""
-                  clearable
-                  icon={Zap}
-                  clearLabel={tr("activity.filter.allActions")}
-                  countLabel={(n) =>
-                    tr("activity.filter.actionCount", { args: [String(n)] })
-                  }
-                  triggerClassName="w-full"
-                  // The label is capitalized, the value is not: this filter
-                  // sits beside the resource one, whose entries are all
-                  // labels, and `create` between `Epic` and `Quest` reads as
-                  // a leaked column value. `value` stays the stored verb,
-                  // which is what the query filters on.
-                  items={options.actions.map((action) => ({
-                    label: capitalize(action),
-                    value: action,
-                  }))}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                {/* No `items`, no `icon`: the control selects itself off the
-                    schema's `date-range` format, and `parseField` already
-                    gives that format the calendar glyph. */}
-                <Control
-                  input={form.input.createdAt}
-                  label=""
-                  clearable
-                  placeholder={tr("activity.filter.anyDate")}
-                />
-              </FilterSlot>
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         columns={{
           createdAt: {
             label: tr("activity.col.when"),

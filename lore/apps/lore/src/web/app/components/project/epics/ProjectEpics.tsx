@@ -1,7 +1,8 @@
-import { FilterSlot, TimeAgo, Badge, useDialog, useToast } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { TimeAgo, Badge, useDialog, useToast } from "@alepha/ui";
 import {
   AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
   type BulkAction,
   type BulkMenuAction,
 } from "@alepha/ui/table";
@@ -17,7 +18,6 @@ import {
   FlagOff,
   Play,
   Plus,
-  Search,
   Trash2,
   Undo2,
   Wrench,
@@ -47,46 +47,12 @@ import { releaseRowMenu } from "../releaseRowMenu.ts";
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import {
-  EPIC_STATUSES,
   STATUS_ICONS,
   STATUS_LABEL_KEYS,
   STATUS_ORDER,
   STATUS_TONE,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
-
-/**
- * Filter form, owned by AlephaTable: free-text over title + description,
- * and a status multi-select whose empty selection means "all".
- *
- * An array, like the Quests list's, because the everyday view is several
- * statuses at once (everything not yet completed, say) and a single value
- * could not say it (feedback #2069). The array is what `AlephaTable`
- * persists and carries in the URL, the same way it already does for the
- * board's four list filters.
- *
- * The status is the column's own enum rather than a list restated here, so
- * a status renamed on the entity cannot survive in a filter that no longer
- * matches anything.
- */
-const epicsFiltersSchema = z.object({
-  search: z.string().optional(),
-  status: z.array(epicResourceSchema.shape.status).optional(),
-  /**
-   * Release ids as strings, plus the `QUEST_RELEASE_NONE` sentinel, exactly
-   * like the Quests table's (feedback #2102).
-   *
-   * ⚠️ Strings rather than numbers even though a release id is an integer:
-   * the sentinel shares the list, which is what lets "unassigned, or 0.29.0"
-   * be one selection. Two fields would AND where a multi-select ORs.
-   *
-   * Unlike the Quests table's, this one never leaves the browser -
-   * `getEpics` answers with the project's whole list, so the predicate sits
-   * beside `search` and `status` in `fetchEpics` rather than in a query
-   * parameter.
-   */
-  release: z.array(z.string()).optional(),
-});
 
 /**
  * The Epics list, built on {@link AlephaTable}.
@@ -209,7 +175,7 @@ const ProjectEpics = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: Record<string, any>;
+    filters?: AlephaTableFilterValues<typeof filterFields>;
   }): Promise<Page<EpicResource>> => {
     const all = await epicApi.getEpics({ params: { projectId: project.id } });
 
@@ -229,9 +195,8 @@ const ProjectEpics = () => {
       count: all.filter((epic) => epic.status === "draft").length,
     });
 
-    const statuses =
-      (filters?.status as EpicResource["status"][] | undefined) ?? [];
-    const picked = (filters?.release as string[] | undefined) ?? [];
+    const statuses = filters?.status ?? [];
+    const picked = filters?.release ?? [];
     // The selections OR together, and the sentinel is one of them: an epic
     // matches if it is attached to a picked release, or if "No release" is
     // picked and it is attached to nothing.
@@ -239,9 +204,7 @@ const ProjectEpics = () => {
     const wantedIds = new Set(
       picked.filter((v) => v !== QUEST_RELEASE_NONE).map(Number),
     );
-    const needle = String(filters?.search ?? "")
-      .trim()
-      .toLowerCase();
+    const needle = (filters?.search ?? "").trim().toLowerCase();
     const rows = sortEpics(
       all.filter((epic) => {
         if (statuses.length > 0 && !statuses.includes(epic.status)) {
@@ -339,6 +302,61 @@ const ProjectEpics = () => {
       label: release.tag ?? release.title,
     })),
   ];
+
+  /**
+   * The list's filters: a search over title, description and number, a status
+   * multi-select whose empty selection means "all", and a release filter.
+   *
+   * The status is an array, like the Quests list's, because the everyday view
+   * is several statuses at once (everything not yet completed, say) and a
+   * single value could not say it (feedback #2069). It is the column's own
+   * enum rather than a list restated here, so a status renamed on the entity
+   * cannot survive in a filter that no longer matches anything.
+   */
+  const filterFields = {
+    search: { preset: "search" },
+    status: {
+      schema: z.array(epicResourceSchema.shape.status),
+      label: tr("epic.filter.status"),
+      icon: CircleDot,
+      optionLabel: (status: EpicResource["status"]) =>
+        tr(STATUS_LABEL_KEYS[status]),
+      control: {
+        clearLabel: tr("epic.filter.allStatuses"),
+        countLabel: (n: number) =>
+          tr("epic.filter.statusCount", { args: [String(n)] }),
+      },
+    },
+    /**
+     * Release ids as strings, plus the `QUEST_RELEASE_NONE` sentinel, exactly
+     * like the Quests table's (feedback #2102).
+     *
+     * ⚠️ Strings rather than numbers even though a release id is an integer:
+     * the sentinel shares the list, which is what lets "unassigned, or 0.29.0"
+     * be one selection. Two fields would AND where a multi-select ORs.
+     *
+     * Unlike the Quests table's, this one never leaves the browser:
+     * `getEpics` answers with the project's whole list, so the predicate sits
+     * beside `search` and `status` in `fetchEpics`.
+     *
+     * Hidden until the project has a release, the way the Quests table hides
+     * it: with none, the only option would be the sentinel, and a filter
+     * offering one value that matches everything is a control with nothing
+     * to do.
+     */
+    release: {
+      schema: z.array(z.string()),
+      label: tr("board.filter.release"),
+      icon: Flag,
+      items: releaseOptions,
+      hidden: (releases ?? []).length === 0,
+      control: {
+        clearLabel: tr("board.filter.allReleases"),
+        countLabel: (n: number) =>
+          tr("board.filter.releaseCount", { args: [String(n)] }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
 
   const bulkActions: Array<
     BulkAction<EpicResource> | BulkMenuAction<EpicResource>
@@ -475,68 +493,14 @@ const ProjectEpics = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<EpicResource>
+      <AlephaTable<EpicResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.epics.${project.id}`}
         bulkActions={bulkActions}
         defaultSort={{ field: "updatedAt", direction: "desc" }}
         emptyMessage={tr("epic.list.empty")}
         refreshSignal={reload}
-        filters={{
-          schema: epicsFiltersSchema,
-          render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("epic.filter.search")}
-                  inputProps={{ "aria-label": tr("epic.filter.search") }}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                <Control
-                  input={form.input.status}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("epic.filter.allStatuses")}
-                  countLabel={(n) =>
-                    tr("epic.filter.statusCount", { args: [String(n)] })
-                  }
-                  triggerClassName="w-full"
-                  items={EPIC_STATUSES.map((status) => ({
-                    label: tr(STATUS_LABEL_KEYS[status]),
-                    value: status,
-                  }))}
-                  inputProps={{ "aria-label": tr("epic.filter.status") }}
-                />
-              </FilterSlot>
-              {/* Hidden until the project has a release, the way the Quests
-                  table hides it: with none, the only option would be the
-                  sentinel, and a filter offering one value that matches
-                  everything is a control with nothing to do. */}
-              {(releases ?? []).length > 0 && (
-                <FilterSlot>
-                  <Control
-                    input={form.input.release}
-                    label=""
-                    clearable
-                    icon={Flag}
-                    clearLabel={tr("board.filter.allReleases")}
-                    countLabel={(n) =>
-                      tr("board.filter.releaseCount", { args: [String(n)] })
-                    }
-                    triggerClassName="w-full"
-                    items={releaseOptions}
-                    inputProps={{ "aria-label": tr("board.filter.release") }}
-                  />
-                </FilterSlot>
-              )}
-            </>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         fetch={fetchEpics}
         onRowClick={(epic) =>
           router.push("projectEpic", {

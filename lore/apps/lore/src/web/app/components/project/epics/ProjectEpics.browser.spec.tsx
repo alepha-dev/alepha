@@ -169,6 +169,21 @@ describe("ProjectEpics - the status filter", () => {
 
   const row = (name: string) => screen.queryByRole("link", { name });
 
+  /**
+   * Put a filter on the bar from the funnel-plus menu. Every filter here is
+   * optional, so it starts off the bar (#E58), and adding one opens its list,
+   * which is why the options are the next thing a case reaches for.
+   */
+  const addFilter = async (label: string) => {
+    fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: new RegExp(`^${label}`) }),
+    );
+    return screen.findByRole("combobox", { name: label });
+  };
+
   it("shows every status while nothing is selected", async () => {
     await mount();
 
@@ -181,8 +196,7 @@ describe("ProjectEpics - the status filter", () => {
   it("keeps Draft and Ready when both are selected, and hides the rest", async () => {
     await mount();
 
-    const status = screen.getByRole("combobox", { name: "Status" });
-    fireEvent.keyDown(status, { key: "ArrowDown" });
+    const status = await addFilter("Status");
     fireEvent.click(await screen.findByRole("option", { name: /Draft/ }));
     fireEvent.click(await screen.findByRole("option", { name: /Ready/ }));
 
@@ -230,17 +244,19 @@ describe("ProjectEpics - the status filter", () => {
       epicOf(3, "Unassigned epic", "draft"),
     ];
 
-    const openFilter = async () => {
-      const trigger = screen.getByRole("combobox", { name: "Release" });
-      fireEvent.keyDown(trigger, { key: "ArrowDown" });
-      return trigger;
-    };
+    const openFilter = () => addFilter("Release");
 
     it("is absent while the project has no release", async () => {
       await mount();
 
-      // One value that matches everything is a control with nothing to do.
+      // One value that matches everything is a control with nothing to do:
+      // not on the bar, and not offered by the menu either.
       expect(screen.queryByRole("combobox", { name: "Release" })).toBeNull();
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+        key: "ArrowDown",
+      });
+      await screen.findByRole("menuitem", { name: /^Status/ });
+      expect(screen.queryByRole("menuitem", { name: /^Release/ })).toBeNull();
     });
 
     it("narrows to the epics attached to the picked release", async () => {

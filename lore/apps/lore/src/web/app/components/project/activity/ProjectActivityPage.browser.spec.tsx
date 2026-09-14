@@ -1,4 +1,10 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { type Page, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -255,6 +261,23 @@ describe("ProjectActivityPage", () => {
       { id: SECOND, username: "second" },
     ];
 
+    /**
+     * The filters the add menu offers, by label. Every filter on this page is
+     * optional, so none is on the bar until it is added (#E58), and the menu
+     * is where "offered" is decided.
+     */
+    const offered = async (
+      screen: Awaited<ReturnType<typeof show>>,
+    ): Promise<string[]> => {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+        key: "ArrowDown",
+      });
+      const menu = await screen.findByRole("menu");
+      return within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent ?? "");
+    };
+
     it("is not offered on a one-member project", async ({ expect }) => {
       const screen = await show([row({})]);
 
@@ -262,22 +285,31 @@ describe("ProjectActivityPage", () => {
         expect(screen.getByText("Wire it")).toBeTruthy();
         expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
       });
-      expect(screen.queryByText("Everyone")).toBeNull();
+      const items = await offered(screen);
+      expect(items.some((item) => item.startsWith("Resource"))).toBe(true);
+      expect(items.some((item) => item.startsWith("Who"))).toBe(false);
     });
 
     it("is offered from two members up", async ({ expect }) => {
       const screen = await show([row({})], TWO);
 
-      await waitFor(() => {
-        expect(screen.getByText("Everyone")).toBeTruthy();
+      await waitFor(async () => {
+        const items = await offered(screen);
+        expect(items.some((item) => item.startsWith("Who"))).toBe(true);
       });
     });
 
-    it("does not apply a stored person while it is hidden", async ({
+    /**
+     * ⚠️ The opposite of what this page used to do, on purpose (#E58). A
+     * person stored while the project had two members used to be dropped by
+     * the fetch while the filter was hidden, because it would otherwise
+     * narrow the table with nothing on screen to clear it. The bar now draws
+     * a hidden filter that holds a value, which removes that danger where it
+     * starts: the filter applies, and it is on screen to be cleared.
+     */
+    it("applies a stored person while it is hidden, and draws it so it can be cleared", async ({
       expect,
     }) => {
-      // Stored while the project had two members. The control is gone now,
-      // so nothing on screen could clear it.
       window.localStorage.setItem(
         "lor.activity.1.filters",
         JSON.stringify({ userId: SECOND }),
@@ -285,12 +317,16 @@ describe("ProjectActivityPage", () => {
       const screen = await show([row({})]);
 
       await waitFor(() => {
-        expect(screen.getByText("Wire it")).toBeTruthy();
-        expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
+        expect(alepha!.inject(FakeLinkProvider).lastQuery?.userId).toBe(SECOND);
+      });
+      await waitFor(() => {
+        expect(
+          screen.container.querySelector('[data-filter="userId"]'),
+        ).not.toBeNull();
       });
       expect(
-        alepha!.inject(FakeLinkProvider).lastQuery?.userId,
-      ).toBeUndefined();
+        screen.getByRole("button", { name: "Clear value: Who" }),
+      ).toBeTruthy();
     });
 
     it("applies a stored person once the filter is shown", async ({
@@ -312,8 +348,9 @@ describe("ProjectActivityPage", () => {
     }) => {
       const screen = await show([row({})], TWO);
 
-      await waitFor(() => {
-        expect(screen.getByText("Everyone")).toBeTruthy();
+      await waitFor(async () => {
+        const items = await offered(screen);
+        expect(items.some((item) => item.startsWith("Who"))).toBe(true);
       });
       expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
     });

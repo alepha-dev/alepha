@@ -1,11 +1,10 @@
-import { FilterSlot, TimeAgo, Badge, useDialog } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { TimeAgo, Badge, useDialog } from "@alepha/ui";
 import { SettingsHeading } from "@alepha/ui/settings";
-import { AlephaTable } from "@alepha/ui/table";
+import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { CircleDot, FolderKanban, Search, Trash } from "lucide-react";
+import { CircleDot, FolderKanban, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
@@ -14,22 +13,6 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
-
-/**
- * Filter shape for the reporter's feedback list — mirrors the project board
- * (search + status + a cross-project "project" filter). `projectId` is a
- * string in the form (Control values are strings) and coerced on fetch.
- */
-const myFeedbackFiltersSchema = z.object({
-  search: z.string().optional(),
-  /**
-   * An ARRAY, and empty means every status (feedback #2092). Three real
-   * states, so a multi-select earns its keep: "accepted or rejected" is a
-   * question a reporter asks and a single value could not express.
-   */
-  status: z.array(z.enum(["pending", "accepted", "rejected"])).optional(),
-  projectId: z.string().optional(),
-});
 
 const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> =
   {
@@ -70,6 +53,51 @@ const MyFeedback = () => {
       .catch(() => null);
   }, []);
 
+  /**
+   * The reporter's filters, mirroring the project board: search, status and a
+   * cross-project "project" filter. `projectId` is a string, as a select's
+   * value is, and coerced on fetch.
+   */
+  const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: { "aria-label": tr("myFeedback.filter.search.aria") },
+      },
+    },
+    /**
+     * An ARRAY, and empty means every status (feedback #2092). Three real
+     * states, so a multi-select earns its keep: "accepted or rejected" is a
+     * question a reporter asks and a single value could not express.
+     *
+     * Hand-written rather than the entity's enum: the entity declares it
+     * inline, and the web must not import an entity.
+     */
+    status: {
+      schema: z.array(z.enum(["pending", "accepted", "rejected"])),
+      label: tr("myFeedback.column.status"),
+      icon: CircleDot,
+      items: [
+        { label: tr("feedback.status.pending"), value: "pending" },
+        { label: tr("feedback.status.accepted"), value: "accepted" },
+        { label: tr("feedback.status.rejected"), value: "rejected" },
+      ],
+      control: {
+        clearLabel: tr("myFeedback.filter.allStatuses"),
+        countLabel: (n: number) =>
+          tr("myFeedback.filter.statusCount", { args: [String(n)] }),
+      },
+    },
+    projectId: {
+      schema: z.string(),
+      label: tr("myFeedback.column.project"),
+      icon: FolderKanban,
+      items: projectOptions,
+      hidden: projectOptions.length === 0,
+      control: { clearLabel: tr("myFeedback.filter.allProjects") },
+    },
+  } satisfies AlephaTableFilterFields;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       {/*
@@ -82,77 +110,12 @@ const MyFeedback = () => {
         description={tr("myFeedback.description")}
       />
 
-      <AlephaTable<MyFeedbackResource>
+      <AlephaTable<MyFeedbackResource, typeof filterFields>
         key={tableKey}
         className="min-h-0 flex-1"
         persistenceKey="lor.me.feedback"
         emptyMessage={tr("myFeedback.empty")}
-        filters={{
-          schema: myFeedbackFiltersSchema,
-          render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("myFeedback.filter.search")}
-                  inputProps={{
-                    "aria-label": tr("myFeedback.filter.search.aria"),
-                  }}
-                />
-              </FilterSlot>
-              <div className="w-40">
-                <Control
-                  input={form.input.status}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("myFeedback.filter.allStatuses")}
-                  countLabel={(n) =>
-                    tr("myFeedback.filter.statusCount", {
-                      args: [String(n)],
-                    })
-                  }
-                  triggerClassName="w-full"
-                  items={[
-                    {
-                      label: tr("feedback.status.pending"),
-                      value: "pending",
-                    },
-                    {
-                      label: tr("feedback.status.accepted"),
-                      value: "accepted",
-                    },
-                    {
-                      label: tr("feedback.status.rejected"),
-                      value: "rejected",
-                    },
-                  ]}
-                  inputProps={{
-                    "aria-label": tr("myFeedback.column.status"),
-                  }}
-                />
-              </div>
-              {projectOptions.length > 0 && (
-                <div className="w-48">
-                  <Control
-                    input={form.input.projectId}
-                    label=""
-                    clearable
-                    icon={FolderKanban}
-                    clearLabel={tr("myFeedback.filter.allProjects")}
-                    triggerClassName="w-full"
-                    items={projectOptions}
-                    inputProps={{
-                      "aria-label": tr("myFeedback.column.project"),
-                    }}
-                  />
-                </div>
-              )}
-            </>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         fetch={async ({ page, size, sort, filters: f }) =>
           feedbackApi.listMyFeedback({
             query: {

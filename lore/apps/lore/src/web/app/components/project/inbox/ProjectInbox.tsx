@@ -1,27 +1,17 @@
-import { FilterSlot, TimeAgo, Button } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { TimeAgo, Button } from "@alepha/ui";
 import { inboxUnreadAtom } from "@alepha/ui/shell";
-import { AlephaTable } from "@alepha/ui/table";
-import { z } from "alepha";
+import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
 import type { NotificationInboxController } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { CheckCheck, FolderOpen, Globe, Search } from "lucide-react";
+import { CheckCheck, FolderOpen, Globe } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-
-const filtersSchema = z.object({
-  /**
-   * Spans the title and the body preview, so it is not a field the table can
-   * match by name.
-   */
-  search: z.string().optional(),
-});
 
 interface InboxRow {
   id: string;
@@ -178,12 +168,27 @@ const ProjectInbox = () => {
 
   const unreadOnScreen = rows.filter((it) => !it.readAt).length;
 
+  const filterFields = {
+    // Spans the title and the body preview, so it is not a field the table
+    // can match by name: the `filter` predicate does it.
+    search: {
+      preset: "search",
+      control: {
+        // ⚠️ The kit's plain "Search" is the placeholder, like every filter
+        // bar (#Q1750), and that is thin for a screen reader on a page
+        // carrying several controls - so the accessible name keeps the
+        // fuller phrase.
+        inputProps: { "aria-label": tr("inbox.filter.searchLabel") },
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   return (
     <div
       data-testid="inbox-table"
       className="flex min-h-0 flex-1 flex-col overflow-hidden p-2"
     >
-      <AlephaTable<InboxRow>
+      <AlephaTable<InboxRow, typeof filterFields>
         className="min-h-0 flex-1"
         data={rows}
         defaultSort={{ field: "createdAt", direction: "desc" }}
@@ -214,27 +219,9 @@ const ProjectInbox = () => {
           title: tr("inbox.noMatch"),
           description: tr("inbox.noMatch.description"),
         }}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <FilterSlot>
-              <Control
-                input={form.input.search}
-                label=""
-                icon={Search}
-                placeholder={tr("inbox.filter.search")}
-                // ⚠️ A different key from the placeholder. Every filter bar
-                // says plain "Search" (#Q1750), which is thin for a screen
-                // reader on a page carrying several controls - so the
-                // accessible name keeps the fuller phrase the placeholder
-                // used to show.
-                inputProps={{ "aria-label": tr("inbox.filter.searchLabel") }}
-              />
-            </FilterSlot>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         filter={(row, values) => {
-          const search = String(values.search ?? "").toLowerCase();
+          const search = (values.search ?? "").toLowerCase();
           if (!search) return true;
           return (
             row.title.toLowerCase().includes(search) ||

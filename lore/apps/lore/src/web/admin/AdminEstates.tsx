@@ -1,12 +1,14 @@
 import { Badge } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
-import { type Infer, z } from "alepha";
+import {
+  AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
+} from "@alepha/ui/table";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Search, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
 import type { AdminEstateController } from "@/api/controllers/AdminEstateController.ts";
@@ -23,25 +25,25 @@ import type { AdminEstateResource } from "@/api/schemas/adminEstateResourceSchem
  * nothing is undeployed, and a `cloudflare` credential is not revoked at
  * Cloudflare.
  */
-/*
- * Module scope so the reference is stable across renders, as in
- * `AdminProjects`.
- */
-const filtersSchema = z.object({
-  search: z.string().optional(),
-});
-type AdminEstateFilters = Infer<typeof filtersSchema>;
-
 export const AdminEstates = () => {
   const client = useClient<AdminEstateController>();
   const { l } = useI18n();
+
+  // Literal English, like the rest of the Lore admin: it is untranslated.
+  const filterFields = {
+    search: {
+      preset: "search",
+      placeholder: "Search estates…",
+      control: { inputProps: { "aria-label": "Search estates by slug" } },
+    },
+  } satisfies AlephaTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AdminEstateFilters;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) => {
       return client.findEstates({
         query: {
@@ -74,24 +76,11 @@ export const AdminEstates = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminEstateResource>
+      <AlephaTable<AdminEstateResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="lore.admin.estates"
         fetch={fetcher}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <div className="w-72">
-              <Control
-                input={form.input.search}
-                label=""
-                icon={Search}
-                placeholder="Search estates…"
-                inputProps={{ "aria-label": "Search estates by slug" }}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         rowActions={(estate) => [
           {
             label: "Delete estate",

@@ -261,7 +261,6 @@ export default {
   "folios.editor.pinned.note":
     "Pinned folios are sent whole with every project_context call.",
 
-  "board.filter.search": "Search",
   "board.filter.status": "Status",
   "board.filter.area": "Area",
   "board.filter.tag": "Tag",
@@ -350,7 +349,6 @@ export default {
   "artifacts.empty.description":
     "Nothing has been pushed yet. Artifacts arrive from CI, so this page stays empty until a build is published.",
   "artifacts.empty.docs": "How to push a build",
-  "artifacts.filter.search": "Search",
   "artifacts.filter.searchLabel": "Search a tag or a commit",
   "artifacts.filter.app": "App",
   "artifacts.filter.allApps": "All apps",
@@ -839,7 +837,6 @@ export default {
   "release.list.column.tag": "Release",
   "release.list.column.progress": "Progress",
   "release.list.column.date": "Date",
-  "release.filter.search": "Search",
   "release.filter.state": "State",
   "release.filter.allStates": "All states",
   "release.progress.none": "Nothing attached yet",
@@ -1179,7 +1176,6 @@ export default {
   "project.menu.blights": "Blights",
   "project.menu.apps": "Apps",
 
-  "apps.filter.search": "Search",
   "apps.filter.app": "App",
   "apps.filter.env": "Environment",
   "apps.filter.status": "Status",
@@ -1508,6 +1504,8 @@ export default {
   "blights.filter.resolved": "Resolved",
   "blights.filter.all": "All",
   "blights.filter.statusCount": "$1 statuses",
+  "blights.filter.status": "Status",
+  "blights.filter.sigil": "Sigil",
   "blights.col.error": "Error",
   "blights.col.page": "Page",
   "blights.col.count": "Count",
@@ -1704,7 +1702,6 @@ export default {
   "bay.commands.noMatch.description": "Try adjusting or clearing the filters.",
   "bay.commands.filter.kind": "Kind",
   "bay.commands.filter.status": "Status",
-  "bay.commands.filter.any": "Any",
   "bay.commands.col.when": "When",
   "bay.commands.col.kind": "Command",
   "bay.commands.col.status": "Status",
@@ -1895,7 +1892,6 @@ export default {
   // ⚠️ Plain "Search" like every other filter bar (#Q1750), with the fuller
   // phrase kept on the input's accessible name: "Search" alone is thin for a
   // screen reader on a page carrying several controls.
-  "inbox.filter.search": "Search",
   "inbox.filter.searchLabel": "Search messages",
   "inbox.table.message": "Message",
   "inbox.table.project": "Project",
@@ -2018,7 +2014,6 @@ export default {
   "epic.list.empty": "No epics yet.",
   "epic.list.column.title": "Epic",
   "epic.list.column.updated": "Updated",
-  "epic.filter.search": "Search",
   "epic.filter.status": "Status",
   "epic.filter.allStatuses": "All status",
   "epic.filter.statusCount": "$1 status",
@@ -2332,7 +2327,6 @@ export default {
   "myFeedback.description":
     "Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn.",
   "myFeedback.empty": "You haven't submitted any feedback yet.",
-  "myFeedback.filter.search": "Search",
   "myFeedback.filter.search.aria": "Search feedback",
   "myFeedback.filter.allStatuses": "All statuses",
   "myFeedback.filter.statusCount": "$1 statuses",
