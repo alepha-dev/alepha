@@ -278,7 +278,11 @@ export interface UseQueryOptions<Result> {
   onSuccess?: (result: Result) => void | Promise<void>;
 
   /**
-   * Custom error handler. If provided, prevents default error re-throw.
+   * Custom error handler. Passing one says the failure is handled here: the
+   * `react:action:error` event still fires, with `handled: true`, and a
+   * mounted `ActionErrorToaster` does not toast it. `onError: () => {}` is how
+   * a read that can do without its data stays quiet. Error reporting still
+   * sees the failure, and `error` still holds it.
    */
   onError?: (error: Error) => void | Promise<void>;
 }

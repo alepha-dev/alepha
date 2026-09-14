@@ -29,6 +29,7 @@ export interface ActionErrorToasterProps {
 interface ActionErrorEvent {
   id?: string;
   error?: Error;
+  handled?: boolean;
 }
 
 /**
@@ -39,6 +40,11 @@ interface ActionErrorEvent {
  * This is the "one toast for all" centraliser — with it mounted, call sites no
  * longer need their own `try/catch + toast.error` around every mutation; an
  * unhandled action error becomes a toast automatically.
+ *
+ * A handled error is skipped, before `filter` runs: one whose action, query or
+ * form was given an `onError`, or a form's field error already shown under its
+ * field. That is how a call site stays quiet on purpose, or shows its own
+ * message without a second toast beside it.
  *
  * Mounted by default inside {@link AppShell}; opt out with
  * `actionErrorToaster={false}` or pass an options object to configure it.
@@ -52,6 +58,7 @@ export const ActionErrorToaster = (props: ActionErrorToasterProps) => {
     {
       "react:action:error": (event: ActionErrorEvent) => {
         if (!enabled) return;
+        if (event.handled) return;
         const error = event.error;
         if (!error) return;
         if (props.filter && !props.filter(error, event)) return;

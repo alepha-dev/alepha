@@ -150,6 +150,21 @@ describe("SigilBrowserProvider", () => {
       expect(provider.debugPendingErrors()).toEqual([]);
     });
 
+    /**
+     * #Q2345. A caller that passed `onError` marks its failure `handled`, so
+     * no toast shows it. That is the whole of what the flag decides: a quiet
+     * 5xx is still a fault, and still a blight.
+     */
+    it("keeps a 5xx its caller handled", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        type: "custom",
+        handled: true,
+        error: Object.assign(new Error("Quiet but broken"), { status: 503 }),
+      });
+      expect(provider.debugPendingErrors()).toEqual(["Quiet but broken"]);
+    });
+
     it("keeps a 5xx from the same source", async () => {
       const { alepha, provider } = await startedProvider();
       await (alepha.events as any).emit("react:action:error", {

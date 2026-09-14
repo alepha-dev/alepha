@@ -53,6 +53,17 @@ declare module "alepha" {
       type: string;
       id?: string;
       error: Error;
+      /**
+       * The caller already dealt with this error, so it must not be shown
+       * again.
+       *
+       * Set when the action, query or form was given an `onError`, and when a
+       * form's `FormValidationError` names a field, which `useFormState` shows
+       * under that field. `ActionErrorToaster` skips a handled error. The
+       * event still fires for it, because a quiet failure is still a failure:
+       * error reporting (the browser sigil) reads it whatever this says.
+       */
+      handled?: boolean;
     };
     /**
      * Fires when a user action has completed, regardless of success or failure.

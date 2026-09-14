@@ -433,7 +433,12 @@ export class FormModel<T extends ZObject> {
 
       await this.alepha.events.emit(
         "react:action:error",
-        { type: "form", id: this.id, error: error as Error },
+        {
+          type: "form",
+          id: this.id,
+          error: error as Error,
+          handled: this.isHandledError(error),
+        },
         { catch: true },
       );
       await this.alepha.events.emit(
@@ -459,6 +464,31 @@ export class FormModel<T extends ZObject> {
       );
     }
   };
+
+  /**
+   * Whether a failed submit has already been shown, so `react:action:error`
+   * carries `handled: true` and `ActionErrorToaster` leaves it alone.
+   *
+   * Two cases, the same rule `useAction` follows plus the form's own:
+   *
+   * - **The form was given an `onError`.** The caller dealt with it, whether
+   *   by a toast of its own or by staying quiet on purpose.
+   * - **A `FormValidationError` names a field.** `useFormState` pins it under
+   *   the field whose path matches, which is the whole reason a handler
+   *   throws one: a wrong password was shown under the field and toasted.
+   *
+   * ⚠️ `FormValidationError`, not any `SchemaValidationError`. A
+   * `SchemaValidationError` raised inside the handler is a response that broke
+   * its own schema: a fault, with a path into the response rather than into
+   * this form, so nothing renders it and it must still toast. And a refusal
+   * with no path has nowhere to render either.
+   */
+  protected isHandledError(error: unknown): boolean {
+    if (this.options.onError) {
+      return true;
+    }
+    return error instanceof FormValidationError && error.value.path !== "";
+  }
 
   /**
    * The submitted values, decoded against the form's own schema.
@@ -1005,6 +1035,17 @@ export type FormCtrlOptions<T extends ZObject> = {
    */
   id?: string;
 
+  /**
+   * Called when the submit handler throws. Passing one says the failure is
+   * handled here: `react:action:error` still fires, with `handled: true`, and
+   * a mounted `ActionErrorToaster` does not toast it. An `onError` that wants
+   * the toast shows it itself.
+   *
+   * A `FormValidationError` thrown with a field `path` is handled without
+   * one: its message is shown under that field (`useFormState`), not toasted.
+   * Any other error, a refusal with no path included, still toasts when no
+   * `onError` is given.
+   */
   onError?: (error: Error) => void;
 
   onChange?: (key: string, value: any, store: Record<string, any>) => void;
