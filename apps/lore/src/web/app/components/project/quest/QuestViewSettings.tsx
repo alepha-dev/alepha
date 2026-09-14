@@ -1,6 +1,6 @@
 import { Segmented } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject } from "alepha/react";
+import { useAction, useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BellOff, BellRing } from "lucide-react";
 
@@ -53,15 +53,23 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
     );
   };
 
-  const handleReminderPick = async (key: string) => {
-    const preset = REMINDER_PRESETS.find((p) => p.key === key);
-    if (!preset) return;
-    const updated = await client.setQuestReminder({
-      params: { id: props.quest.id },
-      body: { interval: preset.interval },
-    });
-    propagate(updated);
-  };
+  // A `useAction` (#E59, #Q2328): a refused change is the server's sentence,
+  // toasted by the root `ActionErrorToaster`, where it used to be an
+  // unhandled rejection, and the control waits while it runs.
+  const reminderAction = useAction<[key: string], void>(
+    {
+      handler: async (key) => {
+        const preset = REMINDER_PRESETS.find((p) => p.key === key);
+        if (!preset) return;
+        const updated = await client.setQuestReminder({
+          params: { id: props.quest.id },
+          body: { interval: preset.interval },
+        });
+        propagate(updated);
+      },
+    },
+    [client, props.quest.id, props.onUpdate],
+  );
 
   const activePreset =
     REMINDER_PRESETS.find(
@@ -102,7 +110,8 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
             size="sm"
             fullWidth
             value={activePreset.key}
-            onChange={handleReminderPick}
+            disabled={reminderAction.loading}
+            onChange={(key) => void reminderAction.run(key)}
             options={REMINDER_PRESETS.map((preset) => ({
               value: preset.key,
               label: tr(preset.labelKey),

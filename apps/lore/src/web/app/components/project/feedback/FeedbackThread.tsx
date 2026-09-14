@@ -1,8 +1,14 @@
 import { TimeAgo, Button, Textarea, useDialog } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useQuery,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { FeedbackCommentController } from "@/api/controllers/FeedbackCommentController.ts";
 import type { FeedbackCommentResource } from "@/api/schemas/feedbackCommentResourceSchema.ts";
@@ -56,54 +62,70 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
   const projectUsers = useProjectUsers();
   const members = projectUsers.map((u) => ({ name: displayName(u, "") }));
 
-  const [comments, setComments] = useState<FeedbackCommentResource[]>([]);
   const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
+  const queries = useQueryClient();
+  const commentsKey = ["feedback-comments", props.feedbackId];
 
-  const load = useCallback(async () => {
-    const rows = await api.listFeedbackComments({
-      params: { id: props.feedbackId },
-      query: {},
-    });
-    setComments(rows);
-  }, [api, props.feedbackId]);
+  // A failure here costs the thread, not the page around it: the reporter
+  // still needs to read their own report. Quiet through `onError` (#E59,
+  // #Q2328), which keeps it out of the toaster and in error reporting.
+  const comments =
+    useQuery(
+      {
+        key: commentsKey,
+        handler: () =>
+          api.listFeedbackComments({
+            params: { id: props.feedbackId },
+            query: {},
+          }),
+        onError: () => {},
+      },
+      [api, props.feedbackId],
+    ).data ?? [];
 
-  useEffect(() => {
-    // A failure here costs the thread, not the page around it: the reporter
-    // still needs to read their own report.
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because the loader flips
-    // `loading` before its first await.
-    // oxlint-disable-next-line react/set-state-in-effect
-    load().catch(() => setComments([]));
-  }, [load]);
+  // The two writes are `useAction`s: a refused post or delete is the
+  // server's sentence, toasted by the root `ActionErrorToaster`, where it
+  // used to vanish. Each answer is written into the thread's cache rather
+  // than re-read, since the server already said what changed.
+  const submitAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const body = draft.trim();
+        if (!body) return;
+        const created = await api.createFeedbackComment({
+          params: { id: props.feedbackId },
+          body: { body },
+        });
+        queries.setData<FeedbackCommentResource[]>(commentsKey, (current) => [
+          ...(current ?? []),
+          created,
+        ]);
+        setDraft("");
+      },
+    },
+    [api, draft, props.feedbackId, queries],
+  );
 
-  const submit = async () => {
-    const body = draft.trim();
-    if (!body) return;
-    setBusy(true);
-    try {
-      const created = await api.createFeedbackComment({
-        params: { id: props.feedbackId },
-        body: { body },
-      });
-      setComments((current) => [...current, created]);
-      setDraft("");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const removeAction = useAction<[comment: FeedbackCommentResource], void>(
+    {
+      handler: async (comment) => {
+        const confirmed = await dialog.confirm({
+          title: tr("feedback.thread.deleteTitle"),
+          confirmLabel: tr("feedback.thread.delete"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await api.deleteFeedbackComment({ params: { id: comment.id } });
+        queries.setData<FeedbackCommentResource[]>(commentsKey, (current) =>
+          (current ?? []).filter((it) => it.id !== comment.id),
+        );
+      },
+    },
+    [api, dialog, props.feedbackId, queries, tr],
+  );
 
-  const remove = async (comment: FeedbackCommentResource) => {
-    const confirmed = await dialog.confirm({
-      title: tr("feedback.thread.deleteTitle"),
-      confirmLabel: tr("feedback.thread.delete"),
-      destructive: true,
-    });
-    if (!confirmed) return;
-    await api.deleteFeedbackComment({ params: { id: comment.id } });
-    setComments((current) => current.filter((it) => it.id !== comment.id));
-  };
+  // One thread, one busy flag: the box and every delete wait for either.
+  const busy = submitAction.loading || removeAction.loading;
 
   return (
     <section className="flex flex-col gap-3">
@@ -150,7 +172,8 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                     type="button"
                     className="text-muted-foreground hover:text-destructive"
                     aria-label={tr("feedback.thread.delete")}
-                    onClick={() => remove(comment)}
+                    disabled={busy}
+                    onClick={() => void removeAction.run(comment)}
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -198,7 +221,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
           <Button
             type="button"
             size="sm"
-            onClick={submit}
+            onClick={() => void submitAction.run()}
             disabled={busy || draft.trim().length === 0}
           >
             {tr("feedback.thread.submit")}

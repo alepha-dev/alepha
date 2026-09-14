@@ -3,13 +3,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  useToast,
   UserAvatar,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, UserMinus } from "lucide-react";
-import { useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
@@ -41,8 +39,6 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
   const { quest } = props;
   const { tr } = useI18n<I18n, "en">();
   const questApi = useClient<QuestController>();
-  const toaster = useToast();
-  const [pending, setPending] = useState(false);
   // Unconditionally, unlike the read-only row this replaces: the picker has
   // to list everyone, not just resolve the current holder.
   const users = useProjectUsers(true);
@@ -51,22 +47,23 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
     ? users.find((u) => u.id === quest.acceptedBy)
     : undefined;
 
-  const assign = async (userId: string) => {
-    if (userId === quest.acceptedBy) return;
-    setPending(true);
-    try {
-      props.onUpdate(
-        await questApi.assignQuest({
-          params: { id: quest.id },
-          body: { userId },
-        }),
-      );
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(false);
-    }
-  };
+  // A `useAction` (#E59, #Q2328): a refusal is the server's sentence, toasted
+  // by the root `ActionErrorToaster`, and the trigger is disabled meanwhile.
+  const assignAction = useAction<[userId: string], void>(
+    {
+      handler: async (userId) => {
+        if (userId === quest.acceptedBy) return;
+        props.onUpdate(
+          await questApi.assignQuest({
+            params: { id: quest.id },
+            body: { userId },
+          }),
+        );
+      },
+    },
+    [questApi, quest.id, quest.acceptedBy, props.onUpdate],
+  );
+  const pending = assignAction.loading;
 
   const label = quest.acceptedBy
     ? displayName(assignee, quest.acceptedBy)
@@ -109,7 +106,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
             key={member.id}
             data-testid="quest-assignee-option"
             data-user-id={member.id}
-            onClick={() => void assign(member.id)}
+            onClick={() => void assignAction.run(member.id)}
           >
             <UserAvatar
               public

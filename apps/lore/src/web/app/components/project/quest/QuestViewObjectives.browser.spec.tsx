@@ -1,4 +1,5 @@
 import { Toaster } from "@alepha/ui";
+import { ActionErrorToaster } from "@alepha/ui/shell";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -34,7 +35,7 @@ class FailingLinkProvider extends LinkProvider {
     return virtualClientFake({
       completeObjective: async () => {
         this.calls++;
-        throw new Error("nope");
+        throw new Error("This objective is already waived (spec)");
       },
     });
   }
@@ -61,6 +62,9 @@ class FailingLinkProvider extends LinkProvider {
  * state it started in. That is indistinguishable from "the click did not
  * register", and for a while it was also indistinguishable from success,
  * because the catch wrote to `console.error` and nothing else.
+ *
+ * Since #E59 (#Q2328) the toggle is a `useAction`: the root
+ * `ActionErrorToaster` says why, in the server's words, exactly once.
  */
 describe("QuestViewObjectives", () => {
   it("toasts when the server refuses the toggle", async ({ expect }) => {
@@ -80,7 +84,8 @@ describe("QuestViewObjectives", () => {
     render(
       <AlephaContext.Provider value={alepha}>
         <QuestViewObjectives quest={quest} />
-        <Toaster />
+        <Toaster visibleToasts={20} />
+        <ActionErrorToaster />
       </AlephaContext.Provider>,
     );
 
@@ -88,10 +93,12 @@ describe("QuestViewObjectives", () => {
 
     await waitFor(() => expect(links.calls).toBe(1));
 
-    // The message itself, not just "a toast happened": a catch that fired the
-    // success toast would satisfy the weaker assertion.
-    await waitFor(() =>
-      expect(screen.getByText("Could not update the objective.")).toBeTruthy(),
-    );
+    // The server's message itself, not just "a toast happened": a catch that
+    // fired the success toast would satisfy the weaker assertion. Once, and
+    // still once a moment later.
+    const message = "This objective is already waived (spec)";
+    await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(screen.getAllByText(message)).toHaveLength(1);
   });
 });

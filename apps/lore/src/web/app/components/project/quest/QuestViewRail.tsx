@@ -1,6 +1,6 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -20,7 +20,6 @@ import {
   User,
   UserMinus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
@@ -77,7 +76,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
-  const [epic, setEpic] = useState<EpicSummary | undefined>(undefined);
 
   // Every one of these is an option inside Work: a capability that is off
   // reads its options off, which is the epic's narrow-never-widen rule and
@@ -90,24 +88,24 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.
-  useEffect(() => {
-    if (!project?.id || !quest.epicId || !epicsEnabled) {
-      // Early return of the epic fetch below.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setEpic(undefined);
-      return;
-    }
-    let alive = true;
-    epicApi
-      .getEpics({ params: { projectId: project.id } })
-      .then((epics) => {
-        if (alive) setEpic(epics.find((e) => e.id === quest.epicId));
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [project?.id, quest.epicId, epicsEnabled]);
+  //
+  // A `useQuery` keyed on the project (#E59, #Q2328), so every quest page of
+  // one project shares the list. Quiet on failure: the row is a link to the
+  // epic, and a quest page without it is still the quest page.
+  const epicsQuery = useQuery(
+    {
+      key: ["epics", project?.id],
+      enabled: !!project?.id && !!quest.epicId && epicsEnabled,
+      handler: () =>
+        epicApi.getEpics({ params: { projectId: project?.id as number } }),
+      onError: () => {},
+    },
+    [epicApi, project?.id],
+  );
+  const epic: EpicSummary | undefined =
+    quest.epicId && epicsEnabled
+      ? epicsQuery.data?.find((e) => e.id === quest.epicId)
+      : undefined;
 
   const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
 

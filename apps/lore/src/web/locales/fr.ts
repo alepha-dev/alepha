@@ -460,7 +460,6 @@ export default {
   "quest.event.change.epicCleared": "a détaché la quête de son épopée",
   "quest.event.change.release": "a mis la quête dans la version $1",
   "quest.event.change.releaseCleared": "a sorti la quête de sa version",
-  "quest.objective.error": "Impossible de mettre à jour l'objectif.",
   "quest.status.todo": "À faire",
   "quest.status.inProgress": "En cours",
   "quest.status.completed": "Terminée",
@@ -532,7 +531,7 @@ export default {
   "quest.view.attach": "Joindre",
   "quest.view.attachHint":
     "Collez une capture (Ctrl/⌘+V) ou déposez des fichiers ici.",
-  "quest.view.attachFailed": "Impossible de joindre ce fichier.",
+  "quest.view.attachBusy": "Attendez la fin de l'envoi en cours",
   "quest.view.attachments": "Pièces jointes",
 
   "attachments.position": "$1 sur $2",
@@ -1828,7 +1827,6 @@ export default {
   "feedback.createQuest": "Nouvelle quête",
   "feedback.reject": "Rejeter",
   "feedback.rejected": "Retour rejeté",
-  "feedback.rejectError": "Échec du rejet du retour",
   "feedback.delete": "Supprimer",
   "inbox.title": "Notifications",
   "inbox.empty": "Rien de nouveau.",
@@ -1888,12 +1886,10 @@ export default {
   "feedback.thread.delete": "Supprimer",
   "feedback.thread.deleteTitle": "Supprimer ce commentaire ?",
   "feedback.deleted": "Retour supprimé",
-  "feedback.deleteError": "Échec de la suppression du retour",
   "feedback.deleteConfirmTitle": "Supprimer le retour ?",
   "feedback.deleteConfirm":
     "Supprimer ce retour ? Cette action est irréversible.",
   "feedback.acceptedToast": "Retour accepté",
-  "feedback.acceptError": "Échec de l'acceptation du retour",
   "feedback.attachments": "Pièces jointes",
   "feedback.linkedQuests": "Quêtes liées",
   "feedback.noLinkedQuests":
@@ -1924,7 +1920,7 @@ export default {
   "feedback.request.attach": "Joindre un fichier",
   "feedback.request.attachmentsCount": "$1 / $2 fichiers",
   "feedback.request.tooManyFiles": "Trop de fichiers (max $1)",
-  "feedback.request.uploadError": "Échec de l'envoi",
+  "feedback.request.uploadBusy": "Attendez la fin de l'envoi en cours",
   "feedback.request.success": "Retour envoyé",
   "feedback.request.error": "Échec de l'envoi du retour",
   "feedback.request.submit": "Envoyer le retour",
