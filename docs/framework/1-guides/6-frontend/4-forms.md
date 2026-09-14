@@ -218,3 +218,5 @@ handler: async (values) => {
 ```
 
 The `path` is a JSON pointer matching the field path (e.g., `/email`, `/address/city`).
+
+The form's own schema refuses input the same way: a required field left empty or a value out of range fails with a `FormValidationError` too, before the handler runs. So a `react:action:error` listener can tell a person's input from a fault by the error alone: a `FormValidationError` is a refusal, while a `SchemaValidationError` thrown from inside the handler (a response that broke its own schema, say) is left as it is. The `@alepha/lore` browser sigil relies on that, and does not report a refusal as a crash.

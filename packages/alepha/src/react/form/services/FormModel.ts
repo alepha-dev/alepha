@@ -4,12 +4,15 @@ import {
   Alepha,
   coerceObject,
   type Infer,
+  SchemaValidationError,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
+
+import { FormValidationError } from "../errors/FormValidationError.ts";
 
 /**
  * FormModel is a dynamic form handler that generates form inputs based on a provided Zod schema.
@@ -403,13 +406,7 @@ export class FormModel<T extends ZObject> {
       let values: Record<string, any> = this.restructureValues(this.values);
 
       if (z.schema.isSchema(options.schema)) {
-        // HTML form controls produce strings; coerce them to the schema's
-        // scalar types (number/boolean) at this string boundary before strict
-        // decoding — otherwise a `z.number()` field would reject its "42" input.
-        values = this.alepha.codec.decode(
-          options.schema,
-          coerceObject(options.schema, values),
-        ) as Record<string, any>;
+        values = this.decodeValues(options.schema, values);
       }
 
       await options.handler(values as any);
@@ -462,6 +459,51 @@ export class FormModel<T extends ZObject> {
       );
     }
   };
+
+  /**
+   * The submitted values, decoded against the form's own schema.
+   *
+   * HTML form controls produce strings; they are coerced to the schema's
+   * scalar types (number/boolean) at this string boundary before strict
+   * decoding, otherwise a `z.number()` field would reject its "42" input.
+   *
+   * ## A refusal here is rethrown as a `FormValidationError`
+   *
+   * A decode failure at this point is the person's input failing the form's
+   * rules: a required field left empty, a number out of range. That is the
+   * same thing a handler says by throwing `FormValidationError`, so it now
+   * arrives as that type too, with the same path and message.
+   *
+   * ⚠️ It matters outside the form. `react:action:error` carries this error,
+   * and the browser sigil files what it receives as a crash unless it can
+   * tell a refusal from a fault: a `SchemaValidationError` raised INSIDE the
+   * handler (a response that broke its own schema) is a fault and still
+   * reports, while this one is somebody leaving a title empty (blight #585,
+   * #Q2343). The subclass keeps every `instanceof SchemaValidationError` and
+   * `value.path` check that routes the error to its field working unchanged.
+   */
+  protected decodeValues(
+    schema: ZObject,
+    values: Record<string, any>,
+  ): Record<string, any> {
+    try {
+      return this.alepha.codec.decode(
+        schema,
+        coerceObject(schema, values),
+      ) as Record<string, any>;
+    } catch (error) {
+      if (
+        error instanceof SchemaValidationError &&
+        !(error instanceof FormValidationError)
+      ) {
+        throw new FormValidationError({
+          message: error.value.message,
+          path: error.value.path,
+        });
+      }
+      throw error;
+    }
+  }
 
   /**
    * Restructures flat keys like "address.city" into nested objects like { address: { city: ... } }
