@@ -268,7 +268,7 @@ describe("the instance Settings tab", () => {
 
     await waitFor(() => expect(document.body.textContent).toContain("ovh-1"));
     // The clear row is there too: pointing nowhere is a real state.
-    expect(document.body.textContent).toContain("No estate");
+    expect(screen.getByRole("option", { name: "None" })).toBeTruthy();
   });
 
   it("says so and links out when nothing is lent", async ({ expect }) => {

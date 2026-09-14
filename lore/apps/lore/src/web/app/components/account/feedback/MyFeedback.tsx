@@ -106,8 +106,6 @@ const MyFeedback = () => {
       ],
       control: {
         clearLabel: tr("myFeedback.filter.allStatuses"),
-        countLabel: (n: number) =>
-          tr("myFeedback.filter.statusCount", { args: [String(n)] }),
       },
     },
     projectId: {

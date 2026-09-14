@@ -500,8 +500,6 @@ const ProjectEpics = () => {
         tr(STATUS_LABEL_KEYS[status]),
       control: {
         clearLabel: tr("epic.filter.allStatuses"),
-        countLabel: (n: number) =>
-          tr("epic.filter.statusCount", { args: [String(n)] }),
       },
     },
     /**
@@ -529,8 +527,6 @@ const ProjectEpics = () => {
       hidden: (releases ?? []).length === 0,
       control: {
         clearLabel: tr("board.filter.allReleases"),
-        countLabel: (n: number) =>
-          tr("board.filter.releaseCount", { args: [String(n)] }),
       },
     },
   } satisfies DataTableFilterFields;

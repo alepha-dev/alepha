@@ -17,7 +17,7 @@ import {
 import { type Page, z } from "alepha";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   AppWindow,
   CheckCircle2,
@@ -41,6 +41,7 @@ import { formatReference } from "../../shared/element/typedReference.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import BlightSourceCell from "./BlightSourceCell.tsx";
+import { sigilNameParts } from "./sigilNameParts.ts";
 
 /**
  * Owner-facing Blights inbox, built on {@link DataTable}.
@@ -232,8 +233,6 @@ const ProjectBlights = () => {
       ],
       control: {
         clearLabel: tr("blights.filter.all"),
-        countLabel: (n: number) =>
-          tr("blights.filter.statusCount", { args: [String(n)] }),
       },
     },
     /**
@@ -249,7 +248,7 @@ const ProjectBlights = () => {
       icon: AppWindow,
       items: sigilOptions.map((s) => ({ label: s.label, value: s.id })),
       hidden: sigilOptions.length === 0,
-      control: { clearLabel: tr("blights.filter.allSigils") },
+      control: { clearLabel: tr("blights.filter.allApps") },
     },
   } satisfies DataTableFilterFields;
 
@@ -293,7 +292,7 @@ const ProjectBlights = () => {
     // persist per `persistenceKey`, and `reconcilePersistedFilters` reshapes
     // containers rather than values, so it arrives here untouched. Read as
     // absent: no blight carries it, so the alternative is an empty table
-    // under a trigger that says "All sigils", which is the worst of both.
+    // under a trigger that says "All apps", which is the worst of both.
     const sigilId = stored === "all" ? undefined : stored;
     const resolvedOnly = statuses.length === 1 && statuses[0] === "resolved";
     const statusFiltered = resolvedOnly
@@ -394,6 +393,34 @@ const ProjectBlights = () => {
                 </p>
               </div>
             ),
+          },
+          app: {
+            label: tr("blights.col.app"),
+            className: "max-w-[180px]",
+            // The app that reported the blight most recently, linked to its
+            // page, named "lore/production" the way the filter lists it. A
+            // blight whose sigil was deleted keeps a null `sigilId`.
+            cell: (b) => {
+              const name = sigilOptions.find((s) => s.id === b.sigilId)?.label;
+              const parts = name ? sigilNameParts(name) : undefined;
+              if (!project || !parts) {
+                return <span className="text-muted-foreground text-xs">-</span>;
+              }
+              return (
+                <Link
+                  href={router.path("app", {
+                    params: {
+                      projectSlug: project.slug,
+                      app: parts.app,
+                      env: parts.env,
+                    },
+                  })}
+                  className="block truncate hover:underline"
+                >
+                  {name}
+                </Link>
+              );
+            },
           },
           page: {
             label: tr("blights.col.page"),

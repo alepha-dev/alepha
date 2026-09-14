@@ -398,9 +398,6 @@ const QuestCreate = (props: QuestCreateProps) => {
                 createNewEntry
                 items={knownTags}
                 clearLabel={tr("quest.create.tags.empty")}
-                countLabel={(n) =>
-                  tr("quest.create.tagCount", { args: [String(n)] })
-                }
               />
 
               {/* Estimation is a methodology, not a default — see

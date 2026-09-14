@@ -221,8 +221,6 @@ const ProjectArtifacts = () => {
       hidden: appItems.length <= 1,
       control: {
         clearLabel: tr("artifacts.filter.allApps"),
-        countLabel: (n: number) =>
-          tr("artifacts.filter.appCount", { args: [String(n)] }),
       },
     },
     runtime: {
@@ -233,8 +231,6 @@ const ProjectArtifacts = () => {
       hidden: runtimeItems.length <= 1,
       control: {
         clearLabel: tr("artifacts.filter.allRuntimes"),
-        countLabel: (n: number) =>
-          tr("artifacts.filter.runtimeCount", { args: [String(n)] }),
       },
     },
     format: {
@@ -245,8 +241,6 @@ const ProjectArtifacts = () => {
       hidden: formatItems.length <= 1,
       control: {
         clearLabel: tr("artifacts.filter.allFormats"),
-        countLabel: (n: number) =>
-          tr("artifacts.filter.formatCount", { args: [String(n)] }),
       },
     },
   } satisfies DataTableFilterFields;
