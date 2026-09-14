@@ -895,7 +895,6 @@ export default {
   "release.folio.defaultTitle": "Version $1 : $2",
   "release.folio.save": "Enregistrer",
   "release.folio.saved": "Journal enregistré dans les Folios",
-  "release.folio.error": "Impossible d'enregistrer le journal.",
   "release.folio.summary":
     "Journal de la version $1 : $2 quête(s) enregistrée(s).",
 

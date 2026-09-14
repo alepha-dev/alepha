@@ -51,6 +51,11 @@ export interface ProjectEpicQuestsProps {
    * renders as "no quests in this epic".
    */
   quests: QuestResource[] | null;
+  /**
+   * True while any membership write on the page runs. Create, the picker and
+   * every detach wait for it (#E59 rule 10).
+   */
+  busy: boolean;
   onAttach: (questId: number) => void;
   onDetach: (quest: QuestResource) => void;
   /**
@@ -168,7 +173,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={!project}
+                      disabled={!project || props.busy}
                       onClick={() => setCreating(true)}
                     >
                       <Plus className="size-4" />
@@ -177,6 +182,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                     <EpicQuestPicker
                       projectId={props.projectId}
                       attachedIds={attachedIds}
+                      disabled={props.busy}
                       onAttach={props.onAttach}
                     />
                   </>
@@ -282,8 +288,9 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                         label: tr("epic.quests.detach"),
                         destructive: true,
                         // No `ctx.refresh()`: these rows are `ProjectEpic`'s
-                        // state. `onDetach` reloads it, and the table
+                        // query. `onDetach` invalidates it, and the table
                         // re-renders from the new array on its own.
+                        disabled: () => props.busy,
                         onClick: () => props.onDetach(quest),
                       },
                     ]

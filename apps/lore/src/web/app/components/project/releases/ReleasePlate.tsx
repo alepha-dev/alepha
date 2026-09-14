@@ -1,5 +1,5 @@
-import { Badge, Button, useDialog, useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { Badge, Button, useDialog } from "@alepha/ui";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   CalendarCheck,
@@ -13,7 +13,6 @@ import {
   Target,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
@@ -69,62 +68,71 @@ const ReleasePlate = (props: ReleasePlateProps) => {
   const { release } = props;
   const { tr, l } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const toaster = useToast();
   const releaseApi = useClient<ReleaseController>();
   // Three counts on one line: "(s)" would be the loudest thing on it.
   const count = useCountLabel();
   const defaultRelease = useSetDefaultRelease();
-  const [submitting, setSubmitting] = useState(false);
 
   const published = !!release.releasedAt;
   const state = releaseState(release);
   const StateIcon = STATE_ICONS[state];
   const buckets = releaseBuckets(release.progress);
 
-  const publish = async () => {
-    const ok = await dialog.confirm({
-      title: tr("release.publish.title"),
-      description: tr("release.publish.description", {
-        args: [release.tag ?? String(release.number)],
-      }),
-      confirmLabel: tr("release.publish.confirm"),
-      cancelLabel: tr("common.cancel"),
-      destructive: true,
-    });
-    if (!ok || submitting) return;
-    setSubmitting(true);
-    try {
-      await releaseApi.publishRelease({
-        params: { id: release.id },
-        body: {},
-      });
-      props.onChanged();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // One `useAction` per verb, each holding its confirmation (#E59, #Q2326):
+  // backing out sends nothing, and a refusal is the server's sentence, toasted
+  // by the root `ActionErrorToaster`.
+  const publishAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("release.publish.title"),
+          description: tr("release.publish.description", {
+            args: [release.tag ?? String(release.number)],
+          }),
+          confirmLabel: tr("release.publish.confirm"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await releaseApi.publishRelease({
+          params: { id: release.id },
+          body: {},
+        });
+        props.onChanged();
+      },
+    },
+    [
+      releaseApi,
+      dialog,
+      release.id,
+      release.tag,
+      release.number,
+      props.onChanged,
+      tr,
+    ],
+  );
 
-  const reopen = async () => {
-    const ok = await dialog.confirm({
-      title: tr("release.reopen.title"),
-      description: tr("release.reopen.description"),
-      confirmLabel: tr("release.reopen.confirm"),
-      cancelLabel: tr("common.cancel"),
-      destructive: true,
-    });
-    if (!ok || submitting) return;
-    setSubmitting(true);
-    try {
-      await releaseApi.reopenRelease({ params: { id: release.id } });
-      props.onChanged();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const reopenAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("release.reopen.title"),
+          description: tr("release.reopen.description"),
+          confirmLabel: tr("release.reopen.confirm"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await releaseApi.reopenRelease({ params: { id: release.id } });
+        props.onChanged();
+      },
+    },
+    [releaseApi, dialog, release.id, props.onChanged, tr],
+  );
+
+  // Page-wide across the plate's three writes.
+  const submitting =
+    publishAction.loading || reopenAction.loading || defaultRelease.busy;
 
   const meta: Array<{ icon: LucideIcon; text: string; divide?: boolean }> = [
     {
@@ -285,7 +293,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
             variant="ghost"
             size="lg"
             disabled={submitting}
-            onClick={() => void reopen()}
+            onClick={() => void reopenAction.run()}
           >
             <RotateCcw className="size-4" />
             {tr("release.reopen.action")}
@@ -294,7 +302,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
           <Button
             size="lg"
             disabled={submitting}
-            onClick={() => void publish()}
+            onClick={() => void publishAction.run()}
           >
             <Send className="size-4" />
             {tr("release.publish.action")}

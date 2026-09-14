@@ -925,7 +925,6 @@ export default {
   "release.folio.defaultTitle": "Release $1: $2",
   "release.folio.save": "Save",
   "release.folio.saved": "Changelog saved to Folios",
-  "release.folio.error": "Could not save the changelog.",
   "release.folio.summary": "Changelog for release $1: $2 quest(s) recorded.",
 
   "release.tab.overview": "Overview",
