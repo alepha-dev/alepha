@@ -224,7 +224,9 @@ describe("a mention in a feedback comment", () => {
     await ctx.alepha.stop();
   });
 
-  it("never pings the author, here as on a quest", async ({ expect }) => {
+  it("never pings the author of a comment a person typed, here as on a quest", async ({
+    expect,
+  }) => {
     const ctx = await setup();
     const item = await ctx.report("It crashes", ctx.reporter.id);
 
@@ -238,6 +240,36 @@ describe("a mention in a feedback comment", () => {
     await ctx.deliver();
 
     expect(await mentionsIn(ctx)).toHaveLength(0);
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * #Q2348: `feedback_comment_add` stamps `source`, and an agent writing as
+   * the key's owner may reach that owner.
+   */
+  it("pings the key's owner when an agent wrote the comment", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const item = await ctx.report("It crashes", ctx.reporter.id);
+
+    await ctx.asUser(ctx.owner.id, () =>
+      ctx.commentApi.createFeedbackComment({
+        params: { id: item.id },
+        body: {
+          body: "@owner reproduced on Safari only, should I file a quest?",
+          source: { kind: "mcp", client: "claude-code" },
+        },
+      }),
+    );
+
+    await ctx.deliver();
+
+    const rows = await mentionsIn(ctx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe(ctx.owner.id);
+    expect(rows[0].title).toContain("claude-code mentioned you in #P");
 
     await ctx.alepha.stop();
   });

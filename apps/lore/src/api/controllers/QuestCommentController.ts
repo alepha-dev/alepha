@@ -214,13 +214,19 @@ export class QuestCommentController {
       // ⚠️ Here rather than at the HTTP layer, because
       // `QuestTools.quest_comment_add` calls this method directly: a hook one
       // level out would miss every comment an agent writes, which is most of
-      // them. Over MCP the session user IS the caller's own account, so
-      // "never ping the author" already does the right thing when an agent
-      // mentions the owner.
+      // them. Over MCP the session user IS the key's owner, so `authorId`
+      // names the account and not the writer: `source` is what says an agent
+      // wrote this, and only then may a self-mention reach the owner. It used
+      // to be dropped as a note to self, which left an agent unable to reach
+      // the one person it works for (#Q2348).
       await this.mentions.notify({
         subject: this.mentionSubject(quest),
         authorId: user.id,
         body: body.body,
+        agent:
+          body.source?.kind === "mcp"
+            ? { client: body.source.client }
+            : undefined,
       });
 
       return comment;
@@ -283,6 +289,9 @@ export class QuestCommentController {
       if (comment.body !== body.body) {
         const quest = await this.quests.findById(comment.questId);
         if (quest) {
+          // No `agent`, even on a comment an agent wrote: there is no MCP
+          // edit tool, so an edit is typed by a person, and a person's own
+          // name is a note to self.
           await this.mentions.notify({
             subject: this.mentionSubject(quest),
             authorId: user.id,

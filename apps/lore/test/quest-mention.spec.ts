@@ -8,8 +8,9 @@ import {
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
+import { AlephaMcp } from "alepha/mcp";
 import { $repository, AlephaOrm } from "alepha/orm";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -19,6 +20,8 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
+import { LoreMcp } from "../src/mcp/index.ts";
+import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 
 /**
  * The inbox is read directly rather than through the controller: the point
@@ -64,7 +67,9 @@ const setup = async () => {
     provide: NotificationInboxRecipientProvider,
     use: LoreInboxRecipientProvider,
   });
+  alepha.with(AlephaMcp);
   alepha.with(LoreApi);
+  alepha.with(LoreMcp);
 
   const probe = alepha.inject(Probe);
   await alepha.start();
@@ -76,6 +81,7 @@ const setup = async () => {
     projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
     comments: alepha.inject(QuestCommentController),
+    questTools: alepha.inject(QuestTools),
     fake: alepha.inject(FakeProvider),
     sendJobName: alepha.inject(NotificationJobs).sendNotification.name,
   };
@@ -148,8 +154,28 @@ const seed = async (ctx: Ctx) => {
     bystander,
     projectId,
     questId: quest.data.shortId,
+    questRowId: quest.data.id,
   };
 };
+
+/**
+ * A comment the way `quest_comment_add` writes it: authored by the key's
+ * owner, and stamped as written by an agent.
+ */
+const agentComment = (
+  ctx: Ctx,
+  questId: number,
+  user: { id: string },
+  body: string,
+  client?: string,
+) =>
+  ctx.comments.createQuestComment.fetch(
+    {
+      params: { id: questId },
+      body: { body, source: { kind: "mcp", client } },
+    },
+    { user },
+  );
 
 const comment = (
   ctx: Ctx,
@@ -188,9 +214,11 @@ describe("a mention in a quest comment", () => {
   });
 
   /**
-   * Mentioning yourself is a note to self.
+   * Mentioning yourself is a note to self, when you typed it.
    */
-  it("never pings the author", async ({ expect }) => {
+  it("never pings the author of a comment a person typed", async ({
+    expect,
+  }) => {
     const ctx = await setup();
     const { author, questId } = await seed(ctx);
 
@@ -198,6 +226,152 @@ describe("a mention in a quest comment", () => {
 
     await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * #Q2348. Over MCP the session user IS the key's owner, so under the
+   * note-to-self rule an agent could reach everybody except the one person it
+   * works for. `source` says an agent wrote it, and then the owner is pinged,
+   * with the agent named as the writer.
+   */
+  it("pings the key's owner when an agent wrote the comment, naming the agent", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { author, questId } = await seed(ctx);
+
+    await agentComment(
+      ctx,
+      questId,
+      author,
+      "@fabrice which of the two shapes do you want?",
+      "claude-code",
+    );
+
+    await settle(ctx);
+    const rows = await ctx.probe.inbox.findMany({});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe(author.id);
+    expect(rows[0].title).toBe(`claude-code mentioned you in #Q${questId}`);
+
+    await ctx.alepha.stop();
+  });
+
+  it("names an agent that gave no name as an agent", async ({ expect }) => {
+    const ctx = await setup();
+    const { author, questId } = await seed(ctx);
+
+    await agentComment(ctx, questId, author, "@fabrice a decision, please");
+
+    await settle(ctx);
+    const rows = await ctx.probe.inbox.findMany({});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title).toBe(`An agent mentioned you in #Q${questId}`);
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * There is no MCP edit tool, so an edit is typed by a person, even on a
+   * comment an agent wrote.
+   */
+  it("never pings the author on an edit, even of an agent's comment", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { author, questId } = await seed(ctx);
+
+    const created = await agentComment(
+      ctx,
+      questId,
+      author,
+      "a note with nobody named",
+      "claude-code",
+    );
+    await ctx.comments.updateQuestComment.fetch(
+      {
+        params: { id: created.data.id },
+        body: { body: "a note, now for @fabrice" },
+      },
+      { user: author },
+    );
+
+    await settle(ctx);
+    expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * `quest_hold` stamps no `source` on its comment, deliberately, and still
+   * has to say an agent wrote the reason: "waiting on the owner" is the case
+   * where reaching them matters most.
+   */
+  /**
+   * The same through the real tool: `quest_hold` is what sends the flag, and
+   * it is reached only over MCP, as the key's owner.
+   */
+  it("pings the key's owner from a reason written through quest_hold", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { author, questRowId } = await seed(ctx);
+
+    await ctx.alepha.context.run(() => {
+      ctx.alepha.store.set(currentUserAtom, {
+        id: author.id,
+        roles: author.roles,
+      } as any);
+      return (ctx.questTools.quest_hold as any).execute({
+        id: questRowId,
+        reason: "blocked until @fabrice picks a shape",
+      });
+    });
+
+    await settle(ctx);
+    const rows = await ctx.probe.inbox.findMany({});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe(author.id);
+
+    await ctx.alepha.stop();
+  });
+
+  it("pings the key's owner from a hold an agent placed, and not from one a person placed", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { author, questRowId } = await seed(ctx);
+
+    await ctx.quests.holdQuest.fetch(
+      {
+        params: { id: questRowId },
+        body: { reason: "waiting on @fabrice to pick a shape", agent: true },
+      },
+      { user: author },
+    );
+
+    await settle(ctx);
+    const rows = await ctx.probe.inbox.findMany({});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe(author.id);
+    expect(rows[0].title).toContain("An agent mentioned you in #Q");
+
+    await ctx.quests.unholdQuest.fetch(
+      { params: { id: questRowId } },
+      { user: author },
+    );
+    await ctx.quests.holdQuest.fetch(
+      {
+        params: { id: questRowId },
+        body: { reason: "note to self: @fabrice pick a shape" },
+      },
+      { user: author },
+    );
+
+    await settle(ctx);
+    expect(await ctx.probe.inbox.findMany({})).toHaveLength(1);
 
     await ctx.alepha.stop();
   });
