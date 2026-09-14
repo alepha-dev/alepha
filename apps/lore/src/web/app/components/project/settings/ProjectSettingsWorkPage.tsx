@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, Input, useToast, cn } from "@alepha/ui";
+import { Button, Card, CardContent, Input, cn } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
@@ -20,7 +20,6 @@ import { useId, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
 import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import {
@@ -28,6 +27,7 @@ import {
   hasCapability,
 } from "@/web/app/services/projectCapabilities.ts";
 
+import { useKanbanColumnOps } from "../../kanban/useKanbanColumnOps.ts";
 import { KanbanColumnOrder } from "./kanbanColumnOrder.ts";
 import ProjectSettingsAgentPrompts from "./ProjectSettingsAgentPrompts.tsx";
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
@@ -62,7 +62,6 @@ const columnOrder = new KanbanColumnOrder();
  * nine Features pages went: four of them were a switch and nothing else.
  */
 const ProjectSettingsWorkPage = () => {
-  const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
   const projectApi = useClient<ProjectController>();
@@ -76,7 +75,6 @@ const ProjectSettingsWorkPage = () => {
   // `router.path("project", …)` — the project root — so this page unmounts
   // and remounts rather than being handed another project's columns.
   const [columns, setColumns] = useState<string[]>(persisted);
-  const [pending, setPending] = useState<string | null>(null);
   const dndId = useId();
   const sensors = useSensors(
     // The grip sits beside a text input; without a distance threshold a
@@ -84,75 +82,17 @@ const ProjectSettingsWorkPage = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  if (!project) return null;
-
-  const syncProject = (next: string[]) => {
-    const updated = { ...project, kanbanColumns: next };
-    setCurrentProject(alepha, updated);
-    const overview = alepha.store.get(userProjectsAtom);
-    if (overview) {
-      alepha.store.set(userProjectsAtom, {
-        ...overview,
-        // `currentProjectAtom` carries neither `areaCount` nor
-        // `openQuestCount` — only
-        // `getHomeOverview` computes that — so carry the existing one
-        // forward rather than dropping it to 0.
-        projects: overview.projects.map((c) =>
-          c.id === updated.id
-            ? {
-                ...updated,
-                areaCount: c.areaCount,
-                openQuestCount: c.openQuestCount,
-                // Same reasoning: `owner` is computed by `getHomeOverview`
-                // from a batched `members` read, so dropping it here would
-                // flip the Owner badge off until the next bootstrap.
-                owner: c.owner,
-              }
-            : c,
-        ),
-      });
-    }
-  };
-
-  const runOp = async (label: string, fn: () => Promise<string[]>) => {
-    setPending(label);
-    try {
-      const next = await fn();
-      setColumns(next);
-      syncProject(next);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(null);
-    }
-  };
-
-  const handleAdd = () =>
-    runOp("add", () =>
-      projectApi.addKanbanColumn({
-        params: { id: project.id },
-        body: { name: `Column ${columns.length + 1}` },
-      }),
-    );
-
-  const handleRename = (oldName: string, newName: string) => {
-    const trimmed = newName.trim();
-    if (!trimmed || trimmed === oldName) return;
-    return runOp(`rename:${oldName}`, () =>
-      projectApi.renameKanbanColumn({
-        params: { id: project.id },
-        body: { oldName, newName: trimmed },
-      }),
-    );
-  };
-
-  const handleDelete = (name: string) =>
-    runOp(`delete:${name}`, () =>
-      projectApi.deleteKanbanColumn({
-        params: { id: project.id },
-        body: { name },
-      }),
-    );
+  /**
+   * Add, rename and delete go through the board's own hook, so Settings and
+   * the board ask the server the same question and keep the same two atoms
+   * true (#Q2324). The list here is re-read from `currentProjectAtom` after
+   * each of them, which is what the hook has just written.
+   */
+  const columnOps = useKanbanColumnOps(project?.id ?? 0, () =>
+    setColumns(
+      alepha.store.get(currentProjectAtom)?.kanbanColumns ?? ["In Progress"],
+    ),
+  );
 
   /**
    * Per-column settings: which lifecycle state the column collapses to
@@ -161,41 +101,86 @@ const ProjectSettingsWorkPage = () => {
    * The whole map goes over the wire, because removing a key is how a
    * setting is cleared and a server-side merge has no way to say that.
    */
-  const setColumnSettings = async (
-    name: string,
-    patch: { status?: "todo" | "in_progress" | "completed"; wipLimit?: number },
-  ) => {
-    const current = project.kanbanColumnConfig ?? {};
-    const merged = { ...current[name], ...patch };
-    // Strip keys back to absent rather than storing a default: "in_progress"
-    // and "no limit" are what a column means with no entry at all, so
-    // writing them would leave two encodings of one state.
-    const settings: Record<string, unknown> = {};
-    if (merged.status && merged.status !== "in_progress") {
-      settings.status = merged.status;
-    }
-    if (merged.wipLimit) settings.wipLimit = merged.wipLimit;
+  const settingsAction = useAction<
+    [
+      name: string,
+      patch: {
+        status?: "todo" | "in_progress" | "completed";
+        wipLimit?: number;
+      },
+    ],
+    void
+  >(
+    {
+      handler: async (name, patch) => {
+        if (!project) return;
+        const current = project.kanbanColumnConfig ?? {};
+        const merged = { ...current[name], ...patch };
+        // Strip keys back to absent rather than storing a default:
+        // "in_progress" and "no limit" are what a column means with no entry
+        // at all, so writing them would leave two encodings of one state.
+        const settings: Record<string, unknown> = {};
+        if (merged.status && merged.status !== "in_progress") {
+          settings.status = merged.status;
+        }
+        if (merged.wipLimit) settings.wipLimit = merged.wipLimit;
 
-    const next = { ...current };
-    if (Object.keys(settings).length) {
-      next[name] = settings as (typeof current)[string];
-    } else {
-      delete next[name];
-    }
+        const next = { ...current };
+        if (Object.keys(settings).length) {
+          next[name] = settings as (typeof current)[string];
+        } else {
+          delete next[name];
+        }
 
-    setPending(`settings:${name}`);
-    try {
-      const updated = await projectApi.updateProjectById({
-        params: { id: project.id },
-        body: { kanbanColumnConfig: next },
-      });
-      setCurrentProject(alepha, updated);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(null);
-    }
-  };
+        const updated = await projectApi.updateProjectById({
+          params: { id: project.id },
+          body: { kanbanColumnConfig: next },
+        });
+        setCurrentProject(alepha, updated);
+      },
+    },
+    [projectApi, alepha, project],
+  );
+
+  const reorderAction = useAction<[next: string[], previous: string[]], void>(
+    {
+      handler: async (next, previous) => {
+        if (!project) return;
+        // Optimistic: the row has to follow the cursor's release immediately,
+        // so the new order is painted first, and a refusal puts the persisted
+        // one back and rethrows, which is what reports it.
+        setColumns(next);
+        try {
+          await projectApi.reorderKanbanColumns({
+            params: { id: project.id },
+            body: { columns: next },
+          });
+        } catch (error) {
+          setColumns(previous);
+          throw error;
+        }
+        setCurrentProject(alepha, { ...project, kanbanColumns: next });
+      },
+    },
+    [projectApi, alepha, project],
+  );
+
+  /**
+   * Every column control waits while any of these runs (#E59 rule 10): the
+   * rows used to be held by a key naming the operation in flight, and over
+   * `useAction` a second row's control would take a click and drop it.
+   */
+  const busy =
+    columnOps.loading || settingsAction.loading || reorderAction.loading;
+
+  if (!project) return null;
+
+  const handleAdd = () => void columnOps.add(`Column ${columns.length + 1}`);
+
+  const handleRename = (oldName: string, newName: string) =>
+    void columnOps.rename(oldName, newName);
+
+  const handleDelete = (name: string) => void columnOps.remove(name);
 
   const handleReorder = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -207,22 +192,7 @@ const ProjectSettingsWorkPage = () => {
     // and ignore the first, so neither is worth a round trip.
     if (next === columns) return;
 
-    // Optimistic: the row has to follow the cursor's release immediately, so
-    // paint the new order first and let `runOp`'s error path put the
-    // persisted one back.
-    const previous = columns;
-    setColumns(next);
-    return runOp("reorder", () =>
-      projectApi
-        .reorderKanbanColumns({
-          params: { id: project.id },
-          body: { columns: next },
-        })
-        .catch((error) => {
-          setColumns(previous);
-          throw error;
-        }),
-    );
+    void reorderAction.run(next, columns);
   };
 
   return (
@@ -253,16 +223,14 @@ const ProjectSettingsWorkPage = () => {
                   <ColumnRow
                     key={col}
                     name={col}
-                    disabled={
-                      pending !== null || !projectApi.updateProjectById.can()
-                    }
+                    disabled={busy || !projectApi.updateProjectById.can()}
                     status={
                       project.kanbanColumnConfig?.[col]?.status ?? "in_progress"
                     }
                     wipLimit={project.kanbanColumnConfig?.[col]?.wipLimit}
                     onRename={(newName) => handleRename(col, newName)}
                     onDelete={() => handleDelete(col)}
-                    onSettings={(patch) => void setColumnSettings(col, patch)}
+                    onSettings={(patch) => void settingsAction.run(col, patch)}
                   />
                 ))}
               </DndContext>
@@ -274,7 +242,7 @@ const ProjectSettingsWorkPage = () => {
                 size="sm"
                 disabled={
                   columns.length >= MAX_COLUMNS ||
-                  pending !== null ||
+                  busy ||
                   !projectApi.addKanbanColumn.can()
                 }
                 onClick={handleAdd}

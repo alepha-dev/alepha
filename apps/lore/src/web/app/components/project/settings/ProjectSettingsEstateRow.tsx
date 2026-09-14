@@ -16,6 +16,11 @@ export interface ProjectSettingsEstateRowProps {
    */
   canDetach: boolean;
   onDetach: (estate: LentEstateResource) => void;
+  /**
+   * True while a detach runs on any row: the page holds one action for all
+   * of them, so every row's button waits (#E59 rule 10).
+   */
+  busy?: boolean;
 }
 
 /**
@@ -98,6 +103,7 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
           variant="ghost"
           size="sm"
           aria-label={tr("estates.detach.action")}
+          disabled={props.busy}
           onClick={() => props.onDetach(estate)}
         >
           <Unlink className="size-4" />

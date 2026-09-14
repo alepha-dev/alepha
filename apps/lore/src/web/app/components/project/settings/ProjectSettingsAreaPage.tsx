@@ -1,5 +1,5 @@
-import { useDialog, useToast } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useDialog } from "@alepha/ui";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
@@ -29,7 +29,6 @@ export interface ProjectSettingsAreaPageProps {
  * here.
  */
 const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
-  const toaster = useToast();
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
@@ -50,19 +49,21 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
     setRenaming(false);
   }
 
-  const remove = async () => {
-    const ok = await dialog.confirm({
-      title: tr("project.settings.areas.delete.confirm"),
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await areaApi.deleteArea({ params: { id: props.area.id } });
-      await router.push("projectSettingsAreas");
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const removeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("project.settings.areas.delete.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await areaApi.deleteArea({ params: { id: props.area.id } });
+        await router.push("projectSettingsAreas");
+      },
+    },
+    [areaApi, dialog, router, props.area.id, tr],
+  );
+  const remove = removeAction.run;
 
   return (
     <div className="flex flex-col gap-4" key={props.area.id}>

@@ -611,7 +611,6 @@ export default {
   "project.settings.nav.members": "Members",
   "project.settings.nav.group.capabilities": "Capabilities",
   "project.settings.nav.areas": "Areas",
-  "project.settings.data.export.failed": "Export failed",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -1045,7 +1044,6 @@ export default {
     "$1 has to be empty first: move or complete its quests, and nothing else changes. You can add a column again afterwards.",
   "kanban.column.delete.confirm": "Delete",
   "kanban.column.delete.cancel": "Keep it",
-  "kanban.column.failed": "Could not update the column.",
   "kanban.empty": "No quests",
   "kanban.showMore": "Show more",
   "kanban.filter.allAreas": "All areas",
