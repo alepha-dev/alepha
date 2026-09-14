@@ -48,25 +48,64 @@ export class ReactRouter<T extends object> {
     return undefined;
   }
 
+  /**
+   * Whether `href` names the current page, or with `startWith` one of its
+   * ancestors.
+   *
+   * Both sides are compared decoded (see {@link normalizePath}): a link built
+   * from a param carries `%24` where a tree of hrefs carries `$`, and the
+   * browser keeps whichever spelling the URL arrived with, so comparing the
+   * raw strings left every `$primitive` page of the docs with nothing active.
+   */
   public isActive(
     href: string,
     options: {
       startWith?: boolean;
     } = {},
   ): boolean {
-    const current = this.state.url.pathname;
+    const current = this.normalizePath(this.state.url.pathname);
+    const target = this.normalizePath(href);
     let isActive =
-      current === href || current === `${href}/` || `${current}/` === href;
+      current === target ||
+      current === `${target}/` ||
+      `${current}/` === target;
 
     if (options.startWith && !isActive) {
       // Match on a SEGMENT boundary. A bare `startsWith` made `/foo` active on
       // `/foobar` — and since this drives nav highlighting, a short parent
       // href lit up on every unrelated sibling that shared its prefix.
-      const prefix = href.endsWith("/") ? href : `${href}/`;
+      const prefix = target.endsWith("/") ? target : `${target}/`;
       isActive = current.startsWith(prefix);
     }
 
     return isActive;
+  }
+
+  /**
+   * A pathname in the one form `isActive` compares: each segment
+   * percent-decoded, so `/a/%24b` and `/a/$b` are the same path.
+   *
+   * Segment by segment, and never across a boundary: a segment that is a
+   * malformed escape (`%E0%A4%A`), or that decodes to something holding a
+   * `/` (`%2F`), is kept verbatim. The first would throw, and the second
+   * would invent a segment boundary the URL does not have, which the
+   * `startWith` branch would then match on.
+   */
+  protected normalizePath(pathname: string): string {
+    if (!pathname.includes("%")) {
+      return pathname;
+    }
+    return pathname
+      .split("/")
+      .map((segment) => {
+        try {
+          const decoded = decodeURIComponent(segment);
+          return decoded.includes("/") ? segment : decoded;
+        } catch {
+          return segment;
+        }
+      })
+      .join("/");
   }
 
   public path(
