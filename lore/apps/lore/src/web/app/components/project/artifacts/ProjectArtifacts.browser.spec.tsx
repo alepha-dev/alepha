@@ -268,6 +268,69 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
+   * A push is an event, so the Pushed cell reads as its age with the exact
+   * instant on hover (feedback #P2202, #Q2335), instead of a column of
+   * datetimes the reader subtracts.
+   */
+  it("reads Pushed as time ago, with the exact datetime in the title", async ({
+    expect,
+  }) => {
+    const { findByTitle } = await show(listing([group()]));
+
+    // 10:00Z is noon in the suite's Paris timezone.
+    const cell = await findByTitle(/Sep 1, 2026 12:00 PM/);
+    await waitFor(() => expect(cell.textContent).toMatch(/ago$/));
+  });
+
+  it("keeps a placeholder when the push carries no instant", async ({
+    expect,
+  }) => {
+    const { findByText, getByTestId } = await show(
+      listing([group({ pushedAt: null })]),
+    );
+
+    await findByText("1.0.0");
+    const table = getByTestId("artifacts-table");
+    expect(table.textContent).toContain("N/A");
+    expect(table.textContent).not.toContain("ago");
+  });
+
+  it("still sorts Pushed on the instant, newest first by default", async ({
+    expect,
+  }) => {
+    const variant = (tag: string, id: string) => ({
+      ...group().variants[0],
+      id,
+      tag,
+    });
+    const { findByText } = await show(
+      listing([
+        group({
+          tag: "0.9.0",
+          pushedAt: "2026-08-01T10:00:00.000Z",
+          variants: [variant("0.9.0", "00000000-0000-4000-8000-00000000000a")],
+        }),
+        group({
+          tag: "1.1.0",
+          pushedAt: "2026-09-10T10:00:00.000Z",
+          variants: [variant("1.1.0", "00000000-0000-4000-8000-00000000000b")],
+        }),
+        group({
+          tag: "1.0.0",
+          pushedAt: "2026-09-01T10:00:00.000Z",
+          variants: [variant("1.0.0", "00000000-0000-4000-8000-00000000000c")],
+        }),
+      ]),
+    );
+
+    await findByText("1.1.0");
+    const tags = [...document.querySelectorAll("tbody tr")].map((row) =>
+      ["0.9.0", "1.0.0", "1.1.0"].find((tag) => row.textContent?.includes(tag)),
+    );
+    expect(tags).toEqual(["1.1.0", "1.0.0", "0.9.0"]);
+  });
+
+  /**
    * One row per ARTIFACT, not per tag: the endpoint groups a tag's runtime
    * variants because that is the app page's presentation, and this page
    * unwinds it. Two runtimes under one tag are two rows here.
