@@ -242,6 +242,8 @@ export default {
   "folios.editor.inspector.attachments-copy-ref": "Copy markdown reference",
   "folios.editor.inspector.attachments-total": "$1 files · $2",
   "folios.editor.inspector.attachments-upload-failed": "Upload failed",
+  "folios.editor.inspector.attachments-busy":
+    "Wait for the current upload to finish",
   "folios.editor.inspector.attachments-confirm-delete-title": "Delete file?",
   "folios.editor.inspector.attachments-confirm-delete":
     'Delete "$1"? Any reference to it in this folio will stop resolving.',

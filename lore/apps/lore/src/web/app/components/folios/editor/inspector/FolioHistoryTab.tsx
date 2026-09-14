@@ -9,7 +9,7 @@ import {
   useDialog,
   cn,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,
@@ -24,7 +24,7 @@ import {
   Type,
   User,
 } from "lucide-react";
-import { type ReactElement, useEffect, useRef, useState } from "react";
+import { type ReactElement, useRef, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
@@ -86,10 +86,9 @@ export interface FolioHistoryTabProps {
    * `props.folio` (a route-loader snapshot, frozen for the mount's
    * lifetime — same premise as everywhere else in this workspace).
    *
-   * Typed `Promise<void>`, not `void` — `handleRevert` below `await`s it,
-   * and that `await` is load-bearing (it's what keeps `setBusy(false)`
-   * from firing before the baseline update lands, not just the network
-   * call). A `void` signature would let a future edit drop the `await`
+   * Typed `Promise<void>`, not `void` — the revert action below `await`s
+   * it, and that `await` is load-bearing (it's what keeps the action busy
+   * until the baseline update lands, not just the network call). A `void` signature would let a future edit drop the `await`
    * with nothing catching it — structural typing wouldn't complain.
    */
   onReverted: (folio: Folio) => Promise<void>;
@@ -154,99 +153,104 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   const folioApi = useClient<FolioController>();
   const canWrite = folioApi.update.can();
 
-  const [revisions, setRevisions] = useState<HistoryRevision[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  // Whether the first fetch has come back. Separate from `revisions`
-  // because "not fetched yet" and "fetched, and there are none" render
-  // differently: since the fetch is deferred to the first time this tab
-  // is shown (see `props.active`), an empty list is the state EVERY folio
-  // starts in, and rendering the empty copy for it would flash "no
-  // history yet" over a folio that has ten revisions, every time the user
-  // opens the tab.
-  const [loaded, setLoaded] = useState(false);
-  // What the last fetch was for. Doubles as "have we ever fetched" (the
-  // gate `props.active` opens) and as the guard that stops a plain
-  // tab-switch back to History from re-fetching a list nothing has
-  // invalidated — `props.active` is in the effect's deps, so without it
-  // every visit to the tab would cost a request.
-  const fetchedForRef = useRef<string | undefined>(undefined);
+  // Whether this tab has ever been shown. Once it has, the list stays
+  // wanted: a plain switch away and back does not re-fetch anything, since
+  // the query only re-reads when its key moves. Set during render, on the
+  // edge, rather than from an effect.
+  const [everActive, setEverActive] = useState(props.active);
+  if (props.active && !everActive) {
+    setEverActive(true);
+  }
   // What `refreshedAt` was when this folio opened. A value different from
   // it means a save has landed since, which may have appended a revision
   // — the one case where the list is worth fetching for a tab the user
   // has not opened, because the meta bar's count would otherwise be
   // wrong. See `props.active`.
   const openedAtRef = useRef(props.refreshedAt);
+  const savedSinceOpen = props.refreshedAt !== openedAtRef.current;
 
-  useEffect(() => {
-    const key = `${props.folio.id}:${props.refreshedAt ?? ""}`;
-    const savedSinceOpen = props.refreshedAt !== openedAtRef.current;
-    if (
-      !props.active &&
-      !savedSinceOpen &&
-      fetchedForRef.current === undefined
-    ) {
-      return;
-    }
-    if (fetchedForRef.current === key) return;
-    fetchedForRef.current = key;
-    let alive = true;
-    folioApi
-      .listHistory({ params: { id: props.folio.id } })
-      .then((rows) => {
-        if (!alive) return;
-        setRevisions(rows);
-        setLoaded(true);
-      })
-      // A failed load leaves `loaded` false, so the tab keeps rendering
-      // nothing rather than claiming the folio has no history.
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [props.folio.id, props.refreshedAt, props.active, folioApi]);
+  /**
+   * The revisions, a `useQuery` keyed on the folio and on `refreshedAt`
+   * (#E59, #Q2331), so a save elsewhere in the workspace moves the key and
+   * the list re-reads, and a revert or a pin invalidates it by prefix.
+   *
+   * The answer carries the folio it was read for: `keepPreviousData` holds
+   * the list on screen through the re-read a save causes, and must never
+   * show one folio's history under the next.
+   *
+   * Quiet on failure, as before: a failed load leaves the tab rendering
+   * nothing rather than claiming the folio has no history, and the read
+   * can run for a tab the user has not opened, where a toast would be about
+   * nothing on screen.
+   */
+  const historyQuery = useQuery(
+    {
+      key: ["folio-history", props.folio.id, props.refreshedAt ?? ""],
+      enabled: everActive || savedSinceOpen,
+      keepPreviousData: true,
+      handler: async () => ({
+        folioId: props.folio.id,
+        rows: await folioApi.listHistory({ params: { id: props.folio.id } }),
+      }),
+      onError: () => {},
+    },
+    [folioApi, props.folio.id, props.refreshedAt],
+  );
+  // Whether the first fetch has come back. "Not fetched yet" and "fetched,
+  // and there are none" render differently: since the fetch is deferred to
+  // the first time this tab is shown (see `props.active`), an empty list is
+  // the state EVERY folio starts in, and rendering the empty copy for it
+  // would flash "no history yet" over a folio that has ten revisions, every
+  // time the user opens the tab.
+  const loaded = historyQuery.data?.folioId === props.folio.id;
+  const revisions: HistoryRevision[] = loaded
+    ? (historyQuery.data?.rows ?? [])
+    : [];
 
-  const refresh = async () => {
-    const next = await folioApi.listHistory({
-      params: { id: props.folio.id },
-    });
-    setRevisions(next);
-  };
+  // The two writes, as `useAction`s: a refusal is the server's sentence,
+  // toasted by the root `ActionErrorToaster`, where both used to be
+  // unhandled rejections.
+  const revertAction = useAction<[revisionId: string], void>(
+    {
+      handler: async (revisionId) => {
+        const confirmed = await dialog.confirm({
+          title: tr("folios.history.revert-confirm-title"),
+          description: tr("folios.history.revert-confirm-body"),
+        });
+        if (!confirmed) return;
+        const updated = await folioApi.revertHistory({
+          params: { id: props.folio.id, revisionId },
+        });
+        // No invalidation here (unlike the pin below, which still needs
+        // one). `onReverted` (`useFolioActions.applyReverted`) always
+        // re-baselines `useFolioDraft.savedAt` on a successful revert -
+        // even when the folio is protected and still locked, see that
+        // function's own doc - and `savedAt` is threaded down as
+        // `props.refreshedAt`, which is part of the query's key above, so
+        // the list re-reads on its own. Awaited, so the action stays busy
+        // until the baseline update lands, not just the network call.
+        await props.onReverted(updated as Folio);
+      },
+    },
+    [folioApi, props.folio.id, props.onReverted, dialog, tr],
+  );
 
-  const handleRevert = async (revisionId: string) => {
-    const confirmed = await dialog.confirm({
-      title: tr("folios.history.revert-confirm-title"),
-      description: tr("folios.history.revert-confirm-body"),
-    });
-    if (!confirmed) return;
-    setBusy(true);
-    try {
-      const updated = await folioApi.revertHistory({
-        params: { id: props.folio.id, revisionId },
-      });
-      // No `refresh()` call here (unlike `handlePinToggle` below, which
-      // still needs one). `onReverted` (`useFolioActions.applyReverted`)
-      // always re-baselines `useFolioDraft.savedAt` on a successful
-      // revert — even when the folio is protected and still locked, see
-      // that function's own doc — and `savedAt` is threaded down as
-      // `props.refreshedAt`, which sits in this component's own fetch
-      // effect's deps above. That effect re-fires and re-fetches on its
-      // own; calling `refresh()` here too was a second, redundant
-      // `listHistory` GET landing at almost the same moment, for the
-      // same reason, every single revert.
-      await props.onReverted(updated as Folio);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const pinAction = useAction<[revision: FolioRevision], void>(
+    {
+      handler: async (revision) => {
+        await folioApi.pinHistory({
+          params: { id: props.folio.id, revisionId: revision.id },
+          body: { pinned: !revision.pinned },
+        });
+      },
+      invalidates: [["folio-history", props.folio.id]],
+    },
+    [folioApi, props.folio.id],
+  );
 
-  const handlePinToggle = async (revision: FolioRevision) => {
-    await folioApi.pinHistory({
-      params: { id: props.folio.id, revisionId: revision.id },
-      body: { pinned: !revision.pinned },
-    });
-    await refresh();
-  };
+  // One flag for the tab: a revert and a pin never run over each other.
+  const busy = revertAction.loading || pinAction.loading;
 
   if (!loaded) return <div className="px-3 py-4" />;
 
@@ -328,7 +332,8 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => handlePinToggle(revision)}
+                          onClick={() => void pinAction.run(revision)}
+                          disabled={busy}
                         >
                           {revision.pinned ? (
                             <PinOff className="size-4" />
@@ -345,7 +350,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => handleRevert(revision.id)}
+                              onClick={() => void revertAction.run(revision.id)}
                               disabled={busy}
                             >
                               <RotateCcw className="size-4" />

@@ -17,11 +17,18 @@ import {
   dataTableFilterKeys,
   type DataTableFilterFields,
   type BulkAction,
+  type BulkActionContext,
   type BulkMenuAction,
 } from "@alepha/ui/table";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -41,11 +48,9 @@ import {
   Tag,
   Trash,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { User } from "@/api/entities/users.ts";
 import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
@@ -63,6 +68,7 @@ import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import { useBulkReport } from "../shared/useBulkReport.ts";
+import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { questAgentGate } from "./prompts/questAgentGate.ts";
 import { useAgentPrompt } from "./prompts/useAgentPrompt.ts";
@@ -86,13 +92,15 @@ const ProjectQuestsTable = () => {
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const reportBulk = useBulkReport();
-  const projectApi = useClient<ProjectController>();
   const dateFormatter = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const toaster = useToast();
-  const [users, setUsers] = useState<Array<User>>([]);
+  // Shared with every surface that names a member, under
+  // `["project-users", projectId]` (#E59, #Q2331), rather than a second copy
+  // of the same read in an effect.
+  const users = useProjectUsers();
   // The row whose edit drawer is open, or nothing. Held here rather than per
   // row: one Sheet for the table, the same way the delete confirm is one
   // dialog rather than 25.
@@ -104,7 +112,29 @@ const ProjectQuestsTable = () => {
   // The create sheet, opened from the toolbar's primary action. The same
   // drawer as the edit one below, with no row in it.
   const [creating, setCreating] = useState(false);
-  const [knownTags, setKnownTags] = useState<string[]>([]);
+  // The tag filter's options. Quiet on failure: the filter hides itself
+  // with nothing to offer, and the table still works. Shared by key with the
+  // create form and the tag input.
+  const knownTags =
+    useQuery(
+      {
+        key: ["quest-tags", project?.id],
+        enabled: !!project?.id,
+        handler: () =>
+          questApi.listQuestTags({
+            query: { projectId: project?.id as number },
+          }),
+        onError: () => {},
+      },
+      [questApi, project?.id],
+    ).data ?? NO_TAGS;
+
+  // Every write below is a `useAction` (#E59, #Q2331). The eight
+  // `useQuestMutations` calls keep rejecting (#E59 rule 2) and run inside
+  // the handlers, with their confirmation and `refresh()`, so a refusal is
+  // toasted once by the root `ActionErrorToaster` and nothing follows it.
+  // `DataTable` runs row and bulk actions fire-and-forget, so before this a
+  // refusal was an unhandled rejection that said nothing.
 
   /**
    * The same write `QuestReleaseControl` makes on the quest's own rail, from
@@ -115,39 +145,245 @@ const ProjectQuestsTable = () => {
    * Not `questMutations.attachToRelease`: that one is the bulk path, takes a
    * list, and its `releaseId` is a plain number because bulk never detaches.
    */
-  const setRelease = async (
-    quest: QuestResource,
-    releaseId: number | null,
-    refresh: () => void,
-  ) => {
-    try {
-      await questApi.updateQuestById({
-        params: { id: quest.id },
-        body: { releaseId },
-      });
-      // The Release column is drawn from the row, so it repaints only once
-      // the fetch comes back with the new value.
-      refresh();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const setReleaseAction = useAction<
+    [quest: QuestResource, releaseId: number | null, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, releaseId, refresh) => {
+        await questApi.updateQuestById({
+          params: { id: quest.id },
+          body: { releaseId },
+        });
+        // The Release column is drawn from the row, so it repaints only once
+        // the fetch comes back with the new value.
+        refresh();
+      },
+    },
+    [questApi],
+  );
 
-  useEffect(() => {
-    if (!project?.id) return;
-    questApi
-      .listQuestTags({ query: { projectId: project.id } })
-      .then(setKnownTags)
-      .catch(() => null);
-  }, [project?.id]);
+  const acceptAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        await questMutations.accept(quest.id);
+        refresh();
+      },
+    },
+    [questMutations],
+  );
 
-  useEffect(() => {
-    if (!project?.id) return;
-    projectApi
-      .getProjectUsers({ params: { id: project.id } })
-      .then(setUsers)
-      .catch(() => null);
-  }, [project?.id]);
+  const shelveAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        // Same warning QuestView gives: shelving a quest others depend on
+        // leaves them blocked with no path forward. The questline is fetched
+        // on click rather than per row - a table of 25 quests should not
+        // cost 25 extra requests for a menu entry most rows never open.
+        //
+        // ⚠️ Still swallowed, on purpose: a warning that could not be read
+        // must not block the shelve it would have warned about.
+        const questline = await questApi
+          .getQuestLine({ params: { id: quest.id } })
+          .catch(() => ({ dependents: [] }));
+        const blocked = questline.dependents.filter((d) => !d.completedAt);
+        const confirmed = await dialog.confirm({
+          title: tr("quest.view.shelve.title"),
+          description: blocked.length
+            ? tr("quest.view.shelve.confirmWithDependents", {
+                args: [
+                  blocked
+                    .map((d) => formatReference("quest", d.shortId))
+                    .join(", "),
+                ],
+              })
+            : tr("quest.view.shelve.confirm"),
+          confirmLabel: tr("quest.view.shelve.confirmButton"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!confirmed) return;
+        await questMutations.shelve(quest.id);
+        refresh();
+      },
+    },
+    [questApi, questMutations, dialog, tr],
+  );
+
+  const unshelveAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        await questMutations.unshelve(quest.id);
+        refresh();
+      },
+    },
+    [questMutations],
+  );
+
+  const removeAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        const confirmed = await dialog.confirm({
+          title: tr("board.confirm-delete-title"),
+          description: tr("board.confirm-delete-message"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await questMutations.remove(quest.id);
+        refresh();
+      },
+    },
+    [questMutations, dialog, tr],
+  );
+
+  // The bulk writes settle per id through `settleBulk` and report refusals
+  // in `useBulkReport`, so they do not throw for a refused row; they are
+  // actions for the busy state and for anything failing outside that.
+  const count = (ids: number[]) => String(ids.length);
+
+  const shelveManyAction = useAction<
+    [selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        // Only a `todo` quest can be shelved, and the server refuses the
+        // rest one by one. They are counted here and never sent, so an
+        // accepted row in the selection costs a note, not the batch.
+        const eligible = selected.filter(
+          (quest) =>
+            !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
+        );
+        const skipped = selected.length - eligible.length;
+        if (eligible.length === 0) {
+          toaster.error(tr("board.bulk.shelve.none"));
+          return;
+        }
+        const outcome = await questMutations.shelveMany(
+          eligible.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.shelved", { args: [count(outcome.done)] }),
+          skipped > 0
+            ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
+            : undefined,
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, toaster, tr],
+  );
+
+  const unshelveManyAction = useAction<
+    [selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        const eligible = selected.filter((quest) => quest.shelvedAt);
+        const skipped = selected.length - eligible.length;
+        if (eligible.length === 0) {
+          toaster.error(tr("board.bulk.unshelve.none"));
+          return;
+        }
+        const outcome = await questMutations.unshelveMany(
+          eligible.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.unshelved", { args: [count(outcome.done)] }),
+          skipped > 0
+            ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
+            : undefined,
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, toaster, tr],
+  );
+
+  const attachToReleaseAction = useAction<
+    [
+      release: { id: number; tag?: string; title: string },
+      selected: QuestResource[],
+      ctx: BulkActionContext,
+    ],
+    void
+  >(
+    {
+      handler: async (release, selected, ctx) => {
+        const outcome = await questMutations.attachToRelease(
+          selected.map((quest) => quest.id),
+          release.id,
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.released", {
+            args: [count(outcome.done), release.tag ?? release.title],
+          }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, tr],
+  );
+
+  const removeManyAction = useAction<
+    [selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        const n = String(selected.length);
+        const confirmed = await dialog.confirm({
+          title: tr("board.bulk.delete.title", { args: [n] }),
+          description: tr("board.confirm-delete-message"),
+          confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        const outcome = await questMutations.removeMany(
+          selected.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.deleted", { args: [count(outcome.done)] }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, dialog, tr],
+  );
+
+  // Page-wide (#E59 rule 10): every row and bulk write waits while any of
+  // them runs. The bulk bar has no disabled state, so its buttons hide.
+  const busy =
+    setReleaseAction.loading ||
+    acceptAction.loading ||
+    shelveAction.loading ||
+    unshelveAction.loading ||
+    removeAction.loading ||
+    shelveManyAction.loading ||
+    unshelveManyAction.loading ||
+    attachToReleaseAction.loading ||
+    removeManyAction.loading;
 
   const renderAvatar = (userId?: string) => {
     const user = userId ? users.find((u) => u.id === userId) : undefined;
@@ -280,8 +516,6 @@ const ProjectQuestsTable = () => {
     .map((key) => `${key}=${router.query[key] ?? ""}`)
     .join("&");
 
-  const count = (ids: number[]) => String(ids.length);
-
   // Triage in bulk: the checkbox column exists because this array is not
   // empty. Every action refreshes and then clears, in that order, since a
   // selection surviving a delete points at rows that no longer exist.
@@ -295,33 +529,9 @@ const ProjectQuestsTable = () => {
       label: tr("board.bulk.shelve"),
       // Offered only when something in the selection is not shelved yet; a
       // selection of shelved rows has nothing for it to do (feedback #2063).
-      visible: (selected) => selected.some((quest) => !quest.shelvedAt),
-      onClick: async (selected, ctx) => {
-        // Only a `todo` quest can be shelved, and the server refuses the
-        // rest one by one. They are counted here and never sent, so an
-        // accepted row in the selection costs a note, not the batch.
-        const eligible = selected.filter(
-          (quest) =>
-            !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
-        );
-        const skipped = selected.length - eligible.length;
-        if (eligible.length === 0) {
-          toaster.error(tr("board.bulk.shelve.none"));
-          return;
-        }
-        const outcome = await questMutations.shelveMany(
-          eligible.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.shelved", { args: [count(outcome.done)] }),
-          skipped > 0
-            ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
-            : undefined,
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: (selected) =>
+        !busy && selected.some((quest) => !quest.shelvedAt),
+      onClick: (selected, ctx) => void shelveManyAction.run(selected, ctx),
     });
   }
 
@@ -331,27 +541,8 @@ const ProjectQuestsTable = () => {
       label: tr("board.bulk.unshelve"),
       // And this one only when at least one selected row is shelved. A mixed
       // selection shows both, each acting on the rows it fits.
-      visible: (selected) => selected.some((quest) => quest.shelvedAt),
-      onClick: async (selected, ctx) => {
-        const eligible = selected.filter((quest) => quest.shelvedAt);
-        const skipped = selected.length - eligible.length;
-        if (eligible.length === 0) {
-          toaster.error(tr("board.bulk.unshelve.none"));
-          return;
-        }
-        const outcome = await questMutations.unshelveMany(
-          eligible.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.unshelved", { args: [count(outcome.done)] }),
-          skipped > 0
-            ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
-            : undefined,
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: (selected) => !busy && selected.some((quest) => quest.shelvedAt),
+      onClick: (selected, ctx) => void unshelveManyAction.run(selected, ctx),
     });
   }
 
@@ -359,6 +550,7 @@ const ProjectQuestsTable = () => {
     bulkActions.push({
       icon: Flag,
       label: tr("board.bulk.release"),
+      visible: () => !busy,
       // The filter column above lists EVERY release, published included,
       // because it filters over history. This must not: attaching to a
       // published release is refused server-side, so a published entry
@@ -368,20 +560,8 @@ const ProjectQuestsTable = () => {
           .filter((release) => !release.releasedAt)
           .map((release) => ({
             label: release.tag ?? release.title,
-            onClick: async (selected, ctx) => {
-              const outcome = await questMutations.attachToRelease(
-                selected.map((quest) => quest.id),
-                release.id,
-              );
-              reportBulk(
-                outcome,
-                tr("board.bulk.released", {
-                  args: [count(outcome.done), release.tag ?? release.title],
-                }),
-              );
-              ctx.refresh();
-              ctx.clearSelection();
-            },
+            onClick: (selected, ctx) =>
+              void attachToReleaseAction.run(release, selected, ctx),
           })),
     });
   }
@@ -391,26 +571,8 @@ const ProjectQuestsTable = () => {
       icon: Trash,
       label: tr("board.bulk.delete"),
       destructive: true,
-      onClick: async (selected, ctx) => {
-        const n = String(selected.length);
-        const confirmed = await dialog.confirm({
-          title: tr("board.bulk.delete.title", { args: [n] }),
-          description: tr("board.confirm-delete-message"),
-          confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        const outcome = await questMutations.removeMany(
-          selected.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.deleted", { args: [count(outcome.done)] }),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: () => !busy,
+      onClick: (selected, ctx) => void removeManyAction.run(selected, ctx),
     });
   }
 
@@ -854,11 +1016,13 @@ const ProjectQuestsTable = () => {
                         checked: (row: QuestResource) =>
                           row.releaseId === release.id,
                         disabled: () =>
+                          busy ||
                           releaseRowMenu(releases, quest.releaseId).locked,
                         onClick: (
                           row: QuestResource,
                           { refresh }: { refresh: () => void },
-                        ) => setRelease(row, release.id, refresh),
+                        ) =>
+                          void setReleaseAction.run(row, release.id, refresh),
                       }),
                     ),
                     {
@@ -866,11 +1030,12 @@ const ProjectQuestsTable = () => {
                       label: tr("board.action.noRelease"),
                       checked: (row: QuestResource) => row.releaseId == null,
                       disabled: () =>
+                        busy ||
                         releaseRowMenu(releases, quest.releaseId).locked,
                       onClick: (
                         row: QuestResource,
                         { refresh }: { refresh: () => void },
-                      ) => setRelease(row, null, refresh),
+                      ) => void setReleaseAction.run(row, null, refresh),
                     },
                   ],
                 },
@@ -892,13 +1057,11 @@ const ProjectQuestsTable = () => {
                 {
                   icon: Signature,
                   label: tr("board.action.acceptQuest"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    await questMutations.accept(quest.id);
-                    refresh();
-                  },
+                  ) => void acceptAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -907,39 +1070,11 @@ const ProjectQuestsTable = () => {
                 {
                   icon: Archive,
                   label: tr("board.action.shelveQuest"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    // Same warning QuestView gives: shelving a quest others
-                    // depend on leaves them blocked with no path forward.
-                    // The questline is fetched on click rather than per row —
-                    // a table of 25 quests should not cost 25 extra requests
-                    // for a menu entry most rows never open.
-                    const questline = await questApi
-                      .getQuestLine({ params: { id: quest.id } })
-                      .catch(() => ({ dependents: [] }));
-                    const blocked = questline.dependents.filter(
-                      (d) => !d.completedAt,
-                    );
-                    const confirmed = await dialog.confirm({
-                      title: tr("quest.view.shelve.title"),
-                      description: blocked.length
-                        ? tr("quest.view.shelve.confirmWithDependents", {
-                            args: [
-                              blocked
-                                .map((d) => formatReference("quest", d.shortId))
-                                .join(", "),
-                            ],
-                          })
-                        : tr("quest.view.shelve.confirm"),
-                      confirmLabel: tr("quest.view.shelve.confirmButton"),
-                      cancelLabel: tr("common.cancel"),
-                    });
-                    if (!confirmed) return;
-                    await questMutations.shelve(quest.id);
-                    refresh();
-                  },
+                  ) => void shelveAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -948,13 +1083,11 @@ const ProjectQuestsTable = () => {
                 {
                   icon: ArchiveRestore,
                   label: tr("board.action.unshelveQuest"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    await questMutations.unshelve(quest.id);
-                    refresh();
-                  },
+                  ) => void unshelveAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -964,19 +1097,11 @@ const ProjectQuestsTable = () => {
                   icon: Trash,
                   label: tr("board.action.deleteQuest"),
                   destructive: true,
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    const confirmed = await dialog.confirm({
-                      title: tr("board.confirm-delete-title"),
-                      description: tr("board.confirm-delete-message"),
-                      destructive: true,
-                    });
-                    if (!confirmed) return;
-                    await questMutations.remove(quest.id);
-                    refresh();
-                  },
+                  ) => void removeAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -1029,3 +1154,9 @@ const ProjectQuestsTable = () => {
 };
 
 export default ProjectQuestsTable;
+
+/**
+ * One empty tag list, so the filter's options keep their identity while the
+ * tags load.
+ */
+const NO_TAGS: string[] = [];

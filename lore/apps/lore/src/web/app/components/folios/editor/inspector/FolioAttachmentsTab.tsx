@@ -1,7 +1,7 @@
-import { Button, useDialog } from "@alepha/ui";
+import { Button, useDialog, useToast } from "@alepha/ui";
 import { resizeImage } from "@alepha/ui/form";
 import { AlephaError } from "alepha";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy, Loader2, Paperclip, Pencil, Trash2, Upload } from "lucide-react";
 import { type DragEvent, type ReactElement, useRef, useState } from "react";
@@ -47,9 +47,9 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
   const dialog = useDialog();
   const attachmentApi = useClient<FolioAttachmentController>();
   const [attachments, setAttachments] = useStore(currentFolioAttachmentsAtom);
-  const [busy, setBusy] = useState(false);
   const [dropping, setDropping] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
+  const toaster = useToast();
 
   // The list stays: an attachment is content, and a reader needs to be able
   // to copy its reference. Upload, rename and delete are what close.
@@ -57,87 +57,135 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
   const canUpload =
     !!props.folioId && !!props.projectId && !props.disabled && canWrite;
 
-  const refresh = async (): Promise<void> => {
-    if (!props.folioId) return;
-    setAttachments(
-      await attachmentApi.listAttachments({
-        params: { folioId: props.folioId },
-      }),
-    );
-  };
-
-  const upload = async (files: File[]): Promise<void> => {
-    const { folioId, projectId } = props;
-    if (!canUpload || !folioId || !projectId || files.length === 0) return;
-    setBusy(true);
-    try {
-      for (const original of files) {
-        // Always downscaled before the bytes leave the machine. Best-effort
-        // by design: an SVG, a non-raster file, or a browser without
-        // `OffscreenCanvas` comes back untouched, and the storage's own
-        // `maxSize` remains what actually bounds the pathological case.
-        const file = await resizeImage(original, {
-          maxWidth: FOLIO_IMAGE_MAX_WIDTH,
-        });
-        const form = new FormData();
-        form.append("file", file);
-        const uploaded = await fetch(
-          `/api/files?bucket=${encodeURIComponent(FOLIO_ATTACHMENT_BUCKET)}`,
-          { method: "POST", body: form, credentials: "include" },
+  // The list, back into the atom the route loader filled. A `useAction`
+  // (#E59, #Q2331) run inside the writes below: a failed re-read is toasted
+  // by the root `ActionErrorToaster` on its own.
+  const refreshAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!props.folioId) return;
+        setAttachments(
+          await attachmentApi.listAttachments({
+            params: { folioId: props.folioId },
+          }),
         );
-        if (!uploaded.ok) {
-          throw new AlephaError(
-            `${original.name} — upload failed (${uploaded.status})`,
-          );
+      },
+    },
+    [attachmentApi, props.folioId],
+  );
+
+  /**
+   * Upload the picked or dropped files, one after another.
+   *
+   * A `useAction` whose failure is shown in this pane's own alert, with the
+   * file's name in it (`onError`), so the root `ActionErrorToaster` leaves it
+   * alone. The raw `fetch()` is the file endpoint's, which the client does
+   * not wrap; its refusal is thrown as an `AlephaError` like any other.
+   */
+  const uploadAction = useAction<[files: File[]], void>(
+    {
+      handler: async (files) => {
+        const { folioId, projectId } = props;
+        if (!canUpload || !folioId || !projectId || files.length === 0) {
+          return;
         }
-        const { id } = (await uploaded.json()) as { id: string };
-        await attachmentApi.registerAttachment({
-          params: { projectId },
-          body: { fileId: id, name: file.name, folioId },
+        for (const original of files) {
+          // Always downscaled before the bytes leave the machine. Best-effort
+          // by design: an SVG, a non-raster file, or a browser without
+          // `OffscreenCanvas` comes back untouched, and the storage's own
+          // `maxSize` remains what actually bounds the pathological case.
+          const file = await resizeImage(original, {
+            maxWidth: FOLIO_IMAGE_MAX_WIDTH,
+          });
+          const form = new FormData();
+          form.append("file", file);
+          const uploaded = await fetch(
+            `/api/files?bucket=${encodeURIComponent(FOLIO_ATTACHMENT_BUCKET)}`,
+            { method: "POST", body: form, credentials: "include" },
+          );
+          if (!uploaded.ok) {
+            throw new AlephaError(
+              `${original.name} — upload failed (${uploaded.status})`,
+            );
+          }
+          const { id } = (await uploaded.json()) as { id: string };
+          await attachmentApi.registerAttachment({
+            params: { projectId },
+            body: { fileId: id, name: file.name, folioId },
+          });
+        }
+        // Re-read rather than appending the `registerAttachment` rows: the
+        // list has to carry `size` and `mimeType`, which only the hydrated
+        // read returns, and the server may have auto-suffixed the name.
+        await refreshAction.run();
+      },
+      onError: async (error) => {
+        await dialog.alert({
+          title: tr("folios.editor.inspector.attachments-upload-failed"),
+          description: error.message,
         });
-      }
-      // Re-read rather than appending the `registerAttachment` rows: the list has
-      // to carry `size` and `mimeType`, which only the hydrated read
-      // returns, and the server may have auto-suffixed the name.
-      await refresh();
-    } catch (error) {
-      await dialog.alert({
-        title: tr("folios.editor.inspector.attachments-upload-failed"),
-        description: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      setBusy(false);
+      },
+    },
+    [attachmentApi, canUpload, props.folioId, props.projectId, dialog, tr],
+  );
+
+  const removeAction = useAction<[id: string, name: string], void>(
+    {
+      handler: async (id, name) => {
+        const confirmed = await dialog.confirm({
+          title: tr("folios.editor.inspector.attachments-confirm-delete-title"),
+          description: tr(
+            "folios.editor.inspector.attachments-confirm-delete",
+            { args: [name] },
+          ),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await attachmentApi.deleteAttachment({ params: { id } });
+        setAttachments(
+          attachments.filter((attachment) => attachment.id !== id),
+        );
+      },
+    },
+    [attachmentApi, attachments, dialog, tr],
+  );
+
+  const renameAction = useAction<[id: string, current: string], void>(
+    {
+      handler: async (id, current) => {
+        const next = await dialog.prompt({
+          title: tr("folios.editor.inspector.attachments-rename-title"),
+          description: tr("folios.editor.inspector.attachments-rename-body"),
+          defaultValue: current,
+        });
+        if (!next || next.trim() === current) return;
+        await attachmentApi.renameAttachment({
+          params: { id },
+          body: { name: next.trim() },
+        });
+        // Re-read rather than patching the row: the server auto-suffixes on
+        // collision, so the name it stored may not be the one just typed —
+        // and it has also rewritten the folio's references to match.
+        await refreshAction.run();
+      },
+    },
+    [attachmentApi, dialog, tr],
+  );
+
+  // Page-wide across the pane's three writes (#E59 rule 10).
+  const busy =
+    uploadAction.loading || removeAction.loading || renameAction.loading;
+
+  /**
+   * Start an upload, or say why not: `run()` drops a batch made while one is
+   * in flight, which would lose a dropped file without a word.
+   */
+  const upload = (files: File[]): void => {
+    if (busy) {
+      toaster.show(tr("folios.editor.inspector.attachments-busy"), "warning");
+      return;
     }
-  };
-
-  const remove = async (id: string, name: string): Promise<void> => {
-    const confirmed = await dialog.confirm({
-      title: tr("folios.editor.inspector.attachments-confirm-delete-title"),
-      description: tr("folios.editor.inspector.attachments-confirm-delete", {
-        args: [name],
-      }),
-      destructive: true,
-    });
-    if (!confirmed) return;
-    await attachmentApi.deleteAttachment({ params: { id } });
-    setAttachments(attachments.filter((attachment) => attachment.id !== id));
-  };
-
-  const rename = async (id: string, current: string): Promise<void> => {
-    const next = await dialog.prompt({
-      title: tr("folios.editor.inspector.attachments-rename-title"),
-      description: tr("folios.editor.inspector.attachments-rename-body"),
-      defaultValue: current,
-    });
-    if (!next || next.trim() === current) return;
-    await attachmentApi.renameAttachment({
-      params: { id },
-      body: { name: next.trim() },
-    });
-    // Re-read rather than patching the row: the server auto-suffixes on
-    // collision, so the name it stored may not be the one just typed — and
-    // it has also rewritten the folio's references to match.
-    await refresh();
+    void uploadAction.run(files);
   };
 
   const copyReference = (name: string): void => {
@@ -147,7 +195,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
   const onDrop = (event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault();
     setDropping(false);
-    void upload([...event.dataTransfer.files]);
+    upload([...event.dataTransfer.files]);
   };
 
   const total = attachments.reduce(
@@ -200,7 +248,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
           multiple
           className="hidden"
           onChange={(event) => {
-            void upload([...(event.target.files ?? [])]);
+            upload([...(event.target.files ?? [])]);
             // Reset so picking the same file twice in a row still fires.
             event.target.value = "";
           }}
@@ -245,8 +293,10 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               </span>
               <button
                 type="button"
-                disabled={props.disabled || !canWrite}
-                onClick={() => void rename(attachment.id, attachment.name)}
+                disabled={props.disabled || !canWrite || busy}
+                onClick={() =>
+                  void renameAction.run(attachment.id, attachment.name)
+                }
                 aria-label={tr("folios.editor.tree.rename")}
                 title={tr("folios.editor.tree.rename")}
                 className="text-muted-foreground hover:text-foreground flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
@@ -264,8 +314,10 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               </button>
               <button
                 type="button"
-                disabled={props.disabled || !canWrite}
-                onClick={() => void remove(attachment.id, attachment.name)}
+                disabled={props.disabled || !canWrite || busy}
+                onClick={() =>
+                  void removeAction.run(attachment.id, attachment.name)
+                }
                 aria-label={tr("folio.action.delete")}
                 title={tr("folio.action.delete")}
                 className="text-muted-foreground hover:text-destructive flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
