@@ -152,6 +152,19 @@ static: {
 }
 ```
 
+> **The prerender runs `configure`, never `start`.** A static page is rendered at build time in an application that has been configured and not started, since starting it would listen on a port and connect to its databases inside the build. So a value a `$hook({ on: "start" })` puts in the store is missing from the prerendered HTML, while the browser, which runs `start` before it hydrates, has it. If the page reads that value, the two trees differ and React reports a hydration error (#418) on every first load. Set anything a static page reads from the store on `configure`:
+>
+> ```typescript
+> class Themes {
+>   alepha = $inject(Alepha);
+>
+>   register = $hook({
+>     on: "configure", // not "start": the prerender never runs it
+>     handler: () => this.alepha.store.set(uiThemeListAtom, THEMES),
+>   });
+> }
+> ```
+
 ### ssr
 
 Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** - data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.

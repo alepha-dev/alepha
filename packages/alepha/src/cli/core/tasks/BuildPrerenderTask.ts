@@ -18,6 +18,22 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * Both passes read the primitive registry and call a method on the already
  * created primitive instances — no provider is re-injected, so this works in
  * the build's configured-but-not-started container.
+ *
+ * ## ⚠️ `configure` runs, `start` never does
+ *
+ * A page is rendered in a container that has emitted `configure` and nothing
+ * after it. Whatever a `start` or `ready` hook puts in the store is therefore
+ * absent from every prerendered file, while the browser, which does run
+ * `start` before hydrating, has it. When the page reads that value the two
+ * trees differ and React answers #418 on every first load, with nothing at
+ * build time to say so. ui.alepha.dev's theme list was set on `start`, and its
+ * theme picker existed only in the browser (#Q2341).
+ *
+ * The rule is documented rather than papered over: emitting `start` here would
+ * start the application inside the build, which listens on a port, connects
+ * to databases, runs migrations and arms cron jobs, on a machine that has none
+ * of them. Anything a prerendered page reads from the store is set on
+ * `configure`.
  */
 export class BuildPrerenderTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
