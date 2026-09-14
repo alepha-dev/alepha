@@ -575,7 +575,6 @@ export default {
   "project.settings.members.invite.emailRequired":
     "Please enter an email address.",
   "project.settings.members.invite.sent": "Invitation sent to $1.",
-  "project.settings.members.invite.failed": "Could not send the invitation.",
 
   "project.settings.members.revoke.title": "Revoke this invitation?",
   "project.settings.members.revoke.description":
@@ -583,7 +582,6 @@ export default {
   "project.settings.members.revoke.confirm": "Revoke",
   "project.settings.members.revoke.cancel": "Keep it",
   "project.settings.members.revoke.done": "The invitation to $1 was revoked.",
-  "project.settings.members.revoke.failed": "Could not revoke the invitation.",
   "project.settings.members.revoke.action.short": "Cancel invitation",
 
   "project.settings.members.actions": "Actions for $1",
@@ -594,7 +592,6 @@ export default {
   "project.settings.members.remove.confirm": "Remove",
   "project.settings.members.remove.cancel": "Keep them",
   "project.settings.members.remove.done": "$1 was removed from the project.",
-  "project.settings.members.remove.failed": "Could not remove the member.",
 
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",

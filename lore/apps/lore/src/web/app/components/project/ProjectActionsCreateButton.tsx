@@ -136,7 +136,11 @@ const ProjectActionsCreateButton = () => {
   }
 
   const handleInvite = async () => {
-    if (!(await inviteMember.invite(project.id, inviteEmail))) return;
+    // `undefined` for the rank, spelled out: the header offers no picker, and
+    // the argument is required so `useAction`'s context cannot land in it.
+    if (!(await inviteMember.invite(project.id, inviteEmail, undefined))) {
+      return;
+    }
     setInviteEmail("");
     setShowInvite(false);
   };

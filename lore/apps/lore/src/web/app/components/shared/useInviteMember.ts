@@ -1,7 +1,6 @@
 import { useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -20,67 +19,73 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * returns whether the invite went through, and each caller decides what that
  * means for its own UI (clear the field, close the dialog, re-run the loader
  * for the new pending row).
+ *
+ * The verb is a `useAction` run (#E59): a refused invitation is not caught
+ * here, it is toasted by the root `ActionErrorToaster` with the server's own
+ * message, and `invite` resolves `undefined` for it.
  */
 export const useInviteMember = (): InviteMember => {
   const invitationApi = useClient<InvitationController>();
   const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
-  const [loading, setLoading] = useState(false);
+  const action = useAction<
+    [projectId: number, email: string, rank: string | undefined],
+    boolean
+  >(
+    {
+      handler: async (projectId, email, rank) => {
+        const trimmed = email.trim();
+        if (!trimmed) {
+          toaster.error(tr("project.settings.members.invite.emailRequired"));
+          return false;
+        }
+        await invitationApi.createInvitation({
+          body: {
+            email: trimmed,
+            resourceType: "project",
+            resourceId: String(projectId),
+            // ⚠️ `roles` is the module's field and this is its one reader: it
+            // names the RANK the invitee lands on. Omitted when the caller does
+            // not care, which `grant` reads as `member`.
+            ...(rank ? { roles: [rank] } : {}),
+          },
+        });
+        toaster.success(
+          tr("project.settings.members.invite.sent", { args: [trimmed] }),
+        );
+        return true;
+      },
+    },
+    [invitationApi, toaster, tr],
+  );
 
-  const invite = async (projectId: number, email: string, rank?: string) => {
-    const trimmed = email.trim();
-    if (!trimmed) {
-      toaster.error(tr("project.settings.members.invite.emailRequired"));
-      return false;
-    }
-    setLoading(true);
-    try {
-      await invitationApi.createInvitation({
-        body: {
-          email: trimmed,
-          resourceType: "project",
-          resourceId: String(projectId),
-          // ⚠️ `roles` is the module's field and this is its one reader: it
-          // names the RANK the invitee lands on. Omitted when the caller does
-          // not care, which `grant` reads as `member`.
-          ...(rank ? { roles: [rank] } : {}),
-        },
-      });
-      toaster.success(
-        tr("project.settings.members.invite.sent", { args: [trimmed] }),
-      );
-      return true;
-    } catch (error: any) {
-      // The server's own message wins when there is one: it carries the real
-      // reason (already a member, pending invitation, project full) and the
-      // catalog string is only the fallback for a failure with no story.
-      toaster.error(
-        error?.message ?? tr("project.settings.members.invite.failed"),
-      );
-      return false;
-    } finally {
-      setLoading(false);
-    }
+  return {
+    invite: action.run,
+    loading: action.loading,
+    can: invitationApi.createInvitation.can(),
   };
-
-  return { invite, loading, can: invitationApi.createInvitation.can() };
 };
 
 export interface InviteMember {
   /**
-   * Resolves `true` when the invitation was created, `false` when it was
-   * refused or the email was blank. Either way the user has already been
-   * told - the caller only has to decide what to do with its own form.
+   * Resolves `true` when the invitation was created, `false` when the email
+   * was blank, and `undefined` when the server refused it. Every time the
+   * user has already been told - the caller only has to decide what to do
+   * with its own form.
    */
   invite: (
     projectId: number,
     email: string,
     /**
-     * The rank they land on. Omitted means `member`, which is what every
+     * The rank they land on. `undefined` means `member`, which is what every
      * invitation sent before epic #E39 resolves to.
+     *
+     * ⚠️ Required, even when `undefined`: `useAction` appends `{ signal }` as
+     * the last argument, so an optional `rank` left out would receive it and
+     * send `roles: [{ signal }]`.
      */
-    rank?: string,
-  ) => Promise<boolean>;
+    rank: string | undefined,
+  ) => Promise<boolean | undefined>;
   loading: boolean;
   /**
    * Whether this reader's rank may invite at all. Returned beside the verb

@@ -11,6 +11,10 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
  * No client-side linking: the server scans saved markdown for
  * `/api/files/<uuid>` and merges the ids into `quest.attachments`, which
  * is what makes the file readable by every project member.
+ *
+ * A plain function, not a `useAction` run, on purpose (#E59): the markdown
+ * editor awaits the URL it returns and needs a failure to reject, which a
+ * `run()` resolving `undefined` would not do.
  */
 export const useQuestImageUpload = ():
   | ((file: File) => Promise<string>)

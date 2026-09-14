@@ -1,5 +1,4 @@
-import { useClient, useStore } from "alepha/react";
-import { useEffect, useState } from "react";
+import { useClient, useQuery, useStore } from "alepha/react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -9,32 +8,33 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
  *
  * `history[].by`, `createdBy`, `completedBy`, `acceptedBy` and a comment's
  * `authorId` are all bare uuids, and every surface that shows one needs the
- * same name and avatar. One hook, one fetch per mount, and `HttpClient`
- * dedupes the concurrent calls two mounted consumers make.
+ * same name and avatar. One hook, and one request between every consumer
+ * mounted at once: the query is keyed `["project-users", projectId]`, which
+ * is also what a write that changes the members invalidates
+ * (`useRemoveMember`).
  *
- * Failures are swallowed to `[]`: a name is chrome, and a transient failure
- * must cost the avatar, not the feed it sits in.
+ * Failures read as `[]`, and quietly: a name is chrome, and a transient
+ * failure must cost the avatar, not the feed it sits in. The `onError` marks
+ * it handled, so the root `ActionErrorToaster` skips it and error reporting
+ * still sees it.
  */
 export const useProjectUsers = (enabled = true): ProjectUser[] => {
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
-  const [users, setUsers] = useState<ProjectUser[]>([]);
+  const projectId = project?.id;
 
-  useEffect(() => {
-    if (!enabled || !project?.id) return;
-    let alive = true;
-    projectApi
-      .getProjectUsers({ params: { id: project.id } })
-      .then((rows) => {
-        if (alive) setUsers(rows);
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [enabled, project?.id]);
+  const { data } = useQuery(
+    {
+      key: ["project-users", projectId],
+      enabled: enabled && !!projectId,
+      handler: () =>
+        projectApi.getProjectUsers({ params: { id: projectId as number } }),
+      onError: () => {},
+    },
+    [projectApi, projectId],
+  );
 
-  return users;
+  return data ?? [];
 };
 
 export interface ProjectUser {

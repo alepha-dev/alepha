@@ -47,6 +47,15 @@ import { type BulkOutcome, settleBulk } from "./bulkOutcome.ts";
  * Confirmation dialogs stay with the callers: the shelve warning needs the
  * questline, which the detail view already holds and the table has to fetch
  * on click, and folding that in would make the hook the worse of the two.
+ *
+ * ## Why these functions reject, and are not `useAction` runs
+ *
+ * The one exception to #E59's "every request through `useAction`": callers
+ * compose these. The board accepts a quest and then moves it to a
+ * sub-column, and the move must not go out after a failed accept. A `run()`
+ * resolves `undefined` on failure instead of rejecting, so the move would be
+ * sent anyway. Each caller runs these inside its own `useAction` handler,
+ * which is where the failure is reported.
  */
 export const useQuestMutations = (): QuestMutations => {
   const alepha = useAlepha();

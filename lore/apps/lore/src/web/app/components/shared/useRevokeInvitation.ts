@@ -1,7 +1,6 @@
 import { useDialog, useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -21,62 +20,58 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * ⚠️ Revoking does not delete the invitation. The server flips it to
  * `revoked`, which is what makes the token dead, and the row disappears
  * from the settings page only because that page asks for `pending` ones.
+ *
+ * The verb is a `useAction` run (#E59): a refusal ("Invitation is not pending
+ * (current status: accepted)", when someone accepted between the page load
+ * and the click) is toasted by the root `ActionErrorToaster`, and `revoke`
+ * resolves `undefined` for it.
  */
 export const useRevokeInvitation = (): RevokeInvitation => {
   const invitationApi = useClient<InvitationController>();
   const toaster = useToast();
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
-  const [loading, setLoading] = useState(false);
+  const action = useAction<
+    [projectId: number, invitationId: string, email: string],
+    boolean
+  >(
+    {
+      handler: async (projectId, invitationId, email) => {
+        const confirmed = await dialog.confirm({
+          title: tr("project.settings.members.revoke.title"),
+          description: tr("project.settings.members.revoke.description", {
+            args: [email],
+          }),
+          confirmLabel: tr("project.settings.members.revoke.confirm"),
+          cancelLabel: tr("project.settings.members.revoke.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return false;
 
-  const revoke = async (
-    projectId: number,
-    invitationId: string,
-    email: string,
-  ) => {
-    const confirmed = await dialog.confirm({
-      title: tr("project.settings.members.revoke.title"),
-      description: tr("project.settings.members.revoke.description", {
-        args: [email],
-      }),
-      confirmLabel: tr("project.settings.members.revoke.confirm"),
-      cancelLabel: tr("project.settings.members.revoke.cancel"),
-      destructive: true,
-    });
-    if (!confirmed) return false;
+        await invitationApi.revokeProjectInvitation({
+          params: { projectId, id: invitationId },
+        });
+        toaster.success(
+          tr("project.settings.members.revoke.done", { args: [email] }),
+        );
+        return true;
+      },
+    },
+    [invitationApi, dialog, toaster, tr],
+  );
 
-    setLoading(true);
-    try {
-      await invitationApi.revokeProjectInvitation({
-        params: { projectId, id: invitationId },
-      });
-      toaster.success(
-        tr("project.settings.members.revoke.done", { args: [email] }),
-      );
-      return true;
-    } catch (error: any) {
-      // The server's own message wins when there is one, same as
-      // `useInviteMember`: "Invitation is not pending (current status:
-      // accepted)" is the whole story when someone accepted between the
-      // page load and the click, and the catalog string is only the
-      // fallback for a failure with nothing to say.
-      toaster.error(
-        error?.message ?? tr("project.settings.members.revoke.failed"),
-      );
-      return false;
-    } finally {
-      setLoading(false);
-    }
+  return {
+    revoke: action.run,
+    loading: action.loading,
+    can: invitationApi.revokeProjectInvitation.can(),
   };
-
-  return { revoke, loading, can: invitationApi.revokeProjectInvitation.can() };
 };
 
 export interface RevokeInvitation {
   /**
    * Resolves `true` when the invitation was revoked, `false` when the user
-   * backed out of the confirmation or the server refused. Either way the
-   * user has already been told.
+   * backed out of the confirmation, and `undefined` when the server refused.
+   * Every time the user has already been told.
    *
    * `email` is only for the copy - it is what the person reading the dialog
    * needs to recognise the row they clicked. `projectId` is in the route
@@ -86,7 +81,7 @@ export interface RevokeInvitation {
     projectId: number,
     invitationId: string,
     email: string,
-  ) => Promise<boolean>;
+  ) => Promise<boolean | undefined>;
   loading: boolean;
   /**
    * Whether this reader's rank may revoke. Beside the verb for the reason
