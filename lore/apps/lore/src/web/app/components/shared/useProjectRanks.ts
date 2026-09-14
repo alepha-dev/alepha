@@ -2,6 +2,7 @@ import { useToast } from "@alepha/ui";
 import type { RankController, RankResource } from "alepha/api/ranks";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { HttpError } from "alepha/server";
+import { useMemo } from "react";
 
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
@@ -34,6 +35,10 @@ export const useProjectRanks = (): ProjectRanks => {
     {
       key: ["project-ranks", projectId],
       enabled: projectId !== undefined,
+      // The ranks page seeds its draft from this list: while a write's
+      // invalidation refetches it, the previous list stays on screen instead
+      // of an empty matrix for a frame.
+      keepPreviousData: true,
       handler: () =>
         api.getRanks({
           params: { type: "project", scopeId: String(projectId) },
@@ -49,11 +54,14 @@ export const useProjectRanks = (): ProjectRanks => {
     [api, projectId],
   );
 
+  // `?? []` rather than `items`: every consumer reads `.length` during
+  // render, and a body that came back without the key would take the page
+  // down rather than show it without a picker. Memoised so the list keeps
+  // its identity until the response changes, which the ranks page compares.
+  const ranks = useMemo(() => query.data?.items ?? [], [query.data]);
+
   return {
-    // `?? []` rather than `items`: every consumer reads `.length` during
-    // render, and a body that came back without the key would take the page
-    // down rather than show it without a picker.
-    ranks: query.data?.items ?? [],
+    ranks,
     loading: query.loading,
     reload: async () => {
       await query.refetch();

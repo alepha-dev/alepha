@@ -10,10 +10,10 @@ import {
   cn,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type {
   LentEstateResource,
@@ -59,45 +59,42 @@ const ProjectSettingsEstatesPage = () => {
    */
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
 
-  useEffect(() => {
-    if (!project) return;
-    let cancelled = false;
-    api
-      .listProjectEstates({ params: { projectId: project.id } })
-      .then((res) => {
-        if (!cancelled) setItems(res.items);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          toaster.error(error instanceof Error ? error.message : String(error));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [project, api]);
+  // Local state seeded by the read, because attaching and detaching patch
+  // the list in place. A failed read is toasted by the root listener.
+  useQuery(
+    {
+      enabled: project !== undefined,
+      handler: () =>
+        api.listProjectEstates({
+          params: { projectId: project?.id as number },
+        }),
+      onSuccess: (res) => setItems(res.items),
+    },
+    [api, project?.id],
+  );
 
-  const detach = async (estate: LentEstateResource) => {
-    if (!project) return;
-    const ok = await dialog.confirm({
-      title: tr("estates.detach.confirmTitle", { args: [estate.slug] }),
-      description: tr("estates.detach.confirmDescription"),
-      confirmLabel: tr("estates.detach.confirm"),
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await api.detachEstate({
-        params: { projectId: project.id, estateId: estate.id },
-      });
-      setItems((current) =>
-        (current ?? []).filter((item) => item.id !== estate.id),
-      );
-      toaster.success(tr("estates.toast.detached"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const detachAction = useAction<[estate: LentEstateResource], void>(
+    {
+      handler: async (estate) => {
+        if (!project) return;
+        const ok = await dialog.confirm({
+          title: tr("estates.detach.confirmTitle", { args: [estate.slug] }),
+          description: tr("estates.detach.confirmDescription"),
+          confirmLabel: tr("estates.detach.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await api.detachEstate({
+          params: { projectId: project.id, estateId: estate.id },
+        });
+        setItems((current) =>
+          (current ?? []).filter((item) => item.id !== estate.id),
+        );
+        toaster.success(tr("estates.toast.detached"));
+      },
+    },
+    [api, project, dialog, toaster, tr],
+  );
 
   if (!project) return null;
 
@@ -171,7 +168,8 @@ const ProjectSettingsEstatesPage = () => {
               // two cannot come to disagree about who owns a machine. It is
               // also what retired `useAuth` from this page.
               canDetach={isOwner || estate.ownedByViewer}
-              onDetach={detach}
+              onDetach={(item) => void detachAction.run(item)}
+              busy={detachAction.loading}
             />
           ))}
         </Card>

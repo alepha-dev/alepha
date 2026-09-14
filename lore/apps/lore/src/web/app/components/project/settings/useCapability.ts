@@ -1,5 +1,5 @@
-import { useToast } from "@alepha/ui";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import type { Alepha } from "alepha";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useState } from "react";
 
 import type { ProjectCapabilityController } from "@/api/controllers/ProjectCapabilityController.ts";
@@ -25,6 +25,11 @@ export interface CapabilitySwitch {
    * the honest rendering of `capability:manage` being owner-only.
    */
   canToggle: boolean;
+  /**
+   * True while this switch's write runs. A click in that window is refused
+   * by the disabled switch rather than dropped by `run()` (#E59 rule 10).
+   */
+  busy: boolean;
 }
 
 /**
@@ -40,37 +45,61 @@ export interface CapabilitySwitch {
  * `pending ?? persisted`, so it flips the instant the click fires. A spec that
  * asserts on the switch's own state proves nothing about what was stored -
  * arm `waitForResponse` before the click, or read the project back.
+ *
+ * `toggle` is a `useAction` run (#E59): a refused write puts the switch back
+ * and is toasted by the root `ActionErrorToaster`.
  */
 export const useCapabilityToggle = (key: CapabilityKey): CapabilitySwitch => {
-  const write = useCapabilityWrite();
-  const can = useCapabilityCan();
+  const alepha = useAlepha();
+  const api = useClient<ProjectCapabilityController>();
   const [project] = useStore(currentProjectAtom);
   const [pending, setPending] = useState<boolean | undefined>(undefined);
 
-  return {
-    canToggle: can,
-    enabled: pending ?? hasCapability(project, key),
-    toggle: async (value) => {
-      setPending(value);
-      const stored = optionsOf(project, key);
-      await write(key, {
-        enabled: value,
-        // The options ride along unchanged - they are sent whole on every
-        // write, so omitting them would clear every switch inside the
-        // capability as a side effect of turning it on.
-        //
-        // ⚠️ Except on the FIRST enable, where there is no row and therefore
-        // nothing to carry. Sending `{}` there gives Apps with nothing tracked
-        // and Work with no board, which is not what the wizard would have made
-        // and is a dead end the reader has to discover. The registry's
-        // preselection is the same answer the wizard gives.
-        options:
-          value && Object.keys(stored).length === 0
-            ? capabilityRegistry.preselectedOptionsOf(key)
-            : stored,
-      });
-      setPending(undefined);
+  const action = useAction<[value: boolean], void>(
+    {
+      handler: async (value) => {
+        if (!project) return;
+        setPending(value);
+        const stored = optionsOf(project, key);
+        try {
+          applyCapabilityWrite(
+            alepha,
+            await api.setCapability({
+              params: { projectId: project.id, key },
+              body: {
+                enabled: value,
+                // The options ride along unchanged - they are sent whole on
+                // every write, so omitting them would clear every switch
+                // inside the capability as a side effect of turning it on.
+                //
+                // ⚠️ Except on the FIRST enable, where there is no row and
+                // therefore nothing to carry. Sending `{}` there gives Apps
+                // with nothing tracked and Work with no board, which is not
+                // what the wizard would have made and is a dead end the
+                // reader has to discover. The registry's preselection is the
+                // same answer the wizard gives.
+                options:
+                  value && Object.keys(stored).length === 0
+                    ? capabilityRegistry.preselectedOptionsOf(key)
+                    : stored,
+              },
+            }),
+          );
+        } finally {
+          // Back to what the atom says, which a success has just rewritten
+          // and a refusal has not.
+          setPending(undefined);
+        }
+      },
     },
+    [alepha, api, project, key],
+  );
+
+  return {
+    canToggle: api.setCapability.can(),
+    enabled: pending ?? hasCapability(project, key),
+    toggle: action.run,
+    busy: action.loading,
   };
 };
 
@@ -85,22 +114,40 @@ export const useCapabilityOption = (
   key: CapabilityKey,
   option: string,
 ): CapabilitySwitch => {
-  const write = useCapabilityWrite();
-  const can = useCapabilityCan();
+  const alepha = useAlepha();
+  const api = useClient<ProjectCapabilityController>();
   const [project] = useStore(currentProjectAtom);
   const [pending, setPending] = useState<boolean | undefined>(undefined);
 
-  return {
-    canToggle: can,
-    enabled: pending ?? capabilityOption(project, key, option),
-    toggle: async (value) => {
-      setPending(value);
-      await write(key, {
-        enabled: true,
-        options: { ...optionsOf(project, key), [option]: value },
-      });
-      setPending(undefined);
+  const action = useAction<[value: boolean], void>(
+    {
+      handler: async (value) => {
+        if (!project) return;
+        setPending(value);
+        try {
+          applyCapabilityWrite(
+            alepha,
+            await api.setCapability({
+              params: { projectId: project.id, key },
+              body: {
+                enabled: true,
+                options: { ...optionsOf(project, key), [option]: value },
+              },
+            }),
+          );
+        } finally {
+          setPending(undefined);
+        }
+      },
     },
+    [alepha, api, project, key, option],
+  );
+
+  return {
+    canToggle: api.setCapability.can(),
+    enabled: pending ?? capabilityOption(project, key, option),
+    toggle: action.run,
+    busy: action.loading,
   };
 };
 
@@ -113,69 +160,46 @@ const optionsOf = (
   project?.capabilities.find((it) => it.key === key)?.options ?? {};
 
 /**
- * The one write, and the two atoms it refreshes.
+ * What the one write answered, into the two atoms it refreshes.
  *
  * `setCapability` answers the whole project resource precisely so this is one
  * round-trip: `currentProjectAtom` drives every gate on the page you are
  * standing on, and `userProjectsAtom` drives the Home cards you go back to.
- */
-const useCapabilityWrite = () => {
-  const alepha = useAlepha();
-  const api = useClient<ProjectCapabilityController>();
-  const [project] = useStore(currentProjectAtom);
-  const toaster = useToast();
-
-  return async (
-    key: CapabilityKey,
-    body: { enabled: boolean; options?: Record<string, boolean> },
-  ) => {
-    if (!project) return;
-    try {
-      // ⚠️ The response carries `permissions` as well as the project, and it
-      // has to: turning a capability ON widens the effective set, so a client
-      // that kept the set it already had would leave the new capability's
-      // sidebar entries hidden until the next navigation.
-      const updated = await api.setCapability({
-        params: { projectId: project.id, key },
-        body,
-      });
-      setCurrentProject(alepha, updated);
-      const overview = alepha.store.get(userProjectsAtom);
-      if (overview) {
-        alepha.store.set(userProjectsAtom, {
-          ...overview,
-          // The response carries neither `areaCount` nor `openQuestCount` —
-          // only `getHomeOverview` computes those — so carry the existing
-          // ones forward rather than dropping them to 0.
-          projects: overview.projects.map((p) =>
-            p.id === updated.id
-              ? {
-                  ...updated,
-                  areaCount: p.areaCount,
-                  openQuestCount: p.openQuestCount,
-                  // Same reasoning: `owner` is computed by `getHomeOverview`
-                  // from a batched `members` read, so an update response has
-                  // no idea and dropping it would flip the Owner badge off.
-                  owner: p.owner,
-                }
-              : p,
-          ),
-        });
-      }
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
-};
-
-/**
- * May the viewer move a capability switch?
+ *
+ * ⚠️ The response carries `permissions` as well as the project, and it has
+ * to: turning a capability ON widens the effective set, so a client that kept
+ * the set it already had would leave the new capability's sidebar entries
+ * hidden until the next navigation.
  *
  * ⚠️ `capability:manage` is owner-only STRUCTURALLY: turning a capability ON
- * widens every rank's effective set at once, the actor's own included, and the
- * subset rule does not catch it because a switch is not a grant. Read off the
- * ACTION, so this repeats no permission string - the requirement travels from
- * `$ownsProject({ requires })` through the registry to `can()`.
+ * widens every rank's effective set at once, the actor's own included, and
+ * the subset rule does not catch it because a switch is not a grant. Both
+ * hooks read `canToggle` off the ACTION, so this repeats no permission
+ * string - the requirement travels from `$ownsProject({ requires })` through
+ * the registry to `can()`.
  */
-const useCapabilityCan = (): boolean =>
-  useClient<ProjectCapabilityController>().setCapability.can();
+const applyCapabilityWrite = (alepha: Alepha, updated: any): void => {
+  setCurrentProject(alepha, updated);
+  const overview = alepha.store.get(userProjectsAtom);
+  if (overview) {
+    alepha.store.set(userProjectsAtom, {
+      ...overview,
+      // The response carries neither `areaCount` nor `openQuestCount` - only
+      // `getHomeOverview` computes those - so carry the existing ones forward
+      // rather than dropping them to 0.
+      projects: overview.projects.map((p) =>
+        p.id === updated.id
+          ? {
+              ...updated,
+              areaCount: p.areaCount,
+              openQuestCount: p.openQuestCount,
+              // Same reasoning: `owner` is computed by `getHomeOverview` from
+              // a batched `members` read, so an update response has no idea
+              // and dropping it would flip the Owner badge off.
+              owner: p.owner,
+            }
+          : p,
+      ),
+    });
+  }
+};

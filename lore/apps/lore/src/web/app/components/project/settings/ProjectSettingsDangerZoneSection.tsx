@@ -10,11 +10,10 @@ import {
   Button,
   Card,
   CardContent,
-  useToast,
   cn,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
@@ -31,7 +30,6 @@ import ProjectSettingsConfirmationModal from "./ProjectSettingsConfirmationModal
 const ProjectSettingsDangerZoneSection = () => {
   const { can } = useRank();
   const alepha = useAlepha();
-  const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
   const router = useRouter<AppRouter>();
@@ -39,35 +37,41 @@ const ProjectSettingsDangerZoneSection = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
 
+  // A refused delete or leave (an owned project, a server error) leaves the
+  // dialog open, and the root `ActionErrorToaster` says why. The overview
+  // refresh and the navigation are inside the handler, so neither runs after
+  // a refusal.
+  const deleteAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        await projectApi.deleteProjectById({ params: { id: project.id } });
+        alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
+        setDeleteModalOpen(false);
+        await router.push("home");
+      },
+    },
+    [projectApi, alepha, router, project],
+  );
+
+  const leaveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        await projectApi.leaveProject({ params: { id: project.id } });
+        alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
+        setLeaveDialogOpen(false);
+        await router.push("home");
+      },
+    },
+    [projectApi, alepha, router, project],
+  );
+
   if (!project) {
     return null;
   }
 
   const isOwner = can("project:delete");
-
-  // A refused delete or leave (an owned project, a server error) used to be
-  // an unhandled rejection with the dialog left open and nothing said.
-  const handleDelete = async () => {
-    try {
-      await projectApi.deleteProjectById({ params: { id: project.id } });
-      alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
-      setDeleteModalOpen(false);
-      void router.push("home");
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
-
-  const handleLeave = async () => {
-    try {
-      await projectApi.leaveProject({ params: { id: project.id } });
-      alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
-      setLeaveDialogOpen(false);
-      void router.push("home");
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,7 +124,7 @@ const ProjectSettingsDangerZoneSection = () => {
         open={deleteModalOpen}
         project={project}
         onCancel={() => setDeleteModalOpen(false)}
-        onConfirm={handleDelete}
+        onConfirm={() => void deleteAction.run()}
       />
 
       <AlertDialog
@@ -143,7 +147,8 @@ const ProjectSettingsDangerZoneSection = () => {
               {tr("project.settings.leave.modal.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleLeave}
+              disabled={leaveAction.loading}
+              onClick={() => void leaveAction.run()}
               className="bg-destructive hover:bg-destructive/90 text-white"
             >
               {tr("project.settings.leave.modal.submit")}

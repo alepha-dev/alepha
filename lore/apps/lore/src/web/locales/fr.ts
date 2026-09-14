@@ -590,7 +590,6 @@ export default {
   "project.settings.nav.members": "Membres",
   "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
-  "project.settings.data.export.failed": "L'export a échoué",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -1016,7 +1015,6 @@ export default {
     "$1 doit d'abord être vide : déplacez ou terminez ses quêtes, et rien d'autre ne change. Vous pourrez rajouter une colonne ensuite.",
   "kanban.column.delete.confirm": "Supprimer",
   "kanban.column.delete.cancel": "La conserver",
-  "kanban.column.failed": "Impossible de modifier la colonne.",
   "kanban.empty": "Aucune quête",
   "kanban.showMore": "Afficher plus",
   "kanban.filter.allAreas": "Tous les domaines",

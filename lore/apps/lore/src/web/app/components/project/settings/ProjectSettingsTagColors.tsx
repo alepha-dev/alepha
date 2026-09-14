@@ -1,7 +1,11 @@
-import { useToast } from "@alepha/ui";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -42,48 +46,53 @@ const CHOICES: Array<PaletteColor | undefined> = [
 const ProjectSettingsTagColors = () => {
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
-  const toaster = useToast();
   const projectApi = useClient<ProjectController>();
   const questApi = useClient<QuestController>();
   const [project] = useStore(currentProjectAtom);
-  const [tags, setTags] = useState<string[]>([]);
-  const [pending, setPending] = useState<string | null>(null);
+  // Quiet on purpose: with no tags the section says so, which is the same
+  // thing a failed read leaves the reader able to do.
+  const tags =
+    useQuery(
+      {
+        enabled: !!project?.id,
+        handler: () =>
+          questApi.listQuestTags({
+            query: { projectId: project?.id as number },
+          }),
+        onError: () => {},
+      },
+      [questApi, project?.id],
+    ).data ?? [];
 
-  useEffect(() => {
-    if (!project?.id) return;
-    questApi
-      .listQuestTags({ query: { projectId: project.id } })
-      .then(setTags)
-      .catch(() => null);
-  }, [project?.id]);
+  const colors = project?.tagColors ?? {};
+
+  const setColor = useAction<
+    [tag: string, color: PaletteColor | undefined],
+    void
+  >(
+    {
+      handler: async (tag, color) => {
+        if (!project) return;
+        // The whole map goes over the wire, not a patch: deleting a key is how
+        // a colour is cleared, and a merge on the server has no way to express
+        // that without inventing a "none" token.
+        const next: Record<string, PaletteColor> = { ...colors };
+        if (color) {
+          next[tag] = color;
+        } else {
+          delete next[tag];
+        }
+        const updated = await projectApi.updateProjectById({
+          params: { id: project.id },
+          body: { tagColors: next },
+        });
+        setCurrentProject(alepha, updated);
+      },
+    },
+    [projectApi, alepha, project, colors],
+  );
 
   if (!project) return null;
-
-  const colors = project.tagColors ?? {};
-
-  const setColor = async (tag: string, color: PaletteColor | undefined) => {
-    setPending(tag);
-    // The whole map goes over the wire, not a patch: deleting a key is how
-    // a colour is cleared, and a merge on the server has no way to express
-    // that without inventing a "none" token.
-    const next: Record<string, PaletteColor> = { ...colors };
-    if (color) {
-      next[tag] = color;
-    } else {
-      delete next[tag];
-    }
-    try {
-      const updated = await projectApi.updateProjectById({
-        params: { id: project.id },
-        body: { tagColors: next },
-      });
-      setCurrentProject(alepha, updated);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(null);
-    }
-  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -122,13 +131,17 @@ const ProjectSettingsTagColors = () => {
                   <button
                     key={choice ?? "none"}
                     type="button"
+                    // Every row's swatches wait while any colour saves: the
+                    // key that held only the busy row over one action would
+                    // leave the others enabled, and `run()` would drop
+                    // their clicks (#E59 rule 10).
                     disabled={
-                      pending === tag || !projectApi.updateProjectById.can()
+                      setColor.loading || !projectApi.updateProjectById.can()
                     }
                     aria-label={choice ?? tr("common.none")}
                     aria-pressed={colors[tag] === choice}
                     data-color={choice ?? "none"}
-                    onClick={() => void setColor(tag, choice)}
+                    onClick={() => void setColor.run(tag, choice)}
                     className={`size-5 rounded-full border transition-transform ${
                       colors[tag] === choice
                         ? "border-foreground scale-110"

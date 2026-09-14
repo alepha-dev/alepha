@@ -1028,11 +1028,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                               ? membersById.get(q.acceptedBy)
                               : undefined
                           }
-                          busy={
-                            columnOps.pending?.endsWith(
-                              `:${descriptor.label}`,
-                            ) ?? false
-                          }
+                          busy={columnOps.loading}
                           onRename={
                             canManageColumns
                               ? (name) =>
@@ -1069,7 +1065,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                         <button
                           type="button"
                           data-testid="kanban-column-add"
-                          disabled={columnOps.pending === "add"}
+                          disabled={columnOps.loading}
                           onClick={() =>
                             void columnOps.add(
                               tr("kanban.column.addDefault", {
