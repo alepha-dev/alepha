@@ -422,14 +422,6 @@ export type SelectOption =
        */
       tag?: string;
       /**
-       * Optional muted text drawn directly ahead of the label, in the same
-       * text run with no space: write the separator into it, e.g. `"lore/"`
-       * before `"production"`. The combobox shape draws it, matches a typed
-       * query against it like the label, and puts it ahead of the label on
-       * the trigger too while this option is the only one selected.
-       */
-      hint?: string;
-      /**
        * Optional icon/element rendered before the label, in both the
        * dropdown row and (for single-select) the trigger when selected.
        */

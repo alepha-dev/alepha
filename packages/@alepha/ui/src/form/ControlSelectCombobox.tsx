@@ -253,17 +253,6 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       : emptyLabel;
 
   /**
-   * The lone selection's hint, drawn muted ahead of its label, as the row
-   * draws it: "production" alone cannot say which app's was picked. Two or
-   * more selections are named by label only, since a hint per name would
-   * spend the whole `maxTriggerLength` budget on repeats.
-   */
-  const triggerHint =
-    selected.length === 1
-      ? options.find((o) => o.value === selected[0])?.hint
-      : undefined;
-
-  /**
    * The `x` that puts a `clearable` field back to empty in one click.
    *
    * ⚠️ This is the affordance the injected clear ROW used to be, moved to
@@ -358,15 +347,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
                       {opt.tag}
                     </span>
                   )}
-                  {/* The hint rides in the label's own text run, muted, with
-                      no gap: the caller writes its separator into the hint
-                      ("lore/"), the way the trigger prints "lore/production". */}
-                  <span className="truncate">
-                    {opt.hint && (
-                      <span className="text-muted-foreground">{opt.hint}</span>
-                    )}
-                    {opt.label}
-                  </span>
+                  <span className="truncate">{opt.label}</span>
                 </div>
                 {opt.description && (
                   <span className="text-muted-foreground truncate text-xs">
@@ -471,9 +452,6 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
                 <span className="text-muted-foreground">
                   {props.triggerPrefix}{" "}
                 </span>
-              )}
-              {triggerHint && (
-                <span className="text-muted-foreground">{triggerHint}</span>
               )}
               {triggerLabel}
             </span>

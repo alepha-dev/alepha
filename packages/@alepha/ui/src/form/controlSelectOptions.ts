@@ -15,7 +15,6 @@ export interface ComboOption {
   label: string;
   description?: string;
   tag?: string;
-  hint?: string;
   icon?: ReactNode;
   disabled?: boolean;
   /**
@@ -46,8 +45,6 @@ const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
 const optDesc = (o: SelectOption) =>
   typeof o === "string" ? undefined : o.description;
 const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
-const optHint = (o: SelectOption) =>
-  typeof o === "string" ? undefined : o.hint;
 const optDisabled = (o: SelectOption) =>
   typeof o === "string" ? false : Boolean(o.disabled);
 const optIcon = (o: SelectOption): ReactNode =>
@@ -72,7 +69,6 @@ export const resolveComboboxItems = (
     label: optLabel(o),
     description: optDesc(o),
     tag: optTag(o),
-    hint: optHint(o),
     icon: optIcon(o),
     disabled: optDisabled(o),
   }));
@@ -139,10 +135,7 @@ export const resolveComboboxItems = (
   // the visible label — never the value/id (that was the cmdk bug).
   const serverMode = Boolean(props.onSearch);
   const q = query.trim().toLowerCase();
-  // The hint is visible text too, so "production" finds every app beside it.
-  const matchesQuery = (o: ComboOption) =>
-    o.label.toLowerCase().includes(q) ||
-    Boolean(o.hint?.toLowerCase().includes(q));
+  const matchesQuery = (o: ComboOption) => o.label.toLowerCase().includes(q);
 
   // ⚠️ An orphan is filtered by the typed query like any other row, which is a
   // DECISION rather than an accident of where the injection happens: a search
