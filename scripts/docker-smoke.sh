@@ -86,6 +86,19 @@ wait_for_version() {
   fail "/version did not answer within 90s"
 }
 
+# Whether a container's log holds a line, read in full before it is matched.
+#
+# Never `docker logs … | grep -q` in this file: under `pipefail`, grep exits on
+# its first match, the `docker logs` still writing the lines after it dies of
+# SIGPIPE (141), and the pipeline reports a line that IS there as missing. The
+# boot warning is the second-to-last line of the log, so that race ran on every
+# boot and lost about once in twenty-five CI runs (#Q2327).
+log_contains() {
+  local name="$1" pattern="$2" logs
+  logs="$(docker logs "$name" 2>&1)"
+  [[ "$logs" == *"$pattern"* ]]
+}
+
 json_field() {
   python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get(sys.argv[1],""))' "$1"
 }
@@ -127,8 +140,10 @@ ok "runs as uid 1000"
 # Asserted on directly, unlike everything else here, because being seen is the
 # whole point of it: it is what answers the window between starting an
 # instance and finishing setup.
-docker logs "$FIRST" 2>&1 | grep -q "No accounts exist" ||
+if ! log_contains "$FIRST" "No accounts exist"; then
+  docker logs "$FIRST" 2>&1 | tail -40 >&2
   fail "no boot warning while the users table is empty"
+fi
 ok "warns at boot while no account exists"
 
 # ── 4. The first account owns the instance, the second does not ─────────────
@@ -166,7 +181,8 @@ USER_AFTER="$(curl -fsS -b "$COOKIES" "${BASE}/_auth/userinfo" \
   fail "the session stopped validating after the restart — APP_SECRET was regenerated"
 ok "a session minted before the restart still validates"
 
-if docker logs "$RESTARTED" 2>&1 | grep -q "No accounts exist"; then
+if log_contains "$RESTARTED" "No accounts exist"; then
+  docker logs "$RESTARTED" 2>&1 | tail -40 >&2
   fail "still warning about an empty users table after two accounts exist"
 fi
 ok "the boot warning is gone once an account exists"
