@@ -1,13 +1,16 @@
 import { TimeAgo, Badge } from "@alepha/ui";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Cloud, Container, GitCommitHorizontal, Server } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
 import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
+import CommitLink from "../../shared/CommitLink.tsx";
 
 export interface AppArtifactsRowProps {
   group: ArtifactGroup;
@@ -48,6 +51,7 @@ export interface AppArtifactsRowProps {
  */
 const AppArtifactsRow = (props: AppArtifactsRowProps) => {
   const { tr, l } = useI18n<I18n, "en">();
+  const [project] = useStore(currentProjectAtom);
   const { group } = props;
 
   const size = (bytes: number) =>
@@ -144,7 +148,10 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
           title={tr("app.artifacts.commit", { args: [group.commitSha] })}
         >
           <GitCommitHorizontal className="size-3.5 shrink-0" aria-hidden />
-          {group.commitSha.slice(0, 7)}
+          <CommitLink
+            sha={group.commitSha}
+            repositoryUrl={project?.repositoryUrl}
+          />
         </span>
       )}
 

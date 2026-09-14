@@ -29,6 +29,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { capabilityOption } from "../../../services/projectCapabilities.ts";
+import CommitLink from "../../shared/CommitLink.tsx";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import { formatEstimate } from "./questEstimate.ts";
@@ -214,23 +215,13 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             // detail is one hover away rather than four words wide.
             <span className="flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-0.5">
               {quest.commits.map((commit) => {
-                const short = commit.sha.slice(0, 7);
-                // Leaves Lore, and still carries no `ExternalLink` icon, by
-                // decision (#Q2222): a monospace sha already reads as "this
-                // commit, in the repository", and the rail wraps two or three
-                // of them to a line, where an icon each would double the
-                // weight of a list whose shas are the whole content.
-                const sha = project?.repositoryUrl ? (
-                  <a
-                    href={`${project.repositoryUrl}/commit/${commit.sha}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono underline-offset-2 hover:underline"
-                  >
-                    {short}
-                  </a>
-                ) : (
-                  <code className="font-mono">{short}</code>
+                // Linked or not, and why it carries no icon, is `CommitLink`'s
+                // to decide, shared with both artifact views (#Q2336).
+                const sha = (
+                  <CommitLink
+                    sha={commit.sha}
+                    repositoryUrl={project?.repositoryUrl}
+                  />
                 );
 
                 // `quest_commit_add` accepts a bare sha, so a tooltip with

@@ -93,6 +93,7 @@ describe("ProjectArtifacts", () => {
   const show = async (
     responses: Record<string, unknown> = {},
     releases: unknown[] = [],
+    repositoryUrl?: string,
   ) => {
     cleanup();
     // ⚠️ `persistenceKey` puts the filter values in localStorage, and the
@@ -115,10 +116,10 @@ describe("ProjectArtifacts", () => {
 
     // Without the project the query stays disabled and every case below
     // would pass by not running the code it is about.
-    alepha.store.set(
-      currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }) as never,
-    );
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ title: "Alepha", slug: "alepha" }),
+      repositoryUrl,
+    } as never);
     alepha.store.set(currentReleasesAtom, releases as never);
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
@@ -135,6 +136,34 @@ describe("ProjectArtifacts", () => {
 
   const listing = (groups: unknown[], truncated = false) => ({
     listArtifacts: { groups, truncated },
+  });
+
+  /**
+   * The Commit cell links to the repository the way the quest rail does
+   * (feedback #P2201, #Q2336), and stays text without one.
+   */
+  it("links the commit to the project's repository when it has one", async ({
+    expect,
+  }) => {
+    const { findByText } = await show(
+      listing([group()]),
+      [],
+      "https://github.com/alepha-dev/alepha",
+    );
+
+    const link = (await findByText("abcdef1")).closest("a");
+    expect(link?.getAttribute("href")).toBe(
+      "https://github.com/alepha-dev/alepha/commit/abcdef1234567890",
+    );
+    expect(link?.getAttribute("target")).toBe("_blank");
+  });
+
+  it("leaves the commit unlinked when the project has no repository", async ({
+    expect,
+  }) => {
+    const { findByText } = await show(listing([group()]));
+
+    expect((await findByText("abcdef1")).closest("a")).toBeNull();
   });
 
   /**
