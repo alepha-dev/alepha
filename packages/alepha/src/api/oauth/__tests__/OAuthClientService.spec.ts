@@ -6,6 +6,7 @@ import { JwtProvider } from "alepha/security";
 import { describe, it } from "vitest";
 
 import { oauthClientEntity } from "../entities/oauthClientEntity.ts";
+import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
 
 describe("oauthClientEntity", () => {
@@ -253,6 +254,167 @@ describe("OAuthClientService wildcard redirect_uri", () => {
         `must not accept ${candidate}`,
       ).toBe(false);
     }
+  });
+});
+
+/**
+ * Which redirect URIs a client may register (#Q2342, blight #625): https
+ * anywhere, plain http to the loopback interface only. A native client
+ * registering the RFC 8252 form `http://127.0.0.1:{port}/...` was refused,
+ * while `http://localhost.example.com` passed a prefix check.
+ */
+describe("OAuthClientService redirect_uri validation", () => {
+  const setup = async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+    const register = (redirectUri: string) =>
+      service.register({
+        realm: "users",
+        clientName: "Native Client",
+        redirectUris: [redirectUri],
+        scopes: ["mcp"],
+      });
+    return { service, register };
+  };
+
+  it("accepts https and every loopback form", async ({ expect }) => {
+    const { register } = await setup();
+
+    for (const uri of [
+      "https://claude.ai/api/mcp/auth_callback",
+      "https://*.alepha.club/auth/callback",
+      "http://127.0.0.1:39127/callback/1jIsan8OFNhz",
+      "http://127.0.0.1/callback",
+      "http://[::1]:39127/callback",
+      "http://localhost:3000/callback",
+      "http://localhost/callback",
+    ]) {
+      const client = await register(uri);
+      expect(client.redirectUris, `must accept ${uri}`).toEqual([uri]);
+    }
+  });
+
+  it("refuses plain http to any host that is not the loopback", async ({
+    expect,
+  }) => {
+    const { register } = await setup();
+
+    for (const uri of [
+      "http://localhost.example.com/cb",
+      "http://localhostevil.com/cb",
+      "http://localhost@evil.com/cb",
+      "http://127.0.0.1.evil.com/cb",
+      "http://example.com/cb",
+      "http://*.localhost/cb",
+      "ftp://127.0.0.1/cb",
+      "com.example.app:/cb",
+      "not a url",
+    ]) {
+      const refusal = await register(uri).catch((error: unknown) => error);
+      expect(refusal, `must refuse ${uri}`).toBeInstanceOf(
+        OAuthClientMetadataError,
+      );
+      expect((refusal as OAuthClientMetadataError).code).toBe(
+        "invalid_redirect_uri",
+      );
+    }
+  });
+
+  it("refuses a wildcard anywhere but the host", async ({ expect }) => {
+    const { register } = await setup();
+
+    for (const uri of [
+      "https://alepha.club/*/callback",
+      "https://*.*.alepha.club/callback",
+      "https://user*@alepha.club/callback",
+    ]) {
+      await expect(register(uri), `must refuse ${uri}`).rejects.toThrow(
+        OAuthClientMetadataError,
+      );
+    }
+  });
+
+  it("answers the other refusals as invalid_client_metadata", async ({
+    expect,
+  }) => {
+    const { service } = await setup();
+
+    const refusal = await service
+      .register({
+        realm: "users",
+        clientName: "Confidential",
+        redirectUris: ["https://example.com/cb"],
+        type: "confidential",
+      })
+      .catch((error: unknown) => error);
+
+    expect(refusal).toBeInstanceOf(OAuthClientMetadataError);
+    expect((refusal as OAuthClientMetadataError).code).toBe(
+      "invalid_client_metadata",
+    );
+  });
+});
+
+/**
+ * RFC 8252 §7.3: a loopback redirect is matched on any port, since a native
+ * app listens on whichever port the OS hands it on each run.
+ */
+describe("OAuthClientService loopback redirect_uri matching", () => {
+  const setup = async (redirectUri: string) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+    const client = await service.register({
+      realm: "users",
+      clientName: "Native Client",
+      redirectUris: [redirectUri],
+      scopes: ["mcp"],
+    });
+    return { service, client };
+  };
+
+  it("allows any port on the registered loopback host", async ({ expect }) => {
+    for (const [pattern, candidate] of [
+      ["http://127.0.0.1:39127/callback", "http://127.0.0.1:51234/callback"],
+      ["http://127.0.0.1/callback", "http://127.0.0.1:51234/callback"],
+      ["http://[::1]:39127/callback", "http://[::1]:8080/callback"],
+      ["http://localhost:3000/callback", "http://localhost:4000/callback"],
+    ] as const) {
+      const { service, client } = await setup(pattern);
+      expect(
+        service.isRedirectUriAllowed(client, candidate),
+        `${pattern} must allow ${candidate}`,
+      ).toBe(true);
+    }
+  });
+
+  it("still matches everything but the port exactly", async ({ expect }) => {
+    const { service, client } = await setup("http://127.0.0.1:39127/callback");
+
+    for (const candidate of [
+      "http://127.0.0.1:39127/other",
+      "http://127.0.0.1:39127/callback?x=1",
+      "http://127.0.0.1:39127/callback#x",
+      "http://[::1]:39127/callback",
+      "http://localhost:39127/callback",
+      "https://127.0.0.1:39127/callback",
+      "http://user@127.0.0.1:39127/callback",
+      "http://127.0.0.1.evil.com:39127/callback",
+    ]) {
+      expect(
+        service.isRedirectUriAllowed(client, candidate),
+        `must not accept ${candidate}`,
+      ).toBe(false);
+    }
+  });
+
+  it("never frees the port of an https redirect", async ({ expect }) => {
+    const { service, client } = await setup("https://example.com:8443/cb");
+
+    expect(
+      service.isRedirectUriAllowed(client, "https://example.com:9443/cb"),
+    ).toBe(false);
   });
 });
 

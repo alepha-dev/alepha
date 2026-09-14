@@ -15,6 +15,7 @@ import {
   type OAuthClientEntity,
   oauthClientEntity,
 } from "../entities/oauthClientEntity.ts";
+import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
 import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
 
 /**
@@ -285,7 +286,10 @@ export class OAuthClientService {
     options: RegisterClientOptions,
   ): Promise<OAuthClientEntity> {
     if (options.redirectUris.length === 0) {
-      throw new AlephaError("At least one redirect_uri is required");
+      throw new OAuthClientMetadataError(
+        "invalid_redirect_uri",
+        "At least one redirect_uri is required",
+      );
     }
     for (const uri of options.redirectUris) {
       this.assertValidRedirectUri(uri);
@@ -293,7 +297,10 @@ export class OAuthClientService {
 
     const type = options.type ?? "public";
     if (type === "confidential" && !options.secret) {
-      throw new AlephaError("A confidential client requires a secret");
+      throw new OAuthClientMetadataError(
+        "invalid_client_metadata",
+        "A confidential client requires a secret",
+      );
     }
 
     const reusable = await this.findReusableClient(options, type);
@@ -463,7 +470,10 @@ export class OAuthClientService {
     redirectUris: string[],
   ): Promise<void> {
     if (redirectUris.length === 0) {
-      throw new AlephaError("At least one redirect_uri is required");
+      throw new OAuthClientMetadataError(
+        "invalid_redirect_uri",
+        "At least one redirect_uri is required",
+      );
     }
     for (const uri of redirectUris) {
       this.assertValidRedirectUri(uri);
@@ -501,32 +511,69 @@ export class OAuthClientService {
   }
 
   /**
-   * Validate a registered redirect_uri. https (or http://localhost) only, and
-   * at most a single `*` which must live inside the host (see
-   * `redirectUriMatches` for the matching rule).
+   * Validate a registered redirect_uri: https, or http to the loopback
+   * interface, and at most a single `*`, which must live inside the host
+   * (see `redirectUriMatches` for the matching rule).
+   *
+   * ## The loopback, and only the loopback, may be plain http
+   *
+   * RFC 8252 §7.3 has a native app (a CLI, a desktop MCP client) listen on
+   * the loopback interface and register `http://127.0.0.1:{port}/...` or
+   * `http://[::1]:{port}/...`; §8.3 calls `localhost` NOT RECOMMENDED, and
+   * it is accepted too because clients use it anyway. The code never leaves
+   * the machine, which is what makes the missing TLS acceptable.
+   *
+   * ⚠️ The host is compared on the PARSED URL. This used to be
+   * `startsWith("http://localhost")`, which refused the recommended
+   * `127.0.0.1` form outright and accepted `http://localhost.example.com`
+   * and `http://localhostevil.com`: a cleartext redirect to somebody else's
+   * host.
+   *
+   * @throws {OAuthClientMetadataError} `invalid_redirect_uri`, which the DCR
+   * route answers with a 400.
    */
   protected assertValidRedirectUri(uri: string): void {
+    const refuse = (reason: string) =>
+      new OAuthClientMetadataError("invalid_redirect_uri", `${reason}: ${uri}`);
+
     const stars = (uri.match(/\*/g) ?? []).length;
     if (stars > 1) {
-      throw new AlephaError(
-        `At most one '*' wildcard is allowed in redirect_uri: ${uri}`,
-      );
+      throw refuse("At most one '*' wildcard is allowed in redirect_uri");
     }
-    const probe = uri.replace("*", "wildcard");
-    if (
-      !probe.startsWith("https://") &&
-      !probe.startsWith("http://localhost")
-    ) {
-      throw new AlephaError(`Invalid redirect_uri: ${uri}`);
+    let parsed: URL;
+    try {
+      parsed = new URL(uri.replace("*", this.wildcardLabel));
+    } catch {
+      throw refuse("Invalid redirect_uri");
+    }
+    const secure = parsed.protocol === "https:";
+    const loopback =
+      parsed.protocol === "http:" && this.isLoopbackHost(parsed.hostname);
+    if (!secure && !loopback) {
+      throw refuse("Invalid redirect_uri");
     }
     if (stars === 1) {
       const host = uri.slice(uri.indexOf("://") + 3).split("/")[0] ?? "";
-      if (!host.includes("*")) {
-        throw new AlephaError(
-          `Wildcard '*' is only allowed in the host: ${uri}`,
-        );
+      if (
+        !host.includes("*") ||
+        !parsed.hostname.includes(this.wildcardLabel)
+      ) {
+        throw refuse("Wildcard '*' is only allowed in the host");
       }
     }
+  }
+
+  /**
+   * Whether a parsed URL's `hostname` names the loopback interface:
+   * `localhost`, `127.0.0.1` or `[::1]` (WHATWG keeps the brackets on an
+   * IPv6 hostname).
+   */
+  protected isLoopbackHost(hostname: string): boolean {
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
   }
 
   /**
@@ -584,7 +631,9 @@ export class OAuthClientService {
 
   protected redirectUriMatches(pattern: string, candidate: string): boolean {
     if (!pattern.includes("*")) {
-      return pattern === candidate;
+      return (
+        pattern === candidate || this.loopbackMatchesAnyPort(pattern, candidate)
+      );
     }
     // Never match the raw strings. `/`, `?`, `#` and `\` all terminate the
     // authority in WHATWG URL parsing, so any character class applied to the
@@ -621,6 +670,45 @@ export class OAuthClientService {
         ? /^[a-z0-9-]+$/.test(candidateLabel)
         : label === candidateLabel;
     });
+  }
+
+  /**
+   * Whether `candidate` is the loopback redirect `pattern` on another port.
+   *
+   * RFC 8252 §7.3: the authorization server MUST allow any port at request
+   * time for a loopback redirect, since a native app takes whichever port
+   * the OS hands it on each run. A client that registered once and reuses
+   * its id would otherwise work exactly once.
+   *
+   * Everything but the port still matches exactly: scheme, host, path,
+   * query and fragment. Only a plain-http loopback pattern qualifies, so no
+   * https redirect and no remote host ever gains a free port. PKCE is what
+   * binds the code to the process that asked for it, which is what makes an
+   * unpinned port safe on a host nobody else can reach.
+   */
+  protected loopbackMatchesAnyPort(
+    pattern: string,
+    candidate: string,
+  ): boolean {
+    let expected: URL;
+    let actual: URL;
+    try {
+      expected = new URL(pattern);
+      actual = new URL(candidate);
+    } catch {
+      return false;
+    }
+    return (
+      expected.protocol === "http:" &&
+      this.isLoopbackHost(expected.hostname) &&
+      actual.protocol === expected.protocol &&
+      actual.hostname === expected.hostname &&
+      actual.pathname === expected.pathname &&
+      actual.search === expected.search &&
+      actual.hash === expected.hash &&
+      actual.username === "" &&
+      actual.password === ""
+    );
   }
 
   /**

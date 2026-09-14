@@ -228,6 +228,73 @@ describe("OAuthController", () => {
   });
 
   /**
+   * RFC 8252 §7.3 has a native client (a CLI, a desktop MCP client) register
+   * the loopback IP literal. Blight #625 was exactly this registration
+   * turned away, and turned away as a 500.
+   */
+  it("registers a native client on the loopback IP literal", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Native",
+        redirect_uris: ["http://127.0.0.1:39127/callback/1jIsan8OFNhz"],
+      }),
+    });
+
+    expect(resp.status).toBe(201);
+  });
+
+  /**
+   * RFC 7591 §3.2.2: a refused registration is the client's mistake, a 400
+   * with a code it can act on. It used to escape the route as a 500.
+   */
+  it("answers a refused redirect_uri with a 400 and an RFC 7591 body", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Cleartext",
+        redirect_uris: ["http://localhost.example.com/cb"],
+      }),
+    });
+
+    expect(resp.status).toBe(400);
+    expect(resp.headers.get("content-type")).toContain("application/json");
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_redirect_uri");
+    expect(body.error_description).toContain("http://localhost.example.com/cb");
+  });
+
+  /**
    * Dynamic client registration is unauthenticated by design - a client
    * discovering this server has no credential yet - which leaves the write
    * path open: every call creates a row, and nothing bounded how many.

@@ -9,6 +9,8 @@ import {
 } from "alepha/security";
 import { $route, HttpError } from "alepha/server";
 
+import type { OAuthClientEntity } from "../entities/oauthClientEntity.ts";
+import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
 import {
   type ConsentScope,
   renderConsentPage,
@@ -367,13 +369,31 @@ export class OAuthController {
         });
       }
 
-      const client = await this.clients.register({
-        realm: this.options.realm,
-        clientName: body.client_name ?? "MCP Client",
-        redirectUris: body.redirect_uris,
-        scopes: body.scope ? body.scope.split(" ") : ["mcp"],
-        source: "dcr",
-      });
+      let client: OAuthClientEntity;
+      try {
+        client = await this.clients.register({
+          realm: this.options.realm,
+          clientName: body.client_name ?? "MCP Client",
+          redirectUris: body.redirect_uris,
+          scopes: body.scope ? body.scope.split(" ") : ["mcp"],
+          source: "dcr",
+        });
+      } catch (error) {
+        // RFC 7591 §3.2.2: a registration refused for its metadata is the
+        // client's mistake, answered 400 with a machine-readable code. It
+        // used to escape as a 500, a server error and a blight for every
+        // client that sent a redirect_uri this server does not accept.
+        if (!(error instanceof OAuthClientMetadataError)) {
+          throw error;
+        }
+        reply.status = 400;
+        reply.headers["content-type"] = "application/json";
+        reply.body = JSON.stringify({
+          error: error.code,
+          error_description: error.message,
+        });
+        return;
+      }
       reply.status = 201;
       reply.headers["content-type"] = "application/json";
       reply.body = JSON.stringify({
