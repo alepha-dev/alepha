@@ -1038,7 +1038,6 @@ export default {
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":
     "Vous devez d'abord accepter la quête avant de la terminer",
-  "kanban.error.actionFailed": "L'action a échoué",
 
   "quest.view.unassign.title": "Se désassigner de cette quête",
   "quest.view.unassign.confirm":

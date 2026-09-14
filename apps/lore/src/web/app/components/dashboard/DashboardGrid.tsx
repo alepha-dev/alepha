@@ -28,6 +28,11 @@ export interface DashboardGridProps {
   onChangeScope: (card: DashboardCardResource) => void;
   onDuplicate: (card: DashboardCardResource) => void;
   onRemove: (card: DashboardCardResource) => void;
+  /**
+   * True while a card write runs: the menu's writes are held until it lands,
+   * since `run()` would drop a second one in silence (#E59 rule 10).
+   */
+  busy?: boolean;
 }
 
 /**
@@ -122,6 +127,7 @@ const DashboardGrid = (props: DashboardGridProps) => {
             onChangeScope={() => props.onChangeScope(card)}
             onDuplicate={() => props.onDuplicate(card)}
             onRemove={() => props.onRemove(card)}
+            busy={props.busy}
           />
         );
       })}
