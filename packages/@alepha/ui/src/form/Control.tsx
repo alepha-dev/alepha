@@ -487,6 +487,9 @@ export const Control = (props: ControlProps) => {
         clearable={merged.clearable}
         placeholder={merged.placeholder}
         triggerClassName={merged.triggerClassName}
+        // From `props`, like the select's below: a node has no place in a
+        // schema's `$control`.
+        triggerPrefix={props.triggerPrefix}
       />,
     );
   }

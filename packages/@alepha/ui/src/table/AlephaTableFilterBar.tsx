@@ -240,6 +240,9 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
     field: AlephaTableFilterBarField,
   ): AlephaTableFilterAddType => {
     const schema = schemaOf(field);
+    // Before the list test, as `Control` orders it: a range IS an array, and
+    // tested as one it would be offered as a list and drawn as a calendar.
+    if (schema && z.schema.isDateRange(schema)) return "date";
     if (
       field.items ||
       (schema && (z.schema.isEnum(schema) || z.schema.isArray(schema)))
@@ -277,12 +280,13 @@ export const AlephaTableFilterBar = (props: AlephaTableFilterBarProps) => {
     // ⚠️ Opening the new filter has to happen from OUT HERE, after the render
     // that mounts it: inside the menu's click handler the control does not
     // exist yet. Driven through the DOM because `Control` exposes no
-    // imperative "open" - a combobox owns that state. A text filter has no
-    // list, so it is focused instead. Scoped to this bar, so two tables on
-    // one page cannot open each other's filters.
+    // imperative "open" - a combobox owns that state, and a date range's
+    // popover owns its own. A text filter has no list, so it is focused
+    // instead. Scoped to this bar, so two tables on one page cannot open each
+    // other's filters.
     const slot = root.current?.querySelector(`[data-filter="${key}"]`);
     const trigger = slot?.querySelector<HTMLElement>(
-      '[data-slot="combobox-trigger"]',
+      '[data-slot="combobox-trigger"], [data-slot="date-trigger"]',
     );
     if (trigger) {
       trigger.click();

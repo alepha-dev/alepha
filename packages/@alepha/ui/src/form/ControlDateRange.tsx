@@ -12,7 +12,7 @@ import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { LazyCalendar, preloadCalendar } from "../calendar/LazyCalendar.tsx";
@@ -54,6 +54,13 @@ export interface ControlDateRangeProps {
    * wider than its neighbours.
    */
   triggerClassName?: string;
+  /**
+   * Drawn on the trigger just before the range, muted: the filter's name on a
+   * filter bar, so a set range reads "Created 1 Jan - 31 Jan" the way a set
+   * list reads "Status Active". Absent while the field is empty, because the
+   * placeholder already names it. Same contract as `ControlSelect`'s.
+   */
+  triggerPrefix?: ReactNode;
 }
 
 /**
@@ -218,7 +225,14 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
               <CalendarIcon
                 className={cn("text-muted-foreground shrink-0", size.icon)}
               />
+              {/* The prefix rides in the same text run as the range, for the
+                  reason `ControlSelectCombobox` gives: one run, one space. */}
               <span className="truncate">
+                {props.triggerPrefix && formatted && (
+                  <span className="text-muted-foreground">
+                    {props.triggerPrefix}{" "}
+                  </span>
+                )}
                 {formatted || props.placeholder || "Pick a date range"}
               </span>
             </span>

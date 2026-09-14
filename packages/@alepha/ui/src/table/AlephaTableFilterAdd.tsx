@@ -60,6 +60,8 @@ export const AlephaTableFilterAdd = (props: AlephaTableFilterAddProps) => {
         return tr("alephaTable.filterType.text", { default: "text" });
       case "list":
         return tr("alephaTable.filterType.list", { default: "list" });
+      case "date":
+        return tr("alephaTable.filterType.date", { default: "date" });
     }
   };
 
@@ -147,9 +149,9 @@ export interface AlephaTableFilterAddItem {
 }
 
 /**
- * The control shapes a filter bar carries: a free-text box, or a list to pick
- * from. A select taking several values is still a `list`: whether it takes
- * one or many is found out by opening it, and a third word in the menu was
- * noise rather than help.
+ * The control shapes a filter bar carries: a free-text box, a list to pick
+ * from, or a range of days on a calendar. A select taking several values is
+ * still a `list`: whether it takes one or many is found out by opening it,
+ * and another word in the menu was noise rather than help.
  */
-export type AlephaTableFilterAddType = "text" | "list";
+export type AlephaTableFilterAddType = "text" | "list" | "date";

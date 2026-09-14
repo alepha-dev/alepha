@@ -143,15 +143,17 @@ export const AlephaTableFilterControl = (
         // thing with a border now, so it has to answer for them.
         "hover:border-[var(--input-hover)]",
         "has-[:focus-visible]:border-ring has-[:focus-visible]:ring-ring/50 has-[:focus-visible]:ring-[3px]",
-        // The control keeps its layout and loses only its frame. Both slots
-        // are covered because a text filter draws `input` and a select draws
-        // `combobox-trigger`, and a bar mixes the two.
+        // The control keeps its layout and loses only its frame. Every slot
+        // is covered because a text filter draws `input`, a select draws
+        // `combobox-trigger` and a date range draws `date-trigger`, and a bar
+        // mixes the three.
         //
         // ⚠️ The ring has to go as well as the border. Leaving it turns focus
         // into a rounded rectangle floating INSIDE the container, which looks
         // like a rendering bug rather than a focused field.
         "[&_[data-slot=input]]:rounded-none [&_[data-slot=input]]:border-0 [&_[data-slot=input]]:bg-transparent [&_[data-slot=input]]:shadow-none [&_[data-slot=input]]:focus-visible:ring-0",
         "[&_[data-slot=combobox-trigger]]:rounded-none [&_[data-slot=combobox-trigger]]:border-0 [&_[data-slot=combobox-trigger]]:bg-transparent [&_[data-slot=combobox-trigger]]:shadow-none [&_[data-slot=combobox-trigger]]:focus-visible:ring-0",
+        "[&_[data-slot=date-trigger]]:rounded-none [&_[data-slot=date-trigger]]:border-0 [&_[data-slot=date-trigger]]:bg-transparent [&_[data-slot=date-trigger]]:shadow-none [&_[data-slot=date-trigger]]:focus-visible:ring-0",
         // See the docblock: the control's own clear cross would be a second,
         // identical glyph beside the remove one. Only then, though: a filter
         // given neither `onClear` nor `onRemove` draws no button of its own,

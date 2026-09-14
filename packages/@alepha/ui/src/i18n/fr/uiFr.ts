@@ -71,6 +71,7 @@ export const uiFr: Record<string, string> = {
     "Essayez d'ajuster ou d'effacer les filtres.",
   "alephaTable.addFilter": "Ajouter un filtre",
   "alephaTable.filterBy": "Filtrer par",
+  "alephaTable.filterType.date": "date",
   "alephaTable.filterType.list": "liste",
   "alephaTable.filterType.text": "texte",
   "alephaTable.filters": "Filtres",
