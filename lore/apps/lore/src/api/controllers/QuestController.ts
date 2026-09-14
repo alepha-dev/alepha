@@ -1864,6 +1864,13 @@ export class QuestController {
          * so `@handle` works here exactly as it does in the composer.
          */
         reason: z.string().min(1).meta({ size: "rich" }),
+        /**
+         * Set by `QuestTools.quest_hold` and by nothing else: an agent wrote
+         * `reason`, over MCP, as the key's owner. It only lets a self-mention
+         * in the reason reach that owner (#Q2348). It is never stored: the
+         * hold comment still carries no `source`, for the reason given below.
+         */
+        agent: z.boolean().optional(),
       }),
       response: questResourceSchema,
     },
@@ -1912,10 +1919,14 @@ export class QuestController {
         body: body.reason,
       });
 
+      // The comment keeps no `source`, but the mention pass still needs to
+      // know an agent wrote the reason: "waiting on @owner to pick X" is the
+      // case where reaching the owner matters most.
       await this.mentions.notify({
         subject: this.questMentionSubject(quest, project),
         authorId: user.id,
         body: body.reason,
+        agent: body.agent ? {} : undefined,
       });
 
       await this.logQuest("hold", quest, user);

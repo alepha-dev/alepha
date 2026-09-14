@@ -217,6 +217,12 @@ export class FeedbackCommentController {
             subject: await this.mentionSubject(row),
             authorId: user.id,
             body: body.body,
+            // `feedback_comment_add` stamps `source`; only an agent's text
+            // may ping the key's owner (#Q2348, see `MentionNotifier`).
+            agent:
+              body.source?.kind === "mcp"
+                ? { client: body.source.client }
+                : undefined,
           })
         : [];
 

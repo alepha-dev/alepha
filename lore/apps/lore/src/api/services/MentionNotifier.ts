@@ -36,9 +36,15 @@ export interface MentionSubject {
  *
  * ## The rules, and why each one exists
  *
- * - **Never ping the author.** Mentioning yourself is a note to self. The
- *   author is dropped from the roster before matching, so it cannot be
- *   reintroduced by a later change to the matcher.
+ * - **Never ping the author of text a person typed.** Mentioning yourself
+ *   is a note to self. The author is dropped from the roster before
+ *   matching, so it cannot be reintroduced by a later change to the matcher.
+ * - **Do ping the author of text an agent wrote** (`agent`, #Q2348). Over MCP
+ *   the session user IS the API key's owner, so `authorId` names the account
+ *   and not the writer: under the rule above an agent could reach everybody
+ *   except the one person it works for. The caller has to say so explicitly,
+ *   so a caller that forgets the flag cannot start pinging people about their
+ *   own typing, and the message names the agent rather than the owner.
  * - **One message per person per comment.** `@fabrice` three times in one
  *   body is one message; the matcher already dedupes.
  * - **Only project members.** The roster IS the member list, so an unknown
@@ -89,6 +95,16 @@ export class MentionNotifier {
      * matched handle new.
      */
     previousBody?: string;
+    /**
+     * Set when a machine wrote `body`: an agent over MCP, writing as the key's
+     * owner. Only then does a self-mention reach the author, and the message
+     * names `client` (the agent's self-reported name) instead of the owner.
+     *
+     * ⚠️ Absent means a person typed it, and that is the default on purpose:
+     * an edit is always typed by a person (there is no MCP edit tool), so the
+     * edit path never passes this, even on a comment an agent wrote.
+     */
+    agent?: { client?: string };
   }): Promise<string[]> {
     try {
       // The cheap gate, before any query. See the class docstring.
@@ -96,10 +112,11 @@ export class MentionNotifier {
 
       const roster = await this.roster.of(options.subject.projectId);
       const author = roster.find((it) => it.userId === options.authorId);
-      // The author is dropped here rather than after matching, so it cannot
-      // be reintroduced by a later change to the matcher.
+      // A person's own name is dropped here rather than after matching, so
+      // it cannot be reintroduced by a later change to the matcher. An agent
+      // writing as that person keeps it: see the class docstring.
       const recipients = roster.filter(
-        (it) => it.userId !== options.authorId && it.email,
+        (it) => (options.agent || it.userId !== options.authorId) && it.email,
       );
       if (recipients.length === 0) return [];
 
@@ -112,7 +129,14 @@ export class MentionNotifier {
       );
 
       for (const recipient of added) {
-        await this.push(options.subject, author, recipient, options.body);
+        await this.push(
+          options.subject,
+          options.agent
+            ? { agent: true, name: options.agent.client ?? "" }
+            : { agent: false, name: author?.name || "Someone" },
+          recipient,
+          options.body,
+        );
       }
 
       return added.map((it) => it.userId);
@@ -148,9 +172,14 @@ export class MentionNotifier {
     return found;
   }
 
+  /**
+   * `writer` is who the message says wrote the text: the author's name, or
+   * for an agent its self-reported name, empty when it gave none. The
+   * templates word an unnamed agent in each language.
+   */
   protected async push(
     subject: MentionSubject,
-    author: ProjectRosterEntry | undefined,
+    writer: { agent: boolean; name: string },
     recipient: ProjectRosterEntry,
     body: string,
   ): Promise<void> {
@@ -165,7 +194,8 @@ export class MentionNotifier {
       variables: {
         reference: subject.reference,
         subjectTitle: subject.title,
-        authorName: author?.name || "Someone",
+        authorName: writer.name,
+        agent: writer.agent,
         excerpt: this.excerpt(body),
         projectTitle: subject.projectTitle,
         href: subject.href,
