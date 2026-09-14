@@ -4,8 +4,11 @@ void React;
 
 import { Badge, Button, useToast } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import {
+  AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
+} from "@alepha/ui/table";
 import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -28,10 +31,6 @@ const formatPrice = (cents: number, currency: string) =>
  * `AlephaTable` owns a `useForm` over it, and a fresh reference each render would
  * re-anchor that form for nothing.
  */
-const filtersSchema = z.object({
-  kind: z.string().optional(),
-});
-
 export interface AdminProductsProps {
   /**
    * Where a product's detail page lives. The route belongs to the application —
@@ -96,12 +95,30 @@ export const AdminProducts = (props: AdminProductsProps) => {
     [client],
   );
 
+  /**
+   * The table's only filter, so it is on the bar from the start: a default
+   * filter, removable like any other. The kinds are this deployment's, read
+   * from the server rather than hard-coded, and labelled as they are named.
+   */
+  const filterFields = {
+    kind: {
+      schema: z.string(),
+      mode: "default",
+      label: tr("commerce.admin.colKind", { default: "Type" }),
+      icon: Shapes,
+      items: (kinds?.kinds ?? []).map((kind) => ({ value: kind, label: kind })),
+      control: {
+        clearLabel: tr("commerce.admin.allKinds", { default: "All types" }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: Record<string, any>;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) =>
       client.commerceAdminProductList({
         query: {
@@ -179,7 +196,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminProductResource>
+      <AlephaTable<AdminProductResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.products"
         fetch={fetcher}
@@ -187,39 +204,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
         emptyMessage={tr("commerce.admin.noProducts", {
           default: "No products in the catalogue.",
         })}
-        filters={{
-          schema: filtersSchema,
-          /*
-           * No label, and the "all" case is `clearable` rather than an
-           * empty-valued item — the shape every `@alepha/ui` admin table uses
-           * (`admin-users`, `admin-jobs`).
-           *
-           * The label is dropped because the column it filters is named one row
-           * below it: the bar read "Type" directly above a header that also
-           * said "Type". It also set the bar's height, which is what left the
-           * trailing buttons hanging low (see `alepha-table`'s `self-center`).
-           *
-           * `triggerClassName` rather than a wrapping `<div className="w-52">`:
-           * the width belongs to the trigger, and the wrapper made the control
-           * a flex item of its own, which is what the shared pattern avoids.
-           */
-          render: (form) => (
-            <Control
-              input={form.input.kind}
-              label=""
-              clearable
-              icon={Shapes}
-              clearLabel={tr("commerce.admin.allKinds", {
-                default: "All types",
-              })}
-              triggerClassName="w-52"
-              items={(kinds?.kinds ?? []).map((kind) => ({
-                value: kind,
-                label: kind,
-              }))}
-            />
-          ),
-        }}
+        filters={{ fields: filterFields }}
         toolbar={
           <Button
             size="sm"

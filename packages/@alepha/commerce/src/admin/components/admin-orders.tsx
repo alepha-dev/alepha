@@ -11,9 +11,11 @@ import {
   useDialog,
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
-import { z } from "alepha";
+import {
+  AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
+} from "@alepha/ui/table";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -26,6 +28,7 @@ import {
 import { useCallback, useState } from "react";
 
 import type { OrderEntity, OrderStatus } from "../../entities/orders.ts";
+import { orderStatusEnum } from "../../schemas/orderStatusSchema.ts";
 import type { AdminOrderController } from "../controllers/AdminOrderController.ts";
 
 const formatPrice = (cents: number, currency: string) =>
@@ -56,21 +59,6 @@ const STATUS_VARIANT: Record<
   partially_refunded: "outline",
 };
 
-const STATUSES: OrderStatus[] = [
-  "pending",
-  "paid",
-  "fulfilled",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "partially_refunded",
-  "refunded",
-];
-
-const filtersSchema = z.object({
-  status: z.string().optional(),
-});
-
 /**
  * Order management: see them, ship them, refund them.
  *
@@ -86,20 +74,39 @@ export const AdminOrders = () => {
 
   const [detailOf, setDetailOf] = useState<string>();
 
+  /**
+   * The table's only filter, so it is on the bar from the start: a default
+   * filter, removable like any other. Its options are the order enum's own,
+   * so a status added there is offered here without a second edit.
+   */
+  const filterFields = {
+    status: {
+      schema: orderStatusEnum,
+      mode: "default",
+      label: tr("commerce.admin.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: (status: OrderStatus) =>
+        tr(`commerce.status.${status}`, { default: status }),
+      control: {
+        clearLabel: tr("commerce.admin.allStatuses", {
+          default: "All statuses",
+        }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: Record<string, any>;
+      filters?: AlephaTableFilterValues<typeof filterFields>;
     }) =>
       client.commerceAdminOrderList({
         query: {
           page: params.page,
           size: params.size,
-          ...(params.filters?.status
-            ? { status: params.filters.status as OrderStatus }
-            : {}),
+          ...(params.filters?.status ? { status: params.filters.status } : {}),
         },
       }),
     [client],
@@ -184,32 +191,13 @@ export const AdminOrders = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<OrderEntity>
+      <AlephaTable<OrderEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.orders"
         fetch={fetcher}
         onRowClick={(order) => setDetailOf(order.id)}
         emptyMessage={tr("commerce.admin.noOrders", { default: "No orders." })}
-        filters={{
-          schema: filtersSchema,
-          // Same shape as the catalogue's kind filter — see the note there.
-          render: (form) => (
-            <Control
-              input={form.input.status}
-              label=""
-              clearable
-              icon={CircleDot}
-              clearLabel={tr("commerce.admin.allStatuses", {
-                default: "All statuses",
-              })}
-              triggerClassName="w-52"
-              items={STATUSES.map((status) => ({
-                value: status,
-                label: tr(`commerce.status.${status}`, { default: status }),
-              }))}
-            />
-          ),
-        }}
+        filters={{ fields: filterFields }}
         rowActions={(order) => [
           {
             label: tr("commerce.admin.ship", { default: "Ship" }),
