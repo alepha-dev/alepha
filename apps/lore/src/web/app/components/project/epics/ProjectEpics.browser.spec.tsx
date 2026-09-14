@@ -54,6 +54,12 @@ class FakeLinkProvider extends LinkProvider {
     epicOf(4, "Completed epic", "completed"),
   ];
 
+  /**
+   * Every `setEpicStatus` call, in order: what a bulk entry asked of the
+   * server, read back by the case that drives it.
+   */
+  statusCalls: Array<{ id: number; status: string }> = [];
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     const action = <T extends (...args: any[]) => Promise<unknown>>(fn: T) =>
@@ -61,6 +67,23 @@ class FakeLinkProvider extends LinkProvider {
     return new Proxy(
       {
         getEpics: action(async () => [...this.epics]),
+        setEpicStatus: action(
+          async (request: {
+            params: { id: number };
+            body: { status: string };
+          }) => {
+            this.statusCalls.push({
+              id: request.params.id,
+              status: request.body.status,
+            });
+            this.epics = this.epics.map((epic) =>
+              epic.id === request.params.id
+                ? ({ ...epic, status: request.body.status } as EpicResource)
+                : epic,
+            );
+            return {};
+          },
+        ),
       } as Record<string, unknown>,
       {
         get: (target, prop: string) =>
@@ -326,6 +349,80 @@ describe("ProjectEpics - the status filter", () => {
       expect(
         screen.getByRole("button", { name: /Add to release/ }),
       ).toBeTruthy();
+    });
+
+    /**
+     * Mark as ready over a selection (feedback #P2198, #Q2339). Offered only
+     * when EVERY selected epic is a draft: a mixed selection would have to
+     * refuse most of what it held, which is why #Q2223 had refused the bulk
+     * entry outright. Hidden, never disabled.
+     */
+    describe("Mark as ready", () => {
+      const DRAFTS = [
+        epicOf(1, "First draft", "draft"),
+        epicOf(2, "Second draft", "draft"),
+        epicOf(3, "Ready epic", "ready"),
+      ];
+
+      const markReady = () =>
+        screen.queryByRole("button", { name: "Mark as ready" });
+
+      it("is offered when every selected epic is a draft", async () => {
+        await mount([], DRAFTS);
+
+        selectRow("#E1 - First draft");
+        selectRow("#E2 - Second draft");
+
+        await waitFor(() => expect(markReady()).not.toBeNull());
+      });
+
+      it("is hidden for a selection that holds anything but drafts", async () => {
+        await mount([], DRAFTS);
+
+        selectRow("#E1 - First draft");
+        selectRow("#E3 - Ready epic");
+
+        // The bar is up, so the absence is the entry's own `visible`.
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("button", { name: "Delete" }),
+          ).not.toBeNull(),
+        );
+        expect(markReady()).toBeNull();
+      });
+
+      it("marks each epic ready after one confirmation naming how many", async () => {
+        const view = await mount([], DRAFTS);
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E1 - First draft");
+        selectRow("#E2 - Second draft");
+        fireEvent.click(await waitFor(() => markReady()!));
+
+        const dialog = await screen.findByRole("alertdialog");
+        expect(dialog.textContent).toContain("Mark 2 epics as ready?");
+        expect(dialog.textContent).toContain('"First draft", "Second draft"');
+        expect(fake.statusCalls).toEqual([]);
+
+        fireEvent.click(
+          within(dialog).getByRole("button", { name: "Mark 2 epics as ready" }),
+        );
+
+        await waitFor(() =>
+          expect([...fake.statusCalls].sort((a, b) => a.id - b.id)).toEqual([
+            { id: 1, status: "ready" },
+            { id: 2, status: "ready" },
+          ]),
+        );
+        // Refreshed and cleared: the rows are ready now, and nothing is
+        // selected for the bar to act on.
+        await waitFor(() => expect(markReady()).toBeNull());
+        expect(
+          view.container.querySelectorAll(
+            'tbody input[type="checkbox"]:checked',
+          ),
+        ).toHaveLength(0);
+      });
     });
 
     it("leaves a published release out of the Add to release menu", async () => {
