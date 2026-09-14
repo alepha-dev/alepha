@@ -133,10 +133,11 @@ const Calendar = (props: CalendarProps) => {
           "bg-muted after:bg-muted relative isolate z-0 rounded-r-(--cell-radius) after:absolute after:inset-y-0 after:left-0 after:w-4",
           defaultClassNames.range_end,
         ),
-        today: cn(
-          "bg-muted text-foreground rounded-(--cell-radius) data-[selected=true]:rounded-none",
-          defaultClassNames.today,
-        ),
+        // ⚠️ No fill. `bg-muted` here was the same fill a range endpoint
+        // draws, so today read as a third picked day beside a two-day range
+        // (feedback #P2203, #Q2334). The mark is the bar under the number,
+        // drawn by `CalendarDayButton` from `data-today`.
+        today: cn("text-foreground", defaultClassNames.today),
         outside: cn(
           "text-muted-foreground aria-selected:text-muted-foreground",
           defaultClassNames.outside,
@@ -225,7 +226,13 @@ const CalendarDayButton = (props: CalendarDayButtonProps) => {
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
+      data-today={modifiers.today}
       className={cn(
+        // Today is a short bar under the number, in the text's own colour:
+        // a pseudo-element rather than `underline`, whose offset collides
+        // with the edge of a 28px cell. `bg-current` keeps it visible on a
+        // selected today (primary-foreground on primary) and a plain one.
+        "data-[today=true]:after:pointer-events-none data-[today=true]:after:absolute data-[today=true]:after:bottom-1 data-[today=true]:after:left-1/2 data-[today=true]:after:h-0.5 data-[today=true]:after:w-3 data-[today=true]:after:-translate-x-1/2 data-[today=true]:after:rounded-full data-[today=true]:after:bg-current",
         "group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className,

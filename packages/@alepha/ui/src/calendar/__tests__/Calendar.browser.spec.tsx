@@ -64,3 +64,93 @@ describe("Calendar language", () => {
     expect(weekdays(container)).not.toContain("lundi");
   });
 });
+
+/**
+ * Today is marked by a bar under its number, never by a fill: the fill it had
+ * was the one a range endpoint draws, so beside a picked range today read as
+ * a third selection (feedback #P2203, #Q2334).
+ */
+describe("Calendar today", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  const today = new Date(2026, 8, 12);
+
+  const mount = async (selected?: { from: Date; to: Date }) => {
+    alepha = Alepha.create().with(AlephaReactI18n);
+    await alepha.start();
+    return render(
+      <AlephaContext.Provider value={alepha}>
+        <Calendar
+          mode="range"
+          today={today}
+          defaultMonth={today}
+          selected={selected}
+        />
+      </AlephaContext.Provider>,
+    );
+  };
+
+  /**
+   * The cell and the button of the day named `day` of the shown month.
+   */
+  const dayOf = (container: HTMLElement, day: number) => {
+    const button = [
+      ...container.querySelectorAll<HTMLButtonElement>("td button"),
+    ].find(
+      (it) =>
+        it.textContent === String(day) &&
+        !it.closest("td")?.className.includes("rdp-outside"),
+    );
+    return { button, cell: button?.closest("td") };
+  };
+
+  const fills = (className: string | undefined) =>
+    (className ?? "").split(/\s+/).filter((it) => it.startsWith("bg-"));
+
+  it("draws no fill on today's cell or button, and marks it for the bar", async () => {
+    const { container } = await mount();
+    const { button, cell } = dayOf(container, 12);
+
+    expect(cell?.className).toContain("rdp-today");
+    expect(fills(cell?.className)).toEqual([]);
+    expect(button?.getAttribute("data-today")).toBe("true");
+    expect(button?.className).toContain("data-[today=true]:after:bg-current");
+    // The bar is today's alone.
+    expect(dayOf(container, 11).button?.getAttribute("data-today")).not.toBe(
+      "true",
+    );
+  });
+
+  it("keeps a picked range's endpoints filled while today stays unfilled", async () => {
+    const { container } = await mount({
+      from: new Date(2026, 8, 1),
+      to: new Date(2026, 8, 10),
+    });
+
+    expect(fills(dayOf(container, 1).cell?.className)).toContain("bg-muted");
+    expect(dayOf(container, 1).button?.getAttribute("data-range-start")).toBe(
+      "true",
+    );
+    expect(fills(dayOf(container, 12).cell?.className)).toEqual([]);
+  });
+
+  it("keeps the selected styling and the bar on a today that is a range endpoint", async () => {
+    const { container } = await mount({
+      from: today,
+      to: new Date(2026, 8, 15),
+    });
+    const { button } = dayOf(container, 12);
+
+    expect(button?.getAttribute("data-range-start")).toBe("true");
+    expect(button?.getAttribute("data-today")).toBe("true");
+  });
+});
