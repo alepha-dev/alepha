@@ -36,6 +36,24 @@ export class DeployLimits {
   public static readonly DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 
   /**
+   * The most a run may be given, whatever an admin sets.
+   *
+   * ## ⚠️ Bounded by the platform, not by taste
+   *
+   * `deploys.run` executes inside a Cloudflare Queue consumer, which is killed
+   * after **15 minutes of wall clock**. A deploy timer set past that never
+   * fires: the platform kills the isolate first, the run writes nothing, and
+   * the only trace is `Execution assumed crashed (recovered by sweep)` half an
+   * hour later (blight #616, #Q2344). The parameter used to accept 60 minutes.
+   *
+   * Thirteen, not fifteen: what runs before the timer starts (the gate, the
+   * artifact lookup, opening the secrets) and the failure write after it
+   * fires both spend the same fifteen minutes, and a margin of two is what
+   * leaves the run room to report its own timeout.
+   */
+  public static readonly MAX_TIMEOUT_MS = 13 * 60 * 1000;
+
+  /**
    * Overridable from `/admin/parameters` without a redeploy, the way
    * `ProjectLimits` is: a ceiling that can only be changed by shipping is a
    * ceiling nobody adjusts during the incident it is causing.
@@ -52,10 +70,11 @@ export class DeployLimits {
       "How many deploys may run at once, and how long one may take. Both bound a shared 128 MB isolate.",
     schema: z.object({
       concurrency: z.integer().min(1).max(20).optional(),
+      // Capped below the queue consumer's 15 minutes; see MAX_TIMEOUT_MS.
       timeoutMs: z
         .integer()
         .min(30_000)
-        .max(60 * 60 * 1000)
+        .max(DeployLimits.MAX_TIMEOUT_MS)
         .optional(),
     }),
     default: {
@@ -70,9 +89,17 @@ export class DeployLimits {
     );
   }
 
+  /**
+   * The deploy timer, never past {@link MAX_TIMEOUT_MS}.
+   *
+   * ⚠️ Clamped here as well as in the schema: `ParameterProvider` hands back a
+   * version saved under an older schema as-is, so an override of 30 minutes
+   * set while the ceiling was 60 still reads as 30.
+   */
   public async timeoutMs(): Promise<number> {
-    return (
-      (await this.limits.get()).timeoutMs ?? DeployLimits.DEFAULT_TIMEOUT_MS
+    return Math.min(
+      (await this.limits.get()).timeoutMs ?? DeployLimits.DEFAULT_TIMEOUT_MS,
+      DeployLimits.MAX_TIMEOUT_MS,
     );
   }
 }

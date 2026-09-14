@@ -375,6 +375,11 @@ describe("$job — lease renewal for long-running jobs", () => {
       where: { id: { eq: row.id } },
     });
     expect(rows[0].status).toBe("error");
+    // The row is the only record a killed run leaves, so the sweep's error
+    // says when it started and when it last renewed, not only that it died.
+    expect(rows[0].error).toContain("Execution assumed crashed");
+    expect(rows[0].error).toContain(`started ${row.startedAt}`);
+    expect(rows[0].error).toContain(`lease last renewed ${row.updatedAt}`);
   });
 
   it("renews the lease while the handler runs", async ({ expect }) => {
