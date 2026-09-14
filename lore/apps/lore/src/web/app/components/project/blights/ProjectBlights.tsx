@@ -37,6 +37,7 @@ import { hasCapability } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import BlightSourceCell from "./BlightSourceCell.tsx";
 
 /**
  * Filter form, owned by AlephaTable: a status multi-select (open / resolved,
@@ -320,17 +321,9 @@ const ProjectBlights = () => {
           page: {
             label: tr("blights.col.page"),
             className: "max-w-[260px]",
-            cell: (b) =>
-              b.sourceUrl ? (
-                <span
-                  className="text-muted-foreground block truncate text-xs"
-                  title={b.sourceUrl}
-                >
-                  {b.sourceUrl}
-                </span>
-              ) : (
-                <span className="text-muted-foreground text-xs">—</span>
-              ),
+            // A link out for an http(s) page, text for a route pattern or a
+            // job name (feedback #P2200); the scheme check lives in the cell.
+            cell: (b) => <BlightSourceCell sourceUrl={b.sourceUrl} />,
           },
           count: {
             label: tr("blights.col.count"),
