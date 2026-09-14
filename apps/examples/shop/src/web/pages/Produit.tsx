@@ -2,7 +2,6 @@ import type { PublicProduct } from "@alepha/commerce";
 import { Button, useToast } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { useState } from "react";
 
 import { Dessin } from "../components/Dessin.tsx";
 import { PlaqueSpec } from "../components/PlaqueSpec.tsx";
@@ -28,30 +27,21 @@ export interface ProduitProps {
 const Produit = (props: ProduitProps) => {
   const { produit, disponible } = props;
   const spec = (produit.attributes ?? {}) as Record<string, string>;
-  const { ajouter } = usePanier();
+  const { ajouter, enCours } = usePanier();
   const toast = useToast();
   const { tr } = useI18n();
-  const [ajoutEnCours, setAjoutEnCours] = useState(false);
 
   const surCommande = produit.kind === "engraved";
   const dematerialise = produit.kind === "digital";
   const epuise = !dematerialise && disponible <= 0;
 
+  // No catch: a refusal (the domain's 409 when the last one has just gone,
+  // which names the stock) is toasted by the layout's `ActionErrorToaster`,
+  // and `ajouter` resolves `undefined` for it, so the success toast is not
+  // shown.
   const onAjouter = async () => {
-    setAjoutEnCours(true);
-    try {
-      await ajouter(produit.id);
+    if (await ajouter(produit.id, 1)) {
       toast.success(tr("produit.added", { args: [produit.name] }));
-    } catch (error) {
-      // The domain answers 409 when the last one has just gone. Say that,
-      // not "something went wrong".
-      toast.error(
-        error instanceof Error && /stock/i.test(error.message)
-          ? tr("produit.addFailedStock")
-          : tr("produit.addFailed"),
-      );
-    } finally {
-      setAjoutEnCours(false);
     }
   };
 
@@ -105,11 +95,11 @@ const Produit = (props: ProduitProps) => {
         <Button
           className="estampe mt-8 h-12 w-full text-xs"
           onClick={onAjouter}
-          disabled={epuise || ajoutEnCours}
+          disabled={epuise || enCours}
         >
           {epuise
             ? tr("produit.soldOut")
-            : ajoutEnCours
+            : enCours
               ? tr("produit.adding")
               : tr("produit.add")}
         </Button>

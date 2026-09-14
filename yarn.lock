@@ -7731,6 +7731,7 @@ __metadata:
     "@fontsource-variable/archivo": "npm:^5.3.0"
     "@playwright/test": "npm:^1.63.0"
     "@tailwindcss/vite": "npm:^4.3.3"
+    "@testing-library/react": "npm:^16.3.3"
     alepha: "workspace:^"
     better-sqlite3: "npm:^13.0.3"
     lucide-react: "npm:^1.43.0"

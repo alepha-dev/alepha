@@ -2,11 +2,11 @@ import type { CheckoutController } from "@alepha/commerce/checkout";
 import { Button, useToast } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
 import { z } from "alepha";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Prix } from "../components/Prix.tsx";
 import { usePanier } from "../hooks/usePanier.ts";
@@ -138,23 +138,23 @@ const Commande = () => {
   }>();
   const [options, setOptions] = useState<Option[]>([]);
   const [choix, setChoix] = useState<string>();
-  const [enCours, setEnCours] = useState(false);
 
   // Open the checkout as soon as the page mounts: the session is what every
-  // later step is addressed to.
-  useEffect(() => {
-    let annule = false;
-    void (async () => {
-      const session = await client.commerceCheckoutStart({ body: {} });
-      if (!annule) {
+  // later step is addressed to. A `useAction` run on mount, not a `useQuery`:
+  // starting a checkout opens a session, so it is a write, and it must never
+  // enter the query cache or be refetched. The state is set in `onSuccess`,
+  // which only the latest run of a still-mounted page reaches.
+  useAction(
+    {
+      handler: () => client.commerceCheckoutStart({ body: {} }),
+      onSuccess: (session) => {
         setSessionId(session.id);
         setTotaux(session);
-      }
-    })();
-    return () => {
-      annule = true;
-    };
-  }, [client]);
+      },
+      runOnInit: true,
+    },
+    [client],
+  );
 
   const chargerLivraison = useCallback(
     async (id: string) => {
@@ -186,69 +186,73 @@ const Commande = () => {
       if (!sessionId) return;
       const { email, ...adresse } = values;
       /*
-       * A postcode that does not match its country comes back as a 400 naming the
-       * field — "'1000' is not a valid postal code for France. Expected something
-       * like '75001'." Surfacing the server's own message beats any client-side
-       * guess, but nothing was surfacing it: the error escaped the handler and the
-       * storefront mounts `Toaster` without the action-error toaster the admin's
-       * `AppShell` provides. A customer who mistyped their postcode got no
-       * feedback at all — the button simply did nothing.
+       * A postcode that does not match its country comes back as a 400 naming
+       * the field: "'1000' is not a valid postal code for France. Expected
+       * something like '75001'." The server's own message beats any client-side
+       * guess, and nothing here catches it: the error leaves the handler, the
+       * layout's `ActionErrorToaster` shows it, and the steps below only run
+       * when both writes succeeded.
        */
-      try {
-        await client.commerceCheckoutSetEmail({
+      await client.commerceCheckoutSetEmail({
+        params: { id: sessionId },
+        body: { email },
+      });
+      setTotaux(
+        await client.commerceCheckoutSetAddress({
           params: { id: sessionId },
-          body: { email },
-        });
-        setTotaux(
-          await client.commerceCheckoutSetAddress({
-            params: { id: sessionId },
-            body: adresse,
-          }),
-        );
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : tr("checkout.addressFailed"),
-        );
-        return;
-      }
+          body: adresse,
+        }),
+      );
       await chargerLivraison(sessionId);
       setEtape(2);
     },
   });
 
-  const choisirLivraison = async (code: string) => {
-    if (!sessionId) return;
-    setChoix(code);
-    setTotaux(
-      await client.commerceCheckoutSetShippingMethod({
-        params: { id: sessionId },
-        body: { code },
-      }),
-    );
-  };
+  const livraison = useAction<[code: string], void>(
+    {
+      handler: async (code: string) => {
+        if (!sessionId) return;
+        // The radio moves at once, and moves back if the server refuses: the
+        // totals beside it are still the previous method's.
+        const precedent = choix;
+        setChoix(code);
+        try {
+          setTotaux(
+            await client.commerceCheckoutSetShippingMethod({
+              params: { id: sessionId },
+              body: { code },
+            }),
+          );
+        } catch (error) {
+          setChoix(precedent);
+          throw error;
+        }
+      },
+    },
+    [client, sessionId, choix],
+  );
 
-  const payer = async () => {
-    if (!sessionId) return;
-    setEnCours(true);
-    try {
-      const { handoff } = await client.commerceCheckoutPay({
-        params: { id: sessionId },
-        body: { returnUrl: `${window.location.origin}/commande/${sessionId}` },
-      });
-      if (handoff.mode === "redirect") {
-        window.location.assign(handoff.url as string);
-        return;
-      }
-      // An embedded provider would mount <PaymentSlot/> here instead.
-      toast.info(tr("checkout.embedded"));
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : tr("checkout.payFailed"),
-      );
-    } finally {
-      setEnCours(false);
-    }
-  };
+  const paiement = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!sessionId) return;
+        const { handoff } = await client.commerceCheckoutPay({
+          params: { id: sessionId },
+          body: {
+            returnUrl: `${window.location.origin}/commande/${sessionId}`,
+          },
+        });
+        if (handoff.mode === "redirect") {
+          window.location.assign(handoff.url as string);
+          return;
+        }
+        // An embedded provider would mount <PaymentSlot/> here instead.
+        toast.info(tr("checkout.embedded"));
+      },
+    },
+    [client, sessionId, toast, tr],
+  );
+  const enCours = paiement.loading;
 
   if (panier.lines.length === 0) {
     return (
@@ -324,7 +328,8 @@ const Commande = () => {
                           name="livraison"
                           value={option.code}
                           checked={choix === option.code}
-                          onChange={() => void choisirLivraison(option.code)}
+                          onChange={() => void livraison.run(option.code)}
+                          disabled={livraison.loading}
                           className="accent-primary"
                         />
                         <span className="flex-1">
@@ -400,7 +405,7 @@ const Commande = () => {
                 </Button>
                 <Button
                   className="estampe h-12 flex-1 text-xs"
-                  onClick={payer}
+                  onClick={() => void paiement.run()}
                   disabled={enCours || !sessionId}
                 >
                   {enCours ? tr("checkout.redirecting") : tr("checkout.pay")}

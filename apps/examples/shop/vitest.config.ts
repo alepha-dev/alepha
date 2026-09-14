@@ -11,6 +11,7 @@ import { workspaceProjects } from "../../../vitest.projects.ts";
  */
 export const projects = workspaceProjects(import.meta.url, {
   name: "shop",
+  jsdom: true,
 });
 
 export default defineConfig({ test: { projects } });

@@ -1,11 +1,16 @@
 import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
-import { ButtonLanguage, ButtonTheme, ButtonUser } from "@alepha/ui/shell";
+import {
+  ActionErrorToaster,
+  ButtonLanguage,
+  ButtonTheme,
+  ButtonUser,
+} from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 import { Link, NestedView, useRouter } from "alepha/react/router";
-import { useEffect } from "react";
 
 import type { AppRouter } from "./AppRouter.tsx";
 import { Poincon } from "./components/Poincon.tsx";
+import { useChargementPanier } from "./hooks/useChargementPanier.ts";
 import { usePanier } from "./hooks/usePanier.ts";
 
 /**
@@ -17,15 +22,11 @@ import { usePanier } from "./hooks/usePanier.ts";
  * the first thing that made it look generic.
  */
 export const Layout = () => {
-  const { compte, refresh } = usePanier();
+  const { compte } = usePanier();
   const { tr } = useI18n();
   const router = useRouter<AppRouter>();
 
-  // The cart lives in a signed cookie, so the browser only learns what is in it
-  // by asking. Once, on mount.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useChargementPanier();
 
   return (
     <TooltipProvider>
@@ -115,6 +116,12 @@ export const Layout = () => {
           </footer>
         </div>
         <Toaster />
+        {/* The one listener that turns a failed request into a toast. The
+            storefront had none, so a cart write or a checkout step that the
+            server refused did nothing visible; the admin had its own, inside
+            its `AppShell`. A place that shows its own error passes
+            `onError`, which keeps it out of here. */}
+        <ActionErrorToaster />
       </DialogProvider>
     </TooltipProvider>
   );
