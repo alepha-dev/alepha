@@ -53,14 +53,15 @@ const normalize = (event: KeyboardEvent): string => {
  * menubar is what keeps the pane toggles (⌘\\, ⌘.) working on a locked
  * folio, where the menubar is not mounted at all.
  *
- * And from `FolioWorkspace`, for the empty `/folios` — where there is no
+ * And from `FolioWorkspaceEmpty`, for the empty `/folios`, where there is no
  * document, so no `FolioDocument` to bind them. That state still renders a
  * full `FolioMenubar` advertising ⌘\\ and ⌘. as enabled, and without this
  * second call the glyphs were a promise nothing kept. The two call sites
- * are mutually exclusive by construction (the workspace passes
- * `enabled: props.empty === true`, and the document only exists when
- * `empty` is false), so exactly one listener is bound at a time — two
- * would both `preventDefault()` and dispatch the same action twice.
+ * are mutually exclusive by construction (`FoliosLayout` renders either the
+ * empty state or the page holding the document, never both), so exactly one
+ * listener is bound at a time: two would both `preventDefault()` and
+ * dispatch the same action twice. `enabled` stays for a caller that cannot
+ * make that guarantee by mounting alone.
  */
 export const useFolioShortcuts = (
   handlers: FolioActionHandlers,

@@ -1529,3 +1529,111 @@ test.describe("Epics — the lifecycle on the epic page", () => {
     });
   });
 });
+
+/**
+ * #Q2349: the predecessor link on an epic page opens the predecessor.
+ *
+ * The link changed the URL and the breadcrumb and left the page showing the
+ * epic it was clicked on: the router handed the mounted `ProjectEpic` the new
+ * epic as a prop, and the page had seeded its state from that prop at mount.
+ * A page now remounts when its params change. Everything below is a
+ * client-side navigation on purpose, since a `page.goto` remounts by
+ * reloading and would pass on the broken router too.
+ */
+test.describe("Epics - the predecessor link", () => {
+  test("opens the predecessor: its title, its aside and its quests", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `pred${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Pr${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
+
+    const createEpic = (title: string, dependsOn?: number) =>
+      page.evaluate(
+        async ({ projectId, title, dependsOn }) => {
+          const r = await fetch(`/api/createEpic/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(
+              dependsOn === undefined ? { title } : { title, dependsOn },
+            ),
+          });
+          if (!r.ok)
+            throw new Error(`createEpic ${r.status} ${await r.text()}`);
+          return r.json() as Promise<{ id: number; number: number }>;
+        },
+        { projectId, title, dependsOn },
+      );
+
+    const questIn = async (epicId: number, title: string) => {
+      const quest = await apiPost<{ id: number }>(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the predecessor link",
+        area: "orm",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+      });
+      const status = await page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          return r.status;
+        },
+        { epicId, questId: quest.id },
+      );
+      expect(status).toBe(200);
+    };
+
+    const firstTitle = `Before${t}`;
+    const secondTitle = `After${t}`;
+    const first = await createEpic(firstTitle);
+    const second = await createEpic(secondTitle, first.id);
+    const firstQuest = `QuestBefore${t}`;
+    const secondQuest = `QuestAfter${t}`;
+    await questIn(first.id, firstQuest);
+    await questIn(second.id, secondQuest);
+
+    await page.goto(`/${slug}/epics/${second.number}?tab=quests`);
+    await expect(page.getByText(secondQuest).first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // The predecessor is a draft, so the link reads "Blocked by".
+    await page
+      .getByRole("link", { name: `Blocked by Epic ${first.number}` })
+      .click();
+    await page.waitForURL(new RegExp(`/${slug}/epics/${first.number}(\\?|$)`), {
+      timeout: 15_000,
+    });
+
+    await expect(
+      page.getByText(firstTitle, { exact: true }).first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(secondTitle, { exact: true })).toHaveCount(0);
+    // The predecessor has no predecessor of its own.
+    await expect(page.getByText(/Blocked by Epic|After Epic/)).toHaveCount(0);
+
+    await page.getByRole("radio", { name: /^Quests/ }).click();
+    await expect(page.getByText(firstQuest).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(secondQuest)).toHaveCount(0);
+  });
+});

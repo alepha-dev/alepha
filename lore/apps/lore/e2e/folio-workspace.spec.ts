@@ -7,6 +7,7 @@ import {
   apiPost,
   createProjectViaWizard,
   emailDirOf,
+  fillMarkdownEditor,
   registerAndVerify,
   setCapability,
 } from "./_helpers.ts";
@@ -237,7 +238,7 @@ test.describe("Folio workspace", () => {
     await expect(tree).toBeVisible();
 
     await page.keyboard.press("ControlOrMeta+.");
-    // The inspector unmounts, the tree only hides — see `FolioWorkspace`'s
+    // The inspector unmounts, the tree only hides: see `FolioWorkspaceShell`'s
     // doc for why the tree has to stay mounted.
     await expect(inspector()).toHaveCount(0);
     await expect(tree).toBeHidden();
@@ -1669,4 +1670,112 @@ test.describe("Folio workspace", () => {
   // The coverage IS lost, not relocated. What it protected — that a block
   // conversion could not silently write the wrong heading level — was a
   // property of the WYSIWYG serializer, and that serializer no longer runs.
+
+  /**
+   * #Q2349. A page remounts when its params change, so the tree, the
+   * inspector's tab and focus mode live in `FolioWorkspaceShell`, in the
+   * `/folios` layout, and must outlive every step inside `/folios`: folio to
+   * folio, `/folios` to a folio, and `/folios/new` to the folio it creates.
+   *
+   * The tree's DOM node carries a marker set from the test: React leaves an
+   * attribute it does not manage alone, so the marker survives exactly as
+   * long as the node does. Every step is a client-side navigation, because a
+   * `page.goto` rebuilds the whole page and proves nothing about a remount.
+   */
+  test("15 - the tree, the inspector tab and focus mode outlive a folio switch", async () => {
+    const keepA = `KeepA-${stamp}`.slice(0, 24);
+    const keepB = `KeepB-${stamp}`.slice(0, 24);
+    const urlA = await createFolio(keepA, body);
+    const urlB = await createFolio(keepB, body);
+
+    await page.goto(`/${projectSlug}/folios`);
+    const tree = page.locator('[data-slot="folio-tree"]');
+    await expect(tree).toBeVisible({ timeout: 15_000 });
+    await tree.evaluate((el) => el.setAttribute("data-kept", "yes"));
+    const kept = page.locator('[data-slot="folio-tree"][data-kept="yes"]');
+    const urlOf = (url: string) => new RegExp(`${url}(\\?|$)`);
+
+    // `/folios` to a folio: the empty state and the page are different
+    // components in the same place, and the tree sits above both.
+    await tree.getByText(keepA, { exact: true }).click();
+    await page.waitForURL(urlOf(urlA), { timeout: 15_000 });
+    await expect(inspector()).toBeVisible({ timeout: 15_000 });
+    await expect(kept).toHaveCount(1);
+
+    const historyTab = () =>
+      inspector().getByRole("tab", { name: /history|historique/i });
+    await historyTab().click();
+    await expect(historyTab()).toHaveAttribute("aria-selected", "true");
+
+    // Folio to folio: the page remounts, the tab does not reset to Outline.
+    await tree.getByText(keepB, { exact: true }).click();
+    await page.waitForURL(urlOf(urlB), { timeout: 15_000 });
+    await expect(inspector()).toBeVisible({ timeout: 15_000 });
+    await expect(historyTab()).toHaveAttribute("aria-selected", "true");
+    await expect(kept).toHaveCount(1);
+
+    // Focus mode survives the way back.
+    await page.keyboard.press("ControlOrMeta+.");
+    await expect(inspector()).toHaveCount(0);
+    await expect(tree).toBeHidden();
+    await page.goBack();
+    await page.waitForURL(urlOf(urlA), { timeout: 15_000 });
+    await expect(inspector()).toHaveCount(0);
+    await expect(tree).toBeHidden();
+    await expect(kept).toHaveCount(1);
+    await page.keyboard.press("ControlOrMeta+.");
+    await expect(inspector()).toBeVisible({ timeout: 15_000 });
+    await expect(tree).toBeVisible();
+
+    // A folio created from the tree opens its row in rename mode on the
+    // other side of the navigation to it, which is what the retired
+    // `pendingFolioTreeRenameAtom` used to carry across a remount.
+    await page
+      .getByRole("button", { name: /^new folio$/i })
+      .first()
+      .click();
+    // Not any `/folios/<n>`: folio A, still open, already matches that.
+    await page.waitForURL(
+      (url) => /\/folios\/\d+$/.test(url.pathname) && url.pathname !== urlA,
+      { timeout: 20_000 },
+    );
+    await expect(tree.getByRole("textbox")).toBeVisible({ timeout: 10_000 });
+    await expect(kept).toHaveCount(1);
+    await tree.getByRole("textbox").press("Escape");
+    await expect(tree.getByRole("textbox")).toHaveCount(0);
+
+    // `/folios/new` to the folio its Save creates: two different pages.
+    // History is `/folios`, A, then the new folio (B's entry was dropped
+    // when the push replaced the forward stack).
+    await page.goBack();
+    await page.waitForURL(urlOf(urlA), { timeout: 15_000 });
+    await page.goBack();
+    await page.waitForURL(urlOf(`/${projectSlug}/folios`), {
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/no folio open/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    // The empty state's own button, after the tree header's icon button.
+    await page
+      .getByRole("button", { name: /^new folio$/i })
+      .last()
+      .click();
+    await page.waitForURL(urlOf(`/${projectSlug}/folios/new`), {
+      timeout: 15_000,
+    });
+    await expect(kept).toHaveCount(1);
+    await fillMarkdownEditor(page, "Written in create mode");
+    await page
+      .locator('[data-slot="folio-menubar"]')
+      .getByRole("button", { name: /^save$/i })
+      .click();
+    await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Written in create mode").first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(kept).toHaveCount(1);
+  });
 });

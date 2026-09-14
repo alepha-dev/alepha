@@ -12,7 +12,7 @@ import { useFolioShortcuts } from "./useFolioShortcuts.ts";
 /**
  * The state the empty `/folios` passes: no document, so `noFolio` is the
  * only flag that means anything and `availableWithoutFolio` alone decides
- * what is reachable. Kept in step with `FolioWorkspace`'s own constant.
+ * what is reachable. Kept in step with `FolioWorkspaceEmpty`'s own constant.
  */
 const NO_FOLIO: FolioActionState = {
   noFolio: true,
@@ -38,7 +38,7 @@ const OPEN_FOLIO: FolioActionState = {
 
 /**
  * An exhaustive handler map that records which ids fired, built off
- * `folioMenuItems()` the same way `FolioWorkspace` builds the real one - so
+ * `folioMenuItems()` the same way `FolioWorkspaceEmpty` builds the real one - so
  * an id added to the model cannot leave this spec with a hole in it.
  */
 const recordingHandlers = (): {
@@ -105,8 +105,8 @@ describe("useFolioShortcuts", () => {
   });
 
   it("binds nothing while disabled", () => {
-    // How `FolioWorkspace` and `FolioDocument` avoid both listening at
-    // once, which would dispatch every shortcut twice.
+    // For a caller that cannot avoid mounting beside another listener,
+    // which would dispatch every shortcut twice.
     const { handlers, fired } = recordingHandlers();
     renderHook(() => useFolioShortcuts(handlers, NO_FOLIO, "view", false));
 

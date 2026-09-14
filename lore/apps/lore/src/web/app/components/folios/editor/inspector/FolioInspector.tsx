@@ -81,14 +81,13 @@ const TABS: { id: FolioInspectorTab; labelKey: string }[] = [
 /**
  * The right-hand inspector: a 320px pane with three tabs (Outline /
  * History / Links) and a pinned-context budget footer shown only for
- * pinned folios. Mounted from `FolioWorkspaceContent.tsx` — inside the
- * per-folio `key`, unlike the tree pane, because every tab here needs
- * something that lives in that keyed subtree (the draft's live content,
+ * pinned folios. Mounted from `FolioWorkspaceContent.tsx`, inside the page
+ * that remounts per folio, unlike the tree pane, because every tab here needs
+ * something that lives in that subtree (the draft's live content,
  * `useFolioActions`'s revert sync). Its OPEN/CLOSED state and active tab
- * are threaded down as props from `FolioWorkspace.tsx` instead, one level
- * above the key, for the same reason the tree pane's own collapse state
- * lives there: a boolean owned by this keyed subtree would reset to its
- * default on every folio-to-folio navigation.
+ * come from `FolioWorkspaceShell` instead, in the `/folios` layout, for the
+ * same reason the tree lives there: a boolean owned by the page would reset
+ * to its default on every folio-to-folio navigation.
  */
 const FolioInspector = (props: FolioInspectorProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
