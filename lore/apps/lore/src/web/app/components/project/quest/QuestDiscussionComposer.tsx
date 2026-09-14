@@ -1,5 +1,5 @@
 import { Button, UserAvatar } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Send } from "lucide-react";
@@ -63,25 +63,29 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
   const auth = useAuth();
   const [project] = useStore(currentProjectAtom);
   const [body, setBody] = useState("");
-  const [posting, setPosting] = useState(false);
+
+  // A `useAction` (#E59, #Q2328): a refused post is the server's sentence,
+  // toasted by the root `ActionErrorToaster`, where it used to be an
+  // unhandled rejection. The draft stays in the editor, since it is cleared
+  // inside the handler on success only.
+  const postAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const trimmed = body.trim();
+        if (!trimmed) return;
+        const created = await commentApi.createQuestComment({
+          params: { id: props.quest.id },
+          body: { body: trimmed },
+        });
+        setBody("");
+        props.onPosted(created);
+      },
+    },
+    [commentApi, body, props.quest.id, props.onPosted],
+  );
+  const posting = postAction.loading;
 
   if (!project || !commentApi.createQuestComment.can()) return null;
-
-  const post = async () => {
-    const trimmed = body.trim();
-    if (!trimmed || posting) return;
-    setPosting(true);
-    try {
-      const created = await commentApi.createQuestComment({
-        params: { id: props.quest.id },
-        body: { body: trimmed },
-      });
-      setBody("");
-      props.onPosted(created);
-    } finally {
-      setPosting(false);
-    }
-  };
 
   return (
     // Same gutter as the rows above, so the composer reads as the next entry
@@ -123,7 +127,7 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
             type="button"
             size="sm"
             disabled={posting || !body.trim()}
-            onClick={() => void post()}
+            onClick={() => void postAction.run()}
           >
             <Send className="size-4" />
             {tr("quest.discussion.composer.submit")}

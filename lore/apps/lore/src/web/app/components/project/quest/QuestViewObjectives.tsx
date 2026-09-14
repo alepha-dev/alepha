@@ -1,5 +1,5 @@
-import { Checkbox, useToast } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { Checkbox } from "@alepha/ui";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { SquareSlash } from "lucide-react";
 
@@ -17,30 +17,32 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
   const { quest, onQuestUpdate } = props;
   const questApi = useClient<QuestController>();
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const [assignedQuests, setCurrentAssignedQuests] = useStore(
     currentAssignedQuestsAtom,
   );
 
-  const handleObjectiveToggle = async (objectiveId: number) => {
-    try {
-      const updatedQuest = await questApi.completeObjective({
-        params: { id: quest.id },
-        body: { objectiveId },
-      });
-      onQuestUpdate?.(updatedQuest);
-      setCurrentAssignedQuests(
-        (assignedQuests ?? []).map((t) =>
-          t.id === updatedQuest.id ? updatedQuest : t,
-        ),
-      );
-    } catch {
-      // The checkbox is driven by `quest.objectives`, which this never got to
-      // replace, so the box is already back where it was. What was missing is
-      // any sign that it moved back on purpose.
-      toaster.error(tr("quest.objective.error"));
-    }
-  };
+  // A `useAction` (#E59, #Q2328). The checkbox is driven by
+  // `quest.objectives`, which a refused toggle never gets to replace, so the
+  // box is already back where it was; the root `ActionErrorToaster` says why,
+  // in the server's words. Every box is disabled while a toggle runs, so a
+  // second tick is refused visibly rather than dropped by `run()`.
+  const toggleAction = useAction<[objectiveId: number], void>(
+    {
+      handler: async (objectiveId) => {
+        const updatedQuest = await questApi.completeObjective({
+          params: { id: quest.id },
+          body: { objectiveId },
+        });
+        onQuestUpdate?.(updatedQuest);
+        setCurrentAssignedQuests(
+          (assignedQuests ?? []).map((t) =>
+            t.id === updatedQuest.id ? updatedQuest : t,
+          ),
+        );
+      },
+    },
+    [questApi, quest.id, onQuestUpdate, assignedQuests],
+  );
 
   if (quest.objectives.length === 0) {
     return null;
@@ -52,7 +54,8 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
   const disabled =
     !!quest.completedAt ||
     !quest.acceptedAt ||
-    !questApi.completeObjective.can();
+    !questApi.completeObjective.can() ||
+    toggleAction.loading;
 
   return (
     <div className="flex flex-col gap-2 px-3 py-2">
@@ -66,7 +69,7 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
         >
           <Checkbox
             checked={objective.completed}
-            onCheckedChange={() => handleObjectiveToggle(objective.id)}
+            onCheckedChange={() => void toggleAction.run(objective.id)}
             disabled={disabled}
             className="mt-0.5"
           />

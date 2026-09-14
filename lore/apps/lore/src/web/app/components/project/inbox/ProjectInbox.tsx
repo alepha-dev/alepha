@@ -3,11 +3,17 @@ import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import type { NotificationInboxController } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { CheckCheck, FolderOpen, Globe } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -25,6 +31,12 @@ interface InboxRow {
 }
 
 const PAGE_SIZE = 25;
+
+/**
+ * One empty list, so a scope with no appended pages keeps the rows' identity
+ * across renders.
+ */
+const NO_ROWS: InboxRow[] = [];
 
 /**
  * Every message addressed to the viewer.
@@ -63,32 +75,25 @@ const ProjectInbox = () => {
   const [project] = useStore(currentProjectAtom);
   const [, setUnreadEverywhere] = useStore(inboxUnreadAtom);
 
-  const [rows, setRows] = useState<InboxRow[]>([]);
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [busy, setBusy] = useState(false);
-
   // `all` shows every project; anything else means this one. Read from the
   // URL rather than from state, because two entry points want two defaults.
   const allProjects = router.query.scope === "all";
   const scope = !allProjects && project ? `project:${project.id}` : undefined;
 
-  const fetchPage = useCallback(
-    async (after?: string) => {
-      setBusy(true);
-      try {
-        const page = await api.listInbox({
-          query: {
-            limit: PAGE_SIZE,
-            ...(scope ? { scope } : {}),
-            ...(after ? { cursor: after } : {}),
-          },
-        });
-        setRows((current) =>
-          after
-            ? [...current, ...(page.items as InboxRow[])]
-            : (page.items as InboxRow[]),
-        );
-        setCursor(page.nextCursor);
+  /**
+   * The first page, a `useQuery` keyed on the scope (#E59, #Q2328): a scope
+   * switched while the previous one loads can no longer land its rows on the
+   * new one. A failed read toasts; it used to leave an empty table that read
+   * as "no messages".
+   */
+  const firstPage = useQuery(
+    {
+      key: ["inbox", scope ?? "all"],
+      handler: () =>
+        api.listInbox({
+          query: { limit: PAGE_SIZE, ...(scope ? { scope } : {}) },
+        }),
+      onSuccess: (page) => {
         // ⚠️ Only the all-projects read may speak for the bell, whose count
         // is cross-project. A filtered page's `unreadCount` is this
         // project's, so writing it into `inboxUnreadAtom` would understate
@@ -100,63 +105,121 @@ const ProjectInbox = () => {
         if (!scope) {
           setUnreadEverywhere({ count: page.unreadCount });
         }
-      } catch {
-        // A list that could not be read is empty, not an error boundary: the
-        // rest of the project shell is still usable.
-        if (!after) setRows([]);
-        setCursor(undefined);
-      } finally {
-        setBusy(false);
-      }
+      },
     },
     [api, scope],
   );
 
-  useEffect(() => {
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because `fetchPage` flips
-    // `busy` before its first await. Same shape, and the same suppression, as
-    // `FeedbackThread`'s own load.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void fetchPage();
-  }, [fetchPage]);
+  /**
+   * The pages "Load more" appended, for the scope they were read in. A scope
+   * change leaves them behind rather than clearing them in an effect: rows
+   * from another scope simply stop matching.
+   */
+  const [more, setMore] = useState<{
+    scope?: string;
+    items: InboxRow[];
+    cursor?: string;
+  }>({ items: [] });
+  const extra = more.scope === scope ? more.items : NO_ROWS;
+
+  /**
+   * What this screen has marked read and when, over whatever the server
+   * sent. `all` is the mark-all instant, which covers rows loaded after it
+   * too: the server marked the whole scope.
+   */
+  const [readMarks, setReadMarks] = useState<{
+    ids: Record<string, string>;
+    all?: string;
+  }>({ ids: {} });
+
+  const firstItems = firstPage.data?.items as InboxRow[] | undefined;
+  // Memoised: the table runs in static-data mode and re-renders on the
+  // array's identity.
+  const rows = useMemo(
+    () =>
+      [...(firstItems ?? []), ...extra].map((row) => {
+        const at = row.readAt ?? readMarks.ids[row.id] ?? readMarks.all;
+        return at === row.readAt ? row : { ...row, readAt: at };
+      }),
+    [firstItems, extra, readMarks],
+  );
+  const cursor = extra.length > 0 ? more.cursor : firstPage.data?.nextCursor;
+
+  const loadMoreAction = useAction<[after: string], void>(
+    {
+      handler: async (after) => {
+        const page = await api.listInbox({
+          query: {
+            limit: PAGE_SIZE,
+            ...(scope ? { scope } : {}),
+            cursor: after,
+          },
+        });
+        setMore((current) => ({
+          scope,
+          items: [
+            ...(current.scope === scope ? current.items : []),
+            ...(page.items as InboxRow[]),
+          ],
+          cursor: page.nextCursor,
+        }));
+        if (!scope) {
+          setUnreadEverywhere({ count: page.unreadCount });
+        }
+      },
+    },
+    [api, scope],
+  );
+  const busy = firstPage.loading || loadMoreAction.loading;
+
+  /**
+   * Mark one row read, optimistically. Quiet on failure (`onError`): the row
+   * stays marked on screen. Re-reading it is cheap and being wrong the other
+   * way costs the reader their place in the list.
+   */
+  const markReadAction = useAction<[row: InboxRow], void>(
+    {
+      handler: async (row) => {
+        setReadMarks((current) => ({
+          ...current,
+          ids: { ...current.ids, [row.id]: dateTime.nowISOString() },
+        }));
+        await api.markInboxRead({ params: { id: row.id } });
+      },
+      onError: () => {},
+    },
+    [api, dateTime],
+  );
 
   const open = async (row: InboxRow) => {
     if (!row.readAt) {
-      await markRead(row);
+      // Awaited but not trusted: the navigation happens whether or not the
+      // mark landed, which is the point of marking it quietly.
+      await markReadAction.run(row);
     }
     void router.push(row.href);
   };
 
-  const markRead = async (row: InboxRow) => {
-    setRows((current) =>
-      current.map((it) =>
-        it.id === row.id ? { ...it, readAt: dateTime.nowISOString() } : it,
-      ),
-    );
-    try {
-      await api.markInboxRead({ params: { id: row.id } });
-    } catch {
-      // The row stays marked on screen. Re-reading it is cheap and being
-      // wrong the other way costs the reader their place in the list.
-    }
-  };
-
-  const markAllRead = async () => {
-    const at = dateTime.nowISOString();
-    setRows((current) =>
-      current.map((it) => ({ ...it, readAt: it.readAt ?? at })),
-    );
-    try {
-      await api.markAllInboxRead({ query: scope ? { scope } : {} });
-    } finally {
-      // Same rule as the read above: zero is the whole inbox's answer only
-      // when the whole inbox is what was marked.
-      if (!scope) {
-        setUnreadEverywhere({ count: 0 });
-      }
-    }
-  };
+  const markAllAction = useAction<[], void>(
+    {
+      handler: async () => {
+        setReadMarks((current) => ({
+          ...current,
+          all: dateTime.nowISOString(),
+        }));
+        try {
+          await api.markAllInboxRead({ query: scope ? { scope } : {} });
+        } finally {
+          // Same rule as the first page: zero is the whole inbox's answer
+          // only when the whole inbox is what was marked.
+          if (!scope) {
+            setUnreadEverywhere({ count: 0 });
+          }
+        }
+      },
+    },
+    [api, dateTime, scope],
+  );
 
   const setScope = (next: "project" | "all") => {
     if (!project?.slug) return;
@@ -198,8 +261,8 @@ const ProjectInbox = () => {
           {
             icon: CheckCheck,
             label: tr("inbox.markAllRead"),
-            onClick: () => void markAllRead(),
-            disabled: unreadOnScreen === 0,
+            onClick: () => void markAllAction.run(),
+            disabled: unreadOnScreen === 0 || markAllAction.loading,
           },
           {
             // A toggle rather than two entries: there are exactly two scopes
@@ -302,7 +365,7 @@ const ProjectInbox = () => {
             variant="outline"
             size="sm"
             disabled={busy}
-            onClick={() => void fetchPage(cursor)}
+            onClick={() => void loadMoreAction.run(cursor)}
           >
             {tr("inbox.loadMore")}
           </Button>

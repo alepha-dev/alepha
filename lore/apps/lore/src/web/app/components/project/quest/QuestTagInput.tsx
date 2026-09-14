@@ -1,8 +1,8 @@
 import { Badge, Input } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Tags as TagsIcon, X } from "lucide-react";
-import { type KeyboardEvent, useEffect, useState } from "react";
+import { type KeyboardEvent, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -30,26 +30,25 @@ const QuestTagInput = (props: QuestTagInputProps) => {
   const { tr } = useI18n<I18n, "en">();
   const questApi = useClient<QuestController>();
   const [draft, setDraft] = useState("");
-  const [known, setKnown] = useState<string[]>([]);
 
   const value = props.value ?? [];
 
-  useEffect(() => {
-    if (!props.projectId) return;
-    let alive = true;
-    questApi
-      .listQuestTags({ query: { projectId: props.projectId } })
-      .then((tags) => {
-        if (alive) setKnown(tags);
-      })
-      .catch(() => {
-        // suggestions are a nice-to-have; absorbing the failure keeps
-        // the input usable for offline / first-tag scenarios.
-      });
-    return () => {
-      alive = false;
-    };
-  }, [props.projectId]);
+  // Suggestions are a nice-to-have: quiet on failure (#E59, #Q2328), which
+  // keeps the input usable for offline and first-tag scenarios. Keyed on the
+  // project, and shared with `QuestCreate`.
+  const known =
+    useQuery(
+      {
+        key: ["quest-tags", props.projectId],
+        enabled: !!props.projectId,
+        handler: () =>
+          questApi.listQuestTags({
+            query: { projectId: props.projectId as number },
+          }),
+        onError: () => {},
+      },
+      [questApi, props.projectId],
+    ).data ?? [];
 
   const commit = (raw: string) => {
     const v = raw.trim().toLowerCase();
