@@ -309,7 +309,7 @@ test.describe("Releases", () => {
   });
 
   /**
-   * The page is an `DataTable` now, shaped like Epics. These are the two
+   * The page is a `DataTable` now, shaped like Epics. These are the two
    * affordances the rebuild added, and the ones a card list could not have.
    *
    * ⚠️ The sort assertion is the same trap as the data-level test above, one

@@ -1559,7 +1559,7 @@ export class AppRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Epics`,
     }),
-    // No loader: `ProjectEpics` is an DataTable, which owns its own
+    // No loader: `ProjectEpics` is a DataTable, which owns its own
     // fetch (filters, sort and page are its state, not the route's). A
     // loader here would fetch the list a second time and then have it
     // discarded on mount. Same arrangement as `projectBlights`.

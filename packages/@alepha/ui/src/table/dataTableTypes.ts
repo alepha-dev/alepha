@@ -382,7 +382,7 @@ export interface DataTableFilterFieldOptions {
 }
 
 /**
- * One filter of an `DataTable`: its schema, and how the bar draws it.
+ * One filter of a `DataTable`: its schema, and how the bar draws it.
  *
  * A field carries a `schema`, a `preset`, or both. The table wraps the schema
  * in `.optional()` itself, since every filter is optional by nature.

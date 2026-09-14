@@ -18,7 +18,7 @@ export interface AdminPageProps {
  * every admin page used to copy-paste.
  *
  * The frame is `p-2`, 8px, because **this shell is a table shell**: 13 of its
- * 14 call sites put an `DataTable` straight into it, and a table already
+ * 14 call sites put a `DataTable` straight into it, and a table already
  * draws its own edge, so the `p-6` this used to be gave 24px down each side
  * to nothing (#Q2266).
  *

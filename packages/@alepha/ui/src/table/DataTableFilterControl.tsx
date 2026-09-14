@@ -61,7 +61,7 @@ export interface DataTableFilterControlProps {
 }
 
 /**
- * One filter's slot in an `DataTable` filter bar: the control, and the
+ * One filter's slot in a `DataTable` filter bar: the control, and the
  * cross that removes it.
  *
  * **One box, not a control with a button beside it.** The container draws the
