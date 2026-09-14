@@ -36,7 +36,7 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
   // one this was written for. `HttpClient.queryParams` `JSON.stringify`s any
   // object-valued query param, so the framework's own client sends
   // `?createdAt=["2026-01-01","2026-01-31"]`; a hand-written URL, and
-  // `AlephaTable`'s own filter serialisation, send the comma-joined form. A
+  // `DataTable`'s own filter serialisation, send the comma-joined form. A
   // split that ran on both would cut the JSON in half and hand the schema
   // `["[\"2026-01-01\"", …]`, which fails as "Invalid ISO date" and names
   // nothing useful. So a value that opens with `[` is left to the JSON branch

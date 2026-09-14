@@ -12,7 +12,7 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback } from "react";
 
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminPaymentsStatusBadge } from "./AdminPaymentsStatusBadge.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
@@ -37,7 +37,7 @@ export const AdminPayments = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<IntentResource>
+      <DataTable<IntentResource>
         className="min-h-0 flex-1"
         persistenceKey="admin.payments"
         fetch={fetcher}

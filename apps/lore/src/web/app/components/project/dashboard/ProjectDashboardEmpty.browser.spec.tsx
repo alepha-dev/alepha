@@ -12,7 +12,7 @@ import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
  * The board with no cards on it (feedback #P2180).
  *
  * The whole page at zero cards: no header, no Add button up top, one empty
- * state shaped like `AlephaTable`'s - a muted icon, a title, a line, and the
+ * state shaped like `DataTable`'s - a muted icon, a title, a line, and the
  * action - with the Add card button in it for whoever can use it.
  */
 describe("ProjectDashboardEmpty", () => {
@@ -69,7 +69,7 @@ describe("ProjectDashboardEmpty", () => {
 
     const empty = screen.getByTestId("dashboard-empty");
     expect(empty.className).not.toContain("border-dashed");
-    // A muted icon over the title, the way `AlephaTable` draws its own.
+    // A muted icon over the title, the way `DataTable` draws its own.
     expect(empty.querySelector("svg")).not.toBeNull();
     expect(screen.getByText("Nothing on this board yet")).toBeTruthy();
   });

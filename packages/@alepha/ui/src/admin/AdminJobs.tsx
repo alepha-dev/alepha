@@ -19,8 +19,8 @@ import { useMemo, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
-import type { AlephaTableFilterFields } from "../table/alephaTableTypes.ts";
+import { DataTable } from "../table/DataTable.tsx";
+import type { DataTableFilterFields } from "../table/dataTableTypes.ts";
 import { AdminJobsTypeIcon } from "./AdminJobsTypeIcon.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { useJobRetentionLabels } from "./useJobRetentionLabels.ts";
@@ -152,7 +152,7 @@ export const AdminJobs = () => {
         clearLabel: tr("admin.jobs.healthAll", { default: "Any health" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const canTrigger = client.triggerJob.can();
 
@@ -163,7 +163,7 @@ export const AdminJobs = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<JobRegistration, typeof filterFields>
+      <DataTable<JobRegistration, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.jobs"
         rowKey={(j) => j.name}

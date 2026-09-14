@@ -151,7 +151,7 @@ test.describe("Showcase", () => {
     // The whole reason the preview is an iframe. Narrowing a div changes no
     // media query: Tailwind's `sm:` and `useIsMobile()` both ask the WINDOW,
     // so at 375px of preview width inside a 1280px window every component
-    // still took its desktop branch. `AlephaTable` kept its filters inline
+    // still took its desktop branch. `DataTable` kept its filters inline
     // instead of folding them behind the button it has for exactly that case,
     // and every assertion about the page passed while it did.
     await page.setViewportSize({ width: 1440, height: 820 });
@@ -298,7 +298,7 @@ test.describe("Showcase", () => {
   });
 });
 
-test.describe("AlephaTable", () => {
+test.describe("DataTable", () => {
   test("renders rows fetched through the action registry", async ({ page }) => {
     await page.goto("/blocks/table");
 
@@ -328,7 +328,7 @@ test.describe("AlephaTable", () => {
 
     // The first row's three-dots trigger. A submenu is the one shape a jsdom
     // spec cannot prove lays out, which is why this case is here and not
-    // only in `AlephaTableRowActionGroup.browser.spec.tsx`.
+    // only in `DataTableRowActionGroup.browser.spec.tsx`.
     await page
       .getByRole("button", { name: "Open row actions" })
       .first()

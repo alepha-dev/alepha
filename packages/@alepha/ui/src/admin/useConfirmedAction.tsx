@@ -13,7 +13,7 @@ export interface UseConfirmedActionConfig<TArgs extends unknown[]> {
   confirm: ConfirmOptions | ((...args: TArgs) => ConfirmOptions);
   /**
    * The mutation. Runs only if the user confirms. Receives the same args as
-   * `run` (e.g. the row + a `refresh` callback from `AlephaTable`'s row/bulk
+   * `run` (e.g. the row + a `refresh` callback from `DataTable`'s row/bulk
    * action context). Errors surface via the global action-error toaster.
    */
   handler: (...args: TArgs) => void | Promise<void>;

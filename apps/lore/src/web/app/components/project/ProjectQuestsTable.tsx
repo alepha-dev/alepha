@@ -13,9 +13,9 @@ import {
   UserAvatar,
 } from "@alepha/ui";
 import {
-  AlephaTable,
-  alephaTableFilterKeys,
-  type AlephaTableFilterFields,
+  DataTable,
+  dataTableFilterKeys,
+  type DataTableFilterFields,
   type BulkAction,
   type BulkMenuAction,
 } from "@alepha/ui/table";
@@ -266,7 +266,7 @@ const ProjectQuestsTable = () => {
           tr("board.filter.releaseCount", { args: [String(n)] }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   /**
    * The slice of the URL the table seeds from, as a remount key.
@@ -276,7 +276,7 @@ const ProjectQuestsTable = () => {
    * without a second edit here. Reading `router.query` is all this does: the
    * filters are never written back (#156).
    */
-  const seedKey = alephaTableFilterKeys(filterFields)
+  const seedKey = dataTableFilterKeys(filterFields)
     .map((key) => `${key}=${router.query[key] ?? ""}`)
     .join("&");
 
@@ -419,14 +419,14 @@ const ProjectQuestsTable = () => {
       data-testid="quests-table"
       className="flex flex-1 flex-col overflow-hidden"
     >
-      <AlephaTable<QuestResource, typeof filterFields>
+      <DataTable<QuestResource, typeof filterFields>
         // The seed is part of the identity: `initialValues` are captured once
         // per mount, and arriving from a different drill-through link on a
         // route the app is already showing would otherwise change nothing.
         key={`${project.id}:${seedKey}`}
         className="min-h-0 flex-1"
         emptyMessage={tr("common.noResults")}
-        // AlephaTable owns the filter form + toolbar, and persists filter
+        // DataTable owns the filter form + toolbar, and persists filter
         // values, column visibility, and sort under this key (replaces the
         // hand-rolled toolbar + localStorage that used to live here).
         persistenceKey={`lor.board.${project.id}`}
@@ -448,7 +448,7 @@ const ProjectQuestsTable = () => {
           fields: filterFields,
           /**
            * Every filter on this table is linkable: `?status=todo,in_progress`,
-           * `?tag=need-answer&tagOp=none`, `?search=auth`. AlephaTable reads
+           * `?tag=need-answer&tagOp=none`, `?search=auth`. DataTable reads
            * every key of the fields once on arrival, operator keys included;
            * a value a schema refuses is dropped, so a stale bookmark lands on
            * the unfiltered list rather than an error page.

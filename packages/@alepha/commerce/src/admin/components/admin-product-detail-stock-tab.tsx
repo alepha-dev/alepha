@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
-import { AlephaTable, type TableFetcher } from "@alepha/ui/table";
+import { DataTable, type TableFetcher } from "@alepha/ui/table";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
@@ -122,7 +122,7 @@ export const AdminProductDetailStockTab = (
           </CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col">
-          <AlephaTable<StockMovementEntity>
+          <DataTable<StockMovementEntity>
             className="min-h-0 flex-1"
             persistenceKey={`commerce.admin.product.${product.id}.movements`}
             fetch={props.fetch}

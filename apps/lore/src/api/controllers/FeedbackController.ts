@@ -774,7 +774,7 @@ export class FeedbackController {
 
   /**
    * Reporter-facing list of the caller's OWN feedback across every project
-   * they submitted to (the `/me` profile page). Paginated for `AlephaTable`,
+   * they submitted to (the `/me` profile page). Paginated for `DataTable`,
    * with optional search / status / project filters. No membership needed —
    * feedback belongs to its reporter regardless of project membership.
    */

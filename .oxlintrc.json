@@ -67,7 +67,7 @@
     // its DOM. The single most expensive React mistake that still type-checks.
     //
     // `allowAsProps` because the default flags render props too, and all 164
-    // sites in this repo are render props: `AlephaTable`'s `filters.render`,
+    // sites in this repo are render props: `DataTable`'s `filters.render`,
     // its column cells, and the admin panels built on them. Those are CALLED
     // (`props.filters.render(form)`), never mounted, so no remount can happen.
     // With the option set the rule reports zero here — which is the point: it

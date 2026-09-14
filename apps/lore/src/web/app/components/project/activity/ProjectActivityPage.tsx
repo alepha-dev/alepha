@@ -1,8 +1,8 @@
 import { TimeAgo, Badge } from "@alepha/ui";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -38,7 +38,7 @@ import { activityResourceHref } from "./activityResourceHref.ts";
  *
  * ## No polling, ever
  *
- * `AlephaTable` fetches on mount and on an explicit refresh, and there is
+ * `DataTable` fetches on mount and on an explicit refresh, and there is
  * deliberately no interval. The QuestGraph incident (folio #1057) was a route
  * loader revalidating once per second for 51 minutes, producing 4,009
  * identical `/api/_batch` requests from one browser tab - roughly 35% of that
@@ -189,7 +189,7 @@ const ProjectActivityPage = () => {
       label: tr("activity.col.when"),
       placeholder: tr("activity.filter.anyDate"),
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetchActivity = async ({
     page,
@@ -200,7 +200,7 @@ const ProjectActivityPage = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: AlephaTableFilterValues<typeof filterFields>;
+    filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<ProjectActivityRow>> => {
     if (!project) {
       return emptyPage(page, size);
@@ -251,7 +251,7 @@ const ProjectActivityPage = () => {
     // pages lost their gutter, which #Q2291 undid. A page whose body is
     // cards, a form or prose stays at `p-4`.
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<ProjectActivityRow, typeof filterFields>
+      <DataTable<ProjectActivityRow, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.activity.${project.id}`}
         // Newest first, which is the question somebody opening this page is
@@ -426,7 +426,7 @@ const capitalize = (value: string): string =>
   value.charAt(0).toUpperCase() + value.slice(1);
 
 /**
- * The shape `AlephaTable` expects when there is nothing to fetch yet.
+ * The shape `DataTable` expects when there is nothing to fetch yet.
  */
 const emptyPage = <T,>(page: number, size: number): Page<T> => ({
   content: [],

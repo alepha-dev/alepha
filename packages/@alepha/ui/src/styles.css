@@ -371,7 +371,7 @@
  * panel is a 0% step in dark too — same token on both sides, and the
  * measurement is `oklch(0.269 0 0)` for the hovered control and
  * `oklch(0.269 0 0)` for the panel it sits on. That is the whole of quest
- * #1643: the AlephaTable toolbar IS a `bg-muted` panel, so its three icon
+ * #1643: the DataTable toolbar IS a `bg-muted` panel, so its three icon
  * buttons had no hover at all in dark. Light was fine on that same panel
  * only because the wash below already applied there. So the selector block
  * now runs in both modes, and dark gets its own state-layer values.

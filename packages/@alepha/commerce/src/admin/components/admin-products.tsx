@@ -5,9 +5,9 @@ void React;
 import { Badge, Button, useToast } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
@@ -28,7 +28,7 @@ const formatPrice = (cents: number, currency: string) =>
 
 /**
  * Toolbar filter. Module scope so its identity stays stable across renders —
- * `AlephaTable` owns a `useForm` over it, and a fresh reference each render would
+ * `DataTable` owns a `useForm` over it, and a fresh reference each render would
  * re-anchor that form for nothing.
  */
 export interface AdminProductsProps {
@@ -111,14 +111,14 @@ export const AdminProducts = (props: AdminProductsProps) => {
         clearLabel: tr("commerce.admin.allKinds", { default: "All types" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) =>
       client.commerceAdminProductList({
         query: {
@@ -196,7 +196,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminProductResource, typeof filterFields>
+      <DataTable<AdminProductResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.products"
         fetch={fetcher}

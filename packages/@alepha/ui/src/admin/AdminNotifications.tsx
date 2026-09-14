@@ -22,11 +22,11 @@ import { useCallback, useState } from "react";
 import { Badge } from "../core/Badge.tsx";
 import TimeAgo from "../core/TimeAgo.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import type {
-  AlephaTableFilterFields,
-  AlephaTableFilterValues,
-} from "../table/alephaTableTypes.ts";
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { notificationChannelLabel } from "./adminNotificationsChannelLabel.ts";
 import { AdminNotificationsDetail } from "./AdminNotificationsDetail.tsx";
 import { AdminNotificationsStatusBadge } from "./AdminNotificationsStatusBadge.tsx";
@@ -194,14 +194,14 @@ export const AdminNotifications = () => {
         }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const f = params.filters ?? {};
       const page = await client.findNotifications({
@@ -313,7 +313,7 @@ export const AdminNotifications = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<NotificationResource, typeof filterFields>
+      <DataTable<NotificationResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.notifications"
         fetch={fetcher}
@@ -452,7 +452,7 @@ export const AdminNotifications = () => {
               ),
           },
           type: {
-            // The column KEY stays `type`: AlephaTable persists column
+            // The column KEY stays `type`: DataTable persists column
             // visibility under it, and renaming would silently drop every
             // operator's stored preference. Only the label moves, to match
             // what the detail sheet has always called it.

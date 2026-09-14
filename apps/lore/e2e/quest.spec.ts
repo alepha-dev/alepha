@@ -2349,7 +2349,7 @@ test.describe("Quest — the questline route", () => {
 });
 
 /**
- * The quest table's column ORDER, which is the surface `AlephaTable` grew for
+ * The quest table's column ORDER, which is the surface `DataTable` grew for
  * quest #1871 and which this table is the first adopter of.
  *
  * ⚠️ It has to be an e2e. The reconciliation half is covered by browser specs

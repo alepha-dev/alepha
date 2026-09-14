@@ -15,7 +15,7 @@ import {
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import { AutoForm } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -123,7 +123,7 @@ export const AdminShipping = () => {
         </Tabs>
       ) : null}
 
-      <AlephaTable<ShippingRateEntity>
+      <DataTable<ShippingRateEntity>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.shipping"
         fetch={fetcher}

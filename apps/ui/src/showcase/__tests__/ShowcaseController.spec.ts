@@ -112,7 +112,7 @@ describe("ShowcaseController", () => {
    * descending; a comma separates COLUMNS in a multi-column sort, so
    * `name,desc` asks for a second column called "desc". This spec asserted the
    * comma form and passed, because the fixture parsed the same wrong thing -
-   * two halves agreeing with each other and with nothing else. What `AlephaTable`
+   * two halves agreeing with each other and with nothing else. What `DataTable`
    * actually sends is `-name`, which the fixture read as one long field name:
    * every row's value came back undefined, every comparison returned 0, and a
    * stable sort handed back the original order. Descending did nothing, on the

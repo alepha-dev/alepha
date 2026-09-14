@@ -100,7 +100,7 @@ describe("the Apps list", () => {
     } as never;
   });
 
-  // ⚠️ `AlephaTable` persists its filters, so a case would otherwise inherit
+  // ⚠️ `DataTable` persists its filters, so a case would otherwise inherit
   // the previous one's selection and narrow a table it never touched.
   afterEach(() => {
     localStorage.clear();
@@ -519,7 +519,7 @@ describe("the Apps list", () => {
 
     /**
      * ⚠️ A row in this table navigates to the instance page
-     * (`AlephaTable`'s `onRowClick`, which is React's own `onClick` on the
+     * (`DataTable`'s `onRowClick`, which is React's own `onClick` on the
      * `<tr>`). Without `stopPropagation` one click both opens the app in a
      * new tab AND moves the page underneath, so the reader comes back to
      * somewhere they never asked for.

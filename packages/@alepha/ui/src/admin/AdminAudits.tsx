@@ -25,11 +25,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import type {
-  AlephaTableFilterFields,
-  AlephaTableFilterValues,
-} from "../table/alephaTableTypes.ts";
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
@@ -129,14 +129,14 @@ export const AdminAudits = () => {
         clearLabel: tr("admin.audits.actionAll", { default: "All actions" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const f = params.filters;
       // The picked value is a `type:action` key, the shape the Action column
@@ -218,7 +218,7 @@ export const AdminAudits = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AuditEntity, typeof filterFields>
+      <DataTable<AuditEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.audits"
         fetch={fetcher}

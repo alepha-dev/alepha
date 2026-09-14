@@ -1,8 +1,8 @@
 import { Badge, Button, useToast, cn } from "@alepha/ui";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { z } from "alepha";
 import type { Page } from "alepha";
@@ -126,7 +126,7 @@ const FILTER_FIELDS = {
     icon: AtSign,
     placeholder: "Email contains…",
   },
-} satisfies AlephaTableFilterFields;
+} satisfies DataTableFilterFields;
 
 /**
  * "No items" is the one state the fixture cannot reach on its own: it always
@@ -168,7 +168,7 @@ const Table = () => {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof FILTER_FIELDS>;
+      filters?: DataTableFilterValues<typeof FILTER_FIELDS>;
     }) =>
       client.findShowcaseMembers({
         query: {
@@ -215,7 +215,7 @@ const Table = () => {
       }}
     >
       {(v) => (
-        <AlephaTable<ShowcaseMember, typeof FILTER_FIELDS>
+        <DataTable<ShowcaseMember, typeof FILTER_FIELDS>
           // `defaultSize`, `defaultHidden`, `persistenceKey` and `seedValues`
           // are read at mount, so every knob that feeds one has to be in this
           // key or the switch moves and the table does not. `fullHeight` is

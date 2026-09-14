@@ -17,7 +17,7 @@ renders:
 ```ts
 import { Button, cn, useToast } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { AdminRouter } from "@alepha/ui/admin";
 ```
 
@@ -39,7 +39,7 @@ the module map and that `@alepha/ui` (the root) imports no other module.
 | `@alepha/ui`           | The primitives (`Button`, `Input`, `Card`, `Badge`, `Dialog`, `Sheet`, `Tooltip`, `Sidebar`, and the rest), `cn`, `useToast` + `Toaster`, `useDialog` + `DialogProvider`, `useIsMobile`, `TimeAgo`, `UserAvatar` |
 | `@alepha/ui/form`      | `AutoForm`, `Control` and the per-type renderers (`ControlSelect`, `ControlDate`, `ControlUpload`, ...), `FormField`, `resizeImage`                                                                              |
 | `@alepha/ui/settings`  | The settings kit: `SettingsLayout`, `SettingsNav`, `SettingsSection`, `SettingsRow`, `SettingsDangerSection`                                                                                                     |
-| `@alepha/ui/table`     | `AlephaTable` and its parts, `paginateLocal`, `useTableSelection`, `PermissionMatrix`                                                                                                                            |
+| `@alepha/ui/table`     | `DataTable` and its parts, `paginateLocal`, `useTableSelection`, `PermissionMatrix`                                                                                                                              |
 | `@alepha/ui/tree`      | `TreeView`, `TreeViewResizer`, `useTreeState`, and the tree model (`buildTree`, `flattenTree`, `resolveDrop`, ...)                                                                                               |
 | `@alepha/ui/markdown`  | `MarkdownView` and the diagram parsers. See the section below                                                                                                                                                    |
 | `@alepha/ui/shell`     | `AppShell`, `NavShell` and its `Spotlight`, `PlateLayout`, `DetailLayout`, `AppActions`, the header buttons, `ActionErrorToaster`                                                                                |

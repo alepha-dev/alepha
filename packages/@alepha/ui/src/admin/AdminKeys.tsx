@@ -23,11 +23,11 @@ import { ApiKeyStatusBadge } from "../account/ApiKeyStatusBadge.tsx";
 import { Badge } from "../core/Badge.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import type {
-  AlephaTableFilterFields,
-  AlephaTableFilterValues,
-} from "../table/alephaTableTypes.ts";
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminKeysTokenDialog } from "./AdminKeysTokenDialog.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
@@ -85,14 +85,14 @@ export const AdminKeys = () => {
         clearLabel: tr("admin.keys.statusAll", { default: "All statuses" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const status = params.filters?.status;
       return client.findApiKeys({
@@ -171,7 +171,7 @@ export const AdminKeys = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminApiKeyResource, typeof filterFields>
+      <DataTable<AdminApiKeyResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.keys"
         fetch={fetcher}

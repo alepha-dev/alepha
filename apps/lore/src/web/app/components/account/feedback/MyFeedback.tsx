@@ -1,6 +1,6 @@
 import { TimeAgo, Badge, useDialog } from "@alepha/ui";
 import { SettingsHeading } from "@alepha/ui/settings";
-import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -37,7 +37,7 @@ const MyFeedback = () => {
   const [editing, setEditing] = useState<MyFeedbackResource | undefined>(
     undefined,
   );
-  // AlephaTable exposes `refresh` only through its row-action context, not via
+  // DataTable exposes `refresh` only through its row-action context, not via
   // a ref. Bumping this remount key refetches after a drawer save; filters /
   // sort survive the remount because they persist under `persistenceKey`.
   const [tableKey, setTableKey] = useState(0);
@@ -96,7 +96,7 @@ const MyFeedback = () => {
       hidden: projectOptions.length === 0,
       control: { clearLabel: tr("myFeedback.filter.allProjects") },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -110,7 +110,7 @@ const MyFeedback = () => {
         description={tr("myFeedback.description")}
       />
 
-      <AlephaTable<MyFeedbackResource, typeof filterFields>
+      <DataTable<MyFeedbackResource, typeof filterFields>
         key={tableKey}
         className="min-h-0 flex-1"
         persistenceKey="lor.me.feedback"

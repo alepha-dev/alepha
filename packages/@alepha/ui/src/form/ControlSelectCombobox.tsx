@@ -248,7 +248,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
    *   retained after being shown once.
    * - **"Reset filters" is not a fallback.** It is all or nothing. With
    *   status, area and release all set, dropping just the release is a
-   *   different intent, and `AlephaTable`'s menu has no per-filter escape.
+   *   different intent, and `DataTable`'s menu has no per-filter escape.
    * - **It costs nothing at rest**, since `showClear` needs a selection.
    *
    * ## No row comes back, at any size

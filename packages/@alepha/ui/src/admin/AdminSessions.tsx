@@ -13,11 +13,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import type {
-  AlephaTableFilterFields,
-  AlephaTableFilterValues,
-} from "../table/alephaTableTypes.ts";
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
@@ -132,14 +132,14 @@ export const AdminSessions = () => {
         clearLabel: tr("admin.sessions.lastUsedAny", { default: "Any time" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const { filters, ...page } = params;
       return client.findSessions({
@@ -210,7 +210,7 @@ export const AdminSessions = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<SessionResource, typeof filterFields>
+      <DataTable<SessionResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.sessions"
         fetch={fetcher}

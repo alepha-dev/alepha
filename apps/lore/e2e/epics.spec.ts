@@ -330,7 +330,7 @@ test.describe("Epics — the backlog gate", () => {
 
 /**
  * The Epics LIST, which the gate test above never visits — it goes straight
- * to `/epics/:number`. Since the list moved onto `AlephaTable` it owns its
+ * to `/epics/:number`. Since the list moved onto `DataTable` it owns its
  * own fetch (the route loader was removed), so "the page renders rows at
  * all" is now a client-side path with nothing server-rendered behind it to
  * mask a failure.

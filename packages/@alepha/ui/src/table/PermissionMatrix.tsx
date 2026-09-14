@@ -153,7 +153,7 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
       <Table>
         {/* The chrome surface, sticky, so a long matrix keeps its rank names
             while it scrolls. `bg-muted` fully opaque and the two inset lines
-            are the same pair `AlephaTable`'s header wears, and for the same
+            are the same pair `DataTable`'s header wears, and for the same
             reasons: a translucent header lets rows scroll through the labels,
             and a border on a sticky `<thead>` is dropped by the collapsed
             border model. */}

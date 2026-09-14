@@ -1,5 +1,5 @@
 import { Badge, formatBytes } from "@alepha/ui";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
@@ -54,7 +54,7 @@ const BayApps = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AlephaTable<BayInstanceRow>
+      <DataTable<BayInstanceRow>
         className="min-h-0 flex-1"
         data={rows}
         // The two empty states are different sentences: a machine that runs

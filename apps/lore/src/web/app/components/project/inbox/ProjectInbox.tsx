@@ -1,6 +1,6 @@
 import { TimeAgo, Button } from "@alepha/ui";
 import { inboxUnreadAtom } from "@alepha/ui/shell";
-import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import type { NotificationInboxController } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
@@ -181,14 +181,14 @@ const ProjectInbox = () => {
         inputProps: { "aria-label": tr("inbox.filter.searchLabel") },
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   return (
     <div
       data-testid="inbox-table"
       className="flex min-h-0 flex-1 flex-col overflow-hidden p-2"
     >
-      <AlephaTable<InboxRow, typeof filterFields>
+      <DataTable<InboxRow, typeof filterFields>
         className="min-h-0 flex-1"
         data={rows}
         defaultSort={{ field: "createdAt", direction: "desc" }}

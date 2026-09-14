@@ -1,7 +1,7 @@
 import { z } from "alepha";
 
 /**
- * Paging, sorting and filtering, as `AlephaTable` sends them.
+ * Paging, sorting and filtering, as `DataTable` sends them.
  *
  * Everything is optional: the table omits a filter key entirely rather than
  * sending it empty, which is also what the repository API requires.

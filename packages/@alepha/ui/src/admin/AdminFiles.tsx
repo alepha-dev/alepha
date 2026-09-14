@@ -29,11 +29,11 @@ import {
 } from "../core/HoverCard.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { formatBytes } from "../core/utils.ts";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import type {
-  AlephaTableFilterFields,
-  AlephaTableFilterValues,
-} from "../table/alephaTableTypes.ts";
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
@@ -46,7 +46,7 @@ export const AdminFiles = () => {
   const { tr } = useI18n();
   const toast = useToast();
   // Bumped after a successful upload to reload the bucket-stats query (which
-  // lists it in its deps) and the table (via AlephaTable's `refreshSignal`
+  // lists it in its deps) and the table (via DataTable's `refreshSignal`
   // prop). Row/bulk actions reload via the table's own ctx.refresh() and
   // don't touch this.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -111,14 +111,14 @@ export const AdminFiles = () => {
         clearLabel: tr("admin.files.allBuckets", { default: "All buckets" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       return client.findFiles({
         query: {
@@ -190,7 +190,7 @@ export const AdminFiles = () => {
         className="hidden"
         onChange={(e) => upload.run(e)}
       />
-      <AlephaTable<FileResource, typeof filterFields>
+      <DataTable<FileResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.files"
         fetch={fetcher}

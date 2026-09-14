@@ -12,9 +12,9 @@ import {
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -93,14 +93,14 @@ export const AdminOrders = () => {
         }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) =>
       client.commerceAdminOrderList({
         query: {
@@ -191,7 +191,7 @@ export const AdminOrders = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<OrderEntity, typeof filterFields>
+      <DataTable<OrderEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.orders"
         fetch={fetcher}

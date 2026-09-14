@@ -7,7 +7,7 @@ import type { showcaseMemberSchema } from "./schemas/showcaseMemberSchema.ts";
  * The showcase's dataset, paged and filtered in memory.
  *
  * This exists so at least one block on the site is driven the way a real app
- * drives it - `AlephaTable` with a `fetch`, paging and sorting on the server -
+ * drives it - `DataTable` with a `fetch`, paging and sorting on the server -
  * rather than with a static array. A table given `data` never issues a request,
  * so it would prove nothing about the path underneath it.
  */
@@ -33,7 +33,7 @@ export class ShowcaseMembers {
 
   /**
    * Pages, filters and sorts in memory, then answers in the `Page` shape
-   * `AlephaTable` expects. Server-side paging is the whole point: the table
+   * `DataTable` expects. Server-side paging is the whole point: the table
    * holds its fetcher in a ref excluded from its load effect, so a fetcher
    * closing over an array goes stale rather than re-reading it.
    */

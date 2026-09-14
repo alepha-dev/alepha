@@ -1,8 +1,8 @@
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
-  AlephaTable,
-  type AlephaTableFilterFields,
-  type AlephaTableFilterValues,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
 } from "@alepha/ui/table";
 import { AlephaError, z } from "alepha";
 import { useClient } from "alepha/react";
@@ -46,14 +46,14 @@ export const AdminProjects = () => {
       ],
       control: { clearLabel: "Any activity" },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       return client.findProjects({
         query: {
@@ -133,7 +133,7 @@ export const AdminProjects = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminProjectResource, typeof filterFields>
+      <DataTable<AdminProjectResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="lore.admin.projects"
         fetch={fetcher}

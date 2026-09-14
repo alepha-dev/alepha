@@ -16,11 +16,11 @@ import { useCallback } from "react";
 import { useDialog } from "../core/useDialog.tsx";
 import { UserAvatar } from "../core/UserAvatar.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import type {
-  AlephaTableFilterFields,
-  AlephaTableFilterValues,
-} from "../table/alephaTableTypes.ts";
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUsersRolesPicker } from "./AdminUsersRolesPicker.tsx";
 import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
@@ -123,14 +123,14 @@ export const AdminUsers = (props: AdminUsersProps) => {
         clearLabel: tr("admin.users.statusAll", { default: "All status" }),
       },
     },
-  } satisfies AlephaTableFilterFields;
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AlephaTableFilterValues<typeof filterFields>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const preset = params.filters?.status
         ? STATUS_PRESETS[params.filters.status]
@@ -316,7 +316,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   return (
     <AdminPage>
-      <AlephaTable<UserEntity, typeof filterFields>
+      <DataTable<UserEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
         fetch={fetcher}
