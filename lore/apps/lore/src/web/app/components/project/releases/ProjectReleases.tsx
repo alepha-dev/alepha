@@ -7,7 +7,7 @@ import {
   type RowActionEntry,
 } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { CircleDot, Flag, Inbox, Plus, Trash2, X } from "lucide-react";
@@ -126,6 +126,29 @@ const ProjectReleases = () => {
    */
   const allReleases = useRef<ReleaseResource[]>([]);
 
+  /**
+   * The table refetches itself off `refreshSignal`, but the atom has to be
+   * refreshed by hand: it is what the sidebar and both release CONTROLS
+   * read, and none of them is watching this table. A `useAction` (#E59,
+   * #Q2326), so a failed refetch is toasted by the root listener.
+   */
+  const createdAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        setReleases(
+          await releaseApi.getReleases({ params: { projectId: project.id } }),
+        );
+        setReload((n) => n + 1);
+      },
+    },
+    [releaseApi, project?.id],
+  );
+
+  // Page-wide: the row menu's writes and the bulk delete wait while any of
+  // them runs. The bulk bar has no disabled state, so it hides.
+  const busy = defaultRelease.busy || deleteRelease.busy;
+
   if (!project) return null;
 
   const openCreate = (tag?: string) => {
@@ -162,18 +185,6 @@ const ProjectReleases = () => {
     }));
     if (entries.length < 2) return entries;
     return [{ icon: Plus, label: tr("release.bump.group"), children: entries }];
-  };
-
-  /**
-   * The table refetches itself off `refreshSignal`, but the atom has to be
-   * refreshed by hand: it is what the sidebar and both release CONTROLS
-   * read, and none of them is watching this table.
-   */
-  const created = async () => {
-    setReleases(
-      await releaseApi.getReleases({ params: { projectId: project.id } }),
-    );
-    setReload((n) => n + 1);
   };
 
   const filterFields = {
@@ -278,6 +289,7 @@ const ProjectReleases = () => {
           icon: Trash2,
           label: tr("board.bulk.delete"),
           destructive: true,
+          visible: () => !busy,
           onClick: async (selected, ctx) => {
             if (!(await deleteRelease.removeMany(selected))) return;
             ctx.refresh();
@@ -293,7 +305,7 @@ const ProjectReleases = () => {
         projectId={project.id}
         open={creating}
         onOpenChange={setCreating}
-        onCreated={() => void created()}
+        onCreated={() => void createdAction.run()}
         initialTag={createTag}
         suggestedTag={suggestedReleaseTag(allReleases.current)}
       />
@@ -391,6 +403,7 @@ const ProjectReleases = () => {
                   ? {
                       icon: X,
                       label: tr("release.default.clear"),
+                      disabled: () => busy,
                       onClick: (row: ReleaseResource) =>
                         void defaultRelease
                           .clear(row)
@@ -399,6 +412,7 @@ const ProjectReleases = () => {
                   : {
                       icon: Inbox,
                       label: tr("release.default.set"),
+                      disabled: () => busy,
                       onClick: (row: ReleaseResource) =>
                         void defaultRelease
                           .set(row)
@@ -419,6 +433,7 @@ const ProjectReleases = () => {
                   icon: Trash2,
                   label: tr("release.delete.action"),
                   destructive: true,
+                  disabled: () => busy,
                   onClick: (
                     row: ReleaseResource,
                     { refresh }: { refresh: () => void },

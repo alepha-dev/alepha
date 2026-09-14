@@ -9,7 +9,7 @@ import {
   Input,
   Label,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -108,7 +108,6 @@ const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
   const releaseApi = useClient<ReleaseController>();
 
   const [tag, setTag] = useState(props.open ? (props.initialTag ?? "") : "");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
 
   const [wasOpen, setWasOpen] = useState(props.open);
@@ -126,24 +125,28 @@ const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
     props.onOpenChange(false);
   };
 
-  const submit = async () => {
-    const trimmed = tag.trim();
-    if (!trimmed || submitting) return;
-    setSubmitting(true);
-    setError(undefined);
-    try {
-      const created = await releaseApi.createRelease({
-        params: { projectId: props.projectId },
-        body: { tag: trimmed },
-      });
-      props.onCreated(created);
-      close();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // A `useAction` (#E59, #Q2326) whose failure is rendered under the field
+  // (`onError`), so the root `ActionErrorToaster` leaves it alone and the
+  // dialog stays open holding the typed tag.
+  const submitAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const trimmed = tag.trim();
+        if (!trimmed) return;
+        setError(undefined);
+        const created = await releaseApi.createRelease({
+          params: { projectId: props.projectId },
+          body: { tag: trimmed },
+        });
+        props.onCreated(created);
+        close();
+      },
+      onError: (err) => setError(err.message),
+    },
+    [releaseApi, tag, props.projectId, props.onCreated, props.onOpenChange],
+  );
+  const submitting = submitAction.loading;
+  const submit = submitAction.run;
 
   return (
     <Dialog open={props.open} onOpenChange={(o) => !o && close()}>

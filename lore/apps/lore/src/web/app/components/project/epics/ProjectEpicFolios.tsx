@@ -19,6 +19,11 @@ export interface ProjectEpicFoliosProps {
    * renders as "no folios attached".
    */
   folios: Folio[] | null;
+  /**
+   * True while any membership write on the page runs. The picker and every
+   * detach wait for it (#E59 rule 10).
+   */
+  busy: boolean;
   onAttach: (folioId: string) => void;
   onDetach: (folio: Folio) => void;
 }
@@ -48,6 +53,7 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
             <EpicFolioPicker
               projectId={props.projectId}
               attachedIds={attachedIds}
+              disabled={props.busy}
               onAttach={props.onAttach}
             />
           )}
@@ -83,6 +89,7 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
                       size="sm"
                       className="h-7 w-7 shrink-0 p-0"
                       aria-label={tr("epic.folios.detach")}
+                      disabled={props.busy}
                       onClick={() => props.onDetach(folio)}
                     >
                       <X className="size-4" />

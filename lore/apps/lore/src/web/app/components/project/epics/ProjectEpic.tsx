@@ -1,9 +1,16 @@
-import { Button, useDialog, useToast } from "@alepha/ui";
+import { Button, useDialog } from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useQuery,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -48,15 +55,16 @@ type TabKey = "overview" | "quests" | "flow" | "folios";
  * shareable link, and it writes with `replaceState` so walking the tabs does
  * not bury the page the reader arrived from.
  *
- * Quests and folios are not part of `epicResourceSchema` — they're fetched
- * separately on mount and kept in local state, refreshed after every
- * attach/detach so the picker, the tables and the aside's derived rows never
- * show stale membership.
+ * Quests and folios are not part of `epicResourceSchema`, so they are two
+ * queries keyed on the epic (#E59, rule 7): `["quests", projectId,
+ * { epicId }]` and `["folios", projectId, { epicId }]`. Every attach and
+ * detach invalidates its key, so the picker, the tables and the aside's
+ * derived rows never show stale membership, and a switch to another epic
+ * never shows the previous one's rows while the new ones load.
  */
 const ProjectEpic = (props: ProjectEpicProps) => {
   const { tr } = useI18n<I18n, "en">();
   const promptSubject = useAgentPromptSubject();
-  const toaster = useToast();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();
@@ -64,9 +72,19 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const [project] = useStore(currentProjectAtom);
   const [tab, setTab] = useDetailTab<TabKey>("overview");
   const alepha = useAlepha();
+  const queries = useQueryClient();
 
   const [epic, setEpic] = useState<EpicResource>(props.epic);
   const [editOpen, setEditOpen] = useState(false);
+
+  // The router can hand this page another epic without remounting it (a
+  // link from one epic to the next), so the local copy follows the prop when
+  // the id changes. During render, so no frame shows the previous epic.
+  const [seenEpicId, setSeenEpicId] = useState(props.epic.id);
+  if (props.epic.id !== seenEpicId) {
+    setSeenEpicId(props.epic.id);
+    setEpic(props.epic);
+  }
 
   /**
    * Keep the sidebar's draft-epic badge honest when the status changes
@@ -96,85 +114,96 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     }
     setEpic(updated);
   };
-  // `null` means "not loaded yet" — either still in flight or the last
-  // fetch failed. Only a successfully resolved `[]` means "confirmed
-  // empty": the tab bodies must not render an empty state on `null`, or a
-  // failed reload reads as an epic with nothing in it.
-  const [quests, setQuests] = useState<QuestResource[] | null>(null);
-  const [folios, setFolios] = useState<Folio[] | null>(null);
+
+  const questsKey = ["quests", project?.id, { epicId: epic.id }];
+  const foliosKey = ["folios", project?.id, { epicId: epic.id }];
 
   // The epic's own quest set: shelved and draft-gated quests included.
   // `epic: epic.id` on `getQuests` both scopes to this epic AND bypasses
   // the backlog gate (see `QuestController.getQuests`) — the default
   // status filter still excludes shelved quests, so a second call with
   // `status: "shelved"` fills the rest.
-  const reloadQuests = useCallback(async () => {
-    if (!project?.id) return;
-    try {
-      const [rest, shelved] = await Promise.all([
-        questApi.getQuests({
-          params: { projectId: project.id },
-          query: { epic: epic.id, size: 100 },
-        }),
-        questApi.getQuests({
-          params: { projectId: project.id },
-          query: { epic: epic.id, status: "shelved", size: 100 },
-        }),
-      ]);
-      setQuests([...rest.content, ...shelved.content]);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  }, [project?.id, epic.id, questApi, toaster]);
+  //
+  // ⚠️ The answer carries the epic it was read for. `keepPreviousData` keeps
+  // the rows on screen while an attach re-reads them, and it would also keep
+  // them across a switch to another epic; the id check below is what refuses
+  // the second.
+  const questsQuery = useQuery(
+    {
+      key: questsKey,
+      enabled: !!project,
+      keepPreviousData: true,
+      handler: async () => {
+        const projectId = project?.id as number;
+        const [rest, shelved] = await Promise.all([
+          questApi.getQuests({
+            params: { projectId },
+            query: { epic: epic.id, size: 100 },
+          }),
+          questApi.getQuests({
+            params: { projectId },
+            query: { epic: epic.id, status: "shelved", size: 100 },
+          }),
+        ]);
+        return {
+          epicId: epic.id,
+          items: [...rest.content, ...shelved.content],
+        };
+      },
+    },
+    [questApi, project?.id, epic.id],
+  );
 
   // `epicId` filters server-side (`FolioController.list`) rather than
   // fetching the project's folios and filtering client-side: a client-side
   // filter over a `limit`-capped, epic-blind page can drop an attached
   // folio entirely once the project holds more than the page size, with no
   // signal that anything was hidden.
-  const reloadFolios = useCallback(async () => {
-    if (!project?.id) return;
-    try {
-      const all = await folioApi.list({
-        query: { projectId: project.id, epicId: epic.id, limit: 100 },
-      });
-      setFolios(all);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  }, [project?.id, epic.id, folioApi, toaster]);
+  const foliosQuery = useQuery(
+    {
+      key: foliosKey,
+      enabled: !!project,
+      keepPreviousData: true,
+      handler: async () => ({
+        epicId: epic.id,
+        items: await folioApi.list({
+          query: {
+            projectId: project?.id as number,
+            epicId: epic.id,
+            limit: 100,
+          },
+        }),
+      }),
+    },
+    [folioApi, project?.id, epic.id],
+  );
 
-  useEffect(() => {
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because the loader flips
-    // `loading` before its first await.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void reloadQuests();
-  }, [reloadQuests]);
-  useEffect(() => {
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because the loader flips
-    // `loading` before its first await.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void reloadFolios();
-  }, [reloadFolios]);
+  // `null` means "not loaded yet" — either still in flight or the last
+  // fetch failed. Only a successfully resolved `[]` means "confirmed
+  // empty": the tab bodies must not render an empty state on `null`, or a
+  // failed reload reads as an epic with nothing in it.
+  const quests: QuestResource[] | null =
+    questsQuery.data?.epicId === epic.id ? questsQuery.data.items : null;
+  const folios: Folio[] | null =
+    foliosQuery.data?.epicId === epic.id ? foliosQuery.data.items : null;
 
-  if (!project) {
-    return null;
-  }
-
-  const handleAttachQuest = async (questId: number) => {
-    try {
-      const updated = await epicApi.attachQuest({
-        params: { id: epic.id },
-        body: { questId },
-      });
-      setEpic(updated);
-      await reloadQuests();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  // One `useAction` per write. A refusal is the server's sentence, toasted by
+  // the root `ActionErrorToaster`; the two detach confirmations live in their
+  // handlers, so backing out sends nothing.
+  const attachQuestAction = useAction<[questId: number], void>(
+    {
+      handler: async (questId) => {
+        setEpic(
+          await epicApi.attachQuest({
+            params: { id: epic.id },
+            body: { questId },
+          }),
+        );
+      },
+      invalidates: [questsKey],
+    },
+    [epicApi, epic.id],
+  );
 
   /**
    * A quest the Quests tab's create sheet just made. `createQuest` has no
@@ -184,73 +213,103 @@ const ProjectEpic = (props: ProjectEpicProps) => {
    * than leave an unlinked one in the backlog: the reader asked for a quest
    * IN this epic, and a half-done create is worse than none.
    */
-  const handleCreatedQuest = async (quest: QuestResource) => {
-    try {
-      const updated = await epicApi.attachQuest({
-        params: { id: epic.id },
-        body: { questId: quest.id },
-      });
-      setEpic(updated);
-    } catch (error) {
-      await questApi
-        .deleteQuest({ params: { id: quest.id } })
-        .catch(() => undefined);
-      toaster.error(error instanceof Error ? error.message : String(error));
-      return;
-    }
-    await reloadQuests();
-  };
+  const createdQuestAction = useAction<[quest: QuestResource], void>(
+    {
+      handler: async (quest) => {
+        try {
+          setEpic(
+            await epicApi.attachQuest({
+              params: { id: epic.id },
+              body: { questId: quest.id },
+            }),
+          );
+        } catch (error) {
+          // The cleanup is best effort: the attach's own refusal is what the
+          // reader needs to read, so it is the one rethrown.
+          await questApi
+            .deleteQuest({ params: { id: quest.id } })
+            .catch(() => undefined);
+          throw error;
+        }
+      },
+      invalidates: [questsKey],
+    },
+    [epicApi, questApi, epic.id],
+  );
 
-  const handleDetachQuest = async (quest: QuestResource) => {
-    const ok = await dialog.confirm({
-      title: tr("epic.quests.detach.title"),
-      description: tr("epic.quests.detach.confirm", { args: [quest.title] }),
-      confirmLabel: tr("epic.quests.detach"),
-      cancelLabel: tr("common.cancel"),
-    });
-    if (!ok) return;
-    try {
-      const updated = await epicApi.detachQuest({
-        params: { id: epic.id, questId: quest.id },
-      });
-      setEpic(updated);
-      await reloadQuests();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const detachQuestAction = useAction<[quest: QuestResource], void>(
+    {
+      handler: async (quest) => {
+        const ok = await dialog.confirm({
+          title: tr("epic.quests.detach.title"),
+          description: tr("epic.quests.detach.confirm", {
+            args: [quest.title],
+          }),
+          confirmLabel: tr("epic.quests.detach"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!ok) return;
+        setEpic(
+          await epicApi.detachQuest({
+            params: { id: epic.id, questId: quest.id },
+          }),
+        );
+      },
+      invalidates: [questsKey],
+    },
+    [epicApi, epic.id, dialog, tr],
+  );
 
-  const handleAttachFolio = async (folioId: string) => {
-    try {
-      const updated = await epicApi.attachFolio({
-        params: { id: epic.id },
-        body: { folioId },
-      });
-      setEpic(updated);
-      await reloadFolios();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const attachFolioAction = useAction<[folioId: string], void>(
+    {
+      handler: async (folioId) => {
+        setEpic(
+          await epicApi.attachFolio({
+            params: { id: epic.id },
+            body: { folioId },
+          }),
+        );
+      },
+      invalidates: [foliosKey],
+    },
+    [epicApi, epic.id],
+  );
 
-  const handleDetachFolio = async (folio: Folio) => {
-    const ok = await dialog.confirm({
-      title: tr("epic.folios.detach.title"),
-      description: tr("epic.folios.detach.confirm", { args: [folio.title] }),
-      confirmLabel: tr("epic.folios.detach"),
-      cancelLabel: tr("common.cancel"),
-    });
-    if (!ok) return;
-    try {
-      const updated = await epicApi.detachFolio({
-        params: { id: epic.id, folioId: folio.id },
-      });
-      setEpic(updated);
-      await reloadFolios();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const detachFolioAction = useAction<[folio: Folio], void>(
+    {
+      handler: async (folio) => {
+        const ok = await dialog.confirm({
+          title: tr("epic.folios.detach.title"),
+          description: tr("epic.folios.detach.confirm", {
+            args: [folio.title],
+          }),
+          confirmLabel: tr("epic.folios.detach"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!ok) return;
+        setEpic(
+          await epicApi.detachFolio({
+            params: { id: epic.id, folioId: folio.id },
+          }),
+        );
+      },
+      invalidates: [foliosKey],
+    },
+    [epicApi, epic.id, dialog, tr],
+  );
+
+  // Page-wide: every membership control waits while any write runs, since
+  // `run()` drops a call made while its own is in flight.
+  const busy =
+    attachQuestAction.loading ||
+    createdQuestAction.loading ||
+    detachQuestAction.loading ||
+    attachFolioAction.loading ||
+    detachFolioAction.loading;
+
+  if (!project) {
+    return null;
+  }
 
   // A count is shown only once its collection has actually resolved —
   // `null` renders the bare label rather than a confident "0".
@@ -340,9 +399,10 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           projectId={project.id}
           epic={epic}
           quests={quests}
-          onAttach={handleAttachQuest}
-          onDetach={handleDetachQuest}
-          onCreated={handleCreatedQuest}
+          busy={busy}
+          onAttach={(questId) => void attachQuestAction.run(questId)}
+          onDetach={(quest) => void detachQuestAction.run(quest)}
+          onCreated={(quest) => createdQuestAction.run(quest)}
         />
       )}
 
@@ -352,13 +412,19 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           // Editing a quest from the flow's dialog has to land in the same
           // list the board is drawn from, or the card behind the dialog keeps
           // showing the version it was opened with.
-          onQuestChange={(updated) =>
-            setQuests((prev) =>
-              prev
-                ? prev.map((q) => (q.id === updated.id ? updated : q))
-                : prev,
-            )
-          }
+          //
+          // Written into the query's cache rather than re-read: the dialog
+          // already holds the server's answer.
+          onQuestChange={(updated) => {
+            const current = questsQuery.data;
+            if (current?.epicId !== epic.id) return;
+            queries.setData(questsKey, {
+              ...current,
+              items: current.items.map((q) =>
+                q.id === updated.id ? updated : q,
+              ),
+            });
+          }}
         />
       )}
 
@@ -366,8 +432,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
         <ProjectEpicFolios
           projectId={project.id}
           folios={folios}
-          onAttach={handleAttachFolio}
-          onDetach={handleDetachFolio}
+          busy={busy}
+          onAttach={(folioId) => void attachFolioAction.run(folioId)}
+          onDetach={(folio) => void detachFolioAction.run(folio)}
         />
       )}
 

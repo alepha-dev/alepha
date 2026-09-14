@@ -1,4 +1,5 @@
-import { DialogProvider } from "@alepha/ui";
+import { DialogProvider, Toaster } from "@alepha/ui";
+import { ActionErrorToaster } from "@alepha/ui/shell";
 import {
   fireEvent,
   render,
@@ -60,6 +61,11 @@ class FakeLinkProvider extends LinkProvider {
    */
   statusCalls: Array<{ id: number; status: string }> = [];
 
+  /**
+   * How many times `deleteEpic` was asked, which always refuses.
+   */
+  deleteCalls = 0;
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     const action = <T extends (...args: any[]) => Promise<unknown>>(fn: T) =>
@@ -67,6 +73,10 @@ class FakeLinkProvider extends LinkProvider {
     return new Proxy(
       {
         getEpics: action(async () => [...this.epics]),
+        deleteEpic: action(async () => {
+          this.deleteCalls += 1;
+          throw new Error("This epic still has a quest in progress (spec)");
+        }),
         setEpicStatus: action(
           async (request: {
             params: { id: number };
@@ -155,6 +165,8 @@ describe("ProjectEpics - the status filter", () => {
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
+          <Toaster visibleToasts={20} />
+          <ActionErrorToaster />
           <ProjectEpics />
         </DialogProvider>
       </AlephaContext.Provider>,
@@ -837,6 +849,41 @@ describe("ProjectEpics - the status filter", () => {
       expect(items.join(" ")).not.toContain("Set Release");
       // The rest of the menu is untouched.
       expect(items.join(" ")).toContain("Mark as ready");
+    });
+  });
+  /**
+   * The row Delete is a `useAction` whose handler holds the confirmation
+   * (#E59, #Q2326): a refusal is toasted exactly once, by the root listener,
+   * with the server's message, and the row stays.
+   */
+  describe("the row delete", () => {
+    it("toasts a refused delete exactly once, and keeps the row", async () => {
+      await mount();
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const row = screen.getByRole("link", { name: "#E1 - Draft epic" });
+      fireEvent.click(
+        within(row.closest("tr")!).getByRole("button", {
+          name: "Open row actions",
+        }),
+      );
+      const remove = await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (item) => item.textContent === "Delete",
+        );
+        if (!found) throw new Error("not open yet");
+        return found;
+      });
+      fireEvent.click(remove);
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+      const message = "This epic still has a quest in progress (spec)";
+      await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(screen.getAllByText(message)).toHaveLength(1);
+      expect(fake.deleteCalls).toBe(1);
+      expect(row.isConnected).toBe(true);
     });
   });
 });

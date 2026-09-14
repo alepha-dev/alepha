@@ -4,10 +4,11 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
   type BulkAction,
+  type BulkActionContext,
   type BulkMenuAction,
 } from "@alepha/ui/table";
 import { type Page, z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -115,52 +116,228 @@ const ProjectEpics = () => {
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
 
+  // One `useAction` per write (#E59, #Q2326). A refusal is the server's
+  // sentence, toasted by the root `ActionErrorToaster`, and every follow-up
+  // (the refresh, the cascade report) runs inside the handler, so none
+  // follows a failure.
+
   /**
    * The same write `EpicReleaseControl` makes on the epic's own page, from
    * the row menu instead. `null` detaches; an absent key would leave the
    * attachment alone, which is why the caller passes one or the other and
    * never `undefined`.
    */
-  const setRelease = async (
-    epic: EpicResource,
-    releaseId: number | null,
-    refresh: () => void,
-  ) => {
-    try {
-      const updated = await epicApi.updateEpic({
-        params: { id: epic.id },
-        body: { releaseId },
-      });
-      // The Release column is drawn from the row, so it repaints only once
-      // the fetch comes back with the new value.
-      refresh();
-      reportCascade(updated.releaseCascade);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const setReleaseAction = useAction<
+    [epic: EpicResource, releaseId: number | null, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (epic, releaseId, refresh) => {
+        const updated = await epicApi.updateEpic({
+          params: { id: epic.id },
+          body: { releaseId },
+        });
+        // The Release column is drawn from the row, so it repaints only once
+        // the fetch comes back with the new value.
+        refresh();
+        reportCascade(updated.releaseCascade);
+      },
+    },
+    [epicApi, reportCascade],
+  );
 
   /**
    * The row menu's one lifecycle write, the same `setEpicStatus` the epic
    * page's control makes. `refresh` is what repaints the status chip AND
    * recomputes the sidebar's draft-epic badge, since `fetchEpics` pushes
    * that count on every fetch.
+   *
+   * Marking ready confirms first, with the detail page control's own copy
+   * from the same keys: ready releases the epic's quests into the backlog for
+   * everybody, and the first accept freezes the plan, which is what the
+   * confirmation is for. It is not destructive, so no `destructive: true`.
+   * Back to draft has nothing to confirm.
    */
-  const setStatus = async (
-    epic: EpicResource,
-    status: "draft" | "ready",
-    refresh: () => void,
-  ) => {
-    try {
-      await epicApi.setEpicStatus({
-        params: { id: epic.id },
-        body: { status },
-      });
-      refresh();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const setStatusAction = useAction<
+    [epic: EpicResource, status: "draft" | "ready", refresh: () => void],
+    void
+  >(
+    {
+      handler: async (epic, status, refresh) => {
+        if (status === "ready") {
+          const ok = await dialog.confirm({
+            title: tr("epic.ready.title"),
+            description: tr("epic.ready.confirm", { args: [epic.title] }),
+            confirmLabel: tr("epic.status.actions.markReady"),
+            cancelLabel: tr("common.cancel"),
+          });
+          if (!ok) return;
+        }
+        await epicApi.setEpicStatus({
+          params: { id: epic.id },
+          body: { status },
+        });
+        refresh();
+      },
+    },
+    [epicApi, dialog, tr],
+  );
+
+  const deleteAction = useAction<
+    [epic: EpicResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (epic, refresh) => {
+        const ok = await dialog.confirm({
+          title: tr("epic.delete.title"),
+          description: tr("epic.delete.confirm", { args: [epic.title] }),
+          confirmLabel: tr("epic.action.delete"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await epicApi.deleteEpic({ params: { id: epic.id } });
+        toaster.success(tr("epic.toast.deleted"));
+        refresh();
+      },
+    },
+    [epicApi, dialog, toaster, tr],
+  );
+
+  // The three bulk writes never reject: `settleBulk` sorts every refusal into
+  // the report `useBulkReport` shows. They are actions for the busy state and
+  // the dropped double click, not for the toaster.
+  const bulkReleaseAction = useAction<
+    [
+      release: ReleaseResource,
+      selected: EpicResource[],
+      ctx: BulkActionContext,
+    ],
+    void
+  >(
+    {
+      handler: async (release, selected, ctx) => {
+        const outcome = await settleBulk(
+          selected.map((epic) => epic.id),
+          (id) =>
+            epicApi.updateEpic({
+              params: { id },
+              body: { releaseId: release.id },
+            }),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.released", {
+            args: [String(outcome.done.length), release.tag ?? release.title],
+          }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [epicApi, reportBulk, tr],
+  );
+
+  const bulkReadyAction = useAction<
+    [selected: EpicResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        const n = String(selected.length);
+        // One epic asks the row menu's own question, word for word. A few
+        // are named, since they fit in a dialog; past that the count is the
+        // honest summary and the selection is on screen behind it.
+        const confirmed = await dialog.confirm(
+          selected.length === 1
+            ? {
+                title: tr("epic.ready.title"),
+                description: tr("epic.ready.confirm", {
+                  args: [selected[0].title],
+                }),
+                confirmLabel: tr("epic.status.actions.markReady"),
+                cancelLabel: tr("common.cancel"),
+              }
+            : {
+                title: tr("epic.bulk.ready.title", { args: [n] }),
+                description:
+                  selected.length <= 3
+                    ? tr("epic.bulk.ready.descriptionNamed", {
+                        args: [
+                          selected.map((epic) => `"${epic.title}"`).join(", "),
+                        ],
+                      })
+                    : tr("epic.bulk.ready.description"),
+                confirmLabel: tr("epic.bulk.ready.confirm", { args: [n] }),
+                cancelLabel: tr("common.cancel"),
+              },
+        );
+        if (!confirmed) return;
+        // The row menu's own write, once per epic. A refusal on one row (a
+        // parallel session already started it, say) lands in the report
+        // instead of being swallowed by the others.
+        const outcome = await settleBulk(
+          selected.map((epic) => epic.id),
+          (id) =>
+            epicApi.setEpicStatus({
+              params: { id },
+              body: { status: "ready" },
+            }),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.readied", { args: [String(outcome.done.length)] }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [epicApi, dialog, reportBulk, tr],
+  );
+
+  const bulkDeleteAction = useAction<
+    [selected: EpicResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        const n = String(selected.length);
+        const confirmed = await dialog.confirm({
+          title: tr("epic.bulk.delete.title", { args: [n] }),
+          // The plural of the row menu's own warning, and it says the same
+          // true thing: `deleteEpic` detaches the quests and folios, it
+          // does not delete them.
+          description: tr("epic.bulk.delete.description"),
+          confirmLabel: tr("epic.bulk.delete.confirm", { args: [n] }),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        const outcome = await settleBulk(
+          selected.map((epic) => epic.id),
+          (id) => epicApi.deleteEpic({ params: { id } }),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [epicApi, dialog, reportBulk, tr],
+  );
+
+  // Page-wide: every row and bulk write waits while any of them runs. The
+  // bulk bar has no disabled state, so its buttons are hidden for that time.
+  const busy =
+    setReleaseAction.loading ||
+    setStatusAction.loading ||
+    deleteAction.loading ||
+    bulkReleaseAction.loading ||
+    bulkReadyAction.loading ||
+    bulkDeleteAction.loading;
 
   if (!project) {
     return null;
@@ -366,6 +543,7 @@ const ProjectEpics = () => {
     bulkActions.push({
       icon: Flag,
       label: tr("board.bulk.release"),
+      visible: () => !busy,
       // ⚠️ Unpublished only. The Release COLUMN below lists every release
       // because it reads history; this is a picker for a write, and
       // `ReleaseAttachmentService.resolve` refuses a published release
@@ -376,27 +554,8 @@ const ProjectEpics = () => {
           .filter((release) => !release.releasedAt)
           .map((release) => ({
             label: release.tag ?? release.title,
-            onClick: async (selected, ctx) => {
-              const outcome = await settleBulk(
-                selected.map((epic) => epic.id),
-                (id) =>
-                  epicApi.updateEpic({
-                    params: { id },
-                    body: { releaseId: release.id },
-                  }),
-              );
-              reportBulk(
-                outcome,
-                tr("board.bulk.released", {
-                  args: [
-                    String(outcome.done.length),
-                    release.tag ?? release.title,
-                  ],
-                }),
-              );
-              ctx.refresh();
-              ctx.clearSelection();
-            },
+            onClick: (selected, ctx) =>
+              void bulkReleaseAction.run(release, selected, ctx),
           })),
     });
   }
@@ -406,56 +565,10 @@ const ProjectEpics = () => {
       icon: Play,
       label: tr("epic.status.actions.markReady"),
       visible: (selected) =>
+        !busy &&
         selected.length > 0 &&
         selected.every((epic) => epic.status === "draft"),
-      onClick: async (selected, ctx) => {
-        const n = String(selected.length);
-        // One epic asks the row menu's own question, word for word. A few
-        // are named, since they fit in a dialog; past that the count is the
-        // honest summary and the selection is on screen behind it.
-        const confirmed = await dialog.confirm(
-          selected.length === 1
-            ? {
-                title: tr("epic.ready.title"),
-                description: tr("epic.ready.confirm", {
-                  args: [selected[0].title],
-                }),
-                confirmLabel: tr("epic.status.actions.markReady"),
-                cancelLabel: tr("common.cancel"),
-              }
-            : {
-                title: tr("epic.bulk.ready.title", { args: [n] }),
-                description:
-                  selected.length <= 3
-                    ? tr("epic.bulk.ready.descriptionNamed", {
-                        args: [
-                          selected.map((epic) => `"${epic.title}"`).join(", "),
-                        ],
-                      })
-                    : tr("epic.bulk.ready.description"),
-                confirmLabel: tr("epic.bulk.ready.confirm", { args: [n] }),
-                cancelLabel: tr("common.cancel"),
-              },
-        );
-        if (!confirmed) return;
-        // The row menu's own write, once per epic. A refusal on one row (a
-        // parallel session already started it, say) lands in the report
-        // instead of being swallowed by the others.
-        const outcome = await settleBulk(
-          selected.map((epic) => epic.id),
-          (id) =>
-            epicApi.setEpicStatus({
-              params: { id },
-              body: { status: "ready" },
-            }),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.readied", { args: [String(outcome.done.length)] }),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      onClick: (selected, ctx) => void bulkReadyAction.run(selected, ctx),
     });
   }
 
@@ -464,30 +577,8 @@ const ProjectEpics = () => {
       icon: Trash2,
       label: tr("board.bulk.delete"),
       destructive: true,
-      onClick: async (selected, ctx) => {
-        const n = String(selected.length);
-        const confirmed = await dialog.confirm({
-          title: tr("epic.bulk.delete.title", { args: [n] }),
-          // The plural of the row menu's own warning, and it says the same
-          // true thing: `deleteEpic` detaches the quests and folios, it
-          // does not delete them.
-          description: tr("epic.bulk.delete.description"),
-          confirmLabel: tr("epic.bulk.delete.confirm", { args: [n] }),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        const outcome = await settleBulk(
-          selected.map((epic) => epic.id),
-          (id) => epicApi.deleteEpic({ params: { id } }),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: () => !busy,
+      onClick: (selected, ctx) => void bulkDeleteAction.run(selected, ctx),
     });
   }
 
@@ -693,11 +784,13 @@ const ProjectEpics = () => {
                         checked: (row: EpicResource) =>
                           row.releaseId === release.id,
                         disabled: () =>
+                          busy ||
                           releaseRowMenu(releases, epic.releaseId).locked,
                         onClick: (
                           row: EpicResource,
                           { refresh }: { refresh: () => void },
-                        ) => setRelease(row, release.id, refresh),
+                        ) =>
+                          void setReleaseAction.run(row, release.id, refresh),
                       }),
                     ),
                     {
@@ -705,11 +798,11 @@ const ProjectEpics = () => {
                       label: tr("epic.aside.release.none"),
                       checked: (row: EpicResource) => row.releaseId == null,
                       disabled: () =>
-                        releaseRowMenu(releases, epic.releaseId).locked,
+                        busy || releaseRowMenu(releases, epic.releaseId).locked,
                       onClick: (
                         row: EpicResource,
                         { refresh }: { refresh: () => void },
-                      ) => setRelease(row, null, refresh),
+                      ) => void setReleaseAction.run(row, null, refresh),
                     },
                   ],
                 },
@@ -724,26 +817,11 @@ const ProjectEpics = () => {
                 {
                   icon: Play,
                   label: tr("epic.status.actions.markReady"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    // Same copy as the detail page's own control, from the
-                    // same keys. Ready releases the epic's quests into the
-                    // backlog for everybody, and the first accept freezes
-                    // the plan, which is what the confirmation is for; it is
-                    // not destructive, so no `destructive: true`.
-                    const ok = await dialog.confirm({
-                      title: tr("epic.ready.title"),
-                      description: tr("epic.ready.confirm", {
-                        args: [row.title],
-                      }) as string,
-                      confirmLabel: tr("epic.status.actions.markReady"),
-                      cancelLabel: tr("common.cancel"),
-                    });
-                    if (!ok) return;
-                    await setStatus(row, "ready", refresh);
-                  },
+                  ) => void setStatusAction.run(row, "ready", refresh),
                 },
               ]
             : []),
@@ -752,10 +830,11 @@ const ProjectEpics = () => {
                 {
                   icon: Undo2,
                   label: tr("epic.status.actions.backToDraft"),
+                  disabled: () => busy,
                   onClick: (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },
-                  ) => setStatus(row, "draft", refresh),
+                  ) => void setStatusAction.run(row, "draft", refresh),
                 },
               ]
             : []),
@@ -763,30 +842,11 @@ const ProjectEpics = () => {
             icon: Trash2,
             label: tr("epic.action.delete"),
             destructive: true,
-            onClick: async (
+            disabled: () => busy,
+            onClick: (
               epic: EpicResource,
               { refresh }: { refresh: () => void },
-            ) => {
-              const ok = await dialog.confirm({
-                title: tr("epic.delete.title"),
-                description: tr("epic.delete.confirm", {
-                  args: [epic.title],
-                }) as string,
-                confirmLabel: tr("epic.action.delete"),
-                cancelLabel: tr("common.cancel"),
-                destructive: true,
-              });
-              if (!ok) return;
-              try {
-                await epicApi.deleteEpic({ params: { id: epic.id } });
-                toaster.success(tr("epic.toast.deleted"));
-                refresh();
-              } catch (error) {
-                toaster.error(
-                  error instanceof Error ? error.message : String(error),
-                );
-              }
-            },
+            ) => void deleteAction.run(epic, refresh),
           },
         ]}
       />
