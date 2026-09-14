@@ -18,11 +18,9 @@ export { AppActions, type AppActionsProps } from "./AppActions.tsx";
 export {
   AppShell,
   type AppShellProps,
-  type NavGroup,
   type NavigationProgressOptions,
-  type NavItem,
-  SidebarNavAutoClose,
 } from "./AppShell.tsx";
+export type { NavGroup, NavItem } from "./appShellNav.tsx";
 export { ButtonDark, type ButtonDarkProps } from "./ButtonDark.tsx";
 export { ButtonInbox, type ButtonInboxProps } from "./ButtonInbox.tsx";
 export { ButtonLanguage, type ButtonLanguageProps } from "./ButtonLanguage.tsx";
@@ -51,5 +49,6 @@ export { NavigationProgress } from "./NavigationProgress.tsx";
 export { NavShell, type NavShellProps } from "./NavShell.tsx";
 export { PlateLayout, type PlateLayoutProps } from "./PlateLayout.tsx";
 export type { PlateTab } from "./PlateTabBar.tsx";
+export { SidebarNavAutoClose } from "./SidebarNavAutoClose.tsx";
 export { Spotlight, type SpotlightProps } from "./Spotlight.tsx";
 export { useDetailTab } from "./useDetailTab.tsx";

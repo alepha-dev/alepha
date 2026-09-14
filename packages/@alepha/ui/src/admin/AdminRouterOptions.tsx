@@ -1,7 +1,7 @@
 import { $atom, z } from "alepha";
 import type { ReactNode } from "react";
 
-import type { NavGroup } from "../shell/AppShell.tsx";
+import type { NavGroup } from "../shell/appShellNav.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
 import type { AdminParametersProps } from "./AdminParameters.tsx";
 import type { AdminUserDetailProps } from "./AdminUserDetail.tsx";

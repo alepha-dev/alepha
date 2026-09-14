@@ -13,7 +13,7 @@ import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { AlertCircle, Check, Info, X } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import {
   type ReactNode,
   useEffect,
@@ -24,24 +24,20 @@ import {
 } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
-import { BrandIcon } from "../core/BrandIcon.tsx";
 import { Button } from "../core/Button.tsx";
 import { Card, CardContent } from "../core/Card.tsx";
 import { Label } from "../core/Label.tsx";
-import { Separator } from "../core/Separator.tsx";
-import { Control } from "../form/Control.tsx";
-import { iconFor } from "../form/iconHint.tsx";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
 } from "../otp/InputOTP.tsx";
+import { AuthRegisterCentered } from "./AuthRegisterCentered.tsx";
+import { AuthRegisterFormPhase } from "./AuthRegisterFormPhase.tsx";
+import { AuthRegisterRealmLogo } from "./AuthRegisterRealmLogo.tsx";
 import { safeRedirect } from "./safeRedirect.ts";
-import {
-  TurnstileWidget,
-  type TurnstileWidgetHandle,
-} from "./TurnstileWidget.tsx";
+import type { TurnstileWidgetHandle } from "./TurnstileWidget.tsx";
 
 export interface AuthRegisterProps {
   /**
@@ -107,14 +103,6 @@ export interface AuthRegisterProps {
    * Sanitised like the query value, since the two are the same kind of thing.
    */
   redirect?: string;
-}
-
-type Phase = "form" | "verification";
-
-interface State {
-  phase: Phase;
-  intent?: RegistrationIntentResponse;
-  credentials?: { identifier: string; password: string };
 }
 
 export const AuthRegister = (props: AuthRegisterProps) => {
@@ -360,9 +348,9 @@ export const AuthRegister = (props: AuthRegisterProps) => {
   }, []);
 
   return (
-    <Centered>
+    <AuthRegisterCentered>
       {props.logo ?? (
-        <RealmLogo
+        <AuthRegisterRealmLogo
           settings={settings}
           realmName={props.realmConfig.realmName}
         />
@@ -475,7 +463,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
                   </Button>
                 </>
               ) : (
-                <FormPhase
+                <AuthRegisterFormPhase
                   allowed={allowed}
                   form={form}
                   formError={formError ?? queryError}
@@ -511,360 +499,17 @@ export const AuthRegister = (props: AuthRegisterProps) => {
           {tr("auth.register.cancel", { default: "Cancel" })}
         </Button>
       )}
-    </Centered>
+    </AuthRegisterCentered>
   );
 };
 
-const FormPhase = (props: {
-  allowed: boolean;
-  form: ReturnType<typeof useForm>;
-  formError: string | undefined;
-  loading: boolean;
-  passwordValue: string;
-  settings: RealmConfig["settings"];
-  realmName: string;
-  credentialsProvider: any;
-  externalMethods: Array<{ name: string; type: string }>;
-  showDivider: boolean | undefined;
-  redirect: string;
-  loginPath: string | undefined;
-  realmQuery: string;
-  auth: ReturnType<typeof useAuth>;
-  captchaSiteKey?: string;
-  captchaToken?: string;
-  captchaRef: React.RefObject<TurnstileWidgetHandle | null>;
-  onCaptchaToken: (token: string | undefined) => void;
-  message?: ReactNode;
-  lockedEmail?: string;
-}) => {
-  const { tr } = useI18n();
-  const [passwordFieldFocused, setPasswordFieldFocused] = useState(false);
-  const {
-    allowed,
-    form,
-    formError,
-    passwordValue,
-    settings,
-    credentialsProvider,
-    externalMethods,
-    showDivider,
-    redirect,
-    realmQuery,
-  } = props;
-  return (
-    <>
-      <RealmHeader settings={settings} realmName={props.realmName} />
-      {!allowed ? (
-        <>
-          <Alert>
-            <AlertCircle className="size-4" />
-            <AlertDescription>
-              {tr("auth.register.disabled", {
-                default:
-                  "Registration is not available. Please contact your administrator.",
-              })}
-            </AlertDescription>
-          </Alert>
-          <Button
-            render={
-              <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`} />
-            }
-          >
-            {tr("auth.register.backToSignIn", { default: "Back to sign in" })}
-          </Button>
-        </>
-      ) : (
-        <>
-          {props.message && (
-            <Alert>
-              <Info className="size-4" />
-              <AlertDescription>{props.message}</AlertDescription>
-            </Alert>
-          )}
-          {formError && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          )}
-          {credentialsProvider && (
-            <form {...form.props} className="flex flex-col gap-4">
-              {settings.firstNameLastName !== "none" &&
-                form.input.firstName &&
-                form.input.lastName && (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Control
-                      label={tr("auth.register.firstName", {
-                        default: "First name",
-                      })}
-                      input={form.input.firstName}
-                      autoComplete="given-name"
-                    />
-                    <Control
-                      label={tr("auth.register.lastName", {
-                        default: "Last name",
-                      })}
-                      input={form.input.lastName}
-                      autoComplete="family-name"
-                    />
-                  </div>
-                )}
-              {settings.username !== "none" &&
-                settings.username !== "email" &&
-                form.input.username && (
-                  <Control
-                    label={tr("auth.register.username", {
-                      default: "Username",
-                    })}
-                    input={form.input.username}
-                    icon={iconFor("user")}
-                    autoComplete="username"
-                  />
-                )}
-              {settings.email !== "none" && form.input.email && (
-                <Control
-                  label={tr("auth.register.email", { default: "Email" })}
-                  description={
-                    props.lockedEmail
-                      ? tr("auth.register.email.locked", {
-                          default: "This is the address you were invited with.",
-                        })
-                      : settings.verifyEmailRequired
-                        ? tr("auth.register.email.verify", {
-                            default:
-                              "We'll send a verification code to confirm your email.",
-                          })
-                        : undefined
-                  }
-                  input={form.input.email}
-                  icon={iconFor("email")}
-                  // Locked, not hidden: the visitor has to be able to see
-                  // which address they are about to create an account for,
-                  // and it is often not the one they would have typed. The
-                  // value lives in the form model rather than the DOM, so
-                  // disabling the input does not drop it from the submit.
-                  disabled={!!props.lockedEmail}
-                />
-              )}
-              {settings.phoneNumber !== "none" && form.input.phoneNumber && (
-                <Control
-                  label={tr("auth.register.phone", {
-                    default: "Phone number",
-                  })}
-                  description={
-                    settings.verifyPhoneRequired
-                      ? tr("auth.register.phone.verify", {
-                          default:
-                            "We'll send a verification code to confirm your phone number.",
-                        })
-                      : undefined
-                  }
-                  input={form.input.phoneNumber}
-                  icon={iconFor("phone")}
-                />
-              )}
-              {/* `onFocus`/`onBlur` bubble from the input + toggle inside —
-                  the rules stay visible while the user types or interacts
-                  with the password toggle, and only collapse once the field
-                  is blurred AND empty. */}
-              <div
-                onFocus={() => setPasswordFieldFocused(true)}
-                onBlur={() => setPasswordFieldFocused(false)}
-              >
-                <Control
-                  label={tr("auth.register.password", { default: "Password" })}
-                  input={form.input.password}
-                  password
-                  autoComplete="new-password"
-                />
-              </div>
-              {(passwordFieldFocused || passwordValue.length > 0) && (
-                <PasswordRules
-                  policy={settings.passwordPolicy}
-                  value={passwordValue}
-                />
-              )}
-              {props.captchaSiteKey && (
-                <TurnstileWidget
-                  ref={props.captchaRef}
-                  siteKey={props.captchaSiteKey}
-                  onToken={props.onCaptchaToken}
-                  className="flex justify-center"
-                />
-              )}
-              <Button
-                type="submit"
-                loading={props.loading}
-                disabled={!!props.captchaSiteKey && !props.captchaToken}
-              >
-                {tr("auth.register.submit", { default: "Create account" })}
-              </Button>
-            </form>
-          )}
-          {showDivider && (
-            <div className="flex items-center gap-3">
-              <Separator className="flex-1" />
-              <span className="text-muted-foreground text-xs">
-                {tr("auth.register.or", { default: "OR" })}
-              </span>
-              <Separator className="flex-1" />
-            </div>
-          )}
-          {externalMethods.map((method) => {
-            const provider =
-              method.name.charAt(0).toUpperCase() + method.name.slice(1);
-            return (
-              <Button
-                key={method.name}
-                variant="outline"
-                onClick={() =>
-                  props.auth.login(method.name as never, {
-                    redirect,
-                    realm: props.realmName,
-                  })
-                }
-              >
-                <BrandIcon provider={method.name} />
-                {tr("auth.register.continueWith", {
-                  default: `Continue with ${provider}`,
-                  args: [provider],
-                })}
-              </Button>
-            );
-          })}
-          <p className="text-muted-foreground text-center text-sm">
-            {tr("auth.register.haveAccount", {
-              default: "Already have an account?",
-            })}{" "}
-            <a
-              href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
-              className="text-foreground underline-offset-4 hover:underline"
-            >
-              {tr("auth.register.signIn", { default: "Sign in" })}
-            </a>
-          </p>
-        </>
-      )}
-    </>
-  );
-};
+type Phase = "form" | "verification";
 
-const Centered = (props: { children: React.ReactNode }) => {
-  return (
-    <div className="flex min-h-svh flex-1 items-center justify-center p-6">
-      <div className="flex w-full max-w-sm flex-col items-center gap-4">
-        {props.children}
-      </div>
-    </div>
-  );
-};
-
-const RealmHeader = (props: {
-  settings: RealmConfig["settings"];
-  realmName: string;
-}) => {
-  const s = props.settings;
-  if (!s.displayName && !s.description) return null;
-  return (
-    <div className="flex flex-col items-center gap-1">
-      {s.displayName && (
-        <h2 className="text-center text-lg font-semibold">{s.displayName}</h2>
-      )}
-      {s.description && (
-        <p className="text-muted-foreground text-center text-sm">
-          {s.description}
-        </p>
-      )}
-    </div>
-  );
-};
-
-const PasswordRules = (props: {
-  policy: RealmConfig["settings"]["passwordPolicy"];
-  value: string;
-}) => {
-  const { tr } = useI18n();
-  const policy = props.policy;
-  const value = props.value;
-
-  const rules: { ok: boolean; label: string }[] = [];
-
-  if (policy?.minLength && policy.minLength > 0) {
-    rules.push({
-      ok: value.length >= policy.minLength,
-      label: tr("auth.register.password.rule.minLength", {
-        default: `At least ${policy.minLength} characters`,
-        args: [String(policy.minLength)],
-      }),
-    });
-  }
-  if (policy?.requireUppercase) {
-    rules.push({
-      ok: /[A-Z]/.test(value),
-      label: tr("auth.register.password.rule.uppercase", {
-        default: "One uppercase letter",
-      }),
-    });
-  }
-  if (policy?.requireLowercase) {
-    rules.push({
-      ok: /[a-z]/.test(value),
-      label: tr("auth.register.password.rule.lowercase", {
-        default: "One lowercase letter",
-      }),
-    });
-  }
-  if (policy?.requireNumbers) {
-    rules.push({
-      ok: /[0-9]/.test(value),
-      label: tr("auth.register.password.rule.number", {
-        default: "One number",
-      }),
-    });
-  }
-  if (policy?.requireSpecialCharacters) {
-    rules.push({
-      ok: /[^A-Za-z0-9]/.test(value),
-      label: tr("auth.register.password.rule.special", {
-        default: "One special character",
-      }),
-    });
-  }
-
-  if (rules.length === 0) return null;
-
-  return (
-    <ul className="text-muted-foreground -mt-2 flex flex-col gap-1 text-xs">
-      {rules.map((rule, idx) => (
-        <li
-          key={idx}
-          className={`flex items-center gap-1.5 ${rule.ok ? "text-emerald-600 dark:text-emerald-400" : ""}`}
-        >
-          {rule.ok ? (
-            <Check className="size-3.5" />
-          ) : (
-            <X className="size-3.5 opacity-50" />
-          )}
-          <span>{rule.label}</span>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-const RealmLogo = (props: {
-  settings: RealmConfig["settings"];
-  realmName: string;
-}) => {
-  if (!props.settings.logoUrl) return null;
-  return (
-    <img
-      src={props.settings.logoUrl}
-      alt={props.settings.displayName || props.realmName}
-      className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
-    />
-  );
-};
+interface State {
+  phase: Phase;
+  intent?: RegistrationIntentResponse;
+  credentials?: { identifier: string; password: string };
+}
 
 /**
  * The reference shape of the registration form, with every configurable field

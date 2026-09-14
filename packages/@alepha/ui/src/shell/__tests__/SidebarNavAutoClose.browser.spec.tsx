@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SidebarProvider, useSidebar } from "../../core/Sidebar.tsx";
-import { SidebarNavAutoClose } from "../AppShell.tsx";
+import { SidebarNavAutoClose } from "../SidebarNavAutoClose.tsx";
 
 /**
  * Tapping a nav entry on a phone navigated and left the sheet up, so the

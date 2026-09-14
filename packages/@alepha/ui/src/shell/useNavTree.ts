@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { NavGroup, NavItem } from "./AppShell.tsx";
+import type { NavGroup, NavItem } from "./appShellNav.tsx";
 import { type NavEntry, useNavEntries } from "./useNavEntries.ts";
 
 export interface UseNavTreeOptions {
