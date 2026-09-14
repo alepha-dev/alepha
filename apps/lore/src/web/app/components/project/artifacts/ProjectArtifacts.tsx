@@ -1,6 +1,5 @@
-import { FilterSlot, TimeAgo, Badge } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { TimeAgo, Badge } from "@alepha/ui";
+import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
@@ -12,7 +11,6 @@ import {
   Container,
   GitCommitHorizontal,
   Package,
-  Search,
   SearchX,
   Server,
   TriangleAlert,
@@ -60,13 +58,6 @@ interface ArtifactRow {
   commitSha?: string | null;
   pushedAt?: string | null;
 }
-
-const filtersSchema = z.object({
-  search: z.string().optional(),
-  app: z.array(z.string()).optional(),
-  runtime: z.array(z.string()).optional(),
-  format: z.array(z.string()).optional(),
-});
 
 /**
  * Every build this project has, across every app (feedback #2111).
@@ -202,6 +193,61 @@ const ProjectArtifacts = () => {
       ? "N/A"
       : `${l(bytes / 1_000_000, { number: { maximumFractionDigits: 1 } })} MB`;
 
+  /**
+   * The lists are hidden below two values, the way the Epics table hides its
+   * release filter: a multi-select offering one option that matches
+   * everything is a control with nothing to do.
+   */
+  const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: {
+          // ⚠️ The kit's plain "Search" is the placeholder, like every filter
+          // bar (#Q1750), and "Search" alone is thin for a screen reader on a
+          // bar carrying three more controls.
+          "aria-label": tr("artifacts.filter.searchLabel"),
+        },
+      },
+    },
+    app: {
+      schema: z.array(z.string()),
+      label: tr("artifacts.filter.app"),
+      icon: AppWindow,
+      items: appItems,
+      hidden: appItems.length <= 1,
+      control: {
+        clearLabel: tr("artifacts.filter.allApps"),
+        countLabel: (n: number) =>
+          tr("artifacts.filter.appCount", { args: [String(n)] }),
+      },
+    },
+    runtime: {
+      schema: z.array(z.string()),
+      label: tr("artifacts.filter.runtime"),
+      icon: Server,
+      items: runtimeItems,
+      hidden: runtimeItems.length <= 1,
+      control: {
+        clearLabel: tr("artifacts.filter.allRuntimes"),
+        countLabel: (n: number) =>
+          tr("artifacts.filter.runtimeCount", { args: [String(n)] }),
+      },
+    },
+    format: {
+      schema: z.array(z.string()),
+      label: tr("artifacts.filter.format"),
+      icon: Container,
+      items: formatItems,
+      hidden: formatItems.length <= 1,
+      control: {
+        clearLabel: tr("artifacts.filter.allFormats"),
+        countLabel: (n: number) =>
+          tr("artifacts.filter.formatCount", { args: [String(n)] }),
+      },
+    },
+  } satisfies AlephaTableFilterFields;
+
   return (
     <div
       data-testid="artifacts-table"
@@ -239,7 +285,7 @@ const ProjectArtifacts = () => {
               <span>{tr("artifacts.truncated")}</span>
             </div>
           )}
-          <AlephaTable<ArtifactRow>
+          <AlephaTable<ArtifactRow, typeof filterFields>
             className="min-h-0 flex-1"
             persistenceKey={`lor.artifacts.${project.id}`}
             data={rows}
@@ -269,101 +315,13 @@ const ProjectArtifacts = () => {
               title: tr("artifacts.noMatch"),
               description: tr("artifacts.list.empty"),
             }}
-            filters={{
-              schema: filtersSchema,
-              render: (form) => (
-                <>
-                  <FilterSlot>
-                    <Control
-                      input={form.input.search}
-                      label=""
-                      icon={Search}
-                      placeholder={tr("artifacts.filter.search")}
-                      inputProps={{
-                        // ⚠️ A different key from the placeholder, which now
-                        // says plain "Search" like every filter bar
-                        // (#Q1750). "Search" alone is thin for a screen
-                        // reader on a bar carrying three controls.
-                        "aria-label": tr("artifacts.filter.searchLabel"),
-                      }}
-                    />
-                  </FilterSlot>
-                  {/* Both hidden below two values, the way the Epics table
-                      hides its release filter: a multi-select offering one
-                      option that matches everything is a control with
-                      nothing to do. */}
-                  {appItems.length > 1 && (
-                    <FilterSlot>
-                      <Control
-                        input={form.input.app}
-                        label=""
-                        clearable
-                        icon={AppWindow}
-                        clearLabel={tr("artifacts.filter.allApps")}
-                        countLabel={(n) =>
-                          tr("artifacts.filter.appCount", {
-                            args: [String(n)],
-                          })
-                        }
-                        triggerClassName="w-full"
-                        items={appItems}
-                        inputProps={{
-                          "aria-label": tr("artifacts.filter.app"),
-                        }}
-                      />
-                    </FilterSlot>
-                  )}
-                  {runtimeItems.length > 1 && (
-                    <FilterSlot>
-                      <Control
-                        input={form.input.runtime}
-                        label=""
-                        clearable
-                        icon={Server}
-                        clearLabel={tr("artifacts.filter.allRuntimes")}
-                        countLabel={(n) =>
-                          tr("artifacts.filter.runtimeCount", {
-                            args: [String(n)],
-                          })
-                        }
-                        triggerClassName="w-full"
-                        items={runtimeItems}
-                        inputProps={{
-                          "aria-label": tr("artifacts.filter.runtime"),
-                        }}
-                      />
-                    </FilterSlot>
-                  )}
-                  {formatItems.length > 1 && (
-                    <FilterSlot>
-                      <Control
-                        input={form.input.format}
-                        label=""
-                        clearable
-                        icon={Container}
-                        clearLabel={tr("artifacts.filter.allFormats")}
-                        countLabel={(n) =>
-                          tr("artifacts.filter.formatCount", {
-                            args: [String(n)],
-                          })
-                        }
-                        triggerClassName="w-full"
-                        items={formatItems}
-                        inputProps={{
-                          "aria-label": tr("artifacts.filter.format"),
-                        }}
-                      />
-                    </FilterSlot>
-                  )}
-                </>
-              ),
-            }}
+            filters={{ fields: filterFields }}
             // `app` and `runtime` would both be answered by the built-in
             // field matching, but `search` spans the tag AND the commit, so
             // once the predicate exists it owns all three rather than
             // leaving the reader to work out which filter runs where.
             filter={(row, values) => {
-              const search = String(values.search ?? "").toLowerCase();
+              const search = (values.search ?? "").toLowerCase();
               if (
                 search &&
                 !row.tag.toLowerCase().includes(search) &&
@@ -371,13 +329,13 @@ const ProjectArtifacts = () => {
               ) {
                 return false;
               }
-              const apps = values.app as string[] | undefined;
+              const apps = values.app;
               if (apps?.length && !apps.includes(row.app)) return false;
-              const runtimes = values.runtime as string[] | undefined;
+              const runtimes = values.runtime;
               if (runtimes?.length && !runtimes.includes(row.runtime)) {
                 return false;
               }
-              const formats = values.format as string[] | undefined;
+              const formats = values.format;
               if (formats?.length && !formats.includes(row.format)) {
                 return false;
               }

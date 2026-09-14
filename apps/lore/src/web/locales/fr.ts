@@ -279,7 +279,6 @@ export default {
   "artifacts.empty.description":
     "Rien n'a encore été publié. Les artefacts viennent de la CI, donc cette page reste vide tant qu'aucun build n'est publié.",
   "artifacts.empty.docs": "Comment publier un build",
-  "artifacts.filter.search": "Rechercher",
   "artifacts.filter.searchLabel": "Rechercher un tag ou un commit",
   "artifacts.filter.app": "Application",
   "artifacts.filter.allApps": "Toutes les applications",
@@ -318,7 +317,6 @@ export default {
   "quest.create.area.helper":
     "Partie du système à laquelle la quête appartient",
 
-  "board.filter.search": "Rechercher",
   "board.filter.status": "Statut",
   "board.filter.area": "Domaine",
   "board.filter.tag": "Étiquette",
@@ -811,7 +809,6 @@ export default {
   "release.list.column.tag": "Version",
   "release.list.column.progress": "Progression",
   "release.list.column.date": "Date",
-  "release.filter.search": "Rechercher",
   "release.filter.state": "État",
   "release.filter.allStates": "Tous les états",
   "release.progress.none": "Rien de rattaché",
@@ -1154,7 +1151,6 @@ export default {
   "project.menu.blights": "Fléaux",
   "project.menu.apps": "Applications",
 
-  "apps.filter.search": "Rechercher",
   "apps.filter.app": "Application",
   "apps.filter.env": "Environnement",
   "apps.filter.status": "État",
@@ -1488,6 +1484,8 @@ export default {
   "blights.filter.resolved": "Résolus",
   "blights.filter.all": "Tous",
   "blights.filter.statusCount": "$1 statuts",
+  "blights.filter.status": "Statut",
+  "blights.filter.sigil": "Sigil",
   "blights.col.error": "Erreur",
   "blights.col.page": "Page",
   "blights.col.count": "Occurrences",
@@ -1689,7 +1687,6 @@ export default {
   "bay.commands.noMatch.description": "Ajustez ou effacez les filtres.",
   "bay.commands.filter.kind": "Type",
   "bay.commands.filter.status": "Statut",
-  "bay.commands.filter.any": "Tous",
   "bay.commands.col.when": "Quand",
   "bay.commands.col.kind": "Commande",
   "bay.commands.col.status": "Statut",
@@ -1880,7 +1877,6 @@ export default {
     "Les messages qui vous sont adressés apparaissent ici.",
   "inbox.noMatch": "Aucun résultat",
   "inbox.noMatch.description": "Ajustez ou effacez la recherche.",
-  "inbox.filter.search": "Rechercher",
   "inbox.filter.searchLabel": "Rechercher un message",
   "inbox.table.message": "Message",
   "inbox.table.project": "Projet",
@@ -2004,7 +2000,6 @@ export default {
   "epic.list.empty": "Aucune épopée pour le moment.",
   "epic.list.column.title": "Épopée",
   "epic.list.column.updated": "Mise à jour",
-  "epic.filter.search": "Rechercher",
   "epic.filter.status": "Statut",
   "epic.filter.allStatuses": "Tous les statuts",
   "epic.filter.statusCount": "$1 statuts",
@@ -2316,7 +2311,6 @@ export default {
   "myFeedback.description":
     "Les bogues et demandes que vous avez signalés, tous projets confondus. Ceux en attente peuvent encore être modifiés ou retirés.",
   "myFeedback.empty": "Vous n'avez encore envoyé aucun retour.",
-  "myFeedback.filter.search": "Rechercher",
   "myFeedback.filter.search.aria": "Rechercher un retour",
   "myFeedback.filter.allStatuses": "Tous les statuts",
   "myFeedback.filter.statusCount": "$1 statuts",

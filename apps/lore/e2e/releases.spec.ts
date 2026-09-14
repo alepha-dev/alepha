@@ -771,11 +771,12 @@ test.describe("Releases", () => {
       // as picking neither. So a second pick REPLACES again, and each one
       // needs the popup reopened.
       //
-      // The only combobox on the page: the toolbar's other filter is a text
-      // input, and the table's page-size picker only appears once there is
-      // more than one page.
-      const stateFilter = page.getByRole("combobox").first();
-      await stateFilter.click();
+      // Optional, so off the bar until it is added from the funnel-plus menu
+      // (#E58). Adding it opens its list, so the first option is the next
+      // click; after that the trigger, named by the filter, reopens it.
+      const stateFilter = page.getByRole("combobox", { name: "State" });
+      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("menuitem", { name: /^State/ }).click();
       await page.getByRole("option", { name: "Released" }).click();
       await expect.poll(tagColumn, { timeout: 15_000 }).toEqual(["0.28.0"]);
 

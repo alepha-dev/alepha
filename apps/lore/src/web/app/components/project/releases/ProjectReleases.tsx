@@ -1,7 +1,8 @@
-import { FilterSlot, Badge, Button } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { Badge, Button } from "@alepha/ui";
 import {
   AlephaTable,
+  type AlephaTableFilterFields,
+  type AlephaTableFilterValues,
   type BulkAction,
   type RowActionEntry,
 } from "@alepha/ui/table";
@@ -9,7 +10,7 @@ import { type Page, z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Flag, Inbox, Plus, Search, Trash2, X } from "lucide-react";
+import { CircleDot, Flag, Inbox, Plus, Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
@@ -35,32 +36,6 @@ import {
 } from "./releaseState.ts";
 import { useDeleteRelease } from "./useDeleteRelease.ts";
 import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
-
-const releasesFiltersSchema = z.object({
-  search: z.string().optional(),
-  /**
-   * A SCALAR again, and absent means every state.
-   *
-   * ⚠️ This went array and came back, so the round trip is worth stating.
-   * It was made an array by feedback #2092 because a `clearable` scalar drew
-   * its clear entry as a third SELECTABLE row with a check mark beside Open
-   * and Released, so "All states" read as a third state a release could be
-   * in, and a multi-select was the only arity that had no such row.
-   *
-   * #2098 removed the row from `control-select` itself, which took the only
-   * reason with it. What is left is two values that are exhaustive and
-   * mutually exclusive - a release either has a `releasedAt` or does not -
-   * so selecting both was the same query as selecting neither, and the
-   * trigger said "2 states" for what meant "no filter". Apps' `reporting`
-   * filter is the identical shape and stayed a scalar throughout; #1816
-   * flagged the two disagreeing and named this as the fix.
-   *
-   * A stored `["open"]` from the array era survives the change:
-   * `reconcilePersistedFilters` takes the first element when the schema
-   * wants a scalar and finds an array.
-   */
-  state: z.enum(["open", "released"]).optional(),
-});
 
 /**
  * Every release in the project, built on {@link AlephaTable}.
@@ -201,6 +176,41 @@ const ProjectReleases = () => {
     setReload((n) => n + 1);
   };
 
+  const filterFields = {
+    search: { preset: "search" },
+    /**
+     * A SCALAR again, and absent means every state.
+     *
+     * ⚠️ This went array and came back, so the round trip is worth stating.
+     * It was made an array by feedback #2092 because a `clearable` scalar drew
+     * its clear entry as a third SELECTABLE row with a check mark beside Open
+     * and Released, so "All states" read as a third state a release could be
+     * in, and a multi-select was the only arity that had no such row.
+     *
+     * #2098 removed the row from `control-select` itself, which took the only
+     * reason with it. What is left is two values that are exhaustive and
+     * mutually exclusive - a release either has a `releasedAt` or does not -
+     * so selecting both was the same query as selecting neither, and the
+     * trigger said "2 states" for what meant "no filter". Apps' `reporting`
+     * filter is the identical shape and stayed a scalar throughout; #1816
+     * flagged the two disagreeing and named this as the fix.
+     *
+     * A stored `["open"]` from the array era survives the change:
+     * `reconcilePersistedFilters` takes the first element when the schema
+     * wants a scalar and finds an array.
+     */
+    state: {
+      schema: z.enum(["open", "released"]),
+      label: tr("release.filter.state"),
+      icon: CircleDot,
+      items: [
+        { label: tr("release.group.open"), value: "open" },
+        { label: tr("release.group.released"), value: "released" },
+      ],
+      control: { clearLabel: tr("release.filter.allStates") },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const fetchReleases = async ({
     page,
     size,
@@ -210,7 +220,7 @@ const ProjectReleases = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: Record<string, any>;
+    filters?: AlephaTableFilterValues<typeof filterFields>;
   }): Promise<Page<ReleaseResource>> => {
     const all = await releaseApi.getReleases({
       params: { projectId: project.id },
@@ -218,10 +228,8 @@ const ProjectReleases = () => {
     // Before anything filters it; see `allReleases`.
     allReleases.current = all;
 
-    const state = filters?.state as "open" | "released" | undefined;
-    const needle = String(filters?.search ?? "")
-      .trim()
-      .toLowerCase();
+    const state = filters?.state;
+    const needle = (filters?.search ?? "").trim().toLowerCase();
 
     const rows = sortReleases(
       all.filter((release) => {
@@ -290,7 +298,7 @@ const ProjectReleases = () => {
         suggestedTag={suggestedReleaseTag(allReleases.current)}
       />
 
-      <AlephaTable<ReleaseResource>
+      <AlephaTable<ReleaseResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.releases.${project.id}`}
         bulkActions={bulkActions}
@@ -340,37 +348,7 @@ const ProjectReleases = () => {
           description: tr("release.noMatch.body"),
         }}
         refreshSignal={reload}
-        filters={{
-          schema: releasesFiltersSchema,
-          render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("release.filter.search")}
-                  inputProps={{ "aria-label": tr("release.filter.search") }}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                <Control
-                  input={form.input.state}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("release.filter.allStates")}
-                  triggerClassName="w-full"
-                  items={[
-                    { label: tr("release.group.open"), value: "open" },
-                    { label: tr("release.group.released"), value: "released" },
-                  ]}
-                  inputProps={{ "aria-label": tr("release.filter.state") }}
-                />
-              </FilterSlot>
-            </>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         fetch={fetchReleases}
         onRowClick={(release) =>
           release.tag &&

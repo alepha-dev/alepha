@@ -1,6 +1,5 @@
-import { FilterSlot, TimeAgo, Button } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { TimeAgo, Button } from "@alepha/ui";
+import { AlephaTable, type AlephaTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
@@ -12,7 +11,6 @@ import {
   Layers,
   Plus,
   Radio,
-  Search,
   Tag,
   TriangleAlert,
 } from "lucide-react";
@@ -29,47 +27,6 @@ import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
-
-const filtersSchema = z.object({
-  /**
-   * ⚠️ Matches the Name and the Env columns BOTH, which is what makes a
-   * tenant-ish substring like `b14` find anything at all: the app is called
-   * `club` and only the env half carries the tenant.
-   *
-   * Local state rather than URL-backed. The breadcrumb link that would have
-   * wanted `?search=` was decided against in #1768, so nothing reads it from
-   * the URL and putting it there would be a parameter with one writer and no
-   * reader.
-   */
-  search: z.string().optional(),
-  /**
-   * Single selects, one value or none - the reporter asked for "(mono)" and
-   * the two questions they answer are singular: which envs does `api` have,
-   * which apps are in `production`.
-   *
-   * ⚠️ No sentinel item, per the convention settled in #Q1816: the EMPTY
-   * selection is the unfiltered state, which is what `clearable` gives back.
-   * An "All apps" row would be a value the schema has to carry and every
-   * predicate has to special-case.
-   *
-   * `app` and `env` are plain strings and not enums on purpose. An env is an
-   * opaque free slug, so the option list is derived from the rows the page
-   * already holds; a union here would be a closed set over an open one.
-   */
-  app: z.string().optional(),
-  env: z.string().optional(),
-  status: z.enum(["reporting", "silent", "none"]).optional(),
-  /**
-   * The deployed tag, as a select over the values actually present.
-   *
-   * ⚠️ `latest` is in that list like any other value, and the label must not
-   * imply that everything on it is one build: `artifacts.tag` allows `latest`
-   * and its bytes may change, so two copies both reading `latest` may be
-   * running different code. Same shape as `app` and `env` above: a single
-   * select with no sentinel row, over the rows already on screen.
-   */
-  version: z.string().optional(),
-});
 
 /**
  * Every deployed copy of every app, in one flat table.
@@ -177,6 +134,108 @@ const ProjectApps = () => {
     .sort((a, b) => a.localeCompare(b))
     .map((value) => ({ value, label: value }));
 
+  /**
+   * The filters, answered by the `filter` predicate below. Both lists of
+   * names are hidden below two values, the way the Epics table hides its
+   * Release filter with no release: a select whose only option matches every
+   * row is a control with nothing to do.
+   */
+  const filterFields = {
+    /**
+     * ⚠️ Matches the Name and the Env columns BOTH, which is what makes a
+     * tenant-ish substring like `b14` find anything at all: the app is called
+     * `club` and only the env half carries the tenant.
+     *
+     * Local state rather than URL-backed. The breadcrumb link that would have
+     * wanted `?search=` was decided against in #1768, so nothing reads it from
+     * the URL and putting it there would be a parameter with one writer and no
+     * reader.
+     */
+    search: { preset: "search" },
+    /**
+     * Single selects, one value or none - the reporter asked for "(mono)" and
+     * the two questions they answer are singular: which envs does `api` have,
+     * which apps are in `production`.
+     *
+     * ⚠️ No sentinel item, per the convention settled in #Q1816: the EMPTY
+     * selection is the unfiltered state, which is what `clearable` gives back.
+     * An "All apps" row would be a value the schema has to carry and every
+     * predicate has to special-case.
+     *
+     * `app` and `env` are plain strings and not enums on purpose. An env is an
+     * opaque free slug, so the option list is derived from the rows the page
+     * already holds; a union here would be a closed set over an open one.
+     */
+    app: {
+      schema: z.string(),
+      label: tr("apps.filter.app"),
+      icon: Boxes,
+      items: appOptions,
+      hidden: appOptions.length <= 1,
+      // Doubles as the empty trigger's placeholder, which is the whole of the
+      // way #Q1816 settled: there is no clear ROW in the list, so the label
+      // says what unfiltered means and the trigger's `x` is how you get back
+      // to it.
+      control: { clearLabel: tr("apps.filter.app") },
+    },
+    env: {
+      schema: z.string(),
+      label: tr("apps.filter.env"),
+      icon: Layers,
+      items: envOptions,
+      hidden: envOptions.length <= 1,
+      control: { clearLabel: tr("apps.filter.env") },
+    },
+    status: {
+      schema: z.enum(["reporting", "silent", "none"]),
+      label: tr("apps.filter.status"),
+      icon: Radio,
+      // Semantic order, not alphabetical: reporting, silent, never wired up.
+      //
+      // ⚠️ These used to be `AppStatusDot`'s own strings, on the reasoning
+      // that the dot and the filter must not disagree about what a state is
+      // called. They now diverge on purpose, because the two are not saying
+      // the same kind of thing: a dropdown is a list of NAMES, and "Silent
+      // for over a day" and "No sigil, nothing reports" are explanations of a
+      // state rather than names for one.
+      //
+      // The dot keeps the long form and needs it - it is a coloured circle
+      // with no other context, so its accessible name is the only place the
+      // threshold and the reason can be stated. `apps.status.*` therefore
+      // keeps its existing meaning and the short names are new keys beside
+      // it, so nothing changes meaning under a name already in use.
+      //
+      // `reporting` is shared: it was already a name.
+      items: [
+        { value: "reporting", label: tr("apps.status.reporting") },
+        { value: "silent", label: tr("apps.status.silent.short") },
+        { value: "none", label: tr("apps.status.none.short") },
+      ],
+      control: { clearLabel: tr("apps.filter.status") },
+    },
+    /**
+     * The deployed tag, as a select over the values actually present.
+     *
+     * ⚠️ `latest` is in that list like any other value, and the label must not
+     * imply that everything on it is one build: `artifacts.tag` allows `latest`
+     * and its bytes may change, so two copies both reading `latest` may be
+     * running different code. Same shape as `app` and `env` above: a single
+     * select with no sentinel row, over the rows already on screen.
+     */
+    //
+    // ⚠️ Hidden when NOTHING has a version, not below two values like App and
+    // Env: one deployed copy among ten is exactly the case somebody wants to
+    // isolate, and a select with a single option is still doing work here.
+    version: {
+      schema: z.string(),
+      label: tr("apps.filter.version"),
+      icon: Tag,
+      items: versionOptions,
+      hidden: versionOptions.length === 0,
+      control: { clearLabel: tr("apps.filter.version") },
+    },
+  } satisfies AlephaTableFilterFields;
+
   const openInstance = (instance: AppInstanceResource) =>
     void router.push("app", {
       params: {
@@ -226,7 +285,7 @@ const ProjectApps = () => {
       // the inset went with it and this page starts where its siblings do.
       className="flex min-h-0 flex-1 flex-col overflow-hidden p-2"
     >
-      <AlephaTable<AppInstanceResource>
+      <AlephaTable<AppInstanceResource, typeof filterFields>
         className="min-h-0 flex-1"
         data={instances}
         persistenceKey={`lor.apps.${project.id}`}
@@ -291,126 +350,7 @@ const ProjectApps = () => {
         // leaves the previous order underneath it, and the data arrives from
         // `listApps` already ordered by the pair.
         defaultSort={{ field: "app", direction: "asc" }}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("apps.filter.search")}
-                  inputProps={{ "aria-label": tr("apps.filter.search") }}
-                />
-              </FilterSlot>
-              {/* Both lists are hidden below two values, the way the Epics
-                  table hides its Release filter with no release: a select
-                  whose only option matches every row is a control with
-                  nothing to do. */}
-              {appOptions.length > 1 && (
-                <FilterSlot>
-                  <Control
-                    select
-                    clearable
-                    input={form.input.app}
-                    label=""
-                    icon={Boxes}
-                    triggerClassName="w-full"
-                    // Doubles as the empty trigger's placeholder, which is
-                    // the whole of the way #Q1816 settled: there is no clear
-                    // ROW in the list, so the label says what unfiltered
-                    // means and the trigger's `x` is how you get back to it.
-                    clearLabel={tr("apps.filter.app")}
-                    items={appOptions}
-                    inputProps={{ "aria-label": tr("apps.filter.app") }}
-                  />
-                </FilterSlot>
-              )}
-              {envOptions.length > 1 && (
-                <FilterSlot>
-                  <Control
-                    select
-                    clearable
-                    input={form.input.env}
-                    label=""
-                    icon={Layers}
-                    triggerClassName="w-full"
-                    // Doubles as the empty trigger's placeholder, which is
-                    // the whole of the way #Q1816 settled: there is no clear
-                    // ROW in the list, so the label says what unfiltered
-                    // means and the trigger's `x` is how you get back to it.
-                    clearLabel={tr("apps.filter.env")}
-                    items={envOptions}
-                    inputProps={{ "aria-label": tr("apps.filter.env") }}
-                  />
-                </FilterSlot>
-              )}
-              <FilterSlot>
-                <Control
-                  select
-                  clearable
-                  input={form.input.status}
-                  label=""
-                  icon={Radio}
-                  triggerClassName="w-full"
-                  // Doubles as the empty trigger's placeholder, which is
-                  // the whole of the way #Q1816 settled: there is no clear
-                  // ROW in the list, so the label says what unfiltered
-                  // means and the trigger's `x` is how you get back to it.
-                  clearLabel={tr("apps.filter.status")}
-                  // Semantic order, not alphabetical: reporting, silent,
-                  // never wired up.
-                  //
-                  // ⚠️ These used to be `AppStatusDot`'s own strings, on the
-                  // reasoning that the dot and the filter must not disagree
-                  // about what a state is called. They now diverge on
-                  // purpose, because the two are not saying the same kind of
-                  // thing: a dropdown is a list of NAMES, and "Silent for
-                  // over a day" and "No sigil, nothing reports" are
-                  // explanations of a state rather than names for one.
-                  //
-                  // The dot keeps the long form and needs it - it is a
-                  // coloured circle with no other context, so its accessible
-                  // name is the only place the threshold and the reason can
-                  // be stated. `apps.status.*` therefore keeps its existing
-                  // meaning and the short names are new keys beside it, so
-                  // nothing changes meaning under a name already in use.
-                  //
-                  // `reporting` is shared: it was already a name.
-                  items={[
-                    {
-                      value: "reporting",
-                      label: tr("apps.status.reporting"),
-                    },
-                    { value: "silent", label: tr("apps.status.silent.short") },
-                    { value: "none", label: tr("apps.status.none.short") },
-                  ]}
-                  inputProps={{ "aria-label": tr("apps.filter.status") }}
-                />
-              </FilterSlot>
-              {/* ⚠️ Hidden when NOTHING has a version, not below two values
-                  like App and Env: one deployed copy among ten is exactly the
-                  case somebody wants to isolate, and a select with a single
-                  option is still doing work here. */}
-              {versionOptions.length > 0 && (
-                <FilterSlot>
-                  <Control
-                    select
-                    clearable
-                    input={form.input.version}
-                    label=""
-                    icon={Tag}
-                    triggerClassName="w-full"
-                    clearLabel={tr("apps.filter.version")}
-                    items={versionOptions}
-                    inputProps={{ "aria-label": tr("apps.filter.version") }}
-                  />
-                </FilterSlot>
-              )}
-            </>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         // ⚠️ A caller-supplied `filter` REPLACES the built-in field matching
         // entirely (`paginateLocal`), so every filter is answered here - `app`
         // and `env` included, even though they are named after properties.
@@ -425,11 +365,11 @@ const ProjectApps = () => {
         // Only values that are actually set reach this, so each clause is a
         // guard rather than a default.
         filter={(instance, values) => {
-          const version = String(values.version ?? "");
+          const version = values.version;
           if (version && instance.version !== version) {
             return false;
           }
-          const search = String(values.search ?? "").toLowerCase();
+          const search = (values.search ?? "").toLowerCase();
           if (search) {
             const url = appUrl(instance) ?? "";
             const hit =
