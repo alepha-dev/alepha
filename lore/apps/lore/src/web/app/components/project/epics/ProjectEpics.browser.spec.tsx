@@ -204,8 +204,8 @@ describe("ProjectEpics - the status filter", () => {
     expect(row("#E3 - Started epic")).toBeNull();
     expect(row("#E1 - Draft epic")).not.toBeNull();
     expect(row("#E2 - Ready epic")).not.toBeNull();
-    // The trigger says how many, the way the Quests list's does.
-    expect(status.textContent).toContain("2 status");
+    // The trigger names both, in the list's order, the way the Quests list's does.
+    expect(status.textContent).toContain("Draft, Ready");
   });
 
   /**
@@ -291,9 +291,7 @@ describe("ProjectEpics - the status filter", () => {
       await mount(RELEASES, EPICS);
 
       await openFilter();
-      fireEvent.click(
-        await screen.findByRole("option", { name: "No release" }),
-      );
+      fireEvent.click(await screen.findByRole("option", { name: "None" }));
 
       await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
       expect(row("#E2 - Next epic")).toBeNull();
@@ -308,18 +306,16 @@ describe("ProjectEpics - the status filter", () => {
       await mount(RELEASES, EPICS);
 
       await openFilter();
-      fireEvent.click(
-        await screen.findByRole("option", { name: "No release" }),
-      );
+      fireEvent.click(await screen.findByRole("option", { name: "None" }));
       fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
 
       await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
       expect(row("#E2 - Next epic")).not.toBeNull();
       expect(row("#E3 - Unassigned epic")).not.toBeNull();
-      // The trigger counts, the way its neighbour does.
+      // The trigger names both, "None" first as the list leads with it.
       expect(
         screen.getByRole("combobox", { name: "Release" }).textContent,
-      ).toContain("2 releases");
+      ).toContain("None, 0.29.0");
     });
   });
 
@@ -768,7 +764,7 @@ describe("ProjectEpics - the status filter", () => {
       const labels = entries.map((entry) => entry.textContent ?? "");
       expect(labels.join(" ")).toContain("0.29.0");
       expect(labels.join(" ")).toContain("0.30.0");
-      expect(labels.join(" ")).toContain("No release");
+      expect(labels.join(" ")).toContain("None");
       // 0.28.0 is published, and this epic is not in it. Attaching would be
       // refused server-side, so it is never offered.
       expect(labels.join(" ")).not.toContain("0.28.0");
@@ -785,7 +781,7 @@ describe("ProjectEpics - the status filter", () => {
       expect(checked[0]?.textContent).toContain("0.30.0");
     });
 
-    it("marks No release when the epic is in none", async () => {
+    it("marks None when the epic is in no release", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft")]);
 
       const entries = await openReleases(await openRowMenu("#E1 - Draft epic"));
@@ -793,7 +789,7 @@ describe("ProjectEpics - the status filter", () => {
         (entry) => entry.getAttribute("aria-checked") === "true",
       );
       expect(checked).toHaveLength(1);
-      expect(checked[0]?.textContent).toContain("No release");
+      expect(checked[0]?.textContent).toContain("None");
     });
 
     /**

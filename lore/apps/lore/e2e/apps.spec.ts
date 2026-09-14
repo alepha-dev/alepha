@@ -1675,9 +1675,7 @@ test.describe("Apps", () => {
       // the detach below races the PATCH. That cost an hour, reading as a
       // refusal that never lifts.
       await select.click();
-      await page
-        .getByRole("option", { name: "No estate", exact: true })
-        .click();
+      await page.getByRole("option", { name: "None", exact: true }).click();
       await releasePointerEvents(page);
       await expect
         .poll(

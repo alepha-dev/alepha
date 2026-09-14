@@ -990,7 +990,7 @@ test.describe("Releases", () => {
 
         await page.goto(`/${slug}/epics/${epic.number}`);
         const control = page.locator("aside").getByRole("combobox");
-        await expect(control).toContainText("No release", { timeout: 15_000 });
+        await expect(control).toContainText("None", { timeout: 15_000 });
       });
 
       await test.step("a selection of two goes in one confirm", async () => {

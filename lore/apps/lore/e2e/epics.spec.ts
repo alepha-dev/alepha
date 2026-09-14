@@ -1289,10 +1289,10 @@ test.describe("Epics — the release control", () => {
         })
         .click();
 
-      await expect(control).toContainText("No release", { timeout: 15_000 });
+      await expect(control).toContainText("None", { timeout: 15_000 });
       expect((await saved).status()).toBe(200);
       await page.reload();
-      await expect(control).toContainText("No release", { timeout: 15_000 });
+      await expect(control).toContainText("None", { timeout: 15_000 });
       // And with nothing attached there is nothing to clear, so the button
       // is gone rather than sitting there offering the state it is in.
       await expect(
