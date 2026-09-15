@@ -378,16 +378,23 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                 : []),
             ]}
           />
-          {epicApi.updateEpic.can() && (
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setEditOpen(true)}
-            >
-              <Pencil className="size-4" />
-              {tr("epic.edit")}
-            </Button>
-          )}
+          {/* Only while the plan is still open (#Q2353): a started or
+              completed epic's plan is frozen, and the page stops offering to
+              edit it. The server still accepts a title or description
+              change in every status, which agents rely on to link an
+              outcome from a completed epic, so this hides a button and
+              refuses nothing. */}
+          {epicApi.updateEpic.can() &&
+            (epic.status === "draft" || epic.status === "ready") && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="size-4" />
+                {tr("epic.edit")}
+              </Button>
+            )}
           <EpicStatusControl epic={epic} onChange={applyStatusChange} />
         </>
       }

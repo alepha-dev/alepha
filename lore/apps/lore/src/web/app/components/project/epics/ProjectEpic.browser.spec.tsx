@@ -135,3 +135,64 @@ describe("ProjectEpic", () => {
     expect(questCount()).toBe("1");
   });
 });
+
+/**
+ * Edit opens the title and description sheet, and the page offers it only
+ * while the plan is open (#Q2353): a started or completed epic's plan is
+ * frozen. The server keeps accepting the update in every status; that half is
+ * `EpicController.spec.ts`'s.
+ */
+describe("ProjectEpic, the Edit button", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  const mount = async (status: EpicResource["status"]) => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectEpic epic={{ ...epicOf(5), status } as EpicResource} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    // The header has rendered once the tab bar has.
+    await screen.findByRole("radio", { name: /Quests/ });
+  };
+
+  const edit = () => screen.queryByRole("button", { name: "Edit" });
+
+  it.each(["draft", "ready"] as const)(
+    "offers Edit on a %s epic",
+    async (status) => {
+      await mount(status);
+      expect(edit()).not.toBeNull();
+    },
+  );
+
+  it.each(["in_progress", "completed"] as const)(
+    "does not offer Edit on an %s epic",
+    async (status) => {
+      await mount(status);
+      expect(edit()).toBeNull();
+    },
+  );
+});
