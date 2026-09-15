@@ -898,6 +898,137 @@ describe("artifacts", () => {
     });
   });
 
+  /**
+   * #Q2356 (feedback #P2209): the project Artifacts table deletes a build.
+   *
+   * The endpoint's properties that would be quietly wrong rather than loudly
+   * broken: a rank that may push must not be able to delete, an id belonging
+   * to another project must not be deletable through this one's gate, and a
+   * delete must take the stored bytes with the row rather than leave them
+   * unreachable.
+   */
+  describe("deleting a build", () => {
+    /**
+     * With Apps on: a delete is a write under that capability, unlike a push.
+     */
+    const anAppsProject = async (owner?: { id: string; roles: string[] }) => {
+      const user = owner ?? (await createTestUser(ctx));
+      const project = await ctx.projectController.createProject.fetch(
+        {
+          body: {
+            title: `Artifacts ${crypto.randomUUID().slice(0, 8)}`,
+            capabilities: [{ key: "apps" }],
+          },
+        },
+        { user },
+      );
+      return { owner: user, projectId: project.data.id };
+    };
+
+    /**
+     * Direct row insert, bypassing the invitation flow. `member` is the
+     * built-in default rank; the presets were seeded by `createProject`.
+     */
+    const joinAs = async (projectId: number, rank: string) => {
+      const user = await createTestUser(ctx);
+      await (ctx.projectController as any).members.create({
+        userId: user.id,
+        projectId,
+        rank,
+      });
+      return user;
+    };
+
+    const remove = async (
+      projectId: number,
+      user: { id: string },
+      artifactId: string,
+    ) =>
+      ctx.artifactController.deleteArtifact.fetch(
+        { params: { projectId, artifactId } },
+        { user },
+      );
+
+    it("removes the row, its stored bytes and its source maps", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await anAppsProject();
+      await push(projectId, owner, {
+        file: await packedArtifact(),
+        maps: mapsArchive(),
+      });
+      const [row] = await ctx.rows.artifacts.findMany({});
+
+      const answer = await remove(projectId, owner, row.id);
+
+      expect(answer.data.ok).toBe(true);
+      expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
+      await expect(
+        ctx.artifactController.artifactBucket.get(row.fileId as string),
+      ).rejects.toThrow();
+      await expect(
+        ctx.artifactController.artifactBucket.get(row.mapsFileId as string),
+      ).rejects.toThrow();
+    });
+
+    it("refuses a member whose rank may push but not delete", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await anAppsProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+      const [row] = await ctx.rows.artifacts.findMany({});
+
+      for (const rank of ["member", "contributor", "viewer"]) {
+        const user = await joinAs(projectId, rank);
+        expect(await statusOf(remove(projectId, user, row.id))).toBe(403);
+      }
+      expect(
+        await statusOf(remove(projectId, await createTestUser(ctx), row.id)),
+      ).toBe(403);
+
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+    });
+
+    it("lets a member holding the Admin preset delete", async ({ expect }) => {
+      const { owner, projectId } = await anAppsProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+      const [row] = await ctx.rows.artifacts.findMany({});
+      const admin = await joinAs(projectId, "admin");
+
+      expect(await statusOf(remove(projectId, admin, row.id))).toBe(200);
+      expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
+    });
+
+    /**
+     * ⚠️ The gate passes on the project in the PATH, which the caller owns.
+     * Only the lookup's project filter stands between them and a build of a
+     * project they may not even read.
+     */
+    it("refuses an artifact id from another project, and leaves it there", async ({
+      expect,
+    }) => {
+      const { owner, projectId: mine } = await anAppsProject();
+      const { owner: other, projectId: theirs } = await anAppsProject();
+      await push(theirs, other, { file: await packedArtifact() });
+      const [row] = await ctx.rows.artifacts.findMany({});
+
+      expect(await statusOf(remove(mine, owner, row.id))).toBe(404);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+      await expect(
+        ctx.artifactController.artifactBucket.get(row.fileId as string),
+      ).resolves.toBeDefined();
+    });
+
+    it("refuses while the Apps capability is off", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+      const [row] = await ctx.rows.artifacts.findMany({});
+
+      expect(await statusOf(remove(projectId, owner, row.id))).toBe(400);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+    });
+  });
+
   describe("the gate", () => {
     it("refuses a caller who is not a member of the project", async ({
       expect,

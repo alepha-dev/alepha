@@ -298,7 +298,10 @@ export const DataTable = <
   const hasCheckbox = Boolean(props.bulkActions?.length);
   const hasRowActions = Boolean(props.rowActions);
 
-  const rowCtx: RowActionContext = useMemo(() => ({ refresh }), [refresh]);
+  const rowCtx: RowActionContext = useMemo(
+    () => ({ refresh, clearSelection }),
+    [refresh, clearSelection],
+  );
   const bulkCtx: BulkActionContext = useMemo(
     () => ({ refresh, clearSelection }),
     [refresh, clearSelection],

@@ -297,6 +297,23 @@ export default {
   "artifacts.table.size": "Taille",
   "artifacts.table.pushed": "Publié",
   "artifacts.table.commit": "Commit",
+  "artifacts.delete.action": "Supprimer",
+  "artifacts.delete.title": "Supprimer $1 ?",
+  "artifacts.delete.body":
+    "Cette action est irréversible. Le build quitte le registre avec ses octets stockés et ses source maps ; l'historique des déploiements garde ses entrées.",
+  "artifacts.delete.running":
+    "Ce tag est en service sur $1 : un redéploiement ou un retour arrière qui a besoin de ce build n'aura rien à déployer.",
+  "artifacts.delete.latest":
+    "Les déploiements qui ne nomment aucun tag utilisent latest, et échouent tant que la CI ne l'a pas publié à nouveau.",
+  "artifacts.delete.done": "$1 supprimé.",
+  "artifacts.bulk.delete.title": "Supprimer $1 artefacts ?",
+  "artifacts.bulk.delete.confirm": "Supprimer $1 artefacts",
+  "artifacts.bulk.delete.body":
+    "Cette action est irréversible. Les builds quittent le registre avec leurs octets stockés et leurs source maps ; l'historique des déploiements garde ses entrées.",
+  "artifacts.bulk.delete.running":
+    "La sélection contient un tag qu'une copie déployée exécute : un redéploiement ou un retour arrière qui en a besoin n'aura rien à déployer.",
+  "artifacts.bulk.delete.latest":
+    "La sélection contient latest : les déploiements qui ne nomment aucun tag échouent tant que la CI ne l'a pas publié à nouveau.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Paramètres",
 
@@ -2408,6 +2425,7 @@ export default {
   "permission.deploy.manage": "Déployer et définir les variables",
   "permission.group.artifact": "Artefacts",
   "permission.artifact.read": "Voir ce que la CI a publié",
+  "permission.artifact.delete": "Supprimer un build",
   "permission.group.blight": "Anomalies",
   "permission.blight.read": "Lire la boîte des anomalies",
   "permission.blight.triage": "Résoudre, ignorer et transférer les anomalies",

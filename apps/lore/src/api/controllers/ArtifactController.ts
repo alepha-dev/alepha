@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
-import { $action, NotFoundError } from "alepha/server";
+import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
 import { appNameSchema } from "../schemas/appNameSchema.ts";
@@ -315,6 +315,61 @@ export class ArtifactController {
       });
       reply.setHeader("cache-control", "no-store");
       return file;
+    },
+  });
+
+  /**
+   * Remove one build from the registry, with its stored bytes and source maps.
+   *
+   * ## ⚠️ Not the push's gate
+   *
+   * `artifact:delete`, which no member holds by default and the Admin preset
+   * carries. And, unlike the two pushes, the Apps capability is required: the
+   * reason they skip it (a switch must never turn a CI run red) does not
+   * apply to a delete, which a person makes from the Artifacts page, so this
+   * is a write under a capability like every other one.
+   *
+   * The lookup goes through {@link ArtifactService.findById} with the path's
+   * project, so an id from another project is a 404 here, never a delete: the
+   * gate has already passed on the project in the path.
+   *
+   * ## What it leaves alone, on purpose
+   *
+   * `deployments.artifactId` is a soft reference with no foreign key, so the
+   * deploy history keeps every row and cascades nothing. Deleting the build a
+   * copy is running, or `latest`, is allowed: the Artifacts page's confirm
+   * says what that costs rather than this endpoint refusing it.
+   */
+  deleteArtifact = $action({
+    use: [
+      $ownsProject({
+        requires: "artifact:delete",
+        param: "projectId",
+        capability: { key: "apps", action: "delete an artifact" },
+      }),
+    ],
+    method: "DELETE",
+    path: "/projects/:projectId/artifacts/:artifactId",
+    description:
+      "Delete one build from the project's artifact registry, with its stored bytes.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        artifactId: z.uuid(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      const artifact = await this.artifacts.findById(
+        params.projectId,
+        params.artifactId,
+      );
+      if (!artifact) {
+        throw new NotFoundError("No such artifact in this project.");
+      }
+
+      await this.artifacts.delete(artifact);
+      return { ok: true };
     },
   });
 

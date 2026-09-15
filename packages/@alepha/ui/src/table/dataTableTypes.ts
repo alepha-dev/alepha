@@ -60,9 +60,14 @@ export interface ColumnDef<T> {
  * returns to page 0: the rows belong to the caller, and a mutation has to
  * be written back into the array passed as `data`. The table renders the
  * new array on the same render, without it.
+ *
+ * `clearSelection()` empties the checkbox set, as it does for a bulk action.
+ * A row deleted from its own menu may be ticked, and a selection that
+ * survives the delete points at a row that no longer exists.
  */
 export interface RowActionContext {
   refresh: () => void;
+  clearSelection: () => void;
 }
 
 export interface RowAction<T> {

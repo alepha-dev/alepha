@@ -71,7 +71,7 @@ export interface DataTableBaseProps<
   columns: Record<string, ColumnDef<T>>;
   /**
    * Per-row action menu builder. Return an array of `RowAction` per
-   * item. Each `onClick` receives `(item, { refresh })`.
+   * item. Each `onClick` receives `(item, { refresh, clearSelection })`.
    *
    * An entry may also be a {@link RowActionGroup}: a label, an icon and
    * the actions it holds, rendered as a submenu one level deep.
