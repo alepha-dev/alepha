@@ -463,7 +463,16 @@ export class ReactPageProvider {
           };
         }
 
-        this.log.error("Page loader has failed", e);
+        // A refusal is the app working, not a crash: a loader that throws a
+        // 403 for an under-privileged visitor, or a 404 for a row that is not
+        // there, renders its page's refusal view exactly as intended. Logging
+        // every one of those at error level buries the 5xx that are real. Same
+        // rule the crash reporter uses: 4xx is debug, everything else — 5xx,
+        // and anything with no status, which never became a response at all —
+        // stays an error.
+        const status = (e as { status?: number } | undefined)?.status;
+        const expected = typeof status === "number" && status < 500;
+        this.log[expected ? "debug" : "error"]("Page loader has failed", e);
 
         it.error = e instanceof Error ? e : new Error(String(e));
         break;
