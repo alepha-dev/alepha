@@ -1663,7 +1663,11 @@ test.describe("Epics - the aside", () => {
       options: { epics: true },
     });
 
-    const title = `Static files carry the app's headers on every host, the compiled binary included ${t}`;
+    // 71 characters: `epicCreateSchema` caps a title at 80, and the aside's
+    // card is 254px wide, so this wraps over several lines wherever it is
+    // shown.
+    const title =
+      "Static files carry the app's headers on every host, the binary included";
     const epic = await page.evaluate(
       async ({ projectId, title }) => {
         const r = await fetch(`/api/createEpic/${projectId}`, {
