@@ -15,6 +15,7 @@ const users = [
   { userId: "u-1", username: "nfo", email: "ni@example.com" },
   { userId: "u-2", username: "Fabrice", email: "fab@example.com" },
   { userId: "u-3", username: null, email: "legacy@example.com" },
+  { userId: "u-4", username: "first.last", email: "fl@example.com" },
 ];
 
 const members = users.map((u) => ({ ...u, name: displayName(u, "") }));
@@ -115,6 +116,42 @@ const CORPUS: Array<{ name: string; body: string; expect: string[] }> = [
     body: "@nfo should read `@fabrice` first",
     expect: ["nfo"],
   },
+  /*
+   * #Q2350. A handle may contain `.` and `-`, so the pattern captures the
+   * full stop that ends a sentence. `@nfo.` used to resolve `nfo.`, which
+   * names nobody: on production a comment ending on a mention reached no
+   * one, and nothing told the writer.
+   */
+  {
+    name: "a mention that ends a sentence",
+    body: "this one names you, @nfo.",
+    expect: ["nfo"],
+  },
+  {
+    name: "a mention followed by a hyphen",
+    body: "@nfo- see above",
+    expect: ["nfo"],
+  },
+  {
+    name: "a mention followed by an ellipsis",
+    body: "and then @fabrice...",
+    expect: ["fabrice"],
+  },
+  {
+    name: "a handle that contains a dot",
+    body: "cc @first.last on this",
+    expect: ["first.last"],
+  },
+  {
+    name: "a dotted handle that ends a sentence",
+    body: "cc @first.last.",
+    expect: ["first.last"],
+  },
+  {
+    name: "a dotted prefix of a handle nobody owns",
+    body: "cc @nfo.example about it",
+    expect: [],
+  },
 ];
 
 const userIdOf = (handle: string) =>
@@ -156,6 +193,15 @@ describe("the mention matcher", () => {
   it("returns the caller's own member objects", ({ expect }) => {
     const [found] = matchMentions("hi @nfo", members);
     expect(found).toMatchObject({ userId: "u-1", email: "ni@example.com" });
+  });
+
+  it("keeps the full stop after the link it renders", ({ expect }) => {
+    expect(
+      expandCommentReferences("this one names you, @nfo.", {
+        projectSlug: "alepha",
+        members,
+      }),
+    ).toBe("this one names you, [@nfo](/alepha/settings/members).");
   });
 
   it("matches nothing when the project has no members", ({ expect }) => {
