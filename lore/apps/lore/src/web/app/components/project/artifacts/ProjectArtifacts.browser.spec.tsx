@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { DialogProvider } from "@alepha/ui";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -6,10 +14,12 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { describe, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 
+import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
@@ -19,21 +29,28 @@ import ProjectArtifacts from "./ProjectArtifacts.tsx";
  * Records every action the page reaches for and answers what a case set.
  * Same substitution seam as `AppArtifacts.browser.spec.tsx` (`CLAUDE.md`:
  * never `vi.mock` / `vi.spyOn`).
+ *
+ * `denied` refuses one action's `can()` while the rest are allowed, the way
+ * `ProjectScopeGrants` narrows the real one for a rank that lacks its
+ * permission.
  */
 class RecordingLinkProvider extends LinkProvider {
   public calls: string[] = [];
+  public args: Array<{ name: string; args: unknown[] }> = [];
   public responses: Record<string, unknown> = {};
+  public denied = new Set<string>();
 
   override client(): any {
     return new Proxy(
       {},
       {
         get: (_target, prop: string) => {
-          const call = async () => {
+          const call = async (...args: unknown[]) => {
             this.calls.push(prop);
+            this.args.push({ name: prop, args });
             return this.responses[prop] ?? {};
           };
-          return Object.assign(call, { can: () => true });
+          return Object.assign(call, { can: () => !this.denied.has(prop) });
         },
       },
     );
@@ -94,6 +111,7 @@ describe("ProjectArtifacts", () => {
     responses: Record<string, unknown> = {},
     releases: unknown[] = [],
     repositoryUrl?: string,
+    options: { denied?: string[]; instances?: AppInstanceResource[] } = {},
   ) => {
     cleanup();
     // ⚠️ `persistenceKey` puts the filter values in localStorage, and the
@@ -121,14 +139,19 @@ describe("ProjectArtifacts", () => {
       repositoryUrl,
     } as never);
     alepha.store.set(currentReleasesAtom, releases as never);
+    alepha.store.set(currentInstancesAtom, options.instances ?? []);
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
+    for (const name of options.denied ?? []) links.denied.add(name);
     return {
       links,
       ...render(
         <AlephaContext.Provider value={alepha}>
-          <ProjectArtifacts />
+          {/* The delete confirm is `useDialog`, which requires one. */}
+          <DialogProvider>
+            <ProjectArtifacts />
+          </DialogProvider>
         </AlephaContext.Provider>,
       ),
     };
@@ -514,5 +537,202 @@ describe("ProjectArtifacts", () => {
 
     const app = await view.findByText("docs");
     expect(app.closest("a")).toBeNull();
+  });
+
+  /**
+   * #Q2356 (feedback #P2209): the table deletes a build, through a checkbox
+   * selection and through each row's menu.
+   *
+   * ⚠️ Both doors hang on `deleteArtifact.can()`, which the real client
+   * narrows by the viewer's rank. A rank without `artifact:delete` must get
+   * the table exactly as it was before: no checkbox column and no menu.
+   */
+  describe("deleting", () => {
+    beforeAll(() => {
+      globalThis.ResizeObserver ??= class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      } as never;
+    });
+
+    const rowOf = (tag: string) => {
+      const row = screen.getByText(tag).closest("tr");
+      expect(row).not.toBeNull();
+      return row!;
+    };
+
+    const openRowMenu = async (tag: string) => {
+      fireEvent.click(
+        within(rowOf(tag)).getByRole("button", { name: "Open row actions" }),
+      );
+      return await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')];
+        if (found.length === 0) throw new Error("not open yet");
+        return found as HTMLElement[];
+      });
+    };
+
+    const askToDelete = async (tag: string) => {
+      const entry = (await openRowMenu(tag)).find(
+        (item) => item.textContent === "Delete",
+      );
+      expect(entry).toBeDefined();
+      fireEvent.click(entry!);
+      return await screen.findByRole("alertdialog");
+    };
+
+    const deletes = (links: RecordingLinkProvider) =>
+      links.args.filter((call) => call.name === "deleteArtifact");
+
+    /**
+     * Whether the one row's checkbox is ticked.
+     *
+     * ⚠️ Asserted instead of the "1 selected" pill going away. The pill also
+     * hides while a delete is busy, so waiting for it to vanish passes in the
+     * middle of the run whether or not the selection was ever cleared.
+     */
+    const rowTicked = () =>
+      screen.getAllByRole("checkbox")[1].getAttribute("aria-checked") ===
+      "true";
+
+    it("offers row checkboxes and a Delete in the row menu with the permission", async () => {
+      await show(listing([group()]));
+      await screen.findByText("1.0.0");
+
+      // The header's select-all and the one row's.
+      expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+      const labels = (await openRowMenu("1.0.0")).map(
+        (item) => item.textContent ?? "",
+      );
+      expect(labels).toEqual(["Delete"]);
+    });
+
+    it("offers neither the checkboxes nor the row menu without it", async () => {
+      await show(listing([group()]), [], undefined, {
+        denied: ["deleteArtifact"],
+      });
+      await screen.findByText("1.0.0");
+
+      // The checkbox column exists only because `bulkActions` is non-empty,
+      // and Delete is the only entry in it and in the menu.
+      expect(screen.queryAllByRole("checkbox")).toEqual([]);
+      expect(
+        screen.queryByRole("button", { name: "Open row actions" }),
+      ).toBeNull();
+    });
+
+    it("asks first, and dismissing the confirm deletes nothing", async () => {
+      const { links } = await show(listing([group()]));
+      await screen.findByText("1.0.0");
+
+      const confirm = await askToDelete("1.0.0");
+      expect(confirm.textContent).toContain(
+        "Delete docs 1.0.0 (cloudflare, archive)?",
+      );
+      fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(deletes(links)).toEqual([]);
+    });
+
+    it("deletes the row's own variant once confirmed, then reads the list again", async () => {
+      const { links } = await show(listing([group()]));
+      await screen.findByText("1.0.0");
+
+      const confirm = await askToDelete("1.0.0");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(deletes(links)).toHaveLength(1));
+      expect(deletes(links)[0].args[0]).toEqual({
+        params: {
+          projectId: 1,
+          artifactId: "00000000-0000-4000-8000-000000000001",
+        },
+      });
+      // The table is in static-data mode, so the refresh is the page's own
+      // query being invalidated and fetched again.
+      await waitFor(() =>
+        expect(
+          links.calls.filter((name) => name === "listArtifacts"),
+        ).toHaveLength(2),
+      );
+    });
+
+    it("names the copy running the tag, and says nothing when none does", async () => {
+      await show(listing([group()]), [], undefined, {
+        instances: [
+          {
+            id: "00000000-0000-4000-8000-0000000000aa",
+            projectId: 1,
+            app: "docs",
+            env: "production",
+            ephemeral: false,
+            version: "1.0.0",
+            createdAt: "2026-08-01T10:00:00.000Z",
+            updatedAt: "2026-08-01T10:00:00.000Z",
+          } as AppInstanceResource,
+        ],
+      });
+      await screen.findByText("1.0.0");
+
+      const running = (await askToDelete("1.0.0")).textContent ?? "";
+      expect(running).toContain("This tag is running on docs/production");
+      expect(running).not.toContain("latest");
+
+      cleanup();
+      await show(listing([group()]));
+      await screen.findByText("1.0.0");
+      const idle = (await askToDelete("1.0.0")).textContent ?? "";
+      expect(idle).not.toContain("is running on");
+    });
+
+    it("says what deleting latest costs", async () => {
+      await show(
+        listing([
+          group({
+            tag: "latest",
+            variants: [{ ...group().variants[0], tag: "latest" }],
+          }),
+        ]),
+      );
+      await screen.findByText("latest");
+
+      const text = (await askToDelete("latest")).textContent ?? "";
+      expect(text).toContain("Deploys that name no tag use latest");
+    });
+
+    it("deletes the selection through the bulk bar, and clears it", async () => {
+      const { links } = await show(listing([group()]));
+      await screen.findByText("1.0.0");
+
+      fireEvent.click(screen.getAllByRole("checkbox")[1]);
+      expect(rowTicked()).toBe(true);
+      expect(screen.getByText("1 selected")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Delete 1 artifacts?");
+      fireEvent.click(
+        within(confirm).getByRole("button", { name: "Delete 1 artifacts" }),
+      );
+
+      await waitFor(() => expect(deletes(links)).toHaveLength(1));
+      await waitFor(() => expect(rowTicked()).toBe(false));
+    });
+
+    it("clears the selection when a ticked row is deleted from its menu", async () => {
+      const { links } = await show(listing([group()]));
+      await screen.findByText("1.0.0");
+
+      fireEvent.click(screen.getAllByRole("checkbox")[1]);
+      expect(rowTicked()).toBe(true);
+
+      const confirm = await askToDelete("1.0.0");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(deletes(links)).toHaveLength(1));
+      await waitFor(() => expect(rowTicked()).toBe(false));
+    });
   });
 });

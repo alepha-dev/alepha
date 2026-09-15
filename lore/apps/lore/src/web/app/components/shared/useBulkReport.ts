@@ -47,7 +47,7 @@ export const useBulkReport = (): BulkReport => {
  * before calling at all, which is not the same thing as a refusal.
  */
 export type BulkReport = (
-  outcome: BulkOutcome,
+  outcome: BulkOutcome<number | string>,
   done: string,
   skipped?: string,
 ) => void;

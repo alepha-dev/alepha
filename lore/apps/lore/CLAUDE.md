@@ -456,7 +456,7 @@ dropping it on D1 triggers a cascade-wipe.
   `UPDATE ... CASE ... RETURNING`, because D1 has no transactions and a pair
   of writes can leave a project with zero owners or two.
 
-The vocabulary is `LorePermissions` (37 declarations, names that can never
+The vocabulary is `LorePermissions` (38 declarations, names that can never
 change - they are stored as data in every rank definition), the resource is
 `ProjectRankResource`, the presets are `ProjectRankPresets`, and the module is
 `alepha/api/ranks`. A new project is seeded with Admin, Contributor and Viewer

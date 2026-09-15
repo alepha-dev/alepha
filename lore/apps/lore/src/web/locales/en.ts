@@ -371,6 +371,23 @@ export default {
     "The heaviest build under this tag. A container image's size covers one architecture only.",
   "artifacts.table.pushed": "Pushed",
   "artifacts.table.commit": "Commit",
+  "artifacts.delete.action": "Delete",
+  "artifacts.delete.title": "Delete $1?",
+  "artifacts.delete.body":
+    "This cannot be undone. The build leaves the registry with its stored bytes and source maps; the deploy history keeps its records.",
+  "artifacts.delete.running":
+    "This tag is running on $1: a redeploy or a rollback that needs this build will have nothing to deploy.",
+  "artifacts.delete.latest":
+    "Deploys that name no tag use latest, and fail until CI pushes it again.",
+  "artifacts.delete.done": "$1 deleted.",
+  "artifacts.bulk.delete.title": "Delete $1 artifacts?",
+  "artifacts.bulk.delete.confirm": "Delete $1 artifacts",
+  "artifacts.bulk.delete.body":
+    "This cannot be undone. The builds leave the registry with their stored bytes and source maps; the deploy history keeps its records.",
+  "artifacts.bulk.delete.running":
+    "The selection includes a tag a deployed copy runs: a redeploy or a rollback that needs it will have nothing to deploy.",
+  "artifacts.bulk.delete.latest":
+    "The selection includes latest: deploys that name no tag fail until CI pushes it again.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Settings",
 
@@ -2430,6 +2447,7 @@ export default {
   "permission.deploy.manage": "Deploy and set variables",
   "permission.group.artifact": "Artifacts",
   "permission.artifact.read": "See what CI has pushed",
+  "permission.artifact.delete": "Delete a build",
   "permission.group.blight": "Blights",
   "permission.blight.read": "Read the crash inbox",
   "permission.blight.triage": "Resolve, ignore and forward blights",

@@ -1,5 +1,10 @@
 import { TimeAgo, Badge } from "@alepha/ui";
-import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import {
+  type BulkAction,
+  DataTable,
+  type DataTableFilterFields,
+  type RowActionContext,
+} from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
@@ -13,6 +18,7 @@ import {
   Package,
   SearchX,
   Server,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -26,6 +32,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 import CommitLink from "../../shared/CommitLink.tsx";
+import { useDeleteArtifact } from "./useDeleteArtifact.ts";
 
 /**
  * One artifact, flattened out of the endpoint's groups.
@@ -37,6 +44,12 @@ import CommitLink from "../../shared/CommitLink.tsx";
  */
 interface ArtifactRow {
   key: string;
+  /**
+   * The variant's own id, which is what a delete names. Not the row key: the
+   * key was chosen to read as the entity's uniqueness, and it stays that.
+   */
+  id: string;
+  projectId: number;
   app: string;
   tag: string;
   runtime: string;
@@ -99,6 +112,7 @@ const ProjectArtifacts = () => {
   const artifactApi = useClient<ArtifactController>();
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
+  const deleteArtifact = useDeleteArtifact();
 
   // ⚠️ No `loading`. It existed to keep the page-level empty panel off screen
   // while the first read was in flight; the table owns the empty state now
@@ -131,6 +145,8 @@ const ProjectArtifacts = () => {
         // and a node image of one tag collide into ONE React key, and the
         // table renders one row where the registry holds two.
         key: `${group.app}:${group.tag}:${variant.runtime}:${variant.format}`,
+        id: variant.id,
+        projectId: variant.projectId,
         app: group.app,
         tag: group.tag,
         runtime: variant.runtime,
@@ -245,6 +261,29 @@ const ProjectArtifacts = () => {
     },
   } satisfies DataTableFilterFields;
 
+  // ⚠️ This array is the table's CHECKBOX COLUMN. `DataTable` derives
+  // `hasCheckbox` from it being non-empty, and Delete is the only bulk action
+  // here, so a rank that may not delete gets `[]` and the table exactly as it
+  // was before: no column, and no selection with nothing to do.
+  //
+  // Page-wide busy: the bulk bar has no disabled state, so it hides while a
+  // delete runs. The hook invalidates the listing, which is what refreshes
+  // the rows; `ctx.refresh()` would fetch nothing in static-data mode.
+  const bulkActions: BulkAction<ArtifactRow>[] = deleteArtifact.can
+    ? [
+        {
+          icon: Trash2,
+          label: tr("board.bulk.delete"),
+          destructive: true,
+          visible: () => !deleteArtifact.busy,
+          onClick: async (selected, ctx) => {
+            if (!(await deleteArtifact.removeMany(selected))) return;
+            ctx.clearSelection();
+          },
+        },
+      ]
+    : [];
+
   return (
     <div
       data-testid="artifacts-table"
@@ -285,6 +324,7 @@ const ProjectArtifacts = () => {
           <DataTable<ArtifactRow, typeof filterFields>
             className="min-h-0 flex-1"
             persistenceKey={`lor.artifacts.${project.id}`}
+            bulkActions={bulkActions}
             data={rows}
             rowKey={(row) => row.key}
             defaultSort={{ field: "pushedAt", direction: "desc" }}
@@ -338,6 +378,32 @@ const ProjectArtifacts = () => {
               }
               return true;
             }}
+            // Absent rather than an empty list when the rank may not delete:
+            // Delete is the menu's only entry, and a `rowActions` that exists
+            // draws the actions column whatever it returns.
+            //
+            // The selection is cleared too, since a row deleted from its menu
+            // may be ticked, and a selection that survives a delete points at
+            // a row that no longer exists.
+            rowActions={
+              deleteArtifact.can
+                ? () => [
+                    {
+                      icon: Trash2,
+                      label: tr("artifacts.delete.action"),
+                      destructive: true,
+                      disabled: () => deleteArtifact.busy,
+                      onClick: (
+                        row: ArtifactRow,
+                        { clearSelection }: RowActionContext,
+                      ) =>
+                        void deleteArtifact
+                          .remove(row)
+                          .then((done) => done && clearSelection()),
+                    },
+                  ]
+                : undefined
+            }
             columns={{
               app: {
                 label: tr("artifacts.table.app"),
