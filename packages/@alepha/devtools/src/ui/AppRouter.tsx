@@ -86,33 +86,37 @@ export class AppRouter {
     lazy: () => import("./components/database/DatabaseErd.page.tsx"),
   });
 
-  // One component behind three routes, each declaring the params it actually
-  // has and handing the editor the same prop shape. The editor used to read
-  // `state.url.pathname` and split it itself, which made `table` and `id`
-  // untyped, left them undecoded until it remembered to decode them, and meant
-  // the three routes could not be named in a `router.push`.
+  // Three routes, nested rather than siblings (#Q2351). Since #Q2349 a page
+  // remounts when its path identity changes, so three sibling routes sharing
+  // one editor remounted it on every step: opening a row reloaded the grid,
+  // cleared the selection, reset the rail's filter and scroll, and refetched
+  // a count for every table. What must survive a step lives in the layer
+  // above it: the rail in `rows`, which no table changes, and the grid in
+  // `rowsTable`, which opening one of its records does not change.
+  //
+  // Each route still declares the params it actually has, so `table` and `id`
+  // are typed and decoded and the routes can be named in a `router.push`.
   rows = $page({
     path: "/rows",
     label: "Rows",
     parent: this.layout,
-    loader: () => ({ table: "", recordId: "" }),
-    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+    lazy: () => import("./components/database/DatabaseRows.page.tsx"),
   });
 
   rowsTable = $page({
-    path: "/rows/:table",
-    parent: this.layout,
+    path: "/:table",
+    parent: this.rows,
     schema: { params: z.object({ table: z.text() }) },
-    loader: ({ params }) => ({ table: params.table, recordId: "" }),
-    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+    loader: ({ params }) => ({ table: params.table }),
+    lazy: () => import("./components/database/DatabaseTable.page.tsx"),
   });
 
   rowsRecord = $page({
-    path: "/rows/:table/:id",
-    parent: this.layout,
+    path: "/:id",
+    parent: this.rowsTable,
     schema: { params: z.object({ table: z.text(), id: z.text() }) },
     loader: ({ params }) => ({ table: params.table, recordId: params.id }),
-    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+    lazy: () => import("./components/database/DatabaseRecord.page.tsx"),
   });
 
   // Config ------------------------------------------------------------------

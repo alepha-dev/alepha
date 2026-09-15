@@ -42,9 +42,27 @@ const toInput = (value: unknown): string => {
   return toText(value);
 };
 
+/**
+ * The inputs' text for a record: empty for a new one.
+ */
+const valuesOf = (props: RecordFormProps): Record<string, string> => {
+  const next: Record<string, string> = {};
+  for (const c of props.entity.columns ?? []) {
+    next[c.name] = props.isNew ? "" : toInput(props.record?.[c.name]);
+  }
+  return next;
+};
+
 export const RecordForm = (props: RecordFormProps) => {
   const columns: any[] = props.entity.columns ?? [];
-  const [values, setValues] = useState<Record<string, string>>({});
+  // Seeded at mount as well as on a record change below. The change check
+  // compares against the seed the state starts with, so a form that seeded
+  // only there opened with every input empty: the first record it was given
+  // never counted as a change. Since #Q2351 each record is its own route, so
+  // every record opened is a first mount.
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    valuesOf(props),
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -62,11 +80,7 @@ export const RecordForm = (props: RecordFormProps) => {
     seededFrom.entity !== seed.entity
   ) {
     setSeededFrom(seed);
-    const next: Record<string, string> = {};
-    for (const c of columns) {
-      next[c.name] = props.isNew ? "" : toInput(props.record?.[c.name]);
-    }
-    setValues(next);
+    setValues(valuesOf(props));
     setError(null);
   }
 
