@@ -1,7 +1,10 @@
 import { Link } from "alepha/react/router";
 import { Fragment, type ReactNode } from "react";
 
-import { mentionPattern, resolveMention } from "../../../services/mentions.ts";
+import {
+  mentionPattern,
+  resolveMentionCapture,
+} from "../../../services/mentions.ts";
 import { protectedSegments } from "../quest/commentReferences.ts";
 
 export interface FeedbackThreadBodyProps {
@@ -46,9 +49,11 @@ const renderSegments = (props: FeedbackThreadBodyProps): ReactNode[] => {
 
     let cursor = 0;
     for (const match of segment.text.matchAll(mentionPattern())) {
-      const handle = match[2] ?? "";
-      const member = resolveMention(handle, props.members);
-      if (!member) continue;
+      const resolved = resolveMentionCapture(match[2] ?? "", props.members);
+      if (!resolved) continue;
+      // The handle without the full stop or hyphen that may have ended the
+      // sentence: that stays in the text after the link.
+      const handle = resolved.handle;
 
       // `match.index` points at the prefix character the pattern needs to
       // prove the `@` starts a handle, so the token itself begins after it.

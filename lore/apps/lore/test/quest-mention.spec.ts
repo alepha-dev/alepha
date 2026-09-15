@@ -461,6 +461,24 @@ describe("a mention in a quest comment", () => {
     await ctx.alepha.stop();
   });
 
+  /**
+   * #Q2350, the production case: quest comment 527 ended a sentence with the
+   * handle, the capture swallowed the full stop, and nobody was notified.
+   */
+  it("pings a handle that ends a sentence", async ({ expect }) => {
+    const ctx = await setup();
+    const { author, mentioned, questId } = await seed(ctx);
+
+    await comment(ctx, questId, author, "this one names you, @nfo.");
+
+    await settle(ctx);
+    const rows = await ctx.probe.inbox.findMany({});
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: mentioned.id });
+
+    await ctx.alepha.stop();
+  });
+
   it("does not treat an email address as a mention", async ({ expect }) => {
     const ctx = await setup();
     const { author, questId } = await seed(ctx);
