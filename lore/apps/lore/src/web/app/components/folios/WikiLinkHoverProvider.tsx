@@ -30,6 +30,7 @@ import {
   type AttachmentRef,
   BROKEN_HREF_PREFIX,
 } from "./rewriteFolioWikiLinks.ts";
+import { useHoverCardPosition } from "./useHoverCardPosition.ts";
 
 /**
  * Obsidian-style hover-card preview on `[[wiki-links]]` in folio /
@@ -270,6 +271,15 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     closeTimer.current = setTimeout(() => setHover(null), 120);
   }, [cancelClose]);
 
+  /**
+   * No grace window: the card's link has scrolled out of sight, and there is
+   * nothing left for the pointer to be travelling towards.
+   */
+  const closeNow = useCallback(() => {
+    cancelClose();
+    setHover(null);
+  }, [cancelClose]);
+
   const handleEnter = useCallback(
     (target: EventTarget | null) => {
       const el = target as HTMLElement | null;
@@ -399,6 +409,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           cardRef={cardRef}
           onEnter={cancelClose}
           onLeave={scheduleClose}
+          onAnchorHidden={closeNow}
         />
       )}
     </div>
@@ -493,6 +504,10 @@ interface HoverCardPopoverProps {
   cardRef: RefObject<HTMLDivElement | null>;
   onEnter: () => void;
   onLeave: () => void;
+  /**
+   * The link scrolled out of the visible pane, or left the document.
+   */
+  onAnchorHidden: () => void;
 }
 
 const HoverCardPopover = (props: HoverCardPopoverProps) => {
@@ -629,23 +644,17 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
   const data: Preview | null = remote ? (previewQuery.data ?? null) : local();
   const loading = remote && previewQuery.loading && !previewQuery.data;
 
-  // Position: anchor's bounding rect, popover below the link with a
-  // small gap. Fixed positioning + viewport math so it stays put on
-  // scroll until the hover ends.
-  const rect = state.anchorEl.getBoundingClientRect();
-  const top = rect.bottom + 8;
-  const left = Math.max(
-    8,
-    Math.min(
-      rect.left,
-      (typeof window !== "undefined" ? window.innerWidth : 1000) - 380,
-    ),
+  // Below the link, and kept there while the folio scrolls (#Q2354).
+  const { top, left } = useHoverCardPosition(
+    state.anchorEl,
+    props.onAnchorHidden,
   );
 
   return (
     // presentational popover that follows the anchor; no keyboard interaction expected.
     <div
       ref={props.cardRef}
+      data-slot="wiki-link-hover-card"
       style={{ position: "fixed", top, left, zIndex: 50 }}
       className="bg-popover text-popover-foreground border-border w-[360px] max-w-[90vw] rounded-md border p-3 shadow-lg"
       onMouseEnter={props.onEnter}
