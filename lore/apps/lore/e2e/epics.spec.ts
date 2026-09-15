@@ -1637,3 +1637,84 @@ test.describe("Epics - the predecessor link", () => {
     await expect(page.getByText(secondQuest)).toHaveCount(0);
   });
 });
+
+/**
+ * #Q2352: the epic aside names the epic in a row under its ID.
+ *
+ * The name used to be the panel's heading, which truncates to one line, so a
+ * title as long as most epic titles in the Alepha project read as "Static
+ * files carry the app's headers on ...". A row's value wraps. Checked at the
+ * reporter's own viewport and at `md`, the narrowest width the 288px aside is
+ * shown at; below `md` `DetailLayout` hides the aside altogether.
+ */
+test.describe("Epics - the aside", () => {
+  test("labels the reference ID and reads a long name in full", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `aside${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `As${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
+
+    const title = `Static files carry the app's headers on every host, the compiled binary included ${t}`;
+    const epic = await page.evaluate(
+      async ({ projectId, title }) => {
+        const r = await fetch(`/api/createEpic/${projectId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title }),
+        });
+        if (!r.ok) throw new Error(`createEpic ${r.status} ${await r.text()}`);
+        return r.json() as Promise<{ number: number }>;
+      },
+      { projectId, title },
+    );
+
+    for (const viewport of [
+      { width: 2144, height: 1055 },
+      { width: 768, height: 1024 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`/${slug}/epics/${epic.number}`);
+
+      const list = page.locator("aside dl");
+      await expect(list).toBeVisible({ timeout: 15_000 });
+      const labels = list.locator("dt");
+      await expect(labels.nth(0)).toHaveText("ID");
+      await expect(list.locator("dd").nth(0)).toContainText(`#E${epic.number}`);
+      await expect(labels.nth(1)).toHaveText("Name");
+      const name = list.locator("dd").nth(1);
+      await expect(name).toHaveText(title);
+
+      // Wrapped over several lines, never clipped to one.
+      const shape = await name.evaluate((el) => {
+        const text = el.firstElementChild as HTMLElement;
+        const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight);
+        return {
+          clipped: text.scrollWidth > text.clientWidth + 1,
+          lines: Math.round(text.getBoundingClientRect().height / lineHeight),
+        };
+      });
+      expect(shape.clipped).toBe(false);
+      expect(shape.lines).toBeGreaterThan(1);
+
+      // No heading above the list repeats the name.
+      await expect(page.locator("aside").getByText(title)).toHaveCount(1);
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/${slug}/epics/${epic.number}`);
+    await expect(page.getByRole("radio", { name: /^Quests/ })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator("aside dl")).toBeHidden();
+  });
+});

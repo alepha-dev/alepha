@@ -59,6 +59,17 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
       copy: formatReference("epic", props.epic.number),
     },
     {
+      // The name as a row rather than as the panel's heading (#Q2352): the
+      // heading truncated a long title with an ellipsis, and a row's value
+      // wraps, so the whole name reads.
+      label: tr("epic.aside.name"),
+      value: (
+        <span className="text-sm font-medium break-words">
+          {props.epic.title}
+        </span>
+      ),
+    },
+    {
       label: tr("epic.aside.status"),
       /*
         The same chip the list renders, from the same two tables. Whatever
@@ -173,23 +184,15 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   });
 
   /*
-   * The epic's name, at the top of the panel, through `DetailAside`'s own
-   * `title` slot rather than a heading rendered here: the component owns the
-   * type, the truncation and the spacing above its list, and a second way of
-   * printing a name is a second way for two asides to disagree.
-   *
-   * This used to be omitted, on the grounds that the breadcrumb leaf already
-   * named the epic a few pixels above and a heading here printed the same
-   * words twice. That was true of the old breadcrumb; the leaf is now the
-   * epic's `#number`, so the two say different things and neither is
-   * redundant. The number stays as a row as well, because that row is not a
-   * label but the copy-to-clipboard affordance.
+   * No `title`: the name is the second row, under the ID (#Q2352). The
+   * heading `DetailAside` draws truncates to one line, and an epic's name is
+   * often a sentence. With no title and `avatar={false}` the component
+   * renders no header at all, so the list starts at the top of the panel.
    *
    * `avatar={false}` still: an epic has no picture concept at all, and the
-   * letter fallback is for something that HAS one and is missing it, not for
-   * printing a title's first character beside the title.
+   * letter fallback is for something that HAS one and is missing it.
    */
-  return <DetailAside avatar={false} title={props.epic.title} rows={rows} />;
+  return <DetailAside avatar={false} rows={rows} />;
 };
 
 export default ProjectEpicAside;
