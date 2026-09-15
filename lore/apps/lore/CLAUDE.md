@@ -822,7 +822,7 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 - Link table: `src/api/entities/folioLinks.ts` (derived; re-synced from `[[...]]` references on every folio save)
 - Link sync: `src/api/services/FolioLinkService.ts`
 - Attachment / directory services: `src/api/services/FolioAttachmentService.ts`, `FolioDirectoryService.ts`, `FolioNameService.ts`
-- Controller: `src/api/controllers/FolioController.ts` (list, getByShortId, get, getLinks, create, update, delete, listProjectActivity, listHistory, revertHistory, pinHistory)
+- Controller: `src/api/controllers/FolioController.ts` (list, listFolioRefs, getByShortId, get, getLinks, create, update, delete, listProjectActivity, listHistory, revertHistory, pinHistory)
 - Directory / attachment controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/FolioAttachmentController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
 - MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and attachment tools) + `ProjectTools.ts` (`project_context`)

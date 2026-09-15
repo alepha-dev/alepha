@@ -1,5 +1,3 @@
-import type { Folio } from "@/api/entities/folios.ts";
-
 import { parseTypedReference } from "../shared/element/typedReference.ts";
 
 /**
@@ -27,6 +25,16 @@ export interface AttachmentRef {
 }
 
 export interface QuestRef {
+  shortId: number;
+  title: string;
+}
+
+/**
+ * A folio, as much of one as a reference needs: its per-project number and
+ * its title. A whole `Folio` row satisfies it, which is what the workspace's
+ * tree atom holds; `FolioController.listFolioRefs` answers exactly this.
+ */
+export interface FolioRef {
   shortId: number;
   title: string;
 }
@@ -119,7 +127,7 @@ export type WikiLinkTarget =
 
 export interface FolioWikiLinkResolverInput {
   projectSlug: string;
-  folios: Folio[];
+  folios: FolioRef[];
   quests: QuestRef[];
   /**
    * Optional so a caller that never renders epic refs keeps working — an
@@ -212,7 +220,7 @@ export const createFolioWikiLinkResolver = (
   const { projectSlug, folios, quests } = input;
   const attachments = input.attachments ?? [];
 
-  const folioByShort = new Map<number, Folio>();
+  const folioByShort = new Map<number, FolioRef>();
   for (const f of folios) folioByShort.set(f.shortId, f);
   const questByShort = new Map<number, QuestRef>();
   for (const q of quests) questByShort.set(q.shortId, q);
