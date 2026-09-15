@@ -48,6 +48,7 @@ import {
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { BoundParameters } from "../services/BoundParameters.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
@@ -118,6 +119,13 @@ export class QuestController {
     "tags",
   ]);
 
+  /**
+   * How many numbers one `listQuestRefs` call reads. A document naming more
+   * quests than this is not one anybody writes by hand; the cap keeps a
+   * crafted query from turning into dozens of D1 statements.
+   */
+  static readonly MAX_REF_IDS = 500;
+
   log = $logger();
   quests = $repository(quests);
   feedback = $repository(feedback);
@@ -176,6 +184,7 @@ export class QuestController {
   areaService = $inject(AreaService);
   releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(FolioLinkService);
+  bound = $inject(BoundParameters);
 
   attachments = $storage({
     description: "Quest attachments",
@@ -1444,6 +1453,56 @@ export class QuestController {
       const count = await this.quests.count(where);
 
       return { count };
+    },
+  });
+
+  /**
+   * The quests a document names, as `{ shortId, title }`, for the wiki-link
+   * resolver (#Q2355).
+   *
+   * The resolver used to look a `[[#Q12]]` up in the picker's page of the
+   * 100 most recently updated quests, so any older quest rendered as a
+   * broken link. It now asks for exactly the numbers the body carries: two
+   * columns per quest named, never a description, whatever the size of the
+   * project. Draft epics are not gated, since a reference is direct
+   * addressing and a link into a draft epic must still resolve.
+   *
+   * `shortIds` is comma-separated and parsed like every list filter here:
+   * anything that is not a positive integer is dropped rather than refused.
+   * At most {@link QuestController.MAX_REF_IDS} are read.
+   */
+  listQuestRefs = $action({
+    use: [this.ownsProject("quest:read")],
+    method: "GET",
+    path: "/projects/:projectId/quests/refs",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({ shortIds: z.string() }),
+      response: z.array(
+        z.object({
+          shortId: z.integer(),
+          title: z.string(),
+        }),
+      ),
+    },
+    handler: async ({ params, query }) => {
+      const shortIds = [
+        ...new Set(
+          this.parseList(query.shortIds)
+            .map((entry) => Number(entry))
+            .filter((n) => Number.isSafeInteger(n) && n > 0),
+        ),
+      ].slice(0, QuestController.MAX_REF_IDS);
+      const rows = await this.bound.collect(shortIds, (batch) =>
+        this.quests.findMany({
+          where: {
+            projectId: { eq: params.projectId },
+            shortId: { inArray: batch },
+          },
+          columns: ["shortId", "title"],
+        }),
+      );
+      return rows.map((r) => ({ shortId: r.shortId, title: r.title }));
     },
   });
 

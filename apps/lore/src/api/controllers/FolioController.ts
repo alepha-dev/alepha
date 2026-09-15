@@ -152,6 +152,13 @@ export class FolioController {
   protected folioShortId = $sequence();
 
   /**
+   * How many numbers one `listFolioRefs` call reads. No hand-written document
+   * names this many folios; the cap keeps a crafted query from turning into
+   * dozens of D1 statements.
+   */
+  static readonly MAX_REF_IDS = 500;
+
+  /**
    * List folios in a project (project-shared — any member sees every
    * folio). Optional `q` runs `LIKE %q%` over `searchText`.
    */
@@ -181,6 +188,56 @@ export class FolioController {
         limit: query.limit ?? 50,
         offset: query.offset ?? 0,
       });
+    },
+  });
+
+  /**
+   * The folios a document names, as `{ shortId, title }`, for the wiki-link
+   * resolver (#Q2355).
+   *
+   * `list` above serves the tree and the `[[` picker, and it is a capped page
+   * of whole rows. Resolving a `[[#F12]]` against that page broke every
+   * reference to a folio outside it. This reads only the numbers the body
+   * carries, and only two columns of each.
+   *
+   * `shortIds` is comma-separated; anything that is not a positive integer
+   * is dropped rather than refused, and at most
+   * {@link FolioController.MAX_REF_IDS} are read.
+   */
+  listFolioRefs = $action({
+    use: [this.ownsProject("folio:read")],
+    method: "GET",
+    description: "Titles of the folios with the given per-project shortIds.",
+    path: "/projects/:projectId/folios/refs",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({ shortIds: z.string() }),
+      response: z.array(
+        z.object({
+          shortId: z.integer(),
+          title: z.string(),
+        }),
+      ),
+    },
+    handler: async ({ params, query }) => {
+      const shortIds = [
+        ...new Set(
+          query.shortIds
+            .split(",")
+            .map((entry) => Number(entry.trim()))
+            .filter((n) => Number.isSafeInteger(n) && n > 0),
+        ),
+      ].slice(0, FolioController.MAX_REF_IDS);
+      const rows = await this.bound.collect(shortIds, (batch) =>
+        this.folios.findMany({
+          where: {
+            projectId: { eq: params.projectId },
+            shortId: { inArray: batch },
+          },
+          columns: ["shortId", "title"],
+        }),
+      );
+      return rows.map((r) => ({ shortId: r.shortId, title: r.title }));
     },
   });
 
