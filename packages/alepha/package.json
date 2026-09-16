@@ -458,6 +458,11 @@
       "import": "./src/testing/faker/index.ts",
       "default": "./src/testing/faker/index.ts"
     },
+    "./testing/playwright": {
+      "types": "./src/testing/playwright/index.ts",
+      "import": "./src/testing/playwright/index.ts",
+      "default": "./src/testing/playwright/index.ts"
+    },
     "./testing/react": {
       "types": "./src/testing/react/index.ts",
       "import": "./src/testing/react/index.ts",
@@ -907,6 +912,11 @@
         "types": "./dist/testing/faker/index.d.ts",
         "import": "./dist/testing/faker/index.js",
         "default": "./dist/testing/faker/index.js"
+      },
+      "./testing/playwright": {
+        "types": "./dist/testing/playwright/index.d.ts",
+        "import": "./dist/testing/playwright/index.js",
+        "default": "./dist/testing/playwright/index.js"
       },
       "./testing/react": {
         "types": "./dist/testing/react/index.d.ts",
