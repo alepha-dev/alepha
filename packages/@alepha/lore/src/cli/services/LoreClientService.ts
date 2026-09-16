@@ -1,4 +1,5 @@
 import { $env, $inject, AlephaError, z } from "alepha";
+import { HttpClient, HttpError } from "alepha/server";
 import type { ClientScope } from "alepha/server/links";
 
 import { LoreTokenStore } from "./LoreTokenStore.ts";
@@ -19,7 +20,25 @@ export class LoreClientService {
    */
   public static readonly DEFAULT_HOSTNAME = "https://lore.alepha.dev";
 
+  /**
+   * The OAuth client `lore login` signs in as, and so the one its refresh must
+   * name: the server binds a session to the client that created it and
+   * refuses a refresh under any other.
+   */
+  public static readonly CLIENT_ID = "alepha-cli";
+
   protected readonly tokens = $inject(LoreTokenStore);
+  protected readonly http = $inject(HttpClient);
+
+  /**
+   * The refresh in flight, per hostname. The credential is resolved per
+   * request, so a command sending several at once would otherwise trade the
+   * same expired token several times over.
+   */
+  protected readonly refreshing = new Map<
+    string,
+    Promise<string | undefined>
+  >();
 
   protected readonly env = $env(
     z.object({
@@ -61,7 +80,7 @@ export class LoreClientService {
    * ⚠️ The credential is a **thunk**, resolved per request rather than here.
    * Two reasons, and the second is why it matters today: a device-flow token
    * refreshes, so a long-running process that pinned the first value would
-   * work for an hour and then fail for good; and a command has to be
+   * work for fifteen minutes and then fail for good; and a command has to be
    * constructible on a machine with no credential at all, or `--help` would
    * fail on the very machine someone is reading it on.
    */
@@ -100,7 +119,8 @@ export class LoreClientService {
    *
    * 1. `LORE_API_KEY`, which is what CI has.
    * 2. A device-flow token cached for this hostname, which is what a laptop
-   *    has after `lore login`.
+   *    has after `lore login`. Refreshed first when it has expired: see
+   *    {@link refresh}.
    * 3. An error naming both fixes.
    *
    * **Nothing here ever starts a login.** There is no human in CI to approve a
@@ -119,14 +139,93 @@ export class LoreClientService {
       return `Bearer ${key}`;
     }
 
-    const token = await this.tokens.read(this.hostname());
+    const hostname = this.hostname();
+    const token =
+      (await this.tokens.read(hostname)) ?? (await this.refresh(hostname));
     if (token) {
       return `Bearer ${token}`;
     }
 
     throw new AlephaError(
-      `Not authenticated to ${this.hostname()}. Run \`lore login\` on a machine with a browser, or set LORE_API_KEY (which is what CI does).`,
+      `Not authenticated to ${hostname}. Run \`lore login\` on a machine with a browser, or set LORE_API_KEY (which is what CI does).`,
     );
+  }
+
+  /**
+   * Trade this hostname's expired login for a fresh access token, or answer
+   * `undefined` when there is nothing to trade.
+   *
+   * Lore's access tokens last fifteen minutes and its refresh tokens up to 180
+   * days, or 30 without use. The refresh token was stored from the start and
+   * never sent, so a `lore login` lasted fifteen minutes (#Q2387).
+   *
+   * ⚠️ Only a REFUSAL forgets the login. A 400 or 401 means the session is
+   * gone (revoked, idle past its window), and keeping the entry would retry a
+   * dead token on every command. Anything else, Lore unreachable or a 5xx, is
+   * thrown as it is and the entry kept: an outage must not cost the laptop its
+   * login.
+   */
+  protected refresh(hostname: string): Promise<string | undefined> {
+    const inFlight = this.refreshing.get(hostname);
+    if (inFlight) {
+      return inFlight;
+    }
+    const pending = this.exchange(hostname).finally(() =>
+      this.refreshing.delete(hostname),
+    );
+    this.refreshing.set(hostname, pending);
+    return pending;
+  }
+
+  /**
+   * The `refresh_token` grant itself, form-encoded as RFC 6749 §6 specifies
+   * and as `lore login` sends its own grant.
+   */
+  protected async exchange(hostname: string): Promise<string | undefined> {
+    const entry = await this.tokens.entry(hostname);
+    if (!entry?.refreshToken) {
+      return undefined;
+    }
+
+    try {
+      const res = await this.http.fetch(`${hostname}/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: entry.refreshToken,
+          client_id: LoreClientService.CLIENT_ID,
+        }).toString(),
+      });
+      const grant = (res.data ?? {}) as {
+        access_token?: string;
+        refresh_token?: string;
+        expires_in?: number;
+      };
+      if (!grant.access_token) {
+        throw new AlephaError(
+          `${hostname} answered a token refresh without an access token.`,
+        );
+      }
+
+      await this.tokens.write(
+        hostname,
+        this.tokens.fromGrant(
+          { ...grant, access_token: grant.access_token },
+          entry.refreshToken,
+        ),
+      );
+      return grant.access_token;
+    } catch (error) {
+      if (
+        HttpError.is(error) &&
+        (error.status === 400 || error.status === 401)
+      ) {
+        await this.tokens.clear(hostname);
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   /**
