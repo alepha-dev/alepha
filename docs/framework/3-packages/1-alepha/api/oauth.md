@@ -57,6 +57,15 @@ not an unvalidated request field. Without the binding, any refresh-token
 holder could name any `client_id` and receive an id_token minted for it,
 which a relying party that forwards id_tokens as its Bearer would accept.
 
+**Which redirect URIs a client may register.** `https://` to any host, with
+at most one `*` standing for a single host label
+(`https://*.example.com/cb`), or plain `http://` to the loopback interface
+only: `127.0.0.1`, `[::1]` or `localhost`, compared on the parsed host. A
+loopback redirect is matched on any port (RFC 8252 §7.3), since a native
+app listens wherever the OS lets it; everything else is matched exactly. A
+refused registration answers 400 with an RFC 7591 body, `error` being
+`invalid_redirect_uri` or `invalid_client_metadata`.
+
 **Integration:**
 Register the module and configure the realm + protected resource path:
 
