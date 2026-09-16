@@ -38,12 +38,12 @@ export const AdminUserDetailIdentityAside = (
   const rows: DetailAsideRow[] = [];
 
   rows.push({
-    label: String(tr("admin.userDetail.id", { default: "ID" })),
+    label: tr("admin.userDetail.id", { default: "ID" }),
     copy: user.id,
   });
   if (user.username) {
     rows.push({
-      label: String(tr("admin.userDetail.username", { default: "Username" })),
+      label: tr("admin.userDetail.username", { default: "Username" }),
       value: (
         <span className="block truncate" title={user.username}>
           @{user.username}
@@ -53,7 +53,7 @@ export const AdminUserDetailIdentityAside = (
   }
   if (user.email) {
     rows.push({
-      label: String(tr("admin.userDetail.email", { default: "Email" })),
+      label: tr("admin.userDetail.email", { default: "Email" }),
       value: (
         <a
           href={`mailto:${user.email}`}
@@ -67,7 +67,7 @@ export const AdminUserDetailIdentityAside = (
   }
   if (user.phoneNumber) {
     rows.push({
-      label: String(tr("admin.userDetail.phone", { default: "Phone" })),
+      label: tr("admin.userDetail.phone", { default: "Phone" }),
       value: (
         <a
           href={`tel:${user.phoneNumber}`}
@@ -79,7 +79,7 @@ export const AdminUserDetailIdentityAside = (
     });
   }
   rows.push({
-    label: String(tr("admin.userDetail.fieldStatus", { default: "Status" })),
+    label: tr("admin.userDetail.fieldStatus", { default: "Status" }),
     value: (
       <div className="flex flex-wrap items-center gap-1">
         {/* The list's own chip, so the two pages cannot show one status two
@@ -96,7 +96,7 @@ export const AdminUserDetailIdentityAside = (
     ),
   });
   rows.push({
-    label: String(tr("admin.userDetail.name", { default: "Name" })),
+    label: tr("admin.userDetail.name", { default: "Name" }),
     value: (
       <span className="block truncate">
         {fullName || <span className="text-muted-foreground">—</span>}
@@ -105,27 +105,23 @@ export const AdminUserDetailIdentityAside = (
   });
   if (user.roles?.length) {
     rows.push({
-      label: String(tr("admin.userDetail.roles", { default: "Roles" })),
+      label: tr("admin.userDetail.roles", { default: "Roles" }),
       value: <span className="block">{user.roles.join(", ")}</span>,
     });
   }
   rows.push({
-    label: String(tr("admin.userDetail.lastLogin", { default: "Last login" })),
+    label: tr("admin.userDetail.lastLogin", { default: "Last login" }),
     value: (
       <span className="block">
         {user.lastLoginAt
-          ? String(l(user.lastLoginAt, { date: "lll" }))
+          ? l(user.lastLoginAt, { date: "lll" })
           : tr("admin.userDetail.never", { default: "Never" })}
       </span>
     ),
   });
   rows.push({
-    label: String(tr("admin.userDetail.created", { default: "Created" })),
-    value: (
-      <span className="block">
-        {String(l(user.createdAt, { date: "lll" }))}
-      </span>
-    ),
+    label: tr("admin.userDetail.created", { default: "Created" }),
+    value: <span className="block">{l(user.createdAt, { date: "lll" })}</span>,
   });
 
   return (

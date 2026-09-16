@@ -1,12 +1,8 @@
 import { useRouterState } from "alepha/react/router";
 import { useMemo } from "react";
 
-import {
-  AppShell,
-  type AppShellProps,
-  type NavGroup,
-  type NavItem,
-} from "./AppShell.tsx";
+import { AppShell, type AppShellProps } from "./AppShell.tsx";
+import type { NavGroup, NavItem } from "./appShellNav.tsx";
 import { isActivePath } from "./navTreeUtil.ts";
 import { useNavBreadcrumbs } from "./useNavBreadcrumbs.ts";
 import { useNavTree } from "./useNavTree.ts";

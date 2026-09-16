@@ -5,9 +5,9 @@ import { Showcase } from "@/web/components/Showcase.tsx";
 import { SHOWCASE_KEYS } from "@/web/pages/pages/account/accountFixtures.ts";
 
 /**
- * Personal API keys. The fixture carries one live and one revoked, which is the
- * only pair that shows both states of the row: a revoked key keeps its usage
- * count and loses its actions.
+ * Personal API keys, one in each state: live, scoped, expiring, expired (it
+ * keeps Rotate) and revoked (it keeps nothing). The dead two sit in the
+ * collapsed "Inactive keys" section.
  */
 const KNOBS = z.object({
   empty: z.boolean().default(false).meta({ title: "Empty" }),
@@ -23,7 +23,7 @@ const Keys = () => (
   >
     {(v) => (
       <div className="mx-auto max-w-3xl">
-        <AccountKeys apiKeys={(v.empty ? [] : SHOWCASE_KEYS) as never} />
+        <AccountKeys apiKeys={v.empty ? [] : SHOWCASE_KEYS} />
       </div>
     )}
   </Showcase>

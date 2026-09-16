@@ -655,9 +655,10 @@ describe("ApiKeyService", () => {
 
     /**
      * Counts usage writes that have finished. Reading the row back cannot
-     * tell whether `flush()` waited for the write: the read queues behind an
-     * UPDATE already sent, so it passes even when the provider was handed
-     * a promise that settles before the write does.
+     * tell whether `flush()` waited for the write: the read and the UPDATE
+     * may run on different connections, so which lands first is down to
+     * timing, and a read-back passes even when the provider was handed a
+     * promise that settles before the write does.
      */
     class TrackingApiKeyService extends ApiKeyService {
       public usageWrites = 0;

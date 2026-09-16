@@ -42,11 +42,11 @@ const RoadmapReleaseCard = (props: RoadmapReleaseCardProps) => {
 
   const when = release.releasedAt
     ? tr("roadmap.release.released", {
-        args: [String(i18n.l(release.releasedAt, { date: "ll" }))],
+        args: [i18n.l(release.releasedAt, { date: "ll" })],
       })
     : release.targetDate
       ? tr("roadmap.release.estimated", {
-          args: [String(i18n.l(release.targetDate, { date: "ll" }))],
+          args: [i18n.l(release.targetDate, { date: "ll" })],
         })
       : tr("roadmap.release.noDate");
 

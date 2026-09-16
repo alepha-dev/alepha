@@ -6,11 +6,17 @@ import {
   useToast,
 } from "@alepha/ui";
 import { useDetailTab, PlateLayout, type PlateTab } from "@alepha/ui/shell";
-import { useClient, useQuery, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useQuery,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { Gauge, ListTree, Package, ScrollText, Workflow } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -83,55 +89,91 @@ const ProjectRelease = () => {
   const folioApi = useClient<FolioController>();
 
   const [tab, setTab] = useDetailTab<TabKey>("overview");
-  const [changelog, setChangelog] = useState<ChangelogState | null>(null);
-  const [changelogLoading, setChangelogLoading] = useState(true);
-  const [changelogError, setChangelogError] = useState(false);
-  const [contents, setContents] = useState<ReleaseContentsData | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [folioOpen, setFolioOpen] = useState(false);
-  const [folioSaving, setFolioSaving] = useState(false);
+  const queries = useQueryClient();
 
   const release: ReleaseResource | undefined = releases?.find(
     (r) => r.tag === releaseTag,
   );
 
-  const reload = useCallback(async () => {
-    if (!project) return;
-    setReleases(
-      await releaseApi.getReleases({ params: { projectId: project.id } }),
-    );
-  }, [project?.id]);
+  /**
+   * The project's releases, back into the atom this page resolves from. A
+   * `useAction` (#E59, #Q2326), called through `refetch` so a newer reload
+   * supersedes one in flight; a failure is toasted by the root listener.
+   */
+  const reloadAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        setReleases(
+          await releaseApi.getReleases({ params: { projectId: project.id } }),
+        );
+      },
+    },
+    [releaseApi, project?.id],
+  );
+  const reload = reloadAction.refetch;
 
   // ⚠️ Fetched HERE, not inside the Contents tab, because two things outside
   // that tab read it: the plate's `2 epics` and the tab bar's row count. When
   // the tab owned the fetch, a deep link to `?tab=changelog` rendered a header
   // claiming `0 epics` and a Contents tab with no count at all.
-  const loadContents = useCallback(async () => {
-    if (!release) return;
-    // Cleared first, so walking from one release to the next never shows the
-    // previous one's epic count in this one's header. `null` is "unknown",
-    // which every reader of it already renders as an absent count rather than
-    // a confident zero.
-    setContents(null);
-    try {
-      setContents(
-        await releaseApi.getReleaseContents({ params: { id: release.id } }),
-      );
-    } catch {
-      // The page already renders. A failed fetch leaves the counts absent
-      // rather than breaking the release around them - which is why `null`
-      // means "unknown" and renders no empty state.
-    }
-  }, [release?.id]);
+  //
+  // Keyed on the release AND on `releasedAt`: publishing freezes the contents
+  // the same moment it freezes the changelog, so it is a new read. The answer
+  // carries the release it was read for, and anything else reads as `null`
+  // ("unknown", which every reader renders as an absent count rather than a
+  // confident zero): `keepPreviousData` holds the rows through a re-read of
+  // THIS release, and must not show one release's epic count in the next
+  // one's header.
+  //
+  // Quiet on failure: the page already renders, and a failed read leaves the
+  // counts absent rather than breaking the release around them.
+  const contentsQuery = useQuery(
+    {
+      key: ["release-contents", release?.id, release?.releasedAt],
+      enabled: !!release,
+      keepPreviousData: true,
+      handler: async () => ({
+        releaseId: release?.id,
+        data: await releaseApi.getReleaseContents({
+          params: { id: release?.id as number },
+        }),
+      }),
+      onError: () => {},
+    },
+    [releaseApi, release?.id, release?.releasedAt],
+  );
+  const contents: ReleaseContentsData | null =
+    release && contentsQuery.data?.releaseId === release.id
+      ? contentsQuery.data.data
+      : null;
 
-  useEffect(() => {
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void loadContents();
-    // `releasedAt` as well as the id: publishing freezes the contents the
-    // same moment it freezes the changelog.
-  }, [loadContents, release?.releasedAt]);
+  // Keyed on `releasedAt` as well as the id, so publishing re-reads the
+  // now-frozen copy rather than showing the live one it replaced. Handled:
+  // the panel renders its own error state.
+  const changelogQuery = useQuery(
+    {
+      key: ["release-changelog", release?.id, release?.releasedAt],
+      enabled: !!release,
+      handler: () =>
+        releaseApi.getReleaseChangelog({
+          params: { id: release?.id as number },
+        }),
+      onError: () => {},
+    },
+    [releaseApi, release?.id, release?.releasedAt],
+  );
+  const changelog: ChangelogState | null = changelogQuery.data
+    ? {
+        markdown: changelogQuery.data.markdown,
+        groups: changelogQuery.data.groups,
+        stats: changelogQuery.data.stats,
+      }
+    : null;
+  const changelogLoading = changelogQuery.loading && !changelogQuery.data;
+  const changelogError = !!changelogQuery.error && !changelogQuery.data;
 
   /**
    * After an attach or a detach. The three reads move together on purpose:
@@ -139,41 +181,12 @@ const ProjectRelease = () => {
    * projections of one membership, and refreshing one of them alone is how
    * they end up disagreeing on screen.
    */
-  const reloadAll = useCallback(async () => {
-    await Promise.all([reload(), loadContents()]);
-  }, [reload, loadContents]);
-
-  useEffect(() => {
+  const reloadAll = () => {
     if (!release) return;
-    let cancelled = false;
-    // Synchronous state at the top of a fetch effect: the panel has to read
-    // as loading from the moment the release changes, not from whenever the
-    // request resolves.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setChangelogLoading(true);
-    setChangelogError(false);
-    releaseApi
-      .getReleaseChangelog({ params: { id: release.id } })
-      .then((res) => {
-        if (cancelled) return;
-        setChangelog({
-          markdown: res.markdown,
-          groups: res.groups,
-          stats: res.stats,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setChangelogError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setChangelogLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // Keyed on `releasedAt` as well as the id, so publishing re-reads the
-    // now-frozen copy rather than showing the live one it replaced.
-  }, [release?.id, release?.releasedAt]);
+    queries.invalidate(["release-contents", release.id]);
+    queries.invalidate(["release-changelog", release.id]);
+    void reload();
+  };
 
   /*
     Real rows since epic #18. Every artifact surface on this page reads this
@@ -237,32 +250,32 @@ const ProjectRelease = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleSaveToFolio = async (title: string) => {
-    if (!project || !changelog || !release) return;
-    setFolioSaving(true);
-    try {
-      await folioApi.create({
-        body: {
-          projectId: project.id,
-          title,
-          content: changelog.markdown,
-          summary: tr("release.folio.summary", {
-            args: [
-              release.tag ?? formatReference("release", release.number),
-              String(changelog.stats.questCount),
-            ],
-          }) as string,
-        },
-      });
-      setFolioOpen(false);
-      toaster.success(tr("release.folio.saved"));
-    } catch {
-      // Dialog stays open so the typed title is not lost.
-      toaster.error(tr("release.folio.error"));
-    } finally {
-      setFolioSaving(false);
-    }
-  };
+  // A `useAction` (#E59, #Q2326). A refusal is the server's sentence, toasted
+  // by the root `ActionErrorToaster`, and the dialog stays open so the typed
+  // title is not lost: it closes inside the handler, on success only.
+  const saveToFolioAction = useAction<[title: string], void>(
+    {
+      handler: async (title) => {
+        if (!project || !changelog || !release) return;
+        await folioApi.create({
+          body: {
+            projectId: project.id,
+            title,
+            content: changelog.markdown,
+            summary: tr("release.folio.summary", {
+              args: [
+                release.tag ?? formatReference("release", release.number),
+                String(changelog.stats.questCount),
+              ],
+            }),
+          },
+        });
+        setFolioOpen(false);
+        toaster.success(tr("release.folio.saved"));
+      },
+    },
+    [folioApi, project?.id, changelog, release, toaster, tr],
+  );
 
   if (!project) return null;
 
@@ -285,12 +298,12 @@ const ProjectRelease = () => {
   const tabs: PlateTab[] = [
     {
       key: "overview",
-      label: String(tr("release.tab.overview")),
+      label: tr("release.tab.overview"),
       icon: Gauge,
     },
     {
       key: "contents",
-      label: String(tr("release.tab.contents")),
+      label: tr("release.tab.contents"),
       icon: ListTree,
       count: contents
         ? contents.epics.length + contents.looseQuests.length
@@ -298,17 +311,17 @@ const ProjectRelease = () => {
     },
     {
       key: "flow",
-      label: String(tr("release.tab.flow")),
+      label: tr("release.tab.flow"),
       icon: Workflow,
     },
     {
       key: "changelog",
-      label: String(tr("release.tab.changelog")),
+      label: tr("release.tab.changelog"),
       icon: ScrollText,
     },
     {
       key: "artifacts",
-      label: String(tr("release.tab.artifacts")),
+      label: tr("release.tab.artifacts"),
       icon: Package,
       count: artifactCount,
     },
@@ -380,7 +393,7 @@ const ProjectRelease = () => {
               releaseId={release.id}
               readOnly={published}
               contents={contents}
-              onChanged={() => void reloadAll()}
+              onChanged={() => reloadAll()}
             />
           )}
           {tab === "flow" && <ReleaseFlow contents={contents} />}
@@ -414,8 +427,8 @@ const ProjectRelease = () => {
                 release.title,
               ],
             })}
-            saving={folioSaving}
-            onConfirm={handleSaveToFolio}
+            saving={saveToFolioAction.loading}
+            onConfirm={(title) => void saveToFolioAction.run(title)}
             onCancel={() => setFolioOpen(false)}
           />
         </DialogContent>

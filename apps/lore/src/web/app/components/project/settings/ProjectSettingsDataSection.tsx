@@ -1,6 +1,6 @@
-import { Button, Card, CardContent, useToast, cn } from "@alepha/ui";
+import { Button, Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Download } from "lucide-react";
 
@@ -20,33 +20,30 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  */
 const ProjectSettingsDataSection = () => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const [project] = useStore(currentProjectAtom);
   const api = useClient<ProjectQuestPortabilityController>();
 
-  if (!project) return null;
+  const exportAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        const file = await api.exportQuests({ params: { id: project.id } });
+        const url = window.URL.createObjectURL(
+          new Blob([await file.text()], { type: "text/csv" }),
+        );
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+    },
+    [api, project],
+  );
 
-  const handleExport = async () => {
-    try {
-      const file = await api.exportQuests({ params: { id: project.id } });
-      const url = window.URL.createObjectURL(
-        new Blob([await file.text()], { type: "text/csv" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      toaster.error(
-        err instanceof Error
-          ? err.message
-          : String(tr("project.settings.data.export.failed")),
-      );
-    }
-  };
+  if (!project) return null;
 
   return (
     <div className="flex flex-col gap-2">
@@ -62,7 +59,10 @@ const ProjectSettingsDataSection = () => {
             </span>
           </div>
           <div className="flex justify-start sm:justify-end">
-            <Button onClick={handleExport}>
+            <Button
+              disabled={exportAction.loading}
+              onClick={() => void exportAction.run()}
+            >
               <Download className="size-4" />
               {tr("project.settings.data.export.button")}
             </Button>

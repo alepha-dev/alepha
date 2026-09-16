@@ -61,27 +61,25 @@ const EpicCreate = (props: EpicCreateProps) => {
         title: data.title.trim(),
         description: data.description?.trim() || undefined,
       };
-      try {
-        const saved = props.epic?.id
-          ? await epicApi.updateEpic({
-              params: { id: props.epic.id },
-              // Sent even when cleared, unlike create: `updateEpic` treats an
-              // omitted key as "leave unchanged", so `undefined` here would
-              // make an emptied description un-clearable.
-              body: { ...body, description: data.description?.trim() ?? "" },
-            })
-          : await epicApi.createEpic({
-              params: { projectId: props.projectId },
-              body,
-            });
-        toaster.success(
-          update ? tr("epic.toast.updated") : tr("epic.toast.created"),
-        );
-        props.onSubmit(saved);
-      } catch (error) {
-        toaster.error(error instanceof Error ? error.message : String(error));
-        throw error;
-      }
+      const saved = props.epic?.id
+        ? await epicApi.updateEpic({
+            params: { id: props.epic.id },
+            // Sent even when cleared, unlike create: `updateEpic` treats an
+            // omitted key as "leave unchanged", so `undefined` here would
+            // make an emptied description un-clearable.
+            body: { ...body, description: data.description?.trim() ?? "" },
+          })
+        : await epicApi.createEpic({
+            params: { projectId: props.projectId },
+            body,
+          });
+      // No catch: a refusal propagates, and the root `ActionErrorToaster`
+      // shows its message once. It used to be toasted here and rethrown,
+      // which reached the screen twice as soon as that listener existed.
+      toaster.success(
+        update ? tr("epic.toast.updated") : tr("epic.toast.created"),
+      );
+      props.onSubmit(saved);
     },
   });
 

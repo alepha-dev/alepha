@@ -66,7 +66,7 @@ export const AdminNotificationsDetailTabs = (
             <dt className="text-muted-foreground text-xs">
               {tr("admin.notifications.detailSent", { default: "Sent" })}
             </dt>
-            <dd>{String(l(detail.createdAt, { date: "lll" }))}</dd>
+            <dd>{l(detail.createdAt, { date: "lll" })}</dd>
 
             {detail.lastEventAt ? (
               <>
@@ -75,7 +75,7 @@ export const AdminNotificationsDetailTabs = (
                     default: "Last event",
                   })}
                 </dt>
-                <dd>{String(l(detail.lastEventAt, { date: "lll" }))}</dd>
+                <dd>{l(detail.lastEventAt, { date: "lll" })}</dd>
               </>
             ) : null}
 

@@ -1,13 +1,31 @@
-import { JsonRpcErrorCodes } from "../helpers/jsonrpc.ts";
+import {
+  JsonRpcErrorCodes,
+  McpProtocolErrorCodes,
+} from "../helpers/jsonrpc.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * MCP-specific error codes (application-specific codes in the -32000 to -32099 range).
+ * Alepha's own MCP error codes: application codes, for purposes the MCP
+ * specification does not define.
+ *
+ * Deliberately outside the JSON-RPC reserved range `-32768..-32000`, per the
+ * 2026-07-28 error-code policy (`basic/index`, "Error Codes"): new
+ * implementations SHOULD NOT emit codes in the legacy `-32000..-32019`
+ * sub-range and receivers MUST NOT assume a meaning for them, `-32020..-32099`
+ * belongs to the specification alone, and an application code SHOULD be
+ * allocated outside the reserved range altogether.
+ *
+ * They were `-32001` and `-32003`, which are also exactly what a pre-release
+ * draft of 2026-07-28 gave `HeaderMismatch` and
+ * `MissingRequiredClientCapability`: a client built against that draft would
+ * read a permission refusal as a header error. The trailing digits are kept
+ * so the old mapping stays obvious. The codes the specification does define
+ * are in `McpProtocolErrorCodes`.
  */
 export const McpErrorCodes = {
-  UNAUTHORIZED: -32001,
-  FORBIDDEN: -32003,
+  UNAUTHORIZED: -31001,
+  FORBIDDEN: -31003,
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -16,12 +34,61 @@ export class McpError extends Error {
   name = "McpError";
   code: number;
 
+  /**
+   * The JSON-RPC error's `data` member, sent only when set.
+   */
+  data?: unknown;
+
   constructor(
     message: string,
     code: number = JsonRpcErrorCodes.INTERNAL_ERROR,
   ) {
     super(message);
     this.code = code;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A modern request's HTTP headers are missing, malformed, or disagree with its
+ * body (spec 2026-07-28, Streamable HTTP "Server Validation").
+ *
+ * `-32020` with HTTP 400. The headers exist so an intermediary can route on
+ * them without parsing the body, which is only safe if the server refuses a
+ * request whose headers say something the body does not: otherwise a load
+ * balancer and this server act on two different requests.
+ */
+export class McpHeaderMismatchError extends McpError {
+  name = "McpHeaderMismatchError";
+
+  constructor(detail: string) {
+    super(`Header mismatch: ${detail}`, McpProtocolErrorCodes.HEADER_MISMATCH);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A modern request (2026-07-28 and later) named a protocol version this
+ * server does not serve.
+ *
+ * `-32022` with the versions it does serve, per spec. On HTTP the status is
+ * 400. This error is itself the signal that the server is modern, so it is
+ * only ever sent while the modern path is on: with it off, an unsupported
+ * version gets a plain non-JSON-RPC 400 instead, which is what lets a
+ * dual-era client fall back to `initialize`.
+ */
+export class McpUnsupportedProtocolVersionError extends McpError {
+  name = "McpUnsupportedProtocolVersionError";
+  data: { supported: string[]; requested: string };
+
+  constructor(requested: string, supported: string[]) {
+    super(
+      "Unsupported protocol version",
+      McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION,
+    );
+    this.data = { supported, requested };
   }
 }
 

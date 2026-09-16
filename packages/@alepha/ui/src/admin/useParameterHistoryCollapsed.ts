@@ -16,7 +16,7 @@ export const useParameterHistoryCollapsed = (): [boolean, () => void] => {
 
   useEffect(() => {
     try {
-      // oxlint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect -- reads localStorage after hydration, see the hook's doc
       setCollapsed(window.localStorage.getItem(STORAGE_KEY) === "1");
     } catch {
       // Private mode, or storage denied. Open is a fine answer.

@@ -70,6 +70,10 @@ export interface TurnstileWidgetHandle {
 
 export interface TurnstileWidgetProps {
   /**
+   * The imperative handle (`reset()`), passed as a prop since React 19.
+   */
+  ref?: Ref<TurnstileWidgetHandle>;
+  /**
    * Public Turnstile site key (from the realm config or a public endpoint —
    * never ship the secret key to the browser).
    */
@@ -97,9 +101,7 @@ export interface TurnstileWidgetProps {
  * // on submit failure: widget.current?.reset();
  * ```
  */
-export const TurnstileWidget = (
-  props: TurnstileWidgetProps & { ref?: Ref<TurnstileWidgetHandle> },
-) => {
+export const TurnstileWidget = (props: TurnstileWidgetProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
   // The render effect must not re-run when the parent passes a fresh

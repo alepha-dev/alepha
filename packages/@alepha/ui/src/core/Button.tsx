@@ -119,15 +119,7 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  loading = false,
-  disabled,
-  children,
-  ...props
-}: ButtonPrimitive.Props &
+export type ButtonProps = ButtonPrimitive.Props &
   VariantProps<typeof buttonVariants> & {
     /**
      * When true, hides the button's content (icon + label) and shows a single
@@ -138,7 +130,18 @@ function Button({
      * kit relies on it.
      */
     loading?: boolean;
-  }) {
+  };
+
+const Button = (props: ButtonProps) => {
+  const {
+    className,
+    variant = "default",
+    size = "default",
+    loading = false,
+    disabled,
+    children,
+    ...rest
+  } = props;
   return (
     <ButtonPrimitive
       data-slot="button"
@@ -148,7 +151,7 @@ function Button({
       className={cn(buttonVariants({ variant, size, className }), {
         relative: loading,
       })}
-      {...props}
+      {...rest}
     >
       {loading && (
         <span className="absolute inset-0 flex items-center justify-center">
@@ -158,6 +161,6 @@ function Button({
       <span className={cn("contents", { invisible: loading })}>{children}</span>
     </ButtonPrimitive>
   );
-}
+};
 
 export { Button, buttonVariants };

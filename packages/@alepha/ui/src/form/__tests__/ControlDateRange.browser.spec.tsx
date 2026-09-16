@@ -6,7 +6,16 @@ import { useForm } from "alepha/react/form";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { beforeAll, describe, expect, it } from "vitest";
 
+// ⚠️ The calendar is a lazy chunk (`LazyCalendar`), so nothing the control
+// imports loads it. Imported here, with the file, it is in the module cache
+// before the first popover opens, as it was when the import was static: the
+// gesture cases then wait on the control, not on a cold import of
+// react-day-picker and date-fns, which under a loaded `yarn test` outran a
+// five-second `waitFor`.
+import { Calendar } from "../../calendar/Calendar.tsx";
 import { Control } from "../Control.tsx";
+
+void Calendar;
 
 /**
  * `z.dateRange()` renders as a range picker, and never as anything else.

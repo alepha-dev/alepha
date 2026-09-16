@@ -1,4 +1,4 @@
-import { type Dirent, promises as fs } from "node:fs";
+import { promises as fs } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 import { $command } from "alepha/command";
@@ -44,6 +44,71 @@ interface ModuleData {
  */
 export class DocsCommand {
   protected log = $logger();
+
+  /**
+   * The two page trees a run deletes and rewrites whole, relative to the
+   * repository root.
+   */
+  public readonly pageTrees = {
+    reference: "docs/framework/2-reference",
+    packages: "docs/framework/3-packages",
+  };
+
+  /**
+   * Everything a run writes, relative to the repository root: the two page
+   * trees, and the README of every package that is not private.
+   *
+   * `check:docs` compares exactly these paths with the index, so a new output
+   * in the handler below has to be added here as well, or that check never
+   * sees it.
+   */
+  async outputs(rootDir: string): Promise<string[]> {
+    const readmes: string[] = [];
+    for (const entry of await this.listPackages(join(rootDir, "packages"))) {
+      const pkg = await fs
+        .readFile(join(entry.path, "package.json"), "utf-8")
+        .then((text) => JSON.parse(text))
+        .catch(() => null);
+      if (pkg && !pkg.private) {
+        readmes.push(relative(rootDir, join(entry.path, "README.md")));
+      }
+    }
+    return [...Object.values(this.pageTrees), ...readmes];
+  }
+
+  /**
+   * Every package directory under `packages/`, one level into each `@scope`
+   * directory.
+   */
+  async listPackages(
+    packagesDir: string,
+  ): Promise<{ name: string; path: string }[]> {
+    const packagePaths: { name: string; path: string }[] = [];
+    const dirents = await fs.readdir(packagesDir, { withFileTypes: true });
+    for (const d of dirents) {
+      if (!d.isDirectory()) continue;
+      if (d.name.startsWith("@")) {
+        const scopeDir = join(packagesDir, d.name);
+        const scopeEntries = await fs.readdir(scopeDir, {
+          withFileTypes: true,
+        });
+        for (const sd of scopeEntries) {
+          if (sd.isDirectory()) {
+            packagePaths.push({
+              name: `${d.name}/${sd.name}`,
+              path: join(scopeDir, sd.name),
+            });
+          }
+        }
+      } else {
+        packagePaths.push({
+          name: d.name,
+          path: join(packagesDir, d.name),
+        });
+      }
+    }
+    return packagePaths;
+  }
 
   /**
    * Parse a JSDoc block into description and @example sections.
@@ -836,11 +901,11 @@ export class DocsCommand {
     handler: async ({ run, root }) => {
       const rootDir = join(root, "../..");
       const packagesDir = join(rootDir, "packages");
-      const referenceDocsDir = join(rootDir, "docs/framework/2-reference");
+      const referenceDocsDir = join(rootDir, this.pageTrees.reference);
       const primitivesDocsDir = join(referenceDocsDir, "1-primitives");
       const hooksDocsDir = join(referenceDocsDir, "2-react-hooks");
       const providersDocsDir = join(referenceDocsDir, "3-providers");
-      const packagesDocsDir = join(rootDir, "docs/framework/3-packages");
+      const packagesDocsDir = join(rootDir, this.pageTrees.packages);
 
       await run("clean", async () => {
         await fs.rm(referenceDocsDir, { recursive: true, force: true });
@@ -851,38 +916,12 @@ export class DocsCommand {
         await fs.mkdir(packagesDocsDir, { recursive: true });
       });
 
-      let dirents: Dirent[];
+      let packagePaths: { name: string; path: string }[];
       try {
-        dirents = await fs.readdir(packagesDir, { withFileTypes: true });
+        packagePaths = await this.listPackages(packagesDir);
       } catch (error) {
         this.log.error(`Could not read packages directory at: ${packagesDir}`);
         throw error;
-      }
-
-      // Resolve package paths (handling @scope/ directories)
-      const packagePaths: { name: string; path: string }[] = [];
-      for (const d of dirents) {
-        if (!d.isDirectory()) continue;
-        if (d.name.startsWith("@")) {
-          // Scoped directory - recurse one level
-          const scopeDir = join(packagesDir, d.name);
-          const scopeEntries = await fs.readdir(scopeDir, {
-            withFileTypes: true,
-          });
-          for (const sd of scopeEntries) {
-            if (sd.isDirectory()) {
-              packagePaths.push({
-                name: `${d.name}/${sd.name}`,
-                path: join(scopeDir, sd.name),
-              });
-            }
-          }
-        } else {
-          packagePaths.push({
-            name: d.name,
-            path: join(packagesDir, d.name),
-          });
-        }
       }
 
       // First pass: collect package names and alepha module structure

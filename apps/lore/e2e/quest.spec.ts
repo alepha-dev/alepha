@@ -651,8 +651,8 @@ test.describe("Quest", () => {
     await test.step("open edit, pick the predecessor as dependency, save", async () => {
       await page.getByRole("button", { name: "Edit" }).first().click();
       await openAdvanced(page);
-      // The picker trigger reads "No dependency" until one is chosen.
-      await page.getByRole("button", { name: /no dependency/i }).click();
+      // The picker trigger reads "None" until one is chosen.
+      await page.getByRole("button", { name: "None", exact: true }).click();
       const search = page.getByPlaceholder("Search quests…");
       await search.fill(`Setup${t}`);
       await page
@@ -1974,7 +1974,7 @@ test.describe("Quest", () => {
     // are also printed in the table's own Area column, so a `getByText` would
     // go green whether the filter held three values, one, or a pattern.
     await expect(
-      page.getByRole("combobox").filter({ hasText: "3 areas" }).first(),
+      page.getByRole("combobox").filter({ hasText: "3 values" }).first(),
     ).toBeVisible({ timeout: 10_000 });
 
     // And the table narrowed to the three, leaving the alepha/orm quest out.
@@ -2349,7 +2349,7 @@ test.describe("Quest — the questline route", () => {
 });
 
 /**
- * The quest table's column ORDER, which is the surface `AlephaTable` grew for
+ * The quest table's column ORDER, which is the surface `DataTable` grew for
  * quest #1871 and which this table is the first adopter of.
  *
  * ⚠️ It has to be an e2e. The reconciliation half is covered by browser specs

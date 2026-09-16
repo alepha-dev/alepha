@@ -193,7 +193,7 @@ const ProjectSettings = () => {
                 href: router.path(item.route, { params: { projectSlug } }),
                 label: tr(item.labelKey),
                 icon: createElement(item.icon),
-                group: group.labelKey ? String(tr(group.labelKey)) : undefined,
+                group: group.labelKey ? tr(group.labelKey) : undefined,
                 active: activeRoute === item.route,
               })),
           )

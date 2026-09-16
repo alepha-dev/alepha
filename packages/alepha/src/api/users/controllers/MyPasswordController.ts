@@ -27,7 +27,7 @@ export class MyPasswordController {
   changeMyPassword = $action({
     method: "POST",
     path: "/users/me/password",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Change the caller's own password",
     schema: {
       body: z.object({

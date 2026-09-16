@@ -7,7 +7,7 @@ import {
   CardTitle,
   useToast,
 } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
@@ -59,8 +59,29 @@ const AppDeploy = () => {
 
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
-  const [busy, setBusy] = useState("");
-  const [reload, setReload] = useState(0);
+
+  // A `useAction` (#E59, #Q2329). The refusal is the server's own words, shown
+  // by the root `ActionErrorToaster`: the runtime gate and the credential
+  // clauses are written for somebody who often cannot fix them from here.
+  const deployAction = useAction<[group: ArtifactGroup], void>(
+    {
+      handler: async (group) => {
+        if (!project || !instance) return;
+        await deployApi.startDeploy({
+          params: { projectId: project.id, instanceId: instance.id },
+          // ⚠️ A tag and nothing else. No estate on the wire, ever.
+          body: { tag: group.tag },
+        });
+        toaster.success(tr("app.deploy.started", { args: [group.tag] }));
+      },
+      // The run list picks the new run up.
+      invalidates: [["app-deployments", project?.id, instance?.id]],
+    },
+    [deployApi, project?.id, instance?.id, toaster, tr],
+  );
+  // Which tag the label names while the deploy starts. Every deploy button is
+  // disabled for that time (busy is page-wide); only the clicked one says so.
+  const [picked, setPicked] = useState("");
 
   if (!project || !instance) {
     return null;
@@ -105,33 +126,12 @@ const AppDeploy = () => {
   // the button and the gate cannot disagree about what this copy can run.
   const runnable = acceptedRuntimes(instance.estate?.type ?? "cloudflare");
 
-  const deploy = async (group: ArtifactGroup) => {
-    setBusy(group.tag);
-    try {
-      await deployApi.startDeploy({
-        params: { projectId: project.id, instanceId: instance.id },
-        // ⚠️ A tag and nothing else. No estate on the wire, ever.
-        body: { tag: group.tag },
-      });
-      toaster.success(tr("app.deploy.started", { args: [group.tag] }));
-      setReload((it) => it + 1);
-    } catch (error) {
-      // The server's own words: the runtime gate and the credential clauses
-      // are written for somebody who often cannot fix them from here.
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy("");
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4 p-4">
       <AppDeployRuns
         projectId={project.id}
         instanceId={instance.id}
         canWrite={canDeploy}
-        reloadToken={reload}
-        onChanged={() => setReload((it) => it + 1)}
       />
 
       <AppArtifactsList
@@ -161,7 +161,7 @@ const AppDeploy = () => {
             <Button
               size="sm"
               variant={usable ? "default" : "outline"}
-              disabled={!usable || busy !== ""}
+              disabled={!usable || deployAction.loading}
               title={
                 usable
                   ? undefined
@@ -169,10 +169,13 @@ const AppDeploy = () => {
                     ? tr("app.deploy.imageOnly")
                     : tr("app.deploy.wrongRuntime", { args: [runnable[0]] })
               }
-              onClick={() => deploy(group)}
+              onClick={() => {
+                setPicked(group.tag);
+                void deployAction.run(group);
+              }}
               data-testid={`app-deploy-${group.tag}`}
             >
-              {busy === group.tag
+              {deployAction.loading && picked === group.tag
                 ? tr("app.deploy.starting")
                 : tr("app.deploy.action")}
             </Button>

@@ -8,9 +8,8 @@ import {
   DialogTitle,
   Input,
   Label,
-  useToast,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -37,10 +36,8 @@ export interface AreaRenameDialogProps {
  */
 const AreaRenameDialog = (props: AreaRenameDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const areaApi = useClient<AreaController>();
   const [value, setValue] = useState(props.area.name);
-  const [submitting, setSubmitting] = useState(false);
 
   // The dialog stays mounted while closed, so its draft outlived every close:
   // typing a name, cancelling and reopening showed the abandoned draft, and a
@@ -59,25 +56,25 @@ const AreaRenameDialog = (props: AreaRenameDialogProps) => {
     (s) => s.id !== props.area.id && s.name === trimmed,
   );
 
-  const submit = async () => {
-    if (!trimmed || trimmed === props.area.name) {
-      props.onClose();
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const result = await areaApi.renameArea({
-        params: { id: props.area.id },
-        body: { name: trimmed },
-      });
-      props.onRenamed(result.areaId);
-      props.onClose();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const submitAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!trimmed || trimmed === props.area.name) {
+          props.onClose();
+          return;
+        }
+        const result = await areaApi.renameArea({
+          params: { id: props.area.id },
+          body: { name: trimmed },
+        });
+        props.onRenamed(result.areaId);
+        props.onClose();
+      },
+    },
+    [areaApi, trimmed, props],
+  );
+  const submitting = submitAction.loading;
+  const submit = submitAction.run;
 
   return (
     <Dialog open={props.open} onOpenChange={(o) => !o && props.onClose()}>

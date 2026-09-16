@@ -96,12 +96,10 @@ export const AdminJobDetail = (props: AdminJobDetailProps) => {
           job
             ? undefined
             : {
-                message: String(
-                  tr("admin.jobs.notFound", { default: "Job not found." }),
-                ),
-                backLabel: String(
-                  tr("admin.jobs.back", { default: "Back to jobs" }),
-                ),
+                message: tr("admin.jobs.notFound", {
+                  default: "Job not found.",
+                }),
+                backLabel: tr("admin.jobs.back", { default: "Back to jobs" }),
                 onBack: () => void router.push(backPath),
               }
         }

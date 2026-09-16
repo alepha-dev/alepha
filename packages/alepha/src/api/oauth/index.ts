@@ -4,6 +4,7 @@ import { AlephaCacheDatabase } from "alepha/cache/database";
 import { OAuthController } from "./controllers/OAuthController.ts";
 import { DeviceCodeService } from "./services/DeviceCodeService.ts";
 import { OAuthClientService } from "./services/OAuthClientService.ts";
+import { OAuthScopeResolver } from "./services/OAuthScopeResolver.ts";
 
 export {
   OAuthController,
@@ -11,11 +12,14 @@ export {
 } from "./controllers/OAuthController.ts";
 export type { OAuthClientEntity } from "./entities/oauthClientEntity.ts";
 export { oauthClientEntity } from "./entities/oauthClientEntity.ts";
+export { OAuthClientMetadataError } from "./errors/OAuthClientMetadataError.ts";
 export { buildOpenIdConfiguration } from "./helpers/oidcMetadata.ts";
 export * from "./helpers/jtiReplayGuard.ts";
 export * from "./services/DeviceCodeService.ts";
 export type { RegisterClientOptions } from "./services/OAuthClientService.ts";
 export { OAuthClientService } from "./services/OAuthClientService.ts";
+export { OAuthScopeResolver } from "./services/OAuthScopeResolver.ts";
+export type { OAuthScope } from "./schemas/oauthScopeSchema.ts";
 export { OAuthJobs } from "./jobs/OAuthJobs.ts";
 
 /**
@@ -65,6 +69,15 @@ export { OAuthJobs } from "./jobs/OAuthJobs.ts";
  * holder could name any `client_id` and receive an id_token minted for it,
  * which a relying party that forwards id_tokens as its Bearer would accept.
  *
+ * **Which redirect URIs a client may register.** `https://` to any host, with
+ * at most one `*` standing for a single host label
+ * (`https://*.example.com/cb`), or plain `http://` to the loopback interface
+ * only: `127.0.0.1`, `[::1]` or `localhost`, compared on the parsed host. A
+ * loopback redirect is matched on any port (RFC 8252 §7.3), since a native
+ * app listens wherever the OS lets it; everything else is matched exactly. A
+ * refused registration answers 400 with an RFC 7591 body, `error` being
+ * `invalid_redirect_uri` or `invalid_client_metadata`.
+ *
  * **Integration:**
  * Register the module and configure the realm + protected resource path:
  *
@@ -89,5 +102,10 @@ export const AlephaOAuth = $module({
    * a line somebody could tidy away.
    */
   imports: [AlephaCacheDatabase],
-  services: [OAuthClientService, DeviceCodeService, OAuthController],
+  services: [
+    OAuthClientService,
+    DeviceCodeService,
+    OAuthScopeResolver,
+    OAuthController,
+  ],
 });

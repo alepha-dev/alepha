@@ -1,8 +1,13 @@
 import { Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useState } from "react";
 
 import type { ProjectPromptController } from "@/api/controllers/ProjectPromptController.ts";
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
@@ -68,7 +73,6 @@ const ProjectSettingsAgentPrompts = () => {
   const promptApi = useClient<ProjectPromptController>();
   const [project] = useStore(currentProjectAtom);
   const [prompts, setPrompts] = useStore(projectPromptsAtom);
-  const [loaded, setLoaded] = useState(false);
 
   // ⚠️ Read off `currentProjectAtom` and NOT through `useCapabilityOption`.
   // That hook is a write handle: it returns `{ enabled, toggle }` and holds
@@ -76,49 +80,69 @@ const ProjectSettingsAgentPrompts = () => {
   const enabled = capabilityOption(project, "work", "agentPrompts");
   const projectId = project?.id;
 
-  useEffect(() => {
-    if (!enabled || projectId === undefined) return;
-    let cancelled = false;
-    promptApi
-      .getProjectPrompts({ params: { projectId } })
-      .then((rows) => {
-        if (cancelled) return;
+  // Keyless on purpose: it runs on every mount, which is the unconditional
+  // refetch described above.
+  const read = useQuery(
+    {
+      enabled: enabled && projectId !== undefined,
+      handler: () =>
+        promptApi.getProjectPrompts({
+          params: { projectId: projectId as number },
+        }),
+      onSuccess: (rows) => {
         alepha.store.set(
           projectPromptsAtom,
           Object.fromEntries(rows.map((it) => [it.kind, it.template])),
         );
-        setLoaded(true);
-      })
-      // A failed read leaves the editors on the built-in defaults, which is
-      // what an owner who has customised nothing would see anyway. Better
-      // than an error state on a page whose other sections work.
-      .catch(() => setLoaded(true));
-    return () => {
-      cancelled = true;
-    };
-  }, [alepha, enabled, projectId, promptApi]);
+      },
+      // Quiet on purpose: a failed read leaves the editors on the built-in
+      // defaults, which is what an owner who has customised nothing would see
+      // anyway. Better than an error state on a page whose other sections
+      // work.
+      onError: () => {},
+    },
+    [alepha, promptApi, projectId, enabled],
+  );
+  const loaded = !read.loading;
+
+  const saveAction = useAction<
+    [kind: AgentPromptKind, template: string],
+    boolean
+  >(
+    {
+      handler: async (kind, template) => {
+        if (!project) return false;
+        await promptApi.setProjectPrompt({
+          params: { projectId: project.id, kind },
+          body: { template },
+        });
+        // Written back so the next copy uses the new text without a reload.
+        setPrompts({ ...prompts, [kind]: template });
+        return true;
+      },
+    },
+    [promptApi, project, prompts, setPrompts],
+  );
+
+  const resetAction = useAction<[kind: AgentPromptKind], boolean>(
+    {
+      handler: async (kind) => {
+        if (!project) return false;
+        await promptApi.resetProjectPrompt({
+          params: { projectId: project.id, kind },
+        });
+        const next = { ...prompts };
+        // Deleted rather than set to the default: absence is what "follows
+        // the default" means, here as in the table.
+        delete next[kind];
+        setPrompts(next);
+        return true;
+      },
+    },
+    [promptApi, project, prompts, setPrompts],
+  );
 
   if (!project || !enabled) return null;
-
-  const save = async (kind: AgentPromptKind, template: string) => {
-    await promptApi.setProjectPrompt({
-      params: { projectId: project.id, kind },
-      body: { template },
-    });
-    // Written back so the next copy uses the new text without a reload.
-    setPrompts({ ...prompts, [kind]: template });
-  };
-
-  const reset = async (kind: AgentPromptKind) => {
-    await promptApi.resetProjectPrompt({
-      params: { projectId: project.id, kind },
-    });
-    const next = { ...prompts };
-    // Deleted rather than set to the default: absence is what "follows the
-    // default" means, here as in the table.
-    delete next[kind];
-    setPrompts(next);
-  };
 
   return (
     <Card className={cn(settingsCardEdge, "py-4")}>
@@ -159,8 +183,11 @@ const ProjectSettingsAgentPrompts = () => {
               key={kind}
               kind={kind}
               stored={prompts?.[kind]}
-              onSave={save}
-              onReset={reset}
+              onSave={saveAction.run}
+              onReset={resetAction.run}
+              // One save and one reset for the four editors, so every editor
+              // waits while either runs (#E59 rule 10).
+              busy={saveAction.loading || resetAction.loading}
             />
           ))}
       </CardContent>

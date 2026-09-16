@@ -16,10 +16,10 @@ import {
   type PermissionMatrixColumn,
 } from "@alepha/ui/table";
 import type { RankController, RankResource } from "alepha/api/ranks";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectRankController } from "@/api/controllers/ProjectRankController.ts";
@@ -30,8 +30,8 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { useProjectRanks } from "../../shared/useProjectRanks.ts";
 import ProjectRankColumnHeader from "./ProjectRankColumnHeader.tsx";
-import type { PermissionCatalogueGroup } from "./projectRankMatrix.ts";
 import { ProjectRankMatrix } from "./projectRankMatrix.ts";
 
 /**
@@ -70,48 +70,184 @@ const ProjectSettingsRanksPage = () => {
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
 
-  const [catalogue, setCatalogue] = useState<PermissionCatalogueGroup[]>([]);
-  const [ranks, setRanks] = useState<RankResource[]>([]);
-  const [members, setMembers] = useState<ProjectMember[]>([]);
-  const [presets, setPresets] = useState<RankPreset[]>([]);
-  const [draft, setDraft] = useState<Record<string, string[]>>({});
-  const [saving, setSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
   const projectId = project?.id;
   const scopeId = projectId === undefined ? "" : String(projectId);
 
-  useEffect(() => {
-    if (projectId === undefined) return;
-    let cancelled = false;
+  // The ranks come from the shared keyed query, which every write below
+  // invalidates instead of re-reading by hand. The other three reads are
+  // never refreshed by a write, so they need no key; a failure toasts
+  // through the root listener, since an editor shown three ranks that are
+  // really four would save a set nobody chose.
+  const projectRanks = useProjectRanks();
+  const ranks = projectRanks.ranks;
+  const catalogue = useQuery({ handler: () => rankApi.getRankCatalogue({}) }, [
+    rankApi,
+  ]).data?.groups;
+  const members = (useQuery(
+    {
+      enabled: projectId !== undefined,
+      handler: () =>
+        projectApi.getProjectMembers({ params: { id: projectId as number } }),
+    },
+    [projectApi, projectId],
+  ).data ?? []) as unknown as ProjectMember[];
+  const presets =
+    useQuery(
+      {
+        enabled: projectId !== undefined,
+        handler: () =>
+          presetApi.getRankPresets({
+            params: { projectId: projectId as number },
+          }),
+      },
+      [presetApi, projectId],
+    ).data?.items ?? [];
 
-    Promise.all([
-      rankApi.getRankCatalogue({}),
-      rankApi.getRanks({ params: { type: "project", scopeId } }),
-      projectApi.getProjectMembers({ params: { id: projectId } }),
-      presetApi.getRankPresets({ params: { projectId } }),
-    ])
-      .then(([catalogueRes, ranksRes, membersRes, presetsRes]) => {
-        if (cancelled) return;
-        setCatalogue(catalogueRes.groups);
-        setRanks(ranksRes.items);
-        setMembers(membersRes as never);
-        setPresets(presetsRes.items);
-        setDraft(ProjectSettingsRanksPage.draftOf(ranksRes.items));
-        setLoaded(true);
-      })
-      .catch((error: unknown) => {
-        // Not swallowed into an empty table: an editor shown three ranks that
-        // are really four would save a set nobody chose.
-        if (!cancelled) {
-          toaster.error(error instanceof Error ? error.message : String(error));
+  // The draft follows the server's list: re-seeded, during render rather
+  // than from an effect, whenever a new response replaces it - on the first
+  // load and after every write's invalidation lands.
+  const [draft, setDraft] = useState<Record<string, string[]>>({});
+  const [seededFrom, setSeededFrom] = useState<RankResource[]>();
+  if (!projectRanks.loading && ranks !== seededFrom) {
+    setSeededFrom(ranks);
+    setDraft(ProjectSettingsRanksPage.draftOf(ranks));
+  }
+  const loaded = catalogue !== undefined && seededFrom !== undefined;
+
+  const invalidates = [["project-ranks", projectId]];
+
+  const saveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        for (const rank of ranks) {
+          if (!rank.editable) continue;
+          const next = draft[rank.key] ?? [];
+          if (
+            JSON.stringify([...next].sort()) ===
+            JSON.stringify([...rank.permissions].sort())
+          ) {
+            continue;
+          }
+          await rankApi.saveRank({
+            params: { type: "project", scopeId, key: rank.key },
+            body: { name: rank.name, permissions: next },
+          });
         }
-      });
+        toaster.success(tr("project.settings.ranks.saved"));
+      },
+      // A refusal is toasted by the root listener with the module's own
+      // message: "Your rank does not grant rank:manage", "you cannot grant a
+      // permission you do not hold" and the self-lockout refusal each say
+      // exactly what to change.
+      invalidates,
+    },
+    [rankApi, scopeId, ranks, draft, toaster, tr],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, scopeId, rankApi, projectApi, presetApi]);
+  const createAction = useAction<[preset: RankPreset | undefined], void>(
+    {
+      handler: async (preset) => {
+        const name = await dialog.prompt({
+          title: tr("project.settings.ranks.create.title"),
+          description: tr("project.settings.ranks.create.description"),
+          confirmLabel: tr("project.settings.ranks.create.confirm"),
+          defaultValue: preset?.name ?? "",
+        });
+        if (!name?.trim()) return;
+
+        await rankApi.saveRank({
+          params: {
+            type: "project",
+            scopeId,
+            // A key nobody types: it is stored on every membership row, and a
+            // rank people rename must not move anybody's assignment. Derived
+            // from the clock rather than from the name for exactly that reason.
+            key: `r${Date.now().toString(36)}`,
+          },
+          body: {
+            name: name.trim(),
+            // Nothing was stored until this moment: the preset filled the
+            // cells and the owner could have changed the name first.
+            permissions: preset?.permissions ?? [],
+          },
+        });
+        toaster.success(tr("project.settings.ranks.created"));
+      },
+      invalidates,
+    },
+    [rankApi, scopeId, dialog, toaster, tr],
+  );
+
+  const renameAction = useAction<[rank: RankResource], void>(
+    {
+      handler: async (rank) => {
+        const name = await dialog.prompt({
+          title: tr("project.settings.ranks.rename.title"),
+          confirmLabel: tr("project.settings.ranks.rename.confirm"),
+          defaultValue: rank.name,
+        });
+        if (!name?.trim() || name.trim() === rank.name) return;
+
+        await rankApi.saveRank({
+          params: { type: "project", scopeId, key: rank.key },
+          body: { name: name.trim(), permissions: draft[rank.key] ?? [] },
+        });
+      },
+      invalidates,
+    },
+    [rankApi, scopeId, dialog, draft, tr],
+  );
+
+  const removeAction = useAction<[rank: RankResource], void>(
+    {
+      handler: async (rank) => {
+        const holders = members.filter(
+          (member) => (member.rank ?? "member") === rank.key,
+        );
+
+        if (holders.length > 0) {
+          // Said before the click rather than discovered after it. The server
+          // refuses this too, and the page has the one thing its message
+          // cannot carry: where to go and fix it.
+          await dialog.alert({
+            title: tr("project.settings.ranks.delete.held.title", {
+              args: [rank.name],
+            }),
+            description: tr("project.settings.ranks.delete.held.description", {
+              args: [holders.map((it) => displayName(it.user)).join(", ")],
+            }),
+          });
+          return;
+        }
+
+        const ok = await dialog.confirm({
+          title: tr("project.settings.ranks.delete.title", {
+            args: [rank.name],
+          }),
+          description: tr("project.settings.ranks.delete.description"),
+          confirmLabel: tr("project.settings.ranks.delete.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+
+        await rankApi.deleteRank({
+          params: { type: "project", scopeId, key: rank.key },
+        });
+        toaster.success(tr("project.settings.ranks.deleted"));
+      },
+      invalidates,
+    },
+    [rankApi, scopeId, dialog, members, toaster, tr],
+  );
+
+  /**
+   * Every control of the page waits while any write runs (#E59 rule 10).
+   */
+  const saving =
+    saveAction.loading ||
+    createAction.loading ||
+    renameAction.loading ||
+    removeAction.loading;
 
   if (!project) return null;
 
@@ -125,10 +261,10 @@ const ProjectSettingsRanksPage = () => {
   const held = project.permissions ?? [];
 
   const groups = ProjectRankMatrix.rowsFor({
-    catalogue,
+    catalogue: catalogue ?? [],
     enabled,
     held,
-    label: (key, fallback) => (key ? String(tr(key as never)) : fallback),
+    label: (key, fallback) => (key ? tr(key as never) : fallback),
   });
 
   const holdersOf = (key: string) =>
@@ -142,18 +278,22 @@ const ProjectSettingsRanksPage = () => {
     readOnly: !rank.editable,
     // The count the matrix prints beside its own coverage ratio. A string, not
     // a node: it shares a line with "8/11" and has to wrap with it.
-    description: String(
-      tr("project.settings.ranks.holders", {
-        args: [String(holdersOf(rank.key))],
-      }),
-    ),
+    description: tr("project.settings.ranks.holders", {
+      args: [String(holdersOf(rank.key))],
+    }),
     label: (
       <ProjectRankColumnHeader
         name={rank.name}
         builtin={rank.builtin}
-        onRename={rank.editable ? () => void rename(rank) : undefined}
+        onRename={
+          rank.editable && !saving
+            ? () => void renameAction.run(rank)
+            : undefined
+        }
         onDelete={
-          rank.builtin || !rank.editable ? undefined : () => void remove(rank)
+          rank.builtin || !rank.editable || saving
+            ? undefined
+            : () => void removeAction.run(rank)
         }
       />
     ),
@@ -163,144 +303,6 @@ const ProjectSettingsRanksPage = () => {
     loaded &&
     JSON.stringify(draft) !==
       JSON.stringify(ProjectSettingsRanksPage.draftOf(ranks));
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      for (const rank of ranks) {
-        if (!rank.editable) continue;
-        const next = draft[rank.key] ?? [];
-        if (
-          JSON.stringify([...next].sort()) ===
-          JSON.stringify([...rank.permissions].sort())
-        ) {
-          continue;
-        }
-        await rankApi.saveRank({
-          params: { type: "project", scopeId, key: rank.key },
-          body: { name: rank.name, permissions: next },
-        });
-      }
-      await reload();
-      toaster.success(tr("project.settings.ranks.saved"));
-    } catch (error) {
-      // The module's own message wins: "Your rank does not grant rank:manage",
-      // "you cannot grant a permission you do not hold" and the self-lockout
-      // refusal each say exactly what to change, and a catalogue string would
-      // replace an answer with a shrug.
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const reload = async () => {
-    const res = await rankApi.getRanks({
-      params: { type: "project", scopeId },
-    });
-    setRanks(res.items);
-    setDraft(ProjectSettingsRanksPage.draftOf(res.items));
-  };
-
-  const create = async (preset?: RankPreset) => {
-    const name = await dialog.prompt({
-      title: String(tr("project.settings.ranks.create.title")),
-      description: String(tr("project.settings.ranks.create.description")),
-      confirmLabel: String(tr("project.settings.ranks.create.confirm")),
-      defaultValue: preset?.name ?? "",
-    });
-    if (!name?.trim()) return;
-
-    try {
-      await rankApi.saveRank({
-        params: {
-          type: "project",
-          scopeId,
-          // A key nobody types: it is stored on every membership row, and a
-          // rank people rename must not move anybody's assignment. Derived
-          // from the clock rather than from the name for exactly that reason.
-          key: `r${Date.now().toString(36)}`,
-        },
-        body: {
-          name: name.trim(),
-          // Nothing was stored until this moment: the preset filled the cells
-          // and the owner could have changed the name first.
-          permissions: preset?.permissions ?? [],
-        },
-      });
-      await reload();
-      toaster.success(tr("project.settings.ranks.created"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
-
-  const rename = async (rank: RankResource) => {
-    const name = await dialog.prompt({
-      title: String(tr("project.settings.ranks.rename.title")),
-      confirmLabel: String(tr("project.settings.ranks.rename.confirm")),
-      defaultValue: rank.name,
-    });
-    if (!name?.trim() || name.trim() === rank.name) return;
-
-    try {
-      await rankApi.saveRank({
-        params: { type: "project", scopeId, key: rank.key },
-        body: { name: name.trim(), permissions: draft[rank.key] ?? [] },
-      });
-      await reload();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
-
-  const remove = async (rank: RankResource) => {
-    const holders = holdersOf(rank.key);
-
-    if (holders > 0) {
-      // Said before the click rather than discovered after it. The server
-      // refuses this too, and the page has the one thing its message cannot
-      // carry: where to go and fix it.
-      await dialog.alert({
-        title: String(
-          tr("project.settings.ranks.delete.held.title", {
-            args: [rank.name],
-          }),
-        ),
-        description: String(
-          tr("project.settings.ranks.delete.held.description", {
-            args: [
-              members
-                .filter((it) => (it.rank ?? "member") === rank.key)
-                .map((it) => displayName(it.user))
-                .join(", "),
-            ],
-          }),
-        ),
-      });
-      return;
-    }
-
-    const ok = await dialog.confirm({
-      title: String(
-        tr("project.settings.ranks.delete.title", { args: [rank.name] }),
-      ),
-      description: String(tr("project.settings.ranks.delete.description")),
-      confirmLabel: String(tr("project.settings.ranks.delete.confirm")),
-      destructive: true,
-    });
-    if (!ok) return;
-
-    try {
-      await rankApi.deleteRank({
-        params: { type: "project", scopeId, key: rank.key },
-      });
-      await reload();
-      toaster.success(tr("project.settings.ranks.deleted"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -328,14 +330,18 @@ const ProjectSettingsRanksPage = () => {
             {tr("project.settings.ranks.create")}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => void create()}>
+            <DropdownMenuItem
+              disabled={saving}
+              onClick={() => void createAction.run(undefined)}
+            >
               {tr("project.settings.ranks.create.blank")}
             </DropdownMenuItem>
             {presets.length > 0 && <DropdownMenuSeparator />}
             {presets.map((preset) => (
               <DropdownMenuItem
                 key={preset.key}
-                onClick={() => void create(preset)}
+                disabled={saving}
+                onClick={() => void createAction.run(preset)}
               >
                 {tr("project.settings.ranks.create.preset", {
                   args: [preset.name],
@@ -367,7 +373,7 @@ const ProjectSettingsRanksPage = () => {
           >
             {tr("common.cancel")}
           </Button>
-          <Button disabled={saving} onClick={() => void save()}>
+          <Button disabled={saving} onClick={() => void saveAction.run()}>
             <Save className="size-4" />
             {tr("project.settings.ranks.save")}
           </Button>

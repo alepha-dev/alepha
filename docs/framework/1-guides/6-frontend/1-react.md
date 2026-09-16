@@ -132,16 +132,16 @@ import { useAction } from "alepha/react";
 
 **Options:**
 
-| Option        | Type                        | Description                                                                                                                                                                             |
-| ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `handler`     | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument.                                                                                  |
-| `onError`     | `(error) => void`           | Custom error handler. Errors are never re-thrown by `run` - they land in `error` state and the `react:action:error` event, so fire-and-forget calls can't produce unhandled rejections. |
-| `onSuccess`   | `(result) => void`          | Called after successful execution.                                                                                                                                                      |
-| `id`          | `string`                    | Identifier for debugging and analytics.                                                                                                                                                 |
-| `debounce`    | `number`                    | Delay in milliseconds before executing.                                                                                                                                                 |
-| `runOnInit`   | `boolean`                   | Run once when the component mounts.                                                                                                                                                     |
-| `runEvery`    | `DurationLike`              | Run periodically at the given interval.                                                                                                                                                 |
-| `invalidates` | `string[]`                  | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                           |
+| Option        | Type                        | Description                                                                                                                                                                                                                                                                                                               |
+| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handler`     | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument.                                                                                                                                                                                                                    |
+| `onError`     | `(error) => void`           | Custom error handler. Passing one marks the failure handled: `react:action:error` still fires, with `handled: true`, and `ActionErrorToaster` does not toast it (see below). Errors are never re-thrown by `run` - they land in `error` state and the event, so fire-and-forget calls can't produce unhandled rejections. |
+| `onSuccess`   | `(result) => void`          | Called after successful execution.                                                                                                                                                                                                                                                                                        |
+| `id`          | `string`                    | Identifier for debugging and analytics.                                                                                                                                                                                                                                                                                   |
+| `debounce`    | `number`                    | Delay in milliseconds before executing.                                                                                                                                                                                                                                                                                   |
+| `runOnInit`   | `boolean`                   | Run once when the component mounts.                                                                                                                                                                                                                                                                                       |
+| `runEvery`    | `DurationLike`              | Run periodically at the given interval.                                                                                                                                                                                                                                                                                   |
+| `invalidates` | `string[]`                  | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                                                                                                                                                             |
 
 By default, concurrent executions are prevented - calling `run` while already executing is a no-op.
 
@@ -205,10 +205,13 @@ Actions emit events on the Alepha event system:
 Global error handling example:
 
 ```typescript
-alepha.events.on("react:action:error", ({ error }) => {
+alepha.events.on("react:action:error", ({ error, handled }) => {
+  if (handled) return;
   toast.danger(error.message);
 });
 ```
+
+**A handled error stays quiet.** The error event carries `handled: true` when the caller already dealt with the failure: the `useAction`, `useQuery` or `useForm` was given an `onError`, or a form's `FormValidationError` named a field and is shown under it. `@alepha/ui`'s `ActionErrorToaster` skips a handled error, so `onError: () => {}` is how a read that can do without its data stays quiet, and an `onError` that toasts its own message does not get a second toast beside it. The event still fires either way: error reporting, such as the `@alepha/lore` browser sigil, reads a quiet failure too.
 
 ### useEvents
 

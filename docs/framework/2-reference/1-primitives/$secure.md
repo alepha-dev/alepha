@@ -26,9 +26,10 @@ When multiple options are provided, they are checked in this fixed order.
 All provided options must pass (AND). Each option has its own logic:
 
 1. **Authentication**: Is there a valid user? → `UnauthorizedError` (401)
+   With `sessionOnly`, is it a signed-in session rather than a machine credential? → `ForbiddenError` (403)
 2. **Issuers** (OR): Does the user's realm match at least one? → `ForbiddenError` (403)
 3. **Roles** (OR): Does the user have at least one of the listed roles? → `ForbiddenError` (403)
-4. **Permissions** (AND): Does the user's role grant all listed permissions? → `ForbiddenError` (403)
+4. **Permissions** (AND): Does the user's role grant all listed permissions, and does the credential's `permissionScope` admit them? → `ForbiddenError` (403)
 5. **Guard**: Does the custom function return `true`? → `ForbiddenError` (403)
 
 Permissions declared in `$secure()` are auto-created in the permission registry at definition time.
@@ -72,9 +73,10 @@ class OrderController {
 
 ## Options
 
-| Option        | Type       | Required | Description                           |
-| ------------- | ---------- | -------- | ------------------------------------- |
-| `issuers`     | `string[]` | No       | Restrict to specific issuers (realms) |
-| `roles`       | `string[]` | No       | Required roles                        |
-| `permissions` | `Object`   | No       | Required permissions                  |
-| `guard`       | `Object`   | No       | Custom guard                          |
+| Option        | Type       | Required | Description                                                                                                         |
+| ------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| `issuers`     | `string[]` | No       | Restrict to specific issuers (realms)                                                                               |
+| `roles`       | `string[]` | No       | Required roles                                                                                                      |
+| `permissions` | `Object`   | No       | Required permissions                                                                                                |
+| `sessionOnly` | `boolean`  | No       | Require a signed-in session: refuse an identity authenticated by a machine credential, whatever it may otherwise do |
+| `guard`       | `Object`   | No       | Custom guard                                                                                                        |

@@ -86,9 +86,6 @@ export class ShopI18n {
         "produit.adding": "Ajout…",
         "produit.soldOut": "Épuisée",
         "produit.added": "$1 est dans votre panier.",
-        "produit.addFailedStock":
-          "Cette pièce vient de partir. Écrivez-nous, nous en refaisons.",
-        "produit.addFailed": "Impossible d'ajouter cette pièce pour le moment.",
         "produit.instant": "Envoi immédiat par courriel",
         "produit.engraved": "Gravé après commande",
         "produit.noneLeft": "Aucune en atelier",
@@ -139,8 +136,6 @@ export class ShopI18n {
         "checkout.payDemo": "Boutique de démonstration · aucun paiement réel",
         "checkout.pay": "Payer",
         "checkout.redirecting": "Redirection…",
-        "checkout.payFailed": "Le paiement n'a pas pu démarrer.",
-        "checkout.addressFailed": "L'adresse n'a pas pu être enregistrée.",
         "checkout.embedded":
           "Paiement embarqué : à monter avec le fournisseur configuré.",
         "checkout.summary": "Récapitulatif",
@@ -251,9 +246,6 @@ export class ShopI18n {
         "produit.adding": "Adding…",
         "produit.soldOut": "Sold out",
         "produit.added": "$1 is in your basket.",
-        "produit.addFailedStock":
-          "That one has just gone. Write to us, we make them again.",
-        "produit.addFailed": "This piece cannot be added right now.",
         "produit.instant": "Sent by email immediately",
         "produit.engraved": "Engraved to order",
         "produit.noneLeft": "None in the workshop",
@@ -300,8 +292,6 @@ export class ShopI18n {
         "checkout.payDemo": "Demonstration shop · no real payment",
         "checkout.pay": "Pay",
         "checkout.redirecting": "Redirecting…",
-        "checkout.payFailed": "The payment could not be started.",
-        "checkout.addressFailed": "The address could not be saved.",
         "checkout.embedded":
           "Embedded payment: mount it with the configured provider.",
         "checkout.summary": "Summary",

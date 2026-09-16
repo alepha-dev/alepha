@@ -11,9 +11,11 @@ import {
   useDialog,
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
-import { z } from "alepha";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+} from "@alepha/ui/table";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -26,6 +28,7 @@ import {
 import { useCallback, useState } from "react";
 
 import type { OrderEntity, OrderStatus } from "../../entities/orders.ts";
+import { orderStatusEnum } from "../../schemas/orderStatusSchema.ts";
 import type { AdminOrderController } from "../controllers/AdminOrderController.ts";
 
 const formatPrice = (cents: number, currency: string) =>
@@ -56,21 +59,6 @@ const STATUS_VARIANT: Record<
   partially_refunded: "outline",
 };
 
-const STATUSES: OrderStatus[] = [
-  "pending",
-  "paid",
-  "fulfilled",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "partially_refunded",
-  "refunded",
-];
-
-const filtersSchema = z.object({
-  status: z.string().optional(),
-});
-
 /**
  * Order management: see them, ship them, refund them.
  *
@@ -86,20 +74,39 @@ export const AdminOrders = () => {
 
   const [detailOf, setDetailOf] = useState<string>();
 
+  /**
+   * The table's only filter, so it is on the bar from the start: a default
+   * filter, removable like any other. Its options are the order enum's own,
+   * so a status added there is offered here without a second edit.
+   */
+  const filterFields = {
+    status: {
+      schema: orderStatusEnum,
+      mode: "default",
+      label: tr("commerce.admin.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: (status: OrderStatus) =>
+        tr(`commerce.status.${status}`, { default: status }),
+      control: {
+        clearLabel: tr("commerce.admin.allStatuses", {
+          default: "All statuses",
+        }),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: Record<string, any>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) =>
       client.commerceAdminOrderList({
         query: {
           page: params.page,
           size: params.size,
-          ...(params.filters?.status
-            ? { status: params.filters.status as OrderStatus }
-            : {}),
+          ...(params.filters?.status ? { status: params.filters.status } : {}),
         },
       }),
     [client],
@@ -112,20 +119,14 @@ export const AdminOrders = () => {
   const ship = useCallback(
     async (order: OrderEntity, refresh: () => void) => {
       const trackingNumber = await dialog.prompt({
-        title: String(
-          tr("commerce.admin.shipTitle", {
-            default: "Hand to the carrier",
-          }),
-        ),
-        description: String(
-          tr("commerce.admin.shipHint", {
-            default:
-              "Tracking number, if there is one. The customer receives it by email.",
-          }),
-        ),
-        confirmLabel: String(
-          tr("commerce.admin.shipConfirm", { default: "Ship" }),
-        ),
+        title: tr("commerce.admin.shipTitle", {
+          default: "Hand to the carrier",
+        }),
+        description: tr("commerce.admin.shipHint", {
+          default:
+            "Tracking number, if there is one. The customer receives it by email.",
+        }),
+        confirmLabel: tr("commerce.admin.shipConfirm", { default: "Ship" }),
       });
       // `undefined` is a cancel; an empty string is "no tracking number", which
       // is a legitimate answer for an in-store pickup.
@@ -144,14 +145,12 @@ export const AdminOrders = () => {
   const deliver = useConfirmedAction<[OrderEntity, () => void]>(
     {
       confirm: () => ({
-        title: String(
-          tr("commerce.admin.deliverTitle", { default: "Mark as received" }),
-        ),
-        description: String(
-          tr("commerce.admin.deliverConfirm", {
-            default: "Has the customer confirmed the parcel arrived?",
-          }),
-        ),
+        title: tr("commerce.admin.deliverTitle", {
+          default: "Mark as received",
+        }),
+        description: tr("commerce.admin.deliverConfirm", {
+          default: "Has the customer confirmed the parcel arrived?",
+        }),
       }),
       handler: async (order, refresh) => {
         await client.commerceAdminOrderDeliver({ params: { id: order.id } });
@@ -169,15 +168,11 @@ export const AdminOrders = () => {
         // operator is agreeing to, so it has to be the real one.
         const remaining = Math.max(0, order.total - order.refundedTotal);
         return {
-          title: String(
-            tr("commerce.admin.refundTitle", { default: "Refund" }),
-          ),
-          description: String(
-            tr("commerce.admin.refundConfirm", {
-              default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
-              args: [formatPrice(remaining, order.currency)],
-            }),
-          ),
+          title: tr("commerce.admin.refundTitle", { default: "Refund" }),
+          description: tr("commerce.admin.refundConfirm", {
+            default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
+            args: [formatPrice(remaining, order.currency)],
+          }),
           destructive: true,
         };
       },
@@ -189,60 +184,35 @@ export const AdminOrders = () => {
         refresh();
       },
       success: () =>
-        String(tr("commerce.admin.refunded", { default: "Order refunded." })),
+        tr("commerce.admin.refunded", { default: "Order refunded." }),
     },
     [client],
   );
 
   return (
     <AdminPage>
-      <AlephaTable<OrderEntity>
+      <DataTable<OrderEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.orders"
         fetch={fetcher}
         onRowClick={(order) => setDetailOf(order.id)}
-        emptyMessage={String(
-          tr("commerce.admin.noOrders", { default: "No orders." }),
-        )}
-        filters={{
-          schema: filtersSchema,
-          // Same shape as the catalogue's kind filter — see the note there.
-          render: (form) => (
-            <Control
-              input={form.input.status}
-              label=""
-              clearable
-              icon={CircleDot}
-              clearLabel={String(
-                tr("commerce.admin.allStatuses", { default: "All statuses" }),
-              )}
-              triggerClassName="w-52"
-              items={STATUSES.map((status) => ({
-                value: status,
-                label: String(
-                  tr(`commerce.status.${status}`, { default: status }),
-                ),
-              }))}
-            />
-          ),
-        }}
+        emptyMessage={tr("commerce.admin.noOrders", { default: "No orders." })}
+        filters={{ fields: filterFields }}
         rowActions={(order) => [
           {
-            label: String(tr("commerce.admin.ship", { default: "Ship" })),
+            label: tr("commerce.admin.ship", { default: "Ship" }),
             icon: Truck,
             disabled: () => !["paid", "fulfilled"].includes(order.status),
             onClick: (item, ctx) => void ship(item, ctx.refresh),
           },
           {
-            label: String(
-              tr("commerce.admin.deliver", { default: "Mark received" }),
-            ),
+            label: tr("commerce.admin.deliver", { default: "Mark received" }),
             icon: CheckCheck,
             disabled: () => order.status !== "shipped",
             onClick: (item, ctx) => void deliver.run(item, ctx.refresh),
           },
           {
-            label: String(tr("commerce.admin.refund", { default: "Refund" })),
+            label: tr("commerce.admin.refund", { default: "Refund" }),
             icon: Receipt,
             destructive: true,
             disabled: () =>
@@ -256,7 +226,7 @@ export const AdminOrders = () => {
             sortable: true,
             cell: (o) => (
               <span className="text-muted-foreground text-xs">
-                {String(l(o.createdAt, { date: "lll" }))}
+                {l(o.createdAt, { date: "lll" })}
               </span>
             ),
           },
@@ -381,7 +351,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                   })}
                 </Badge>
                 <span className="text-muted-foreground text-xs">
-                  {String(l(order.createdAt, { date: "lll" }))}
+                  {l(order.createdAt, { date: "lll" })}
                 </span>
               </div>
 

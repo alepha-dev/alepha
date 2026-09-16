@@ -119,12 +119,10 @@ export class PermissionPrimitive extends Primitive<PermissionPrimitiveOptions> {
     if (!user?.roles) {
       return false;
     }
-    const check = this.securityProvider.checkPermissionInRealm(
-      user.realm,
-      this,
-      ...user.roles,
-    );
-    return check.isAuthorized;
+    // The user-aware check, not the role-only one: a credential narrowed by
+    // its `permissionScope` must get the same answer here as from `$secure`,
+    // or code branching on `can()` hands a scoped key everything.
+    return this.securityProvider.checkUserPermission(user, this).isAuthorized;
   }
 }
 

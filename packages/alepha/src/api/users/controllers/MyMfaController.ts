@@ -33,7 +33,7 @@ export class MyMfaController {
   enrollTotp = $action({
     method: "POST",
     path: "/users/me/mfa/totp/enroll",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Start enrolling an authenticator app",
     schema: {
       response: z.object({
@@ -56,7 +56,7 @@ export class MyMfaController {
   activateTotp = $action({
     method: "POST",
     path: "/users/me/mfa/totp/activate",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Confirm an enrollment and receive the recovery codes",
     schema: {
       body: z.object({
@@ -78,7 +78,7 @@ export class MyMfaController {
   disableTotp = $action({
     method: "DELETE",
     path: "/users/me/mfa/totp",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Turn off two-factor authentication",
     schema: {
       body: z.object({
@@ -104,7 +104,7 @@ export class MyMfaController {
   regenerateRecoveryCodes = $action({
     method: "POST",
     path: "/users/me/mfa/totp/recovery-codes",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Issue a new set of recovery codes, retiring the old one",
     schema: {
       response: z.object({

@@ -115,6 +115,10 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
 
   const emailForm = useForm({
     schema: resetPasswordRequestSchema,
+    // Handled here: every error this form throws is rendered by the page itself,
+    // under its field or in the alert above the form. Without an `onError`,
+    // a mounted `ActionErrorToaster` toasted the same sentence a second time.
+    onError: () => {},
     handler: async (data) => {
       setError(null);
       try {
@@ -138,6 +142,10 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
         password: z.string().min(8),
         confirmPassword: z.string().min(8),
       }),
+      // Handled here: every error this form throws is rendered by the page itself,
+      // under its field or in the alert above the form. Without an `onError`,
+      // a mounted `ActionErrorToaster` toasted the same sentence a second time.
+      onError: () => {},
       handler: async (data) => {
         if (data.password !== data.confirmPassword) {
           throw new AlephaError(

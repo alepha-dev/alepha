@@ -152,7 +152,7 @@ export class MyConnectionController {
   revokeMyConnection = $action({
     method: "DELETE",
     path: "/users/me/connections/:id",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Cut off one OAuth client's access to the caller's account",
     schema: {
       /*

@@ -49,6 +49,35 @@ export const resolveMention = <T extends { name: string }>(
   members.find((m) => m.name.toLowerCase() === handle.toLowerCase());
 
 /**
+ * What one `@` capture names: the member, the part of the capture that is
+ * their handle, and whatever trails it.
+ *
+ * A handle may contain `.` and `-` (`[\w.-]+`), so a mention that ends a
+ * sentence captures the full stop with it: `names you, @nfo.` captured
+ * `nfo.`, which named nobody, and nobody was notified (#Q2350). The capture
+ * is tried as written first, so a handle that really ends in one of those
+ * characters still resolves; then with its trailing dots and hyphens dropped.
+ * What was dropped comes back as `trailing`, for the renderer to put after
+ * the link rather than inside it.
+ *
+ * The pattern itself keeps matching the full capture on purpose: the `@`
+ * picker derives its match from it, and a pattern that refused to end on a
+ * dot would close the picker halfway through typing `@first.last`.
+ */
+export const resolveMentionCapture = <T extends { name: string }>(
+  capture: string,
+  members: T[],
+): { member: T; handle: string; trailing: string } | undefined => {
+  const exact = resolveMention(capture, members);
+  if (exact) return { member: exact, handle: capture, trailing: "" };
+  const handle = capture.replace(/[.-]+$/, "");
+  if (handle === "" || handle === capture) return undefined;
+  const member = resolveMention(handle, members);
+  if (!member) return undefined;
+  return { member, handle, trailing: capture.slice(handle.length) };
+};
+
+/**
  * Every member mentioned in one segment of text, each at most once.
  *
  * Generic in the member, and it hands back the caller's own objects rather
@@ -69,9 +98,9 @@ export const matchMentions = <T extends { name: string }>(
 
   const found: T[] = [];
   for (const match of segment.matchAll(mentionPattern())) {
-    const member = resolveMention(match[2] ?? "", members);
-    if (member && !found.includes(member)) {
-      found.push(member);
+    const resolved = resolveMentionCapture(match[2] ?? "", members);
+    if (resolved && !found.includes(resolved.member)) {
+      found.push(resolved.member);
     }
   }
   return found;

@@ -1,8 +1,15 @@
 import { useDialog } from "@alepha/ui";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { DashboardController } from "@/api/controllers/DashboardController.ts";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
@@ -59,7 +66,6 @@ const Dashboard = () => {
   const [overview] = useStore(userProjectsAtom);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
-  const [apps, setApps] = useState<DashboardScopeApp[]>([]);
 
   const projects = overview?.projects ?? [];
   const metrics = useMemo(
@@ -67,62 +73,81 @@ const Dashboard = () => {
     [catalog],
   );
 
-  const resolve = async (cards: DashboardCardResource[]) => {
-    if (cards.length === 0) {
-      alepha.store.set(dashboardAtom, { cards, values: [] });
-      return;
-    }
-    const resolved = await dashboardApi
-      .resolveCards({ body: {} })
-      .catch(() => undefined);
-    alepha.store.set(dashboardAtom, {
-      cards,
-      values: resolved?.values ?? [],
-      refreshedAt: resolved?.refreshedAt,
-    });
-  };
-
-  // One resolve per mount. `dashboard.cards` is deliberately NOT in the
-  // dependency list: every mutation below re-resolves explicitly, and keying
-  // this on state the same effect writes is precisely how a loader turns into
-  // a request loop.
-  useEffect(() => {
-    void resolve(alepha.store.get(dashboardAtom).cards);
-  }, []);
+  /**
+   * Resolve the cards the store holds, once per mount and after each
+   * mutation (which calls it through `refetch`, so a newer resolve
+   * supersedes one in flight instead of being dropped).
+   *
+   * ⚠️ Reads the cards from the store, never from a dependency: keying this on
+   * state it writes is precisely how a loader turns into a request loop.
+   */
+  const resolveAction = useAction<[], void>(
+    {
+      handler: async ({ signal }) => {
+        const cards = alepha.store.get(dashboardAtom).cards;
+        if (cards.length === 0) {
+          alepha.store.set(dashboardAtom, { cards, values: [] });
+          return;
+        }
+        const resolved = await dashboardApi.resolveCards({ body: {} });
+        if (signal.aborted) return;
+        alepha.store.set(dashboardAtom, {
+          cards: alepha.store.get(dashboardAtom).cards,
+          values: resolved.values,
+          refreshedAt: resolved.refreshedAt,
+        });
+      },
+      // Quiet on purpose: a card that cannot resolve renders empty, and the
+      // board around it stays usable. Error reporting still sees it.
+      onError: () => {
+        alepha.store.set(dashboardAtom, {
+          ...alepha.store.get(dashboardAtom),
+          values: [],
+        });
+      },
+      runOnInit: true,
+    },
+    [alepha, dashboardApi],
+  );
 
   /**
    * The apps the scope picker can offer, across every project.
    *
    * One request per project, and only when the panel opens: a card list with
    * no app-scoped metric never needs them, and the landing page must not pay
-   * for a picker nobody opened. Failures cost the picker its options, never
-   * the page.
+   * for a picker nobody opened. Kept five minutes, so reopening the panel
+   * does not ask again. Each project's failure costs the picker that
+   * project's options, never the page: the per-project catch is deliberate
+   * partial success, not a swallowed error.
    */
-  useEffect(() => {
-    if (!catalogueOpen || apps.length > 0 || projects.length === 0) return;
-    let cancelled = false;
-    void Promise.all(
-      projects.map((project) =>
-        sigilApi
-          .listSigils({ params: { projectId: project.id } })
-          .then((res) =>
-            res.items.map((sigil) => ({
-              id: sigil.id,
-              name: sigil.name,
-              projectId: project.id,
-              projectTitle: project.title,
-              beacon: (sigil.kinds ?? []).includes("beacon"),
-            })),
-          )
-          .catch(() => []),
-      ),
-    ).then((lists) => {
-      if (!cancelled) setApps(lists.flat());
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [catalogueOpen, projects.length]);
+  const apps: DashboardScopeApp[] =
+    useQuery(
+      {
+        key: ["dashboard-scope-apps", ...projects.map((it) => it.id)],
+        staleTime: [5, "minutes"],
+        enabled: catalogueOpen && projects.length > 0,
+        handler: async () =>
+          (
+            await Promise.all(
+              projects.map((project) =>
+                sigilApi
+                  .listSigils({ params: { projectId: project.id } })
+                  .then((res) =>
+                    res.items.map((sigil) => ({
+                      id: sigil.id,
+                      name: sigil.name,
+                      projectId: project.id,
+                      projectTitle: project.title,
+                      beacon: (sigil.kinds ?? []).includes("beacon"),
+                    })),
+                  )
+                  .catch((): DashboardScopeApp[] => []),
+              ),
+            )
+          ).flat(),
+      },
+      [sigilApi, projects.length, catalogueOpen],
+    ).data ?? [];
 
   /**
    * Adopt a new card list and re-resolve it.
@@ -137,7 +162,7 @@ const Dashboard = () => {
       ...alepha.store.get(dashboardAtom),
       cards,
     });
-    void resolve(cards);
+    void resolveAction.refetch();
   };
 
   /**
@@ -145,58 +170,109 @@ const Dashboard = () => {
    */
   const currentCards = () => alepha.store.get(dashboardAtom).cards;
 
-  const onReorder = async (ids: number[]) => {
-    // Optimistic: the drop already moved the tile under the reader's cursor,
-    // and putting it back for the length of a round-trip would read as the
-    // drag having failed.
-    const byId = new Map(currentCards().map((card) => [card.id, card]));
-    const next = ids.map((id) => byId.get(id)!).filter(Boolean);
-    alepha.store.set(dashboardAtom, {
-      ...alepha.store.get(dashboardAtom),
-      cards: next,
-    });
-    await dashboardApi.reorderCards({ body: { ids } }).catch(() => undefined);
-  };
+  const reorderAction = useAction<[ids: number[]], void>(
+    {
+      handler: async (ids) => {
+        // Optimistic: the drop already moved the tile under the reader's
+        // cursor, and putting it back for the length of a round-trip would
+        // read as the drag having failed.
+        const byId = new Map(currentCards().map((card) => [card.id, card]));
+        const next = ids.map((id) => byId.get(id)!).filter(Boolean);
+        alepha.store.set(dashboardAtom, {
+          ...alepha.store.get(dashboardAtom),
+          cards: next,
+        });
+        await dashboardApi.reorderCards({ body: { ids } });
+      },
+      // ⚠️ Deliberately quiet, and deliberately no rollback: a failed reorder
+      // keeps the new order on screen until the next load, and does not
+      // toast. The order is a preference, not data anyone else reads, and a
+      // tile that jumped back after the drop would read as the drag failing.
+      onError: () => {},
+    },
+    [alepha, dashboardApi],
+  );
 
-  const onRemove = async (card: DashboardCardResource) => {
-    const confirmed = await dialog.confirm({
-      title: String(tr("dashboard.card.delete.confirm")),
-      confirmLabel: String(tr("dashboard.card.delete")),
-      destructive: true,
-    });
-    if (!confirmed) return;
-    await dashboardApi.removeCard({ params: { cardId: card.id } });
-    apply(currentCards().filter((it) => it.id !== card.id));
-  };
+  const removeAction = useAction<[card: DashboardCardResource], void>(
+    {
+      handler: async (card) => {
+        const confirmed = await dialog.confirm({
+          title: tr("dashboard.card.delete.confirm"),
+          confirmLabel: tr("dashboard.card.delete"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await dashboardApi.removeCard({ params: { cardId: card.id } });
+        apply(currentCards().filter((it) => it.id !== card.id));
+      },
+    },
+    [alepha, dashboardApi, dialog, tr],
+  );
 
-  const onDuplicate = async (card: DashboardCardResource) => {
-    const made = await dashboardApi.addCard({
-      body: { metric: card.metric, scope: card.scope, filters: card.filters },
-    });
-    apply([...currentCards(), made]);
-  };
+  const duplicateAction = useAction<[card: DashboardCardResource], void>(
+    {
+      handler: async (card) => {
+        const made = await dashboardApi.addCard({
+          body: {
+            metric: card.metric,
+            scope: card.scope,
+            filters: card.filters,
+          },
+        });
+        apply([...currentCards(), made]);
+      },
+    },
+    [alepha, dashboardApi],
+  );
 
-  const onAdd = async (input: {
-    metric: string;
-    scope: DashboardScope;
-    filters: Record<string, unknown>;
-  }) => {
-    const made = await dashboardApi.addCard({ body: input as never });
-    setCatalogueOpen(false);
-    apply([...currentCards(), made]);
-  };
+  const addAction = useAction<
+    [
+      input: {
+        metric: string;
+        scope: DashboardScope;
+        filters: Record<string, unknown>;
+      },
+    ],
+    void
+  >(
+    {
+      handler: async (input) => {
+        const made = await dashboardApi.addCard({ body: input as never });
+        setCatalogueOpen(false);
+        apply([...currentCards(), made]);
+      },
+    },
+    [alepha, dashboardApi],
+  );
 
-  const onUpdate = async (
-    card: DashboardCardResource,
-    input: { scope: DashboardScope; filters: Record<string, unknown> },
-  ) => {
-    const updated = await dashboardApi.updateCard({
-      params: { cardId: card.id },
-      body: input as never,
-    });
-    setCatalogueOpen(false);
-    apply(currentCards().map((it) => (it.id === card.id ? updated : it)));
-  };
+  const updateAction = useAction<
+    [
+      card: DashboardCardResource,
+      input: { scope: DashboardScope; filters: Record<string, unknown> },
+    ],
+    void
+  >(
+    {
+      handler: async (card, input) => {
+        const updated = await dashboardApi.updateCard({
+          params: { cardId: card.id },
+          body: input as never,
+        });
+        setCatalogueOpen(false);
+        apply(currentCards().map((it) => (it.id === card.id ? updated : it)));
+      },
+    },
+    [alepha, dashboardApi],
+  );
+
+  /**
+   * Every card control waits while a write runs (#E59 rule 10).
+   */
+  const busy =
+    removeAction.loading ||
+    duplicateAction.loading ||
+    addAction.loading ||
+    updateAction.loading;
 
   const openCatalogue = () => {
     setEditing(undefined);
@@ -224,14 +300,15 @@ const Dashboard = () => {
           cards={dashboard.cards}
           values={dashboard.values}
           metrics={metrics}
-          onReorder={onReorder}
+          onReorder={(ids) => void reorderAction.run(ids)}
           onAdd={openCatalogue}
           onChangeScope={(card) => {
             setEditing(card);
             setCatalogueOpen(true);
           }}
-          onDuplicate={onDuplicate}
-          onRemove={onRemove}
+          onDuplicate={(card) => void duplicateAction.run(card)}
+          onRemove={(card) => void removeAction.run(card)}
+          busy={busy}
         />
 
         {dashboard.cards.length === 0 && <DashboardEmpty />}
@@ -261,8 +338,9 @@ const Dashboard = () => {
         apps={apps}
         editing={editing}
         onClose={() => setCatalogueOpen(false)}
-        onAdd={onAdd}
-        onUpdate={onUpdate}
+        onAdd={(input) => void addAction.run(input)}
+        onUpdate={(card, input) => void updateAction.run(card, input)}
+        busy={busy}
       />
     </div>
   );

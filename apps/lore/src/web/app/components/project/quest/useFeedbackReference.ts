@@ -47,6 +47,11 @@ export const useFeedbackReference = (feedbackId?: number | null) => {
           params: { projectId: project.id, feedbackId },
         });
       },
+      // Quiet on purpose, for the reason above: a failure is ordinary, and
+      // the badge simply does not link. Without it, the root
+      // `ActionErrorToaster` toasted a quest page for a feedback row the
+      // reader may not open.
+      onError: () => {},
     },
     [project?.id, feedbackId],
   );

@@ -116,40 +116,31 @@ const AccountProfile = (props: AccountProfileProps) => {
     },
     schema: updateMyProfileBodySchema,
     handler: async (values) => {
-      try {
-        setProfile(
-          await api.updateMyProfile({
-            body: {
-              // Empty is "unset", which the API spells `null` — NOT
-              // `undefined`, which means "leave this column alone" and made
-              // clearing a name a silent no-op that still toasted success.
-              firstName: values.firstName || null,
-              lastName: values.lastName || null,
-              // Absent, not `null`, in a realm without usernames: `null` is the
-              // "clear this column" signal the two name fields use, and
-              // `username` has no such state — absent is "leave it alone".
-              username: values.username,
-            },
-          }),
-        );
-        toaster.show(
-          tr("account.profile.updated", { default: "Profile updated" }),
-          "success",
-        );
-      } catch (error: any) {
-        // The username-taken 409 arrives here with its own message, which is
-        // the only one worth showing. Toasted *and* rethrown: the toast is
-        // what the user reads, and the throw is what keeps the form dirty and
-        // errored so Save stays actionable for the retry.
-        toaster.show(
-          error?.message ??
-            tr("account.profile.updateError", {
-              default: "Could not update your profile",
-            }),
-          "danger",
-        );
-        throw error;
-      }
+      setProfile(
+        await api.updateMyProfile({
+          body: {
+            // Empty is "unset", which the API spells `null` — NOT
+            // `undefined`, which means "leave this column alone" and made
+            // clearing a name a silent no-op that still toasted success.
+            firstName: values.firstName || null,
+            lastName: values.lastName || null,
+            // Absent, not `null`, in a realm without usernames: `null` is the
+            // "clear this column" signal the two name fields use, and
+            // `username` has no such state — absent is "leave it alone".
+            username: values.username,
+          },
+        }),
+      );
+      toaster.show(
+        tr("account.profile.updated", { default: "Profile updated" }),
+        "success",
+      );
+      // No catch. A refusal (the username-taken 409, with its own message)
+      // propagates: that keeps the form dirty and errored so Save stays
+      // actionable, and `ActionErrorToaster` shows the message once. It used
+      // to be toasted here too, which put it on screen twice wherever that
+      // listener is mounted. Same division of labour as the auth forms and
+      // `AdminUserDetail`: the handler throws, the toaster shows.
     },
   });
 
@@ -373,7 +364,7 @@ const AccountProfile = (props: AccountProfileProps) => {
           label={tr("account.profile.memberSince", { default: "Member since" })}
         >
           <span className="text-muted-foreground text-sm">
-            {String(l(profile.createdAt, { date: "LL" }))}
+            {l(profile.createdAt, { date: "LL" })}
           </span>
         </SettingsRow>
       </SettingsSection>

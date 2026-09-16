@@ -2,7 +2,7 @@ import { Alepha } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { describe, test } from "vitest";
+import { describe, it, test } from "vitest";
 
 import { sessions } from "../entities/sessions.ts";
 import { users } from "../entities/users.ts";
@@ -161,5 +161,99 @@ describe("UserJobs", () => {
       expect(remaining).toHaveLength(1);
       expect(remaining[0].lastUsedAt).toBe(recentUsed);
     });
+  });
+});
+
+/**
+ * Shrinks a batch to two rows, so a backlog larger than one run's cap fits in
+ * a test. The cap itself (ten batches) is the production one.
+ */
+class SmallBatchUserJobs extends UserJobs {
+  public testBatchSize = () => super.batchSize();
+
+  protected batchSize(): number {
+    return 2;
+  }
+}
+
+describe("UserJobs bounded session purge", () => {
+  const setup = async () => {
+    const alepha = Alepha.create()
+      .with({ provide: UserJobs, use: SmallBatchUserJobs })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class TestRepositories {
+      userRepository = $repository(users);
+      sessionRepository = $repository(sessions);
+    }
+
+    const userJobs = alepha.inject(SmallBatchUserJobs);
+    const repos = alepha.inject(TestRepositories);
+    await alepha.start();
+
+    const user = await repos.userRepository.create({
+      email: `bounded-${crypto.randomUUID()}@example.com`,
+    });
+    const at = (offsetMs: number) =>
+      new Date(Date.now() + offsetMs).toISOString();
+
+    return { userJobs, repos, user, at };
+  };
+
+  it("drains a backlog larger than one run across runs, stopping each run at the cap", async ({
+    expect,
+  }) => {
+    const { userJobs, repos, user, at } = await setup();
+
+    // 23 expired rows: two per batch, ten batches per run, so a run takes 20.
+    await repos.sessionRepository.createMany(
+      Array.from({ length: 23 }, () => ({
+        userId: user.id,
+        refreshToken: crypto.randomUUID(),
+        expiresAt: at(-60 * 60 * 1000),
+      })),
+    );
+    const live = await repos.sessionRepository.create({
+      userId: user.id,
+      refreshToken: crypto.randomUUID(),
+      expiresAt: at(24 * 60 * 60 * 1000),
+    });
+
+    await userJobs.purgeExpiredSessions.trigger();
+    expect(await repos.sessionRepository.findMany()).toHaveLength(4);
+
+    await userJobs.purgeExpiredSessions.trigger();
+    const remaining = await repos.sessionRepository.findMany();
+    expect(remaining.map((row) => row.id)).toEqual([live.id]);
+  });
+
+  it("never touches an active session, however old", async ({ expect }) => {
+    const { userJobs, repos, user, at } = await setup();
+
+    const active = await repos.sessionRepository.createMany(
+      Array.from({ length: 5 }, () => ({
+        userId: user.id,
+        refreshToken: crypto.randomUUID(),
+        expiresAt: at(24 * 60 * 60 * 1000),
+      })),
+    );
+
+    await userJobs.purgeExpiredSessions.trigger();
+
+    const remaining = await repos.sessionRepository.findMany();
+    expect(remaining.map((row) => row.id).sort()).toEqual(
+      active.map((row) => row.id).sort(),
+    );
+  });
+
+  it("sizes a batch from the driver's bound-parameter ceiling", async ({
+    expect,
+  }) => {
+    const { userJobs } = await setup();
+
+    // Postgres binds 65535 parameters, so the 1000 ceiling applies; on D1
+    // (100) the same formula gives 90.
+    expect(userJobs.testBatchSize()).toBe(1000);
   });
 });

@@ -192,12 +192,10 @@ export const DetailAside = (props: DetailAsideProps) => {
                     variant="ghost"
                     size="icon-xs"
                     onClick={() => copy(row)}
-                    aria-label={String(
-                      tr("admin.detail.copyValue", {
-                        default: `Copy ${row.label}`,
-                        args: [row.label],
-                      }),
-                    )}
+                    aria-label={tr("admin.detail.copyValue", {
+                      default: `Copy ${row.label}`,
+                      args: [row.label],
+                    })}
                     // No background override: `ghost` hovers to `bg-muted`,
                     // and that class does not resolve to the opaque token:
                     // `styles.css`

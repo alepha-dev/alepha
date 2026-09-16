@@ -1,5 +1,11 @@
 import { Segmented, cn } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useQuery,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
@@ -9,7 +15,7 @@ import {
   Inbox,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
@@ -48,7 +54,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const [status, setStatus] = useState<StatusFilter>("pending");
   const [items, setItems] = useState<FeedbackResource[]>(props.items ?? []);
   const [hasMore, setHasMore] = useState(props.hasMore ?? false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const queries = useQueryClient();
   const [activeId, setActiveId] = useState<number | null>(
     props.items?.[0]?.id ?? null,
   );
@@ -73,65 +79,84 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const hasAddress = Number.isInteger(addressed) && addressed > 0;
 
   /**
-   * The addressed item when it is NOT in the list beside it, which is the
-   * case the address exists for: a promoted item is `accepted` and the inbox
-   * opens on `pending`, so a link from a quest names something this page has
-   * not loaded and would not load on its own.
-   *
-   * It is a handoff, not a second source of truth. The effect below switches
-   * the filter to the item's own status, the list reloads carrying it, and
-   * the derivation below prefers the listed row from then on. Nothing clears
-   * this: a value left over from an address that has changed simply stops
-   * matching.
-   */
-  const [addressedItem, setAddressedItem] = useState<
-    FeedbackResource | undefined
-  >(undefined);
-
-  /**
    * The badge counts the whole pending set, never the page.
    *
    * It used to be `items.length` off the list, which was the same number
    * while the list was unbounded. With a ten-row page it would report 10
    * over an inbox of 106 — a badge that reads as a full inbox emptying
    * itself down to a round number.
+   *
+   * A keyed query (#E59, #Q2328) that a triage invalidates. Quiet: the badge
+   * is chrome, and a failed count must not toast over the inbox.
    */
-  const refreshCount = () => {
-    if (!project) return;
-    feedbackApi
-      .countFeedback({
-        params: { projectId: project.id },
-        query: { status: "pending" },
-      })
-      .then((r) => setFeedbackCount({ count: r.count }))
-      .catch(() => {});
-  };
+  useQuery(
+    {
+      key: ["feedback-count", project?.id],
+      enabled: !!project,
+      handler: () =>
+        feedbackApi.countFeedback({
+          params: { projectId: project?.id as number },
+          query: { status: "pending" },
+        }),
+      onSuccess: (r) => {
+        setFeedbackCount({ count: r.count });
+      },
+      onError: () => {},
+    },
+    [feedbackApi, project?.id],
+  );
 
-  // No loading indicator on purpose: the status switch refetches in ~300ms and
-  // a spinner next to the segmented control reads as flicker (feedback #11).
-  const reload = async (next: StatusFilter = status) => {
-    if (!project) return;
-    const res = await feedbackApi.listFeedback({
-      params: { projectId: project.id },
-      query: { status: next, limit: FEEDBACK_PAGE_SIZE },
-    });
-    setItems(res.items);
-    setHasMore(res.hasMore);
-    // Keep the open item when the reloaded list still holds it, and fall back
-    // to the first row when it does not.
-    //
-    // It used to select the first row unconditionally, which was the same
-    // thing while every reload was a status switch or a triage action - both
-    // move the item OUT of the list being loaded. An addressed item is the
-    // case that broke it: opening `?feedback=120` on an accepted item
-    // switches the filter to `accepted`, and this reload would have thrown
-    // the selection away the moment the list carrying it arrived.
-    setActiveId((current) =>
-      current != null && res.items.some((item) => item.id === current)
-        ? current
-        : (res.items[0]?.id ?? null),
-    );
-    refreshCount();
+  /**
+   * The list for one status, as a `useAction` called through `refetch`, so a
+   * status picked while the previous one is still loading supersedes it
+   * rather than landing after it (the effect this replaced had no guard).
+   * The handler checks its signal before writing, since a superseded run
+   * still resumes after its await.
+   *
+   * No loading indicator on purpose: the status switch refetches in ~300ms
+   * and a spinner next to the segmented control reads as flicker
+   * (feedback #11).
+   *
+   * An action rather than a keyed query because the rows are local state:
+   * "Show more" appends pages to them, and the route loader already hands the
+   * first pending page in.
+   */
+  const reloadAction = useAction<[next: StatusFilter], void>(
+    {
+      handler: async (next, { signal }) => {
+        if (!project) return;
+        const res = await feedbackApi.listFeedback({
+          params: { projectId: project.id },
+          query: { status: next, limit: FEEDBACK_PAGE_SIZE },
+        });
+        if (signal.aborted) return;
+        setItems(res.items);
+        setHasMore(res.hasMore);
+        // Keep the open item when the reloaded list still holds it, and fall
+        // back to the first row when it does not.
+        //
+        // It used to select the first row unconditionally, which was the same
+        // thing while every reload was a status switch or a triage action -
+        // both move the item OUT of the list being loaded. An addressed item
+        // is the case that broke it: opening `?feedback=120` on an accepted
+        // item switches the filter to `accepted`, and this reload would have
+        // thrown the selection away the moment the list carrying it arrived.
+        setActiveId((current) =>
+          current != null && res.items.some((item) => item.id === current)
+            ? current
+            : (res.items[0]?.id ?? null),
+        );
+      },
+    },
+    [feedbackApi, project?.id],
+  );
+
+  /**
+   * Show another status: the filter, then the list for it.
+   */
+  const showStatus = (next: StatusFilter) => {
+    setStatus(next);
+    void reloadAction.refetch(next);
   };
 
   /**
@@ -144,84 +169,76 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
    * leaving a gap — the list is filtered by status, and a triaged row leaves
    * it.
    */
-  const loadMore = async () => {
-    if (!project || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const res = await feedbackApi.listFeedback({
-        params: { projectId: project.id },
-        query: {
-          status,
-          limit: FEEDBACK_PAGE_SIZE,
-          offset: items.length,
-        },
-      });
-      // Keyed by id: the offset above can overlap when the set shifted under
-      // it, and a duplicate row would break React's keys as well as the eye.
-      setItems((current) => {
-        const seen = new Set(current.map((item) => item.id));
-        return [...current, ...res.items.filter((item) => !seen.has(item.id))];
-      });
-      setHasMore(res.hasMore);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    if (status === "pending" && props.items && items === props.items) {
-      refreshCount();
-      return;
-    }
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because the loader flips
-    // `loading` before its first await.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void reload(status);
-  }, [status]);
+  const loadMoreAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        const res = await feedbackApi.listFeedback({
+          params: { projectId: project.id },
+          query: {
+            status,
+            limit: FEEDBACK_PAGE_SIZE,
+            offset: items.length,
+          },
+        });
+        // Keyed by id: the offset above can overlap when the set shifted
+        // under it, and a duplicate row would break React's keys as well as
+        // the eye.
+        setItems((current) => {
+          const seen = new Set(current.map((item) => item.id));
+          return [
+            ...current,
+            ...res.items.filter((item) => !seen.has(item.id)),
+          ];
+        });
+        setHasMore(res.hasMore);
+      },
+    },
+    [feedbackApi, project?.id, status, items.length],
+  );
+  const loadingMore = loadMoreAction.loading;
 
   /**
-   * Fetch the addressed item, and only when the list cannot answer for it.
+   * The addressed item when it is NOT in the list beside it, which is the
+   * case the address exists for: a promoted item is `accepted` and the inbox
+   * opens on `pending`, so a link from a quest names something this page has
+   * not loaded and would not load on its own.
    *
-   * Runs on `items` too, not only on the number: the list arriving is what
-   * completes the handoff. A number already in the list costs nothing, so
-   * clicking through the inbox is free beyond the URL it writes.
+   * It is a handoff, not a second source of truth. On arrival the filter
+   * switches to the item's own status, the list reloads carrying it, and the
+   * derivation below prefers the listed row from then on. Asked only while
+   * the list cannot answer for it, so clicking through the inbox is free
+   * beyond the URL it writes.
    *
-   * ⚠️ Nothing here sets state synchronously, deliberately. Which item is
-   * open is DERIVED below rather than pushed into `activeId` from here: an
-   * effect that selects on sight is a second writer of the selection, racing
-   * the reload it triggers. Only the fetch's own continuation writes, which
-   * is the "synchronize with an external system" case.
+   * Quiet on failure: a number that names nothing this reader can open (a
+   * deleted item, a typo, an inbox their rank does not reach) leaves the
+   * page on whatever it had rather than growing an error state for a URL
+   * nobody typed on purpose.
    */
-  useEffect(() => {
-    if (!hasAddress || !project) return;
-    if (items.some((item) => item.shortId === addressed)) return;
-    let cancelled = false;
-    void feedbackApi
-      .getFeedbackByShortId({
-        params: { projectId: project.id, shortId: addressed },
-      })
-      .then((row) => {
-        if (cancelled) return;
-        setAddressedItem(row);
+  const addressedQuery = useQuery(
+    {
+      key: ["feedback", project?.id, { shortId: addressed }],
+      enabled:
+        hasAddress &&
+        !!project &&
+        !items.some((item) => item.shortId === addressed),
+      handler: () =>
+        feedbackApi.getFeedbackByShortId({
+          params: { projectId: project?.id as number, shortId: addressed },
+        }),
+      onSuccess: (row) => {
         // The filter follows the item, so the list beside it holds the row
         // the reader came for and highlights it. Without this a link to an
         // accepted item opens a detail pane whose row is nowhere on screen.
         if (row.status !== status) {
-          setStatus(row.status);
+          showStatus(row.status);
         }
-      })
-      .catch(() => {
-        // A number that names nothing this reader can open: a deleted item,
-        // a typo, or an inbox their rank does not reach. The page stays on
-        // whatever it had rather than growing an error state for a URL
-        // nobody typed on purpose.
-        if (!cancelled) setAddressedItem(undefined);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [addressed, hasAddress, items]);
+      },
+      onError: () => {},
+    },
+    [feedbackApi, project?.id, addressed, hasAddress],
+  );
+  const addressedItem = addressedQuery.error ? undefined : addressedQuery.data;
 
   /**
    * The open item: what the URL names if it names anything, else what was
@@ -254,7 +271,8 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
 
   const onChanged = () => {
     address(undefined);
-    void reload(status);
+    queries.invalidate(["feedback-count", project?.id]);
+    void reloadAction.refetch(status);
   };
 
   return (
@@ -276,7 +294,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               // reader straight back to it.
               onChange={(v) => {
                 address(undefined);
-                setStatus(v as StatusFilter);
+                showStatus(v as StatusFilter);
               }}
               options={FILTERS.map((value) => {
                 const Icon = FILTER_ICONS[value];
@@ -332,7 +350,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                     type="button"
                     data-testid="feedback-show-more"
                     disabled={loadingMore}
-                    onClick={() => void loadMore()}
+                    onClick={() => void loadMoreAction.run()}
                     className="text-muted-foreground hover:bg-muted hover:text-foreground border-border border-t px-3 py-3 text-sm font-medium transition-colors disabled:opacity-60"
                   >
                     {loadingMore

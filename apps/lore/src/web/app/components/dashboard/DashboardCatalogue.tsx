@@ -86,6 +86,11 @@ export interface DashboardCatalogueProps {
     card: DashboardCardResource,
     input: { scope: DashboardScope; filters: Record<string, unknown> },
   ) => void;
+  /**
+   * True while the board's add or update runs: Save waits for it (#E59 rule
+   * 10).
+   */
+  busy?: boolean;
 }
 
 /**
@@ -132,7 +137,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     for (const metric of catalog.on(props.board)) {
       if (
         wanted &&
-        !String(tr(metric.labelKey as never))
+        !tr(metric.labelKey as never)
           .toLowerCase()
           .includes(wanted)
       ) {
@@ -273,8 +278,8 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={String(tr("dashboard.catalogue.filter"))}
-                aria-label={String(tr("dashboard.catalogue.filter"))}
+                placeholder={tr("dashboard.catalogue.filter")}
+                aria-label={tr("dashboard.catalogue.filter")}
                 className="bg-background h-8 rounded-lg pl-8 text-[12.5px]"
               />
             </div>
@@ -352,7 +357,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
             <DrawerFooter className="px-6 pt-4 pb-6">
               <Button
                 onClick={save}
-                disabled={!canSave}
+                disabled={!canSave || props.busy}
                 data-testid="dashboard-catalogue-save"
                 className="h-9 rounded-[9px]"
               >

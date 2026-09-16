@@ -32,6 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { formatBytes } from "../core/utils.ts";
+import { ControlUploadItemThumb } from "./ControlUploadItemThumb.tsx";
 import { FormField } from "./FormField.tsx";
 import { type ResizeImageOptions, resizeImage } from "./resizeImage.ts";
 
@@ -90,17 +91,6 @@ export interface ControlUploadProps {
   disabled?: boolean;
 }
 
-interface UploadedFileMeta {
-  id: string;
-  name: string;
-  mimeType?: string;
-  size?: number;
-  /**
-   * Object URL for image preview, when applicable.
-   */
-  previewUrl?: string;
-}
-
 /**
  * File upload control. Wraps `FileController.uploadFile`, stores the
  * resulting file ID(s) in the form, and renders a thumbnail preview for
@@ -142,7 +132,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
     // holds, and the entries it keeps were filled in by the upload requests this
     // same effect issues. It is the cache for an external system, not derived
     // state; the updater already no-ops when nothing changed.
-    // oxlint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect -- reconciles a cache for an external system, see the comment above
     setMeta((current) => {
       let changed = false;
       const next = new Map(current);
@@ -308,7 +298,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
         tabIndex={0}
       >
         {isImage && item?.previewUrl ? (
-          <ItemThumb url={item.previewUrl} alt={item.name ?? id} />
+          <ControlUploadItemThumb url={item.previewUrl} alt={item.name ?? id} />
         ) : (
           <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded">
             <FileIcon className="size-4" />
@@ -471,21 +461,13 @@ export const ControlUpload = (props: ControlUploadProps) => {
   );
 };
 
-const ItemThumb = (props: { url: string; alt: string }) => {
-  const [broken, setBroken] = useState(false);
-  if (broken) {
-    return (
-      <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded">
-        <FileIcon className="size-4" />
-      </div>
-    );
-  }
-  return (
-    <img
-      src={props.url}
-      alt={props.alt}
-      className="size-7 shrink-0 rounded object-cover"
-      onError={() => setBroken(true)}
-    />
-  );
-};
+interface UploadedFileMeta {
+  id: string;
+  name: string;
+  mimeType?: string;
+  size?: number;
+  /**
+   * Object URL for image preview, when applicable.
+   */
+  previewUrl?: string;
+}

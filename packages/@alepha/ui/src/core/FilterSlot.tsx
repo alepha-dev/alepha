@@ -29,7 +29,7 @@ export interface FilterSlotProps {
  *
  * ⚠️ **A floor cannot shrink, so the ROW has to wrap.** A fixed width could
  * be squeezed by a flex row; a minimum cannot. Put slots in a `flex-wrap` row
- * (`AlephaTable`'s own form already is one), or three of them hold 650px in a
+ * (`DataTable`'s own form already is one), or three of them hold 650px in a
  * 375px phone. That was measured on Lore's kanban bar and the admin bars when
  * the floor landed, and each of those rows gained `flex-wrap` with it (#Q2308).
  * `max-w-full` still caps a single long value at the width of its row.

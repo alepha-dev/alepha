@@ -239,6 +239,8 @@ export default {
     "Copier la référence markdown",
   "folios.editor.inspector.attachments-total": "$1 fichiers · $2",
   "folios.editor.inspector.attachments-upload-failed": "Échec de l'envoi",
+  "folios.editor.inspector.attachments-busy":
+    "Attendez la fin de l'envoi en cours",
   "folios.editor.inspector.attachments-confirm-delete-title":
     "Supprimer le fichier ?",
   "folios.editor.inspector.attachments-confirm-delete":
@@ -279,17 +281,13 @@ export default {
   "artifacts.empty.description":
     "Rien n'a encore été publié. Les artefacts viennent de la CI, donc cette page reste vide tant qu'aucun build n'est publié.",
   "artifacts.empty.docs": "Comment publier un build",
-  "artifacts.filter.search": "Rechercher",
   "artifacts.filter.searchLabel": "Rechercher un tag ou un commit",
   "artifacts.filter.app": "Application",
   "artifacts.filter.allApps": "Toutes les applications",
-  "artifacts.filter.appCount": "$1 applications",
   "artifacts.filter.runtime": "Runtime",
   "artifacts.filter.allRuntimes": "Tous les runtimes",
-  "artifacts.filter.runtimeCount": "$1 runtimes",
   "artifacts.filter.format": "Format",
   "artifacts.filter.allFormats": "Tous les formats",
-  "artifacts.filter.formatCount": "$1 formats",
   "artifacts.table.app": "Application",
   "artifacts.table.tag": "Tag",
   "artifacts.table.runtime": "Runtime",
@@ -299,6 +297,23 @@ export default {
   "artifacts.table.size": "Taille",
   "artifacts.table.pushed": "Publié",
   "artifacts.table.commit": "Commit",
+  "artifacts.delete.action": "Supprimer",
+  "artifacts.delete.title": "Supprimer $1 ?",
+  "artifacts.delete.body":
+    "Cette action est irréversible. Le build quitte le registre avec ses octets stockés et ses source maps ; l'historique des déploiements garde ses entrées.",
+  "artifacts.delete.running":
+    "Ce tag est en service sur $1 : un redéploiement ou un retour arrière qui a besoin de ce build n'aura rien à déployer.",
+  "artifacts.delete.latest":
+    "Les déploiements qui ne nomment aucun tag utilisent latest, et échouent tant que la CI ne l'a pas publié à nouveau.",
+  "artifacts.delete.done": "$1 supprimé.",
+  "artifacts.bulk.delete.title": "Supprimer $1 artefacts ?",
+  "artifacts.bulk.delete.confirm": "Supprimer $1 artefacts",
+  "artifacts.bulk.delete.body":
+    "Cette action est irréversible. Les builds quittent le registre avec leurs octets stockés et leurs source maps ; l'historique des déploiements garde ses entrées.",
+  "artifacts.bulk.delete.running":
+    "La sélection contient un tag qu'une copie déployée exécute : un redéploiement ou un retour arrière qui en a besoin n'aura rien à déployer.",
+  "artifacts.bulk.delete.latest":
+    "La sélection contient latest : les déploiements qui ne nomment aucun tag échouent tant que la CI ne l'a pas publié à nouveau.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Paramètres",
 
@@ -318,15 +333,10 @@ export default {
   "quest.create.area.helper":
     "Partie du système à laquelle la quête appartient",
 
-  "board.filter.search": "Rechercher",
   "board.filter.status": "Statut",
   "board.filter.area": "Domaine",
   "board.filter.tag": "Étiquette",
   "board.filter.allStatuses": "Tous les statuts",
-  "board.filter.statusCount": "$1 statuts",
-  "board.filter.areaCount": "$1 domaines",
-  "board.filter.releaseCount": "$1 versions",
-  "board.filter.tagCount": "$1 étiquettes",
   "board.filter.allAreas": "Tous les domaines",
   "board.filter.allTags": "Toutes les étiquettes",
 
@@ -337,7 +347,7 @@ export default {
   "board.table.release": "Version",
   "board.filter.release": "Version",
   "board.filter.allReleases": "Toutes les versions",
-  "board.filter.noRelease": "Sans version",
+  "board.filter.noRelease": "Aucune",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par une autre quête",
@@ -355,7 +365,7 @@ export default {
   "board.action.unshelveQuest": "Reprendre la quête",
   "board.action.deleteQuest": "Supprimer la quête",
   "board.action.setRelease": "Définir la version",
-  "board.action.noRelease": "Aucune version",
+  "board.action.noRelease": "Aucune",
   "board.confirm-delete-title": "Supprimer cette quête ?",
   "board.confirm-delete-message": "Cette action est irréversible.",
   "board.bulk.shelve": "Mettre de côté",
@@ -367,6 +377,7 @@ export default {
   "board.bulk.shelved": "$1 mise(s) de côté.",
   "board.bulk.unshelved": "$1 reprise(s).",
   "board.bulk.deleted": "$1 supprimée(s).",
+  "board.bulk.readied": "$1 marquée(s) comme prête(s).",
   "board.bulk.released": "$1 ajoutée(s) à $2.",
   "board.bulk.failed": "$1 n'ont pas pu être mises à jour.",
   "board.bulk.shelve.none":
@@ -383,7 +394,7 @@ export default {
   "quest.create.dependsOn": "Dépend de",
   "quest.create.dependsOn.helper":
     "Cette quête ne peut pas démarrer tant que la quête sélectionnée n'est pas terminée.",
-  "quest.create.dependsOn.none": "Aucune dépendance",
+  "quest.create.dependsOn.none": "Aucune",
   "quest.create.dependsOn.search": "Rechercher des quêtes…",
   "quest.create.dependsOn.empty": "Aucune quête trouvée",
   "quest.create.dependsOn.clear": "Retirer la dépendance",
@@ -410,7 +421,6 @@ export default {
   "quest.create.tags.helper":
     "Étiquettes décrivant la nature de la quête (bug, feat, chore…). Le domaine dit où, l'étiquette dit quoi.",
   "quest.create.tags.empty": "Ajouter des étiquettes",
-  "quest.create.tagCount": "$1 étiquettes",
   "quest.tags.placeholder": "Ajouter une étiquette puis Entrée",
   "quest.tags.suggestions": "Réutiliser :",
   "quest.view.questline.blockedBy": "Bloquée par",
@@ -461,7 +471,6 @@ export default {
   "quest.event.change.epicCleared": "a détaché la quête de son épopée",
   "quest.event.change.release": "a mis la quête dans la version $1",
   "quest.event.change.releaseCleared": "a sorti la quête de sa version",
-  "quest.objective.error": "Impossible de mettre à jour l'objectif.",
   "quest.status.todo": "À faire",
   "quest.status.inProgress": "En cours",
   "quest.status.completed": "Terminée",
@@ -533,7 +542,7 @@ export default {
   "quest.view.attach": "Joindre",
   "quest.view.attachHint":
     "Collez une capture (Ctrl/⌘+V) ou déposez des fichiers ici.",
-  "quest.view.attachFailed": "Impossible de joindre ce fichier.",
+  "quest.view.attachBusy": "Attendez la fin de l'envoi en cours",
   "quest.view.attachments": "Pièces jointes",
 
   "attachments.position": "$1 sur $2",
@@ -555,8 +564,6 @@ export default {
   "project.settings.members.invite.emailRequired":
     "Veuillez saisir une adresse e-mail.",
   "project.settings.members.invite.sent": "Invitation envoyée à $1.",
-  "project.settings.members.invite.failed":
-    "Impossible d'envoyer l'invitation.",
 
   "project.settings.members.revoke.title": "Révoquer cette invitation ?",
   "project.settings.members.revoke.description":
@@ -564,8 +571,6 @@ export default {
   "project.settings.members.revoke.confirm": "Révoquer",
   "project.settings.members.revoke.cancel": "Conserver",
   "project.settings.members.revoke.done": "L'invitation de $1 a été révoquée.",
-  "project.settings.members.revoke.failed":
-    "Impossible de révoquer l'invitation.",
   "project.settings.members.revoke.action.short": "Annuler l'invitation",
 
   "project.settings.members.actions": "Actions pour $1",
@@ -576,7 +581,6 @@ export default {
   "project.settings.members.remove.confirm": "Retirer",
   "project.settings.members.remove.cancel": "Le garder",
   "project.settings.members.remove.done": "$1 a été retiré du projet.",
-  "project.settings.members.remove.failed": "Impossible de retirer le membre.",
 
   "project.settings.danger.title": "Zone à risques",
   "project.settings.actions.delete": "Détruire ce projet",
@@ -596,7 +600,6 @@ export default {
   "project.settings.nav.members": "Membres",
   "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
-  "project.settings.data.export.failed": "L'export a échoué",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -810,7 +813,6 @@ export default {
   "release.list.column.tag": "Version",
   "release.list.column.progress": "Progression",
   "release.list.column.date": "Date",
-  "release.filter.search": "Rechercher",
   "release.filter.state": "État",
   "release.filter.allStates": "Tous les états",
   "release.progress.none": "Rien de rattaché",
@@ -828,6 +830,25 @@ export default {
   "release.default.confirm.description":
     "Les quêtes terminées qui ne nomment aucune version iront dans $1, et une épopée commencée sans version sera livrée dedans. Tout reste rattachable à la main, et publier $1 retire ce statut.",
   "release.default.cleared": "$1 n'est plus la version par défaut",
+  "release.bump.create": "Créer $1",
+  "release.bump.group": "Créer une version",
+  "release.delete.action": "Supprimer",
+  "release.delete.title": "Supprimer la version $1 ?",
+  "release.delete.detached":
+    "Cette action est irréversible. Ses épopées et ses quêtes sont conservées, détachées de celle-ci.",
+  "release.delete.published":
+    "Elle est publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
+  "release.delete.default":
+    "C'est la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
+  "release.delete.done": "$1 supprimée.",
+  "release.bulk.delete.title": "Supprimer $1 versions ?",
+  "release.bulk.delete.confirm": "Supprimer $1 versions",
+  "release.bulk.delete.detached":
+    "Cette action est irréversible. Leurs épopées et leurs quêtes sont conservées, détachées de celles-ci.",
+  "release.bulk.delete.published":
+    "La sélection contient une version publiée : son journal et ses compteurs figés sont supprimés avec elle, et n'existent nulle part ailleurs.",
+  "release.bulk.delete.default":
+    "La sélection contient la version par défaut : le projet n'en a plus aucune tant qu'une autre n'est pas définie.",
   "quest.complete.landedIn": "Terminée dans $1",
   "release.publish.title": "Publier cette version ?",
   "release.publish.description":
@@ -884,7 +905,6 @@ export default {
   "release.folio.defaultTitle": "Version $1 : $2",
   "release.folio.save": "Enregistrer",
   "release.folio.saved": "Journal enregistré dans les Folios",
-  "release.folio.error": "Impossible d'enregistrer le journal.",
   "release.folio.summary":
     "Journal de la version $1 : $2 quête(s) enregistrée(s).",
 
@@ -1004,7 +1024,6 @@ export default {
     "$1 doit d'abord être vide : déplacez ou terminez ses quêtes, et rien d'autre ne change. Vous pourrez rajouter une colonne ensuite.",
   "kanban.column.delete.confirm": "Supprimer",
   "kanban.column.delete.cancel": "La conserver",
-  "kanban.column.failed": "Impossible de modifier la colonne.",
   "kanban.empty": "Aucune quête",
   "kanban.showMore": "Afficher plus",
   "kanban.filter.allAreas": "Tous les domaines",
@@ -1028,7 +1047,6 @@ export default {
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":
     "Vous devez d'abord accepter la quête avant de la terminer",
-  "kanban.error.actionFailed": "L'action a échoué",
 
   "quest.view.unassign.title": "Se désassigner de cette quête",
   "quest.view.unassign.confirm":
@@ -1123,7 +1141,7 @@ export default {
   "error.home": "Accueil",
 
   "common.cancel": "Annuler",
-  "common.none": "Aucune couleur",
+  "common.none": "Aucune",
   "common.download": "Télécharger",
   "common.next": "Suivant",
   "common.previous": "Précédent",
@@ -1134,7 +1152,6 @@ export default {
   "project.menu.blights": "Fléaux",
   "project.menu.apps": "Applications",
 
-  "apps.filter.search": "Rechercher",
   "apps.filter.app": "Application",
   "apps.filter.env": "Environnement",
   "apps.filter.status": "État",
@@ -1331,7 +1348,7 @@ export default {
   "app.settings.estate.none":
     "Aucun domaine n\u2019est prêté à ce projet pour l\u2019instant.",
   "app.settings.estate.manage": "Gérer les domaines",
-  "app.settings.estate.clear": "Aucun domaine",
+  "app.settings.estate.clear": "Aucun",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
   "app.settings.delete.title": "Supprimer cette app",
@@ -1467,14 +1484,16 @@ export default {
   "blights.filter.open": "Ouverts",
   "blights.filter.resolved": "Résolus",
   "blights.filter.all": "Tous",
-  "blights.filter.statusCount": "$1 statuts",
+  "blights.filter.status": "Statut",
+  "blights.filter.sigil": "Sigil",
   "blights.col.error": "Erreur",
+  "blights.col.app": "Application",
   "blights.col.page": "Page",
   "blights.col.count": "Occurrences",
   "blights.col.lastSeen": "Vu récemment",
   "blights.origin.client": "Navigateur",
   "blights.origin.server": "Serveur",
-  "blights.filter.allSigils": "Tous les sigils",
+  "blights.filter.allApps": "Toutes les applications",
   "blights.action.resolve": "Résoudre",
   "blights.action.forward": "Convertir en quête",
   "blights.action.delete": "Supprimer",
@@ -1669,7 +1688,6 @@ export default {
   "bay.commands.noMatch.description": "Ajustez ou effacez les filtres.",
   "bay.commands.filter.kind": "Type",
   "bay.commands.filter.status": "Statut",
-  "bay.commands.filter.any": "Tous",
   "bay.commands.col.when": "Quand",
   "bay.commands.col.kind": "Commande",
   "bay.commands.col.status": "Statut",
@@ -1820,7 +1838,6 @@ export default {
   "feedback.createQuest": "Nouvelle quête",
   "feedback.reject": "Rejeter",
   "feedback.rejected": "Retour rejeté",
-  "feedback.rejectError": "Échec du rejet du retour",
   "feedback.delete": "Supprimer",
   "inbox.title": "Notifications",
   "inbox.empty": "Rien de nouveau.",
@@ -1839,8 +1856,6 @@ export default {
   "account.notifications.categories": "Types de message",
   "account.notifications.categories.description":
     "Ces réglages valent pour les deux canaux.",
-  "account.notifications.saveFailed":
-    "Impossible d'enregistrer vos préférences.",
   "account.notifications.category.feedback": "Vos demandes",
   "account.notifications.category.feedback.description":
     "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",
@@ -1860,7 +1875,6 @@ export default {
     "Les messages qui vous sont adressés apparaissent ici.",
   "inbox.noMatch": "Aucun résultat",
   "inbox.noMatch.description": "Ajustez ou effacez la recherche.",
-  "inbox.filter.search": "Rechercher",
   "inbox.filter.searchLabel": "Rechercher un message",
   "inbox.table.message": "Message",
   "inbox.table.project": "Projet",
@@ -1883,12 +1897,10 @@ export default {
   "feedback.thread.delete": "Supprimer",
   "feedback.thread.deleteTitle": "Supprimer ce commentaire ?",
   "feedback.deleted": "Retour supprimé",
-  "feedback.deleteError": "Échec de la suppression du retour",
   "feedback.deleteConfirmTitle": "Supprimer le retour ?",
   "feedback.deleteConfirm":
     "Supprimer ce retour ? Cette action est irréversible.",
   "feedback.acceptedToast": "Retour accepté",
-  "feedback.acceptError": "Échec de l'acceptation du retour",
   "feedback.attachments": "Pièces jointes",
   "feedback.linkedQuests": "Quêtes liées",
   "feedback.noLinkedQuests":
@@ -1919,7 +1931,7 @@ export default {
   "feedback.request.attach": "Joindre un fichier",
   "feedback.request.attachmentsCount": "$1 / $2 fichiers",
   "feedback.request.tooManyFiles": "Trop de fichiers (max $1)",
-  "feedback.request.uploadError": "Échec de l'envoi",
+  "feedback.request.uploadBusy": "Attendez la fin de l'envoi en cours",
   "feedback.request.success": "Retour envoyé",
   "feedback.request.error": "Échec de l'envoi du retour",
   "feedback.request.submit": "Envoyer le retour",
@@ -1984,10 +1996,8 @@ export default {
   "epic.list.empty": "Aucune épopée pour le moment.",
   "epic.list.column.title": "Épopée",
   "epic.list.column.updated": "Mise à jour",
-  "epic.filter.search": "Rechercher",
   "epic.filter.status": "Statut",
   "epic.filter.allStatuses": "Tous les statuts",
-  "epic.filter.statusCount": "$1 statuts",
   "epic.progress.none": "Aucune quête pour le moment",
   "epic.progress.specified": "$1 spécifiées, aucune publiée",
   "epic.progress.completedOn": "Terminée le $1",
@@ -2050,6 +2060,12 @@ export default {
   "epic.bulk.delete.confirm": "Supprimer $1 épopées",
   "epic.bulk.delete.description":
     "Leurs quêtes et folios sont conservés, détachés de celles-ci. Cette action est irréversible.",
+  "epic.bulk.ready.title": "Marquer $1 épopées comme prêtes ?",
+  "epic.bulk.ready.confirm": "Marquer $1 épopées comme prêtes",
+  "epic.bulk.ready.description":
+    "Leurs quêtes passent dans le backlog, où le reste du projet peut les prendre. La première quête acceptée dans une épopée la démarre et fige sa liste de quêtes.",
+  "epic.bulk.ready.descriptionNamed":
+    "Marquer $1 comme prêtes place leurs quêtes dans le backlog, où le reste du projet peut les prendre. La première quête acceptée dans une épopée la démarre et fige sa liste de quêtes.",
   "epic.list.column.status": "Statut",
   "epic.list.column.progress": "Progression",
   "epic.create": "Nouvelle épopée",
@@ -2084,10 +2100,11 @@ export default {
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
   "epic.tab.folios": "Folios",
-  "epic.aside.number": "Épopée",
+  "epic.aside.number": "ID",
+  "epic.aside.name": "Nom",
   "epic.aside.status": "Statut",
   "epic.aside.release": "Version",
-  "epic.aside.release.none": "Aucune version",
+  "epic.aside.release.none": "Aucune",
   "epic.list.column.release": "Version",
   "epic.aside.progress": "Progression",
   "epic.aside.progress.value": "$1 / $2 quêtes",
@@ -2282,18 +2299,14 @@ export default {
   "invitations.decline": "Refuser",
   "invitations.accepted": "Vous avez rejoint le projet !",
   "invitations.declined": "Invitation refusée.",
-  "invitations.accept.error": "Impossible d'accepter l'invitation",
-  "invitations.decline.error": "Impossible de refuser l'invitation",
 
   // --- /account/feedback ----------------------------------------------------
   "myFeedback.title": "Retours envoyés",
   "myFeedback.description":
     "Les bogues et demandes que vous avez signalés, tous projets confondus. Ceux en attente peuvent encore être modifiés ou retirés.",
   "myFeedback.empty": "Vous n'avez encore envoyé aucun retour.",
-  "myFeedback.filter.search": "Rechercher",
   "myFeedback.filter.search.aria": "Rechercher un retour",
   "myFeedback.filter.allStatuses": "Tous les statuts",
-  "myFeedback.filter.statusCount": "$1 statuts",
   "myFeedback.filter.allProjects": "Tous les projets",
   "myFeedback.column.project": "Projet",
   "myFeedback.column.title": "Titre",
@@ -2315,7 +2328,6 @@ export default {
   "myFeedback.edit.description.placeholder": "Décrivez votre demande",
   "myFeedback.edit.required": "Le titre et la description sont obligatoires.",
   "myFeedback.edit.saved": "Retour mis à jour.",
-  "myFeedback.edit.error": "Impossible de mettre à jour le retour.",
   "feedback.status.pending": "En attente",
   "feedback.status.accepted": "Accepté",
   "feedback.status.rejected": "Refusé",
@@ -2346,10 +2358,8 @@ export default {
   "activity.col.details": "Détails",
   "activity.filter.allPeople": "Tout le monde",
   "activity.filter.allResources": "Toutes les ressources",
-  "activity.filter.typeCount": "$1 ressources",
   "activity.filter.allActions": "Toutes les actions",
   "activity.filter.anyDate": "Toute date",
-  "activity.filter.actionCount": "$1 actions",
   "activity.resource.quest": "Quête",
   "activity.resource.epic": "Epic",
   "activity.resource.release": "Version",
@@ -2416,6 +2426,7 @@ export default {
   "permission.deploy.manage": "Déployer et définir les variables",
   "permission.group.artifact": "Artefacts",
   "permission.artifact.read": "Voir ce que la CI a publié",
+  "permission.artifact.delete": "Supprimer un build",
   "permission.group.blight": "Anomalies",
   "permission.blight.read": "Lire la boîte des anomalies",
   "permission.blight.triage": "Résoudre, ignorer et transférer les anomalies",

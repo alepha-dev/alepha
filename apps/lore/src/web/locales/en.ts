@@ -242,6 +242,8 @@ export default {
   "folios.editor.inspector.attachments-copy-ref": "Copy markdown reference",
   "folios.editor.inspector.attachments-total": "$1 files · $2",
   "folios.editor.inspector.attachments-upload-failed": "Upload failed",
+  "folios.editor.inspector.attachments-busy":
+    "Wait for the current upload to finish",
   "folios.editor.inspector.attachments-confirm-delete-title": "Delete file?",
   "folios.editor.inspector.attachments-confirm-delete":
     'Delete "$1"? Any reference to it in this folio will stop resolving.',
@@ -261,17 +263,10 @@ export default {
   "folios.editor.pinned.note":
     "Pinned folios are sent whole with every project_context call.",
 
-  "board.filter.search": "Search",
   "board.filter.status": "Status",
   "board.filter.area": "Area",
   "board.filter.tag": "Tag",
   "board.filter.allStatuses": "All status",
-  // Multi-select triggers collapse to a count past one selection, so these
-  // are only ever shown for 2+ (one selection renders the value itself).
-  "board.filter.statusCount": "$1 status",
-  "board.filter.areaCount": "$1 areas",
-  "board.filter.releaseCount": "$1 releases",
-  "board.filter.tagCount": "$1 tags",
   "board.filter.allAreas": "All areas",
   "board.filter.allTags": "All tags",
 
@@ -282,7 +277,7 @@ export default {
   "board.table.release": "Release",
   "board.filter.release": "Release",
   "board.filter.allReleases": "All releases",
-  "board.filter.noRelease": "No release",
+  "board.filter.noRelease": "None",
   "board.table.epic": "Epic",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by another quest",
@@ -300,7 +295,7 @@ export default {
   "board.action.unshelveQuest": "Unshelve quest",
   "board.action.deleteQuest": "Delete quest",
   "board.action.setRelease": "Set Release",
-  "board.action.noRelease": "No release",
+  "board.action.noRelease": "None",
   "board.confirm-delete-title": "Delete this quest?",
   "board.confirm-delete-message": "This cannot be undone.",
   "board.bulk.shelve": "Shelve",
@@ -312,6 +307,7 @@ export default {
   "board.bulk.shelved": "$1 shelved.",
   "board.bulk.unshelved": "$1 unshelved.",
   "board.bulk.deleted": "$1 deleted.",
+  "board.bulk.readied": "$1 marked as ready.",
   "board.bulk.released": "$1 added to $2.",
   "board.bulk.failed": "$1 could not be updated.",
   "board.bulk.shelve.none":
@@ -349,17 +345,13 @@ export default {
   "artifacts.empty.description":
     "Nothing has been pushed yet. Artifacts arrive from CI, so this page stays empty until a build is published.",
   "artifacts.empty.docs": "How to push a build",
-  "artifacts.filter.search": "Search",
   "artifacts.filter.searchLabel": "Search a tag or a commit",
   "artifacts.filter.app": "App",
   "artifacts.filter.allApps": "All apps",
-  "artifacts.filter.appCount": "$1 apps",
   "artifacts.filter.runtime": "Runtime",
   "artifacts.filter.allRuntimes": "All runtimes",
-  "artifacts.filter.runtimeCount": "$1 runtimes",
   "artifacts.filter.format": "Format",
   "artifacts.filter.allFormats": "All formats",
-  "artifacts.filter.formatCount": "$1 formats",
   "artifacts.table.app": "App",
   "artifacts.table.tag": "Tag",
   "artifacts.table.runtime": "Runtime",
@@ -379,6 +371,23 @@ export default {
     "The heaviest build under this tag. A container image's size covers one architecture only.",
   "artifacts.table.pushed": "Pushed",
   "artifacts.table.commit": "Commit",
+  "artifacts.delete.action": "Delete",
+  "artifacts.delete.title": "Delete $1?",
+  "artifacts.delete.body":
+    "This cannot be undone. The build leaves the registry with its stored bytes and source maps; the deploy history keeps its records.",
+  "artifacts.delete.running":
+    "This tag is running on $1: a redeploy or a rollback that needs this build will have nothing to deploy.",
+  "artifacts.delete.latest":
+    "Deploys that name no tag use latest, and fail until CI pushes it again.",
+  "artifacts.delete.done": "$1 deleted.",
+  "artifacts.bulk.delete.title": "Delete $1 artifacts?",
+  "artifacts.bulk.delete.confirm": "Delete $1 artifacts",
+  "artifacts.bulk.delete.body":
+    "This cannot be undone. The builds leave the registry with their stored bytes and source maps; the deploy history keeps its records.",
+  "artifacts.bulk.delete.running":
+    "The selection includes a tag a deployed copy runs: a redeploy or a rollback that needs it will have nothing to deploy.",
+  "artifacts.bulk.delete.latest":
+    "The selection includes latest: deploys that name no tag fail until CI pushes it again.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Settings",
 
@@ -402,7 +411,7 @@ export default {
   "quest.create.dependsOn": "Depends on",
   "quest.create.dependsOn.helper":
     "This quest can't be started until the selected quest is completed.",
-  "quest.create.dependsOn.none": "No dependency",
+  "quest.create.dependsOn.none": "None",
   "quest.create.dependsOn.search": "Search quests…",
   "quest.create.dependsOn.empty": "No quests found",
   "quest.create.dependsOn.clear": "Clear dependency",
@@ -428,7 +437,6 @@ export default {
   "quest.create.tags.helper":
     "Labels for the nature of the quest (bug, feat, chore…). Area says where, tag says what kind.",
   "quest.create.tags.empty": "Add tags",
-  "quest.create.tagCount": "$1 tags",
   "quest.tags.placeholder": "Add a tag and press Enter",
   "quest.tags.suggestions": "Reuse:",
   "quest.view.questline.blockedBy": "Blocked by",
@@ -479,7 +487,6 @@ export default {
   "quest.event.change.epicCleared": "removed the quest from its epic",
   "quest.event.change.release": "put the quest in release $1",
   "quest.event.change.releaseCleared": "took the quest out of its release",
-  "quest.objective.error": "Could not update the objective.",
   "quest.status.todo": "To do",
   "quest.status.inProgress": "In progress",
   "quest.status.completed": "Completed",
@@ -554,7 +561,7 @@ export default {
   "quest.view.attach": "Attach",
   "quest.view.attachHint":
     "Paste a screenshot (Ctrl/⌘+V) or drag files anywhere here.",
-  "quest.view.attachFailed": "Could not attach that file.",
+  "quest.view.attachBusy": "Wait for the current upload to finish",
   "quest.view.attachments": "Attachments",
 
   // The shared `AttachmentLightbox`, which quests and feedback triage
@@ -576,7 +583,6 @@ export default {
   "project.settings.members.invite.emailRequired":
     "Please enter an email address.",
   "project.settings.members.invite.sent": "Invitation sent to $1.",
-  "project.settings.members.invite.failed": "Could not send the invitation.",
 
   "project.settings.members.revoke.title": "Revoke this invitation?",
   "project.settings.members.revoke.description":
@@ -584,7 +590,6 @@ export default {
   "project.settings.members.revoke.confirm": "Revoke",
   "project.settings.members.revoke.cancel": "Keep it",
   "project.settings.members.revoke.done": "The invitation to $1 was revoked.",
-  "project.settings.members.revoke.failed": "Could not revoke the invitation.",
   "project.settings.members.revoke.action.short": "Cancel invitation",
 
   "project.settings.members.actions": "Actions for $1",
@@ -595,7 +600,6 @@ export default {
   "project.settings.members.remove.confirm": "Remove",
   "project.settings.members.remove.cancel": "Keep them",
   "project.settings.members.remove.done": "$1 was removed from the project.",
-  "project.settings.members.remove.failed": "Could not remove the member.",
 
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",
@@ -615,7 +619,6 @@ export default {
   "project.settings.nav.members": "Members",
   "project.settings.nav.group.capabilities": "Capabilities",
   "project.settings.nav.areas": "Areas",
-  "project.settings.data.export.failed": "Export failed",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -838,7 +841,6 @@ export default {
   "release.list.column.tag": "Release",
   "release.list.column.progress": "Progress",
   "release.list.column.date": "Date",
-  "release.filter.search": "Search",
   "release.filter.state": "State",
   "release.filter.allStates": "All states",
   "release.progress.none": "Nothing attached yet",
@@ -856,6 +858,25 @@ export default {
   "release.default.confirm.description":
     "Finished quests that name no release will land in $1, and an epic begun without one will ship in it. Everything can still be filed by hand. Publishing $1 hands the default on to the next open release, the next minor or else the next major, and clears it if there is none.",
   "release.default.cleared": "$1 is no longer the default release",
+  "release.bump.create": "Create $1",
+  "release.bump.group": "Create release",
+  "release.delete.action": "Delete",
+  "release.delete.title": "Delete release $1?",
+  "release.delete.detached":
+    "This cannot be undone. Its epics and quests stay, detached from it.",
+  "release.delete.published":
+    "It is published: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
+  "release.delete.default":
+    "It is the default release: the project is left with none until another is set.",
+  "release.delete.done": "$1 deleted.",
+  "release.bulk.delete.title": "Delete $1 releases?",
+  "release.bulk.delete.confirm": "Delete $1 releases",
+  "release.bulk.delete.detached":
+    "This cannot be undone. Their epics and quests stay, detached from them.",
+  "release.bulk.delete.published":
+    "The selection includes a published release: its frozen changelog and progress counts are deleted with it, and exist nowhere else.",
+  "release.bulk.delete.default":
+    "The selection includes the default release: the project is left with none until another is set.",
   "quest.complete.landedIn": "Completed in $1",
   "release.publish.title": "Publish this release?",
   "release.publish.description":
@@ -912,7 +933,6 @@ export default {
   "release.folio.defaultTitle": "Release $1: $2",
   "release.folio.save": "Save",
   "release.folio.saved": "Changelog saved to Folios",
-  "release.folio.error": "Could not save the changelog.",
   "release.folio.summary": "Changelog for release $1: $2 quest(s) recorded.",
 
   "release.tab.overview": "Overview",
@@ -1031,7 +1051,6 @@ export default {
     "$1 has to be empty first: move or complete its quests, and nothing else changes. You can add a column again afterwards.",
   "kanban.column.delete.confirm": "Delete",
   "kanban.column.delete.cancel": "Keep it",
-  "kanban.column.failed": "Could not update the column.",
   "kanban.empty": "No quests",
   "kanban.showMore": "Show more",
   "kanban.filter.allAreas": "All areas",
@@ -1053,7 +1072,6 @@ export default {
     "Create an area first: a quest has to belong to one.",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
-  "kanban.error.actionFailed": "Action failed",
 
   "quest.view.unassign.title": "Unassign this quest",
   "quest.view.unassign.confirm":
@@ -1148,7 +1166,7 @@ export default {
   "error.home": "Home",
 
   "common.cancel": "Cancel",
-  "common.none": "No colour",
+  "common.none": "None",
   "common.download": "Download",
   "common.next": "Next",
   "common.previous": "Previous",
@@ -1159,7 +1177,6 @@ export default {
   "project.menu.blights": "Blights",
   "project.menu.apps": "Apps",
 
-  "apps.filter.search": "Search",
   "apps.filter.app": "App",
   "apps.filter.env": "Environment",
   "apps.filter.status": "Status",
@@ -1356,7 +1373,7 @@ export default {
     "Only estates lent to this project are offered.",
   "app.settings.estate.none": "No estate is lent to this project yet.",
   "app.settings.estate.manage": "Manage estates",
-  "app.settings.estate.clear": "No estate",
+  "app.settings.estate.clear": "None",
   "app.settings.estate.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
   "app.settings.delete.title": "Delete this app",
@@ -1487,14 +1504,16 @@ export default {
   "blights.filter.open": "Open",
   "blights.filter.resolved": "Resolved",
   "blights.filter.all": "All",
-  "blights.filter.statusCount": "$1 statuses",
+  "blights.filter.status": "Status",
+  "blights.filter.sigil": "Sigil",
   "blights.col.error": "Error",
+  "blights.col.app": "App",
   "blights.col.page": "Page",
   "blights.col.count": "Count",
   "blights.col.lastSeen": "Last seen",
   "blights.origin.client": "Browser",
   "blights.origin.server": "Server",
-  "blights.filter.allSigils": "All sigils",
+  "blights.filter.allApps": "All apps",
   "blights.action.resolve": "Resolve",
   "blights.action.forward": "Forward to quest",
   "blights.action.delete": "Delete",
@@ -1684,7 +1703,6 @@ export default {
   "bay.commands.noMatch.description": "Try adjusting or clearing the filters.",
   "bay.commands.filter.kind": "Kind",
   "bay.commands.filter.status": "Status",
-  "bay.commands.filter.any": "Any",
   "bay.commands.col.when": "When",
   "bay.commands.col.kind": "Command",
   "bay.commands.col.status": "Status",
@@ -1834,7 +1852,6 @@ export default {
   "feedback.createQuest": "New quest",
   "feedback.reject": "Reject",
   "feedback.rejected": "Feedback rejected",
-  "feedback.rejectError": "Failed to reject feedback",
   "feedback.delete": "Delete",
   "inbox.title": "Notifications",
   "inbox.empty": "Nothing new.",
@@ -1851,7 +1868,6 @@ export default {
   "account.notifications.categories": "Kinds of message",
   "account.notifications.categories.description":
     "These apply to both channels.",
-  "account.notifications.saveFailed": "Could not save your preferences.",
   // ⚠️ Read by `categoryLabel`, which derives the key from the category a
   // template registers. A category with no key here renders as its raw name.
   "account.notifications.category.feedback": "Your reports",
@@ -1875,7 +1891,6 @@ export default {
   // ⚠️ Plain "Search" like every other filter bar (#Q1750), with the fuller
   // phrase kept on the input's accessible name: "Search" alone is thin for a
   // screen reader on a page carrying several controls.
-  "inbox.filter.search": "Search",
   "inbox.filter.searchLabel": "Search messages",
   "inbox.table.message": "Message",
   "inbox.table.project": "Project",
@@ -1898,11 +1913,9 @@ export default {
   "feedback.thread.delete": "Delete",
   "feedback.thread.deleteTitle": "Delete this comment?",
   "feedback.deleted": "Feedback deleted",
-  "feedback.deleteError": "Failed to delete feedback",
   "feedback.deleteConfirmTitle": "Delete feedback?",
   "feedback.deleteConfirm": "Delete this feedback? This cannot be undone.",
   "feedback.acceptedToast": "Feedback accepted",
-  "feedback.acceptError": "Failed to accept feedback",
   "feedback.attachments": "Attachments",
   "feedback.linkedQuests": "Linked quests",
   "feedback.noLinkedQuests": "No quests yet. Create one to start work.",
@@ -1932,7 +1945,7 @@ export default {
   "feedback.request.attach": "Attach file",
   "feedback.request.attachmentsCount": "$1 / $2 files",
   "feedback.request.tooManyFiles": "Too many files (max $1)",
-  "feedback.request.uploadError": "Upload failed",
+  "feedback.request.uploadBusy": "Wait for the current upload to finish",
   "feedback.request.success": "Feedback submitted",
   "feedback.request.error": "Failed to submit feedback",
   "feedback.request.submit": "Submit feedback",
@@ -1998,10 +2011,8 @@ export default {
   "epic.list.empty": "No epics yet.",
   "epic.list.column.title": "Epic",
   "epic.list.column.updated": "Updated",
-  "epic.filter.search": "Search",
   "epic.filter.status": "Status",
   "epic.filter.allStatuses": "All status",
-  "epic.filter.statusCount": "$1 status",
   "epic.progress.none": "No quests yet",
   "epic.progress.specified": "$1 specified, none released",
   "epic.progress.completedOn": "Completed $1",
@@ -2066,6 +2077,12 @@ export default {
   "epic.bulk.delete.confirm": "Delete $1 epics",
   "epic.bulk.delete.description":
     "Their quests and folios stay, detached from them. This cannot be undone.",
+  "epic.bulk.ready.title": "Mark $1 epics as ready?",
+  "epic.bulk.ready.confirm": "Mark $1 epics as ready",
+  "epic.bulk.ready.description":
+    "Their quests go in the backlog, where the rest of the project can pick them up. The first quest accepted in an epic starts it and freezes its list of quests.",
+  "epic.bulk.ready.descriptionNamed":
+    "Marking $1 as ready puts their quests in the backlog, where the rest of the project can pick them up. The first quest accepted in an epic starts it and freezes its list of quests.",
   "epic.list.column.status": "Status",
   "epic.list.column.progress": "Progress",
   "epic.create": "New Epic",
@@ -2099,10 +2116,11 @@ export default {
   "epic.tab.quests": "Quests",
   "epic.tab.flow": "Flow",
   "epic.tab.folios": "Folios",
-  "epic.aside.number": "Epic",
+  "epic.aside.number": "ID",
+  "epic.aside.name": "Name",
   "epic.aside.status": "Status",
   "epic.aside.release": "Release",
-  "epic.aside.release.none": "No release",
+  "epic.aside.release.none": "None",
   "epic.list.column.release": "Release",
   "epic.aside.progress": "Progress",
   "epic.aside.progress.value": "$1 / $2 quests",
@@ -2298,18 +2316,14 @@ export default {
   "invitations.decline": "Decline",
   "invitations.accepted": "You have joined the project!",
   "invitations.declined": "Invitation declined.",
-  "invitations.accept.error": "Failed to accept invitation",
-  "invitations.decline.error": "Failed to decline invitation",
 
   // --- /account/feedback ----------------------------------------------------
   "myFeedback.title": "Submitted feedback",
   "myFeedback.description":
     "Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn.",
   "myFeedback.empty": "You haven't submitted any feedback yet.",
-  "myFeedback.filter.search": "Search",
   "myFeedback.filter.search.aria": "Search feedback",
   "myFeedback.filter.allStatuses": "All statuses",
-  "myFeedback.filter.statusCount": "$1 statuses",
   "myFeedback.filter.allProjects": "All projects",
   "myFeedback.column.project": "Project",
   "myFeedback.column.title": "Title",
@@ -2331,7 +2345,6 @@ export default {
   "myFeedback.edit.description.placeholder": "Describe your request",
   "myFeedback.edit.required": "Title and description are required.",
   "myFeedback.edit.saved": "Feedback updated.",
-  "myFeedback.edit.error": "Failed to update feedback.",
   "feedback.status.pending": "Pending",
   "feedback.status.accepted": "Accepted",
   "feedback.status.rejected": "Rejected",
@@ -2362,10 +2375,8 @@ export default {
   "activity.col.details": "Details",
   "activity.filter.allPeople": "Everyone",
   "activity.filter.allResources": "All resources",
-  "activity.filter.typeCount": "$1 resources",
   "activity.filter.allActions": "All actions",
   "activity.filter.anyDate": "Any date",
-  "activity.filter.actionCount": "$1 actions",
   // One per `$audit` type declared in `LoreAudits`, and there are ten of
   // them. A kind with no key here still renders, capitalized, off the raw
   // type - see `resourceLabel`.
@@ -2437,6 +2448,7 @@ export default {
   "permission.deploy.manage": "Deploy and set variables",
   "permission.group.artifact": "Artifacts",
   "permission.artifact.read": "See what CI has pushed",
+  "permission.artifact.delete": "Delete a build",
   "permission.group.blight": "Blights",
   "permission.blight.read": "Read the crash inbox",
   "permission.blight.triage": "Resolve, ignore and forward blights",

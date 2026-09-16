@@ -3,16 +3,24 @@ import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 
 import {
+  McpHeaderMismatchError,
+  McpMethodNotFoundError,
+} from "../errors/McpError.ts";
+import {
   createErrorResponse,
   createInternalError,
   createNotification,
   createParseError,
-  isSupportedProtocolVersion,
+  JsonRpcErrorCodes,
   JsonRpcParseError,
+  McpProtocolErrorCodes,
   parseMessage,
-  SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
-import type { JsonRpcRequest, McpContext } from "../interfaces/McpTypes.ts";
+import type {
+  JsonRpcRequest,
+  JsonRpcResponse,
+  McpContext,
+} from "../interfaces/McpTypes.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -84,17 +92,31 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  * `application/json` (single response, the default) or `text/event-stream`
  * (when the client asked for progress via `_meta.progressToken`).
  *
- * Designed for serverless deployment (Cloudflare Workers, etc.) — there is
- * no long-lived GET stream. GET on the endpoint returns 405 Method Not
- * Allowed; clients that want server-initiated push must rely on the POST
- * response stream when the server upgrades to SSE for that particular call.
+ * Designed for serverless deployment (Cloudflare Workers, etc.): there is no
+ * session and no long-lived GET stream. GET and DELETE on the endpoint return
+ * 405 Method Not Allowed; a client that wants progress gets it on the POST
+ * response stream of the call it concerns.
  *
- * Spec compliance:
- * - 2025-06-18: validates `MCP-Protocol-Version` header on every request
- *   after `initialize` against the version negotiated and stored on
- *   `McpServerProvider`.
- * - 2025-11-25: rejects requests with a non-allow-listed `Origin` header
- *   (PR #1439). See {@link mcpStreamableHttpOptions.allowedOrigins}.
+ * Both protocol eras are served on this one endpoint, decided per request by
+ * `McpServerProvider.resolveModernRequest` from the version the request
+ * carries (there is no session to remember a handshake):
+ *
+ * - **Modern (2026-07-28)**, when the `_meta` protocol version or the
+ *   `MCP-Protocol-Version` header names a non-legacy version. The mirrored
+ *   headers are validated strictly against the body (`MCP-Protocol-Version`,
+ *   `Mcp-Method`, `Mcp-Name`: 400 and `-32020`), an unsupported version is 400
+ *   and `-32022`, an unknown method is 404 and `-32601`, all decided before a
+ *   response stream could open.
+ * - **Legacy (2025-11-25 and earlier)**, everything else and `initialize`
+ *   always. The `MCP-Protocol-Version` header, when present, is checked against
+ *   `McpServerProvider.protocolVersions` (never against a version negotiated
+ *   earlier: the provider is a process-global singleton, so that value would
+ *   be another client's). A version outside it gets a plain, non-JSON-RPC 400,
+ *   which is what a dual-era client falls back to `initialize` on. Every
+ *   JSON-RPC error keeps HTTP 200.
+ *
+ * Also: requests with a non-allow-listed `Origin` header are rejected with 403
+ * (spec 2025-11-25, PR #1439). See {@link mcpStreamableHttpOptions.allowedOrigins}.
  *
  * @example
  * ```ts
@@ -129,14 +151,19 @@ export class StreamableHttpMcpTransport {
   notAllowed = $route({
     method: "GET",
     path: this.options.path,
-    handler: (request) => {
-      request.reply.status = 405;
-      request.reply.headers.allow = "POST";
-      request.reply.headers["content-type"] = "application/json";
-      request.reply.body = JSON.stringify({
-        error: "Method Not Allowed. Use POST for MCP messages.",
-      });
-    },
+    handler: (request) => this.replyNotAllowed(request),
+  });
+
+  /**
+   * DELETE is how a 2025-03-26..2025-11-25 client ends a session. This server
+   * never mints one, and 2026-07-28 says a GET or DELETE on the endpoint
+   * SHOULD get 405, so it gets the same answer as GET instead of a 404 that
+   * reads like a missing endpoint.
+   */
+  notAllowedDelete = $route({
+    method: "DELETE",
+    path: this.options.path,
+    handler: (request) => this.replyNotAllowed(request),
   });
 
   /**
@@ -217,31 +244,82 @@ export class StreamableHttpMcpTransport {
           string | string[] | undefined
         >;
 
-        // Spec 2025-06-18+: every HTTP request after `initialize` MUST carry
-        // an `MCP-Protocol-Version` header matching the negotiated version.
-        // Reject mismatches with 400 so the client doesn't silently drift.
-        if (rpcRequest.method !== "initialize") {
-          const headerRaw = headers["mcp-protocol-version"];
-          const headerVersion = Array.isArray(headerRaw)
-            ? headerRaw[0]
-            : headerRaw;
+        // The era is decided per request, by the provider, from the version
+        // the request carries. `undefined` is a legacy request, and always is
+        // while the modern path is off.
+        const modern = this.mcpServer.resolveModernRequest(rpcRequest, headers);
+
+        // Legacy, spec 2025-06-18+: every HTTP request after `initialize` MUST
+        // carry an `MCP-Protocol-Version` header matching the negotiated
+        // version. Reject one this server does not serve with 400 so the
+        // client doesn't silently drift.
+        if (!modern && rpcRequest.method !== "initialize") {
+          const headerVersion = this.firstHeader(
+            headers,
+            "mcp-protocol-version",
+          );
+          const supported = this.mcpServer.protocolVersions;
           // Validated against the SUPPORTED set, not against a single
           // negotiated value held on the provider singleton. That value is
           // process-global: client B initializing with an older version
           // changed what client A was checked against, and on Workers a fresh
           // isolate reset it — so a client that negotiated correctly started
           // getting 400s on its next request.
-          if (headerVersion && !isSupportedProtocolVersion(headerVersion)) {
-            this.log.warn("MCP-Protocol-Version header not supported", {
+          if (headerVersion && !supported.includes(headerVersion)) {
+            // INFO, not WARN: nothing is wrong. A dual-era client (claude.ai)
+            // probes with a modern version on every connection and falls back
+            // on this answer, so at WARN it was the second most frequent line
+            // on Lore and buried the real warnings. INFO still reaches
+            // production, where the shape below is the only record of what a
+            // modern client actually sends.
+            this.log.info("MCP-Protocol-Version header not supported", {
               header: headerVersion,
-              supported: SUPPORTED_PROTOCOL_VERSIONS,
+              supported,
+              ...this.describeRequestShape(rpcRequest, headers),
             });
             request.reply.status = 400;
             request.reply.headers["content-type"] = "application/json";
+            // ⚠️ Load-bearing: this body must NOT be a JSON-RPC error. Per the
+            // 2026-07-28 Streamable HTTP backward-compatibility rule, a client
+            // falls back to `initialize` only when a 400's body is not a
+            // recognized modern JSON-RPC error. A `-32022` here would tell
+            // claude.ai this server is modern, and it would stop falling back.
+            // Only a modern request gets the modern error, below, and a request
+            // is only ever modern while the modern path is on.
             request.reply.body = JSON.stringify({
-              error: `MCP-Protocol-Version not supported: got ${headerVersion}, expected one of ${SUPPORTED_PROTOCOL_VERSIONS.join(", ")}`,
+              error: `MCP-Protocol-Version not supported: got ${headerVersion}, expected one of ${supported.join(", ")}`,
             });
             return;
+          }
+        }
+
+        // Modern: a request that cannot be served at all is answered before
+        // anything is routed, and before a response stream could open and
+        // commit the status to 200. In the spec's order: headers that
+        // disagree with the body (-32020), then a version this server does
+        // not serve (-32022), then a method it does not implement (-32601).
+        if (modern && rpcRequest.id !== undefined) {
+          const rejection =
+            this.validateModernHeaders(rpcRequest, headers) ??
+            this.mcpServer.checkModernRequest(modern) ??
+            (this.mcpServer.handlesMethod(rpcRequest.method, true)
+              ? undefined
+              : new McpMethodNotFoundError(rpcRequest.method));
+          if (rejection) {
+            this.log.info("MCP modern request rejected", {
+              code: rejection.code,
+              message: rejection.message,
+              ...this.describeRequestShape(rpcRequest, headers),
+            });
+            return this.replyJson(
+              request,
+              createErrorResponse(rpcRequest.id, {
+                code: rejection.code,
+                message: rejection.message,
+                data: rejection.data,
+              }),
+              true,
+            );
           }
         }
 
@@ -256,8 +334,7 @@ export class StreamableHttpMcpTransport {
         );
 
         if (response) {
-          request.reply.headers["content-type"] = "application/json";
-          request.reply.body = JSON.stringify(response);
+          this.replyJson(request, response, !!modern);
         } else {
           // Spec: a notification "MUST return HTTP 202 Accepted".
           request.reply.status = 202;
@@ -281,6 +358,232 @@ export class StreamableHttpMcpTransport {
       }
     },
   });
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Responses
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Send one JSON-RPC response as `application/json`, with the HTTP status its
+   * era gives it.
+   */
+  protected replyJson(
+    request: any,
+    response: JsonRpcResponse,
+    modern: boolean,
+  ): void {
+    request.reply.status = this.httpStatusFor(response, modern);
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify(response);
+  }
+
+  /**
+   * The HTTP status of a JSON-RPC response.
+   *
+   * Legacy responses are always 200, errors included: that is what legacy
+   * clients have always received. A modern (2026-07-28) request that fails for
+   * a protocol reason gets the status the spec gives that reason, which is
+   * how an intermediary that never parses the body still sees the failure.
+   * Every other JSON-RPC error, a tool not found included, stays 200.
+   */
+  protected httpStatusFor(response: JsonRpcResponse, modern: boolean): number {
+    if (!modern || !response.error) {
+      return 200;
+    }
+    switch (response.error.code) {
+      case McpProtocolErrorCodes.HEADER_MISMATCH:
+      case McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION:
+        return 400;
+      case JsonRpcErrorCodes.METHOD_NOT_FOUND:
+        // Distinguishes "this modern endpoint has no such method" from a 404
+        // by a legacy HTTP+SSE server that does not host the endpoint at all:
+        // the JSON-RPC body is what tells a client which one it hit.
+        return 404;
+      default:
+        return 200;
+    }
+  }
+
+  /**
+   * 405 for a method the endpoint does not accept.
+   */
+  protected replyNotAllowed(request: any): void {
+    request.reply.status = 405;
+    request.reply.headers.allow = "POST";
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify({
+      error: "Method Not Allowed. Use POST for MCP messages.",
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Request metadata headers (2026-07-28)
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Check a modern request's mirrored headers against its body, strictly
+   * (spec 2026-07-28, Streamable HTTP "Server Validation").
+   *
+   * - `MCP-Protocol-Version` is required and must equal `_meta`'s
+   *   `io.modelcontextprotocol/protocolVersion`.
+   * - `Mcp-Method` is required and must equal `method`.
+   * - `Mcp-Name` is required on `tools/call` and `prompts/get` (equal to
+   *   `params.name`) and on `resources/read` (equal to `params.uri`), after
+   *   decoding a `=?base64?...?=` value.
+   *
+   * Header names are case-insensitive (the runtime lower-cases them), values
+   * case-sensitive. Never applied to a legacy request, whatever `Mcp-*`
+   * headers it carries.
+   *
+   * Strict rather than lenient on a missing header on purpose: leniency is
+   * invisible once shipped, and a request that routes one way on its headers
+   * and executes another way on its body is exactly what this check exists to
+   * refuse.
+   */
+  protected validateModernHeaders(
+    rpcRequest: JsonRpcRequest,
+    headers: Record<string, string | string[] | undefined>,
+  ): McpHeaderMismatchError | undefined {
+    const version = this.firstHeader(headers, "mcp-protocol-version");
+    if (version === undefined) {
+      return new McpHeaderMismatchError(
+        "missing required MCP-Protocol-Version header",
+      );
+    }
+    const meta = rpcRequest.params?._meta as
+      | Record<string, unknown>
+      | undefined;
+    const bodyVersion = meta?.["io.modelcontextprotocol/protocolVersion"];
+    if (version !== bodyVersion) {
+      return new McpHeaderMismatchError(
+        `MCP-Protocol-Version header value '${version}' does not match body value '${String(bodyVersion)}'`,
+      );
+    }
+
+    const method = this.firstHeader(headers, "mcp-method");
+    if (method === undefined) {
+      return new McpHeaderMismatchError("missing required Mcp-Method header");
+    }
+    if (method !== rpcRequest.method) {
+      return new McpHeaderMismatchError(
+        `Mcp-Method header value '${method}' does not match body value '${rpcRequest.method}'`,
+      );
+    }
+
+    const nameField = this.mcpNameField(rpcRequest.method);
+    if (nameField === undefined) {
+      return undefined;
+    }
+    const raw = this.firstHeader(headers, "mcp-name");
+    if (raw === undefined) {
+      return new McpHeaderMismatchError(
+        `missing required Mcp-Name header for ${rpcRequest.method}`,
+      );
+    }
+    const name = this.decodeHeaderValue(raw);
+    if (name === undefined) {
+      return new McpHeaderMismatchError("malformed Mcp-Name header value");
+    }
+    const bodyName = rpcRequest.params?.[nameField];
+    if (name !== bodyName) {
+      return new McpHeaderMismatchError(
+        `Mcp-Name header value '${name}' does not match body value '${String(bodyName)}'`,
+      );
+    }
+    return undefined;
+  }
+
+  /**
+   * The body field `Mcp-Name` mirrors for a method, when it requires one.
+   */
+  protected mcpNameField(method: string): "name" | "uri" | undefined {
+    switch (method) {
+      case "tools/call":
+      case "prompts/get":
+        return "name";
+      case "resources/read":
+        return "uri";
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * A mirrored header value as the body holds it: a `=?base64?...?=` sentinel
+   * is decoded (Base64 of UTF-8, case-sensitive markers), anything else is
+   * taken as is. `undefined` when the value is not a valid header value or
+   * the sentinel does not decode.
+   */
+  protected decodeHeaderValue(value: string): string | undefined {
+    // Visible ASCII, space and tab only (RFC 9110). Anything else should
+    // have been sent as a sentinel.
+    if (!/^[\t\x20-\x7e]*$/.test(value)) {
+      return undefined;
+    }
+    const prefix = "=?base64?";
+    const suffix = "?=";
+    if (
+      value.length < prefix.length + suffix.length ||
+      !value.startsWith(prefix) ||
+      !value.endsWith(suffix)
+    ) {
+      return value;
+    }
+    const encoded = value.slice(prefix.length, -suffix.length);
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+      return undefined;
+    }
+    try {
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      return undefined;
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Diagnostics
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The protocol-level shape of a request, safe to log in production.
+   *
+   * The routing headers and the `_meta` a client attaches: the JSON-RPC
+   * method, `Mcp-Method` and `Mcp-Name`, which `_meta` keys are present, and
+   * the values of the two that identify the client (`protocolVersion`,
+   * `clientInfo`). Never `params.arguments`, and never any other `_meta`
+   * value: this runs on whatever method arrives, and a `tools/call` carries
+   * user data in both places.
+   */
+  protected describeRequestShape(
+    rpcRequest: JsonRpcRequest,
+    headers: Record<string, string | string[] | undefined>,
+  ): Record<string, unknown> {
+    const raw = rpcRequest.params?._meta;
+    const meta =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : undefined;
+    return {
+      method: rpcRequest.method,
+      mcpMethod: this.firstHeader(headers, "mcp-method"),
+      mcpName: this.firstHeader(headers, "mcp-name"),
+      metaKeys: meta ? Object.keys(meta) : undefined,
+      metaProtocolVersion: meta?.["io.modelcontextprotocol/protocolVersion"],
+      metaClientInfo: meta?.["io.modelcontextprotocol/clientInfo"],
+    };
+  }
+
+  /**
+   * One header's value, the first when it was sent several times.
+   */
+  protected firstHeader(
+    headers: Record<string, string | string[] | undefined>,
+    name: string,
+  ): string | undefined {
+    const raw = headers[name];
+    return Array.isArray(raw) ? raw[0] : raw;
+  }
 
   // -------------------------------------------------------------------------------------------------------------
   // SSE response streaming

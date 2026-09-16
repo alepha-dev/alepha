@@ -1,9 +1,9 @@
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { useEffect } from "react";
 
 import { Dessin } from "../components/Dessin.tsx";
 import { Prix } from "../components/Prix.tsx";
+import { useChargementPanier } from "../hooks/useChargementPanier.ts";
 import { usePanier } from "../hooks/usePanier.ts";
 
 /**
@@ -15,12 +15,10 @@ import { usePanier } from "../hooks/usePanier.ts";
  * the server will charge.
  */
 const Panier = () => {
-  const { panier, refresh, definirQuantite, retirer } = usePanier();
+  const { panier, definirQuantite, retirer, enCours } = usePanier();
   const { tr } = useI18n();
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useChargementPanier();
 
   if (panier.lines.length === 0) {
     return (
@@ -58,6 +56,12 @@ const Panier = () => {
                       min={1}
                       max={99}
                       value={line.quantity}
+                      // Read-only rather than disabled while a write runs: a
+                      // disabled input drops the focus of the buyer typing in
+                      // it. A keystroke in that window is refused visibly, the
+                      // value does not change, where `useAction` would have
+                      // dropped the request in silence.
+                      readOnly={enCours}
                       onChange={(event) => {
                         // An empty or partial field is not "zero": committing
                         // `Number("")` removed the line while the buyer was
@@ -76,7 +80,8 @@ const Panier = () => {
                   <button
                     type="button"
                     onClick={() => void retirer(line.productId)}
-                    className="hover:text-destructive underline transition-colors"
+                    disabled={enCours}
+                    className="hover:text-destructive underline transition-colors disabled:opacity-50"
                   >
                     {tr("cart.remove")}
                   </button>

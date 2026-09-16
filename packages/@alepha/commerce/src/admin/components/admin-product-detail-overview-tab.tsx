@@ -29,7 +29,7 @@ export const AdminProductDetailOverviewTab = (
     <div className="min-h-0 flex-1 overflow-auto p-6">
       <AutoForm
         form={props.form}
-        submitLabel={String(tr("commerce.admin.save", { default: "Save" }))}
+        submitLabel={tr("commerce.admin.save", { default: "Save" })}
       />
     </div>
   );

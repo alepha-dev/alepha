@@ -287,19 +287,25 @@ export function useAction<Args extends any[], Result = void>(
         const error = err as Error;
         setError(error);
 
+        // A caller that passed `onError` has handled the failure: the event
+        // still fires (error reporting reads it), flagged so a mounted
+        // <ActionErrorToaster /> does not toast it on top of whatever the
+        // caller did. It used to fire unflagged, so every `onError: () => {}`
+        // written to keep a read quiet toasted anyway.
         await alepha.events.emit("react:action:error", {
           type: "custom",
           id: optionsRef.current.id,
           error,
+          handled: optionsRef.current.onError !== undefined,
         });
 
         if (optionsRef.current.onError) {
           await optionsRef.current.onError(error);
         }
-        // Without a custom `onError`, the error is NOT re-thrown: it is captured
+        // With or without `onError`, the error is NOT re-thrown: it is captured
         // in `error` state and emitted as `react:action:error` (a mounted
-        // <ActionErrorToaster /> surfaces it as a toast). This keeps
-        // fire-and-forget `action.run()` calls from producing unhandled
+        // <ActionErrorToaster /> surfaces an unhandled one as a toast). This
+        // keeps fire-and-forget `action.run()` calls from producing unhandled
         // promise rejections.
       } finally {
         // A superseded run must not release the guard or drop `loading` — the
@@ -501,10 +507,15 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
   handler: (...args: [...Args, ActionContext]) => Async<Result>;
 
   /**
-   * Custom error handler. With or without one, errors are never re-thrown by
-   * `run` — they are captured in `error` state and emitted as
-   * `react:action:error`, so fire-and-forget calls can't produce unhandled
-   * promise rejections.
+   * Custom error handler. Passing one says the failure is handled here: the
+   * `react:action:error` event still fires, with `handled: true`, and a
+   * mounted `ActionErrorToaster` does not toast it. An `onError` that wants
+   * the toast as well shows it itself; an empty one keeps the failure quiet
+   * on purpose. Error reporting still sees it either way.
+   *
+   * With or without one, errors are never re-thrown by `run`: they are
+   * captured in `error` state and emitted as `react:action:error`, so
+   * fire-and-forget calls can't produce unhandled promise rejections.
    */
   onError?: (error: Error) => void | Promise<void>;
 

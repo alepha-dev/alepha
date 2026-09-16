@@ -9,7 +9,11 @@
 
 export {
   InputOTP,
+  type InputOTPProps,
   InputOTPGroup,
+  type InputOTPGroupProps,
   InputOTPSeparator,
+  type InputOTPSeparatorProps,
   InputOTPSlot,
+  type InputOTPSlotProps,
 } from "./InputOTP.tsx";

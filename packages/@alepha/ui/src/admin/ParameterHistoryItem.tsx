@@ -89,7 +89,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
         </div>
         {/* Actions: intercept clicks so the menu never toggles the row. */}
         {/* Row expander; the toggle button inside is the control. */}
-        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- a row expander, the toggle button inside is the control */}
         <div
           className="shrink-0"
           onClick={(e) => e.stopPropagation()}
@@ -166,7 +166,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
                   default: "Created at",
                 })}
               </dt>
-              <dd>{String(l(v.createdAt, { date: "lll" }))}</dd>
+              <dd>{l(v.createdAt, { date: "lll" })}</dd>
 
               <dt className="text-muted-foreground">
                 {tr("admin.parameters.fieldCreatedBy", {

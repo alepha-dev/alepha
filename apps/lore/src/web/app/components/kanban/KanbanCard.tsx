@@ -260,7 +260,7 @@ const KanbanCard = (props: KanbanCardProps) => {
               {held && (
                 <PauseCircle
                   data-testid="kanban-card-held"
-                  aria-label={String(tr("quest.status.onHold"))}
+                  aria-label={tr("quest.status.onHold")}
                   className="text-destructive size-3"
                 />
               )}
@@ -318,7 +318,7 @@ const KanbanCard = (props: KanbanCardProps) => {
                   }`}
                 >
                   <CalendarClock className="size-3" />
-                  {String(l(quest.dueAt as string, { date: due.dateFormat }))}
+                  {l(quest.dueAt as string, { date: due.dateFormat })}
                 </span>
               )}
             </div>

@@ -13,7 +13,7 @@ import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useMemo } from "react";
 
-import { NAV_DESTINATIONS } from "../nav.ts";
+import { NAV_DESTINATIONS, type NavDestination } from "../nav.ts";
 import { navPaletteAtom } from "../navPaletteAtom.ts";
 
 /**
@@ -48,7 +48,7 @@ export const NavPalette = () => {
   // Bucketed in NAV order, so the palette lists the site the way the sidebar
   // does instead of alphabetically.
   const groups = useMemo(() => {
-    const out: { label: string; items: typeof NAV_DESTINATIONS }[] = [];
+    const out: NavPaletteGroup[] = [];
     for (const destination of NAV_DESTINATIONS) {
       const last = out[out.length - 1];
       if (last?.label === destination.group) {
@@ -71,46 +71,55 @@ export const NavPalette = () => {
       // the label with nowhere for either to breathe.
       className="sm:max-w-[600px]"
     >
-      <Command>
+      <Command<NavDestination>
+        items={groups}
+        // What the palette ranks on. The parent and the group are in it so
+        // that "layout" finds App shell and "admin" finds Jobs, neither of
+        // which carries the word in its own label.
+        //
+        // ⚠️ The DESCRIPTION is deliberately absent, though it is right there
+        // on the row. The scorer (cmdk's, ported into `@alepha/ui/command`)
+        // rates a fuzzy SUBSEQUENCE over the whole string and favours short
+        // ones, so folding a sentence in wrecked the ranking: "audit" put Home
+        // first (14 hits) and "audit trail" put Sidebar first, with Audit log
+        // nowhere. Measured under cmdk, both as a row's `value` and through
+        // its `keywords`, which fed the same scorer. Searching descriptions
+        // needs a `filter` that matches substrings, not a longer string handed
+        // to this one. `rankCommandItems.spec.ts` pins the "audit" case.
+        itemToStringValue={(destination) =>
+          `${destination.group} ${destination.parent ?? ""} ${destination.label}`
+        }
+      >
         {/*
           `jsx-a11y/no-autofocus` is about a PAGE that grabs focus unbidden.
           This is a modal the reader just opened to type into, and the dialog
           does not put the caret there on its own: opened with ⌘K,
-          `document.activeElement` stays on `<body>`, so cmdk's own key
-          handling (arrows, Enter) never sees a keystroke and the palette is
-          mouse-only. The same disable is on every `autoFocus` in `@alepha/ui`,
-          for the same reason.
+          `document.activeElement` stays on `<body>`, so the palette's key
+          handling (arrows, Enter), which listens on the input, never sees a
+          keystroke and the palette is mouse-only. The same disable is on
+          every `autoFocus` in `@alepha/ui`, for the same reason.
         */}
         {/* oxlint-disable-next-line jsx-a11y/no-autofocus */}
         <CommandInput autoFocus placeholder="Search blocks and pages…" />
+        <CommandEmpty>Nothing matches that.</CommandEmpty>
         {/*
           `max-h-72` is sized for one-line rows; at two lines it showed four
           and a sliver, which reads as a list that ran out rather than one you
           scroll.
         */}
         <CommandList className="max-h-[22rem]">
-          <CommandEmpty>Nothing matches that.</CommandEmpty>
-          {groups.map((group) => (
-            <CommandGroup key={group.label} heading={group.label || undefined}>
-              {group.items.map((destination) => (
+          {(group: NavPaletteGroup) => (
+            <CommandGroup
+              key={group.label}
+              items={group.items}
+              heading={group.label || undefined}
+            >
+              {(destination: NavDestination) => (
                 <CommandItem
                   key={destination.href}
+                  value={destination}
                   className="items-start gap-2.5 py-2"
-                  // What cmdk filters on. The parent and the group are in it
-                  // so that "layout" finds App shell and "admin" finds Jobs,
-                  // neither of which carries the word in its own label.
-                  //
-                  // ⚠️ The DESCRIPTION is deliberately absent, though it is
-                  // right there on the row. cmdk scores a fuzzy SUBSEQUENCE
-                  // over the whole value and favours short ones, so folding a
-                  // sentence in wrecked the ranking: "audit" put Home first
-                  // (14 hits) and "audit trail" put Sidebar first, with Audit
-                  // log nowhere. Measured, both as `value` and through
-                  // `keywords`, which cmdk feeds to the same scorer. Searching
-                  // descriptions needs a custom `filter` that matches
-                  // substrings, not a longer string handed to this one.
-                  value={`${group.label} ${destination.parent ?? ""} ${destination.label}`}
-                  onSelect={() => {
+                  onClick={() => {
                     setOpen(false);
                     void router.push(destination.href);
                   }}
@@ -155,9 +164,9 @@ export const NavPalette = () => {
                     {destination.href === "/" ? "/" : destination.href.slice(1)}
                   </CommandShortcut>
                 </CommandItem>
-              ))}
+              )}
             </CommandGroup>
-          ))}
+          )}
         </CommandList>
       </Command>
 
@@ -184,3 +193,9 @@ export const NavPalette = () => {
     </CommandDialog>
   );
 };
+
+interface NavPaletteGroup {
+  [key: string]: unknown;
+  label: string;
+  items: NavDestination[];
+}

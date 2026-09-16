@@ -1,13 +1,16 @@
 import { cn } from "./utils.ts";
 
-function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
+export type SkeletonProps = React.ComponentProps<"div">;
+
+const Skeleton = (props: SkeletonProps) => {
+  const { className, ...rest } = props;
   return (
     <div
       data-slot="skeleton"
       className={cn("bg-muted animate-pulse rounded-md", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
 export { Skeleton };

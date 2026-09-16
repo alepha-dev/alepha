@@ -10,7 +10,7 @@ import {
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useAction, useClient, useInject, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -193,7 +193,6 @@ const ProjectFeedbackRequest = () => {
   // are gone, so no draft written under an id key is reachable any more.
   const { draft, clear: clearDraft } = useDraftAutofill(projectSlug);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [uploading, setUploading] = useState(false);
   // Tags are an internal triage taxonomy — never typed by the reporter.
   // They are seeded from query params (a "Feedback" button opening
   // `/request?tags=bug`) and kept in state only to ride along on submit.
@@ -241,7 +240,22 @@ const ProjectFeedbackRequest = () => {
   // page is a top-level route with no project data; the endpoint is gated
   // like `submitFeedback` (any logged-in user, feedback feature on). A
   // failed/pending fetch just hides the project side — never breaks the form.
-  const [project, setProject] = useState<ProjectContext | null>(null);
+  //
+  // A keyed `useQuery` (#E59, #Q2328), handled: the page renders its own
+  // closed and error states, so the root `ActionErrorToaster` stays quiet.
+  const contextQuery = useQuery(
+    {
+      key: ["feedback-context", projectSlug],
+      enabled: !!auth.user && !!projectSlug,
+      handler: () =>
+        feedbackApi.feedbackContext({ params: { slug: projectSlug } }),
+      onError: () => {},
+    },
+    [feedbackApi, auth.user, projectSlug],
+  );
+  const project: ProjectContext | null = contextQuery.error
+    ? null
+    : (contextQuery.data ?? null);
   // Undefined until the context resolves. Every write path below is guarded on
   // it — the form cannot submit to a project it has not identified yet.
   const projectId = project?.projectId;
@@ -255,30 +269,14 @@ const ProjectFeedbackRequest = () => {
   // Attach button, drag-drop, submit, all no-ops with no feedback. "closed"
   // (the module is off, or the slug is stale) and "error" (transient) render
   // different messages because they call for different user reactions.
-  const [contextState, setContextState] = useState<
-    "loading" | "ready" | "closed" | "error"
-  >("loading");
-  useEffect(() => {
-    if (!auth.user || !projectSlug) return;
-    let cancelled = false;
-    feedbackApi
-      .feedbackContext({ params: { slug: projectSlug } })
-      .then((res) => {
-        if (cancelled) return;
-        setProject(res);
-        setContextState("ready");
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setProject(null);
-        setContextState(
-          HttpError.is(err, 403) || HttpError.is(err, 404) ? "closed" : "error",
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [auth.user, projectSlug]);
+  const contextState: "loading" | "ready" | "closed" | "error" = project
+    ? "ready"
+    : contextQuery.error
+      ? HttpError.is(contextQuery.error, 403) ||
+        HttpError.is(contextQuery.error, 404)
+        ? "closed"
+        : "error"
+      : "loading";
 
   // One free-text field. Client schema stays looser than the server's — a
   // `minLength` here would fail validation at form-construction time (empty
@@ -292,112 +290,137 @@ const ProjectFeedbackRequest = () => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
       const { attachments, tags, source } = liveRef.current;
-      try {
-        const attachmentIds = attachments.map((a) => a.id);
+      // No catch (#E59, #Q2328): a refused submit is the server's sentence,
+      // toasted by the root `ActionErrorToaster`, and the form keeps what
+      // was typed.
+      const attachmentIds = attachments.map((a) => a.id);
 
-        // The reporter writes one free-text blob. Derive a short title from
-        // its first non-empty line so the owner's triage inbox has a
-        // per-row label; `description` keeps the full text.
-        const message = body.message.trim();
-        const firstLine =
-          message
-            .split("\n")
-            .map((line) => line.trim())
-            .find((line) => line.length > 0) ?? message;
+      // The reporter writes one free-text blob. Derive a short title from
+      // its first non-empty line so the owner's triage inbox has a
+      // per-row label; `description` keeps the full text.
+      const message = body.message.trim();
+      const firstLine =
+        message
+          .split("\n")
+          .map((line) => line.trim())
+          .find((line) => line.length > 0) ?? message;
 
-        // The id arrives with `feedbackContext`, so a submit fired before that
-        // resolved (or after it failed) has no project to post to. The form is
-        // only reachable with the context panel rendered, so this is a guard
-        // rather than a state the user can sit in.
-        const target = liveRef.current.projectId;
-        if (target === undefined) {
-          toaster.show(tr("feedback.request.error"), "danger");
-          return;
-        }
-
-        await feedbackApi.submitFeedback({
-          params: { projectId: target },
-          body: {
-            title: firstLine.slice(0, 120),
-            description: message,
-            attachments: attachmentIds,
-            // Fall back to a generic tag so nothing lands untagged in the
-            // triage inbox when the form is opened without query params.
-            tags: tags.length > 0 ? tags : ["feedback"],
-            source,
-          },
-        });
-        clearDraft();
-
-        // Opened as the sigil feedback popup (`window.open(..., "lore-feedback")`)?
-        // Tell the host page's feedback button to flash a thank-you, then close
-        // instantly instead of navigating to the in-popup status page.
-        if (
-          typeof window !== "undefined" &&
-          window.name === "lore-feedback" &&
-          window.opener
-        ) {
-          window.opener.postMessage(
-            { type: SIGIL_FEEDBACK_SUBMITTED_MESSAGE },
-            "*",
-          );
-          window.close();
-          return;
-        }
-
-        toaster.show(tr("feedback.request.success"), "success");
-
-        // Land the reporter on their cross-project feedback list (the
-        // dedicated status page was retired in favour of /me/feedback).
-        await meRouter.push("myFeedback");
-      } catch (err: any) {
-        toaster.show(err?.message ?? tr("feedback.request.error"), "danger");
+      // The id arrives with `feedbackContext`, so a submit fired before that
+      // resolved (or after it failed) has no project to post to. The form is
+      // only reachable with the context panel rendered, so this is a guard
+      // rather than a state the user can sit in.
+      const target = liveRef.current.projectId;
+      if (target === undefined) {
+        toaster.show(tr("feedback.request.error"), "danger");
+        return;
       }
+
+      await feedbackApi.submitFeedback({
+        params: { projectId: target },
+        body: {
+          title: firstLine.slice(0, 120),
+          description: message,
+          attachments: attachmentIds,
+          // Fall back to a generic tag so nothing lands untagged in the
+          // triage inbox when the form is opened without query params.
+          tags: tags.length > 0 ? tags : ["feedback"],
+          source,
+        },
+      });
+      clearDraft();
+
+      // Opened as the sigil feedback popup (`window.open(..., "lore-feedback")`)?
+      // Tell the host page's feedback button to flash a thank-you, then close
+      // instantly instead of navigating to the in-popup status page.
+      if (
+        typeof window !== "undefined" &&
+        window.name === "lore-feedback" &&
+        window.opener
+      ) {
+        window.opener.postMessage(
+          { type: SIGIL_FEEDBACK_SUBMITTED_MESSAGE },
+          "*",
+        );
+        window.close();
+        return;
+      }
+
+      toaster.show(tr("feedback.request.success"), "success");
+
+      // Land the reporter on their cross-project feedback list (the
+      // dedicated status page was retired in favour of /me/feedback).
+      await meRouter.push("myFeedback");
     },
   });
   const { loading: submitting } = useFormState(form, ["loading"]);
 
-  const uploadFiles = async (files: File[]) => {
-    if (files.length === 0) return;
-    // Attachments are addressed by the integer project id, which only exists
-    // once `feedbackContext` has answered. The attach control is rendered from
-    // the same state, so this is unreachable in practice.
-    if (projectId === undefined) return;
-    if (attachments.length + files.length > maxFiles) {
-      toaster.show(
-        String(
-          tr("feedback.request.tooManyFiles", { args: [String(maxFiles)] }),
-        ),
-        "danger",
-      );
-      return;
-    }
-
-    setUploading(true);
-    try {
-      for (const file of files) {
-        try {
-          const result = await feedbackApi.uploadFeedbackAttachment({
-            params: { projectId },
-            body: { file },
-          });
-          setAttachments((prev) => [...prev, result]);
-        } catch (err: any) {
+  /**
+   * Upload the picked, dropped or pasted files, one after another.
+   *
+   * A `useAction` (#E59, #Q2328) whose `loading` is the upload's busy state.
+   * It keeps its per-file catch on purpose: one refused file (a type the
+   * server does not take, a size over the cap) must not stop the others, so
+   * each refusal is toasted with the server's message and the loop goes on.
+   */
+  const uploadAction = useAction<[files: File[]], void>(
+    {
+      handler: async (files) => {
+        if (files.length === 0) return;
+        // Attachments are addressed by the integer project id, which only
+        // exists once `feedbackContext` has answered. The attach control is
+        // rendered from the same state, so this is unreachable in practice.
+        if (projectId === undefined) return;
+        if (attachments.length + files.length > maxFiles) {
           toaster.show(
-            err?.message ?? tr("feedback.request.uploadError"),
+            tr("feedback.request.tooManyFiles", { args: [String(maxFiles)] }),
             "danger",
           );
+          return;
         }
-      }
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+        try {
+          for (const file of files) {
+            try {
+              const result = await feedbackApi.uploadFeedbackAttachment({
+                params: { projectId },
+                body: { file },
+              });
+              setAttachments((prev) => [...prev, result]);
+            } catch (error) {
+              toaster.show(
+                error instanceof Error ? error.message : String(error),
+                "danger",
+              );
+            }
+          }
+        } finally {
+          if (inputRef.current) inputRef.current.value = "";
+        }
+      },
+    },
+    [feedbackApi, projectId, attachments.length, maxFiles, toaster, tr],
+  );
+  const uploading = uploadAction.loading;
+  // Read by the paste listener, whose closure outlives the render it was
+  // registered in.
+  const uploadingRef = useRef(uploading);
+  uploadingRef.current = uploading;
+
+  /**
+   * Start an upload, or say why not. `run()` drops a call made while one is
+   * in flight, which here would lose a pasted screenshot without a word, so
+   * a second batch is refused out loud instead (#E59 rule 10).
+   */
+  const uploadFiles = (files: File[]) => {
+    if (uploadingRef.current) {
+      toaster.show(tr("feedback.request.uploadBusy"), "warning");
+      return;
     }
+    void uploadAction.run(files);
   };
 
   const onFilePicked = (files: FileList | null) => {
     if (!files) return;
-    void uploadFiles(Array.from(files));
+    uploadFiles(Array.from(files));
   };
 
   // Ctrl+V / Cmd+V on the page uploads any pasted image (e.g. screenshots).
@@ -433,7 +456,7 @@ const ProjectFeedbackRequest = () => {
       }
       if (pasted.length > 0) {
         e.preventDefault();
-        void uploadFiles(pasted);
+        uploadFiles(pasted);
       }
     };
     window.addEventListener("paste", onPaste);
@@ -611,6 +634,7 @@ const ProjectFeedbackRequest = () => {
                       type="file"
                       multiple
                       className="hidden"
+                      disabled={uploading}
                       onChange={(e) => onFilePicked(e.target.files)}
                     />
                     <Button

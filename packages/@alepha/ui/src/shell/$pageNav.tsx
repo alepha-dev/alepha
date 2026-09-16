@@ -22,7 +22,7 @@ export interface PageNavOptions<
    */
   nav?: NavMeta;
   /**
-   * Permission(s) required for this page — wired into BOTH the route gate
+   * Permission(s) required for this page, wired into BOTH the route gate
    * (`use: [$secure({ permissions })]`) and the nav-entry gate
    * (`nav.permission`) so the two can never drift. A single string requires
    * that permission; an array requires ALL of them (AND), matching `$secure`.
@@ -40,7 +40,7 @@ export interface PageNavOptions<
  * that the two would otherwise both need.
  *
  * Pages declared this way are picked up by {@link useNavTree} /
- * {@link NavShell} purely from their `nav` field — no separate nav list.
+ * {@link NavShell} purely from their `nav` field, with no separate nav list.
  */
 export const $pageNav = <
   TConfig extends PageConfigSchema = PageConfigSchema,

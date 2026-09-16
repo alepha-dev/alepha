@@ -61,13 +61,17 @@ interface FileTreeNodeProps {
   defaultExpanded?: boolean;
 }
 
-// Recursively check if any descendant matches the current path
-const hasActiveDescendant = (node: DocNode, currentPath: string): boolean => {
-  if (node.href === currentPath) return true;
+// Recursively check if any descendant matches the current path. The router
+// compares, never `href === pathname`: the tree's hrefs carry `$` while a
+// `$primitive` page's URL may carry `%24`, and a string comparison left those
+// pages with the Explorer collapsed and nothing marked (#Q2338).
+const hasActiveDescendant = (
+  node: DocNode,
+  isActive: (href: string) => boolean,
+): boolean => {
+  if (node.href && isActive(node.href)) return true;
   if (node.children) {
-    return node.children.some((child) =>
-      hasActiveDescendant(child, currentPath),
-    );
+    return node.children.some((child) => hasActiveDescendant(child, isActive));
   }
   return false;
 };
@@ -76,12 +80,13 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
   const { node, depth, defaultExpanded } = props;
   const hasChildren = node.children && node.children.length > 0;
   const router = useRouter();
-  const state = useRouterState();
+  // Read for the re-render on navigation; the comparison is the router's.
+  useRouterState();
 
   // Check if this node or any of its descendants is active
-  const currentPath = state.url?.pathname || "";
-  const isActive = node.href === currentPath;
-  const containsActive = hasChildren && hasActiveDescendant(node, currentPath);
+  const matches = (href: string) => router.isActive(href);
+  const isActive = node.href ? matches(node.href) : false;
+  const containsActive = hasChildren && hasActiveDescendant(node, matches);
 
   // Expand state: controlled by defaultExpanded (from expand all button) or if contains active route on init
   const [expanded, setExpanded] = useState(defaultExpanded ?? containsActive);

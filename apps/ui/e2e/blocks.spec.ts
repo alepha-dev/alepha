@@ -151,7 +151,7 @@ test.describe("Showcase", () => {
     // The whole reason the preview is an iframe. Narrowing a div changes no
     // media query: Tailwind's `sm:` and `useIsMobile()` both ask the WINDOW,
     // so at 375px of preview width inside a 1280px window every component
-    // still took its desktop branch. `AlephaTable` kept its filters inline
+    // still took its desktop branch. `DataTable` kept its filters inline
     // instead of folding them behind the button it has for exactly that case,
     // and every assertion about the page passed while it did.
     await page.setViewportSize({ width: 1440, height: 820 });
@@ -298,7 +298,7 @@ test.describe("Showcase", () => {
   });
 });
 
-test.describe("AlephaTable", () => {
+test.describe("DataTable", () => {
   test("renders rows fetched through the action registry", async ({ page }) => {
     await page.goto("/blocks/table");
 
@@ -328,7 +328,7 @@ test.describe("AlephaTable", () => {
 
     // The first row's three-dots trigger. A submenu is the one shape a jsdom
     // spec cannot prove lays out, which is why this case is here and not
-    // only in `AlephaTableRowActionGroup.browser.spec.tsx`.
+    // only in `DataTableRowActionGroup.browser.spec.tsx`.
     await page
       .getByRole("button", { name: "Open row actions" })
       .first()
@@ -432,6 +432,62 @@ test.describe("blocks", () => {
     await page.goto("/blocks/control/date");
     await expect(page.getByLabel("Birthday")).toBeVisible();
     await expect(page.getByLabel("Alarm")).toBeVisible();
+  });
+
+  /**
+   * ⚠️ **The calendar is a chunk of its own, and this is the only place that
+   * can see it.** `Control` dispatches on the schema at runtime, so every form
+   * used to ship react-day-picker and date-fns whether it had a date field or
+   * not (#Q2185). The date controls now render `LazyCalendar` inside their
+   * popover and preload it when the pointer reaches a trigger.
+   *
+   * A chunk is recognised by its CONTENT, not its name: production chunk names
+   * are hashes, and react-day-picker's `rdp-` class prefix is in exactly one of
+   * them. jsdom has no chunks at all, so no unit spec can claim this.
+   */
+  test("the calendar is downloaded when a date trigger is touched, not before", async ({
+    page,
+  }) => {
+    const calendarChunks: string[] = [];
+    const reads: Promise<void>[] = [];
+    page.on("response", (response) => {
+      if (!new URL(response.url()).pathname.endsWith(".js")) return;
+      const read = async () => {
+        const body = await response.text().catch(() => "");
+        if (body.includes("rdp-")) calendarChunks.push(response.url());
+      };
+      reads.push(read());
+    });
+
+    await page.goto("/blocks/control/date");
+    const trigger = page.locator('[data-slot="date-trigger"]').first();
+    await expect(trigger).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await Promise.all(reads);
+
+    // Guard the guard: the page did download its own JavaScript, so an empty
+    // list below means the calendar was left out, not that nothing was read.
+    expect(reads.length).toBeGreaterThan(0);
+    expect(calendarChunks).toEqual([]);
+
+    await trigger.hover();
+    await expect
+      .poll(async () => {
+        await Promise.all(reads);
+        return calendarChunks.length;
+      })
+      .toBe(1);
+
+    await trigger.click();
+    const day = page
+      .locator('[data-slot="popover-content"] [role="gridcell"] button')
+      .filter({ hasText: /^15$/ })
+      .first();
+    await day.click();
+
+    // A date-only field closes on the pick and shows the day it took.
+    await expect(trigger).not.toContainText("Pick a date");
+    await expect(trigger).toContainText("15");
   });
 
   /**
@@ -568,6 +624,68 @@ test.describe("blocks", () => {
   test("buttons render every shape", async ({ page }) => {
     await page.goto("/blocks/buttons");
     await expect(page.getByText("Common shapes")).toBeVisible();
+  });
+});
+
+/**
+ * The primitives' layout and timing, on the Primitives specimen page. jsdom
+ * lays nothing out and opens no popup (#F1208), so these two are pinned here
+ * and nowhere else (#Q2184).
+ */
+test.describe("primitives", () => {
+  /**
+   * ⚠️ A LOWER bound only. `TooltipProvider` waits 600ms; a loaded machine can
+   * only make the tooltip later, never earlier, so "not open at 300ms" cannot
+   * flake. "Open by 700ms" could, and is deliberately not asserted.
+   */
+  test("the tooltip waits before it opens", async ({ page }) => {
+    await page.goto("/blocks/primitives");
+    const trigger = page.getByTestId("primitives-tooltip");
+    await expect(trigger).toBeVisible();
+
+    await trigger.hover();
+    await page.waitForTimeout(300);
+    await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0);
+
+    // Guard the guard: the hover is on a real tooltip trigger, so an absent
+    // tooltip above means "not yet", never "not at all".
+    await expect(page.locator('[data-slot="tooltip-content"]')).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  /**
+   * `w-auto max-w-(--available-width)`: a menu sized to its 32px icon trigger
+   * would wrap every label, which is what the kit's menus did before.
+   */
+  test("the dropdown menu is as wide as its longest item, not its trigger", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/primitives");
+    const trigger = page.getByTestId("primitives-menu");
+    await trigger.click();
+
+    const menu = page.locator('[data-slot="dropdown-menu-content"]');
+    await expect(menu).toBeVisible();
+    const longest = menu.getByText(
+      "Export every quest and folio as a CSV archive",
+    );
+    const short = menu.getByText("Rename", { exact: true });
+
+    const t = (await trigger.boundingBox())!;
+    const m = (await menu.boundingBox())!;
+    const l = (await longest.boundingBox())!;
+    const s = (await short.boundingBox())!;
+    const viewport = page.viewportSize()!;
+
+    // The trigger really is narrower than the longest item, or this proves
+    // nothing about sizing.
+    expect(t.width).toBeLessThan(l.width);
+    expect(m.width).toBeGreaterThanOrEqual(l.width);
+    // One line: the long label did not wrap to fit a narrower menu.
+    expect(l.height).toBeLessThanOrEqual(s.height + 1);
+    expect(m.x).toBeGreaterThanOrEqual(0);
+    expect(m.x + m.width).toBeLessThanOrEqual(viewport.width);
   });
 });
 
@@ -793,4 +911,50 @@ test.describe("page showcases", () => {
       await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
     });
   }
+});
+
+test.describe("account API keys", () => {
+  test("badges each key's state and creates one with a chosen expiry", async ({
+    page,
+  }) => {
+    await page.goto("/pages/account/keys");
+
+    // The live keys: one with no expiry, one inside its warning window.
+    await expect(page.getByText("CLI on my laptop")).toBeVisible();
+    await expect(page.getByText("No expiry")).toBeVisible();
+    await expect(page.getByText("CI pipeline")).toBeVisible();
+
+    // The dead ones sit in the collapsed section, each with its badge.
+    await expect(page.getByText("Nightly import")).toHaveCount(0);
+    await page.getByRole("button", { name: "Show", exact: true }).click();
+    await expect(page.getByText("Nightly import")).toBeVisible();
+    // Not the section's own description, "Expired and revoked keys, ...".
+    await expect(page.getByText(/^Expired(?! and)/)).toBeVisible();
+    await expect(page.getByText(/^Revoked/)).toBeVisible();
+
+    await page.getByRole("button", { name: /new key/i }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "New API key" });
+    await dialog.getByLabel("Name").fill("Deploy bot");
+
+    // The presets come from `GET /api-keys/options`, preselected on its
+    // default, and the choice reaches the trigger.
+    const expiry = dialog.getByRole("combobox", { name: "Expires after" });
+    await expect(expiry).toContainText("90 days");
+    await expiry.click();
+    for (const preset of ["7 days", "1 year", "No expiration"]) {
+      await expect(
+        page.getByRole("option", { name: preset, exact: true }),
+      ).toBeVisible();
+    }
+    await page.getByRole("option", { name: "30 days", exact: true }).click();
+    await expect(expiry).toContainText("30 days");
+    // Base UI leaves `pointer-events: none` on the body when the listbox
+    // closes; the next click is Create.
+    await page.evaluate(() => {
+      document.body.style.pointerEvents = "";
+    });
+
+    await dialog.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(page.getByText(/copy your key now/i)).toBeVisible();
+  });
 });

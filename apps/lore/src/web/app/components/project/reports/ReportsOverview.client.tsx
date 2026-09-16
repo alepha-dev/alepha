@@ -71,11 +71,9 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     {
       label: tr("reports.overview.kpi.completion"),
       value: `${completionPct}%`,
-      hint: String(
-        tr("reports.overview.kpi.completionHint", {
-          args: [String(kpis.completedQuests), String(kpis.totalQuests)],
-        }),
-      ),
+      hint: tr("reports.overview.kpi.completionHint", {
+        args: [String(kpis.completedQuests), String(kpis.totalQuests)],
+      }),
     },
     {
       label: tr("reports.overview.kpi.open"),
@@ -84,11 +82,9 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     {
       label: tr("reports.overview.kpi.completedThisWeek"),
       value: kpis.completedThisWeek,
-      hint: String(
-        tr("reports.overview.kpi.weekDeltaHint", {
-          args: [`${weekDelta >= 0 ? "+" : ""}${weekDelta}`],
-        }),
-      ),
+      hint: tr("reports.overview.kpi.weekDeltaHint", {
+        args: [`${weekDelta >= 0 ? "+" : ""}${weekDelta}`],
+      }),
     },
     {
       label: tr("reports.overview.kpi.cycleTime"),

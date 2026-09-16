@@ -113,9 +113,7 @@ const ReleaseProgressBar = (props: ReleaseProgressBarProps) => {
           <button
             key={bucket}
             type="button"
-            aria-label={`${buckets[bucket]} ${String(
-              tr(BUCKET_LABEL_KEYS[bucket]),
-            )}, ${String(share(bucket))}`}
+            aria-label={`${buckets[bucket]} ${tr(BUCKET_LABEL_KEYS[bucket])}, ${String(share(bucket))}`}
             // `flex: {count}` rather than a percentage width: the segments
             // then divide the track between themselves and cannot fail to
             // add up to it, whatever the counts are.

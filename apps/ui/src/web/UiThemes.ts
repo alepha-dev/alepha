@@ -55,8 +55,14 @@ const UI_THEMES: UiTheme[] = [
 export class UiThemes {
   protected readonly alepha = $inject(Alepha);
 
+  /**
+   * ⚠️ On `configure`, never `start`. ui.alepha.dev is prerendered, and the
+   * prerender boots the app to `configure` only: on `start` the list was
+   * missing from the built HTML, so the file had no theme picker, the browser
+   * rendered one, and every first load threw React #418 (#Q2341).
+   */
   public readonly register = $hook({
-    on: "start",
+    on: "configure",
     handler: () => {
       this.alepha.store.set(uiThemeListAtom, UI_THEMES);
     },

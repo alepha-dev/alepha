@@ -117,7 +117,7 @@ const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
   const navInbox: ProjectNavEntry[] = project
     ? [
         {
-          label: String(tr("project.menu.inbox")),
+          label: tr("project.menu.inbox"),
           href: router.path("projectInbox", {
             params: { projectSlug: project.slug },
           }),

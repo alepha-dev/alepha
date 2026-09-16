@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SidebarProvider, useSidebar } from "../../core/Sidebar.tsx";
-import { SidebarNavAutoClose } from "../AppShell.tsx";
+import { SidebarNavAutoClose } from "../SidebarNavAutoClose.tsx";
 
 /**
  * Tapping a nav entry on a phone navigated and left the sheet up, so the
@@ -128,7 +128,7 @@ describe("SidebarNavAutoClose", () => {
         {/* A locked nav row: `SidebarNavItem` renders `item.href ?? "#"`.
             The placeholder href is the fixture, so the rule that objects to
             it is objecting to the case under test. */}
-        {/* oxlint-disable-next-line jsx-a11y/anchor-is-valid */}
+        {/* oxlint-disable-next-line jsx-a11y/anchor-is-valid -- the placeholder href is the fixture under test */}
         <a href="#" data-testid="locked">
           Locked
         </a>

@@ -71,9 +71,7 @@ export const AdminProductDetailMediaTab = (
             input={props.form.input.images}
             multi
             accept="image/*"
-            label={String(
-              tr("commerce.admin.media.upload", { default: "Add images" }),
-            )}
+            label={tr("commerce.admin.media.upload", { default: "Add images" })}
             image={{ maxWidth: 2048 }}
           />
 
@@ -107,11 +105,9 @@ export const AdminProductDetailMediaTab = (
                       size="icon-xs"
                       disabled={index === 0}
                       onClick={() => move(index, index - 1)}
-                      aria-label={String(
-                        tr("commerce.admin.media.moveEarlier", {
-                          default: "Move earlier",
-                        }),
-                      )}
+                      aria-label={tr("commerce.admin.media.moveEarlier", {
+                        default: "Move earlier",
+                      })}
                     >
                       <ArrowLeft className="size-3.5" />
                     </Button>
@@ -121,11 +117,9 @@ export const AdminProductDetailMediaTab = (
                       size="icon-xs"
                       disabled={index === props.images.length - 1}
                       onClick={() => move(index, index + 1)}
-                      aria-label={String(
-                        tr("commerce.admin.media.moveLater", {
-                          default: "Move later",
-                        }),
-                      )}
+                      aria-label={tr("commerce.admin.media.moveLater", {
+                        default: "Move later",
+                      })}
                     >
                       <ArrowRight className="size-3.5" />
                     </Button>

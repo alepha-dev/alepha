@@ -1,7 +1,6 @@
 import { useDialog, useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQueryClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -18,59 +17,65 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * The confirmation says what happens to the person's work, because it is not
  * guessable and it is not undoable: their unfinished quests go back to the
  * pool, and the finished ones stay theirs.
+ *
+ * The verb is a `useAction` run (#E59): a refusal is toasted by the root
+ * `ActionErrorToaster` with the server's message ("The owner cannot be
+ * removed from their own project" says the whole thing), and `remove`
+ * resolves `undefined` for it.
  */
 export const useRemoveMember = (): RemoveMember => {
   const projectApi = useClient<ProjectController>();
   const toaster = useToast();
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
-  const [loading, setLoading] = useState(false);
+  const queries = useQueryClient();
 
-  const remove = async (projectId: number, userId: string, name: string) => {
-    const confirmed = await dialog.confirm({
-      title: String(tr("project.settings.members.remove.title")),
-      description: String(
-        tr("project.settings.members.remove.description", { args: [name] }),
-      ),
-      confirmLabel: String(tr("project.settings.members.remove.confirm")),
-      cancelLabel: String(tr("project.settings.members.remove.cancel")),
-      destructive: true,
-    });
-    if (!confirmed) return false;
+  const action = useAction<
+    [projectId: number, userId: string, name: string],
+    boolean
+  >(
+    {
+      handler: async (projectId, userId, name) => {
+        const confirmed = await dialog.confirm({
+          title: tr("project.settings.members.remove.title"),
+          description: tr("project.settings.members.remove.description", {
+            args: [name],
+          }),
+          confirmLabel: tr("project.settings.members.remove.confirm"),
+          cancelLabel: tr("project.settings.members.remove.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return false;
 
-    setLoading(true);
-    try {
-      await projectApi.removeMember({ params: { id: projectId, userId } });
-      toaster.success(
-        String(tr("project.settings.members.remove.done", { args: [name] })),
-      );
-      return true;
-    } catch (error: any) {
-      // The server's own message wins when there is one, same as its
-      // sibling: "The owner cannot be removed from their own project" says
-      // the whole thing, and the catalogue string is the fallback for a
-      // failure with nothing to say.
-      toaster.error(
-        error?.message ?? String(tr("project.settings.members.remove.failed")),
-      );
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+        await projectApi.removeMember({ params: { id: projectId, userId } });
+        // By hand rather than through `invalidates`: the key carries the
+        // project the member left, which only the arguments know.
+        queries.invalidate(["project-users", projectId]);
+        toaster.success(
+          tr("project.settings.members.remove.done", { args: [name] }),
+        );
+        return true;
+      },
+    },
+    [projectApi, dialog, queries, toaster, tr],
+  );
 
-  return { remove, loading };
+  return { remove: action.run, loading: action.loading };
 };
 
 export interface RemoveMember {
   /**
    * Resolves `true` when the member was removed, `false` when the owner
-   * backed out of the confirmation or the server refused. Either way they
-   * have already been told.
+   * backed out of the confirmation, and `undefined` when the server refused.
+   * Every time they have already been told.
    *
    * `name` is only for the copy - it is what the person reading the dialog
    * needs to recognise the row they clicked.
    */
-  remove: (projectId: number, userId: string, name: string) => Promise<boolean>;
+  remove: (
+    projectId: number,
+    userId: string,
+    name: string,
+  ) => Promise<boolean | undefined>;
   loading: boolean;
 }

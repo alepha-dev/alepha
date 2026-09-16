@@ -1,9 +1,9 @@
 import { useToast } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useAction, useClient, useInject, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, Plus } from "lucide-react";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -51,7 +51,6 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
   const dateTime = useInject(DateTimeProvider);
   const toaster = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [attachments, setAttachments] = useState<string[]>(props.value ?? []);
   const [newIds, setNewIds] = useState<string[]>([]);
   const [meta, setMeta] = useState<AttachmentMeta[]>([]);
@@ -69,35 +68,31 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
   // upload time, which is why a fresh attachment showed its uuid and the
   // wrong type until a reload, and why uploading a second one appeared to
   // "fix" the first.
+  //
+  // A `useQuery` keyed on the row (#E59, #Q2328), quiet on failure: a failed
+  // lookup costs the filenames, not the row, and the chips fall back to the
+  // id below rather than disappearing. An empty row asks nothing, and needs
+  // no clearing either: `metaOf` is only ever asked about ids on the row.
   const signature = attachments.join(",");
-  useEffect(() => {
-    if (attachments.length === 0) {
-      // The empty-input early return of the fetch effect below.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setMeta([]);
-      return;
-    }
-    if (props.questId === undefined) return;
-    const questId = props.questId;
-    let cancelled = false;
-    void questApi
-      .listQuestAttachments({ params: { id: questId } })
-      .then((rows) => {
-        if (cancelled) return;
+  useQuery(
+    {
+      key: ["quest-attachments", props.questId, signature],
+      enabled: props.questId !== undefined && attachments.length > 0,
+      handler: () =>
+        questApi.listQuestAttachments({
+          params: { id: props.questId as number },
+        }),
+      onSuccess: (rows) => {
         setMeta((prev) => {
           const byId = new Map(prev.map((m) => [m.fileId, m]));
           for (const row of rows) byId.set(row.fileId, row);
           return [...byId.values()];
         });
-      })
-      .catch(() => {
-        // A failed lookup costs the filenames, not the row: the chips fall
-        // back to the id below rather than disappearing.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [signature, props.questId]);
+      },
+      onError: () => {},
+    },
+    [questApi, props.questId, signature],
+  );
 
   const commit = (next: string[]) => {
     setAttachments(next);
@@ -107,35 +102,53 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
   /**
    * Upload a set of files and append them to the row.
    *
+   * A `useAction` (#E59, #Q2328): a refused upload is the server's sentence,
+   * toasted by the root `ActionErrorToaster`, where it used to be a
+   * translated "upload failed" in front of a `console.error`.
+   */
+  const uploadAction = useAction<[files: File[]], void>(
+    {
+      handler: async (files) => {
+        if (files.length === 0) return;
+        const uploaded = await Promise.all(
+          files.map(async (file) => {
+            const result = await questApi.uploadAttachment({ body: { file } });
+            // Seed the name and type from the File the browser already holds,
+            // rather than waiting for the round trip that tells us what we
+            // just sent. The chip is correct the instant it appears.
+            return {
+              fileId: result.fileId,
+              name: file.name,
+              mimeType: file.type,
+            };
+          }),
+        );
+        setMeta((prev) => [...prev, ...uploaded]);
+        setNewIds(uploaded.map((it) => it.fileId));
+        commit([...attachments, ...uploaded.map((it) => it.fileId)]);
+      },
+    },
+    [questApi, attachments, props.onChange],
+  );
+  const uploading = uploadAction.loading;
+  // Read by the paste listener, which is registered once.
+  const uploadingRef = useRef(uploading);
+  uploadingRef.current = uploading;
+
+  /**
    * Shared by the picker, the drop zone and the paste handler, so a
    * screenshot pasted in behaves exactly like one chosen from the dialog.
+   *
+   * A second batch while one uploads is refused out loud: `run()` would drop
+   * it without a word, and a pasted screenshot would simply not appear
+   * (#E59 rule 10).
    */
   const upload = async (files: File[]) => {
-    if (files.length === 0) return;
-    setUploading(true);
-    try {
-      const uploaded = await Promise.all(
-        files.map(async (file) => {
-          const result = await questApi.uploadAttachment({ body: { file } });
-          // Seed the name and type from the File the browser already holds,
-          // rather than waiting for the round trip that tells us what we
-          // just sent. The chip is correct the instant it appears.
-          return {
-            fileId: result.fileId,
-            name: file.name,
-            mimeType: file.type,
-          };
-        }),
-      );
-      setMeta((prev) => [...prev, ...uploaded]);
-      setNewIds(uploaded.map((it) => it.fileId));
-      commit([...attachments, ...uploaded.map((it) => it.fileId)]);
-    } catch (error) {
-      toaster.error(tr("quest.view.attachFailed"));
-      console.error("Attachment upload failed:", error);
-    } finally {
-      setUploading(false);
+    if (uploadingRef.current) {
+      toaster.show(tr("quest.view.attachBusy"), "warning");
+      return;
     }
+    await uploadAction.run(files);
   };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {

@@ -25,8 +25,8 @@ import { useFolioDraft } from "./useFolioDraft.ts";
 
 export interface FolioWorkspaceContentProps {
   /**
-   * `undefined` → create mode. A folio → edit mode. `FolioResource`
-   * rather than `Folio` — see `FolioWorkspaceProps`'s own doc.
+   * `undefined` for create mode, a folio for edit mode. `FolioResource`
+   * rather than `Folio`: see `FolioWorkspaceProps`'s own doc.
    */
   folio?: FolioResource;
   /**
@@ -35,8 +35,8 @@ export interface FolioWorkspaceContentProps {
   directoryId?: string;
   /**
    * The DOM node above the pane row that the MENUBAR portals into. Owned
-   * by `FolioWorkspace` because the design puts that row above the tree as
-   * well as the document — see that file's comment for why a portal, and
+   * by `FolioWorkspaceShell` because the design puts that row above the tree
+   * as well as the document; see that file's comment for why a portal, and
    * not a plain move, is what gets it there.
    *
    * There is no second slot anymore: the formatting toolbar it used to
@@ -45,10 +45,10 @@ export interface FolioWorkspaceContentProps {
    */
   chromeSlot: HTMLElement | null;
   /**
-   * The inspector's open/closed state and active tab, threaded down from
-   * `FolioWorkspace.tsx` — ABOVE the per-folio `key` that remounts this
-   * component. See that file's doc for why: a boolean owned in here would
-   * reset on every folio-to-folio navigation.
+   * The inspector's open/closed state and active tab, from
+   * `FolioWorkspaceShell`, in the `/folios` layout ABOVE the page that
+   * remounts this component per folio. See that file's doc for why: a
+   * boolean owned in here would reset on every folio-to-folio navigation.
    */
   inspectorOpen: boolean;
   /**
@@ -62,8 +62,8 @@ export interface FolioWorkspaceContentProps {
   inspectorTab: FolioInspectorTab;
   onInspectorTabChange: (tab: FolioInspectorTab) => void;
   /**
-   * The tree pane's open/closed state, threaded from `FolioWorkspace.tsx`
-   * for the same reason as the inspector's — see that file's doc. `view.tree`
+   * The tree pane's open/closed state, from `FolioWorkspaceShell` for the
+   * same reason as the inspector's; see that file's doc. `view.tree`
    * (⌘\\) needs something to toggle; the tree pane itself does not live in
    * this component's subtree (it mounts one level up), only the boolean
    * driving its visibility passes through here, into `useFolioActions`'s
@@ -72,10 +72,10 @@ export interface FolioWorkspaceContentProps {
   treeOpen: boolean;
   onToggleTree: () => void;
   /**
-   * Folio ▸ New directory. Threaded from `FolioWorkspace.tsx` for the same
-   * reason as `treeOpen`: the tree pane, and the model that opens a freshly
-   * created directory into inline rename, mount one level up and outside
-   * this component's per-folio `key`.
+   * Folio ▸ New directory. From `FolioWorkspaceShell` for the same reason
+   * as `treeOpen`: the tree pane, and the model that opens a freshly created
+   * directory into inline rename, mount in the `/folios` layout, above the
+   * page that remounts this component per folio.
    */
   onCreateDirectory: () => void;
   /**
@@ -88,20 +88,19 @@ export interface FolioWorkspaceContentProps {
 
 /**
  * The workspace's actual content — draft buffer, `useFolioActions`, and the
- * document layout. Split out of `FolioWorkspace` so the latter can `key`
- * this whole subtree on the folio id (see the comment there); everything
- * stateful about editing ONE folio lives here so a remount is enough to
- * reset all of it.
+ * document layout. Everything stateful about editing ONE folio lives here,
+ * inside the page that remounts per folio (#Q2349), so that remount is enough
+ * to reset all of it.
  *
  * Save, pin, duplicate, export, encrypt/remove-protection and delete are
  * all owned by `useFolioActions` now — this component renders the document
  * + inspector regions. The status line and Save button live in
  * `FolioMenubar`. The folio TREE pane (Task 9) is NOT one of these regions
- * — it mounts in `FolioWorkspace.tsx`, outside this component's `key`,
- * because its collapse state must survive a folio-to-folio navigation and
- * everything in this component is deliberately torn down by one. Both
- * `treeOpen` and `inspectorOpen` are props from `FolioWorkspace.tsx` for
- * that same reason — see `FolioWorkspaceContentProps`'s doc.
+ * it mounts in `FolioWorkspaceShell.tsx`, in the `/folios` layout, because
+ * its state must survive a folio-to-folio navigation and everything in this
+ * component is deliberately torn down by one. Both `treeOpen` and
+ * `inspectorOpen` come from the shell for that same reason; see
+ * `FolioWorkspaceContentProps`'s doc.
  */
 const FolioWorkspaceContent = (
   props: FolioWorkspaceContentProps,
@@ -112,7 +111,7 @@ const FolioWorkspaceContent = (
 
   // Opens the inspector (if closed) and switches it to the History tab —
   // backs `history.revisions` (⌘Y). Both `inspectorOpen` and
-  // `inspectorTab` are props from `FolioWorkspace.tsx` (see
+  // `inspectorTab` come from `FolioWorkspaceShell` (see
   // `FolioWorkspaceContentProps`'s doc), so this just composes the two
   // setters already threaded down; it owns no state of its own.
   const openHistory = (): void => {
@@ -146,7 +145,7 @@ const FolioWorkspaceContent = (
   // what stands between the author and typing.
   //
   // The initializer runs once per mount, which is once per folio (this
-  // component is keyed on the folio id in `FolioWorkspace`), so saving a new
+  // page remounts on a folio switch, #Q2349), so saving a new
   // folio does not yank the author out of Edit mode mid-sentence.
   const [mode, setMode] = useState<MarkdownEditorMode>(
     props.folio?.content?.trim() ? "view" : "edit",
@@ -235,8 +234,8 @@ const FolioWorkspaceContent = (
           form below — without it the drawer would position itself against
           the viewport instead of the pane row. */}
       <div className="relative flex min-h-0 flex-1">
-        {/* The tree pane (Task 9) mounts one level up, in
-            `FolioWorkspace.tsx` — not here. See that file's doc for why. */}
+        {/* The tree pane mounts in `FolioWorkspaceShell.tsx`, in the
+            `/folios` layout, not here. See that file's doc for why. */}
         {/* The find bar is a sibling of the scroll container, not a child
             of it: an `absolute` element inside a scrolling box scrolls away
             with the text it is searching. */}

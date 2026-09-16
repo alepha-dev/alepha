@@ -18,6 +18,7 @@ import {
 } from "../core/DropdownMenu.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 import { cn } from "../core/utils.ts";
+import { ButtonThemeSwatch } from "./ButtonThemeSwatch.tsx";
 
 export interface ButtonThemeProps {
   /**
@@ -102,7 +103,7 @@ export const ButtonTheme = (props: ButtonThemeProps) => {
                 theme === t.id && "bg-accent",
               )}
             >
-              {t.swatch && <ThemeSwatch colors={t.swatch} />}
+              {t.swatch && <ButtonThemeSwatch colors={t.swatch} />}
               <span className="flex-1 text-left">{t.label}</span>
               {theme === t.id && <Check className="size-3.5" />}
             </DropdownMenuItem>
@@ -110,23 +111,5 @@ export const ButtonTheme = (props: ButtonThemeProps) => {
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-};
-
-interface ThemeSwatchProps {
-  colors: string[];
-}
-
-const ThemeSwatch = (props: ThemeSwatchProps) => {
-  return (
-    <div className="border-border grid size-6 shrink-0 grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded-sm border bg-white p-px">
-      {props.colors.slice(0, 4).map((c, i) => (
-        <span
-          key={i}
-          className="block rounded-[1px]"
-          style={{ background: c }}
-        />
-      ))}
-    </div>
   );
 };

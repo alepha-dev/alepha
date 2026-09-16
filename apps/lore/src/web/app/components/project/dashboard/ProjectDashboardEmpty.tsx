@@ -42,7 +42,7 @@ export interface ProjectDashboardEmptyProps {
  * a project board, so it is the first thing most people see and, on a project
  * with no capability offering a metric, possibly the only thing.
  *
- * Shaped like `AlephaTable`'s own empty state - a muted icon, a title, one
+ * Shaped like `DataTable`'s own empty state - a muted icon, a title, one
  * line and the action - with no dashed frame, and centred on both axes of the
  * content area by its parent. At zero cards the board renders no header and
  * no Add button of its own, so this carries the Add card button; a reader who
@@ -74,7 +74,7 @@ const ProjectDashboardEmpty = (props: ProjectDashboardEmptyProps) => {
             ? tr("project.dashboard.empty.body")
             : tr("project.dashboard.empty.body.readOnly")}
       </p>
-      {/* `pt-2` on top of the gap, as `AlephaTable` does it: the action is a
+      {/* `pt-2` on top of the gap, as `DataTable` does it: the action is a
           separate beat from the sentence explaining it. */}
       {canAdd && (
         <div className="pt-2">

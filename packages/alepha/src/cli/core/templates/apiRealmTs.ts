@@ -86,13 +86,14 @@ export class Realm {
     },
     features: {
       /**
-       * Everything here is backed by the database alone. The rest — jobs,
-       * notifications, avatars, parameters, oauth — needs a queue, a mailer
-       * or a bucket, so turn one on once you have wired its provider. The
-       * matching admin and account screens appear on their own: each page
-       * resolves its action against /api/_links and hides when it is absent.
+       * Backed by the database alone. The rest need a mailer, a bucket or
+       * more setup: notifications a mail provider, avatars a bucket,
+       * parameters and oauth their own configuration, so turn one on once
+       * you have wired it. The matching admin and account screens appear on
+       * their own: each page resolves its action against /api/_links and
+       * hides when it is absent. Audits and the session purge are not
+       * features and always run.
        */
-      audits: true,
       apiKeys: true,
     },
   });

@@ -6,6 +6,8 @@ export const createApiKeyResponseSchema = z.object({
   token: z.string(),
   tokenSuffix: z.string(),
   roles: z.array(z.string()),
+  permissions: z.array(z.string()),
+  ipAllowlist: z.array(z.string()),
   createdAt: z.datetime(),
   expiresAt: z.datetime().optional(),
 });

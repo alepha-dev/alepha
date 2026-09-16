@@ -927,9 +927,31 @@ export class TreeCommand {
 
     return {
       scope: this.normalizeScope(match[1].trim(), apiModules),
-      message: match[2].trim(),
+      message: this.unescapeMarkdown(match[2].trim()),
       commit: match[3]?.trim(),
     };
+  }
+
+  /**
+   * A changelog subject as the plain text the page shows: every CommonMark
+   * backslash escape (`\` before ASCII punctuation) undone, outside backtick
+   * code spans.
+   *
+   * `alepha gen changelog` escapes `\`, `*` and a word-boundary `_` so the
+   * file renders as written and oxfmt stops rewriting a subject that holds two
+   * globs (#Q2292). The page renders the subject as text, not markdown, so it
+   * would otherwise show `app_instance\_\*` where the commit said
+   * `app_instance_*`. Every punctuation escape is undone rather than those
+   * three, because a hand-written line already used one (`\$container`).
+   */
+  unescapeMarkdown(text: string): string {
+    // A capturing split keeps the code spans, at the odd indices.
+    return text
+      .split(/(`[^`]*`)/)
+      .map((part, index) =>
+        index % 2 === 1 ? part : part.replace(/\\([!-/:-@[-`{-~])/g, "$1"),
+      )
+      .join("");
   }
 
   /**

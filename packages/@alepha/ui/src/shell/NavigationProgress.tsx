@@ -39,7 +39,9 @@ export interface NavigationProgressOptions {
  * {@link AppShell} still mounts one by default for applications whose shell
  * *is* the root; those pass `progress={false}` once they hoist their own.
  */
-export const NavigationProgress = (options: NavigationProgressOptions) => {
+export type NavigationProgressProps = NavigationProgressOptions;
+
+export const NavigationProgress = (props: NavigationProgressProps) => {
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -84,8 +86,8 @@ export const NavigationProgress = (options: NavigationProgressOptions) => {
   );
 
   if (!visible) return null;
-  const height = options.height ?? 2;
-  const barClassName = options.className ?? "bg-primary";
+  const height = props.height ?? 2;
+  const barClassName = props.className ?? "bg-primary";
   return (
     <div
       aria-hidden

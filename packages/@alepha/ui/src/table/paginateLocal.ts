@@ -2,7 +2,7 @@ import type { Page } from "alepha";
 
 export interface PaginateLocalOptions<T> {
   /**
-   * Zero-based page index, exactly as AlephaTable holds it.
+   * Zero-based page index, exactly as DataTable holds it.
    */
   page: number;
   size: number;
@@ -19,7 +19,7 @@ export interface PaginateLocalOptions<T> {
    */
   sortValues?: Record<string, (item: T) => unknown>;
   /**
-   * Current filter form values, straight off AlephaTable's filter form.
+   * Current filter form values, straight off DataTable's filter form.
    */
   filters?: Record<string, any>;
   /**
@@ -89,7 +89,7 @@ const compareValues = (a: unknown, b: unknown): number => {
  * Client-side sort + slice over an in-memory array, shaped as the same
  * `Page<T>` a server fetcher returns.
  *
- * This is the whole of AlephaTable's static-data mode: the component swaps
+ * This is the whole of DataTable's static-data mode: the component swaps
  * its fetched `data`/`meta` for this function's output and every other part
  * of the table (pager, selection, column picker, row actions) keeps working
  * against the shape it already knows.

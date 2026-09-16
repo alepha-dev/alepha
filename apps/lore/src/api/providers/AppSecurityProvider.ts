@@ -78,8 +78,6 @@ export class AppSecurityProvider {
     features: {
       apiKeys: true,
       avatars: true,
-      audits: true,
-      jobs: true,
       notifications: true,
       // OAuth 2.1 authorization server — lets MCP clients (Claude) connect
       // to `/mcp` via Dynamic Client Registration instead of a pasted

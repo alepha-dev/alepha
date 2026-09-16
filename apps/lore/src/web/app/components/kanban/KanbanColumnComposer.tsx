@@ -1,4 +1,4 @@
-import { Button, useToast } from "@alepha/ui";
+import { Button } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -8,14 +8,18 @@ import type { I18n } from "../../services/I18n.ts";
 export interface KanbanColumnComposerProps {
   /**
    * Creates the quest and places it at this end of the column. Resolves
-   * once the card exists; rejects to keep the typed title in the field.
+   * `true` once the card exists; anything else keeps the typed title in the
+   * field (a refusal has already been toasted by the root listener).
    */
-  onCreate: (title: string) => Promise<void>;
+  onCreate: (title: string) => Promise<boolean | undefined>;
   /**
    * `head` composes above the first card, `foot` below the last. Only the
    * label and the icon differ; the placement is the caller's business.
    */
   position: "head" | "foot";
+  /**
+   * Holds the composer while a create runs anywhere on the board.
+   */
   disabled?: boolean;
 }
 
@@ -34,7 +38,6 @@ export interface KanbanColumnComposerProps {
  */
 const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [pending, setPending] = useState(false);
@@ -50,15 +53,14 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
 
   const submit = async () => {
     const trimmed = title.trim();
-    if (!trimmed || pending) return;
+    if (!trimmed || pending || props.disabled) return;
     setPending(true);
     try {
-      await props.onCreate(trimmed);
-      setTitle("");
-      // Deliberately keeps focus: the next card is usually next.
-      inputRef.current?.focus();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
+      if (await props.onCreate(trimmed)) {
+        setTitle("");
+        // Deliberately keeps focus: the next card is usually next.
+        inputRef.current?.focus();
+      }
     } finally {
       setPending(false);
     }
@@ -86,9 +88,9 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
         ref={inputRef}
         rows={2}
         value={title}
-        disabled={pending}
+        disabled={pending || props.disabled}
         data-testid={`kanban-composer-input-${props.position}`}
-        placeholder={String(tr("kanban.composer.placeholder"))}
+        placeholder={tr("kanban.composer.placeholder")}
         className="border-border bg-card focus-visible:ring-ring w-full resize-none rounded-md border px-2 py-1.5 text-sm shadow-sm focus-visible:ring-2 focus-visible:outline-none"
         onChange={(e) => setTitle(e.currentTarget.value)}
         onKeyDown={(e) => {
@@ -111,7 +113,7 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
         <Button
           size="sm"
           className="h-7 text-xs"
-          disabled={pending || !title.trim()}
+          disabled={pending || props.disabled || !title.trim()}
           data-testid={`kanban-composer-submit-${props.position}`}
           onClick={() => void submit()}
         >

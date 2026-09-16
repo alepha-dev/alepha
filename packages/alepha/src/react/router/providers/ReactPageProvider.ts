@@ -319,11 +319,18 @@ export class ReactPageProvider {
     }
 
     let forceRefresh = false;
+    let identity = "";
 
     for (let i = 0; i < stack.length; i++) {
       const it = stack[i];
       const route = it.route;
       const config: Record<string, any> = {};
+
+      // The layer's identity: its path so far, compiled from the RAW matched
+      // params. It keys the layer's element (see `renderView`) and decides
+      // reuse below, so both agree on when a layer is "the same page".
+      identity = this.identityOf(identity, route, state.params);
+      it.key = identity;
 
       try {
         this.convertStringObjectToObject(route.schema?.query, state.query);
@@ -363,21 +370,22 @@ export class ReactPageProvider {
 
       // check if previous layer is the same, reuse if possible
       if (previous?.[i] && !forceRefresh && previous[i].name === route.name) {
-        const url = (str?: string) => (str ? str.replace(/\/\/+/g, "/") : "/");
-
         // The decoded query participates: loaders read `query`, so a
         // query-only navigation (`/search?q=foo` → `/search?q=bar`) must
         // re-run them — reusing the layer would keep stale data on screen
         // and diverge from SSR, which re-runs loaders for the same URL.
+        //
+        // ⚠️ The identity, never `part` + the decoded params. A page with
+        // `:id` in its path and no `schema.params` decodes to `{}`, so
+        // `/users/1` and `/users/2` compared equal: the layer was reused and
+        // its loader never ran for the second user (#Q2349).
         const prev = JSON.stringify({
-          part: url(previous[i].part),
-          params: previous[i].config?.params ?? {},
+          key: previous[i].key,
           query: previous[i].config?.query ?? {},
         });
 
         const curr = JSON.stringify({
-          part: url(route.path),
-          params: config.params ?? {},
+          key: it.key,
           query: config.query ?? {},
         });
 
@@ -455,7 +463,16 @@ export class ReactPageProvider {
           };
         }
 
-        this.log.error("Page loader has failed", e);
+        // A refusal is the app working, not a crash: a loader that throws a
+        // 403 for an under-privileged visitor, or a 404 for a row that is not
+        // there, renders its page's refusal view exactly as intended. Logging
+        // every one of those at error level buries the 5xx that are real. Same
+        // rule the crash reporter uses: 4xx is debug, everything else — 5xx,
+        // and anything with no status, which never became a response at all —
+        // stays an error.
+        const status = (e as { status?: number } | undefined)?.status;
+        const expected = typeof status === "number" && status < 500;
+        this.log[expected ? "debug" : "error"]("Page loader has failed", e);
 
         it.error = e instanceof Error ? e : new Error(String(e));
         break;
@@ -531,9 +548,10 @@ export class ReactPageProvider {
             props,
             part: it.route.path,
             config: it.config,
-            element: this.renderView(i + 1, path, element, it.route),
+            element: this.renderView(i + 1, path, element, it.route, it.key),
             index: i + 1,
             path,
+            key: it.key,
             route: it.route,
             cache: it.cache,
           });
@@ -568,9 +586,10 @@ export class ReactPageProvider {
             name: it.route.name,
             part: it.route.path,
             config: it.config,
-            element: this.renderView(i + 1, path, element, it.route),
+            element: this.renderView(i + 1, path, element, it.route, it.key),
             index: i + 1,
             path,
+            key: it.key,
             route: it.route,
             cache: it.cache,
           });
@@ -710,17 +729,54 @@ export class ReactPageProvider {
     );
   }
 
+  /**
+   * A layer's identity: `parent`, the identity of the layer above it, joined
+   * with this route's own path compiled from the RAW matched params, the
+   * wildcard's capture included. The query and a locale prefix never
+   * participate.
+   *
+   * ## ⚠️ Raw params, not the decoded `config.params`
+   *
+   * A page with no `schema.params` decodes its params to `{}`, so compiling
+   * from them leaves `/users/:id` uncompiled and every user the same page.
+   * `state.params` holds what the URL matched, schema or not.
+   *
+   * ## What it is for (#Q2349)
+   *
+   * `renderView` keys each layer's element by it, so a param change remounts
+   * that layer and every layer below it, while the layers above keep their
+   * key and their state: the Next.js App Router's behaviour. A page that did
+   * `useState(props.epic)` used to keep showing the epic it mounted with, and
+   * nothing but a remount makes that pattern right by default. State that
+   * must survive a param change lives in the parent layout.
+   */
+  protected identityOf(
+    parent: string,
+    route: PageRoute,
+    params: Record<string, string> = {},
+  ): string {
+    const own = this.compile(route.path ?? "", params).replace(
+      /\*/g,
+      () => params["*"] ?? "",
+    );
+    return `${parent}/${own}`.replace(/\/+/g, "/");
+  }
+
   protected renderView(
     index: number,
     path: string,
     view: ReactNode | undefined,
     page: PageRoute,
+    key?: string,
   ): ReactNode {
     view ??= this.renderEmptyView();
 
     return createElement(
       RouterLayerContext.Provider,
       {
+        // The layer's identity (`identityOf`): a new one is a remount of
+        // this layer and everything below it, the same one an update.
+        key,
         value: {
           index,
           path,
@@ -1037,6 +1093,13 @@ export interface Layer {
   element: ReactNode;
   index: number;
   path: string;
+  /**
+   * The layer's identity: its path compiled from the raw matched params,
+   * query excluded (`ReactPageProvider.identityOf`). Keys the layer's element
+   * and decides whether a navigation reuses the layer. Carried in the SSR
+   * payload, so hydration reuses the server's layers.
+   */
+  key?: string;
   route?: PageRoute;
   cache?: boolean;
 }
@@ -1093,6 +1156,7 @@ export interface ReactRouterState {
 
 export interface RouterStackItem {
   route: PageRoute;
+  key?: string;
   config?: Record<string, any>;
   props?: Record<string, any>;
   error?: Error;

@@ -45,8 +45,9 @@ alternative cost something.
 
 ### Verifying
 
-- `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, lint, then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s. It catches a typo, a bad import, a broken unit test, a missing i18n key. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
+- `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, `yarn copy` (every workspace's generators, then lint), then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s, and the generators ~20s. It catches a typo, a bad import, a broken unit test, a missing i18n key, a JSDoc that breaks a docs rule. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
   - **Needs Docker running** for the service checks (postgres, redis, s3mock).
+  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any of them that differs from the index. A JSDoc change is therefore a two-part commit: the source and the pages it regenerates. Review the pages `yarn v` wrote, stage them, and run it again. Until #Q2358 this lane ran a bare `lint` and scanned whatever the checkout last generated, while CI scanned pages generated from the commit, which is how #Q2357 was green here and red on main for four commits.
   - `--fast` is accepted and does nothing. There is one lane now.
   - **One run per machine, across every worktree.** The command takes a machine-wide slot keyed on the package name, so a second `yarn v` queues instead of interleaving: `test` and `test:bun` both drive the one postgres on 15432, and two concurrent lanes are two suites sharing a database. It prints who holds the slot while it waits. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
 - **Pushing the branch** - the real gate. `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel on GitHub's runners, ~5 minutes. Four epics verify at once without touching each other, which is the whole point: this used to be four concurrent local pipelines on one machine, about thirty minutes of contended wall clock.
@@ -67,7 +68,7 @@ These fan out via `yarn workspaces foreach -Apt run …`, so every workspace tha
 - `yarn check:deps` - depcheck across every workspace (unused/missing deps)
 - `yarn check:i18n` - i18n catalog audit (each app's `alepha i18n check`)
 - `yarn check:migrations` - DB migration drift check (each app's `alepha db migrations check`)
-- `yarn check:docs` - the code samples of the guides and READMEs against the source (`apps/docs/scripts/check-docs.ts`)
+- `yarn check:docs` - the code samples of the guides and READMEs against the source, and the generated pages against the index (`apps/docs/scripts/check-docs.ts`). That second half is only meaningful after `yarn copy`, which `yarn v` and CI both run first
 - `yarn check:conventions` - the conventions below, mechanically (`scripts/check-conventions.mjs`)
 
 The convention is `check:<thing>` at the app level → `yarn check:<thing>` at the root that fans out. To add a new check that spans apps, follow the same shape (workspace script + root aggregator + add it to the `verify` pipeline in `alepha.config.ts`).
@@ -388,6 +389,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - **Never write code outside classes** — no standalone functions or constants in service files. Everything is a class method so it stays substitutable via DI for testing.
 - **No `_` prefix on class members** — use descriptive names.
 - **One schema per file** — never declare multiple schemas in one file.
+  - **The one exemption is a table filter's `schema`**, written inline in the `filters.fields` record a `DataTable` declares in its component body (`status: { schema: z.array(questStatusSchema), ... }`). Two conditions hold it in place. A schema that names a domain type is imported from its own file rather than redeclared (`questStatusSchema`, never a hand-written copy of its values). And only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel. `alepha/api/keys` exports controllers and entities, and `@alepha/commerce`'s `entities/orders.ts` imports `alepha/orm` at runtime, which is why `orderStatusEnum` lives in `src/schemas/orderStatusSchema.ts`. Enforced by review; `check:conventions` does not check it.
 
 ### Typing traps
 
@@ -400,20 +402,38 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ### React components
 
+⚠️ **In `packages/@alepha/ui/src`, `check:conventions` enforces five of these** on every `.tsx` file (specs and fixtures excluded): no `function` component, no props destructured in the parameter list, props typed `props: <Name>Props` with that type exported from the same file, one component per file (the compound primitive families named in the script's `UI_COMPOUND_FILES` excepted), and a `createContext` only under a `Context exemption:` comment. **Everywhere else, apps included, they are still enforced by review.**
+
 - **One component per file.** If a file has two, extract the second. The one exemption is a compound primitive, which keeps its family in one file: `@alepha/ui`'s `src/core/DropdownMenu.tsx` holds the menu and all its parts.
 - **File order:** PROPS interface → COMPONENT → the rest (other interfaces, helpers).
 - **Extracted component naming:** `ParentComponent.tsx` with an inner `Header` becomes `ParentComponentHeader.tsx`.
 - **Always arrow functions:** `const MyComponent = (props: MyComponentProps) => {}` — never `function`.
 - **Never destructure props in the parameter list:** use `(props: MyComponentProps)`, not `({ foo }: MyComponentProps)`. Destructure inside the body if you want.
 - **Props interfaces are named `MyComponentProps`** — always a named exported interface, never inline.
-- **No React Context** — use `$atom` + `useStore`, never `createContext` / `useContext`.
+- **No React Context**: use `$atom` + `useStore`, never `createContext` / `useContext`, for anything app-wide. **The one exemption is state scoped to a subtree**: the parts of one compound component sharing its instance (`Sidebar`, `Drawer`, `Chart`), or what a provider gives its own descendants (`FormField`'s layout, auto-save, required-marker and a11y contexts, `DialogProvider`, whose `useHasDialogProvider()` asks about tree position). An `$atom` holds one value per Alepha container, so two sidebars or two forms on a page cannot each have their own. Each such `createContext` carries, in the comment directly above it, the marker `Context exemption:` followed by its reason.
 - **Inside `@alepha/ui`, imports are relative and name a concrete file, never `@alepha/ui` or a module's `index.ts`.** `src/admin/AdminKeysTokenDialog.tsx` imports `../core/Button.tsx`, not `@alepha/ui`: a specifier would go through the package's own barrel, which is how a module ends up importing itself in a cycle. Outside the package it is the reverse: import from the module subpath (`@alepha/ui/admin`), never from a file inside it. `check:conventions` refuses both a self-import and a barrel import.
 - **Always a `Control*`, never a raw `ui/` primitive** — reach for `<Control select …>` / `<ControlSelect>` rather than `<Select>`, and the same for every other field. The raw primitive renders the raw VALUE on its trigger (an opaque id, not the label), and carries no label, no description, no error slot and no form binding, so every surface that used one grew the same three workarounds by hand. `<Select>` is `@deprecated` and going. **It is not a drop-in swap**: `Control` binds to a form field, so a picker with local state becomes a one-field `useForm` — `initialValues` for what the server says, `onChange` for a control that saves on change, and `useFormValues` where a `useState` was read.
+
+### Calling the API from React
+
+⚠️ **No `check:conventions` rule enforces this, and none is coming** (#E59, #Q2322 shelved): this section is the guard. Epic #E59 measured four in five of the apps' API calls hand-rolled, with 62 places in Lore that caught nothing and 17 effects with no race guard.
+
+- **Every call on a `useClient()` result goes through `useQuery` (a read), `useAction` (a write), a `useForm` handler, or a `DataTable`'s `fetch`.** Never a `useEffect` with an `alive` flag, never an async function with its own `try/catch` and toast: the hooks already hold `loading` and `error`, supersede a stale read, and report a failure.
+- **One `ActionErrorToaster` is mounted at the app root** (Lore's `Layout.tsx`, the shop's `Layout.tsx`; an `AppShell` that is not `embedded` mounts its own), so a request failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself (an inline error state, a form alert), passes `onError`: that marks the error `handled`, the toaster skips it, and error reporting still sees it. A `FormValidationError` with a field `path` is handled already, since it renders under its field.
+- ⚠️ **`run()` drops a call made while one is in flight, and resolves `undefined` on failure** (and on success of a handler that returns nothing). Disable every control of the action on `loading`, busy page-wide rather than per row, and put follow-ups inside the handler: `await save.run(); close()` closes the dialog on a failure.
+- ⚠️ **`useAction` appends `{ signal }` as the handler's last argument.** No optional or defaulted trailing parameter: a `quantity = 1` the caller leaves out receives `{ signal }` and sends it, and TypeScript does not catch it. Make it required (`rank: string | undefined`) or take one object. Give the hook its types explicitly (`useAction<[id: string], boolean>`): inference from a handler with fewer parameters than `[...Args, ActionContext]` fails.
+- **An optimistic update restores its snapshot in the handler's `catch` and rethrows.** `onError` receives the error and nothing else, so it cannot restore what it never saw; the rethrow is what reports the failure.
+- **A read that a write refreshes has a key**, since a keyless `useQuery` cannot be invalidated: kebab-case resource, then project id, then anything narrower (`["project-users", projectId]`). The write declares `invalidates`, or calls `useQueryClient().invalidate` when the key needs an argument only the handler has.
+- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteMember`, `usePanier`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed, so callers keep `if (await verb(...))`. **A hook whose functions other handlers compose keeps rejecting** (`useQuestMutations`: the board accepts, then moves, and the move must not follow a failed accept); its callers run it inside their own `useAction`.
+- **A callback whose promise an awaiting consumer needs stays a plain function** (the markdown upload hooks, an analytics transport), with its reason in a comment beside it.
+- **Never `catch (x: any)`.** The variable is `unknown`; read `.message` through `instanceof Error`. The toast says `error.message`, the server's own sentence, never a translated "something went wrong" in front of it.
+
+If a later change moves one of these rules, it updates this section in the same commit.
 
 ### Router and i18n
 
 - **`useRouter<T>()` navigates with `router.push("pageName", { params })`** — there is no `router.navigate()`.
-- **`useI18n().l()` returns `string | number`** — wrap in `String()` for string fields.
+- **`useI18n().tr()` and `l()` both return `string`, so never wrap either in `String()`.** `l()` used to be inferred `string | number` (a compound `typeof` check that did not narrow), and the advice to wrap it spread to `tr()`, which had always returned a string: 721 no-op wrappers were removed in #Q2312. Both now declare `: string`, so a branch returning anything else is a type error rather than a reason to wrap. A helper that takes `tr` as a parameter types it `(key: …) => string`, or `I18nProvider<any, any>["tr"]`.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`** — for date+time pass a dayjs format string such as `"lll"` to `date`.
 - **`$route` never lives under `/api`** — it is the raw level below `$action`, does not prefix `/api`, and the `$action` dispatcher shadows anything under `/api/*` (404s). Root paths only.
 
@@ -435,7 +455,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ## Notes for AI Assistants
 
-- Update docs/framework/1-guides/ if you change any public API or behavior (docs/framework/2-reference and docs/framework/3-packages are regenerated from source JSDoc by `yarn copy` — fix the JSDoc, never those files)
+- Update docs/framework/1-guides/ if you change any public API or behavior (docs/framework/2-reference and docs/framework/3-packages are regenerated from source JSDoc by `yarn copy`: fix the JSDoc, never those files, and commit the pages it regenerates, which `check:docs` enforces)
 - The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
 - All async operations should use `Alepha.create()` and proper lifecycle management
 - HTTP client (`HttpClient`) has built-in request deduplication and caching

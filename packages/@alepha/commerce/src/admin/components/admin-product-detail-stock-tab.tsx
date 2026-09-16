@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
-import { AlephaTable, type TableFetcher } from "@alepha/ui/table";
+import { DataTable, type TableFetcher } from "@alepha/ui/table";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
@@ -42,20 +42,16 @@ export const AdminProductDetailStockTab = (
 
   const figures: Array<{ label: string; value: number; alert?: boolean }> = [
     {
-      label: String(
-        tr("commerce.admin.availableLabel", { default: "Available" }),
-      ),
+      label: tr("commerce.admin.availableLabel", { default: "Available" }),
       value: product.available,
       alert: product.available <= 0,
     },
     {
-      label: String(tr("commerce.admin.onHandLabel", { default: "On hand" })),
+      label: tr("commerce.admin.onHandLabel", { default: "On hand" }),
       value: product.onHand,
     },
     {
-      label: String(
-        tr("commerce.admin.reservedLabel", { default: "Reserved" }),
-      ),
+      label: tr("commerce.admin.reservedLabel", { default: "Reserved" }),
       value: product.reserved,
     },
   ];
@@ -110,9 +106,9 @@ export const AdminProductDetailStockTab = (
         <CardContent>
           <AutoForm
             form={props.form}
-            submitLabel={String(
-              tr("commerce.admin.stock.adjustCta", { default: "Record" }),
-            )}
+            submitLabel={tr("commerce.admin.stock.adjustCta", {
+              default: "Record",
+            })}
           />
         </CardContent>
       </Card>
@@ -126,22 +122,20 @@ export const AdminProductDetailStockTab = (
           </CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col">
-          <AlephaTable<StockMovementEntity>
+          <DataTable<StockMovementEntity>
             className="min-h-0 flex-1"
             persistenceKey={`commerce.admin.product.${product.id}.movements`}
             fetch={props.fetch}
             refreshSignal={props.refreshSignal}
-            emptyMessage={String(
-              tr("commerce.admin.stock.ledgerEmpty", {
-                default: "No stock movement recorded yet.",
-              }),
-            )}
+            emptyMessage={tr("commerce.admin.stock.ledgerEmpty", {
+              default: "No stock movement recorded yet.",
+            })}
             columns={{
               createdAt: {
                 label: tr("commerce.admin.stock.colWhen", { default: "When" }),
                 cell: (m) => (
                   <span className="text-muted-foreground text-xs">
-                    {String(l(m.createdAt, { date: "lll" }))}
+                    {l(m.createdAt, { date: "lll" })}
                   </span>
                 ),
               },

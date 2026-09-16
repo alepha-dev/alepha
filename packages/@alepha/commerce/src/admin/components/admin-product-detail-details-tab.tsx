@@ -97,17 +97,17 @@ export const AdminProductDetailDetailsTab = (
               <Input
                 value={row.key}
                 onChange={(e) => setRow(index, { key: e.target.value })}
-                placeholder={String(
-                  tr("commerce.admin.details.attrName", { default: "Name" }),
-                )}
+                placeholder={tr("commerce.admin.details.attrName", {
+                  default: "Name",
+                })}
                 className="w-1/3"
               />
               <Input
                 value={row.value}
                 onChange={(e) => setRow(index, { value: e.target.value })}
-                placeholder={String(
-                  tr("commerce.admin.details.attrValue", { default: "Value" }),
-                )}
+                placeholder={tr("commerce.admin.details.attrValue", {
+                  default: "Value",
+                })}
                 className="flex-1"
               />
               <Button
@@ -117,11 +117,9 @@ export const AdminProductDetailDetailsTab = (
                 onClick={() =>
                   setRows((current) => current.filter((_, i) => i !== index))
                 }
-                aria-label={String(
-                  tr("commerce.admin.details.attrRemove", {
-                    default: "Remove attribute",
-                  }),
-                )}
+                aria-label={tr("commerce.admin.details.attrRemove", {
+                  default: "Remove attribute",
+                })}
               >
                 <Trash2 className="size-3.5" />
               </Button>
@@ -173,9 +171,7 @@ export const AdminProductDetailDetailsTab = (
           <CardContent>
             <AutoForm
               form={props.configForm}
-              submitLabel={String(
-                tr("commerce.admin.save", { default: "Save" }),
-              )}
+              submitLabel={tr("commerce.admin.save", { default: "Save" })}
             />
           </CardContent>
         </Card>

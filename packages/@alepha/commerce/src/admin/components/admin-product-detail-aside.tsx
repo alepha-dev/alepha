@@ -35,15 +35,15 @@ export const AdminProductDetailAside = (
 
   const rows: DetailAsideRow[] = [
     {
-      label: String(tr("commerce.admin.detail.id", { default: "ID" })),
+      label: tr("commerce.admin.detail.id", { default: "ID" }),
       copy: product.id,
     },
     {
-      label: String(tr("commerce.admin.detail.slug", { default: "Reference" })),
+      label: tr("commerce.admin.detail.slug", { default: "Reference" }),
       copy: product.slug,
     },
     {
-      label: String(tr("commerce.admin.detail.kind", { default: "Type" })),
+      label: tr("commerce.admin.detail.kind", { default: "Type" }),
       value: (
         <Badge variant="outline" className="font-mono text-xs">
           {product.kind}
@@ -51,11 +51,11 @@ export const AdminProductDetailAside = (
       ),
     },
     {
-      label: String(tr("commerce.admin.detail.price", { default: "Price" })),
+      label: tr("commerce.admin.detail.price", { default: "Price" }),
       value: <span className="block tabular-nums">{price}</span>,
     },
     {
-      label: String(tr("commerce.admin.detail.vat", { default: "VAT" })),
+      label: tr("commerce.admin.detail.vat", { default: "VAT" }),
       value: (
         <span className="block tabular-nums">
           {product.vatRateBps === undefined ? (
@@ -71,7 +71,7 @@ export const AdminProductDetailAside = (
       ),
     },
     {
-      label: String(tr("commerce.admin.detail.status", { default: "Status" })),
+      label: tr("commerce.admin.detail.status", { default: "Status" }),
       value: product.published ? (
         <Badge>{tr("commerce.admin.online", { default: "Online" })}</Badge>
       ) : (
@@ -86,9 +86,7 @@ export const AdminProductDetailAside = (
        * two are already in somebody's checkout, and available is the number
        * that decides whether anything can still be sold.
        */
-      label: String(
-        tr("commerce.admin.availableLabel", { default: "Available" }),
-      ),
+      label: tr("commerce.admin.availableLabel", { default: "Available" }),
       value: (
         <span
           className={
@@ -102,23 +100,17 @@ export const AdminProductDetailAside = (
       ),
     },
     {
-      label: String(tr("commerce.admin.onHandLabel", { default: "On hand" })),
+      label: tr("commerce.admin.onHandLabel", { default: "On hand" }),
       value: <span className="block tabular-nums">{product.onHand}</span>,
     },
     {
-      label: String(
-        tr("commerce.admin.reservedLabel", { default: "Reserved" }),
-      ),
+      label: tr("commerce.admin.reservedLabel", { default: "Reserved" }),
       value: <span className="block tabular-nums">{product.reserved}</span>,
     },
     {
-      label: String(
-        tr("commerce.admin.detail.created", { default: "Created" }),
-      ),
+      label: tr("commerce.admin.detail.created", { default: "Created" }),
       value: (
-        <span className="block">
-          {String(l(product.createdAt, { date: "lll" }))}
-        </span>
+        <span className="block">{l(product.createdAt, { date: "lll" })}</span>
       ),
     },
   ];

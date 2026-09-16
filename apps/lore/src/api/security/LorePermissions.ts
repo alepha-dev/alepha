@@ -126,6 +126,7 @@ export class LorePermissions {
     "area:manage",
     "app:manage",
     "deploy:manage",
+    "artifact:delete",
     "sigil:manage",
     "blight:triage",
     "estate:lend",
@@ -436,6 +437,21 @@ export class LorePermissions {
     label: "permission.artifact.read",
     groupLabel: "permission.group.artifact",
     groupOrder: 32,
+  });
+
+  /**
+   * Removing a build from the registry, with its stored bytes and source maps.
+   *
+   * Not a member default, although pushing is: CI pushes under
+   * `artifact:read` and nothing a pipeline does needs to take a build away.
+   * A delete is irreversible and can remove the bytes a deployed copy would
+   * be rolled back to, so it sits with the configuration acts and the Admin
+   * preset carries it.
+   */
+  artifactDelete = $permission({
+    group: "artifact",
+    name: "delete",
+    label: "permission.artifact.delete",
   });
 
   blightRead = $permission({

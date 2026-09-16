@@ -6,9 +6,14 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { Toaster as Sonner, type ToasterProps } from "sonner";
+import {
+  Toaster as Sonner,
+  type ToasterProps as SonnerToasterProps,
+} from "sonner";
 
-const Toaster = ({ ...props }: ToasterProps) => {
+export type ToasterProps = SonnerToasterProps;
+
+const Toaster = (props: ToasterProps) => {
   // The colour scheme comes from `alepha/react/ui`, not from `next-themes`,
   // which is not a dependency here.
   const { mode } = useColorMode();

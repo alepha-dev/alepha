@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react";
-import { Alepha, z } from "alepha";
+import { Alepha, SchemaValidationError, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
@@ -88,6 +88,73 @@ describe("FormValidationError", () => {
     await waitFor(() => {
       expect(ui.getByTestId("email-error").textContent).toBe("");
     });
+
+    await alepha.stop();
+  });
+
+  /**
+   * The schema's own refusal arrives as the same type a handler throws, so
+   * whoever listens to `react:action:error` can tell a person's input from a
+   * fault (blight #585, #Q2343). It still reaches the field.
+   */
+  it("hands on the schema's own refusal as a FormValidationError", async () => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    await alepha.start();
+    const seen: Array<{ type: string; error: Error }> = [];
+    alepha.events.on("react:action:error", (event) => {
+      seen.push(event);
+    });
+    const ui = mount(alepha, <EmailForm />);
+
+    // `email` is required and never filled in.
+    fireEvent.submit(ui.getByTestId("form"));
+
+    await waitFor(() => {
+      expect(ui.getByTestId("email-error").textContent).toContain("email");
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0].type).toBe("form");
+    expect(seen[0].error).toBeInstanceOf(FormValidationError);
+    expect(seen[0].error.name).toBe("ValidationError");
+    expect((seen[0].error as FormValidationError).value.path).toBe("/email");
+
+    await alepha.stop();
+  });
+
+  it("leaves a SchemaValidationError thrown by the handler as it is", async () => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    await alepha.start();
+    const seen: Error[] = [];
+    alepha.events.on("react:action:error", (event) => {
+      seen.push(event.error);
+    });
+    const BrokenResponseForm = () => {
+      const form = useForm({
+        schema: z.object({ email: z.text() }),
+        handler: () => {
+          // What a response that broke its own schema looks like from here.
+          throw new SchemaValidationError({
+            message: "'id' is required",
+            instancePath: "/id",
+          });
+        },
+      });
+      return (
+        <form {...form.props} data-testid="broken">
+          <input {...form.input.email.props} data-testid="broken-email" />
+        </form>
+      );
+    };
+    const ui = mount(alepha, <BrokenResponseForm />);
+
+    fireEvent.change(ui.getByTestId("broken-email"), {
+      target: { value: "a@example.com" },
+    });
+    fireEvent.submit(ui.getByTestId("broken"));
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).not.toBeInstanceOf(FormValidationError);
+    expect(seen[0].name).toBe("SchemaValidationError");
 
     await alepha.stop();
   });

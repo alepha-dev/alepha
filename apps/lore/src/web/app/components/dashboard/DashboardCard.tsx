@@ -73,6 +73,11 @@ export interface DashboardCardProps {
   onChangeScope: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /**
+   * True while a card write runs: the menu's writes are held until it lands,
+   * since `run()` would drop a second one in silence (#E59 rule 10).
+   */
+  busy?: boolean;
 }
 
 /**
@@ -186,6 +191,7 @@ const DashboardCard = (props: DashboardCardProps) => {
               onChangeScope={props.onChangeScope}
               onDuplicate={props.onDuplicate}
               onRemove={props.onRemove}
+              busy={props.busy}
             />
           </>
         )}

@@ -13,7 +13,7 @@ import { type ComponentType, lazy, Suspense, useMemo } from "react";
  * `@alepha/ui` asks the WINDOW: Tailwind's `sm:` / `md:` are viewport media
  * queries, and `useIsMobile()` is `window.matchMedia("(max-width: 767px)")`.
  * At 375px of preview width inside a 1280px window they all still report the
- * desktop answer, so `AlephaTable` kept its filters inline instead of folding
+ * desktop answer, so `DataTable` kept its filters inline instead of folding
  * them behind the button it has for exactly that case.
  *
  * An iframe is a real browsing context with its own viewport, so every one of

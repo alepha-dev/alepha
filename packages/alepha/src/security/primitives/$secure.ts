@@ -31,8 +31,45 @@ export interface SecureOptions {
 
   /**
    * Required permissions. All must be satisfied.
+   *
+   * Each is checked against the caller's roles, then against the credential's
+   * `permissionScope` (see `userAccountInfoSchema`): a scoped credential is
+   * refused a permission its roles grant when its scope excludes it.
+   *
+   * ⚠️ A scope binds permission-checked routes ONLY. A route declaring no
+   * `permissions` (a bare `$secure()`, or `$secure({ roles })`) admits a
+   * scoped credential whatever its scope says. That is deliberate: denying
+   * them would break `whoami`-shaped reads and `/api/_links`, and a credential
+   * that cannot read the registry is unusable by an MCP client. A scope
+   * narrows what a credential may DO, not what it may SEE, so "scoped to
+   * `project:read`" is a narrower claim than it sounds.
    */
   permissions?: (string | Permission)[];
+
+  /**
+   * Require a signed-in session: refuse an identity authenticated by a
+   * machine credential, whatever it may otherwise do.
+   *
+   * A machine credential is not a session. An API key, or the access token a
+   * connected app obtained through the OAuth authorization server (trusted
+   * first-party clients included), may read, and call the permission-checked
+   * actions its roles and scope allow, but a route that
+   * mints or revokes credentials, approves an OAuth grant, or changes the
+   * account is something a person does from a signed-in session. Declare this
+   * on every such route: in the framework, the key-minting routes and every
+   * non-GET route under `/users/me`, by path rather than by judgement, so the
+   * next account route is covered by reading its path.
+   *
+   * It refuses any identity carrying a `credential` marker (see
+   * `userAccountInfoSchema`), not a credential type by name. The refusal is a
+   * 403 saying the route needs a signed-in session, so it does not read as a
+   * missing role.
+   *
+   * Next to the permission scope rule on {@link permissions}: a scope decides
+   * what a credential may do on permission-checked routes; this decides the
+   * routes no machine credential reaches at all.
+   */
+  sessionOnly?: boolean;
 
   /**
    * Custom guard. Runs after all other checks, and is the only check that can
@@ -103,9 +140,10 @@ export interface SecureGuardContext {
  * All provided options must pass (AND). Each option has its own logic:
  *
  * 1. **Authentication**: Is there a valid user? → `UnauthorizedError` (401)
+ *    With `sessionOnly`, is it a signed-in session rather than a machine credential? → `ForbiddenError` (403)
  * 2. **Issuers** (OR): Does the user's realm match at least one? → `ForbiddenError` (403)
  * 3. **Roles** (OR): Does the user have at least one of the listed roles? → `ForbiddenError` (403)
- * 4. **Permissions** (AND): Does the user's role grant all listed permissions? → `ForbiddenError` (403)
+ * 4. **Permissions** (AND): Does the user's role grant all listed permissions, and does the credential's `permissionScope` admit them? → `ForbiddenError` (403)
  * 5. **Guard**: Does the custom function return `true`? → `ForbiddenError` (403)
  *
  * Permissions declared in `$secure()` are auto-created in the permission registry at definition time.
@@ -195,6 +233,17 @@ export function $secure(options?: SecureOptions): Middleware {
           throw new UnauthorizedError("Authentication required");
         }
 
+        // 3b. A machine credential is not a session: refused before anything
+        // else is asked of it, so the answer never depends on its roles.
+        if (
+          options?.sessionOnly &&
+          securityProvider.isMachineCredential(user)
+        ) {
+          throw new ForbiddenError(
+            `This route requires a signed-in session, and this request was authenticated by a machine credential (${user.credential?.type})`,
+          );
+        }
+
         // 4. Issuer check (user must belong to one of the listed issuers)
         securityProvider.checkIssuers(user, options?.issuers);
 
@@ -223,14 +272,15 @@ export function $secure(options?: SecureOptions): Middleware {
           let ownership: string | boolean | undefined;
 
           for (const perm of options.permissions) {
-            const result = securityProvider.checkPermissionInRealm(
-              user.realm,
-              perm,
-              ...(user.roles ?? []),
-            );
+            // Roles, then the credential's permission scope: a scope narrows
+            // the grant and never widens it.
+            const result = securityProvider.checkUserPermission(user, perm);
             if (!result.isAuthorized) {
+              const name = typeof perm === "string" ? perm : perm.name;
               throw new ForbiddenError(
-                `Permission '${typeof perm === "string" ? perm : perm.name}' required`,
+                result.deniedBy === "scope"
+                  ? `Permission '${name}' is outside this credential's permission scope`
+                  : `Permission '${name}' required`,
               );
             }
 

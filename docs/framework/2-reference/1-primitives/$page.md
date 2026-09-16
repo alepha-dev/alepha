@@ -18,6 +18,10 @@ It provides a declarative way to define pages with powerful features:
 - URL pattern matching with parameters (e.g., `/users/:id`)
 - Nested routing with parent-child relationships
 - Type-safe URL parameter and query string validation
+- A page REMOUNTS when its params change (`/users/1` to `/users/2`), and
+  the layouts above it keep their state; a query-only change or
+  `router.invalidate()` re-runs the loader without remounting. State that
+  must survive a param change belongs in the parent layout.
 
 **Data Loading**
 

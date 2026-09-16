@@ -92,10 +92,25 @@ export class DeployJobs {
    */
   public static readonly SLOT_RETRY_SECONDS = 10;
 
+  /**
+   * The execution's own timeout: one minute past the longest deploy timer
+   * `DeployLimits` allows, and still under the queue consumer's 15 minutes.
+   *
+   * ⚠️ **Its job is the crash threshold, not the abort.** The run is bounded
+   * by `DeployService`'s own timer, which writes a readable failure; this
+   * value exists because the sweep calls a silent execution dead after twice
+   * the job's timeout, and with none declared that fell back to twice the
+   * default `runTimeout`, so a run the platform killed was noticed 30 to 45
+   * minutes later (blight #616, #Q2344). It sits ABOVE the deploy timer so it
+   * never fires first on a run that is still going to report.
+   */
+  public static readonly RUN_TIMEOUT_MS = DeployLimits.MAX_TIMEOUT_MS + 60_000;
+
   public readonly runDeploy = $job({
     name: "deploys.run",
     description:
       "Runs one deployment, waiting for a free slot, and fails it once past its timeout.",
+    timeout: [DeployJobs.RUN_TIMEOUT_MS, "milliseconds"],
     // A few deploys a day, and an operator wants both outcomes: a queue job
     // keeps no successes by default, which made every deploy look failed.
     retention: { ok: { days: 30 }, error: { days: 30 } },

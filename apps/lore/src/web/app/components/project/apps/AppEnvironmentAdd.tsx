@@ -8,7 +8,7 @@ import {
   Input,
   useToast,
 } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -19,7 +19,6 @@ import type { I18n } from "../../../services/I18n.ts";
 export interface AppEnvironmentAddProps {
   projectId: number;
   instanceId: string;
-  onSaved: () => void;
 }
 
 /**
@@ -37,7 +36,8 @@ export interface AppEnvironmentAddProps {
  * matters is that no response ever carries it back.
  *
  * The refusals are the server's own words: reserved names, the length bound
- * and the key count all come back as messages naming what to do instead.
+ * and the key count all come back as messages naming what to do instead, and
+ * the root `ActionErrorToaster` shows them as they are (#E59, #Q2329).
  */
 const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -46,34 +46,31 @@ const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
 
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
 
-  const save = async () => {
-    if (!key.trim() || !value) {
-      return;
-    }
-
-    setBusy(true);
-    try {
-      await secretApi.setAppSecret({
-        params: {
-          projectId: props.projectId,
-          instanceId: props.instanceId,
-        },
-        body: { key: key.trim(), value },
-      });
-      // Cleared on success, and only on success: a refused name is one the
-      // operator wants to correct rather than retype.
-      setKey("");
-      setValue("");
-      toaster.success(tr("app.environment.saved"));
-      props.onSaved();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const saveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!key.trim() || !value) {
+          return;
+        }
+        await secretApi.setAppSecret({
+          params: {
+            projectId: props.projectId,
+            instanceId: props.instanceId,
+          },
+          body: { key: key.trim(), value },
+        });
+        // Cleared on success, and only on success: a refused name is one the
+        // operator wants to correct rather than retype.
+        setKey("");
+        setValue("");
+        toaster.success(tr("app.environment.saved"));
+      },
+      invalidates: [["app-secrets", props.projectId, props.instanceId]],
+    },
+    [secretApi, key, value, props.projectId, props.instanceId, toaster, tr],
+  );
+  const busy = saveAction.loading;
 
   return (
     <Card>
@@ -110,7 +107,7 @@ const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
         </div>
         <Button
           disabled={busy || !key.trim() || !value}
-          onClick={save}
+          onClick={() => void saveAction.run()}
           data-testid="app-environment-save"
         >
           {tr("app.environment.save")}

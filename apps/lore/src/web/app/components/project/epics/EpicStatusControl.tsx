@@ -1,7 +1,6 @@
-import { Button, useDialog, useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { Button, useDialog } from "@alepha/ui";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
@@ -30,9 +29,10 @@ export interface EpicStatusControlProps {
  * toolbar control changes it. Keeping a badge here too would put the same
  * fact on screen twice, a hand's width apart.
  *
- * `submitting` guards against a double-click firing two overlapping
- * `setEpicStatus` calls, the same way `ProjectEpics.tsx`'s `submitCreate`
- * guards its own in-flight request.
+ * The write is a `useAction` (#E59, #Q2326): `run()` drops a double click
+ * while the first call is in flight, the button is disabled for that time,
+ * and a refusal is the server's sentence, toasted by the root
+ * `ActionErrorToaster`.
  *
  * ## Mark as ready confirms, Back to draft does not
  *
@@ -57,40 +57,37 @@ export interface EpicStatusControlProps {
  */
 const EpicStatusControl = (props: EpicStatusControlProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
-  const [submitting, setSubmitting] = useState(false);
   const blockedBy = epicBlockedBy(props.epic);
 
-  const changeStatus = async (status: "draft" | "ready") => {
-    if (submitting) return;
-    if (
-      status === "ready" &&
-      !(await dialog.confirm({
-        title: tr("epic.ready.title"),
-        description: tr("epic.ready.confirm", {
-          args: [props.epic.title],
-        }) as string,
-        confirmLabel: tr("epic.status.actions.markReady"),
-        cancelLabel: tr("common.cancel"),
-      }))
-    ) {
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const updated = await epicApi.setEpicStatus({
-        params: { id: props.epic.id },
-        body: { status },
-      });
-      props.onChange(updated);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const changeAction = useAction<[status: "draft" | "ready"], void>(
+    {
+      handler: async (status) => {
+        if (
+          status === "ready" &&
+          !(await dialog.confirm({
+            title: tr("epic.ready.title"),
+            description: tr("epic.ready.confirm", {
+              args: [props.epic.title],
+            }),
+            confirmLabel: tr("epic.status.actions.markReady"),
+            cancelLabel: tr("common.cancel"),
+          }))
+        ) {
+          return;
+        }
+        props.onChange(
+          await epicApi.setEpicStatus({
+            params: { id: props.epic.id },
+            body: { status },
+          }),
+        );
+      },
+    },
+    [epicApi, dialog, props.epic.id, props.epic.title, props.onChange, tr],
+  );
+  const submitting = changeAction.loading;
 
   if (props.epic.status !== "draft" && props.epic.status !== "ready") {
     return null;
@@ -104,7 +101,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
 
   const blockedLabel =
     blockedBy !== undefined
-      ? String(tr("epic.start.blocked", { args: [String(blockedBy)] }))
+      ? tr("epic.start.blocked", { args: [String(blockedBy)] })
       : undefined;
 
   return (
@@ -117,7 +114,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
           type="button"
           size="lg"
           disabled={submitting}
-          onClick={() => void changeStatus("ready")}
+          onClick={() => void changeAction.run("ready")}
         >
           {tr("epic.status.actions.markReady")}
         </Button>
@@ -127,7 +124,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
           size="lg"
           variant="outline"
           disabled={submitting}
-          onClick={() => void changeStatus("draft")}
+          onClick={() => void changeAction.run("draft")}
         >
           {tr("epic.status.actions.backToDraft")}
         </Button>

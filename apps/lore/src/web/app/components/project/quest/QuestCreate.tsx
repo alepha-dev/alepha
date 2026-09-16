@@ -8,7 +8,13 @@ import {
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import {
+  useAlepha,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -28,7 +34,7 @@ import {
   Tags as TagsIcon,
   Tent,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -91,23 +97,21 @@ const QuestCreate = (props: QuestCreateProps) => {
   // The project's existing tags, offered as the Tags select's options. Fetched
   // here rather than inside a widget because the field is a plain multi-select
   // `Control` now, and `items` is what feeds it.
-  const [knownTags, setKnownTags] = useState<string[]>([]);
-  useEffect(() => {
-    let alive = true;
-    questApi
-      .listQuestTags({ query: { projectId: props.project.id } })
-      .then((tags) => {
-        if (alive) setKnownTags(tags);
-      })
-      .catch(() => {
-        // Suggestions are a convenience, not the feature: `createNewEntry`
-        // means the field still accepts any tag with an empty option list, so
-        // a failed fetch must not cost the form.
-      });
-    return () => {
-      alive = false;
-    };
-  }, [props.project.id]);
+  //
+  // Quiet on failure (#E59, #Q2328): suggestions are a convenience, not the
+  // feature. `createNewEntry` means the field still accepts any tag with an
+  // empty option list, so a failed fetch must not cost the form. Keyed on the
+  // project, and shared with `QuestTagInput`.
+  const knownTags =
+    useQuery(
+      {
+        key: ["quest-tags", props.project.id],
+        handler: () =>
+          questApi.listQuestTags({ query: { projectId: props.project.id } }),
+        onError: () => {},
+      },
+      [questApi, props.project.id],
+    ).data ?? NO_TAGS;
 
   const form = useForm({
     id: "quest-create",
@@ -394,9 +398,6 @@ const QuestCreate = (props: QuestCreateProps) => {
                 createNewEntry
                 items={knownTags}
                 clearLabel={tr("quest.create.tags.empty")}
-                countLabel={(n) =>
-                  String(tr("quest.create.tagCount", { args: [String(n)] }))
-                }
               />
 
               {/* Estimation is a methodology, not a default — see
@@ -533,3 +534,9 @@ const QuestCreate = (props: QuestCreateProps) => {
 };
 
 export default QuestCreate;
+
+/**
+ * One empty list, so the Tags field's `items` keeps its identity while the
+ * suggestions load.
+ */
+const NO_TAGS: string[] = [];

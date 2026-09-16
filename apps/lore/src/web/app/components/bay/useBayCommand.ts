@@ -1,5 +1,4 @@
-import { useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useState } from "react";
 
 import type { EstateCommandController } from "@/api/controllers/EstateCommandController.ts";
@@ -35,54 +34,65 @@ export interface BayCommandBody {
  * The failure reason is carried VERBATIM from the machine's ack. It is the
  * sentence the executor wrote about the host, and paraphrasing it would lose
  * the one piece of information a person needs.
+ *
+ * A verb hook over one `useAction` (#E59, #Q2329): `run` resolves the command
+ * as it last read, or `undefined` when the enqueue was refused, and `busy` is
+ * the action's `loading`. A refusal at enqueue (a deploy switch, an offline
+ * machine for the verbs that refuse) is the server's sentence, shown as it is
+ * by the root `ActionErrorToaster`.
  */
 export const useBayCommand = (estate: Estate | undefined) => {
   const commandApi = useClient<EstateCommandController>();
-  const toaster = useToast();
   const [command, setCommand] = useState<EstateCommandResource | undefined>();
-  const [busy, setBusy] = useState(false);
 
-  const run = async (body: BayCommandBody) => {
-    if (!estate || busy) {
-      return;
-    }
-    setBusy(true);
-    setCommand(undefined);
-    try {
-      let current = await commandApi.enqueueEstateCommand({
-        params: { estateId: estate.id },
-        body,
-      });
-      setCommand(current);
-
-      // Followed rather than assumed. The machine acks over its own
-      // connection, so the row is where the outcome appears.
-      for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
-        if (current.status === "done" || current.status === "failed") {
-          return current;
+  const action = useAction<
+    [body: BayCommandBody],
+    EstateCommandResource | undefined
+  >(
+    {
+      handler: async (body, { signal }) => {
+        if (!estate) {
+          return undefined;
         }
-        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-        const listed = await commandApi.listEstateCommands({
+        setCommand(undefined);
+        let current = await commandApi.enqueueEstateCommand({
           params: { estateId: estate.id },
+          body,
         });
-        const found = listed.items.find((item) => item.id === current.id);
-        if (found) {
-          current = found;
-          setCommand(found);
-        }
-      }
-      return current;
-    } catch (error) {
-      // A refusal at enqueue (a deploy switch, an offline machine for the
-      // verbs that refuse) is the server's sentence and is shown as it is.
-      toaster.error(error instanceof Error ? error.message : String(error));
-      return undefined;
-    } finally {
-      setBusy(false);
-    }
-  };
+        setCommand(current);
 
-  return { command, busy, run, clear: () => setCommand(undefined) };
+        // Followed rather than assumed. The machine acks over its own
+        // connection, so the row is where the outcome appears. An unmount
+        // aborts the signal, which ends the follow.
+        for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
+          if (current.status === "done" || current.status === "failed") {
+            return current;
+          }
+          await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+          if (signal.aborted) {
+            return current;
+          }
+          const listed = await commandApi.listEstateCommands({
+            params: { estateId: estate.id },
+          });
+          const found = listed.items.find((item) => item.id === current.id);
+          if (found) {
+            current = found;
+            setCommand(found);
+          }
+        }
+        return current;
+      },
+    },
+    [commandApi, estate],
+  );
+
+  return {
+    command,
+    busy: action.loading,
+    run: action.run,
+    clear: () => setCommand(undefined),
+  };
 };
 
 /** The gap between two reads of the queue. */

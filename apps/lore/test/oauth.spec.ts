@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { Alepha, z } from "alepha";
-import { ApiKeyController } from "alepha/api/keys";
 import { oauthOptions } from "alepha/api/oauth";
 import {
   AdminUserController,
@@ -17,6 +16,8 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
+import { AppSecurityProvider } from "../src/api/providers/AppSecurityProvider.ts";
+import { LoreOAuthScopes } from "../src/api/security/LoreOAuthScopes.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
 /**
@@ -35,7 +36,7 @@ interface TestContext {
   alepha: Alepha;
   baseUrl: string;
   adminUserController: AdminUserController;
-  apiKeyController: ApiKeyController;
+  security: AppSecurityProvider;
   fakeProvider: FakeProvider;
 }
 
@@ -62,6 +63,7 @@ const setup = async (): Promise<TestContext> => {
     realm: "users",
     resource: "/mcp",
     loginPath: "/auth/login",
+    scopes: LoreOAuthScopes.SCOPES,
   });
 
   alepha.with(LoreApi);
@@ -75,31 +77,35 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     baseUrl: server.hostname,
     adminUserController: alepha.inject(AdminUserController),
-    apiKeyController: alepha.inject(ApiKeyController),
+    security: alepha.inject(AppSecurityProvider),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
 
 async function createTestUser(
   ctx: TestContext,
+  roles: string[] = ["user"],
 ): Promise<{ id: string; roles: string[] }> {
   const fakeUser = ctx.fakeProvider.generate(userDataSchema);
   const response = await ctx.adminUserController.createUser.fetch(
-    { body: { ...fakeUser, roles: ["user"] } },
+    { body: { ...fakeUser, roles } },
     { user: adminUser },
   );
   return { id: response.data.id, roles: response.data.roles };
 }
 
-async function createApiKey(
+/**
+ * A signed-in session's access token, which is what approves a consent.
+ *
+ * ⚠️ It was an API key until #Q2297: a key is a machine credential, not a
+ * session (D10), and the consent POST now treats it as nobody signed in.
+ */
+async function createSessionToken(
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<string> {
-  const response = await ctx.apiKeyController.createApiKey.fetch(
-    { body: { name: "OAuth Test Key" } },
-    { user },
-  );
-  return response.data.token;
+  const tokens = await ctx.security.realm.createToken(user);
+  return tokens.access_token;
 }
 
 /**
@@ -136,7 +142,7 @@ function pkce(): { verifier: string; challenge: string } {
  */
 async function authorize(
   baseUrl: string,
-  apiKey: string,
+  sessionToken: string,
   params: {
     clientId: string;
     redirectUri: string;
@@ -148,7 +154,7 @@ async function authorize(
     redirect: "manual",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
-      authorization: `Bearer ${apiKey}`,
+      authorization: `Bearer ${sessionToken}`,
     },
     body: new URLSearchParams({
       decision: "allow",
@@ -264,10 +270,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -309,16 +315,75 @@ describe("OAuth 2.1 authorization server", () => {
     expect(mcpBody.result?.isError).not.toBe(true);
   });
 
+  it("narrows an administrator's mcp token to the member groups", async ({
+    expect,
+  }) => {
+    // Before #Q2307's Lore declarations, a connected app acted with its
+    // user's full roles: an administrator who connected Claude handed it
+    // admin. `mcp` now reaches the project member groups and nothing under
+    // `admin:*`.
+    const redirectUri = "https://claude.ai/cb";
+    const clientId = await registerClient(ctx.baseUrl, redirectUri);
+    const admin = await createTestUser(ctx, ["admin"]);
+    const sessionToken = await createSessionToken(ctx, admin);
+    const { verifier, challenge } = pkce();
+
+    const code = await authorize(ctx.baseUrl, sessionToken, {
+      clientId,
+      redirectUri,
+      challenge,
+    });
+    const token = await exchange(ctx.baseUrl, {
+      grant_type: "authorization_code",
+      code,
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+    });
+    expect(token.status).toBe(200);
+    const accessToken = String(token.json.access_token);
+
+    const listUsers = (bearer: string) =>
+      fetch(`${ctx.baseUrl}/api/users`, {
+        headers: { authorization: `Bearer ${bearer}` },
+      });
+
+    // `admin:user:read`: the administrator's own session still has it.
+    expect((await listUsers(sessionToken)).status).toBe(200);
+    expect((await listUsers(accessToken)).status).toBe(403);
+
+    // And the token still works where a member works.
+    const mcp = await fetch(`${ctx.baseUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "project_list", arguments: {} },
+      }),
+    });
+    const mcpBody = (await mcp.json()) as {
+      error?: unknown;
+      result?: { isError?: boolean };
+    };
+    expect(mcpBody.error).toBeUndefined();
+    expect(mcpBody.result?.isError).not.toBe(true);
+  });
+
   it("tags the session with the OAuth client and lists it as a connection", async ({
     expect,
   }) => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -367,11 +432,11 @@ describe("OAuth 2.1 authorization server", () => {
     expect(second).toBe(first);
 
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
 
     for (const _ of [1, 2]) {
       const { verifier, challenge } = pkce();
-      const code = await authorize(ctx.baseUrl, apiKey, {
+      const code = await authorize(ctx.baseUrl, sessionToken, {
         clientId: first,
         redirectUri,
         challenge,
@@ -413,10 +478,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -451,10 +516,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -482,10 +547,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { verifier, challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,
@@ -510,10 +575,10 @@ describe("OAuth 2.1 authorization server", () => {
     const redirectUri = "https://claude.ai/cb";
     const clientId = await registerClient(ctx.baseUrl, redirectUri);
     const user = await createTestUser(ctx);
-    const apiKey = await createApiKey(ctx, user);
+    const sessionToken = await createSessionToken(ctx, user);
     const { challenge } = pkce();
 
-    const code = await authorize(ctx.baseUrl, apiKey, {
+    const code = await authorize(ctx.baseUrl, sessionToken, {
       clientId,
       redirectUri,
       challenge,

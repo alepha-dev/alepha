@@ -276,7 +276,7 @@ export class FeedbackTools {
   feedback_comment_add = $tool({
     description:
       'Leave a comment on a feedback item. This is where a triage question to the reporter goes, and where a finding like "reproduced on Safari only, not on Chrome" lives before there is a quest to put it on. The reporter can read and answer it even though they are usually not a project member. ' +
-      "No notification is sent: the thread is there when they next open their feedback. Read it back with `feedback_get`. Comments posted here are marked as agent-authored, so do not sign them.",
+      "The reporter is told a comment was left, and an `@handle` naming a project member reaches their inbox, the owner of the API key you are working as included. Read it back with `feedback_get`. Comments posted here are marked as agent-authored, so do not sign them.",
     title: "Comment on feedback",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {

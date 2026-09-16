@@ -228,9 +228,12 @@ describe("the instance Settings tab", () => {
     fireEvent.change(field, { target: { value: "   " } });
     fireEvent.keyDown(field, { key: "Enter" });
 
-    const writes = links.calls.filter((it) => it.action === "updateApp");
-    await waitFor(() => expect(writes).toHaveLength(1));
-    expect(writes[0].body).toEqual({ url: "" });
+    // Read on every attempt, not once: the save is a `useAction` run, which
+    // reaches the client a tick after the keypress (#E59, #Q2329), so a copy
+    // taken synchronously would never see the write.
+    const writes = () => links.calls.filter((it) => it.action === "updateApp");
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0].body).toEqual({ url: "" });
   });
 
   it("offers only the estates the project was lent", async ({ expect }) => {
@@ -265,7 +268,7 @@ describe("the instance Settings tab", () => {
 
     await waitFor(() => expect(document.body.textContent).toContain("ovh-1"));
     // The clear row is there too: pointing nowhere is a real state.
-    expect(document.body.textContent).toContain("No estate");
+    expect(screen.getByRole("option", { name: "None" })).toBeTruthy();
   });
 
   it("says so and links out when nothing is lent", async ({ expect }) => {

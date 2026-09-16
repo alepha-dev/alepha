@@ -8,7 +8,6 @@ import {
 import { CryptoProvider } from "alepha/crypto";
 import {
   useAction,
-  useAlepha,
   useClient,
   useInject,
   useQuery,
@@ -23,7 +22,6 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 
 import type { AppRouter } from "../../../../AppRouter.ts";
 import { folioTreeCollapsedAtom } from "../../../../atoms/folioTreeCollapsedAtom.ts";
-import { pendingFolioTreeRenameAtom } from "../../../../atoms/pendingFolioTreeRenameAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
@@ -151,27 +149,25 @@ export interface FolioTreeState {
  *
  * ## Collapse state is NOT this hook's to hold
  *
- * It lives in `folioTreeCollapsedAtom`, and the reason is that this hook IS
- * remounted, on a path nobody expected. `FoliosLayout` renders
- * `{name === "projectFolios" ? <FolioWorkspace empty /> : <NestedView />}`,
- * two different component types in two different positions, so walking from
- * the folio list to a folio tears the whole workspace down and builds it
- * again. The old `initializedRef` guard survived re-renders but not that, so
- * the one-time seed ran a second time and re-collapsed every directory except
- * the opened folio's ancestors - feedback #14, returning as #2100 through a
- * door its guard could not see.
+ * It lives in `folioTreeCollapsedAtom`, because this hook IS remounted: not
+ * inside `/folios` any more, but every time the reader leaves `/folios` and
+ * comes back. Before #Q2349 hoisted the tree into `FolioWorkspaceShell`, the
+ * step from the folio list to a folio remounted it too, and the old
+ * `initializedRef` guard, which survived re-renders but not that, let the
+ * one-time seed run a second time and re-collapse every directory except the
+ * opened folio's ancestors - feedback #14, returning as #2100 through a door
+ * its guard could not see.
  *
  * The atom survives a remount by construction, and carries its `projectId`
  * so the seed runs once per PROJECT rather than once per mount, which is what
  * "one-time" was always trying to mean.
  *
- * ⚠️ The placement below still matters for everything else. `FolioWorkspace`
- * remounts `FolioWorkspaceContent` on a `key` tied to the folio id, so a
- * folio-to-folio navigation resets the draft buffer and `useForm` (see that
- * file's doc). `FolioTree` is mounted from `FolioWorkspace` itself, OUTSIDE
- * that keyed subtree, so `renamingId`, `dragId` and the rest are not thrown
- * away every time the reader opens another folio. Moving it inside would
- * still be wrong.
+ * ⚠️ The placement still matters for everything else. `FolioTree` is mounted
+ * from `FolioWorkspaceShell`, in the `/folios` LAYOUT, and never from the
+ * page below it: a page remounts on every folio switch (#Q2349), so
+ * `renamingId`, `dragId` and the rest would be thrown away every time the
+ * reader opens another folio. That is also why a folio created from the tree
+ * still opens in rename mode on the other side of the navigation to it.
  *
  * ## Why this hook has its own `useQuery`
  *
@@ -213,7 +209,6 @@ export const useFolioTreeModel = (
   input: UseFolioTreeModelInput,
 ): FolioTreeState => {
   const { tr } = useI18n<I18n, "en">();
-  const alepha = useAlepha();
   const router = useRouter<AppRouter>();
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
@@ -226,10 +221,10 @@ export const useFolioTreeModel = (
   /**
    * ⚠️ Collapse state lives in an ATOM, not here.
    *
-   * See `folioTreeCollapsedAtom`: `FoliosLayout` swaps component types
-   * between `/folios` and `/folios/:shortId`, so this hook is remounted on
-   * that navigation and any ref-guarded local state starts over. That is how
-   * feedback #14 came back as #2100.
+   * See `folioTreeCollapsedAtom`: leaving `/folios` and coming back mounts
+   * this hook afresh, and any ref-guarded local state starts over. That is
+   * how feedback #14 came back as #2100, when the step from the list to a
+   * folio still remounted it.
    *
    * `projectId` carried alongside is what replaces `initializedRef`: a set
    * stored for THIS project means the seed has run, and one stored for
@@ -256,28 +251,14 @@ export const useFolioTreeModel = (
    * ⚠️ `collapsed` is handed in as a controlled pair backed by an atom, and
    * that is the whole reason the state survives `FoliosLayout`'s remount.
    * See the block above, and `useTreeState`'s own doc.
-   *
-   * `initialRenamingId` is seeded from `pendingFolioTreeRenameAtom` for the
-   * reason that atom exists: `createFolio`'s own `beginRename` is not enough
-   * on its own, because the navigation it triggers can remount this whole
-   * hook before that state ever paints.
    */
   const state = useTreeState({
     collapsed: [collapsed, writeCollapsed],
-    initialRenamingId: alepha.store.get(pendingFolioTreeRenameAtom),
     onRename: (id, name) => renameActionRef.current(id, name),
     onMove: (dragId, targetId, position) =>
       moveRef.current(dragId, targetId, position),
   });
   const { renamingId, dragId, drop } = state;
-
-  useEffect(() => {
-    if (alepha.store.get(pendingFolioTreeRenameAtom) !== undefined) {
-      alepha.store.set(pendingFolioTreeRenameAtom, undefined);
-    }
-    // Runs once per mount, deliberately — clears the hand-off exactly once
-    // so it never leaks into a later, unrelated mount.
-  }, []);
 
   /**
    * `useTreeState` is called before the actions it needs exist, so the two
@@ -619,17 +600,15 @@ export const useFolioTreeModel = (
         const created = await folioApi.create({
           body: {
             projectId: input.projectId,
-            title: String(tr("folios.editor.tree.untitled-folio")),
+            title: tr("folios.editor.tree.untitled-folio"),
             directoryId: parentId,
           },
         });
         setFolios([created, ...folios]);
         expandOne(parentId);
+        // Survives the navigation below: this hook lives in the `/folios`
+        // layout, which the push to the new folio does not remount.
         state.commands.beginRename(created.id);
-        // Belt-and-suspenders with the `setRenamingId` above: see
-        // `pendingFolioTreeRenameAtom`'s doc for why the local state alone
-        // is not reliable across the navigation on the next line.
-        alepha.store.set(pendingFolioTreeRenameAtom, created.id);
         await router.push(
           router.path("projectFoliosFolio", {
             params: {
@@ -645,7 +624,6 @@ export const useFolioTreeModel = (
       folios,
       setFolios,
       folioApi,
-      alepha,
       input.projectId,
       input.projectSlug,
       router,
@@ -663,7 +641,7 @@ export const useFolioTreeModel = (
         const created = await directoryApi.createDirectory({
           params: { projectId: input.projectId },
           body: {
-            name: String(tr("folios.editor.tree.untitled-directory")),
+            name: tr("folios.editor.tree.untitled-directory"),
             parentId,
           },
         });

@@ -143,12 +143,13 @@ export const sameValues = (a: FolioDraftValues, b: FolioDraftValues): boolean =>
 
 /**
  * Owns the workspace's edit buffer. Handing this back as one object keeps
- * `FolioWorkspace` free of five pieces of loose state, and keeps the
+ * `FolioWorkspaceContent` free of five pieces of loose state, and keeps the
  * status line derived rather than hand-maintained.
  *
- * `FolioWorkspace` mounts this hook inside a child keyed on the folio id
- * (see `FolioWorkspace.tsx`), so a switch to a different folio always
- * happens through a full remount rather than through this hook alone —
+ * The page that mounts this hook remounts whenever its folio changes (a
+ * param change remounts a `$page`, #Q2349, and `/folios/new` to a folio is a
+ * different page), so a switch to a different folio always happens through
+ * a full remount rather than through this hook alone:
  * `useForm`'s `FormModel` is cached for the life of its calling component
  * (`useForm.ts`'s `useMemo` uses a default empty `deps`), and both
  * `useFormValues` and `useFormState` subscribe to that one model's events
@@ -212,7 +213,7 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
   // underneath us without an id change — a save from elsewhere (the
   // tree's rename, a revert) should not leave the status line stuck on
   // "unsaved". A folio-to-folio switch does not rely on this effect:
-  // `FolioWorkspace` remounts this whole hook via its `key`, so
+  // the page remounts on a param change (#Q2349), so
   // `formInitial.current`/`baseline.current`/`useForm` already start
   // fresh on the correct folio before this ever runs.
   useEffect(() => {

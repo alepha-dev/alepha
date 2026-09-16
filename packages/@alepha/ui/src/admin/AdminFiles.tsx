@@ -4,7 +4,7 @@ import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import type {
   AdminFileStatsController,
   FileController,
@@ -12,7 +12,7 @@ import type {
 } from "alepha/api/files";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Container, Download, Search, Trash2, Upload } from "lucide-react";
+import { Container, Download, Trash2, Upload } from "lucide-react";
 import {
   type ChangeEvent,
   useCallback,
@@ -22,7 +22,6 @@ import {
 } from "react";
 
 import { Badge } from "../core/Badge.tsx";
-import { FilterSlot } from "../core/FilterSlot.tsx";
 import {
   HoverCard,
   HoverCardContent,
@@ -30,19 +29,14 @@ import {
 } from "../core/HoverCard.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { formatBytes } from "../core/utils.ts";
-import { Control } from "../form/Control.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type {
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
-
-// Filter schema at module scope so its identity stays stable across renders
-// — AlephaTable's internal `useForm` captures it once.
-const filtersSchema = z.object({
-  name: z.string().optional(),
-  bucket: z.string().optional(),
-});
-type AdminFileFilters = Infer<typeof filtersSchema>;
 
 const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
 
@@ -52,7 +46,7 @@ export const AdminFiles = () => {
   const { tr } = useI18n();
   const toast = useToast();
   // Bumped after a successful upload to reload the bucket-stats query (which
-  // lists it in its deps) and the table (via AlephaTable's `refreshSignal`
+  // lists it in its deps) and the table (via DataTable's `refreshSignal`
   // prop). Row/bulk actions reload via the table's own ctx.refresh() and
   // don't touch this.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -105,12 +99,26 @@ export const AdminFiles = () => {
     [client, toast, tr],
   );
 
+  const filterFields = {
+    // The search box, on the key the endpoint matches a file name against.
+    name: { preset: "search" },
+    bucket: {
+      schema: z.string(),
+      label: tr("admin.files.colBucket", { default: "Bucket" }),
+      icon: Container,
+      items: bucketItems,
+      control: {
+        clearLabel: tr("admin.files.allBuckets", { default: "All buckets" }),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AdminFileFilters;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       return client.findFiles({
         query: {
@@ -182,7 +190,7 @@ export const AdminFiles = () => {
         className="hidden"
         onChange={(e) => upload.run(e)}
       />
-      <AlephaTable<FileResource>
+      <DataTable<FileResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.files"
         fetch={fetcher}
@@ -200,42 +208,7 @@ export const AdminFiles = () => {
             onClick: () => fileInputRef.current?.click(),
           },
         ]}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.name}
-                  label=""
-                  icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
-                  inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
-                  }}
-                />
-              </FilterSlot>
-              <Control
-                input={form.input.bucket}
-                label=""
-                clearable
-                icon={Container}
-                clearLabel={String(
-                  tr("admin.files.allBuckets", { default: "All buckets" }),
-                )}
-                triggerClassName="w-48"
-                placeholder={String(
-                  tr("admin.files.bucketPlaceholder", { default: "Bucket" }),
-                )}
-                items={bucketItems}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         bulkActions={[
           {
             label: tr("admin.files.bulkDelete", {

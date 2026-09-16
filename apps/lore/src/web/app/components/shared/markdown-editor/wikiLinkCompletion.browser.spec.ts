@@ -1,5 +1,6 @@
-import { CompletionContext } from "@codemirror/autocomplete";
-import { EditorState } from "@codemirror/state";
+import { type Completion, CompletionContext } from "@codemirror/autocomplete";
+import { EditorState, type TransactionSpec } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
@@ -98,28 +99,66 @@ describe("createWikiLinkCompletion", () => {
   });
 
   describe("what accepting a suggestion writes", () => {
-    it("applies the typed token and closes the brackets", () => {
-      const result = source(contextAt("see [[#depl"));
+    /**
+     * Accepts the first suggestion over `doc` with the cursor at `cursor`,
+     * through the option's own `apply`, and returns the document and cursor
+     * it leaves. `apply` reads `state` and calls `dispatch` and nothing else,
+     * so it runs against an object carrying those two over a real state: a
+     * live `EditorView` needs a layout jsdom does not have.
+     */
+    const accept = (doc: string, cursor = doc.length) => {
+      let state = EditorState.create({ doc, selection: { anchor: cursor } });
+      const result = source(new CompletionContext(state, cursor, false))!;
+      const option = result.options[0];
+      const view = {
+        get state() {
+          return state;
+        },
+        dispatch: (spec: TransactionSpec) => {
+          state = state.update(spec).state;
+        },
+      };
+      const apply = option.apply as (
+        view: EditorView,
+        completion: Completion,
+        from: number,
+        to: number,
+      ) => void;
+      apply(view as unknown as EditorView, option, result.from, cursor);
+      return { doc: state.doc.toString(), cursor: state.selection.main.head };
+    };
 
-      expect(result?.options[0].apply).toBe("#F7]]");
+    it("closes the token when no brackets follow the cursor", () => {
+      expect(accept("see [[#depl")).toEqual({
+        doc: "see [[#F7]]",
+        cursor: 11,
+      });
+    });
+
+    it("leaves exactly one ]] when closeBrackets already typed them", () => {
+      // #Q2355: typing `[[` auto-closes to `[[]]`, the query lands between
+      // the pairs, and the apply used to add its own `]]` beside the ones
+      // already there.
+      expect(accept("see [[#depl]] and more", 11)).toEqual({
+        doc: "see [[#F7]] and more",
+        cursor: 11,
+      });
+    });
+
+    it("completes a lone closing bracket to a pair", () => {
+      expect(accept("see [[#depl] and", 11)).toEqual({
+        doc: "see [[#F7]] and",
+        cursor: 11,
+      });
     });
 
     it("anchors the replacement after the brackets, not after the hash", () => {
       // `see [[` is 6 characters, so the query starts at 6: the brackets are
       // never replaced and the author's `#` IS. That is deliberate — the
       // token carries its own hash, so anchoring at 7 to "skip" the one
-      // already typed would write `[[##F7]]`.
-      const result = source(contextAt("see [[#depl"));
-
-      expect(result?.from).toBe(6);
-
-      // Spelled out end to end, since the two halves are only wrong
-      // together: replacing from 6 with the applied text is the finished
-      // reference, with exactly one hash.
-      const doc = "see [[#depl";
-      expect(doc.slice(0, result!.from) + result!.options[0].apply).toBe(
-        "see [[#F7]]",
-      );
+      // already typed would write `[[##F7]]`, which the end-to-end case
+      // above would show.
+      expect(source(contextAt("see [[#depl"))?.from).toBe(6);
     });
   });
 

@@ -8,7 +8,8 @@ import type { AuditEntity } from "alepha/api/audits";
 import { useI18n } from "alepha/react/i18n";
 
 import { Badge } from "../core/Badge.tsx";
-import { AlephaTable, type TableFetcher } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type { TableFetcher } from "../table/dataTableTypes.ts";
 
 export interface AdminUserDetailAuditsTabProps {
   /**
@@ -28,7 +29,7 @@ export const AdminUserDetailAuditsTab = (
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
-      <AlephaTable<AuditEntity>
+      <DataTable<AuditEntity>
         className="min-h-0 flex-1"
         persistenceKey={`admin.userDetail.${props.userId}.audits`}
         fetch={props.fetch}

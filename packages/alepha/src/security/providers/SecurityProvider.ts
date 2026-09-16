@@ -20,6 +20,7 @@ import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
+import type { PermissionCatalogue } from "../schemas/permissionCatalogueSchema.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import type { Role } from "../schemas/roleSchema.ts";
 import {
@@ -538,6 +539,61 @@ export class SecurityProvider {
     });
   }
 
+  /**
+   * The permission catalogue as an editor consumes it
+   * (`permissionCatalogueSchema`): every name the full `group:name`, labels
+   * passed through untranslated.
+   *
+   * @param user - Narrow it to what this identity may grant:
+   * `getPermissions(user)`, its roles within its realm and then its own
+   * permission scope. Omit for the whole registry. Pass the identity itself,
+   * never `{ roles, realm }` rebuilt from it, which drops the scope and shows
+   * a scoped caller a ceiling wider than itself.
+   */
+  public permissionCatalogueFor(user?: {
+    roles?: string[];
+    realm?: string;
+    permissionScope?: string[];
+  }): PermissionCatalogue {
+    const allowed = user
+      ? new Set(
+          this.getPermissions(user).map((it) => this.permissionToString(it)),
+        )
+      : undefined;
+
+    const groups: PermissionCatalogue["groups"] = [];
+    for (const group of this.permissionCatalogue()) {
+      const permissions = group.permissions
+        .map((permission) => ({
+          permission,
+          name: this.permissionToString(permission),
+        }))
+        .filter((it) => !allowed || allowed.has(it.name))
+        .map(({ permission, name }) => ({
+          name,
+          ...(permission.label === undefined
+            ? {}
+            : { label: permission.label }),
+          ...(permission.description === undefined
+            ? {}
+            : { description: permission.description }),
+        }));
+
+      if (permissions.length === 0) {
+        continue;
+      }
+
+      groups.push({
+        name: group.name,
+        ...(group.label === undefined ? {} : { label: group.label }),
+        ...(group.order === undefined ? {} : { order: group.order }),
+        permissions,
+      });
+    }
+
+    return { groups };
+  }
+
   public createRealm(realm: Realm) {
     // By identity, never by name: an application realm called `default` is
     // not this provider's placeholder, and popping it here was silent.
@@ -603,6 +659,12 @@ export class SecurityProvider {
     const lastName =
       typeof payload.family_name === "string" ? payload.family_name : undefined;
     const organization = this.getOrganizationFromPayload(payload);
+    const credential = realmName
+      ? this.getCredentialFromPayload(payload)
+      : undefined;
+    const permissionScope = realmName
+      ? this.getPermissionScopeFromPayload(payload)
+      : undefined;
     const rolesFromSystem = this.getRoles(realmName);
     const roles = rolesFromPayload
       .reduce<Role[]>(
@@ -614,7 +676,15 @@ export class SecurityProvider {
 
     const realm = this.realms.find((it) => it.name === realmName);
     if (realm?.profile) {
-      return realm.profile(payload);
+      // Set after the custom mapping, never left to it: a profile function
+      // written before the marker existed would otherwise turn a connected
+      // app's token back into a session.
+      const account = realm.profile(payload);
+      return {
+        ...account,
+        ...(credential ? { credential } : {}),
+        ...(permissionScope ? { permissionScope } : {}),
+      };
     }
 
     return {
@@ -628,7 +698,51 @@ export class SecurityProvider {
       picture,
       organization,
       sessionId,
+      credential,
+      permissionScope,
     };
+  }
+
+  /**
+   * The permission scope an access token of this realm carries, if any: the
+   * `permission_scope` claim `$issuer` signs from an OAuth grant's declared
+   * scopes. Absent is unrestricted; `[]` is a grant that reaches nothing,
+   * and must stay distinguishable from absent.
+   *
+   * Only read from a realm's own tokens, for the reason given on
+   * {@link getCredentialFromPayload}.
+   */
+  protected getPermissionScopeFromPayload(
+    payload: Record<string, any>,
+  ): string[] | undefined {
+    const claim = payload.permission_scope;
+    if (
+      Array.isArray(claim) &&
+      claim.every((it): it is string => typeof it === "string")
+    ) {
+      return claim;
+    }
+    return undefined;
+  }
+
+  /**
+   * The machine credential an access token of this realm carries, if any.
+   *
+   * A `client_id` claim (the name RFC 9068 gives it) marks a token issued to
+   * an OAuth client: a connected app, not a person signed in. `$issuer`
+   * signs it, so a client cannot strip it.
+   *
+   * Only read from a realm's own tokens: `createUserFromPayload` without a
+   * realm maps an external identity provider's profile, whose claims are not
+   * ours to interpret.
+   */
+  protected getCredentialFromPayload(
+    payload: Record<string, any>,
+  ): UserAccount["credential"] {
+    if (typeof payload.client_id === "string" && payload.client_id !== "") {
+      return { type: "oauth", clientId: payload.client_id };
+    }
+    return undefined;
   }
 
   /**
@@ -655,12 +769,16 @@ export class SecurityProvider {
     let ownership: string | boolean | undefined;
 
     // Permission check — resolved within the user's realm so a homonymous
-    // role from another realm can't leak its permission set.
+    // role from another realm can't leak its permission set, then narrowed by
+    // the credential's own scope.
     if (options.permission) {
-      const check = this.checkPermissionInRealm(
-        options.realm,
+      const check = this.checkUserPermission(
+        {
+          roles,
+          realm: options.realm,
+          permissionScope: userInfo.permissionScope,
+        },
         options.permission,
-        ...roles,
       );
       if (!check.isAuthorized) {
         throw new SecurityError(
@@ -913,6 +1031,109 @@ export class SecurityProvider {
     );
   }
 
+  /**
+   * Whether an identity was authenticated by a machine credential (an API
+   * key) rather than a signed-in session.
+   *
+   * Any `credential` marker counts, whatever its type: a new kind of machine
+   * credential is refused wherever this is asked the moment it sets the
+   * marker, with nothing to declare on any route.
+   *
+   * Read by `$secure({ sessionOnly: true })`, and by the handlers that read
+   * `user` themselves and so sit outside every `$secure` option (the OAuth
+   * consent and device approval routes).
+   */
+  public isMachineCredential(user?: { credential?: unknown }): boolean {
+    return user?.credential != null;
+  }
+
+  /**
+   * Checks a permission for a user: the realm-aware role check first, then the
+   * credential's {@link UserAccount.permissionScope}.
+   *
+   * This is the question every reader of a permission decision about a
+   * CREDENTIAL should ask (`$secure`, `$permission.can`, the links registry).
+   * {@link checkPermissionInRealm} stays a question about roles, for callers
+   * asking what a role grants.
+   *
+   * The scope only ever narrows: a permission the roles refuse stays refused
+   * whatever the scope lists, and `ownership` is the roles' answer untouched.
+   * A refusal says which of the two refused in `deniedBy`, because "your role
+   * lacks this" and "this credential was narrowed below its role" are
+   * different problems for whoever reads the error.
+   */
+  public checkUserPermission(
+    user: { roles?: string[]; realm?: string; permissionScope?: string[] },
+    permissionLike: string | Permission,
+  ): SecurityCheckResult {
+    const result = this.checkPermissionInRealm(
+      user.realm,
+      permissionLike,
+      ...(user.roles ?? []),
+    );
+
+    if (!result.isAuthorized) {
+      return { ...result, deniedBy: "roles" };
+    }
+
+    if (!this.isInPermissionScope(permissionLike, user.permissionScope)) {
+      return { isAuthorized: false, ownership: undefined, deniedBy: "scope" };
+    }
+
+    return result;
+  }
+
+  /**
+   * Whether a permission is inside a permission scope.
+   *
+   * Three states, and the last two must never be confused:
+   * - `undefined`: unrestricted, every permission is inside.
+   * - a non-empty list: the permission must match an entry.
+   * - `[]`: nothing matches.
+   *
+   * An entry may be a pattern, matched by {@link matchesPattern}: the
+   * wildcard sits on the SCOPE entry and is compared to a concrete
+   * permission. That is the opposite direction of
+   * `PermissionRegistryProvider.can()`, whose wildcard sits on the
+   * requirement.
+   */
+  public isInPermissionScope(
+    permissionLike: string | Permission,
+    scope: string[] | undefined,
+  ): boolean {
+    if (scope === undefined) {
+      return true;
+    }
+
+    const permission = this.permissionToString(permissionLike);
+    return scope.some((entry) => this.matchesPattern(permission, entry));
+  }
+
+  /**
+   * Whether a concrete permission name matches a grant pattern.
+   *
+   * - `*` matches everything.
+   * - an exact string matches itself.
+   * - `prefix:*` matches `prefix:anything` at any depth (`admin:api:*`
+   *   matches `admin:api:users:read`), and deliberately NOT the bare `prefix`.
+   *
+   * Shared by role grants, their excludes, and permission scopes, so the three
+   * cannot disagree about what a pattern covers.
+   */
+  protected matchesPattern(permissionName: string, pattern: string): boolean {
+    if (pattern === "*") return true;
+    if (pattern === permissionName) return true;
+
+    if (pattern.endsWith(":*")) {
+      const patternPrefix = pattern.slice(0, -2);
+      // "admin:api" does not match "admin:api:*".
+      if (permissionName === patternPrefix) return false;
+      return permissionName.startsWith(`${patternPrefix}:`);
+    }
+
+    return false;
+  }
+
   protected checkRoles(
     candidates: Role[],
     permissionLike: string | Permission,
@@ -946,35 +1167,16 @@ export class SecurityProvider {
       ownership: undefined,
     };
 
-    // Helper function to check if a permission matches a pattern with multi-layer wildcard support
-    const matchesPattern = (
-      permissionName: string,
-      pattern: string,
-    ): boolean => {
-      if (pattern === "*") return true;
-      if (pattern === permissionName) return true;
-
-      // Handle multi-layer wildcards (e.g., "admin:api:*" matches "admin:api:users:read")
-      if (pattern.endsWith(":*")) {
-        const patternPrefix = pattern.slice(0, -2);
-        // Check if permission starts with the pattern prefix
-        if (permissionName === patternPrefix) return false; // "admin:api" doesn't match "admin:api:*"
-        return permissionName.startsWith(`${patternPrefix}:`);
-      }
-
-      return false;
-    };
-
     for (const role of roles) {
       // for each role candidate
       for (const rolePermission of role.permissions) {
         // for each permission in the role
-        if (matchesPattern(permission, rolePermission.name)) {
+        if (this.matchesPattern(permission, rolePermission.name)) {
           // [feature]: exclude permissions including wildcards
           if (rolePermission.exclude) {
             let isExcluded = false;
             for (const excludePattern of rolePermission.exclude) {
-              if (matchesPattern(permission, excludePattern)) {
+              if (this.matchesPattern(permission, excludePattern)) {
                 isExcluded = true;
                 break;
               }
@@ -1178,11 +1380,31 @@ export class SecurityProvider {
   /**
    * Returns all permissions.
    *
-   * @param user - Filter permissions by user.
+   * @param user - Filter permissions by user: what their roles grant, within
+   * their realm, intersected with their `permissionScope` when they carry one.
+   * Passing the identity itself (a `UserAccountToken`) is what applies the
+   * scope; an object rebuilt from its roles and realm silently drops it.
    *
    * @return An array containing all permissions.
    */
   public getPermissions(user?: {
+    roles?: Array<Role | string>;
+    realm?: string;
+    permissionScope?: string[];
+  }): Permission[] {
+    const granted = this.getRolePermissions(user);
+    const scope = user?.permissionScope;
+    if (scope === undefined) {
+      return granted;
+    }
+
+    return granted.filter((it) => this.isInPermissionScope(it, scope));
+  }
+
+  /**
+   * What a user's roles grant, before any permission scope.
+   */
+  protected getRolePermissions(user?: {
     roles?: Array<Role | string>;
     realm?: string;
   }): Permission[] {
@@ -1205,7 +1427,7 @@ export class SecurityProvider {
         }
 
         if (role.permissions.some((it) => it.name === "*" && !it.exclude)) {
-          return this.getPermissions();
+          return this.permissions;
         }
 
         for (const permission of role.permissions) {
@@ -1475,6 +1697,12 @@ export interface Realm {
 export interface SecurityCheckResult {
   isAuthorized: boolean;
   ownership: string | boolean | undefined;
+  /**
+   * Which check refused, when a user-aware check refused: the roles grant no
+   * such permission, or they do and the credential's permission scope does
+   * not. Absent on a role-only check and on success.
+   */
+  deniedBy?: "roles" | "scope";
 }
 
 /**

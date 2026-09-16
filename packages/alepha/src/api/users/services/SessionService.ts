@@ -52,16 +52,18 @@ export class SessionService {
   protected readonly userService = $inject(UserService);
 
   protected userAudits(realmName?: string) {
-    const realm = this.realmProvider.getRealm(realmName);
-    if (realm.features.audits) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(UserAudits)) {
       return this.alepha.inject(UserAudits);
     }
     return undefined;
   }
 
   protected sessionAudits(realmName?: string) {
-    const realm = this.realmProvider.getRealm(realmName);
-    if (realm.features.audits) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(SessionAudits)) {
       return this.alepha.inject(SessionAudits);
     }
     return undefined;
@@ -532,6 +534,7 @@ export class SessionService {
     expiresIn: number,
     userRealmName?: string,
     clientId?: string,
+    scopes?: string[],
   ) {
     this.log.trace("Creating session", { userId: user.id, expiresIn });
 
@@ -554,6 +557,7 @@ export class SessionService {
       userAgent: request?.userAgent,
       refreshToken,
       clientId,
+      scopes,
     });
 
     await this.users(userRealmName).updateById(user.id, {
@@ -667,6 +671,9 @@ export class SessionService {
       // Carried so the OAuth token endpoint can bind a refresh to the client
       // the session was issued to. Undefined for ordinary password logins.
       clientId: session.clientId,
+      // The grant's scope ids, resolved to a permission list by the issuer
+      // on this very refresh.
+      scopes: session.scopes,
     };
   }
 

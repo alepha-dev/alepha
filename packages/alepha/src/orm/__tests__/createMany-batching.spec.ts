@@ -38,6 +38,37 @@ class TestRepository extends Repository<typeof batchingRows.schema> {
   ): number => this.insertBatchSize(rows, requested);
 }
 
+/**
+ * The shape almost every real entity has: a uuid primary key generated
+ * app-side and a `version` default. Neither is ever named by a caller, and
+ * both bind a value on every row.
+ */
+const generatedRows = $entity({
+  name: "batching_generated_rows",
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    version: db.version(),
+    a: z.text(),
+    b: z.text(),
+  }),
+});
+
+class GeneratedRepository extends Repository<typeof generatedRows.schema> {
+  constructor() {
+    super(generatedRows);
+  }
+
+  public testBatchSize = (
+    rows: ReadonlyArray<Record<string, unknown>>,
+    requested?: number,
+  ): number => this.insertBatchSize(rows, requested);
+
+  /** What the driver is really handed for these rows. */
+  public boundParametersFor = (
+    rows: ReadonlyArray<Record<string, unknown>>,
+  ): number => (this.rawInsert({}) as any).values(rows).toSQL().params.length;
+}
+
 describe("createMany batching", () => {
   const boot = async () => {
     const alepha = Alepha.create().with({
@@ -74,6 +105,62 @@ describe("createMany batching", () => {
       Array.from({ length: 11 }, (_, i) => [`c${i}`, i]),
     );
     expect(repo.testBatchSize([wide])).toBe(1);
+  });
+
+  it("counts the id and version it generates, not just the caller's keys", async () => {
+    const alepha = Alepha.create().with({
+      provide: DatabaseProvider,
+      use: TinyCeilingProvider,
+    });
+    alepha.store.mut(nodeSqliteOptions, (old) => ({
+      ...old,
+      path: "sqlite://:memory:",
+    }));
+    const repo = alepha.inject(GeneratedRepository);
+    await alepha.start();
+
+    const twoColumns = [
+      { a: "1", b: "1" },
+      { a: "2", b: "2" },
+    ];
+
+    // Four values per row, not two: `a`, `b`, the generated `id` and
+    // `version`. Ten per statement leaves two rows, where counting the
+    // caller's keys alone claimed five and bound twenty.
+    expect(repo.testBatchSize(twoColumns)).toBe(2);
+
+    // A caller that names the generated column itself is not double-counted.
+    expect(
+      repo.testBatchSize([
+        { id: "00000000-0000-0000-0000-000000000001", a: "1", b: "1" },
+      ]),
+    ).toBe(2);
+
+    // An explicit `undefined` reads as absent to drizzle, which then binds
+    // the default - so it counts exactly as an omitted key does.
+    expect(repo.testBatchSize([{ a: "1", b: undefined }])).toBe(3);
+
+    // The arithmetic is pinned against what drizzle ACTUALLY binds, not
+    // against a second copy of the same reasoning: a batch of that size must
+    // really fit under the ceiling.
+    const batch = Array.from(
+      { length: repo.testBatchSize(twoColumns) },
+      (_, i) => ({
+        a: `a${i}`,
+        b: `b${i}`,
+      }),
+    );
+    const bound = repo.boundParametersFor(batch);
+    expect(bound).toBe(batch.length * 4);
+    expect(bound).toBeLessThanOrEqual(10);
+
+    // And every row of a multi-statement insert really lands.
+    const values = Array.from({ length: 7 }, (_, i) => ({
+      a: `a${i}`,
+      b: `b${i}`,
+    }));
+    const created = await repo.createMany(values);
+    expect(created.map((r) => r.a)).toEqual(values.map((v) => v.a));
   });
 
   it("inserts more rows than one statement may bind, in order", async () => {

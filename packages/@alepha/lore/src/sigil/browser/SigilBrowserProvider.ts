@@ -198,6 +198,7 @@ export class SigilBrowserProvider {
       // not see all arrived as crashes.
       this.alepha.events.on("react:action:error", (ev) => {
         if (!this.wants("errors")) return;
+        if (this.isInputRefusal(ev)) return;
         if (!this.isCrash(ev.error)) return;
         this.queue!.addError(this.toError(ev.error, location.href));
       });
@@ -566,6 +567,34 @@ export class SigilBrowserProvider {
    * so the sink could re-derive the same answer would put the policy in two
    * places - which is the thing this filter exists to stop.
    */
+  /**
+   * Whether a failed action is a form refusing what a person typed.
+   *
+   * A form refuses input with a `FormValidationError`: its schema did (a
+   * required field left empty, which `FormModel` rethrows as one), or its
+   * handler did, by throwing one. Neither carries a status, so `isCrash`
+   * alone kept them, and somebody submitting the quest form without a title
+   * filed a crash (blight #585, #Q2343).
+   *
+   * ⚠️ Both halves are needed. `type: "form"` alone would also drop a
+   * `SchemaValidationError` raised inside a form's handler, which is a
+   * response breaking its own schema, a real fault. And giving
+   * `SchemaValidationError` a 400 status instead would silence that same
+   * fault everywhere.
+   *
+   * ⚠️ Matched on the NAME, not `instanceof`: this provider imports nothing
+   * at runtime from `alepha/react` (the imports above are type-only), and
+   * pulling the form module in to answer one comparison would put it in
+   * every enrolled app's bundle. `FormValidationError.name` is
+   * `"ValidationError"`.
+   */
+  protected isInputRefusal(ev: { type?: string; error?: unknown }): boolean {
+    return (
+      ev.type === "form" &&
+      (ev.error as { name?: string } | undefined)?.name === "ValidationError"
+    );
+  }
+
   protected isCrash(error: unknown): boolean {
     const status = (error as { status?: number } | undefined)?.status;
     if (typeof status !== "number") return true;

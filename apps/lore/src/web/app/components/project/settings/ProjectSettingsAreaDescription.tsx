@@ -5,10 +5,9 @@ import {
   CardHeader,
   CardTitle,
   Textarea,
-  useToast,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -29,24 +28,22 @@ const ProjectSettingsAreaDescription = (
   props: ProjectSettingsAreaDescriptionProps,
 ) => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const areaApi = useClient<AreaController>();
   const [value, setValue] = useState(props.area.description);
-  const [saving, setSaving] = useState(false);
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      await areaApi.updateArea({
-        params: { id: props.area.id },
-        body: { description: value },
-      });
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const saveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        await areaApi.updateArea({
+          params: { id: props.area.id },
+          body: { description: value },
+        });
+      },
+    },
+    [areaApi, props.area.id, value],
+  );
+  const saving = saveAction.loading;
+  const save = saveAction.run;
 
   return (
     <Card className={settingsCardEdge}>
@@ -61,7 +58,7 @@ const ProjectSettingsAreaDescription = (
         <Textarea
           value={value}
           rows={4}
-          placeholder={String(tr("area.detail.description.placeholder"))}
+          placeholder={tr("area.detail.description.placeholder")}
           onChange={(e) => setValue(e.currentTarget.value)}
         />
         <div className="flex justify-end">

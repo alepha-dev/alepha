@@ -11,10 +11,9 @@ import {
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import type { RankResource } from "alepha/api/ranks";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -64,7 +63,6 @@ const ProjectTransferOwnershipDialog = (
   const dialog = useDialog();
   const toaster = useToast();
   const api = useClient<ProjectController>();
-  const [busy, setBusy] = useState(false);
 
   // A one-field form rather than `useState`, so this is a `Control` like
   // every other picker in the app (feedback #P2121). Nothing saves on change
@@ -80,42 +78,41 @@ const ProjectTransferOwnershipDialog = (
   const keptName = assignable.find((it) => it.key === keep)?.name ?? "member";
   const target = props.target;
 
-  const transfer = async () => {
-    if (!target) return;
+  const transferAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!target) return;
 
-    const ok = await dialog.confirm({
-      title: String(
-        tr("project.settings.members.transfer.confirmTitle", {
-          args: [target.name],
-        }),
-      ),
-      description: String(
-        tr("project.settings.members.transfer.confirmDescription", {
-          args: [target.name, keptName],
-        }),
-      ),
-      confirmLabel: String(tr("project.settings.members.transfer.confirm")),
-      destructive: true,
-    });
-    if (!ok) return;
+        const ok = await dialog.confirm({
+          title: tr("project.settings.members.transfer.confirmTitle", {
+            args: [target.name],
+          }),
+          description: tr(
+            "project.settings.members.transfer.confirmDescription",
+            { args: [target.name, keptName] },
+          ),
+          confirmLabel: tr("project.settings.members.transfer.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
 
-    setBusy(true);
-    try {
-      await api.transferOwnership({
-        params: { id: props.projectId },
-        body: { userId: target.userId, rank: keep },
-      });
-      props.onOpenChange(false);
-      await props.onTransferred();
-      toaster.success(
-        tr("project.settings.members.transfer.done", { args: [target.name] }),
-      );
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+        await api.transferOwnership({
+          params: { id: props.projectId },
+          body: { userId: target.userId, rank: keep },
+        });
+        props.onOpenChange(false);
+        await props.onTransferred();
+        toaster.success(
+          tr("project.settings.members.transfer.done", {
+            args: [target.name],
+          }),
+        );
+      },
+    },
+    [api, dialog, target, keptName, keep, props, toaster, tr],
+  );
+  const busy = transferAction.loading;
+  const transfer = transferAction.run;
 
   return (
     <Dialog open={!!target} onOpenChange={props.onOpenChange}>
@@ -134,7 +131,7 @@ const ProjectTransferOwnershipDialog = (
           <Control
             select
             input={form.input.keep}
-            label={String(tr("project.settings.members.transfer.keep"))}
+            label={tr("project.settings.members.transfer.keep")}
             disabled={busy}
             // The resolved NAME comes for free: `Control` looks the label up
             // in `items`, where the raw select rendered the value - a rank's
@@ -146,9 +143,7 @@ const ProjectTransferOwnershipDialog = (
             }))}
             inputProps={{
               "data-testid": "transfer-keep",
-              "aria-label": String(
-                tr("project.settings.members.transfer.keep"),
-              ),
+              "aria-label": tr("project.settings.members.transfer.keep"),
             }}
             // For a rank list that has not loaded: with no matching item the
             // trigger would be blank.

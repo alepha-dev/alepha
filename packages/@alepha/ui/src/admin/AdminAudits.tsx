@@ -4,7 +4,7 @@ import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import type {
   AdminAuditController,
   AuditActionPair,
@@ -25,29 +25,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type {
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
-
-const auditFiltersSchema = z.object({
-  status: z.string().optional(),
-  action: z.string().optional(),
-  layer: z.string().optional(),
-  /**
-   * When, as a closed range of calendar days.
-   *
-   * ⚠️ Deliberately NOT a `dateRange` field on `auditQuerySchema`. That schema
-   * declares `from`, `to` and `after` with documented semantics (`after` is an
-   * exclusive cursor), and two ways to say one thing in a public query schema
-   * is a smell. The mapping happens at the call site below, which is also what
-   * proves a range control can drive an existing from/to endpoint with no API
-   * churn at all.
-   */
-  createdAt: z.dateRange().optional(),
-});
-type AuditFilters = Infer<typeof auditFiltersSchema>;
 
 export const AdminAudits = () => {
   const client = useClient<AdminAuditController>();
@@ -71,12 +56,87 @@ export const AdminAudits = () => {
     };
   }, [client]);
 
+  /**
+   * Every filter optional, so this page stays the view that shows everything:
+   * an admin who cannot see a row cannot audit it.
+   */
+  const filterFields = {
+    // Here because tenant-scoped events (a project's own activity, read on
+    // the project's page) otherwise bury the deployment's security events
+    // under their volume.
+    layer: {
+      schema: z.enum(["app", "scoped"]),
+      label: tr("admin.audits.colScope", { default: "Scope" }),
+      icon: Layers,
+      items: [
+        {
+          value: "app",
+          label: tr("admin.audits.layerApp", { default: "App" }),
+        },
+        {
+          value: "scoped",
+          label: tr("admin.audits.layerScoped", { default: "Scoped" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.audits.layerAll", { default: "All layers" }),
+      },
+    },
+    /**
+     * When, as a closed range of calendar days.
+     *
+     * ⚠️ Deliberately NOT a `dateRange` field on `auditQuerySchema`. That
+     * schema declares `from`, `to` and `after` with documented semantics
+     * (`after` is an exclusive cursor), and two ways to say one thing in a
+     * public query schema is a smell. The mapping happens in the fetcher
+     * below, which is also what proves a range control can drive an existing
+     * from/to endpoint with no API churn at all.
+     */
+    createdAt: {
+      schema: z.dateRange(),
+      label: tr("admin.audits.colWhen", { default: "When" }),
+      placeholder: tr("admin.audits.dateAll", { default: "Any date" }),
+    },
+    status: {
+      schema: z.enum(["ok", "failed"]),
+      label: tr("admin.audits.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      items: [
+        { value: "ok", label: tr("admin.audits.ok", { default: "OK" }) },
+        {
+          value: "failed",
+          label: tr("admin.audits.failed", { default: "Failed" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.audits.statusAll", { default: "All status" }),
+      },
+    },
+    action: {
+      schema: z.string(),
+      label: tr("admin.audits.colAction", { default: "Action" }),
+      icon: Zap,
+      // Sorted by type then action on the server, so the list reads grouped:
+      // every `parameter:*` row, then every `user:*` row. The label is the
+      // column's own `type:action`, and the type rides along as the tag so
+      // the group is visible at a glance.
+      items: actions.map((pair) => ({
+        value: auditActionKey(pair),
+        label: auditActionKey(pair),
+        tag: pair.type,
+      })),
+      control: {
+        clearLabel: tr("admin.audits.actionAll", { default: "All actions" }),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AuditFilters;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const f = params.filters;
       // The picked value is a `type:action` key, the shape the Action column
@@ -92,8 +152,7 @@ export const AdminAudits = () => {
           sort: params.sort,
           type: pair?.type,
           action: pair?.action,
-          layer:
-            f?.layer === "app" || f?.layer === "scoped" ? f.layer : undefined,
+          layer: f?.layer,
           success: f?.status ? f.status === "ok" : undefined,
           // A day resolved to an instant, in UTC. The reader arguably means
           // their local day, but the server is not told their offset and UTC
@@ -159,7 +218,7 @@ export const AdminAudits = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AuditEntity>
+      <DataTable<AuditEntity, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.audits"
         fetch={fetcher}
@@ -173,97 +232,7 @@ export const AdminAudits = () => {
             onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
-        filters={{
-          schema: auditFiltersSchema,
-          render: (form) => (
-            <div className="flex items-center gap-2">
-              {/*
-                Unfiltered by default, so this page stays the view that shows
-                everything: an admin who cannot see a row cannot audit it.
-                The control is here because tenant-scoped events (a project's
-                own activity, read on the project's page) otherwise bury the
-                deployment's security events under their volume.
-              */}
-              <Control
-                input={form.input.layer}
-                label=""
-                clearable
-                icon={Layers}
-                clearLabel={String(
-                  tr("admin.audits.layerAll", { default: "All layers" }),
-                )}
-                triggerClassName="w-40"
-                items={[
-                  {
-                    value: "app",
-                    label: String(
-                      tr("admin.audits.layerApp", { default: "App" }),
-                    ),
-                  },
-                  {
-                    value: "scoped",
-                    label: String(
-                      tr("admin.audits.layerScoped", { default: "Scoped" }),
-                    ),
-                  },
-                ]}
-              />
-              {/* No `items` and no `icon`: the control selects itself off the
-                  schema's `date-range` format, and `parseField` gives that
-                  format the calendar glyph. */}
-              <Control
-                input={form.input.createdAt}
-                label=""
-                clearable
-                triggerClassName="w-64"
-                placeholder={String(
-                  tr("admin.audits.dateAll", { default: "Any date" }),
-                )}
-              />
-              <Control
-                input={form.input.status}
-                label=""
-                clearable
-                icon={CircleDot}
-                clearLabel={String(
-                  tr("admin.audits.statusAll", { default: "All status" }),
-                )}
-                triggerClassName="w-40"
-                items={[
-                  {
-                    value: "ok",
-                    label: tr("admin.audits.ok", { default: "OK" }),
-                  },
-                  {
-                    value: "failed",
-                    label: String(
-                      tr("admin.audits.failed", { default: "Failed" }),
-                    ),
-                  },
-                ]}
-              />
-              <Control
-                input={form.input.action}
-                label=""
-                clearable
-                icon={Zap}
-                clearLabel={String(
-                  tr("admin.audits.actionAll", { default: "All actions" }),
-                )}
-                triggerClassName="w-56"
-                // Sorted by type then action on the server, so the list reads
-                // grouped: every `parameter:*` row, then every `user:*` row.
-                // The label is the column's own `type:action`, and the type
-                // rides along as the tag so the group is visible at a glance.
-                items={actions.map((pair) => ({
-                  value: auditActionKey(pair),
-                  label: auditActionKey(pair),
-                  tag: pair.type,
-                }))}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         columns={{
           createdAt: {
             label: tr("admin.audits.colWhen", { default: "When" }),

@@ -50,7 +50,7 @@ export const Dessin = (props: DessinProps) => {
   return (
     <img
       src={src}
-      alt={String(tr("piece.drawingAlt", { args: [nom] }))}
+      alt={tr("piece.drawingAlt", { args: [nom] })}
       className={`dessin ${className ?? ""}`}
       loading={priority ? "eager" : "lazy"}
       decoding="async"

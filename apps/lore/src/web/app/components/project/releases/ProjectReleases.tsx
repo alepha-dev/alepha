@@ -1,12 +1,17 @@
-import { FilterSlot, Badge, Button } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { Badge, Button } from "@alepha/ui";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+  type BulkAction,
+  type RowActionEntry,
+} from "@alepha/ui/table";
 import { type Page, z } from "alepha";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Flag, Inbox, Plus, Search, X } from "lucide-react";
-import { useState } from "react";
+import { CircleDot, Flag, Inbox, Plus, Trash2, X } from "lucide-react";
+import { useRef, useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
@@ -19,6 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { OutboundLink } from "../../shared/OutboundLink.tsx";
+import { releaseBumps, suggestedReleaseTag } from "./releaseBumps.ts";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
@@ -28,36 +34,11 @@ import {
   STATE_LABEL_KEYS,
   STATE_TONE,
 } from "./releaseState.ts";
+import { useDeleteRelease } from "./useDeleteRelease.ts";
 import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
 
-const releasesFiltersSchema = z.object({
-  search: z.string().optional(),
-  /**
-   * A SCALAR again, and absent means every state.
-   *
-   * ⚠️ This went array and came back, so the round trip is worth stating.
-   * It was made an array by feedback #2092 because a `clearable` scalar drew
-   * its clear entry as a third SELECTABLE row with a check mark beside Open
-   * and Released, so "All states" read as a third state a release could be
-   * in, and a multi-select was the only arity that had no such row.
-   *
-   * #2098 removed the row from `control-select` itself, which took the only
-   * reason with it. What is left is two values that are exhaustive and
-   * mutually exclusive - a release either has a `releasedAt` or does not -
-   * so selecting both was the same query as selecting neither, and the
-   * trigger said "2 states" for what meant "no filter". Apps' `reporting`
-   * filter is the identical shape and stayed a scalar throughout; #1816
-   * flagged the two disagreeing and named this as the fix.
-   *
-   * A stored `["open"]` from the array era survives the change:
-   * `reconcilePersistedFilters` takes the first element when the schema
-   * wants a scalar and finds an array.
-   */
-  state: z.enum(["open", "released"]).optional(),
-});
-
 /**
- * Every release in the project, built on {@link AlephaTable}.
+ * Every release in the project, built on {@link DataTable}.
  *
  * It was a hand-rolled card list with an OPEN heading, a RELEASED heading and
  * an inline create form, while Epics next door had search, filters, sortable
@@ -111,28 +92,135 @@ const ProjectReleases = () => {
   const [, setReleases] = useStore(currentReleasesAtom);
   const releaseApi = useClient<ReleaseController>();
   const defaultRelease = useSetDefaultRelease();
+  const deleteRelease = useDeleteRelease();
 
   const [creating, setCreating] = useState(false);
+  // What the dialog's field holds when it opens: the tag a row's create entry
+  // named, or nothing for the toolbar and the empty state. The dialog seeds
+  // itself from it on every open, so the two doors cannot leak into each
+  // other.
+  const [createTag, setCreateTag] = useState<string>();
   // The list, its rows and the empty state all stay; only the two doors into
   // `createRelease` close.
   const canCreate = releaseApi.createRelease.can();
   // Bumped after a create, which happens outside the table and so has no
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
-
-  if (!project) return null;
+  /**
+   * The project's WHOLE release list, as the table's last fetch received it,
+   * before the state filter, the search and the paging narrowed it.
+   *
+   * The create dialog's placeholder reads it, and so does every row's create
+   * entry. Never the rows on screen: filtered to Released, `0.30.0` is not a
+   * row, so `0.29.0` would look like the frontier of major 0. And never
+   * `currentReleasesAtom`, which is filled when the project is entered and
+   * misses a release created over MCP since, while this table refetches on
+   * mount: rows and suggestions must come from the same response.
+   *
+   * ⚠️ A ref, not state. The write happens inside the table's fetcher, and a
+   * state write there re-renders this component, which hands the table a new
+   * `fetch` and spins it into the refetch loop `ProjectEpics.tsx` warns
+   * about. Nothing needs to re-render on the write: the dialog reads it when
+   * `creating` flips, and the row menu while the table renders the rows that
+   * very fetch returned.
+   */
+  const allReleases = useRef<ReleaseResource[]>([]);
 
   /**
    * The table refetches itself off `refreshSignal`, but the atom has to be
    * refreshed by hand: it is what the sidebar and both release CONTROLS
-   * read, and none of them is watching this table.
+   * read, and none of them is watching this table. A `useAction` (#E59,
+   * #Q2326), so a failed refetch is toasted by the root listener.
    */
-  const created = async () => {
-    setReleases(
-      await releaseApi.getReleases({ params: { projectId: project.id } }),
-    );
-    setReload((n) => n + 1);
+  const createdAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        setReleases(
+          await releaseApi.getReleases({ params: { projectId: project.id } }),
+        );
+        setReload((n) => n + 1);
+      },
+    },
+    [releaseApi, project?.id],
+  );
+
+  // Page-wide: the row menu's writes and the bulk delete wait while any of
+  // them runs. The bulk bar has no disabled state, so it hides.
+  const busy = defaultRelease.busy || deleteRelease.busy;
+
+  if (!project) return null;
+
+  const openCreate = (tag?: string) => {
+    setCreateTag(tag);
+    setCreating(true);
   };
+
+  /**
+   * The row menu's create entries, named by the tag they would create
+   * ("Create 0.31.0") rather than by the bump ("Create minor"): the label
+   * verifies itself, and nobody has to know what the minor of `1.0` is
+   * before clicking. `releaseBumps.ts` holds the rule and why it is the
+   * frontier and not the release's state.
+   *
+   * One entry is flat; two or three are one group, in the order the rule
+   * returns them (patch, minor, major); none is nothing.
+   *
+   * ⚠️ Read from `allReleases`, the unfiltered response, and never from the
+   * rows on screen. See that ref for the two lists this must not use.
+   *
+   * An entry opens the create dialog with the tag filled in, and does not
+   * write. One write path, the tag stays editable, and a tag taken since the
+   * list was read is the dialog's own inline error. After the create the
+   * reader stays on this list, planning: `created()` refreshes and does not
+   * navigate, unlike the header menu's mount of the same dialog.
+   */
+  const createEntries = (
+    release: ReleaseResource,
+  ): RowActionEntry<ReleaseResource>[] => {
+    const entries = releaseBumps(release, allReleases.current).map((bump) => ({
+      icon: Plus,
+      label: tr("release.bump.create", { args: [bump.tag] }),
+      onClick: () => openCreate(bump.tag),
+    }));
+    if (entries.length < 2) return entries;
+    return [{ icon: Plus, label: tr("release.bump.group"), children: entries }];
+  };
+
+  const filterFields = {
+    search: { preset: "search" },
+    /**
+     * A SCALAR again, and absent means every state.
+     *
+     * ⚠️ This went array and came back, so the round trip is worth stating.
+     * It was made an array by feedback #2092 because a `clearable` scalar drew
+     * its clear entry as a third SELECTABLE row with a check mark beside Open
+     * and Released, so "All states" read as a third state a release could be
+     * in, and a multi-select was the only arity that had no such row.
+     *
+     * #2098 removed the row from `control-select` itself, which took the only
+     * reason with it. What is left is two values that are exhaustive and
+     * mutually exclusive - a release either has a `releasedAt` or does not -
+     * so selecting both was the same query as selecting neither, and the
+     * trigger said "2 states" for what meant "no filter". Apps' `reporting`
+     * filter is the identical shape and stayed a scalar throughout; #1816
+     * flagged the two disagreeing and named this as the fix.
+     *
+     * A stored `["open"]` from the array era survives the change:
+     * `reconcilePersistedFilters` takes the first element when the schema
+     * wants a scalar and finds an array.
+     */
+    state: {
+      schema: z.enum(["open", "released"]),
+      label: tr("release.filter.state"),
+      icon: CircleDot,
+      items: [
+        { label: tr("release.group.open"), value: "open" },
+        { label: tr("release.group.released"), value: "released" },
+      ],
+      control: { clearLabel: tr("release.filter.allStates") },
+    },
+  } satisfies DataTableFilterFields;
 
   const fetchReleases = async ({
     page,
@@ -143,16 +231,16 @@ const ProjectReleases = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: Record<string, any>;
+    filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<ReleaseResource>> => {
     const all = await releaseApi.getReleases({
       params: { projectId: project.id },
     });
+    // Before anything filters it; see `allReleases`.
+    allReleases.current = all;
 
-    const state = filters?.state as "open" | "released" | undefined;
-    const needle = String(filters?.search ?? "")
-      .trim()
-      .toLowerCase();
+    const state = filters?.state;
+    const needle = (filters?.search ?? "").trim().toLowerCase();
 
     const rows = sortReleases(
       all.filter((release) => {
@@ -186,18 +274,46 @@ const ProjectReleases = () => {
     };
   };
 
+  // ⚠️ This array is the table's CHECKBOX COLUMN. `DataTable` derives
+  // `hasCheckbox` from it being non-empty, the way the Epics list documents,
+  // and Delete is the only bulk action here. So a rank that may not delete
+  // gets `[]`, and with it the table exactly as it was before bulk delete
+  // existed: no column, and no selection with nothing to do.
+  //
+  // Refresh, then clear, in that order: a selection that survives a delete
+  // points at rows that no longer exist. The hook has already refetched
+  // `currentReleasesAtom` once for the whole run.
+  const bulkActions: BulkAction<ReleaseResource>[] = deleteRelease.can
+    ? [
+        {
+          icon: Trash2,
+          label: tr("board.bulk.delete"),
+          destructive: true,
+          visible: () => !busy,
+          onClick: async (selected, ctx) => {
+            if (!(await deleteRelease.removeMany(selected))) return;
+            ctx.refresh();
+            ctx.clearSelection();
+          },
+        },
+      ]
+    : [];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
       <ReleaseCreateDialog
         projectId={project.id}
         open={creating}
         onOpenChange={setCreating}
-        onCreated={() => void created()}
+        onCreated={() => void createdAction.run()}
+        initialTag={createTag}
+        suggestedTag={suggestedReleaseTag(allReleases.current)}
       />
 
-      <AlephaTable<ReleaseResource>
+      <DataTable<ReleaseResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.releases.${project.id}`}
+        bulkActions={bulkActions}
         defaultSort={{ field: "tag", direction: "desc" }}
         // The full empty state rather than `emptyMessage`, so the page that
         // has never had a release still explains what one IS and offers the
@@ -221,7 +337,7 @@ const ProjectReleases = () => {
           action: (
             <div className="flex flex-col items-center gap-3">
               {canCreate && (
-                <Button onClick={() => setCreating(true)}>
+                <Button onClick={() => openCreate()}>
                   <Plus className="size-4" />
                   {tr("release.start")}
                 </Button>
@@ -244,37 +360,7 @@ const ProjectReleases = () => {
           description: tr("release.noMatch.body"),
         }}
         refreshSignal={reload}
-        filters={{
-          schema: releasesFiltersSchema,
-          render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("release.filter.search")}
-                  inputProps={{ "aria-label": tr("release.filter.search") }}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                <Control
-                  input={form.input.state}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("release.filter.allStates")}
-                  triggerClassName="w-full"
-                  items={[
-                    { label: tr("release.group.open"), value: "open" },
-                    { label: tr("release.group.released"), value: "released" },
-                  ]}
-                  inputProps={{ "aria-label": tr("release.filter.state") }}
-                />
-              </FilterSlot>
-            </>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         fetch={fetchReleases}
         onRowClick={(release) =>
           release.tag &&
@@ -289,22 +375,35 @@ const ProjectReleases = () => {
                   icon: Plus,
                   label: tr("release.start"),
                   primary: true,
-                  onClick: () => setCreating(true),
+                  onClick: () => openCreate(),
                 },
               ]
             : []
         }
-        rowActions={(release) =>
-          // Hidden without `release:manage`, and never offered on a published
-          // release: the server refuses it, and an affordance that always
-          // fails is worse than no affordance.
-          !defaultRelease.can || release.releasedAt
-            ? []
-            : [
+        // Built in pieces, each under its own condition. It was one ternary
+        // that emptied the whole menu on a published row, which could stand
+        // only while every entry was a default entry: Delete is offered on a
+        // published row too.
+        //
+        // `createRelease`, `setDefaultRelease` and `deleteRelease` all need
+        // `release:manage` today, so the split between the pieces is about
+        // the row's STATE, not about permission. Each piece still asks its
+        // own action, so a later change to one permission cannot silently
+        // gate the others. The menu reads create, then the default entries,
+        // then Delete last.
+        rowActions={(release) => [
+          // On published and open rows alike: a patch is offered only on a
+          // published one.
+          ...(canCreate ? createEntries(release) : []),
+          // Never offered on a published release: the server refuses it, and
+          // an affordance that always fails is worse than no affordance.
+          ...(defaultRelease.can && !release.releasedAt
+            ? [
                 release.defaultSince
                   ? {
                       icon: X,
                       label: tr("release.default.clear"),
+                      disabled: () => busy,
                       onClick: (row: ReleaseResource) =>
                         void defaultRelease
                           .clear(row)
@@ -313,6 +412,7 @@ const ProjectReleases = () => {
                   : {
                       icon: Inbox,
                       label: tr("release.default.set"),
+                      disabled: () => busy,
                       onClick: (row: ReleaseResource) =>
                         void defaultRelease
                           .set(row)
@@ -323,7 +423,28 @@ const ProjectReleases = () => {
                           .then((done) => done && setReload((n) => n + 1)),
                     },
               ]
-        }
+            : []),
+          // Last, and on every row, published included. The confirm inside
+          // the hook is where a published release's frozen record and the
+          // default are named, since neither shows on the row.
+          ...(deleteRelease.can
+            ? [
+                {
+                  icon: Trash2,
+                  label: tr("release.delete.action"),
+                  destructive: true,
+                  disabled: () => busy,
+                  onClick: (
+                    row: ReleaseResource,
+                    { refresh }: { refresh: () => void },
+                  ) =>
+                    void deleteRelease
+                      .remove(row)
+                      .then((done) => done && refresh()),
+                },
+              ]
+            : []),
+        ]}
         columns={{
           // First on the row, like the epic status chip and the Quests
           // table's status dot.
@@ -421,17 +542,13 @@ const ProjectReleases = () => {
               release.releasedAt ? (
                 <span className="whitespace-nowrap">
                   {tr("release.list.releasedOn", {
-                    args: [
-                      String(l(release.releasedAt as string, { date: "ll" })),
-                    ],
+                    args: [l(release.releasedAt as string, { date: "ll" })],
                   })}
                 </span>
               ) : release.targetDate ? (
                 <span className="text-muted-foreground whitespace-nowrap">
                   {tr("release.list.target", {
-                    args: [
-                      String(l(release.targetDate as string, { date: "ll" })),
-                    ],
+                    args: [l(release.targetDate as string, { date: "ll" })],
                   })}
                 </span>
               ) : (

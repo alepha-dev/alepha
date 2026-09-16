@@ -33,16 +33,16 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 
 ## useForm Options
 
-| Option          | Type                                    | Description                                        |
-| --------------- | --------------------------------------- | -------------------------------------------------- |
-| `schema`        | `ZObject`                               | Zod schema defining fields and validation.         |
-| `handler`       | `(values) => unknown`                   | Called on submit with validated values.            |
-| `initialValues` | `Partial<Infer<T>>`                     | Pre-populate fields with existing data.            |
-| `id`            | `string`                                | Prefix for field IDs and `data-testid` attributes. |
-| `onChange`      | `(key, value, store) => void`           | Called on every field change.                      |
-| `onError`       | `(error) => void`                       | Called when submission throws an error.            |
-| `onReset`       | `() => void`                            | Called when the form is reset.                     |
-| `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.              |
+| Option          | Type                                    | Description                                                                                                 |
+| --------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `schema`        | `ZObject`                               | Zod schema defining fields and validation.                                                                  |
+| `handler`       | `(values) => unknown`                   | Called on submit with validated values.                                                                     |
+| `initialValues` | `Partial<Infer<T>>`                     | Pre-populate fields with existing data.                                                                     |
+| `id`            | `string`                                | Prefix for field IDs and `data-testid` attributes.                                                          |
+| `onChange`      | `(key, value, store) => void`           | Called on every field change.                                                                               |
+| `onError`       | `(error) => void`                       | Called when submission throws an error. Marks the error handled, so `ActionErrorToaster` does not toast it. |
+| `onReset`       | `() => void`                            | Called when the form is reset.                                                                              |
+| `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.                                                                       |
 
 The second argument to `useForm` is a dependency array (defaults to `[]`). When dependencies change, the form is re-created.
 
@@ -199,6 +199,8 @@ Forms emit events on the Alepha event system:
 
 Forms also emit `react:action:begin`, `react:action:success`, `react:action:error`, and `react:action:end` events with `type: "form"`, so global action handlers apply to form submissions too.
 
+The `react:action:error` of a form carries `handled: true` in two cases, and `@alepha/ui`'s `ActionErrorToaster` does not toast it: the form was given an `onError`, or the error is a `FormValidationError` with a field `path`, whose message is already shown under that field. Any other failure, including a `FormValidationError` with no path, still toasts.
+
 ## FormValidationError
 
 Throw a `FormValidationError` in your handler to report field-level validation errors:
@@ -217,4 +219,6 @@ handler: async (values) => {
 };
 ```
 
-The `path` is a JSON pointer matching the field path (e.g., `/email`, `/address/city`).
+The `path` is a JSON pointer matching the field path (e.g., `/email`, `/address/city`). The message is shown under that field and not as a toast: the error is marked handled (see [Form Events](#form-events)).
+
+The form's own schema refuses input the same way: a required field left empty or a value out of range fails with a `FormValidationError` too, before the handler runs. So a `react:action:error` listener can tell a person's input from a fault by the error alone: a `FormValidationError` is a refusal, while a `SchemaValidationError` thrown from inside the handler (a response that broke its own schema, say) is left as it is. The `@alepha/lore` browser sigil relies on that, and does not report a refusal as a crash.

@@ -9,7 +9,8 @@ import type { UseActionReturn } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
 
-import { AlephaTable, type TableFetcher } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type { TableFetcher } from "../table/dataTableTypes.ts";
 
 export interface AdminUserDetailSessionsTabProps {
   /**
@@ -35,7 +36,7 @@ export const AdminUserDetailSessionsTab = (
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
-      <AlephaTable<SessionResource>
+      <DataTable<SessionResource>
         className="min-h-0 flex-1"
         persistenceKey={`admin.userDetail.${props.userId}.sessions`}
         fetch={props.fetch}

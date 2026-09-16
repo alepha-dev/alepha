@@ -7,7 +7,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { SettingsRow } from "@alepha/ui/settings";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -54,7 +54,37 @@ const AppSettingsUrl = () => {
    * instance back.
    */
   const [draft, setDraft] = useState(instance?.url ?? "");
-  const [busy, setBusy] = useState(false);
+
+  // A `useAction` (#E59, #Q2329): the refusal is the server's sentence about
+  // the address, toasted by the root listener, and the draft stays for fixing.
+  const saveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project || !instance) return;
+        if (draft.trim() === (instance.url ?? "")) return;
+        const updated = await appApi.updateApp({
+          params: {
+            projectId: project.id,
+            app: instance.app,
+            env: instance.env,
+          },
+          body: { url: draft.trim() },
+        });
+        setInstance(updated);
+        setInstances(
+          (instances ?? []).map((it) => (it.id === updated.id ? updated : it)),
+        );
+        // Back from the server: a bare origin loses its trailing slash on the
+        // way in, so what was typed and what was stored are not the same
+        // string.
+        setDraft(updated.url ?? "");
+        toaster.success(tr("app.settings.url.saved"));
+      },
+    },
+    [appApi, project, instance, instances, draft, toaster, tr],
+  );
+  const busy = saveAction.loading;
+  const save = saveAction.run;
 
   if (!project || !instance) {
     return null;
@@ -63,36 +93,6 @@ const AppSettingsUrl = () => {
   const isOwner = can("app:manage");
   const detected = instance.sigil?.lastSeenHost;
   const changed = draft.trim() !== (instance.url ?? "");
-
-  const save = async () => {
-    if (!changed) {
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const updated = await appApi.updateApp({
-        params: {
-          projectId: project.id,
-          app: instance.app,
-          env: instance.env,
-        },
-        body: { url: draft.trim() },
-      });
-      setInstance(updated);
-      setInstances(
-        (instances ?? []).map((it) => (it.id === updated.id ? updated : it)),
-      );
-      // Back from the server: a bare origin loses its trailing slash on the
-      // way in, so what was typed and what was stored are not the same string.
-      setDraft(updated.url ?? "");
-      toaster.success(tr("app.settings.url.saved"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <SettingsRow

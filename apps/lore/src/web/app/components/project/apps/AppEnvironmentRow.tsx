@@ -1,8 +1,7 @@
 import { Button, useDialog, useToast } from "@alepha/ui";
 import type { Infer } from "alepha";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 import type { AppSecretController } from "@/api/controllers/AppSecretController.ts";
 import type { appSecretResourceSchema } from "@/api/schemas/appSecretResourceSchema.ts";
@@ -14,7 +13,6 @@ export interface AppEnvironmentRowProps {
   projectId: number;
   instanceId: string;
   canWrite: boolean;
-  onChanged: () => void;
 }
 
 /**
@@ -31,38 +29,44 @@ const AppEnvironmentRow = (props: AppEnvironmentRowProps) => {
   const toaster = useToast();
   const dialog = useDialog();
   const secretApi = useClient<AppSecretController>();
-  const [busy, setBusy] = useState(false);
 
-  const remove = async () => {
-    const confirmed = await dialog.confirm({
-      title: tr("app.environment.remove.title"),
-      description: tr("app.environment.remove.description", {
-        args: [props.secret.key],
-      }),
-      confirmLabel: tr("app.environment.remove.confirm"),
-      destructive: true,
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    setBusy(true);
-    try {
-      await secretApi.deleteAppSecret({
-        params: {
-          projectId: props.projectId,
-          instanceId: props.instanceId,
-          key: props.secret.key,
-        },
-      });
-      toaster.success(tr("app.environment.removed"));
-      props.onChanged();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
+  // A `useAction` whose handler holds the confirmation (#E59, #Q2329): backing
+  // out sends nothing, and a refusal is toasted by the root listener.
+  const removeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const confirmed = await dialog.confirm({
+          title: tr("app.environment.remove.title"),
+          description: tr("app.environment.remove.description", {
+            args: [props.secret.key],
+          }),
+          confirmLabel: tr("app.environment.remove.confirm"),
+          destructive: true,
+        });
+        if (!confirmed) {
+          return;
+        }
+        await secretApi.deleteAppSecret({
+          params: {
+            projectId: props.projectId,
+            instanceId: props.instanceId,
+            key: props.secret.key,
+          },
+        });
+        toaster.success(tr("app.environment.removed"));
+      },
+      invalidates: [["app-secrets", props.projectId, props.instanceId]],
+    },
+    [
+      secretApi,
+      dialog,
+      props.projectId,
+      props.instanceId,
+      props.secret.key,
+      toaster,
+      tr,
+    ],
+  );
 
   return (
     <div className="flex items-center justify-between gap-3 py-2">
@@ -80,8 +84,8 @@ const AppEnvironmentRow = (props: AppEnvironmentRowProps) => {
         <Button
           variant="ghost"
           size="sm"
-          disabled={busy}
-          onClick={remove}
+          disabled={removeAction.loading}
+          onClick={() => void removeAction.run()}
           data-testid={`app-environment-remove-${props.secret.key}`}
         >
           {tr("app.environment.remove")}

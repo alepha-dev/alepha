@@ -62,7 +62,7 @@ export class MySessionController {
   deleteMySession = $action({
     method: "DELETE",
     path: "/users/me/sessions/:id",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Revoke one of the caller's sessions",
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -83,7 +83,7 @@ export class MySessionController {
   deleteMyOtherSessions = $action({
     method: "POST",
     path: "/users/me/sessions/revoke-others",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Revoke every caller session except the current one",
     schema: {
       response: z.object({ revoked: z.integer() }),

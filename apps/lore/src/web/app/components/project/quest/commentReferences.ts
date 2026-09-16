@@ -1,4 +1,7 @@
-import { mentionPattern, resolveMention } from "../../../services/mentions.ts";
+import {
+  mentionPattern,
+  resolveMentionCapture,
+} from "../../../services/mentions.ts";
 import {
   formatReference,
   parseTypedReference,
@@ -127,9 +130,11 @@ const expandMentions = (
   // rendered link and the delivered ping start disagreeing.
   return segment.replace(
     mentionPattern(),
-    (match, prefix: string, handle: string) => {
-      if (!resolveMention(handle, options.members)) return match;
-      return `${prefix}[@${handle}](/${options.projectSlug}/settings/members)`;
+    (match, prefix: string, capture: string) => {
+      const resolved = resolveMentionCapture(capture, options.members);
+      if (!resolved) return match;
+      // A full stop or hyphen that ended the sentence stays after the link.
+      return `${prefix}[@${resolved.handle}](/${options.projectSlug}/settings/members)${resolved.trailing}`;
     },
   );
 };

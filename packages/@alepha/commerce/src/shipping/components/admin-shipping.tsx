@@ -15,7 +15,7 @@ import {
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import { AutoForm } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -87,15 +87,13 @@ export const AdminShipping = () => {
   const deactivate = useConfirmedAction<[ShippingRateEntity, () => void]>(
     {
       confirm: (rate) => ({
-        title: String(
-          tr("commerce.admin.withdrawRate", { default: "Withdraw this rate" }),
-        ),
-        description: String(
-          tr("commerce.admin.withdrawRateConfirm", {
-            default: `“${rate.name}” is no longer offered at checkout. Past orders keep it, and you can put it back later.`,
-            args: [rate.name],
-          }),
-        ),
+        title: tr("commerce.admin.withdrawRate", {
+          default: "Withdraw this rate",
+        }),
+        description: tr("commerce.admin.withdrawRateConfirm", {
+          default: `“${rate.name}” is no longer offered at checkout. Past orders keep it, and you can put it back later.`,
+          args: [rate.name],
+        }),
         destructive: true,
       }),
       handler: async (rate, refresh) => {
@@ -125,16 +123,14 @@ export const AdminShipping = () => {
         </Tabs>
       ) : null}
 
-      <AlephaTable<ShippingRateEntity>
+      <DataTable<ShippingRateEntity>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.shipping"
         fetch={fetcher}
         refreshSignal={`${zoneId}:${refreshSignal}`}
-        emptyMessage={String(
-          tr("commerce.admin.noRates", {
-            default: "No shipping rate in this zone.",
-          }),
-        )}
+        emptyMessage={tr("commerce.admin.noRates", {
+          default: "No shipping rate in this zone.",
+        })}
         toolbar={
           <Button
             size="sm"
@@ -149,9 +145,7 @@ export const AdminShipping = () => {
           rate.active
             ? [
                 {
-                  label: String(
-                    tr("commerce.admin.withdraw", { default: "Withdraw" }),
-                  ),
+                  label: tr("commerce.admin.withdraw", { default: "Withdraw" }),
                   icon: Ban,
                   destructive: true,
                   onClick: (item, ctx) =>
@@ -246,38 +240,32 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
     () =>
       z.object({
         name: z.text({ minLength: 1, maxLength: 100 }).meta({
-          title: String(tr("commerce.admin.rateName", { default: "Rate" })),
+          title: tr("commerce.admin.rateName", { default: "Rate" }),
           $control: { width: 60 },
         }),
         code: z.text({ minLength: 1, maxLength: 64 }).meta({
-          title: String(tr("commerce.admin.rateCode", { default: "Code" })),
-          description: String(
-            tr("commerce.admin.rateCodeHint", {
-              default: "Written on the order. Do not change it afterwards.",
-            }),
-          ),
+          title: tr("commerce.admin.rateCode", { default: "Code" }),
+          description: tr("commerce.admin.rateCodeHint", {
+            default: "Written on the order. Do not change it afterwards.",
+          }),
           $control: { width: 40 },
         }),
         price: z
           .integer()
           .min(0)
           .meta({
-            title: String(
-              tr("commerce.admin.ratePriceCents", {
-                default: "Price incl. tax (cents)",
-              }),
-            ),
+            title: tr("commerce.admin.ratePriceCents", {
+              default: "Price incl. tax (cents)",
+            }),
             $control: { width: 50 },
           }),
         freeAbove: z
           .integer()
           .min(0)
           .meta({
-            title: String(
-              tr("commerce.admin.freeAboveCents", {
-                default: "Free above (cents)",
-              }),
-            ),
+            title: tr("commerce.admin.freeAboveCents", {
+              default: "Free above (cents)",
+            }),
             $control: { width: 50 },
           })
           .optional(),
@@ -286,11 +274,9 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .min(0)
           .max(365)
           .meta({
-            title: String(
-              tr("commerce.admin.minDays", {
-                default: "Min. lead time (days)",
-              }),
-            ),
+            title: tr("commerce.admin.minDays", {
+              default: "Min. lead time (days)",
+            }),
             $control: { width: 50 },
           })
           .optional(),
@@ -299,11 +285,9 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .min(0)
           .max(365)
           .meta({
-            title: String(
-              tr("commerce.admin.maxDays", {
-                default: "Max. lead time (days)",
-              }),
-            ),
+            title: tr("commerce.admin.maxDays", {
+              default: "Max. lead time (days)",
+            }),
             $control: { width: 50 },
           })
           .optional(),
@@ -339,7 +323,7 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
         <div className="px-4 pb-6">
           <AutoForm
             form={form}
-            submitLabel={String(tr("commerce.admin.save", { default: "Save" }))}
+            submitLabel={tr("commerce.admin.save", { default: "Save" })}
           />
         </div>
       </SheetContent>

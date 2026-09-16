@@ -1,11 +1,10 @@
-import type { Folio } from "@/api/entities/folios.ts";
-
 import {
   type AttachmentRef,
   BROKEN_HREF_PREFIX,
   createFolioWikiLinkResolver,
   type EpicRef,
   type FeedbackRef,
+  type FolioRef,
   formatAttachmentBytes,
   isImageAttachment,
   type QuestRef,
@@ -18,6 +17,7 @@ export {
   BROKEN_HREF_PREFIX,
   type EpicRef,
   type FeedbackRef,
+  type FolioRef,
   type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
 
@@ -42,7 +42,7 @@ export {
 export const rewriteFolioWikiLinks = (
   content: string,
   projectSlug: string,
-  folios: Folio[],
+  folios: FolioRef[],
   quests: QuestRef[],
   attachments: AttachmentRef[] = [],
   epics: EpicRef[] = [],

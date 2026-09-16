@@ -23,8 +23,19 @@ export interface ProjectSettingsAgentPromptEditorProps {
   kind: AgentPromptKind;
   /** The stored template, or `undefined` while this kind follows the default. */
   stored: string | undefined;
-  onSave: (kind: AgentPromptKind, template: string) => Promise<void>;
-  onReset: (kind: AgentPromptKind) => Promise<void>;
+  /**
+   * Resolves `true` once saved, `undefined` when the server refused, which
+   * the root `ActionErrorToaster` has already said.
+   */
+  onSave: (
+    kind: AgentPromptKind,
+    template: string,
+  ) => Promise<boolean | undefined>;
+  onReset: (kind: AgentPromptKind) => Promise<boolean | undefined>;
+  /**
+   * True while any editor's save or reset runs.
+   */
+  busy: boolean;
 }
 
 /**
@@ -44,7 +55,7 @@ export const ProjectSettingsAgentPromptEditor = (
   const fallback = AGENT_PROMPT_DEFAULTS[props.kind];
   const persisted = props.stored ?? fallback;
   const [text, setText] = useState(persisted);
-  const [pending, setPending] = useState(false);
+  const pending = props.busy;
 
   /**
    * Re-seed when the STORED value changes, and never on every render.
@@ -64,34 +75,22 @@ export const ProjectSettingsAgentPromptEditor = (
   const dirty = text !== persisted;
 
   const save = async () => {
-    setPending(true);
-    try {
-      await props.onSave(props.kind, text);
+    if (await props.onSave(props.kind, text)) {
       toaster.success(tr("agentPrompts.settings.saved"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(false);
     }
   };
 
   const reset = async () => {
     const confirmed = await dialog.confirm({
-      title: String(tr("agentPrompts.settings.reset.title")),
-      description: String(tr("agentPrompts.settings.reset.description")),
-      confirmLabel: String(tr("agentPrompts.settings.reset")),
+      title: tr("agentPrompts.settings.reset.title"),
+      description: tr("agentPrompts.settings.reset.description"),
+      confirmLabel: tr("agentPrompts.settings.reset"),
       destructive: true,
     });
     if (!confirmed) return;
 
-    setPending(true);
-    try {
-      await props.onReset(props.kind);
+    if (await props.onReset(props.kind)) {
       toaster.success(tr("agentPrompts.settings.wasReset"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(false);
     }
   };
 
@@ -118,9 +117,7 @@ export const ProjectSettingsAgentPromptEditor = (
         disabled={pending}
         spellCheck={false}
         className="font-mono text-xs"
-        aria-label={String(
-          tr(`agentPrompts.settings.${props.kind}.title` as never),
-        )}
+        aria-label={tr(`agentPrompts.settings.${props.kind}.title` as never)}
         data-testid={`prompt-input-${props.kind}`}
         onChange={(e) => setText(e.currentTarget.value)}
       />

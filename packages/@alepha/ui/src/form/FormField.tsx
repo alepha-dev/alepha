@@ -6,174 +6,11 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 
 import { Label } from "../core/Label.tsx";
 import { cn } from "../core/utils.ts";
-
-export type FormFieldLayout = "stack" | "row";
-
-/**
- * Ambient layout for every nested `<FormField>`. Defaults to `"stack"`.
- * `<AutoForm layout="row">` wraps its tree in this context so every Control
- * variant renders as a settings-style row without prop drilling.
- */
-const FormFieldLayoutContext = createContext<FormFieldLayout>("stack");
-
-export const FormFieldLayoutProvider = (props: {
-  value: FormFieldLayout;
-  children: ReactNode;
-}) => {
-  return (
-    <FormFieldLayoutContext.Provider value={props.value}>
-      {props.children}
-    </FormFieldLayoutContext.Provider>
-  );
-};
-
-/**
- * Read the ambient layout (see {@link FormFieldLayoutProvider}).
- *
- * `<FormField>` reads this itself, so a widget only needs the hook when it
- * sizes or arranges something *around* its FormField — `<Control>` uses it to
- * give text inputs the settings-row column width.
- */
-export function useFormFieldLayout(): FormFieldLayout {
-  return useContext(FormFieldLayoutContext);
-}
-
-/**
- * Ambient flag enabling the inline save (tick) affordance on text Controls.
- * Set by `<AutoForm autoSave>`; standalone Controls never show the tick
- * unless explicitly placed inside this provider.
- */
-const FormFieldAutoSaveContext = createContext<boolean>(false);
-
-export const FormFieldAutoSaveProvider = (props: {
-  value: boolean;
-  children: ReactNode;
-}) => {
-  return (
-    <FormFieldAutoSaveContext.Provider value={props.value}>
-      {props.children}
-    </FormFieldAutoSaveContext.Provider>
-  );
-};
-
-/**
- * Read the ambient auto-save flag (see {@link FormFieldAutoSaveProvider}).
- */
-export function useFormFieldAutoSave(): boolean {
-  return useContext(FormFieldAutoSaveContext);
-}
-
-/**
- * Ambient control over the required marker (`*`). Defaults to showing it.
- *
- * `<AutoForm requiredMarker={false}>` turns it off for a form where nearly
- * every field is required and the asterisks are noise rather than news.
- *
- * ⚠️ **This is a purely visual switch, and must stay one.** The marker is
- * `aria-hidden`, so it never carried the information to assistive tech in the
- * first place — `aria-required` on the input does, and it is set from the
- * schema regardless of this flag. Hiding the marker must never be the reason a
- * field stops announcing that it is required.
- */
-const FormFieldRequiredMarkerContext = createContext<boolean>(true);
-
-export const FormFieldRequiredMarkerProvider = (props: {
-  value: boolean;
-  children: ReactNode;
-}) => {
-  return (
-    <FormFieldRequiredMarkerContext.Provider value={props.value}>
-      {props.children}
-    </FormFieldRequiredMarkerContext.Provider>
-  );
-};
-
-/**
- * Read the ambient required-marker flag (see
- * {@link FormFieldRequiredMarkerProvider}).
- */
-export function useFormFieldRequiredMarker(): boolean {
-  return useContext(FormFieldRequiredMarkerContext);
-}
-
-/**
- * Id of the error element a `<FormField id={id} error>` renders.
- */
-export function formFieldErrorId(
-  id?: string,
-  error?: string,
-): string | undefined {
-  return id && error ? `${id}-error` : undefined;
-}
-
-/**
- * Id of the description element a `<FormField id={id} description>` renders
- * (the description is replaced by the error when both are set).
- */
-export function formFieldDescriptionId(
-  id?: string,
-  description?: string,
-  error?: string,
-): string | undefined {
-  return id && description && !error ? `${id}-description` : undefined;
-}
-
-/**
- * The aria attributes a control spreads on its native element when it
- * renders its own `<FormField>` (id/error/description in hand). Widgets
- * nested under someone else's FormField use {@link useFormFieldA11y}
- * instead.
- */
-export function formFieldAriaProps(props: {
-  id?: string;
-  error?: string;
-  description?: string;
-  required?: boolean;
-}): {
-  "aria-invalid"?: true;
-  "aria-describedby"?: string;
-  "aria-required"?: true;
-} {
-  return {
-    "aria-invalid": props.error ? true : undefined,
-    "aria-describedby":
-      formFieldErrorId(props.id, props.error) ??
-      formFieldDescriptionId(props.id, props.description, props.error),
-    // The visible marker is `aria-hidden`, so without this a required field
-    // announced nothing at all. It is read from the schema, never from the
-    // marker flag — see {@link FormFieldRequiredMarkerProvider}.
-    "aria-required": props.required ? true : undefined,
-  };
-}
-
-export interface FormFieldA11y {
-  /**
-   * `true` when the surrounding FormField carries an error — mirror it
-   * onto the widget's `aria-invalid`.
-   */
-  invalid?: true;
-  /**
-   * Id of the FormField's error (or description) element — mirror it
-   * onto the widget's `aria-describedby`.
-   */
-  describedBy?: string;
-}
-
-const FormFieldA11yContext = createContext<FormFieldA11y>({});
-
-/**
- * Read the surrounding FormField's accessibility wiring. Leaf widgets
- * spread the result onto their native element so screen readers announce
- * the invalid state and the error/description text:
- *
- * ```tsx
- * const a11y = useFormFieldA11y();
- * <input aria-invalid={a11y.invalid} aria-describedby={a11y.describedBy} />
- * ```
- */
-export function useFormFieldA11y(): FormFieldA11y {
-  return useContext(FormFieldA11yContext);
-}
+import {
+  type FormFieldLayout,
+  useFormFieldLayout,
+} from "./FormFieldLayoutProvider.tsx";
+import { useFormFieldRequiredMarker } from "./FormFieldRequiredMarkerProvider.tsx";
 
 export interface FormFieldProps {
   /**
@@ -223,7 +60,7 @@ export interface FormFieldProps {
  * don't have to thread `error` through every leaf widget).
  */
 export const FormField = (props: FormFieldProps) => {
-  const ambient = useContext(FormFieldLayoutContext);
+  const ambient = useFormFieldLayout();
   const layout = props.layout ?? ambient;
   // Hook first, `&&` after: `props.required && useFormFieldRequiredMarker()`
   // short-circuits, which would make this a conditional hook call.
@@ -331,3 +168,86 @@ export const FormField = (props: FormFieldProps) => {
     </div>
   );
 };
+
+/**
+ * Id of the error element a `<FormField id={id} error>` renders.
+ */
+export function formFieldErrorId(
+  id?: string,
+  error?: string,
+): string | undefined {
+  return id && error ? `${id}-error` : undefined;
+}
+
+/**
+ * Id of the description element a `<FormField id={id} description>` renders
+ * (the description is replaced by the error when both are set).
+ */
+export function formFieldDescriptionId(
+  id?: string,
+  description?: string,
+  error?: string,
+): string | undefined {
+  return id && description && !error ? `${id}-description` : undefined;
+}
+
+/**
+ * The aria attributes a control spreads on its native element when it
+ * renders its own `<FormField>` (id/error/description in hand). Widgets
+ * nested under someone else's FormField use {@link useFormFieldA11y}
+ * instead.
+ */
+export function formFieldAriaProps(props: {
+  id?: string;
+  error?: string;
+  description?: string;
+  required?: boolean;
+}): {
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+  "aria-required"?: true;
+} {
+  return {
+    "aria-invalid": props.error ? true : undefined,
+    "aria-describedby":
+      formFieldErrorId(props.id, props.error) ??
+      formFieldDescriptionId(props.id, props.description, props.error),
+    // The visible marker is `aria-hidden`, so without this a required field
+    // announced nothing at all. It is read from the schema, never from the
+    // marker flag — see `FormFieldRequiredMarkerProvider.tsx`.
+    "aria-required": props.required ? true : undefined,
+  };
+}
+
+export interface FormFieldA11y {
+  /**
+   * `true` when the surrounding FormField carries an error — mirror it
+   * onto the widget's `aria-invalid`.
+   */
+  invalid?: true;
+  /**
+   * Id of the FormField's error (or description) element — mirror it
+   * onto the widget's `aria-describedby`.
+   */
+  describedBy?: string;
+}
+
+/**
+ * Context exemption: the ids and invalid state one `FormField` hands the
+ * widget inside it. Every field on a page has its own.
+ */
+const FormFieldA11yContext = createContext<FormFieldA11y>({});
+
+/**
+ * Read the surrounding FormField's accessibility wiring. Leaf widgets
+ * spread the result onto their native element so screen readers announce
+ * the invalid state and the error/description text:
+ *
+ * ```tsx
+ * const a11y = useFormFieldA11y();
+ * <input aria-invalid={a11y.invalid} aria-describedby={a11y.describedBy} />
+ * ```
+ */
+export function useFormFieldA11y(): FormFieldA11y {
+  return useContext(FormFieldA11yContext);
+}

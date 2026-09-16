@@ -14,6 +14,7 @@ export * from "./controllers/OrderController.ts";
 export * from "./controllers/ProductController.ts";
 export * from "./entities/orderItems.ts";
 export * from "./entities/orders.ts";
+export * from "./schemas/orderStatusSchema.ts";
 export * from "./entities/products.ts";
 export * from "./entities/stockMovements.ts";
 export * from "./entities/stockReservations.ts";

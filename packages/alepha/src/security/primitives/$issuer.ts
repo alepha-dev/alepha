@@ -123,6 +123,12 @@ export interface IssuerSettings {
        * MCP client / app the session belongs to.
        */
       clientId?: string;
+      /**
+       * The scope ids an OAuth grant was given. Store them beside `clientId`
+       * and hand them back from `onRefreshSession`, or a refreshed token
+       * loses the grant's narrowing.
+       */
+      scopes?: string[];
     },
   ) => Promise<{
     refreshToken: string;
@@ -154,9 +160,27 @@ export interface IssuerSettings {
      * record it leaves the session unrefreshable at `/oauth/token`.
      */
     clientId?: string;
+    /**
+     * The scope ids the session's OAuth grant was given (the `scopes` handed
+     * to `onCreateSession`), resolved by {@link resolveScopePermissions} into
+     * the refreshed token's permission scope.
+     */
+    scopes?: string[];
   }>;
 
   onDeleteSession?: (refreshToken: string) => Promise<void>;
+
+  /**
+   * Turn an OAuth grant's scope ids into the permission list its access
+   * tokens are limited to, or `undefined` when the grant stays unrestricted.
+   *
+   * Called each time a token is minted for a grant, on creation and on every
+   * refresh, so a changed declaration applies at the next refresh. The
+   * security module cannot know what an application's scopes reach, so the
+   * application hands it this; `$realm` wires it from `oauthOptions.scopes`.
+   * Without it, a grant's scopes narrow nothing.
+   */
+  resolveScopePermissions?: (scopes: string[]) => string[] | undefined;
 }
 
 export type IssuerInternal = {
@@ -343,10 +367,18 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
     },
     context?: {
       /**
-       * OAuth client id to tag a freshly created session with. Only used
-       * on the `onCreateSession` path (no `refreshToken` passed).
+       * OAuth client the token is issued to. Tags a freshly created session
+       * with it (the `onCreateSession` path), and is signed into the access
+       * token as its `client_id` claim on every path, creation and refresh.
        */
       clientId?: string;
+      /**
+       * The scope ids of the OAuth grant the token is issued for. Stored on a
+       * freshly created session, and resolved through
+       * `settings.resolveScopePermissions` into the token's
+       * `permission_scope` claim.
+       */
+      scopes?: string[];
     },
   ): Promise<AccessTokenResponse> {
     let sid: string | undefined = refreshToken?.sid;
@@ -366,6 +398,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         const { refreshToken, sessionId } = await create(user, {
           expiresIn,
           clientId: context?.clientId,
+          scopes: context?.scopes,
         });
 
         refresh_token = refreshToken;
@@ -411,6 +444,27 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
     // `viska.club.alepha.dev` even when the user belongs to both.
     const tenant = this.alepha.store.get(currentTenantAtom)?.id;
 
+    // A token issued to an OAuth client says so, and keeps saying so: the
+    // claim is what makes a connected app's identity a machine credential
+    // rather than a session (see `SecureOptions.sessionOnly`). Read from the
+    // context on creation and on a session-backed refresh, and from the user
+    // itself when it was rebuilt from such a token, so re-minting an OAuth
+    // identity can never launder it into a session.
+    const clientId =
+      context?.clientId ??
+      (user.credential?.type === "oauth"
+        ? user.credential.clientId
+        : undefined);
+
+    // What the token may do, when an OAuth grant narrows it. Resolved from the
+    // grant's scope ids at every mint; failing that, a user rebuilt from a
+    // narrowed token (the token-only refresh) keeps its narrowing, so
+    // re-minting never widens a credential.
+    const permissionScope =
+      context?.scopes !== undefined
+        ? this.options.settings?.resolveScopePermissions?.(context.scopes)
+        : user.permissionScope;
+
     // Resilient display name: compose from first/last when the caller didn't
     // provide one (credentials users register with first+last but no `name`),
     // and carry the OIDC given/family claims so consumers can re-derive it —
@@ -442,6 +496,8 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         organization: user.organization,
         roles: user.roles,
         tenant,
+        client_id: clientId,
+        permission_scope: permissionScope,
       },
       this.name,
       // Marks this JWT as the only kind that may be presented as a Bearer.
@@ -477,15 +533,23 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
 
     if (this.options.settings?.onRefreshSession) {
       // get user and expiration from the session
-      const { user, expiresIn, sessionId, clientId } =
+      const { user, expiresIn, sessionId, clientId, scopes } =
         await this.options.settings.onRefreshSession(refreshToken);
 
-      // then, create a new access token
-      const tokens = await this.createToken(user, {
-        sid: sessionId,
-        refresh_token: refreshToken,
-        refresh_token_expires_in: expiresIn,
-      });
+      // then, create a new access token. The client comes back from the
+      // session row: without it, the first refresh of a connected app's token
+      // would mint one without its `client_id` claim, which is to say a
+      // session. Both refresh routes (`/oauth/token` and `/_auth/refresh`)
+      // end here, which is why the claim is set here and not in either.
+      const tokens = await this.createToken(
+        user,
+        {
+          sid: sessionId,
+          refresh_token: refreshToken,
+          refresh_token_expires_in: expiresIn,
+        },
+        { clientId, scopes },
+      );
 
       return { user, tokens, clientId };
     }

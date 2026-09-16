@@ -62,7 +62,7 @@ export class MyIdentityController {
   setMyFirstPassword = $action({
     method: "POST",
     path: "/users/me/identities/password",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Set a first password on an account that has none",
     schema: {
       body: z.object({
@@ -105,7 +105,7 @@ export class MyIdentityController {
   unlinkMyIdentity = $action({
     method: "DELETE",
     path: "/users/me/identities/:id",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Unlink one of the caller's sign-in methods",
     schema: {
       params: z.object({ id: z.uuid() }),

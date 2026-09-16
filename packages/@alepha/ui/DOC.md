@@ -17,7 +17,7 @@ renders:
 ```ts
 import { Button, cn, useToast } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { AdminRouter } from "@alepha/ui/admin";
 ```
 
@@ -39,7 +39,7 @@ the module map and that `@alepha/ui` (the root) imports no other module.
 | `@alepha/ui`           | The primitives (`Button`, `Input`, `Card`, `Badge`, `Dialog`, `Sheet`, `Tooltip`, `Sidebar`, and the rest), `cn`, `useToast` + `Toaster`, `useDialog` + `DialogProvider`, `useIsMobile`, `TimeAgo`, `UserAvatar` |
 | `@alepha/ui/form`      | `AutoForm`, `Control` and the per-type renderers (`ControlSelect`, `ControlDate`, `ControlUpload`, ...), `FormField`, `resizeImage`                                                                              |
 | `@alepha/ui/settings`  | The settings kit: `SettingsLayout`, `SettingsNav`, `SettingsSection`, `SettingsRow`, `SettingsDangerSection`                                                                                                     |
-| `@alepha/ui/table`     | `AlephaTable` and its parts, `paginateLocal`, `useTableSelection`, `PermissionMatrix`                                                                                                                            |
+| `@alepha/ui/table`     | `DataTable` and its parts, `paginateLocal`, `useTableSelection`, `PermissionMatrix`                                                                                                                              |
 | `@alepha/ui/tree`      | `TreeView`, `TreeViewResizer`, `useTreeState`, and the tree model (`buildTree`, `flattenTree`, `resolveDrop`, ...)                                                                                               |
 | `@alepha/ui/markdown`  | `MarkdownView` and the diagram parsers. See the section below                                                                                                                                                    |
 | `@alepha/ui/shell`     | `AppShell`, `NavShell` and its `Spotlight`, `PlateLayout`, `DetailLayout`, `AppActions`, the header buttons, `ActionErrorToaster`                                                                                |
@@ -47,14 +47,14 @@ the module map and that `@alepha/ui` (the root) imports no other module.
 | `@alepha/ui/account`   | `AccountRouter`, `$pageAccount`, and the account pages                                                                                                                                                           |
 | `@alepha/ui/admin`     | `AdminRouter`, `$pageAdmin`, the admin pages and `AdminAnalytics`                                                                                                                                                |
 | `@alepha/ui/chart`     | The recharts wrapper (`ChartContainer` and its parts). Opt-in                                                                                                                                                    |
-| `@alepha/ui/command`   | The cmdk wrapper (`Command`, `CommandDialog`). Opt-in                                                                                                                                                            |
+| `@alepha/ui/command`   | The command palette on Base UI's `Autocomplete` (`Command`, `CommandDialog`), ranked by cmdk's scorer. Opt-in                                                                                                    |
 | `@alepha/ui/calendar`  | The react-day-picker wrapper (`Calendar`). Opt-in                                                                                                                                                                |
 | `@alepha/ui/otp`       | The input-otp wrapper (`InputOTP`). Opt-in                                                                                                                                                                       |
 | `@alepha/ui/resizable` | The react-resizable-panels wrapper. Opt-in                                                                                                                                                                       |
 | `@alepha/ui/i18n/fr`   | `uiFr`, the French catalogue for every key the package asks for                                                                                                                                                  |
 
 The five opt-in wrappers import only the root, so a heavy dependency (recharts,
-cmdk, react-day-picker, input-otp, react-resizable-panels) is loaded by the app
+react-day-picker, input-otp, react-resizable-panels) is loaded by the app
 that imports its subpath and by nothing else.
 
 > `useDialog()` throws without a `<DialogProvider>` above it, and toasts need a
@@ -245,6 +245,68 @@ The font is pinned rather than inherited. Layout needs node sizes before it can
 place anything, and node width comes from a generated per-character width table
 measured against Inter at one size; inheriting the surrounding face would make
 text and box disagree, differently on every surface.
+
+## Command palette
+
+`@alepha/ui/command` is Base UI's `Autocomplete`, rendered inline: a search
+input over a list that stays on screen. It is **data-driven**. The root takes
+every row as `items` (flat, or in groups shaped `{ items, ...yours }`), ranks
+them against the query, and hands `CommandList` what is left, best first,
+through a function child:
+
+```tsx
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@alepha/ui/command";
+
+<CommandDialog open={open} onOpenChange={setOpen}>
+  <Command<Page>
+    items={groups}
+    itemToStringValue={(page) => `${page.section} ${page.label}`}
+  >
+    <CommandInput placeholder="Search…" />
+    <CommandEmpty>No results.</CommandEmpty>
+    <CommandList>
+      {(group: PageGroup) => (
+        <CommandGroup key={group.key} items={group.items} heading={group.label}>
+          {(page: Page) => (
+            <CommandItem key={page.href} value={page} onClick={() => go(page)}>
+              {page.label}
+            </CommandItem>
+          )}
+        </CommandGroup>
+      )}
+    </CommandList>
+  </Command>
+</CommandDialog>;
+```
+
+The ranking is cmdk's fuzzy subsequence scorer, ported (`commandScore`, also
+exported): a match at the start of a word beats one inside a word, and a short
+string beats a long one with the same match. The first row is always
+highlighted, so Enter runs the best match. Results that arrive already ranked,
+from a server for instance, take `mode="none"`, which shows `items` as given.
+
+The palette was on cmdk until 0.30.0, which read each row from its children.
+The part names are the same; what a row carried moved to the root:
+
+| cmdk                                    | now                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `CommandItem value="…"`                 | `CommandItem value={item}`, the item from `items`; the text it is found by is the root's `itemToStringValue` |
+| `CommandItem keywords={[…]}`            | append them in `itemToStringValue`: the scorer read `value` and `keywords` as one string                     |
+| `CommandItem onSelect`                  | `CommandItem onClick`, which also runs on Enter                                                              |
+| rows written as children of the list    | `items` on `Command`, drawn by a function child of `CommandList` or `CommandGroup`                           |
+| `Command shouldFilter={false}`          | `Command mode="none"`                                                                                        |
+| `Command filter={(value, search) => n}` | `Command filter={(item, query, itemToString) => n}`, a score: 0 hides, higher first                          |
+| `CommandInput value` / `onValueChange`  | `Command value` / `onValueChange`                                                                            |
+| `CommandEmpty` inside `CommandList`     | `CommandEmpty` beside it, before the list                                                                    |
+| `data-selected` on the keyboard row     | `data-highlighted`                                                                                           |
 
 ## Adding a component
 

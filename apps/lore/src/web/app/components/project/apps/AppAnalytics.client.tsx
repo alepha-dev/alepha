@@ -394,7 +394,7 @@ const AppAnalytics = () => {
           segments={segments(
             {
               dimension: "path",
-              title: String(tr("insights.topPaths")),
+              title: tr("insights.topPaths"),
               rows: data.topPaths.map((row) => ({
                 value: row.path,
                 label: row.path,
@@ -404,8 +404,8 @@ const AppAnalytics = () => {
             },
             {
               dimension: "entryPath",
-              title: String(tr("insights.topEntryPaths")),
-              note: String(tr("insights.topEntryPaths.note")),
+              title: tr("insights.topEntryPaths"),
+              note: tr("insights.topEntryPaths.note"),
               rows: data.topEntryPaths.map((row) => ({
                 value: row.path,
                 label: row.path,
@@ -422,8 +422,8 @@ const AppAnalytics = () => {
           segments={segments(
             {
               dimension: "referrer",
-              title: String(tr("insights.topReferrers")),
-              note: String(tr("insights.topReferrers.note")),
+              title: tr("insights.topReferrers"),
+              note: tr("insights.topReferrers.note"),
               rows: data.topReferrers.map((row) => ({
                 value: row.referrer,
                 // `direct` is a sentinel bucket, not a host, and it is the
@@ -432,7 +432,7 @@ const AppAnalytics = () => {
                 // referred traffic rather than of the traffic.
                 label:
                   row.referrer === "direct"
-                    ? String(tr("insights.topReferrers.direct"))
+                    ? tr("insights.topReferrers.direct")
                     : row.referrer,
                 count: row.count,
                 percentage: row.percentage,
@@ -440,13 +440,13 @@ const AppAnalytics = () => {
             },
             {
               dimension: "campaign",
-              title: String(tr("insights.topCampaigns")),
-              note: String(tr("insights.topCampaigns.note")),
+              title: tr("insights.topCampaigns"),
+              note: tr("insights.topCampaigns.note"),
               rows: data.topCampaigns.map((row) => ({
                 value: row.campaign,
                 label:
                   row.campaign === "none"
-                    ? String(tr("insights.topCampaigns.untagged"))
+                    ? tr("insights.topCampaigns.untagged")
                     : row.campaign,
                 count: row.count,
                 // Out of `entries`, not `totalViews`: a campaign describes how
@@ -472,7 +472,7 @@ const AppAnalytics = () => {
           segments={segments(
             {
               dimension: "device",
-              title: String(tr("insights.topDevices")),
+              title: tr("insights.topDevices"),
               rows: data.topDevices.map((row) => ({
                 value: row.device,
                 label: deviceLabel(tr, row.device),
@@ -482,7 +482,7 @@ const AppAnalytics = () => {
             },
             {
               dimension: "browser",
-              title: String(tr("insights.topBrowsers")),
+              title: tr("insights.topBrowsers"),
               rows: data.topBrowsers.map((row) => ({
                 value: row.browser,
                 label: row.browser,
@@ -492,7 +492,7 @@ const AppAnalytics = () => {
             },
             {
               dimension: "os",
-              title: String(tr("insights.topSystems")),
+              title: tr("insights.topSystems"),
               rows: data.topSystems.map((row) => ({
                 value: row.os,
                 label: row.os,
@@ -507,7 +507,7 @@ const AppAnalytics = () => {
               // leaderboard already renders a share per row, which is the
               // number this was asked for.
               dimension: "auth",
-              title: String(tr("insights.topAudience")),
+              title: tr("insights.topAudience"),
               rows: data.topAudience.map((row) => ({
                 value: row.auth,
                 label: audienceLabel(tr, row.auth),
@@ -523,7 +523,7 @@ const AppAnalytics = () => {
           onPick={pick}
           segments={segments({
             dimension: "country",
-            title: String(tr("insights.topCountries")),
+            title: tr("insights.topCountries"),
             rows: data.topCountries.map((row) => ({
               value: row.country,
               label: `${flagEmoji(row.country)} ${row.country}`,
@@ -548,9 +548,9 @@ const deviceLabel = (
   tr: ReturnType<typeof useI18n<I18n, "en">>["tr"],
   device: string,
 ): string => {
-  if (device === "mobile") return String(tr("insights.device.mobile"));
-  if (device === "tablet") return String(tr("insights.device.tablet"));
-  if (device === "desktop") return String(tr("insights.device.desktop"));
+  if (device === "mobile") return tr("insights.device.mobile");
+  if (device === "tablet") return tr("insights.device.tablet");
+  if (device === "desktop") return tr("insights.device.desktop");
   return device;
 };
 
@@ -566,8 +566,8 @@ const audienceLabel = (
   tr: ReturnType<typeof useI18n<I18n, "en">>["tr"],
   auth: string,
 ): string => {
-  if (auth === "user") return String(tr("insights.audience.user"));
-  if (auth === "anon") return String(tr("insights.audience.anon"));
+  if (auth === "user") return tr("insights.audience.user");
+  if (auth === "anon") return tr("insights.audience.anon");
   return auth;
 };
 

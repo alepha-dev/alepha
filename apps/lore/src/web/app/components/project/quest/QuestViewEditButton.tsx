@@ -63,7 +63,7 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
         variant="ghost"
         size="icon"
         aria-label={tr("quest.view.edit")}
-        title={String(tr("quest.view.edit"))}
+        title={tr("quest.view.edit")}
         onClick={() => setShowDialog(true)}
       >
         <Pencil className="size-4" />

@@ -69,21 +69,19 @@ export const productFormSchema = (
      * split `AdminUserDetail` uses and for the same reason.
      */
     name: z.text({ maxLength: 200 }).meta({
-      title: String(tr("commerce.admin.fName", { default: "Name" })),
+      title: tr("commerce.admin.fName", { default: "Name" }),
       $control: { width: 60 },
     }),
     slug: z.text({ maxLength: 200 }).meta({
-      title: String(tr("commerce.admin.fSlug", { default: "Reference" })),
-      description: String(
-        tr("commerce.admin.fSlugHint", {
-          default:
-            "Appears in the URL. Do not change it once the product is on sale.",
-        }),
-      ),
+      title: tr("commerce.admin.fSlug", { default: "Reference" }),
+      description: tr("commerce.admin.fSlugHint", {
+        default:
+          "Appears in the URL. Do not change it once the product is on sale.",
+      }),
       $control: { width: 40 },
     }),
     kind: z.text({ maxLength: 64 }).meta({
-      title: String(tr("commerce.admin.fKind", { default: "Type" })),
+      title: tr("commerce.admin.fKind", { default: "Type" }),
       $control: {
         width: 34,
         items: kinds.map((kind) => ({ value: kind, label: kind })),
@@ -98,13 +96,13 @@ export const productFormSchema = (
       .integer()
       .min(0)
       .meta({
-        title: String(
-          tr("commerce.admin.fPrice", { default: "Price incl. tax (cents)" }),
-        ),
+        title: tr("commerce.admin.fPrice", {
+          default: "Price incl. tax (cents)",
+        }),
         $control: { width: 33 },
       }),
     currency: z.text({ minLength: 3, maxLength: 3 }).meta({
-      title: String(tr("commerce.admin.fCurrency", { default: "Currency" })),
+      title: tr("commerce.admin.fCurrency", { default: "Currency" }),
       $control: {
         width: 33,
         items: currencies.map((code) => ({ value: code, label: code })),
@@ -121,29 +119,25 @@ export const productFormSchema = (
       .min(0)
       .max(10000)
       .meta({
-        title: String(
-          tr("commerce.admin.fVatRate", { default: "VAT rate (basis points)" }),
-        ),
-        description: String(
-          tr("commerce.admin.fVatRateHint", {
-            default:
-              "2000 = 20.00 %. Leave empty to bill at the seller's default rate.",
-          }),
-        ),
+        title: tr("commerce.admin.fVatRate", {
+          default: "VAT rate (basis points)",
+        }),
+        description: tr("commerce.admin.fVatRateHint", {
+          default:
+            "2000 = 20.00 %. Leave empty to bill at the seller's default rate.",
+        }),
         $control: { width: 50 },
       })
       .optional(),
     description: z
       .text({ maxLength: 4000 })
       .meta({
-        title: String(
-          tr("commerce.admin.fDescription", { default: "Description" }),
-        ),
+        title: tr("commerce.admin.fDescription", { default: "Description" }),
         $control: { width: 100, area: true },
       })
       .optional(),
     published: z.boolean().meta({
-      title: String(tr("commerce.admin.fPublished", { default: "On sale" })),
+      title: tr("commerce.admin.fPublished", { default: "On sale" }),
       $control: { width: 100 },
     }),
   });

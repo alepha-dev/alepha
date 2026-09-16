@@ -1,5 +1,6 @@
-import { Alepha } from "alepha";
+import { Alepha, SchemaValidationError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { FormValidationError } from "alepha/react/form";
 import { describe, expect, it } from "vitest";
 
 import { sigilClientAtom } from "../../shared/sigilClientAtom.ts";
@@ -149,6 +150,21 @@ describe("SigilBrowserProvider", () => {
       expect(provider.debugPendingErrors()).toEqual([]);
     });
 
+    /**
+     * #Q2345. A caller that passed `onError` marks its failure `handled`, so
+     * no toast shows it. That is the whole of what the flag decides: a quiet
+     * 5xx is still a fault, and still a blight.
+     */
+    it("keeps a 5xx its caller handled", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        type: "custom",
+        handled: true,
+        error: Object.assign(new Error("Quiet but broken"), { status: 503 }),
+      });
+      expect(provider.debugPendingErrors()).toEqual(["Quiet but broken"]);
+    });
+
     it("keeps a 5xx from the same source", async () => {
       const { alepha, provider } = await startedProvider();
       await (alepha.events as any).emit("react:action:error", {
@@ -168,6 +184,56 @@ describe("SigilBrowserProvider", () => {
         error: new TypeError("x is not a function"),
       });
       expect(provider.debugPendingErrors()).toEqual(["x is not a function"]);
+    });
+
+    /**
+     * Blight #585, #Q2343: a person submitting the quest form without a
+     * title filed a crash. `FormModel` hands a schema refusal on as a
+     * `FormValidationError`, which carries no status, so `isCrash` kept it.
+     */
+    it("drops a form's own validation refusal", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        type: "form",
+        id: "quest-create",
+        error: new FormValidationError({
+          message: "'title' is required",
+          path: "/title",
+        }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+
+    it("keeps a SchemaValidationError raised inside a form's handler", async () => {
+      // A `$client` response that broke its own schema, surfacing through
+      // the form that called it: a fault on the server's side, not a refusal
+      // of anything the person typed.
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        type: "form",
+        id: "quest-create",
+        error: new SchemaValidationError({
+          message: "'id' is required",
+          instancePath: "/id",
+        }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([
+        "Invalid input: 'id' is required at /id",
+      ]);
+    });
+
+    it("keeps a SchemaValidationError from an action that is not a form", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        type: "action",
+        error: new SchemaValidationError({
+          message: "'items' is required",
+          instancePath: "/items",
+        }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([
+        "Invalid input: 'items' is required at /items",
+      ]);
     });
 
     it("applies the same rule to an unhandled rejection", async () => {

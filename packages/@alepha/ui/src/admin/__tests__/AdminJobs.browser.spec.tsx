@@ -230,7 +230,7 @@ describe("AdminJobs", () => {
 
 describe("the admin jobs filters", () => {
   const byName = (name: string) => JOBS.find((j) => j.name === name)!;
-  const kept = (filters: Record<string, unknown>) =>
+  const kept = (filters: Parameters<typeof matchesJobFilters>[1]) =>
     JOBS.filter((job) => matchesJobFilters(job, filters)).map((j) => j.name);
 
   it("reads a job's domain past the system. prefix", () => {

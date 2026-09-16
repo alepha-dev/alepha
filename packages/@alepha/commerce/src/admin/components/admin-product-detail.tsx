@@ -96,11 +96,9 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         ),
       onError: (err) => {
         toast.error(
-          String(
-            tr("commerce.admin.detail.loadError", {
-              default: "Failed to load the product",
-            }),
-          ),
+          tr("commerce.admin.detail.loadError", {
+            default: "Failed to load the product",
+          }),
         );
         console.error(err);
       },
@@ -157,21 +155,17 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
          */
         if (!values.name.trim()) {
           throw new FormValidationError({
-            message: String(
-              tr("commerce.admin.nameRequired", {
-                default: "Name is required",
-              }),
-            ),
+            message: tr("commerce.admin.nameRequired", {
+              default: "Name is required",
+            }),
             path: "/name",
           });
         }
         if (!values.slug.trim()) {
           throw new FormValidationError({
-            message: String(
-              tr("commerce.admin.slugRequired", {
-                default: "Reference is required",
-              }),
-            ),
+            message: tr("commerce.admin.slugRequired", {
+              default: "Reference is required",
+            }),
             path: "/slug",
           });
         }
@@ -181,7 +175,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           body: values,
         });
         toast.success(
-          String(tr("commerce.admin.saved", { default: "Product saved." })),
+          tr("commerce.admin.saved", { default: "Product saved." }),
         );
         await productQuery.refetch();
       },
@@ -226,7 +220,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         body: { images: values.images },
       });
       toast.success(
-        String(tr("commerce.admin.media.saved", { default: "Images saved." })),
+        tr("commerce.admin.media.saved", { default: "Images saved." }),
       );
       await productQuery.refetch();
     },
@@ -278,11 +272,9 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           body: { config: values },
         });
         toast.success(
-          String(
-            tr("commerce.admin.details.configSaved", {
-              default: "Configuration saved.",
-            }),
-          ),
+          tr("commerce.admin.details.configSaved", {
+            default: "Configuration saved.",
+          }),
         );
         await productQuery.refetch();
       },
@@ -313,11 +305,9 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           body: { attributes },
         });
         toast.success(
-          String(
-            tr("commerce.admin.details.attributesSaved", {
-              default: "Attributes saved.",
-            }),
-          ),
+          tr("commerce.admin.details.attributesSaved", {
+            default: "Attributes saved.",
+          }),
         );
         await productQuery.refetch();
       },
@@ -338,9 +328,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         body: values,
       });
       toast.success(
-        String(
-          tr("commerce.admin.stock.adjusted", { default: "Stock updated." }),
-        ),
+        tr("commerce.admin.stock.adjusted", { default: "Stock updated." }),
       );
       // Both the figures (aside + cards) and the ledger below have changed.
       await productQuery.refetch();
@@ -387,21 +375,17 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       handler: async () => {
         if (!product) return;
         const ok = await dialog.confirm({
-          title: String(
-            tr("commerce.admin.detail.deleteTitle", {
-              default: "Delete product",
-            }),
-          ),
-          description: String(
-            tr("commerce.admin.detail.deleteConfirm", {
-              default: `Permanently delete “${product.name}”? This cannot be undone.`,
-              args: [product.name],
-            }),
-          ),
+          title: tr("commerce.admin.detail.deleteTitle", {
+            default: "Delete product",
+          }),
+          description: tr("commerce.admin.detail.deleteConfirm", {
+            default: `Permanently delete “${product.name}”? This cannot be undone.`,
+            args: [product.name],
+          }),
           destructive: true,
-          confirmLabel: String(
-            tr("commerce.admin.detail.deleteCta", { default: "Delete" }),
-          ),
+          confirmLabel: tr("commerce.admin.detail.deleteCta", {
+            default: "Delete",
+          }),
         });
         if (!ok) return;
 
@@ -418,21 +402,17 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
            */
           toast.error(
             (error as Error)?.message ??
-              String(
-                tr("commerce.admin.detail.deleteError", {
-                  default: "Could not delete this product",
-                }),
-              ),
+              tr("commerce.admin.detail.deleteError", {
+                default: "Could not delete this product",
+              }),
           );
           return;
         }
 
         toast.success(
-          String(
-            tr("commerce.admin.detail.deleted", {
-              default: "Product deleted.",
-            }),
-          ),
+          tr("commerce.admin.detail.deleted", {
+            default: "Product deleted.",
+          }),
         );
         await router.push(backPath);
       },
@@ -477,16 +457,12 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         product
           ? undefined
           : {
-              message: String(
-                tr("commerce.admin.detail.notFound", {
-                  default: "Product not found.",
-                }),
-              ),
-              backLabel: String(
-                tr("commerce.admin.detail.back", {
-                  default: "Back to the catalogue",
-                }),
-              ),
+              message: tr("commerce.admin.detail.notFound", {
+                default: "Product not found.",
+              }),
+              backLabel: tr("commerce.admin.detail.back", {
+                default: "Back to the catalogue",
+              }),
               onBack: () => void router.push(backPath),
             }
       }

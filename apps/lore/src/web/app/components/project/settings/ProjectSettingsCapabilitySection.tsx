@@ -62,7 +62,7 @@ const ProjectSettingsCapabilitySection = (
         <Switch
           // Disabled rather than hidden: a capability page with no switch says
           // nothing at all. `capability:manage` is owner-only structurally.
-          disabled={!master.canToggle}
+          disabled={!master.canToggle || master.busy}
           checked={master.enabled}
           onCheckedChange={(value) => {
             void master.toggle(value);
@@ -75,8 +75,8 @@ const ProjectSettingsCapabilitySection = (
           key={option.key}
           capability={props.capability}
           option={option.key}
-          label={String(tr(option.labelKey as never))}
-          description={String(tr(option.descriptionKey as never))}
+          label={tr(option.labelKey as never)}
+          description={tr(option.descriptionKey as never)}
           // ⚠️ Disabled while the master is off, not hidden. An option that
           // vanished with its capability would make turning the capability on
           // feel like the page had changed under you, and it is also the only
@@ -119,7 +119,7 @@ const CapabilityOptionRow = (props: CapabilityOptionRowProps) => {
     >
       <Switch
         checked={option.enabled}
-        disabled={props.disabled || !option.canToggle}
+        disabled={props.disabled || !option.canToggle || option.busy}
         onCheckedChange={(value) => {
           void option.toggle(value);
         }}

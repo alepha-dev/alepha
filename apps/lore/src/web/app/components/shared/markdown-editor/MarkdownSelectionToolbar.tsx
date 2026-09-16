@@ -170,7 +170,7 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
           className="border-border flex items-center gap-0.5 border-l pl-1 first:border-l-0 first:pl-0"
         >
           {group.map(({ id, labelKey, Icon }) => {
-            const label = String(tr(labelKey));
+            const label = tr(labelKey);
             return (
               <Tooltip key={id}>
                 <TooltipTrigger

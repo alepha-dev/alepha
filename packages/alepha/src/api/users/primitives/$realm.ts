@@ -1,10 +1,15 @@
 import { $context, AlephaError } from "alepha";
-import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
+import {
+  AlephaApiKeys,
+  ApiKeyNotifications,
+  ApiKeyService,
+} from "alepha/api/keys";
 import {
   AlephaOAuth,
   OAuthClientService,
   OAuthJobs,
   oauthOptions,
+  OAuthScopeResolver,
 } from "alepha/api/oauth";
 import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
 import { AlephaApiVerification } from "alepha/api/verifications";
@@ -86,13 +91,11 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   // Merge features with defaults
   const features: RealmFeatures = {
-    jobs: false,
     notifications: false,
     apiKeys: false,
     oauth: false,
     parameters: false,
     avatars: false,
-    audits: false,
     ...options.features,
   };
 
@@ -124,14 +127,14 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     alepha.with(AdminAvatarController);
   }
 
-  if (features.audits) {
-    alepha.with(UserAudits);
-    alepha.with(SessionAudits);
-  }
-
-  if (features.jobs) {
-    alepha.with(UserJobs);
-  }
+  // Infrastructure, not features: registered whatever `features` says. The
+  // user and session audit types are a security baseline, and `UserJobs`
+  // holds the only thing that deletes session rows, so a realm without it
+  // grows its `sessions` table forever. `features.audits` and `features.jobs`
+  // are accepted and ignored, `false` included (see `RealmFeatures`).
+  alepha.with(UserAudits);
+  alepha.with(SessionAudits);
+  alepha.with(UserJobs);
 
   if (features.notifications) {
     alepha.with(UserNotifications);
@@ -149,6 +152,10 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // Enable API key authentication - must be added to customResolvers before $issuer() call
   if (features.apiKeys) {
     alepha.with(AlephaApiKeys);
+    // The expiry notice, when there is a mailer to send it with.
+    if (features.notifications) {
+      alepha.with(ApiKeyNotifications);
+    }
     const apiKeyService = alepha.inject(ApiKeyService);
     customResolvers.push(
       apiKeyService.createResolver({
@@ -167,6 +174,9 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       }),
     );
   }
+
+  // Filled in below when the oauth feature is on; read lazily by the issuer.
+  let scopeResolver: OAuthScopeResolver | undefined;
 
   const realm: RealmPrimitive = $issuer({
     ...options.issuer,
@@ -211,6 +221,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
           config.expiresIn,
           name,
           config.clientId,
+          config.scopes,
         );
       },
       onRefreshSession: async (refreshToken) => {
@@ -219,6 +230,12 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       onDeleteSession: async (refreshToken) => {
         await sessionService.deleteSession(refreshToken, name);
       },
+      // An OAuth grant's scopes, turned into the permission list its tokens
+      // are limited to. The resolver reads `oauthOptions` at every mint: the
+      // application sets its scope declarations after the realm is created,
+      // and a changed declaration must apply at the next refresh. Without the
+      // oauth feature there is no resolver and a grant narrows nothing.
+      resolveScopePermissions: (scopes) => scopeResolver?.resolve(scopes),
       ...options.issuer?.settings,
     },
   });
@@ -236,6 +253,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   if (features.oauth) {
     alepha.with(AlephaOAuth);
     const oauthService = alepha.inject(OAuthClientService);
+    scopeResolver = alepha.inject(OAuthScopeResolver);
 
     // Point the OAuth controller at this realm so its endpoints mint tokens
     // through the issuer we register below. Merge with the current value so a
@@ -404,13 +422,22 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * The surfaces a realm turns on.
+ *
+ * **A feature flag gates a surface, not infrastructure.** Every flag here adds
+ * screens or endpoints a user can see, and an application turns one on because
+ * it wants the feature. Jobs and audits add neither: an audit trail nobody
+ * asked for is a security baseline, and a session table nobody purges is a
+ * leak. So the realm always registers its audit types and its session purge,
+ * and the `jobs` and `audits` keys below are kept only so the applications
+ * that set them keep compiling.
+ */
 export interface RealmFeatures {
   /**
-   * Will enable Job module.
-   *
-   * - Enable session purge functionality for cleaning up expired sessions.
-   *
-   * @default false
+   * @deprecated Ignored. The realm's jobs (the expired-session purge) are
+   * always registered: `UserJobs` is the only thing that deletes session rows,
+   * and turning it off grew the `sessions` table forever. Remove the key.
    */
   jobs?: boolean;
 
@@ -475,9 +502,9 @@ export interface RealmFeatures {
   avatars?: boolean;
 
   /**
-   * Enable audit trail for compliance and event logging.
-   *
-   * @default false
+   * @deprecated Ignored. The user and session audit types are always
+   * registered and always written, `audits: false` included: an audit trail
+   * is a security baseline, not a feature. Remove the key.
    */
   audits?: boolean;
 }

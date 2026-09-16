@@ -52,6 +52,14 @@ describe("FeedbackThreadBody", () => {
     expect(view.container.textContent).toBe("hey @nfo can you look");
   });
 
+  it("links a handle that ends a sentence, and keeps the full stop as text", async () => {
+    const view = await mount("thanks, @nfo.");
+
+    const link = view.container.querySelector("a");
+    expect(link?.textContent).toBe("@nfo");
+    expect(view.container.textContent).toBe("thanks, @nfo.");
+  });
+
   it("leaves a handle nobody owns as text", async () => {
     const view = await mount("cc @nobody on this");
 

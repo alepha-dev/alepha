@@ -1,5 +1,5 @@
 import { Button } from "@alepha/ui";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
@@ -116,7 +116,7 @@ const AppAnalyticsDimension = () => {
       </div>
 
       {/*
-        The testid sits on a wrapper, not on the table: `AlephaTable` renders
+        The testid sits on a wrapper, not on the table: `DataTable` renders
         its own toolbar and pager and does not forward unknown props to any of
         them, so the attribute would land nowhere.
       */}
@@ -124,14 +124,14 @@ const AppAnalyticsDimension = () => {
         data-testid="insights-dimension-table"
         className="flex min-h-0 flex-1 flex-col"
       >
-        <AlephaTable<InsightsDimensionResource["rows"][number]>
+        <DataTable<InsightsDimensionResource["rows"][number]>
           className="min-h-0 flex-1"
           // The one table in Lore that still names its own page size, and
           // deliberately: 50 IS in the footer picker, and a leaderboard opened
           // to read a long tail wants a long page. Every other table dropped
           // the prop with feedback #2093 - four of them opened at 25, which is
           // not in the picker at all, so the footer showed no option selected.
-          // `AlephaTable`'s own fallback of 20 is the default now.
+          // `DataTable`'s own fallback of 20 is the default now.
           defaultSize={50}
           emptyMessage={tr("common.noResults")}
           fetch={async ({ page, size }) => {

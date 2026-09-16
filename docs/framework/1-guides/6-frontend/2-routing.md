@@ -152,6 +152,19 @@ static: {
 }
 ```
 
+> **The prerender runs `configure`, never `start`.** A static page is rendered at build time in an application that has been configured and not started, since starting it would listen on a port and connect to its databases inside the build. So a value a `$hook({ on: "start" })` puts in the store is missing from the prerendered HTML, while the browser, which runs `start` before it hydrates, has it. If the page reads that value, the two trees differ and React reports a hydration error (#418) on every first load. Set anything a static page reads from the store on `configure`:
+>
+> ```typescript
+> class Themes {
+>   alepha = $inject(Alepha);
+>
+>   register = $hook({
+>     on: "configure", // not "start": the prerender never runs it
+>     handler: () => this.alepha.store.set(uiThemeListAtom, THEMES),
+>   });
+> }
+> ```
+
 ### ssr
 
 Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** - data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.
@@ -340,6 +353,33 @@ class AppRouter {
 > ⚠️ **Declare each edge from one side only.** If page B already has `parent: pageA`, do not also list B in `pageA.children`. The link is already established; stating it on both sides creates a TypeScript circular dependency between the two class fields (each references the other before it is initialised).
 
 `<NestedView />` renders the matched child page. It supports an optional `errorBoundary` prop.
+
+### When a page remounts
+
+Each page in the matched stack is keyed by its own path, compiled from the params it matched: `/epics/51` and `/epics/50` are two keys, so navigating from one to the other **remounts** the epic page and everything below it. The layouts above it keep their key and their state. This is the Next.js App Router behaviour.
+
+| navigation                              | page below the change | layouts above |
+| --------------------------------------- | --------------------- | ------------- |
+| a param changes (`/epics/51` to `/50`)  | remounted             | kept          |
+| only the query changes (`?tab=history`) | kept, loader re-runs  | kept          |
+| `router.invalidate()`                   | kept, loader re-runs  | kept          |
+
+So a component may seed local state from its props, and a different record always starts fresh:
+
+```tsx
+const Epic = (props: { epic: Epic }) => {
+  // Safe across `/epics/51` to `/epics/50`: the page remounts.
+  const [draft, setDraft] = useState(props.epic.title);
+  // ...
+};
+```
+
+Two consequences to design around:
+
+- **State that must survive a param change lives in the parent layout.** A tree beside a document, a selected tab, a scroll position: put it in the layout that has no param (`/folios`, not `/folios/:id`) and let the child page read it, through a context scoped to that layout or an `$atom`.
+- **`invalidate()` and a query change do not remount.** The loader re-runs and hands the mounted page new props, so a `useState(props.x)` still holds the value it was seeded with. Read the prop directly where it must follow a reload.
+
+A page with a `:param` in its path and no `schema.params` behaves the same way: its identity is compiled from the raw URL segment, so `/users/1` to `/users/2` remounts it and re-runs its loader.
 
 ### Ready-made routers from `@alepha/ui`
 

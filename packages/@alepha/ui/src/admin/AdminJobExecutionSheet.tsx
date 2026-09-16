@@ -51,7 +51,7 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
 
   useEffect(() => {
     const id = props.executionId;
-    // oxlint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect -- clears the previous execution before fetching the next id's
     setExecution(undefined);
     setMissing(false);
     if (!id) return;
@@ -81,7 +81,7 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
 
   const inProgress = execution ? isInProgress(execution.status) : false;
   const date = (value?: string) =>
-    value ? String(l(value, { date: "lll" })) : undefined;
+    value ? l(value, { date: "lll" }) : undefined;
 
   const overview: Array<[string, React.ReactNode]> = execution
     ? [

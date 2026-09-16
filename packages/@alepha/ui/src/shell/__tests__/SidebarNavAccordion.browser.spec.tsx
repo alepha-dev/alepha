@@ -6,7 +6,8 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AppShell, type AppShellProps, type NavGroup } from "../AppShell.tsx";
+import { AppShell, type AppShellProps } from "../AppShell.tsx";
+import type { NavGroup } from "../appShellNav.tsx";
 
 /**
  * `navAccordion` keeps one nav group open at a time, and it defaults to ON,

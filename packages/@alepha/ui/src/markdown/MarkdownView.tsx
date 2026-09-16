@@ -5,10 +5,10 @@ void React;
 import "./MarkdownView.css";
 import { lazy, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 import { DiagramErrorBoundary } from "./diagram/DiagramErrorBoundary.tsx";
+import { rehypeHighlight } from "./rehypeHighlight.ts";
 import { remarkSpoiler } from "./remarkSpoiler.ts";
 import { SpoilerSpan } from "./SpoilerSpan.tsx";
 
@@ -125,9 +125,10 @@ export const MarkdownView = (props: MarkdownViewProps) => {
           // otherwise tokenise the diagram source, and the fallback would be a
           // soup of spans instead of the text the author wrote.
           //
-          // `ignoreMissing` is gone: it no longer exists in v7, where an
-          // unknown language already produces a vfile message rather than a
-          // throw.
+          // The plugin is the markdown module's own, over lowlight with the
+          // fifteen grammars in `HIGHLIGHT_LANGUAGES`: `rehype-highlight`
+          // kept all 37 of lowlight's `common` set in the chunk whatever it
+          // was given. A fence in any other language renders plain.
           [rehypeHighlight, { detect: true, plainText: ["mermaid"] }],
         ]}
         components={{

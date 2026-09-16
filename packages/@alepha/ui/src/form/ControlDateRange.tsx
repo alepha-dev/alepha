@@ -12,10 +12,10 @@ import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
-import { Calendar } from "../calendar/Calendar.tsx";
+import { LazyCalendar, preloadCalendar } from "../calendar/LazyCalendar.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
 import { cn } from "../core/utils.ts";
 import { DATE_ONLY, formatDateOnly, parseDateOnly } from "./dateOnly.ts";
@@ -54,6 +54,13 @@ export interface ControlDateRangeProps {
    * wider than its neighbours.
    */
   triggerClassName?: string;
+  /**
+   * Drawn on the trigger just before the range, muted: the filter's name on a
+   * filter bar, so a set range reads "Created 1 Jan - 31 Jan" the way a set
+   * list reads "Status Active". Absent while the field is empty, because the
+   * placeholder already names it. Same contract as `ControlSelect`'s.
+   */
+  triggerPrefix?: ReactNode;
 }
 
 /**
@@ -180,6 +187,10 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
             // this is how the two calendars are on it.
             data-slot="date-trigger"
             disabled={props.disabled}
+            // The calendar is a chunk of its own (`LazyCalendar`), fetched as
+            // the pointer arrives or focus lands rather than on the click.
+            onPointerEnter={preloadCalendar}
+            onFocus={preloadCalendar}
             // `name` only, never the whole `input.props` spread: those
             // are an `<input>`'s props and this is a button, so their
             // `onChange` signature is genuinely incompatible. The name is
@@ -196,8 +207,9 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
           >
             {/* The room for the clear button - see `clearGap` in
                 TRIGGER_SIZES for why it is a margin here and not padding on
-                the trigger. */}
+                the trigger, and `ControlSelectCombobox` for `trigger-label`. */}
             <span
+              data-slot="trigger-label"
               className={cn(
                 "flex min-w-0 items-center gap-2",
                 showClear && size.clearGap,
@@ -214,7 +226,14 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
               <CalendarIcon
                 className={cn("text-muted-foreground shrink-0", size.icon)}
               />
+              {/* The prefix rides in the same text run as the range, for the
+                  reason `ControlSelectCombobox` gives: one run, one space. */}
               <span className="truncate">
+                {props.triggerPrefix && formatted && (
+                  <span className="text-muted-foreground">
+                    {props.triggerPrefix}{" "}
+                  </span>
+                )}
                 {formatted || props.placeholder || "Pick a date range"}
               </span>
             </span>
@@ -238,7 +257,7 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
               `...props` straight to DayPicker and already defines
               `range_start` / `range_middle` / `range_end`, which its custom
               `DayButton` reads into styled data attributes. */}
-          <Calendar mode="range" selected={shown} onSelect={handleSelect} />
+          <LazyCalendar mode="range" selected={shown} onSelect={handleSelect} />
         </PopoverContent>
       </Popover>
     </FormField>

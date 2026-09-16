@@ -10,6 +10,10 @@ type DrawerContextProps = {
   swipeDirection: NonNullable<DrawerPrimitive.Root.Props["swipeDirection"]>;
 };
 
+/**
+ * Context exemption: the parts of ONE drawer share its state. Two drawers on
+ * a page need two values, and an `$atom` holds one per container.
+ */
 const DrawerContext = React.createContext<DrawerContextProps | null>(null);
 
 function useDrawer() {
@@ -22,15 +26,18 @@ function useDrawer() {
   return context;
 }
 
-function Drawer({
-  modal = true,
-  showSwipeHandle = false,
-  snapPoints,
-  swipeDirection = "down",
-  ...props
-}: DrawerPrimitive.Root.Props & {
+export type DrawerProps = DrawerPrimitive.Root.Props & {
   showSwipeHandle?: boolean;
-}) {
+};
+
+const Drawer = (props: DrawerProps) => {
+  const {
+    modal = true,
+    showSwipeHandle = false,
+    snapPoints,
+    swipeDirection = "down",
+    ...rest
+  } = props;
   const hasSnapPoints = snapPoints != null && snapPoints.length > 0;
   const contextValue = React.useMemo(
     () => ({ hasSnapPoints, modal, showSwipeHandle, swipeDirection }),
@@ -44,28 +51,34 @@ function Drawer({
         modal={modal}
         snapPoints={snapPoints}
         swipeDirection={swipeDirection}
-        {...props}
+        {...rest}
       />
     </DrawerContext.Provider>
   );
-}
+};
 
-function DrawerTrigger({ ...props }: DrawerPrimitive.Trigger.Props) {
+export type DrawerTriggerProps = DrawerPrimitive.Trigger.Props;
+
+const DrawerTrigger = (props: DrawerTriggerProps) => {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
-}
+};
 
-function DrawerPortal({ ...props }: DrawerPrimitive.Portal.Props) {
+export type DrawerPortalProps = DrawerPrimitive.Portal.Props;
+
+const DrawerPortal = (props: DrawerPortalProps) => {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />;
-}
+};
 
-function DrawerClose({ ...props }: DrawerPrimitive.Close.Props) {
+export type DrawerCloseProps = DrawerPrimitive.Close.Props;
+
+const DrawerClose = (props: DrawerCloseProps) => {
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />;
-}
+};
 
-function DrawerOverlay({
-  className,
-  ...props
-}: DrawerPrimitive.Backdrop.Props) {
+export type DrawerOverlayProps = DrawerPrimitive.Backdrop.Props;
+
+const DrawerOverlay = (props: DrawerOverlayProps) => {
+  const { className, ...rest } = props;
   return (
     <DrawerPrimitive.Backdrop
       data-slot="drawer-overlay"
@@ -73,15 +86,15 @@ function DrawerOverlay({
         "fixed inset-0 z-50 min-h-dvh bg-black/10 opacity-[max(var(--drawer-overlay-min-opacity,0),calc(1-var(--drawer-swipe-progress)))] transition-opacity duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] select-none data-ending-style:pointer-events-none data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-snap-points:[--drawer-overlay-min-opacity:0.5] data-starting-style:opacity-0 data-swiping:duration-0 supports-backdrop-filter:backdrop-blur-xs supports-[-webkit-touch-callout:none]:absolute",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function DrawerSwipeHandle({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export type DrawerSwipeHandleProps = React.ComponentProps<"div">;
+
+const DrawerSwipeHandle = (props: DrawerSwipeHandleProps) => {
+  const { className, ...rest } = props;
   return (
     <div
       data-slot="drawer-swipe-handle"
@@ -90,16 +103,15 @@ function DrawerSwipeHandle({
         "after:bg-muted relative z-10 flex shrink-0 cursor-grab transition-opacity duration-200 group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-[swipe-axis=x]/drawer-popup:h-full group-data-[swipe-axis=x]/drawer-popup:w-3 group-data-[swipe-axis=x]/drawer-popup:items-center group-data-[swipe-axis=y]/drawer-popup:h-3 group-data-[swipe-axis=y]/drawer-popup:w-full group-data-[swipe-axis=y]/drawer-popup:justify-center group-data-[swipe-direction=down]/drawer-popup:items-end group-data-[swipe-direction=left]/drawer-popup:order-last group-data-[swipe-direction=left]/drawer-popup:justify-start group-data-[swipe-direction=right]/drawer-popup:justify-end group-data-[swipe-direction=up]/drawer-popup:order-last group-data-[swipe-direction=up]/drawer-popup:items-start after:block after:shrink-0 after:rounded-full group-data-[swipe-axis=x]/drawer-popup:after:h-24 group-data-[swipe-axis=x]/drawer-popup:after:w-1 group-data-[swipe-axis=y]/drawer-popup:after:h-1 group-data-[swipe-axis=y]/drawer-popup:after:w-24 active:cursor-grabbing",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function DrawerContent({
-  className,
-  children,
-  ...props
-}: DrawerPrimitive.Popup.Props) {
+export type DrawerContentProps = DrawerPrimitive.Popup.Props;
+
+const DrawerContent = (props: DrawerContentProps) => {
+  const { className, children, ...rest } = props;
   const { hasSnapPoints, modal, showSwipeHandle, swipeDirection } = useDrawer();
   const swipeAxis =
     swipeDirection === "down" || swipeDirection === "up" ? "y" : "x";
@@ -145,7 +157,7 @@ function DrawerContent({
             "data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:origin-right data-[swipe-direction=right]:[--closed-transform:translate3d(calc(100%+var(--drawer-inset,0px)+2px),0,0)] data-[swipe-direction=right]:[--translate-x:calc(var(--drawer-swipe-movement-x)-var(--stack-peek-offset)-(var(--stack-shrink)*100%))]",
             className,
           )}
-          {...props}
+          {...rest}
         >
           {showSwipeHandle && <DrawerSwipeHandle />}
           <DrawerPrimitive.Content
@@ -160,9 +172,12 @@ function DrawerContent({
       </DrawerPrimitive.Viewport>
     </DrawerPortal>
   );
-}
+};
 
-function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
+export type DrawerHeaderProps = React.ComponentProps<"div">;
+
+const DrawerHeader = (props: DrawerHeaderProps) => {
+  const { className, ...rest } = props;
   return (
     <div
       data-slot="drawer-header"
@@ -170,22 +185,28 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
         "flex shrink-0 flex-col gap-0.5 p-4 pb-0 group-data-[swipe-axis=y]/drawer-popup:text-center md:gap-0.5 md:text-left",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
+export type DrawerFooterProps = React.ComponentProps<"div">;
+
+const DrawerFooter = (props: DrawerFooterProps) => {
+  const { className, ...rest } = props;
   return (
     <div
       data-slot="drawer-footer"
       className={cn("mt-auto flex shrink-0 flex-col gap-2 p-4 pt-0", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props) {
+export type DrawerTitleProps = DrawerPrimitive.Title.Props;
+
+const DrawerTitle = (props: DrawerTitleProps) => {
+  const { className, ...rest } = props;
   return (
     <DrawerPrimitive.Title
       data-slot="drawer-title"
@@ -193,23 +214,23 @@ function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props) {
         "font-heading text-foreground text-base font-medium",
         className,
       )}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
-function DrawerDescription({
-  className,
-  ...props
-}: DrawerPrimitive.Description.Props) {
+export type DrawerDescriptionProps = DrawerPrimitive.Description.Props;
+
+const DrawerDescription = (props: DrawerDescriptionProps) => {
+  const { className, ...rest } = props;
   return (
     <DrawerPrimitive.Description
       data-slot="drawer-description"
       className={cn("text-muted-foreground text-sm text-balance", className)}
-      {...props}
+      {...rest}
     />
   );
-}
+};
 
 export {
   Drawer,

@@ -8,34 +8,19 @@ import { z } from "alepha";
 import type { AdminSessionController, SessionResource } from "alepha/api/users";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { CircleDot, Clock, Globe, LogOut, Search } from "lucide-react";
+import { CircleDot, Clock, Globe, LogOut } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { FilterSlot } from "../core/FilterSlot.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type {
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
-
-/**
- * The filter bar this page rendered empty until #1319.
- *
- * Shape copied from `admin-users` and `admin-audits` rather than invented: a
- * search box first in a fixed-width box, then `clearable` selects with an
- * icon and a `clearLabel` naming the unfiltered state. Free-form strings
- * rather than enums, for the reason `admin-users` gives - an unknown value
- * left in persisted state falls back to "all" instead of throwing on schema
- * validation.
- */
-const filtersSchema = z.object({
-  search: z.string().optional(),
-  country: z.string().optional(),
-  status: z.string().optional(),
-  lastUsed: z.string().optional(),
-});
 
 /**
  * Windows offered for "last used", in hours, because a session's whole life
@@ -84,12 +69,77 @@ export const AdminSessions = () => {
     };
   }, [client]);
 
+  /**
+   * The filter bar this page rendered empty until #1319.
+   *
+   * Free-form strings rather than enums, for the reason `AdminUsers` gives:
+   * an unknown value left in a stored filter falls back to "all" instead of
+   * failing to decode.
+   */
+  const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: {
+          // What this box matches: it is the one search that also takes an
+          // IP, which nobody guesses. A title is a hover hint and the field's
+          // accessible description.
+          title: tr("admin.sessions.searchHint", {
+            default: "Email, username or IP",
+          }),
+        },
+      },
+    },
+    status: {
+      schema: z.string(),
+      label: tr("admin.sessions.filterStatus", { default: "Status" }),
+      icon: CircleDot,
+      items: [
+        {
+          value: "active",
+          label: tr("admin.sessions.statusActive", { default: "Active" }),
+        },
+        {
+          value: "expired",
+          label: tr("admin.sessions.statusExpired", { default: "Expired" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.sessions.statusAll", { default: "All sessions" }),
+      },
+    },
+    // The countries this instance has actually seen, rather than all 249.
+    country: {
+      schema: z.string(),
+      label: tr("admin.sessions.filterCountry", { default: "Country" }),
+      icon: Globe,
+      items: countries.map((code) => ({ value: code, label: code })),
+      control: {
+        clearLabel: tr("admin.sessions.countryAll", {
+          default: "All countries",
+        }),
+      },
+    },
+    lastUsed: {
+      schema: z.string(),
+      label: tr("admin.sessions.colLastUsed", { default: "Last used" }),
+      icon: Clock,
+      items: LAST_USED_WINDOWS.map((window) => ({
+        value: window.hours,
+        label: tr(window.labelKey, { default: window.fallback }),
+      })),
+      control: {
+        clearLabel: tr("admin.sessions.lastUsedAny", { default: "Any time" }),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: Record<string, any>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       const { filters, ...page } = params;
       return client.findSessions({
@@ -160,101 +210,11 @@ export const AdminSessions = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<SessionResource>
+      <DataTable<SessionResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.sessions"
         fetch={fetcher}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
-                  inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
-                    // "Search" like every other filter bar (#Q2231), and
-                    // what this box matches moves here: it is the one
-                    // search that also takes an IP, which nobody guesses.
-                    // A title is a hover hint and the field's accessible
-                    // description, where a placeholder was both the hint
-                    // and the only label a sighted reader got.
-                    title: String(
-                      tr("admin.sessions.searchHint", {
-                        default: "Email, username or IP",
-                      }),
-                    ),
-                  }}
-                />
-              </FilterSlot>
-              <Control
-                input={form.input.status}
-                label=""
-                clearable
-                icon={CircleDot}
-                clearLabel={String(
-                  tr("admin.sessions.statusAll", { default: "All sessions" }),
-                )}
-                triggerClassName="w-40"
-                items={[
-                  {
-                    value: "active",
-                    label: String(
-                      tr("admin.sessions.statusActive", { default: "Active" }),
-                    ),
-                  },
-                  {
-                    value: "expired",
-                    label: String(
-                      tr("admin.sessions.statusExpired", {
-                        default: "Expired",
-                      }),
-                    ),
-                  },
-                ]}
-              />
-              <Control
-                input={form.input.country}
-                label=""
-                clearable
-                icon={Globe}
-                clearLabel={String(
-                  tr("admin.sessions.countryAll", {
-                    default: "All countries",
-                  }),
-                )}
-                triggerClassName="w-40"
-                items={countries.map((code) => ({
-                  value: code,
-                  label: code,
-                }))}
-              />
-              <Control
-                input={form.input.lastUsed}
-                label=""
-                clearable
-                icon={Clock}
-                clearLabel={String(
-                  tr("admin.sessions.lastUsedAny", { default: "Any time" }),
-                )}
-                triggerClassName="w-44"
-                items={LAST_USED_WINDOWS.map((window) => ({
-                  value: window.hours,
-                  label: String(
-                    tr(window.labelKey, { default: window.fallback }),
-                  ),
-                }))}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         bulkActions={[
           {
             label: tr("admin.sessions.bulkRevoke", {
@@ -320,7 +280,7 @@ export const AdminSessions = () => {
             cell: (s) => (
               <span className="text-muted-foreground text-xs">
                 {s.lastUsedAt
-                  ? String(l(s.lastUsedAt, { date: "fromNow" }))
+                  ? l(s.lastUsedAt, { date: "fromNow" })
                   : tr("admin.sessions.lastUsedNever", { default: "Never" })}
               </span>
             ),

@@ -9,7 +9,7 @@ const fence = (language: string, body: string) =>
 /**
  * The wiring, not the renderer: the three layers under `diagram/` have their
  * own specs. What is pinned here is that a mermaid fence is CLAIMED before
- * `rehype-highlight` sees it, that every way of failing lands back on the
+ * the highlighter (`rehypeHighlight.ts`) sees it, that every way of failing lands back on the
  * grey code block, and that no other fence changed.
  */
 describe("MarkdownView - mermaid fences", () => {

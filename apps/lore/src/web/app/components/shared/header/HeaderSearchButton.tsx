@@ -60,7 +60,7 @@ const HeaderSearchButton = (): ReactElement | null => {
   const { tr } = useI18n<I18n, "en">();
   const [, setSpotlight] = useStore(spotlightOpenAtom);
   const [project] = useStore(currentProjectAtom);
-  const label = String(tr("header.actions.search"));
+  const label = tr("header.actions.search");
   const open = (): void => setSpotlight({ open: true });
 
   if (project?.id === undefined) {

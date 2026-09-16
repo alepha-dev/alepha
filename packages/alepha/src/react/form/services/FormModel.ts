@@ -4,12 +4,15 @@ import {
   Alepha,
   coerceObject,
   type Infer,
+  SchemaValidationError,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
+
+import { FormValidationError } from "../errors/FormValidationError.ts";
 
 /**
  * FormModel is a dynamic form handler that generates form inputs based on a provided Zod schema.
@@ -403,13 +406,7 @@ export class FormModel<T extends ZObject> {
       let values: Record<string, any> = this.restructureValues(this.values);
 
       if (z.schema.isSchema(options.schema)) {
-        // HTML form controls produce strings; coerce them to the schema's
-        // scalar types (number/boolean) at this string boundary before strict
-        // decoding — otherwise a `z.number()` field would reject its "42" input.
-        values = this.alepha.codec.decode(
-          options.schema,
-          coerceObject(options.schema, values),
-        ) as Record<string, any>;
+        values = this.decodeValues(options.schema, values);
       }
 
       await options.handler(values as any);
@@ -436,7 +433,12 @@ export class FormModel<T extends ZObject> {
 
       await this.alepha.events.emit(
         "react:action:error",
-        { type: "form", id: this.id, error: error as Error },
+        {
+          type: "form",
+          id: this.id,
+          error: error as Error,
+          handled: this.isHandledError(error),
+        },
         { catch: true },
       );
       await this.alepha.events.emit(
@@ -462,6 +464,76 @@ export class FormModel<T extends ZObject> {
       );
     }
   };
+
+  /**
+   * Whether a failed submit has already been shown, so `react:action:error`
+   * carries `handled: true` and `ActionErrorToaster` leaves it alone.
+   *
+   * Two cases, the same rule `useAction` follows plus the form's own:
+   *
+   * - **The form was given an `onError`.** The caller dealt with it, whether
+   *   by a toast of its own or by staying quiet on purpose.
+   * - **A `FormValidationError` names a field.** `useFormState` pins it under
+   *   the field whose path matches, which is the whole reason a handler
+   *   throws one: a wrong password was shown under the field and toasted.
+   *
+   * ⚠️ `FormValidationError`, not any `SchemaValidationError`. A
+   * `SchemaValidationError` raised inside the handler is a response that broke
+   * its own schema: a fault, with a path into the response rather than into
+   * this form, so nothing renders it and it must still toast. And a refusal
+   * with no path has nowhere to render either.
+   */
+  protected isHandledError(error: unknown): boolean {
+    if (this.options.onError) {
+      return true;
+    }
+    return error instanceof FormValidationError && error.value.path !== "";
+  }
+
+  /**
+   * The submitted values, decoded against the form's own schema.
+   *
+   * HTML form controls produce strings; they are coerced to the schema's
+   * scalar types (number/boolean) at this string boundary before strict
+   * decoding, otherwise a `z.number()` field would reject its "42" input.
+   *
+   * ## A refusal here is rethrown as a `FormValidationError`
+   *
+   * A decode failure at this point is the person's input failing the form's
+   * rules: a required field left empty, a number out of range. That is the
+   * same thing a handler says by throwing `FormValidationError`, so it now
+   * arrives as that type too, with the same path and message.
+   *
+   * ⚠️ It matters outside the form. `react:action:error` carries this error,
+   * and the browser sigil files what it receives as a crash unless it can
+   * tell a refusal from a fault: a `SchemaValidationError` raised INSIDE the
+   * handler (a response that broke its own schema) is a fault and still
+   * reports, while this one is somebody leaving a title empty (blight #585,
+   * #Q2343). The subclass keeps every `instanceof SchemaValidationError` and
+   * `value.path` check that routes the error to its field working unchanged.
+   */
+  protected decodeValues(
+    schema: ZObject,
+    values: Record<string, any>,
+  ): Record<string, any> {
+    try {
+      return this.alepha.codec.decode(
+        schema,
+        coerceObject(schema, values),
+      ) as Record<string, any>;
+    } catch (error) {
+      if (
+        error instanceof SchemaValidationError &&
+        !(error instanceof FormValidationError)
+      ) {
+        throw new FormValidationError({
+          message: error.value.message,
+          path: error.value.path,
+        });
+      }
+      throw error;
+    }
+  }
 
   /**
    * Restructures flat keys like "address.city" into nested objects like { address: { city: ... } }
@@ -963,6 +1035,17 @@ export type FormCtrlOptions<T extends ZObject> = {
    */
   id?: string;
 
+  /**
+   * Called when the submit handler throws. Passing one says the failure is
+   * handled here: `react:action:error` still fires, with `handled: true`, and
+   * a mounted `ActionErrorToaster` does not toast it. An `onError` that wants
+   * the toast shows it itself.
+   *
+   * A `FormValidationError` thrown with a field `path` is handled without
+   * one: its message is shown under that field (`useFormState`), not toasted.
+   * Any other error, a refusal with no path included, still toasts when no
+   * `onError` is given.
+   */
   onError?: (error: Error) => void;
 
   onChange?: (key: string, value: any, store: Record<string, any>) => void;

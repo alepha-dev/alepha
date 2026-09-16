@@ -4,8 +4,11 @@ void React;
 
 import { Badge, Button, useToast } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+} from "@alepha/ui/table";
 import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -25,13 +28,9 @@ const formatPrice = (cents: number, currency: string) =>
 
 /**
  * Toolbar filter. Module scope so its identity stays stable across renders —
- * `AlephaTable` owns a `useForm` over it, and a fresh reference each render would
+ * `DataTable` owns a `useForm` over it, and a fresh reference each render would
  * re-anchor that form for nothing.
  */
-const filtersSchema = z.object({
-  kind: z.string().optional(),
-});
-
 export interface AdminProductsProps {
   /**
    * Where a product's detail page lives. The route belongs to the application —
@@ -76,11 +75,9 @@ export const AdminProducts = (props: AdminProductsProps) => {
       },
       onError: () =>
         toast.error(
-          String(
-            tr("commerce.admin.draftFailed", {
-              default: "Could not create the product",
-            }),
-          ),
+          tr("commerce.admin.draftFailed", {
+            default: "Could not create the product",
+          }),
         ),
     },
     [client, detailPath],
@@ -98,12 +95,30 @@ export const AdminProducts = (props: AdminProductsProps) => {
     [client],
   );
 
+  /**
+   * The table's only filter, so it is on the bar from the start: a default
+   * filter, removable like any other. The kinds are this deployment's, read
+   * from the server rather than hard-coded, and labelled as they are named.
+   */
+  const filterFields = {
+    kind: {
+      schema: z.string(),
+      mode: "default",
+      label: tr("commerce.admin.colKind", { default: "Type" }),
+      icon: Shapes,
+      items: (kinds?.kinds ?? []).map((kind) => ({ value: kind, label: kind })),
+      control: {
+        clearLabel: tr("commerce.admin.allKinds", { default: "All types" }),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: Record<string, any>;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) =>
       client.commerceAdminProductList({
         query: {
@@ -154,15 +169,11 @@ export const AdminProducts = (props: AdminProductsProps) => {
   const restock = useConfirmedAction<[AdminProductResource, () => void]>(
     {
       confirm: (product) => ({
-        title: String(
-          tr("commerce.admin.restockTitle", { default: "Restock" }),
-        ),
-        description: String(
-          tr("commerce.admin.restockConfirm", {
-            default: `Add one unit of “${product.name}” to stock?`,
-            args: [product.name],
-          }),
-        ),
+        title: tr("commerce.admin.restockTitle", { default: "Restock" }),
+        description: tr("commerce.admin.restockConfirm", {
+          default: `Add one unit of “${product.name}” to stock?`,
+          args: [product.name],
+        }),
       }),
       // Deliberately +1 rather than a quantity prompt: a dialog that asks for a
       // number is a form, and forms belong in the editor. One click covers the
@@ -175,61 +186,25 @@ export const AdminProducts = (props: AdminProductsProps) => {
         refresh();
       },
       success: (product) =>
-        String(
-          tr("commerce.admin.restocked", {
-            default: `“${product.name}”: +1 in stock.`,
-            args: [product.name],
-          }),
-        ),
+        tr("commerce.admin.restocked", {
+          default: `“${product.name}”: +1 in stock.`,
+          args: [product.name],
+        }),
     },
     [client],
   );
 
   return (
     <AdminPage>
-      <AlephaTable<AdminProductResource>
+      <DataTable<AdminProductResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.products"
         fetch={fetcher}
         onRowClick={(product) => openProduct(product.id)}
-        emptyMessage={String(
-          tr("commerce.admin.noProducts", {
-            default: "No products in the catalogue.",
-          }),
-        )}
-        filters={{
-          schema: filtersSchema,
-          /*
-           * No label, and the "all" case is `clearable` rather than an
-           * empty-valued item — the shape every `@alepha/ui` admin table uses
-           * (`admin-users`, `admin-jobs`).
-           *
-           * The label is dropped because the column it filters is named one row
-           * below it: the bar read "Type" directly above a header that also
-           * said "Type". It also set the bar's height, which is what left the
-           * trailing buttons hanging low (see `alepha-table`'s `self-center`).
-           *
-           * `triggerClassName` rather than a wrapping `<div className="w-52">`:
-           * the width belongs to the trigger, and the wrapper made the control
-           * a flex item of its own, which is what the shared pattern avoids.
-           */
-          render: (form) => (
-            <Control
-              input={form.input.kind}
-              label=""
-              clearable
-              icon={Shapes}
-              clearLabel={String(
-                tr("commerce.admin.allKinds", { default: "All types" }),
-              )}
-              triggerClassName="w-52"
-              items={(kinds?.kinds ?? []).map((kind) => ({
-                value: kind,
-                label: kind,
-              }))}
-            />
-          ),
-        }}
+        emptyMessage={tr("commerce.admin.noProducts", {
+          default: "No products in the catalogue.",
+        })}
+        filters={{ fields: filterFields }}
         toolbar={
           <Button
             size="sm"
@@ -242,7 +217,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
         }
         rowActions={(product) => [
           {
-            label: String(tr("commerce.admin.edit", { default: "Edit" })),
+            label: tr("commerce.admin.edit", { default: "Edit" }),
             icon: Pencil,
             onClick: (item) => openProduct(item.id),
           },
@@ -259,7 +234,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
             onClick: (item, ctx) => void publish.run(item, ctx.refresh),
           },
           {
-            label: String(tr("commerce.admin.restock", { default: "Restock" })),
+            label: tr("commerce.admin.restock", { default: "Restock" }),
             icon: PackagePlus,
             onClick: (item, ctx) => void restock.run(item, ctx.refresh),
           },
@@ -335,7 +310,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
             sortable: true,
             cell: (p) => (
               <span className="text-muted-foreground text-xs">
-                {String(l(p.createdAt, { date: "lll" }))}
+                {l(p.createdAt, { date: "lll" })}
               </span>
             ),
           },

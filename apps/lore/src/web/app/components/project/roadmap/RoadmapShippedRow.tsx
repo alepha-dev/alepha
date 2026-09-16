@@ -36,7 +36,7 @@ const RoadmapShippedRow = (props: RoadmapShippedRowProps) => {
   const tag = release.tag ?? release.title;
   const when = release.releasedAt
     ? tr("roadmap.release.released", {
-        args: [String(i18n.l(release.releasedAt, { date: "ll" }))],
+        args: [i18n.l(release.releasedAt, { date: "ll" })],
       })
     : "";
 

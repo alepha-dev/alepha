@@ -1,6 +1,5 @@
 import { Badge, useToast } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -19,11 +18,6 @@ export interface BayCommandsProps {
    */
   estateId?: string;
 }
-
-const filtersSchema = z.object({
-  kind: z.string().optional(),
-  status: z.string().optional(),
-});
 
 /**
  * What has been asked of this machine, and what became of it.
@@ -83,56 +77,42 @@ const BayCommands = (props: BayCommandsProps) => {
   }
   const items = data?.items ?? [];
 
+  /**
+   * Both optional, and no search box. The empty trigger reads the filter's
+   * name, and a set one names it before the value, so no label sits above
+   * either.
+   */
+  const filterFields = {
+    kind: {
+      schema: z.enum(ESTATE_COMMAND_KINDS),
+      label: tr("bay.commands.filter.kind"),
+      placeholder: tr("bay.commands.filter.kind"),
+    },
+    status: {
+      schema: z.enum(ESTATE_COMMAND_STATUSES),
+      label: tr("bay.commands.filter.status"),
+      placeholder: tr("bay.commands.filter.status"),
+    },
+  } satisfies DataTableFilterFields;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AlephaTable<EstateCommandListItem>
+      <DataTable<EstateCommandListItem, typeof filterFields>
         className="min-h-0 flex-1"
         data={items}
         emptyState={{
-          title: String(tr("bay.commands.empty")),
-          description: String(tr("bay.commands.empty.description")),
+          title: tr("bay.commands.empty"),
+          description: tr("bay.commands.empty.description"),
         }}
         noMatchState={{
-          title: String(tr("bay.commands.noMatch")),
-          description: String(tr("bay.commands.noMatch.description")),
+          title: tr("bay.commands.noMatch"),
+          description: tr("bay.commands.noMatch.description"),
         }}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <div className="flex flex-wrap items-end gap-2">
-              {/* `clearable` adds the way back to "any", which is what
-                  makes these filter chips rather than required choices. */}
-              <Control
-                select
-                clearable
-                input={form.input.kind}
-                label={String(tr("bay.commands.filter.kind"))}
-                placeholder={String(tr("bay.commands.filter.any"))}
-                items={ESTATE_COMMAND_KINDS.map((kind) => ({
-                  value: kind,
-                  label: kind,
-                }))}
-              />
-              <Control
-                select
-                clearable
-                input={form.input.status}
-                label={String(tr("bay.commands.filter.status"))}
-                placeholder={String(tr("bay.commands.filter.any"))}
-                items={ESTATE_COMMAND_STATUSES.map((status) => ({
-                  value: status,
-                  label: status,
-                }))}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         filter={(command, values) => {
-          const kind = String(values.kind ?? "");
-          const status = String(values.status ?? "");
           return (
-            (!kind || command.kind === kind) &&
-            (!status || command.status === status)
+            (!values.kind || command.kind === values.kind) &&
+            (!values.status || command.status === values.status)
           );
         }}
         columns={{
@@ -141,7 +121,7 @@ const BayCommands = (props: BayCommandsProps) => {
             sortable: true,
             cell: (command) => (
               <span className="text-muted-foreground text-xs whitespace-nowrap">
-                {String(l(command.createdAt, { date: "lll" }))}
+                {l(command.createdAt, { date: "lll" })}
               </span>
             ),
           },

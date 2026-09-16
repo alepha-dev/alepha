@@ -57,7 +57,7 @@ export class MyAccountController {
   deleteMyAccount = $action({
     method: "DELETE",
     path: "/users/me",
-    use: [$secure()],
+    use: [$secure({ sessionOnly: true })],
     description: "Permanently delete the caller's own account",
     schema: {
       body: deleteMyAccountBodySchema,

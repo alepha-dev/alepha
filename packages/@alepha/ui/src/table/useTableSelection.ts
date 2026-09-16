@@ -26,7 +26,7 @@ export interface TableSelection<T> {
 }
 
 /**
- * Cross-page row selection for AlephaTable.
+ * Cross-page row selection for DataTable.
  *
  * Selected rows are cached as full objects (not just keys) so paging away
  * and back never desynchronizes the selection count from the items handed

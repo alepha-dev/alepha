@@ -12,30 +12,20 @@ import {
   FolderTree,
   HeartPulse,
   Play,
-  Search,
   Shapes,
   Timer,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
-import { FilterSlot } from "../core/FilterSlot.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { Control } from "../form/Control.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type { DataTableFilterFields } from "../table/dataTableTypes.ts";
 import { AdminJobsTypeIcon } from "./AdminJobsTypeIcon.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { useJobRetentionLabels } from "./useJobRetentionLabels.ts";
 
 const POLL_MS = 30_000;
-
-const jobFiltersSchema = z.object({
-  search: z.string().optional(),
-  type: z.string().optional(),
-  origin: z.string().optional(),
-  domain: z.string().optional(),
-  health: z.string().optional(),
-});
 
 /**
  * The job registry: every registered job, what it is, when it last ran and
@@ -88,6 +78,82 @@ export const AdminJobs = () => {
     [jobs],
   );
 
+  const filterFields = {
+    search: { preset: "search" },
+    type: {
+      schema: z.enum(["cron", "queue", "direct"]),
+      label: tr("admin.jobs.colType", { default: "Type" }),
+      icon: Shapes,
+      items: [
+        {
+          value: "cron",
+          label: tr("admin.jobs.typeCron", { default: "Cron" }),
+        },
+        {
+          value: "queue",
+          label: tr("admin.jobs.typeQueue", { default: "Queue" }),
+        },
+        {
+          value: "direct",
+          label: tr("admin.jobs.typeDirect", { default: "Direct" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.jobs.typeAll", { default: "All types" }),
+      },
+    },
+    origin: {
+      schema: z.enum(["system", "app"]),
+      label: tr("admin.jobs.colOrigin", { default: "Origin" }),
+      icon: Boxes,
+      items: [
+        {
+          value: "system",
+          label: tr("admin.jobs.originSystem", { default: "System" }),
+        },
+        { value: "app", label: tr("admin.jobs.originApp", { default: "App" }) },
+      ],
+      control: {
+        clearLabel: tr("admin.jobs.originAll", { default: "All origins" }),
+      },
+    },
+    domain: {
+      schema: z.string(),
+      label: tr("admin.jobs.filterDomain", { default: "Domain" }),
+      icon: FolderTree,
+      items: domainItems,
+      control: {
+        clearLabel: tr("admin.jobs.domainAll", { default: "All domains" }),
+      },
+    },
+    health: {
+      schema: z.enum(["lastFailed", "hasFailures", "noRuns"]),
+      label: tr("admin.jobs.filterHealth", { default: "Health" }),
+      icon: HeartPulse,
+      items: [
+        {
+          value: "lastFailed",
+          label: tr("admin.jobs.healthLastFailed", {
+            default: "Last run failed",
+          }),
+        },
+        {
+          value: "hasFailures",
+          label: tr("admin.jobs.healthHasFailures", {
+            default: "Has failures",
+          }),
+        },
+        {
+          value: "noRuns",
+          label: tr("admin.jobs.healthNoRuns", { default: "No runs kept" }),
+        },
+      ],
+      control: {
+        clearLabel: tr("admin.jobs.healthAll", { default: "Any health" }),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
   const canTrigger = client.triggerJob.can();
 
   // By route name: `jobDetail` is `/admin/jobs/:jobName` under `AdminRouter`,
@@ -97,122 +163,14 @@ export const AdminJobs = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<JobRegistration>
+      <DataTable<JobRegistration, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.jobs"
         rowKey={(j) => j.name}
         data={jobs}
         filter={matchesJobFilters}
         onRowClick={(j) => open(j)}
-        filters={{
-          schema: jobFiltersSchema,
-          render: (form) => (
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={String(
-                    tr("admin.search", { default: "Search" }),
-                  )}
-                  inputProps={{
-                    "aria-label": String(
-                      tr("admin.search", { default: "Search" }),
-                    ),
-                  }}
-                />
-              </FilterSlot>
-              <Control
-                input={form.input.type}
-                label=""
-                clearable
-                icon={Shapes}
-                clearLabel={String(
-                  tr("admin.jobs.typeAll", { default: "All types" }),
-                )}
-                triggerClassName="w-36"
-                items={[
-                  {
-                    value: "cron",
-                    label: tr("admin.jobs.typeCron", { default: "Cron" }),
-                  },
-                  {
-                    value: "queue",
-                    label: tr("admin.jobs.typeQueue", { default: "Queue" }),
-                  },
-                  {
-                    value: "direct",
-                    label: tr("admin.jobs.typeDirect", { default: "Direct" }),
-                  },
-                ]}
-              />
-              <Control
-                input={form.input.origin}
-                label=""
-                clearable
-                icon={Boxes}
-                clearLabel={String(
-                  tr("admin.jobs.originAll", { default: "All origins" }),
-                )}
-                triggerClassName="w-36"
-                items={[
-                  {
-                    value: "system",
-                    label: tr("admin.jobs.originSystem", {
-                      default: "System",
-                    }),
-                  },
-                  {
-                    value: "app",
-                    label: tr("admin.jobs.originApp", { default: "App" }),
-                  },
-                ]}
-              />
-              <Control
-                input={form.input.domain}
-                label=""
-                clearable
-                icon={FolderTree}
-                clearLabel={String(
-                  tr("admin.jobs.domainAll", { default: "All domains" }),
-                )}
-                triggerClassName="w-40"
-                items={domainItems}
-              />
-              <Control
-                input={form.input.health}
-                label=""
-                clearable
-                icon={HeartPulse}
-                clearLabel={String(
-                  tr("admin.jobs.healthAll", { default: "Any health" }),
-                )}
-                triggerClassName="w-44"
-                items={[
-                  {
-                    value: "lastFailed",
-                    label: tr("admin.jobs.healthLastFailed", {
-                      default: "Last run failed",
-                    }),
-                  },
-                  {
-                    value: "hasFailures",
-                    label: tr("admin.jobs.healthHasFailures", {
-                      default: "Has failures",
-                    }),
-                  },
-                  {
-                    value: "noRuns",
-                    label: tr("admin.jobs.healthNoRuns", {
-                      default: "No runs kept",
-                    }),
-                  },
-                ]}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         columns={{
           name: {
             label: tr("admin.jobs.colName", { default: "Name" }),
@@ -262,7 +220,7 @@ export const AdminJobs = () => {
             cell: (j) => (
               <span className="text-muted-foreground text-xs">
                 {j.recent.lastRun
-                  ? String(l(j.recent.lastRun, { date: "fromNow" }))
+                  ? l(j.recent.lastRun, { date: "fromNow" })
                   : tr("admin.jobs.unknown", { default: "unknown" })}
               </span>
             ),
@@ -315,9 +273,7 @@ export const AdminJobs = () => {
             onClick: () => open(j),
           },
         ]}
-        emptyMessage={String(
-          tr("admin.jobs.none", { default: "No jobs registered." }),
-        )}
+        emptyMessage={tr("admin.jobs.none", { default: "No jobs registered." })}
       />
     </AdminPage>
   );
@@ -335,15 +291,24 @@ export const jobDomain = (name: string): string => {
 };
 
 /**
+ * The filter values the job registry is narrowed by.
+ */
+export interface JobFilterValues {
+  search?: string;
+  type?: JobRegistration["type"];
+  origin?: "system" | "app";
+  domain?: string;
+  health?: "lastFailed" | "hasFailures" | "noRuns";
+}
+
+/**
  * The table's filter predicate over the registry rows.
  */
 export const matchesJobFilters = (
   job: JobRegistration,
-  filters: Record<string, any>,
+  filters: JobFilterValues,
 ): boolean => {
-  const search = String(filters.search ?? "")
-    .trim()
-    .toLowerCase();
+  const search = (filters.search ?? "").trim().toLowerCase();
   if (
     search &&
     !job.name.toLowerCase().includes(search) &&

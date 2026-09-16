@@ -453,18 +453,25 @@ export class I18nProvider<
   public readonly l = (
     value: I18nLocalizeType,
     options: I18nLocalizeOptions = {},
-  ) => {
+  ): string => {
     // Handle numbers
     if (typeof value === "number" && !options.date) {
       return new Intl.NumberFormat(this.lang, options.number).format(value);
     }
 
     // Handle dates
+    //
+    // A number that reaches this point has `options.date` set, since the
+    // branch above returned otherwise, so the bare `typeof` check means the
+    // same as `typeof value === "number" && options.date`. It is written bare
+    // on purpose: a compound condition does not narrow, and with it TypeScript
+    // kept `number` alive down to the final `return value`, typing the whole
+    // function `string | number` although it only ever returned a string.
     if (
       value instanceof Date ||
       this.dateTimeProvider.isDateTime(value) ||
       (typeof value === "string" && options.date) ||
-      (typeof value === "number" && options.date)
+      typeof value === "number"
     ) {
       // convert to DateTime with locale applied
       let dt = this.dateTimeProvider.of(value);
@@ -524,7 +531,7 @@ export class I18nProvider<
       args?: string[];
       default?: string;
     } = {},
-  ) => {
+  ): string => {
     const args = options.args || [];
     const translation = this.translate(key as string, args);
     if (translation === (key as string) && options.default) {

@@ -1,8 +1,11 @@
-import type {
-  Completion,
-  CompletionContext,
-  CompletionResult,
+import {
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+  insertCompletionText,
+  pickedCompletion,
 } from "@codemirror/autocomplete";
+import type { EditorState, TransactionSpec } from "@codemirror/state";
 
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
 
@@ -27,6 +30,34 @@ const MAX_OPTIONS = 8;
 export type SyncCompletionSource = (
   context: CompletionContext,
 ) => CompletionResult | null;
+
+/**
+ * What accepting a suggestion writes: the token, closed by exactly one `]]`,
+ * with the cursor after it.
+ *
+ * Closing it is what leaves a complete `[[…]]` rather than an unterminated
+ * one the resolver would read as prose. But the editor runs `closeBrackets()`
+ * (`codeMirrorSetup.ts`), so typing `[[` has usually put `]]` after the
+ * cursor already, and a plain `${token}]]` apply wrote `[[#Q12]]]]` (#Q2355).
+ * The closing brackets already there, up to two, are replaced along with the
+ * query, so typing with and without auto-closed brackets ends the same way.
+ *
+ * Built over the state rather than the view so a spec can apply it without
+ * a layout, as `insertAtCursor.ts` is.
+ */
+export const referenceInsertion = (
+  state: EditorState,
+  token: string,
+  completion: Completion,
+  from: number,
+  to: number,
+): TransactionSpec => {
+  const closing = /^\]{0,2}/.exec(state.sliceDoc(to, to + 2))![0].length;
+  return {
+    ...insertCompletionText(state, `${token}]]`, from, to + closing),
+    annotations: pickedCompletion.of(completion),
+  };
+};
 
 /**
  * The `[[` picker as a CodeMirror completion source.
@@ -77,10 +108,16 @@ export const createWikiLinkCompletion = (
         label: suggestion.label,
         detail: suggestion.hint,
         type: suggestion.kind,
-        // Closes the token off, so accepting a suggestion leaves a complete
-        // `[[…]]` rather than an unterminated one that the resolver would
-        // read as prose and never turn into a link.
-        apply: `${suggestion.token}]]`,
+        apply: (view, completion, from, to) =>
+          view.dispatch(
+            referenceInsertion(
+              view.state,
+              suggestion.token,
+              completion,
+              from,
+              to,
+            ),
+          ),
       }));
 
     if (!options.length) return null;

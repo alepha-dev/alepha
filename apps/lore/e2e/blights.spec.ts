@@ -9,10 +9,10 @@ import {
  * Regression guard for the Blights inbox infinite render loop.
  *
  * `ProjectBlights` pushes the open-count to the sidebar badge atom from its
- * AlephaTable `fetch`. It used to do so via a *subscribing* `useStore`, so each
+ * DataTable `fetch`. It used to do so via a *subscribing* `useStore`, so each
  * fetch re-rendered the component → new inline `fetch` prop → refetch → write
  * badge → … an infinite loop. The fix: write the badge with a non-subscribing
- * `store.set`, and AlephaTable treats `fetch` as a latest-wins data source.
+ * `store.set`, and DataTable treats `fetch` as a latest-wins data source.
  *
  * A render loop throws "Maximum update depth exceeded" → the error boundary,
  * so the inbox chrome never renders. We assert the chrome IS visible and the

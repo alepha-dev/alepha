@@ -68,7 +68,7 @@ export interface AppCreateDialogProps {
  *
  * ## ⚠️ It writes a new array into `currentInstancesAtom`
  *
- * `ProjectApps` runs `AlephaTable` in static-data mode over that atom, where
+ * `ProjectApps` runs `DataTable` in static-data mode over that atom, where
  * `refresh()` re-fires nothing. A dialog that creates a row and does not hand
  * the table a new array leaves it invisible until a reload, which reads as a
  * broken create.

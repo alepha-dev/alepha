@@ -2,10 +2,15 @@ import { $inject, z } from "alepha";
 import {
   adminApiKeyQuerySchema,
   adminApiKeyResourceSchema,
+  apiKeyOptionsResponseSchema,
   createApiKeyBodySchema,
   createApiKeyResponseSchema,
+  listApiKeyResponseSchema,
+  rotateApiKeyBodySchema,
 } from "alepha/api/keys";
 import { $action } from "alepha/server";
+
+import { SHOWCASE_KEYS } from "@/web/pages/pages/account/accountFixtures.ts";
 
 import { ShowcaseKeys } from "./ShowcaseKeys.ts";
 
@@ -31,7 +36,7 @@ export class ShowcaseKeysController {
       query: adminApiKeyQuerySchema,
       response: z.page(adminApiKeyResourceSchema),
     },
-    handler: ({ query }) => this.keys.paginate(query as any),
+    handler: ({ query }) => this.keys.paginate(query),
   });
 
   public readonly createApiKey = $action({
@@ -48,9 +53,83 @@ export class ShowcaseKeysController {
         token: "ak_showcase_this_is_not_a_real_credential_0000",
         tokenSuffix: "0000",
         roles: [],
+        permissions: body.permissions ?? [],
+        ipAllowlist: body.ipAllowlist ?? [],
         createdAt: new Date(Date.UTC(2026, 8, 5, 9, 0)).toISOString(),
         expiresAt: undefined,
       }) as any,
+  });
+
+  /**
+   * The account panel's list: the showcase's own fixture rows.
+   */
+  public readonly listApiKeys = $action({
+    path: "/api-keys",
+    schema: { response: listApiKeyResponseSchema },
+    handler: () => SHOWCASE_KEYS,
+  });
+
+  /**
+   * What the create dialog reads: every preset, 90 days preselected, and a
+   * small catalogue so the permission matrix has groups to draw.
+   */
+  public readonly getApiKeyOptions = $action({
+    path: "/api-keys/options",
+    schema: { response: apiKeyOptionsResponseSchema },
+    handler: () =>
+      ({
+        expiry: {
+          default: "90d" as const,
+          maxDays: 0,
+          presets: ["7d", "30d", "60d", "90d", "180d", "1y", "never"] as const,
+        },
+        permissions: {
+          groups: [
+            {
+              name: "project",
+              permissions: [
+                { name: "project:read" },
+                { name: "project:update" },
+              ],
+            },
+            {
+              name: "quest",
+              permissions: [{ name: "quest:read" }, { name: "quest:create" }],
+            },
+            { name: "api-key", permissions: [{ name: "api-key:create" }] },
+          ],
+        },
+      }) as any,
+  });
+
+  public readonly rotateMyApiKey = $action({
+    method: "POST",
+    path: "/api-keys/:id/rotate",
+    schema: {
+      params: z.object({ id: z.text() }),
+      body: rotateApiKeyBodySchema,
+      response: createApiKeyResponseSchema,
+    },
+    handler: ({ params }) =>
+      ({
+        id: params.id,
+        name: "Rotated key",
+        token: "ak_showcase_rotated_not_a_real_credential_0000",
+        tokenSuffix: "0000",
+        roles: [],
+        permissions: [],
+        createdAt: new Date(Date.UTC(2026, 8, 5, 9, 0)).toISOString(),
+      }) as any,
+  });
+
+  public readonly revokeMyApiKey = $action({
+    method: "DELETE",
+    path: "/api-keys/:id",
+    schema: {
+      params: z.object({ id: z.text() }),
+      response: z.object({ ok: z.boolean() }),
+    },
+    handler: () => ({ ok: true }),
   });
 
   public readonly revokeApiKey = $action({

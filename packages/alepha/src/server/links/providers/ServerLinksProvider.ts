@@ -355,11 +355,22 @@ export class ServerLinksProvider {
    *   Keying on roles alone made both `""`.
    * - the realm — `$secure({ issuers })` filters on it, so realm A and realm B
    *   with identical role names resolve to different link sets.
+   * - the permission scope — a scoped credential and an unscoped one with the
+   *   same roles see different permissions and different actions, and sharing
+   *   an entry hands whichever called second the first one's registry: the
+   *   harmful direction is a scoped key receiving the full action list. An
+   *   absent scope and an empty one are different identities (`[]` reaches
+   *   nothing), so they must not share a key either; an absent scope keeps
+   *   the key it always had.
    */
   protected registryCacheKey(user?: UserAccountToken): string {
     if (!user) return "anonymous";
     const roles = user.roles?.slice().sort().join(",") ?? "";
-    return `user:${user.realm ?? ""}:${roles}`;
+    const key = `user:${user.realm ?? ""}:${roles}`;
+    if (user.permissionScope === undefined) {
+      return key;
+    }
+    return `${key}:scope=${user.permissionScope.slice().sort().join(",")}`;
   }
 
   /**
@@ -424,6 +435,12 @@ export class ServerLinksProvider {
   ): Promise<ApiRegistryResponse> {
     const { user } = options;
     const { securityProvider } = this;
+    // The identity itself, so `getPermissions` applies its permission scope.
+    //
+    // Nothing on the browser side needs its own copy of that rule:
+    // `PermissionRegistryProvider` and `$secure.browser` read the flat
+    // `permissions` list and the `actions` this method sends down, so a
+    // registry computed for the scoped identity is already narrowed there.
     const securityPermissions =
       securityProvider && user
         ? securityProvider.getPermissions(user)
@@ -567,13 +584,13 @@ export class ServerLinksProvider {
         // the realm, and its comment says why: realm A and realm B with
         // identical role names resolve to different link sets. The realm was
         // known to matter here; only this branch was left behind.
+        //
+        // User-aware, like `$secure` since the permission scope: roles, then
+        // the credential's scope, so a scoped key is not told it may invoke
+        // an action that will refuse it.
         if (link.secured.permissions?.length) {
           for (const perm of link.secured.permissions) {
-            const result = securityProvider.checkPermissionInRealm(
-              user.realm,
-              perm,
-              ...(user.roles ?? []),
-            );
+            const result = securityProvider.checkUserPermission(user, perm);
             if (!result.isAuthorized) return false;
           }
         }

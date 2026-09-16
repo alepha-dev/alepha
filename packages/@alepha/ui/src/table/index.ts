@@ -1,54 +1,61 @@
 /**
  * Data tables.
  *
- * `AlephaTable` is a table wired for server-side pagination, sorting and
+ * `DataTable` is a table wired for server-side pagination, sorting and
  * filtering, with row and bulk actions, persisted filters and a static mode for
- * local data (`paginateLocal`). `AlephaTableFilterBar`, `AlephaTableFilterMenu`,
- * `AlephaTableFilterDialog` and `AlephaTableBulkMenu` are its parts, and
- * `useTableSelection` its selection state. `PermissionMatrix` is the grid of
+ * local data (`paginateLocal`). Its filters are a record of fields
+ * (`DataTableFilterFields`) that it draws on its own filter bar.
+ * `DataTableFilterMenu`, `DataTableFilterDialog` and `DataTableBulkMenu`
+ * are its parts, and `useTableSelection` its selection state. `PermissionMatrix` is the grid of
  * roles against permissions the admin and account kits draw.
  *
  * @module alepha.ui.table
  */
 
+export { PAGE_SIZES } from "./DataTableFooter.tsx";
+export { DataTable, type DataTableProps } from "./DataTable.tsx";
+export type { DataTableBaseProps } from "./dataTableBaseProps.ts";
+export type {
+  DataTableEmptyState,
+  DataTableFilterField,
+  DataTableFilterFieldOptions,
+  DataTableFilterFields,
+  DataTableFilterMode,
+  DataTableFilterPreset,
+  DataTableFilters,
+  DataTableFilterValues,
+  DataTableNoFilterFields,
+  DataTablePersistedFacets,
+  DataTableSource,
+  BulkAction,
+  BulkActionContext,
+  BulkMenuAction,
+  ColumnDef,
+  RowAction,
+  RowActionContext,
+  RowActionEntry,
+  RowActionGroup,
+  TableAction,
+  TableFetcher,
+} from "./dataTableTypes.ts";
 export {
-  AlephaTable,
-  type AlephaTableBaseProps,
-  type AlephaTableEmptyState,
-  type AlephaTableFilters,
-  type AlephaTablePersistedFacets,
-  type AlephaTableProps,
-  type AlephaTableSource,
-  type BulkAction,
-  type BulkActionContext,
-  type BulkMenuAction,
-  type ColumnDef,
-  PAGE_SIZES,
-  type RowAction,
-  type RowActionContext,
-  type RowActionEntry,
-  type RowActionGroup,
-  type TableAction,
-  type TableFetcher,
-} from "./AlephaTable.tsx";
+  DataTableBulkMenu,
+  type DataTableBulkMenuProps,
+} from "./DataTableBulkMenu.tsx";
+export { dataTableFilterKeys } from "./dataTableFilterFields.ts";
 export {
-  AlephaTableBulkMenu,
-  type AlephaTableBulkMenuProps,
-} from "./AlephaTableBulkMenu.tsx";
+  DataTableFilterDialog,
+  type DataTableFilterDialogProps,
+} from "./DataTableFilterDialog.tsx";
 export {
-  AlephaTableFilterBar,
-  type AlephaTableFilterBarProps,
-  type AlephaTableFilterBarSearch,
-  type AlephaTableFilterField,
-} from "./AlephaTableFilterBar.tsx";
-export {
-  AlephaTableFilterDialog,
-  type AlephaTableFilterDialogProps,
-} from "./AlephaTableFilterDialog.tsx";
-export {
-  AlephaTableFilterMenu,
-  type AlephaTableFilterMenuProps,
-} from "./AlephaTableFilterMenu.tsx";
+  DataTableFilterMenu,
+  type DataTableFilterMenuProps,
+} from "./DataTableFilterMenu.tsx";
+export type {
+  DataTableFilterOperatorOption,
+  DataTableFilterOperatorPreset,
+  DataTableFilterOperatorValue,
+} from "./DataTableFilterOperator.tsx";
 export { paginateLocal, type PaginateLocalOptions } from "./paginateLocal.ts";
 export {
   PermissionMatrix,

@@ -4,24 +4,50 @@ import TimeAgo from "../core/TimeAgo.tsx";
 
 void React;
 
+import { z } from "alepha";
 import type {
   AdminApiKeyController,
   AdminApiKeyResource,
   ApiKeyController,
+  ApiKeyStatus,
+  ListApiKeyItem,
 } from "alepha/api/keys";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Plus, Trash2 } from "lucide-react";
+import { CircleDot, Plus, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { ApiKeyCreateDialog } from "../account/ApiKeyCreateDialog.tsx";
+import { ApiKeyScopeSummary } from "../account/ApiKeyScopeSummary.tsx";
+import { ApiKeyStatusBadge } from "../account/ApiKeyStatusBadge.tsx";
 import { Badge } from "../core/Badge.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { AlephaTable } from "../table/AlephaTable.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type {
+  DataTableFilterFields,
+  DataTableFilterValues,
+} from "../table/dataTableTypes.ts";
 import { AdminKeysTokenDialog } from "./AdminKeysTokenDialog.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
+
+/**
+ * The key statuses the filter offers, in order.
+ *
+ * ⚠️ A local list, checked against `ApiKeyStatus`, and not
+ * `apiKeyStatusSchema` imported from `alepha/api/keys`: that module has no
+ * browser condition and its index exports controllers, entities and
+ * services, so importing a value from it would pull the server into the
+ * admin's bundle. The type import above costs nothing at runtime.
+ */
+const API_KEY_STATUSES = [
+  "active",
+  "expiring",
+  "expired",
+  "revoked",
+] as const satisfies readonly ApiKeyStatus[];
 
 export const AdminKeys = () => {
   const client = useClient<AdminApiKeyController>();
@@ -30,43 +56,55 @@ export const AdminKeys = () => {
   const dialog = useDialog();
   const { tr } = useI18n();
   const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [ownKeys, setOwnKeys] = useState<ListApiKeyItem[]>([]);
   const [refreshSignal, setRefreshSignal] = useState(0);
 
-  const createKey = useAction(
-    {
-      handler: async () => {
-        const name = await dialog.prompt({
-          title: tr("admin.keys.createTitle", { default: "Add API key" }),
-          description: tr("admin.keys.createDescription", {
-            default:
-              "The key is created for your account and carries your current roles.",
-          }),
-          label: tr("admin.keys.createNameLabel", { default: "Name" }),
-          placeholder: tr("admin.keys.createNamePlaceholder", {
-            default: "e.g. CI pipeline",
-          }),
-          confirmLabel: tr("admin.keys.createConfirm", { default: "Create" }),
-          validate: (value) =>
-            value.trim().length === 0
-              ? tr("admin.keys.createNameRequired", {
-                  default: "Name is required",
-                })
-              : null,
-        });
-        if (name === null) return;
-        const created = await userClient.createApiKey({
-          body: { name: name.trim() },
-        });
-        setCreatedToken(created.token);
-        setRefreshSignal((n) => n + 1);
+  const statusLabel = (status: ApiKeyStatus): string => {
+    switch (status) {
+      case "active":
+        return tr("account.keys.status.active", { default: "Active" });
+      case "expiring":
+        return tr("account.keys.status.expiringLabel", { default: "Expiring" });
+      case "expired":
+        return tr("account.keys.status.expired", { default: "Expired" });
+      case "revoked":
+        return tr("account.keys.status.revoked", { default: "Revoked" });
+    }
+  };
+
+  const filterFields = {
+    // The table's only filter: on the bar from the start, and removable.
+    status: {
+      schema: z.array(z.enum(API_KEY_STATUSES)),
+      mode: "default",
+      label: tr("admin.keys.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: statusLabel,
+      control: {
+        clearLabel: tr("admin.keys.statusAll", { default: "All statuses" }),
       },
     },
-    [userClient, dialog, tr],
-  );
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
-      return client.findApiKeys({ query: params });
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: DataTableFilterValues<typeof filterFields>;
+    }) => {
+      const status = params.filters?.status;
+      return client.findApiKeys({
+        query: {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          // An empty selection is no filter at all, which the server reads
+          // as "everything but revoked".
+          ...(status?.length ? { status } : {}),
+        },
+      });
     },
     [client],
   );
@@ -133,7 +171,7 @@ export const AdminKeys = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminApiKeyResource>
+      <DataTable<AdminApiKeyResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="admin.keys"
         fetch={fetcher}
@@ -144,10 +182,24 @@ export const AdminKeys = () => {
             label: tr("admin.keys.create", { default: "Add API key" }),
             // The page's one create control.
             primary: true,
-            disabled: createKey.loading,
-            onClick: () => createKey.run(),
+            onClick: async () => {
+              // The key is the admin's own, so the names it may not take are
+              // the admin's own keys, not the ones in this table. Without the
+              // list the server still refuses a clash, in blunter words.
+              try {
+                setOwnKeys(await userClient.listApiKeys());
+              } catch {
+                setOwnKeys([]);
+              }
+              setCreateOpen(true);
+            },
           },
         ]}
+        filters={{
+          fields: filterFields,
+          // Today's default, spelled out: every key but the revoked ones.
+          initialValues: { status: ["active", "expiring", "expired"] },
+        }}
         bulkActions={[
           {
             label: tr("admin.keys.bulkRevoke", {
@@ -188,6 +240,49 @@ export const AdminKeys = () => {
                 <span className="text-muted-foreground text-xs">—</span>
               ),
           },
+          permissions: {
+            label: tr("admin.keys.colPermissions", { default: "Scope" }),
+            cell: (k) => <ApiKeyScopeSummary permissions={k.permissions} />,
+          },
+          ipAllowlist: {
+            label: tr("admin.keys.colIpAllowlist", { default: "Allowed from" }),
+            // Read-only: an allowlist is set through the API at creation and
+            // cannot be edited, only seen, so a refused key can be diagnosed.
+            cell: (k) =>
+              k.ipAllowlist.length ? (
+                <div className="flex flex-col gap-0.5">
+                  {k.ipAllowlist.map((entry) => (
+                    <code key={entry} className="text-xs">
+                      {entry}
+                    </code>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.keys.ipAnywhere", { default: "Anywhere" })}
+                </span>
+              ),
+          },
+          status: {
+            label: tr("admin.keys.colStatus", { default: "Status" }),
+            // The Expires column beside it carries the date.
+            cell: (k) => <ApiKeyStatusBadge apiKey={k} labelOnly />,
+          },
+          expiresAt: {
+            label: tr("admin.keys.colExpires", { default: "Expires" }),
+            sortable: true,
+            cell: (k) =>
+              k.expiresAt ? (
+                <TimeAgo
+                  value={k.expiresAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.keys.noExpiry", { default: "Never" })}
+                </span>
+              ),
+          },
           createdAt: {
             label: tr("admin.keys.colCreated", { default: "Created" }),
             sortable: true,
@@ -199,14 +294,36 @@ export const AdminKeys = () => {
             ),
           },
         }}
-        rowActions={(k) => [
-          {
-            label: tr("admin.keys.revoke", { default: "Revoke" }),
-            icon: Trash2,
-            destructive: true,
-            onClick: (_k, { refresh }) => revoke.run(k, refresh),
-          },
-        ]}
+        // Revoke only: no rotate here. Rotating another user's key would mint
+        // a credential that authenticates as them and hand its secret to the
+        // admin, which is strictly more than revocation (#Q2056).
+        rowActions={(k) =>
+          k.revokedAt
+            ? []
+            : [
+                {
+                  label: tr("admin.keys.revoke", { default: "Revoke" }),
+                  icon: Trash2,
+                  destructive: true,
+                  onClick: (_k, { refresh }) => revoke.run(k, refresh),
+                },
+              ]
+        }
+      />
+      <ApiKeyCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        existingKeys={ownKeys}
+        // The admin mints for nobody but themselves: the same endpoint the
+        // account panel calls, and the copy says so.
+        ownershipNote={tr("admin.keys.createDescription", {
+          default:
+            "The key is created for your account and carries your current roles.",
+        })}
+        onCreated={(token) => {
+          setCreatedToken(token);
+          setRefreshSignal((n) => n + 1);
+        }}
       />
       <AdminKeysTokenDialog
         token={createdToken}

@@ -360,6 +360,39 @@ describe("EpicController", () => {
   });
 
   /**
+   * #Q2353 took the Edit button off the page of a started or completed epic.
+   * It took nothing off the server: an epic's own fields stay editable in
+   * every status, which is how an agent links an outcome folio from a
+   * completed epic's description.
+   */
+  it("still updates the title and description of a started or completed epic", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const started = await createTestEpic(ctx.alepha, project, {
+      status: "in_progress",
+    });
+    const completed = await createTestEpic(ctx.alepha, project, {
+      status: "completed",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+
+    for (const epic of [started, completed]) {
+      const updated = await ctx.controller.updateEpic(
+        {
+          params: { id: epic.id },
+          body: { title: "Renamed", description: "Outcome: [[#F1]]" },
+        },
+        { user },
+      );
+      expect(updated.title).toBe("Renamed");
+      expect(updated.description).toBe("Outcome: [[#F1]]");
+      expect(updated.status).toBe(epic.status);
+    }
+  });
+
+  /**
    * ⚠️ Epic #31 made this a one-way ratchet with two forward clicks, Begin
    * and Conclude. #Q2223 replaced both: `draft` and `ready` are the only
    * statuses set by hand, both ways, and `in_progress` and `completed` are

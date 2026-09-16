@@ -39,6 +39,26 @@ test.describe("Sidebar", () => {
   });
 });
 
+/**
+ * Feedback #P2199, #Q2338: the tree's hrefs carry `$`, a `$primitive` page's
+ * URL carries `%24` (the sitemap, every link the router builds), and a string
+ * comparison left the Explorer collapsed with nothing marked on all of them.
+ */
+test.describe("Explorer on an encoded path", () => {
+  test("a $primitive page loaded by its %24 URL expands its folder and marks itself", async ({
+    page,
+  }) => {
+    await page.goto("/docs/reference-primitives-%24sitemap");
+    await page.waitForLoadState("networkidle");
+
+    const tree = page.getByRole("tree", { name: "Documentation files" });
+    const active = tree.locator('[aria-current="page"]');
+    await expect(active).toHaveCount(1);
+    await expect(active).toHaveAttribute("aria-label", "$sitemap.md");
+    await expect(active).toBeVisible();
+  });
+});
+
 test.describe("Table of Contents", () => {
   test("TOC highlights current section on scroll", async ({ page }) => {
     await page.goto("/docs/guides-introduction");

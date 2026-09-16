@@ -51,11 +51,9 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
     } catch (error: any) {
       toaster.error(
         error?.message ??
-          String(
-            tr("admin.userDetail.avatar.failed", {
-              default: "Could not change the avatar.",
-            }),
-          ),
+          tr("admin.userDetail.avatar.failed", {
+            default: "Could not change the avatar.",
+          }),
       );
     } finally {
       setBusy(false);
@@ -82,11 +80,9 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
                 params: { id: props.user.id },
                 body: { file },
               })) as UserResource,
-            String(
-              tr("admin.userDetail.avatar.replaced", {
-                default: "Avatar replaced.",
-              }),
-            ),
+            tr("admin.userDetail.avatar.replaced", {
+              default: "Avatar replaced.",
+            }),
           );
         }}
       />
@@ -114,11 +110,9 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
                 (await client.deleteUserAvatar({
                   params: { id: props.user.id },
                 })) as UserResource,
-              String(
-                tr("admin.userDetail.avatar.removed", {
-                  default: "Avatar removed.",
-                }),
-              ),
+              tr("admin.userDetail.avatar.removed", {
+                default: "Avatar removed.",
+              }),
             )
           }
         >

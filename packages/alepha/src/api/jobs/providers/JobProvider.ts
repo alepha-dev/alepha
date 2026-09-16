@@ -2141,7 +2141,15 @@ export class JobProvider {
     this.log.warn(
       `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
     );
-    const error = new Error("Execution assumed crashed (recovered by sweep)");
+    // The when, in the message itself: a killed isolate reports nothing, so
+    // this line is the whole record of a run that died, and "assumed crashed"
+    // alone could not say whether it died at start or an hour in (#Q2344).
+    // Still a plain `Error` with a fixed prefix: a sigil fingerprints on the
+    // error's name and throw site, never its message, so the timestamps do
+    // not split one recurring crash into many groups, while a new name would.
+    const error = new Error(
+      `Execution assumed crashed (recovered by sweep): started ${exec.startedAt ?? "never"}, lease last renewed ${exec.updatedAt}, no renewal within ${Math.round(this.crashThresholdMs(registration) / 1000)}s`,
+    );
     // Per-row containment: one unrecoverable row must not strand the
     // remaining crashed executions until the next tick.
     try {

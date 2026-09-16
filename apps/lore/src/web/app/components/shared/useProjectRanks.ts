@@ -1,7 +1,8 @@
 import { useToast } from "@alepha/ui";
 import type { RankController, RankResource } from "alepha/api/ranks";
-import { useClient, useStore } from "alepha/react";
-import { useEffect, useState } from "react";
+import { useClient, useQuery, useStore } from "alepha/react";
+import { HttpError } from "alepha/server";
+import { useMemo } from "react";
 
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
@@ -19,62 +20,51 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
  * every surface that offers one is gated on `member:manage` anyway. A toast
  * for a 403 nobody can act on is noise on a page about something else.
  *
- * ⚠️ `loading` starts true and the effect never sets it, which is not a
- * stylistic choice: `setState` called synchronously inside an effect starts a
- * second render, and `react(set-state-in-effect)` refuses it. Everything the
- * first load writes happens in a promise callback.
+ * Any other failure is toasted, the first load's included: one query cannot
+ * be quiet on its first run and loud on `reload`, and a failure that is not
+ * a refusal is worth knowing about either way. Keyed
+ * `["project-ranks", projectId]`, which the ranks page's writes invalidate.
  */
 export const useProjectRanks = (): ProjectRanks => {
   const api = useClient<RankController>();
   const toaster = useToast();
   const [project] = useStore(currentProjectAtom);
-  const [ranks, setRanks] = useState<RankResource[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const projectId = project?.id;
 
-  useEffect(() => {
-    if (projectId === undefined) return;
-    let cancelled = false;
+  const query = useQuery(
+    {
+      key: ["project-ranks", projectId],
+      enabled: projectId !== undefined,
+      // The ranks page seeds its draft from this list: while a write's
+      // invalidation refetches it, the previous list stays on screen instead
+      // of an empty matrix for a frame.
+      keepPreviousData: true,
+      handler: () =>
+        api.getRanks({
+          params: { type: "project", scopeId: String(projectId) },
+        }),
+      // Handled here, so the root `ActionErrorToaster` never shows it: quiet
+      // for the 403 a reader who may not manage ranks always gets, toasted by
+      // hand for anything else.
+      onError: (error) => {
+        if (HttpError.is(error, 403)) return;
+        toaster.error(error.message);
+      },
+    },
+    [api, projectId],
+  );
 
-    api
-      .getRanks({ params: { type: "project", scopeId: String(projectId) } })
-      .then((res) => {
-        // `?? []` rather than `res.items`: every consumer reads `.length`
-        // during render, and a body that came back without the key would take
-        // the page down rather than show it without a picker.
-        if (!cancelled) setRanks(res?.items ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setRanks([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, api]);
+  // `?? []` rather than `items`: every consumer reads `.length` during
+  // render, and a body that came back without the key would take the page
+  // down rather than show it without a picker. Memoised so the list keeps
+  // its identity until the response changes, which the ranks page compares.
+  const ranks = useMemo(() => query.data?.items ?? [], [query.data]);
 
   return {
     ranks,
-    loading,
+    loading: query.loading,
     reload: async () => {
-      if (projectId === undefined) return;
-      setLoading(true);
-      try {
-        const res = await api.getRanks({
-          params: { type: "project", scopeId: String(projectId) },
-        });
-        setRanks(res?.items ?? []);
-      } catch (error) {
-        // Announced here and not on the first load: a reload follows an act
-        // the reader just performed, so a failure is theirs to know about.
-        toaster.error(error instanceof Error ? error.message : String(error));
-      } finally {
-        setLoading(false);
-      }
+      await query.refetch();
     },
   };
 };

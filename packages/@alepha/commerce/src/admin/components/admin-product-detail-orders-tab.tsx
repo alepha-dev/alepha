@@ -3,7 +3,7 @@ import * as React from "react";
 void React;
 
 import { Badge } from "@alepha/ui";
-import { AlephaTable, type TableFetcher } from "@alepha/ui/table";
+import { DataTable, type TableFetcher } from "@alepha/ui/table";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AdminProductOrderLine } from "../controllers/AdminProductController.ts";
@@ -35,22 +35,20 @@ export const AdminProductDetailOrdersTab = (
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
-      <AlephaTable<AdminProductOrderLine>
+      <DataTable<AdminProductOrderLine>
         className="min-h-0 flex-1"
         persistenceKey={`commerce.admin.product.${props.productId}.orders`}
         fetch={props.fetch}
-        emptyMessage={String(
-          tr("commerce.admin.orders.empty", {
-            default: "This product has never been ordered.",
-          }),
-        )}
+        emptyMessage={tr("commerce.admin.orders.empty", {
+          default: "This product has never been ordered.",
+        })}
         columns={{
           orderCreatedAt: {
             label: tr("commerce.admin.orders.colWhen", { default: "Date" }),
             cell: (line) => (
               <span className="text-muted-foreground text-xs">
                 {line.orderCreatedAt
-                  ? String(l(line.orderCreatedAt, { date: "lll" }))
+                  ? l(line.orderCreatedAt, { date: "lll" })
                   : ""}
               </span>
             ),

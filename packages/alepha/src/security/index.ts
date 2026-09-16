@@ -44,9 +44,11 @@ export * from "./providers/ResourceGateMemoProvider.ts";
 export * from "./providers/ResourceGrantsProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
+export * from "./schemas/permissionCatalogueSchema.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
 export * from "./schemas/userAccountInfoSchema.ts";
+export * from "./schemas/userCredentialSchema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

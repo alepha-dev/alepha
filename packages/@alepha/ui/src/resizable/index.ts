@@ -9,6 +9,9 @@
 
 export {
   ResizableHandle,
+  type ResizableHandleProps,
   ResizablePanel,
+  type ResizablePanelProps,
   ResizablePanelGroup,
+  type ResizablePanelGroupProps,
 } from "./Resizable.tsx";

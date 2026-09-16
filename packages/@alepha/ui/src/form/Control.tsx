@@ -36,12 +36,9 @@ import {
   type SelectOption,
 } from "./ControlSelect.tsx";
 import { ControlUpload, type ControlUploadProps } from "./ControlUpload.tsx";
-import {
-  FormField,
-  formFieldAriaProps,
-  useFormFieldAutoSave,
-  useFormFieldLayout,
-} from "./FormField.tsx";
+import { FormField, formFieldAriaProps } from "./FormField.tsx";
+import { useFormFieldAutoSave } from "./FormFieldAutoSaveProvider.tsx";
+import { useFormFieldLayout } from "./FormFieldLayoutProvider.tsx";
 import { type IconComponent, iconFor } from "./iconHint.tsx";
 
 export interface ControlProps {
@@ -268,12 +265,18 @@ export interface ControlProps {
    */
   clearLabel?: string;
   /**
-   * Trigger text for a multi-select holding two or more values, e.g.
+   * Trigger text for a multi-select whose selection is too long to name, e.g.
    * `(n) => \`${n} status\``. One selection always shows the value itself, so
-   * this is only ever asked for the collapsed case. Defaults to
-   * `"{n} selected"`.
+   * this is only ever asked for two or more past `maxTriggerLength`. Defaults
+   * to `"{n} values"`.
    */
   countLabel?: (count: number) => string;
+  /**
+   * Forwarded to `ControlSelect`: the longest joined text a multi-select
+   * trigger names its selection with before it collapses to `countLabel`.
+   * Defaults to 20.
+   */
+  maxTriggerLength?: number;
   /**
    * Forwarded to `ControlSelect` — extra className on the trigger.
    * Useful for sizing filter chips inline.
@@ -460,7 +463,7 @@ export const Control = (props: ControlProps) => {
         description={merged.description ?? props.description}
         slider={merged.slider}
         disabled={merged.disabled}
-        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
         autoFocus={merged.autoFocus}
       />,
     );
@@ -490,6 +493,9 @@ export const Control = (props: ControlProps) => {
         clearable={merged.clearable}
         placeholder={merged.placeholder}
         triggerClassName={merged.triggerClassName}
+        // From `props`, like the select's below: a node has no place in a
+        // schema's `$control`.
+        triggerPrefix={props.triggerPrefix}
       />,
     );
   }
@@ -520,6 +526,7 @@ export const Control = (props: ControlProps) => {
         clearable={merged.clearable}
         clearLabel={merged.clearLabel}
         countLabel={merged.countLabel}
+        maxTriggerLength={merged.maxTriggerLength}
         // Dropped here until now, so a picker that needed to name its own
         // empty state ("Pick an epic…") could not be a `Control` at all.
         placeholder={merged.placeholder}
@@ -645,7 +652,7 @@ export const Control = (props: ControlProps) => {
           disabled={merged.disabled}
           maxLength={maxLength || undefined}
           autoComplete={merged.autoComplete}
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
           autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
@@ -672,7 +679,7 @@ export const Control = (props: ControlProps) => {
         required={meta.required}
         disabled={merged.disabled}
         autoComplete={merged.autoComplete}
-        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
         autoFocus={merged.autoFocus}
         inputProps={merged.inputProps}
         icon={resolveIcon(merged.icon, "password")}
@@ -745,7 +752,7 @@ export const Control = (props: ControlProps) => {
           type={htmlType}
           disabled={merged.disabled}
           autoComplete={autoComplete}
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- forwarded only when the caller asked, see `autoFocus` above
           autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}

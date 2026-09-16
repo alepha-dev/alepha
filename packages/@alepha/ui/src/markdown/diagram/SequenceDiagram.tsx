@@ -82,7 +82,7 @@ export const SequenceDiagram = (props: SequenceDiagramProps) => {
       // plus a named `region`, because without focus the content past the
       // fold cannot be reached by keyboard at all. The rule's allowlist
       // covers `tabpanel` and not `region`, which is what it is flagging.
-      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable, see the comment above
       tabIndex={0}
       role="region"
       aria-label={title}

@@ -67,7 +67,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       if (detail.status === "completed") {
         return detail.completedAt
           ? tr("dashboard.footer.epic.completed", {
-              args: [String(l(String(detail.completedAt), { date: "ll" }))],
+              args: [l(String(detail.completedAt), { date: "ll" })],
             })
           : tr("dashboard.footer.epic.completedUndated");
       }
@@ -94,7 +94,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       if (detail.published) {
         return detail.releasedAt
           ? tr("dashboard.footer.release.published", {
-              args: [String(l(String(detail.releasedAt), { date: "ll" }))],
+              args: [l(String(detail.releasedAt), { date: "ll" })],
             })
           : tr("dashboard.footer.release.publishedUndated");
       }

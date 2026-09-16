@@ -87,9 +87,10 @@ export class AlephaCommands {
    *
    * What survives is worth about three minutes, measured: ~146s of it is
    * `yarn test`, and lint plus the six parallel audits are under 30s
-   * together. It catches a typo, a bad import, a broken unit test, a missing
-   * i18n key. It cannot catch a build failure, an SSR regression or anything
-   * an e2e covers, and it is not supposed to.
+   * together. `copy` in front of the lint adds ~20s of generators (#Q2358).
+   * It catches a typo, a bad import, a broken unit test, a missing i18n key,
+   * a JSDoc that breaks a docs rule. It cannot catch a build failure, an SSR
+   * regression or anything an e2e covers, and it is not supposed to.
    *
    * `--fast` is accepted and does nothing. It named the distinction between
    * this lane and the full one, and there is no longer a distinction to name;
@@ -99,7 +100,7 @@ export class AlephaCommands {
   public readonly verify = $command({
     aliases: ["v"],
     description:
-      "Fast local checks: lint, typecheck, audits, unit tests. CI is the gate - push the branch.",
+      "Fast local checks: generate, lint, typecheck, audits, unit tests. CI is the gate - push the branch.",
     // One run of this lane per machine, whatever the checkout.
     //
     // The key is derived from the package name and never from the cwd, so
@@ -153,12 +154,29 @@ export class AlephaCommands {
       // is what made each run cold, and it broke the next command as well - a
       // `yarn e2e` straight after a verify died on `Cannot find module dist`,
       // which reads as a fixture bug rather than as the previous command
-      // having deleted the build. An inner loop must not mutate the tree.
+      // having deleted the build. An inner loop must not delete what the next
+      // command needs.
       await run("yarn");
 
-      // Nothing generated exists to format in this lane, so `lint` goes
-      // first; the deleted full lane had to run `copy` ahead of it.
-      await run(`yarn lint`);
+      // `copy`, not `lint`, and before anything reads the tree: the order
+      // CI's `checks` job has always used. `copy` runs every workspace's
+      // generators, then `yarn lint`, so the lint is the same one as before.
+      //
+      // It went first as a bare `lint` until #Q2358, on the grounds that this
+      // lane had nothing generated to format. It did: the reference pages are
+      // tracked, and `check:docs` below scans them. Without a regeneration it
+      // scanned whatever the checkout generated last, while CI scanned pages
+      // generated from the commit, so a JSDoc that broke a docs rule was green
+      // here and red there (#Q2357, four commits on a red main). Now the pages
+      // are this commit's own, and `check:docs` refuses any that differ from
+      // what is staged.
+      //
+      // It rewrites only what the generators own, which is the point: the
+      // diff it leaves is the one to stage. It also materialises the
+      // untracked outputs a fresh worktree lacks (`apps/docs/.gen`,
+      // `packages/alepha/assets/swagger-ui`), which `lint` and the suite
+      // both read.
+      await run(`yarn copy`);
       await run([
         `yarn typecheck`,
         `yarn check:deps`,

@@ -51,8 +51,9 @@ export class AdminAvatarController {
    * feature, so a realm without it has nothing to log to.
    */
   protected userAudits(realmName?: string) {
-    const realm = this.realmProvider.getRealm(realmName);
-    return realm.features.audits ? this.alepha.inject(UserAudits) : undefined;
+    return this.alepha.has(UserAudits)
+      ? this.alepha.inject(UserAudits)
+      : undefined;
   }
 
   updateUserAvatar = $action({

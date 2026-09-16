@@ -60,7 +60,7 @@ export interface TimeAgoProps {
  */
 const TimeAgo = (props: TimeAgoProps) => {
   const { l } = useI18n();
-  const exact = String(l(props.value, { date: props.format ?? "lll" }));
+  const exact = l(props.value, { date: props.format ?? "lll" });
 
   return (
     <ClientOnly
@@ -71,7 +71,7 @@ const TimeAgo = (props: TimeAgoProps) => {
       }
     >
       <span className={props.className} title={exact}>
-        {String(l(props.value, { date: "fromNow" }))}
+        {l(props.value, { date: "fromNow" })}
       </span>
     </ClientOnly>
   );

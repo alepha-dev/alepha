@@ -107,7 +107,46 @@ export class ChangelogCommand {
    */
   protected formatCommit(commit: Commit): string {
     const breaking = commit.breaking ? " [BREAKING]" : "";
-    return `- **${commit.scope}**: ${commit.description}${breaking} (\`${commit.hash}\`)`;
+    return `- **${commit.scope}**: ${this.escapeMarkdown(commit.description)}${breaking} (\`${commit.hash}\`)`;
+  }
+
+  /**
+   * A commit subject made safe to print as a CommonMark bullet: every `\`
+   * and `*` escaped, and every `_` that could open or close emphasis, all
+   * outside backtick code spans, which are left exactly as written.
+   *
+   * ## ⚠️ Why a subject cannot go in raw
+   *
+   * `MCP grows app_instance_*, and sigil_* keeps working` holds a valid
+   * emphasis span, `*, and sigil_*`, so CommonMark reads the two globs as one
+   * italic run. oxfmt then normalises that emphasis to `_` on every
+   * `yarn lint`, and the line became `app_instance__, and sigil__`: silently,
+   * on every run, sitting in the working tree for a careless `git add` to
+   * sweep up (#Q2292). An escaped `\*` is a literal star to CommonMark and
+   * to oxfmt alike, so the line renders as written and survives the
+   * formatter.
+   *
+   * An intraword `_` (`snake_case_name`) is left alone: CommonMark never
+   * reads it as emphasis, and escaping it would only make the file harder to
+   * read. Backslashes are escaped first so an existing `\*` in a subject
+   * stays a backslash followed by a star.
+   *
+   * The docs changelog page shows subjects as plain text, so `gen-tree.ts`
+   * undoes this when it reads the file.
+   */
+  public escapeMarkdown(text: string): string {
+    // A capturing split keeps the code spans, at the odd indices.
+    return text
+      .split(/(`[^`]*`)/)
+      .map((part, index) =>
+        index % 2 === 1
+          ? part
+          : part
+              .replace(/\\/g, "\\\\")
+              .replace(/\*/g, "\\*")
+              .replace(/(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])/g, "\\_"),
+      )
+      .join("");
   }
 
   /**
@@ -134,7 +173,9 @@ export class ChangelogCommand {
           ? commit.breakingNotes
           : [commit.description];
         for (const note of notes) {
-          lines.push(`- **${commit.scope}**: ${note} (\`${commit.hash}\`)`);
+          lines.push(
+            `- **${commit.scope}**: ${this.escapeMarkdown(note)} (\`${commit.hash}\`)`,
+          );
         }
       }
       lines.push("");

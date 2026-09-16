@@ -17,6 +17,7 @@ import {
   CommandItem,
   CommandList,
 } from "../command/Command.tsx";
+import { spotlightSearchText } from "./spotlightSearchText.ts";
 import { type NavEntry, useNavEntries } from "./useNavEntries.ts";
 
 export interface SpotlightProps {
@@ -89,7 +90,7 @@ export const Spotlight = (props: SpotlightProps) => {
 
   // Bucket the already-sorted entries into their groups, preserving order.
   const groups = useMemo(() => {
-    const out: { key: string; label?: string; items: NavEntry[] }[] = [];
+    const out: SpotlightGroup[] = [];
     const byKey = new Map<string, NavEntry[]>();
     for (const entry of entries) {
       const key = entry.group ?? "";
@@ -126,29 +127,28 @@ export const Spotlight = (props: SpotlightProps) => {
         default: "Jump to a page",
       })}
     >
-      <Command>
+      {/* Ranked by the command module's scorer over `spotlightSearchText`:
+          the route name and label, then the description, `nav.keywords` and
+          the section heading. */}
+      <Command<NavEntry> items={groups} itemToStringValue={spotlightSearchText}>
         <CommandInput placeholder={placeholder} />
+        <CommandEmpty>
+          {props.emptyMessage ??
+            tr("nav.spotlight.empty", { default: "No results." })}
+        </CommandEmpty>
         <CommandList>
-          <CommandEmpty>
-            {props.emptyMessage ??
-              tr("nav.spotlight.empty", { default: "No results." })}
-          </CommandEmpty>
-          {groups.map((group) => (
-            <CommandGroup key={group.key || "_ungrouped"} heading={group.label}>
-              {group.items.map((entry) => (
+          {(group: SpotlightGroup) => (
+            <CommandGroup
+              key={group.key || "_ungrouped"}
+              items={group.items}
+              heading={group.label}
+            >
+              {(entry: NavEntry) => (
                 <CommandItem
                   key={entry.name}
-                  // cmdk matches the query against `value` + `keywords`;
-                  // include the human label plus any explicit synonyms.
-                  value={`${entry.name} ${toText(entry.label)}`}
-                  keywords={[
-                    toText(entry.label),
-                    toText(entry.description),
-                    ...(entry.keywords ?? []),
-                    entry.groupLabel ?? entry.group ?? "",
-                  ].filter(Boolean)}
+                  value={entry}
                   disabled={entry.disabled}
-                  onSelect={() => onSelect(entry)}
+                  onClick={() => onSelect(entry)}
                 >
                   {entry.icon}
                   <span>{entry.label}</span>
@@ -158,21 +158,18 @@ export const Spotlight = (props: SpotlightProps) => {
                     </span>
                   ) : null}
                 </CommandItem>
-              ))}
+              )}
             </CommandGroup>
-          ))}
+          )}
         </CommandList>
       </Command>
     </CommandDialog>
   );
 };
 
-/**
- * cmdk filters on plain text; coerce a ReactNode label to a searchable string
- * (component labels contribute nothing — callers should add `nav.keywords`).
- */
-function toText(node: ReactNode): string {
-  return typeof node === "string" || typeof node === "number"
-    ? String(node)
-    : "";
+interface SpotlightGroup {
+  [key: string]: unknown;
+  key: string;
+  label?: string;
+  items: NavEntry[];
 }

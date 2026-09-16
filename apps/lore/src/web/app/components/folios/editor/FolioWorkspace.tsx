@@ -1,327 +1,68 @@
-import { TreeViewResizer } from "@alepha/ui/tree";
-import { useClient, useStore } from "alepha/react";
-import { useRouter, useRouterState } from "alepha/react/router";
-import { type ReactElement, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { AlephaError } from "alepha";
+import { type ReactElement, use } from "react";
 
-import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
-import FolioEmptyState from "./document/FolioEmptyState.tsx";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
-import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
-import FolioMenubar from "./menubar/FolioMenubar.tsx";
-import {
-  type FolioActionState,
-  folioMenuItems,
-} from "./menubar/folioMenubarModel.ts";
-import { useFolioShortcuts } from "./menubar/useFolioShortcuts.ts";
-import FolioTree, { type FolioTreeActions } from "./tree/FolioTree.tsx";
-import FolioTreeRail from "./tree/FolioTreeRail.tsx";
-import type { FolioActionHandlers } from "./useFolioActions.ts";
-import {
-  TREE_DEFAULT_WIDTH,
-  TREE_MAX_WIDTH,
-  TREE_MIN_WIDTH,
-  useFolioPanes,
-} from "./useFolioPanes.ts";
-
-/**
- * No document, so nothing can be new, locked, protected or pinned — the
- * only flag that means anything here is `noFolio`, and it is the one
- * `isFolioActionEnabled` checks first.
- */
-const EMPTY_STATE_ACTION_STATE: FolioActionState = {
-  noFolio: true,
-  locked: false,
-  isNew: false,
-  dirty: false,
-  isProtected: false,
-  isPinned: false,
-};
+import { FolioWorkspaceShellContext } from "./FolioWorkspaceShellContext.ts";
 
 export interface FolioWorkspaceProps {
   /**
-   * `undefined` → create mode. A folio → edit mode.
+   * `undefined` for create mode, a folio for edit mode.
    *
    * `FolioResource` (the bare entity plus the loader-populated
    * `metadata`), not `Folio`, for the same reason `FolioLinksTab` uses
    * it: the route loader asks `getByShortId` for that metadata and parts
-   * of the workspace read it. A bare `Folio` still satisfies the type —
-   * `metadata` is optional — so create mode and the tests pass unchanged.
+   * of the workspace read it. A bare `Folio` still satisfies the type
+   * (`metadata` is optional), so create mode and the tests pass unchanged.
    */
   folio?: FolioResource;
   /**
    * Create-mode only: the directory the new folio lands in.
    */
   directoryId?: string;
-  /**
-   * `/folios` itself — the tree is open, nothing is chosen. Distinct from
-   * create mode, which has an empty but real document to type into: here
-   * there is no document at all, so the editor and both chrome rows stay
-   * unmounted and the document pane shows where to go instead.
-   */
-  empty?: boolean;
 }
 
 /**
- * The folio workspace — one always-editable surface replacing the old
- * split between a read-only `FolioView` and a separate editor form
- * (`FolioEditor`, mounted at the now-deleted `/edit` route).
+ * The folio workspace's document side: one always-editable surface, the
+ * document and its inspector, rendered by `projectFoliosFolio` and by
+ * `FolioCreatePage`.
  *
- * Three panes: folio tree, document, inspector. The tree (Task 9) is
- * mounted directly here, alongside the keyed content below — NOT inside
- * it. That placement is load-bearing, not a style choice: the tree's
- * collapse state and its one-time default-collapse seed (see
- * `useFolioTreeModel`'s file doc) only behave correctly if the tree
- * SURVIVES a folio-to-folio navigation, the exact opposite of what the
- * `key` below deliberately does to the content pane. The deleted
- * `FolioTreePanel.tsx` got this "for free" in the old split-view world
- * because it was mounted by `FolioView.tsx`, itself never remounted
- * across folio navigations for the same router reason explained below —
- * mounting the tree inside the keyed subtree here would silently
- * reintroduce feedback #14 (every navigation re-collapsing directories the
- * user had opened).
+ * Everything that must outlive a folio switch (the tree, the pane state,
+ * the inspector's active tab, the menubar slot) is NOT here: it is
+ * `FolioWorkspaceShell`, mounted by `FoliosLayout`, and this component
+ * reads it through `FolioWorkspaceShellContext`. See the shell's doc.
  *
- * The inspector's OPEN/CLOSED state and active tab live here too, for the
- * same reason: `FolioInspector` itself mounts inside the keyed
- * `FolioWorkspaceContent` (unlike the tree, it needs the live draft
- * content and `useFolioActions`'s revert sync, both of which only exist
- * in that keyed subtree) — but a plain `useState` living INSIDE that
- * subtree would reset to its default (default tab, always open) on every
- * folio-to-folio navigation, which is exactly the class of bug Task 9's
- * report flagged for the tree's own collapse state. Threading the state
- * down as props keeps "which tab is active" and "is the pane open"
- * durable across navigation while the component that actually RENDERS
- * the tabs still lives where its data does.
- *
- * The tree pane's OPEN/CLOSED state (`view.tree`, ⌘\\) lives here too, for
- * the same "must survive the keyed child's remount" reason as the
- * inspector's — and for a second reason specific to the tree: it must also
- * survive being toggled off and back on within the SAME folio, which is
- * why the tree stays mounted (via a `hidden` class) rather than being
- * conditionally rendered — unmounting it would drop `useFolioTreeModel`'s
- * collapse state and re-run its one-time seed/fallback fetch every time
- * the pane is reopened.
- *
- * Both pane booleans (and focus mode) come from `useFolioPanes`, which
- * also decides whether each pane is a column or an overlay drawer: below
- * 1024px the tree floats over the document, below 1280px the inspector
- * does. Only the WRAPPER's positioning changes at those breakpoints — the
- * tree itself keeps its single mount either way, for the reason above.
- *
- * The document + inspector content lives in a child keyed on the folio id.
- * Alepha's router does not remount a page component on a param-only
- * navigation (`ReactPageProvider.createElement` passes no `key`, and
- * `NestedView` renders the resolved element as plain state) — clicking
- * from one folio to another under this same route only re-renders
- * `FolioWorkspace` with new props, it does not tear it down. Without the
- * `key` below, `useFolioDraft`'s `useForm` (whose `FormModel` is cached
- * for the life of its calling component) and its
- * `useFormValues`/`useFormState` subscribers (which bind to that one
- * model once, at mount) would carry the previous folio's buffer over for
- * a frame, and the form's own `id` would never actually change. Keying on
- * the folio id turns a folio switch into a full remount instead, which is
- * the only way to reset all of that state atomically — and, by staying
- * OUTSIDE that key, is exactly what the tree pane must avoid.
+ * There is no `key` on the content any more. It used to be keyed on the
+ * folio id because the router reused a page across a param-only navigation,
+ * so `useFolioDraft`'s `useForm` would have carried the previous folio's
+ * buffer over. A page now remounts when its params change (#Q2349), and
+ * `/folios/new` to `/folios/:shortId` is a different page, so every switch
+ * of document already starts from a fresh `FolioWorkspaceContent`.
  */
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
-  const [project] = useStore(currentProjectAtom);
-  const folioApi = useClient<FolioController>();
-  const router = useRouter<AppRouter>();
-  const panes = useFolioPanes();
-  const [inspectorTab, setInspectorTab] =
-    useState<FolioInspectorTab>("outline");
-  const [chromeSlot, setChromeSlot] = useState<HTMLElement | null>(null);
-  // Published by `FolioTree` once its model exists. `undefined` for the one
-  // frame before that effect runs, and whenever the project has not loaded.
-  const [treeActions, setTreeActions] = useState<FolioTreeActions>();
-
-  // `/folios?dir=<shortId>` - the breadcrumb's directory segments and the
-  // tree's own Open / Open in new tab both build that link. Nothing read it
-  // until now, so both landed on the workspace's default state.
-  //
-  // Read off the URL here rather than resolved in the route loader: the
-  // tree already holds the directory list the shortId resolves against, so
-  // a loader round-trip would buy nothing, and this way the parameter also
-  // works on a navigation that does not re-run the loader.
-  useRouterState();
-  const dirParam = Number.parseInt(String(router.query.dir ?? ""), 10);
-  const revealDirectoryShortId = Number.isFinite(dirParam)
-    ? dirParam
-    : undefined;
-
-  // Start fetching the editor chunk as soon as the workspace mounts, rather
-  // than when something first renders the editor. It matters most on the empty
-  // `/folios`, where the next click is almost certainly a folio and nothing has
-  // asked for the chunk yet — by the time it opens, the chunk is usually in the
-  // module cache and `FolioDocument`'s loading menubar never appears.
-  useEffect(() => {
-    preloadMarkdownEditor();
-  }, []);
-
-  // The empty state has no `useFolioActions` — that hook needs a draft, and
-  // there is no document here. Only the four ids `availableWithoutFolio`
-  // marks can fire; the rest are rendered disabled, so their no-op is never
-  // reachable and exists only to satisfy the exhaustive handler map.
-  const emptyStateHandlers = useMemo<FolioActionHandlers>(() => {
-    const noop = (): void => {};
-    const handlers = {} as FolioActionHandlers;
-    for (const item of folioMenuItems()) {
-      handlers[item.id] = noop;
-    }
-    handlers["folio.new"] = () => {
-      if (treeActions) return treeActions.createFolio();
-      // Before the tree publishes, fall back to the create route — the
-      // same destination `useFolioActions` uses.
-      void router.push("projectFoliosNew", {
-        params: { projectSlug: project?.slug ?? "" },
-      });
-    };
-    handlers["folio.newDirectory"] = () => treeActions?.createDirectory();
-    handlers["view.tree"] = () => panes.toggleTree();
-    handlers["view.focus"] = () => panes.toggleFocus();
-    return handlers;
-  }, [treeActions, panes, project?.slug, router]);
-
-  // The empty state's keyboard half. `FolioDocument` binds the shortcuts on
-  // every other state, and it is not mounted here — so the menubar rendered
-  // just below advertised ⌘\ and ⌘. as enabled while nothing listened for
-  // them. `enabled` keeps the two call sites from ever binding at once; see
-  // the hook's doc.
-  // The empty state has no `useFolioActions` to ask, so it asks the client
-  // directly - same question, same action.
-  const emptyStateActionState: FolioActionState = {
-    ...EMPTY_STATE_ACTION_STATE,
-    readOnly: !folioApi.update.can(),
-  };
-
-  useFolioShortcuts(
-    emptyStateHandlers,
-    emptyStateActionState,
-    "view",
-    props.empty === true,
-  );
-
-  // Three states, not two: hidden, a column (`contents` — the wrapper
-  // disappears and `FolioTree`'s own root becomes the flex child), or an
-  // overlay drawer floating over the document on a viewport too narrow for
-  // a third column. The tree stays MOUNTED through all three (see this
-  // file's doc) — only its wrapper's positioning changes.
-  const treeClassName = !panes.treeOpen
-    ? "hidden"
-    : panes.treeDrawer
-      ? "bg-background absolute top-0 bottom-0 left-0 z-20 flex shadow-lg"
-      : "contents";
+  const shell = use(FolioWorkspaceShellContext);
+  if (!shell) {
+    throw new AlephaError(
+      "FolioWorkspace renders inside FolioWorkspaceShell, which FoliosLayout mounts",
+    );
+  }
 
   return (
-    // `min-w-0 flex-1` is not decoration. `FoliosLayout` puts this inside a
-    // ROW flex container (`main.flex min-h-0 min-w-0 flex-1`), where a flex
-    // item defaults to `flex: 0 1 auto` — sized to its content, never
-    // stretched. Without it the whole workspace ended ~260px short of the
-    // content area's right edge at a wide viewport, with the document column
-    // narrow enough to clip the folio title. `min-w-0` then lets it shrink
-    // below its content's intrinsic width instead of overflowing.
-    //
-    // The tree resizer was blamed for this and is innocent: reproduced with
-    // `lor.folio.workspace.treeWidth` unset.
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      {/* The MENUBAR row lands HERE, portalled up from `FolioDocument`.
-          The design puts it above all three panes, spanning the whole
-          surface, while the component that owns its state lives in the
-          document column.
-
-          It used to be portalled for a second, harder reason: the row was
-          created inside MDXEditor's realm, the only context where its
-          `edit.*`/`insert.*` dispatchers could be built, so the portal was
-          what let it keep that context while rendering here. Those commands
-          are gone and so is the realm — this is now a plain layout portal.
-
-          A callback ref (via `useState`) rather than `useRef` so the
-          document re-renders once the node exists and the portal has a
-          target on the first paint after mount. */}
-      <div ref={setChromeSlot} className="flex flex-none flex-col" />
-      <div className="relative flex min-h-0 flex-1">
-        {/* ⚠️ Only where the tree would otherwise be a COLUMN. Below
-            `TREE_DRAWER_BELOW` the pane is an overlay that defaults closed,
-            so a rail there would put a permanent strip on every narrow
-            viewport for a pane nobody collapsed - the menubar stays the way
-            in on those, as it always has. */}
-        {!panes.treeOpen && !panes.treeDrawer && (
-          <FolioTreeRail onExpand={panes.toggleTree} />
-        )}
-        {project && (
-          <div className={treeClassName}>
-            <FolioTree
-              projectId={project.id}
-              projectSlug={project.slug}
-              currentFolioId={props.folio?.id}
-              revealDirectoryShortId={revealDirectoryShortId}
-              width={panes.treeWidth}
-              onCollapse={panes.toggleTree}
-              onActions={setTreeActions}
-            />
-            {/* Inside the wrapper so the handle travels with the pane and
-                disappears along with it. */}
-            <TreeViewResizer
-              width={panes.treeWidth}
-              onWidth={panes.setTreeWidth}
-              minWidth={TREE_MIN_WIDTH}
-              maxWidth={TREE_MAX_WIDTH}
-              defaultWidth={TREE_DEFAULT_WIDTH}
-            />
-          </div>
-        )}
-        {props.empty ? (
-          <div className="bg-background min-w-0 flex-1">
-            {/* The menubar is portalled up to the chrome slot from inside
-                the document on every other state — so skipping the content
-                pane used to skip the whole chrome row, and the workspace
-                lost its identity exactly where you land on it. Here there is
-                no document, so `FolioMenubar` renders directly. `noFolio`
-                keeps every menu's item list identical to the open state and
-                only flips enablement. */}
-            {chromeSlot &&
-              createPortal(
-                <FolioMenubar
-                  handlers={emptyStateHandlers}
-                  state={emptyStateActionState}
-                />,
-                chromeSlot,
-              )}
-            <FolioEmptyState
-              onCreate={
-                folioApi.update.can()
-                  ? () =>
-                      router.push("projectFoliosNew", {
-                        params: { projectSlug: project?.slug ?? "" },
-                      })
-                  : undefined
-              }
-            />
-          </div>
-        ) : (
-          <FolioWorkspaceContent
-            key={props.folio?.id ?? "new"}
-            folio={props.folio}
-            directoryId={props.directoryId}
-            chromeSlot={chromeSlot}
-            inspectorOpen={panes.inspectorOpen}
-            inspectorDrawer={panes.inspectorDrawer}
-            onToggleInspector={panes.toggleInspector}
-            inspectorTab={inspectorTab}
-            onInspectorTabChange={setInspectorTab}
-            treeOpen={panes.treeOpen}
-            onToggleTree={panes.toggleTree}
-            onToggleFocus={panes.toggleFocus}
-            onCreateDirectory={() => treeActions?.createDirectory()}
-          />
-        )}
-      </div>
-    </div>
+    <FolioWorkspaceContent
+      folio={props.folio}
+      directoryId={props.directoryId}
+      chromeSlot={shell.chromeSlot}
+      inspectorOpen={shell.panes.inspectorOpen}
+      inspectorDrawer={shell.panes.inspectorDrawer}
+      onToggleInspector={shell.panes.toggleInspector}
+      inspectorTab={shell.inspectorTab}
+      onInspectorTabChange={shell.setInspectorTab}
+      treeOpen={shell.panes.treeOpen}
+      onToggleTree={shell.panes.toggleTree}
+      onToggleFocus={shell.panes.toggleFocus}
+      onCreateDirectory={() => shell.treeActions?.createDirectory()}
+    />
   );
 };
 

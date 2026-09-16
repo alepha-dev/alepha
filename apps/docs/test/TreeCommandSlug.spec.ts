@@ -45,6 +45,48 @@ describe("TreeCommand slug", () => {
     });
   });
 
+  /**
+   * `alepha gen changelog` escapes a subject's emphasis markers so oxfmt stops
+   * rewriting the file (#Q2292), and the page shows subjects as plain text,
+   * so the reader undoes it.
+   */
+  describe("parseChangelogLine", () => {
+    const parse = (line: string) => boot().parseChangelogLine(line, new Set());
+
+    it("shows an escaped subject as the commit wrote it", () => {
+      expect(
+        parse(
+          "- **lore**: MCP grows app_instance\\_\\*, and sigil\\_\\* keeps working (`d2d83d62`)",
+        ),
+      ).toEqual({
+        scope: "lore",
+        message: "MCP grows app_instance_*, and sigil_* keeps working",
+        commit: "d2d83d62",
+      });
+    });
+
+    it("leaves a code span and a backslash before a letter as written", () => {
+      expect(
+        parse("- **react/form**: the `\\*` glob and \\u0000 stay (`c7e0902c`)")
+          ?.message,
+      ).toBe("the `\\*` glob and \\u0000 stay");
+    });
+
+    it("undoes an escaped backslash to a single one", () => {
+      expect(parse("- **cli**: a C:\\\\path (`abc1234`)")?.message).toBe(
+        "a C:\\path",
+      );
+    });
+
+    it("undoes a hand-written escape the generator never makes", () => {
+      expect(
+        parse(
+          "- **rocket-worker**: example CF Worker fronting Rocket via \\$container (`d8f19cd8`)",
+        )?.message,
+      ).toBe("example CF Worker fronting Rocket via $container");
+    });
+  });
+
   describe("pretty", () => {
     it("should keep interior digits in the display name", () => {
       const tree = boot();
