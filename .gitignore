@@ -11,6 +11,7 @@ playwright-report
 .idea
 .env
 .claude
+.codex
 .run
 .gen
 .playwright-mcp
