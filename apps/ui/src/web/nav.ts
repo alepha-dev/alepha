@@ -162,10 +162,20 @@ export const NAV: NavGroup[] = [
         ],
       },
       {
-        href: "/blocks/table",
-        label: "Table",
+        label: "DataTable",
         icon: Table2,
-        description: "Server-paged, filtered and sortable.",
+        children: [
+          {
+            href: "/blocks/data-table/basic",
+            label: "Basic",
+            description: "Server-paged, filtered and sortable.",
+          },
+          {
+            href: "/blocks/data-table/addons",
+            label: "Addons",
+            description: "The same members, with the table's add-ons.",
+          },
+        ],
       },
       {
         href: "/blocks/tree",

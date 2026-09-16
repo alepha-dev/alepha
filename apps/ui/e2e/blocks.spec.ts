@@ -83,7 +83,7 @@ test.describe("shell", () => {
   test("⌘K opens the palette and Enter follows the selection", async ({
     page,
   }) => {
-    await page.goto("/blocks/table");
+    await page.goto("/blocks/data-table/basic");
 
     await page.keyboard.press("ControlOrMeta+k");
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -155,7 +155,7 @@ test.describe("Showcase", () => {
     // instead of folding them behind the button it has for exactly that case,
     // and every assertion about the page passed while it did.
     await page.setViewportSize({ width: 1440, height: 820 });
-    await page.goto("/blocks/table");
+    await page.goto("/blocks/data-table/basic");
 
     await page.getByRole("radio", { name: "Mobile" }).click();
 
@@ -202,7 +202,7 @@ test.describe("Showcase", () => {
     });
     page.on("pageerror", (e) => errors.push(String(e)));
 
-    await page.goto("/blocks/table");
+    await page.goto("/blocks/data-table/basic");
     await page
       .getByRole("button", { name: /toggle color mode/i })
       .first()
@@ -300,7 +300,7 @@ test.describe("Showcase", () => {
 
 test.describe("DataTable", () => {
   test("renders rows fetched through the action registry", async ({ page }) => {
-    await page.goto("/blocks/table");
+    await page.goto("/blocks/data-table/basic");
 
     // Real content, not a row count: an empty table also has a tbody.
     await expect(page.getByText("Ada Lovelace")).toBeVisible();
@@ -309,7 +309,7 @@ test.describe("DataTable", () => {
   });
 
   test("filters on the server", async ({ page }) => {
-    await page.goto("/blocks/table");
+    await page.goto("/blocks/data-table/basic");
     await expect(page.getByText("Ada Lovelace")).toBeVisible();
 
     // `exact`: the placeholder is the plain "Search" now, which a substring
@@ -323,7 +323,7 @@ test.describe("DataTable", () => {
   test("a grouped row action opens a submenu and runs its child", async ({
     page,
   }) => {
-    await page.goto("/blocks/table");
+    await page.goto("/blocks/data-table/basic");
     await expect(page.getByText("Ada Lovelace")).toBeVisible();
 
     // The first row's three-dots trigger. A submenu is the one shape a jsdom
