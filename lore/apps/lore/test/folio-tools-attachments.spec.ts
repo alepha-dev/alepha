@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake } from "alepha/testing/faker";
 import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
+import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { FolioController } from "../src/api/controllers/FolioController.ts";
