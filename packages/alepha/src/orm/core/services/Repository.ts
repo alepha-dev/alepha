@@ -1000,10 +1000,37 @@ export abstract class Repository<T extends ZObject> {
     rows: ReadonlyArray<Record<string, unknown>>,
     requested?: number,
   ): number {
-    const columns = rows.reduce(
-      (max, row) => Math.max(max, Object.keys(row).length),
-      1,
+    const tableColumns = getTableColumns(this.table as PgTable);
+
+    // ⚠️ The caller's keys are NOT the whole statement. A column the caller
+    // never names still binds a value on every row when its default is a
+    // JavaScript one: drizzle calls `defaultFn()`, or takes a plain `default`
+    // value, and pushes the result as a parameter. Only an SQL default is
+    // inlined into the statement, and only a column with no default at all
+    // falls back to the `default` keyword — neither of those binds.
+    //
+    // A generated uuid primary key (`defaultFn`) and `version` (a plain `0`)
+    // are both bound, so sizing from the provided keys alone under-counted by
+    // TWO on every row: a 14-row insert of 7 provided columns bound 126
+    // values against D1's ceiling of 100 and was refused (quest #Q343).
+    // `createdAt` / `updatedAt` are inlined as `unixepoch(...)` and rightly
+    // do not count.
+    const generated = Object.entries(tableColumns).filter(
+      ([, col]: [string, any]) =>
+        col.defaultFn !== undefined ||
+        (col.default !== undefined && !(col.default instanceof SQL)) ||
+        (col.default === undefined && col.onUpdateFn !== undefined),
     );
+
+    const columns = rows.reduce((max, row) => {
+      // `undefined` reads as absent to drizzle, so it takes the default path.
+      let bound = Object.values(row).filter((v) => v !== undefined).length;
+      for (const [key] of generated) {
+        if (row[key] === undefined) bound++;
+      }
+      return Math.max(max, bound);
+    }, 1);
+
     const perStatement = Math.max(
       1,
       Math.floor(this.provider.maxBoundParameters / columns),
