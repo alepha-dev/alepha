@@ -21,7 +21,10 @@ import {
 } from "../helpers/consentPage.ts";
 import { buildAuthorizationServerMetadata } from "../helpers/oauthMetadata.ts";
 import { AlephaOAuth, oauthOptions } from "../index.ts";
-import { DEVICE_POLL_INTERVAL_SECONDS } from "../services/DeviceCodeService.ts";
+import {
+  DEVICE_POLL_INTERVAL_SECONDS,
+  DeviceCodeService,
+} from "../services/DeviceCodeService.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
 
 describe("oauth helpers", () => {
@@ -547,7 +550,7 @@ describe("OAuthController refresh_token grant", () => {
     );
 
     const { hostname } = alepha.inject(ServerProvider);
-    return { hostname, service };
+    return { alepha, app, hostname, service };
   };
 
   const registerClient = async (
@@ -786,6 +789,151 @@ describe("OAuthController refresh_token grant", () => {
     expect(resp.status).toBe(200);
     const body = (await resp.json()) as Record<string, string>;
     expect(decodeJwtPayload(body.id_token).aud).toBe(clientId);
+  });
+
+  /**
+   * The device grant, as `lore login` runs it: a client id no table holds,
+   * approved through the service the approval page calls, then polled once.
+   */
+  const mintDeviceRefreshToken = async (
+    alepha: Alepha,
+    hostname: string,
+    userId: string,
+  ): Promise<string> => {
+    const start = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: "alepha-cli",
+        scope: "cli",
+      }).toString(),
+    });
+    const { device_code, user_code } = (await start.json()) as Record<
+      string,
+      string
+    >;
+    await alepha.inject(DeviceCodeService).decide(user_code, "approve", userId);
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code,
+        client_id: "alepha-cli",
+      }).toString(),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.refresh_token;
+  };
+
+  const refresh = (hostname: string, refreshToken: string, clientId: string) =>
+    fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }).toString(),
+    });
+
+  /**
+   * #Q2387. The device grant never asks for a registration, so this used to
+   * answer `invalid_client`, and a `lore login` lasted one access token.
+   */
+  it("refreshes a device-grant session under the unregistered client it is bound to", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const userId = randomUUID();
+    const refreshToken = await mintDeviceRefreshToken(alepha, hostname, userId);
+    expect(typeof refreshToken).toBe("string");
+
+    const resp = await refresh(hostname, refreshToken, "alepha-cli");
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(decodeJwtPayload(body.access_token).sub).toBe(userId);
+    expect(body.refresh_token).toBe(refreshToken);
+    // The device grant issued none, and no relying party registered this
+    // audience.
+    expect(body.id_token).toBeUndefined();
+  });
+
+  it("refuses a device-grant refresh under another unregistered client id", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+    );
+
+    const resp = await refresh(hostname, refreshToken, "some-other-cli");
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+    expect(body.access_token).toBeUndefined();
+  });
+
+  it("refuses a device-grant refresh presented under a registered client", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const registered = await registerClient(
+      hostname,
+      "https://registered.example/cb",
+    );
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+    );
+
+    const resp = await refresh(hostname, refreshToken, registered);
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_grant");
+    expect(body.id_token).toBeUndefined();
+  });
+
+  /**
+   * ⚠️ The property a registered-client requirement used to give for free: a
+   * session with no OAuth client (an ordinary sign-in) is not refreshable
+   * here, whatever unregistered id the request names.
+   */
+  it("refuses to refresh a session that no OAuth grant created", async ({
+    expect,
+  }) => {
+    const { app, hostname } = await boot();
+    const { refresh_token } = await app.issuer.createToken({
+      id: randomUUID(),
+      roles: [],
+    } as UserAccount);
+
+    const resp = await refresh(hostname, refresh_token ?? "", "alepha-cli");
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+    expect(body.access_token).toBeUndefined();
+  });
+
+  it("refuses a refresh that names no client at all", async ({ expect }) => {
+    const { app, hostname } = await boot();
+    const { refresh_token } = await app.issuer.createToken({
+      id: randomUUID(),
+      roles: [],
+    } as UserAccount);
+
+    const resp = await refresh(hostname, refresh_token ?? "", "");
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
   });
 });
 

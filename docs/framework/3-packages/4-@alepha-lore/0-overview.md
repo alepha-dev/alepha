@@ -190,7 +190,8 @@ links the binary and `yarn lore ...` works with no global install.
 
 1. `LORE_API_KEY`, which is what CI has.
 2. A device-flow token cached for this hostname, which is what a laptop has
-   after `lore login`.
+   after `lore login`. An expired one is refreshed first, when it carries a
+   refresh token.
 3. An error naming both.
 
 ⚠️ **Nothing ever starts a login on its own.** There is no human on a CI runner
@@ -208,6 +209,13 @@ should be the one that is used.
 `login` runs the OAuth 2.0 device flow (RFC 8628): it prints a code and a URL,
 you approve it in a browser, and the token is cached under
 `~/.alepha/credentials.json`.
+
+A login renews itself. Lore's access tokens last fifteen minutes, and the
+refresh token cached beside one is traded for a fresh token whenever a command
+finds it expired. You sign in again only once Lore has ended the session: after
+30 days without a command, 180 days at most, or when the session is revoked. A
+refused refresh forgets the cached login and asks for `lore login`; an
+unreachable instance keeps it for the next try.
 
 The URL is `/oauth/device` on the Lore instance, a page `alepha/api/oauth`
 serves itself. Sign in if it asks, check that the code it shows matches the
