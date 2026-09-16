@@ -17,9 +17,9 @@ export * from "./providers/FakeProvider.ts";
  * - Context-aware field generation (email field -> email address)
  * - Test data seeding
  *
- * @module alepha.fake
+ * @module alepha.testing.faker
  */
 export const AlephaFake = $module({
-  name: "alepha.fake",
+  name: "alepha.testing.faker",
   services: [FakeProvider],
 });

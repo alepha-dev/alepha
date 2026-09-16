@@ -3,7 +3,7 @@ import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";

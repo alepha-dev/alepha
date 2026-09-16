@@ -721,7 +721,7 @@ describe("FakeProvider schema conformance", () => {
  * It used to seed the `faker` singleton the library exports, in its
  * constructor, so building one provider reset the sequence of every other one
  * in the process - and of any application code using the `fake` export from
- * `alepha/fake`, which is that same singleton.
+ * `alepha/testing/faker`, which is that same singleton.
  */
 describe("FakeProvider seeding", () => {
   const schema = z.text();

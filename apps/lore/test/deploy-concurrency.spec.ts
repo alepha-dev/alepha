@@ -3,7 +3,7 @@ import { jobExecutionEntity } from "alepha/api/jobs";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { queueWorkerOptions } from "alepha/queue";
 import { AlephaSecurity } from "alepha/security";

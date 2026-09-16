@@ -240,11 +240,6 @@
       "import": "./src/email/smtp/index.ts",
       "default": "./src/email/smtp/index.ts"
     },
-    "./fake": {
-      "types": "./src/fake/index.ts",
-      "import": "./src/fake/index.ts",
-      "default": "./src/fake/index.ts"
-    },
     "./lock": {
       "types": "./src/lock/core/index.ts",
       "import": "./src/lock/core/index.ts",
@@ -462,6 +457,11 @@
       "browser": "./src/system/index.browser.ts",
       "import": "./src/system/index.ts",
       "default": "./src/system/index.ts"
+    },
+    "./testing/faker": {
+      "types": "./src/testing/faker/index.ts",
+      "import": "./src/testing/faker/index.ts",
+      "default": "./src/testing/faker/index.ts"
     },
     "./topic": {
       "types": "./src/topic/core/index.ts",
@@ -690,11 +690,6 @@
         "import": "./dist/email/smtp/index.js",
         "default": "./dist/email/smtp/index.js"
       },
-      "./fake": {
-        "types": "./dist/fake/index.d.ts",
-        "import": "./dist/fake/index.js",
-        "default": "./dist/fake/index.js"
-      },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",
         "import": "./dist/lock/core/index.js",
@@ -912,6 +907,11 @@
         "browser": "./dist/system/index.browser.js",
         "import": "./dist/system/index.js",
         "default": "./dist/system/index.js"
+      },
+      "./testing/faker": {
+        "types": "./dist/testing/faker/index.d.ts",
+        "import": "./dist/testing/faker/index.js",
+        "default": "./dist/testing/faker/index.js"
       },
       "./topic": {
         "types": "./dist/topic/core/index.d.ts",

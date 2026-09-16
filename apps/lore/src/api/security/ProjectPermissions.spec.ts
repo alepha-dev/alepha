@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake } from "alepha/fake";
+import { AlephaFake } from "alepha/testing/faker";
 import { $repository, AlephaOrm } from "alepha/orm";
 import {
   AlephaSecurity,

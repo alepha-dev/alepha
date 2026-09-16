@@ -7,7 +7,7 @@ import {
 } from "alepha/api/notifications";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { AlephaMcp } from "alepha/mcp";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";

@@ -8,7 +8,7 @@ import {
   MyConnectionController,
 } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
