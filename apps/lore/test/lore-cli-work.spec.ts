@@ -9,11 +9,11 @@ import {
   MemoryOutputProvider,
 } from "alepha/command";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { EpicController } from "../src/api/controllers/EpicController.ts";
