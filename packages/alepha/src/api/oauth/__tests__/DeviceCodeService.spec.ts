@@ -84,6 +84,28 @@ describe("DeviceCodeService", () => {
     });
   });
 
+  /**
+   * #Q2388. The token endpoint binds the session to this, not to whatever
+   * `client_id` the poll carries, so the service has to hand it back.
+   */
+  it("names the client the flow started as when it hands over the grant", async () => {
+    const { service, time } = await start();
+    const record = await service.start({
+      clientId: "alepha-cli",
+      scopes: ["cli"],
+    });
+    await service.decide(record.userCode, "approve", "user-1");
+
+    await time.travel([DEVICE_POLL_INTERVAL_SECONDS + 1, "seconds"]);
+    expect(await service.poll(record.deviceCode)).toEqual({
+      status: "approved",
+      userId: "user-1",
+      clientId: "alepha-cli",
+      scopes: ["cli"],
+      resource: undefined,
+    });
+  });
+
   it("reports a denial, then forgets the code", async () => {
     const { service, time } = await start();
     const record = await service.start(anyClient);

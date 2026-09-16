@@ -7,12 +7,14 @@ import {
   MemoryDestinationProvider,
   LogDestinationProvider,
 } from "alepha/logger";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, SecurityProvider, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { OAuthController } from "../controllers/OAuthController.ts";
+import { oauthClientEntity } from "../entities/oauthClientEntity.ts";
 import {
   type ConsentPageOptions,
   renderConsentPage,
@@ -792,11 +794,14 @@ describe("OAuthController refresh_token grant", () => {
   /**
    * The device grant, as `lore login` runs it: a client id no table holds,
    * approved through the service the approval page calls, then polled once.
+   * `pollAs` is the client id the poll names, which a well-behaved device
+   * keeps equal to the one it started as.
    */
   const mintDeviceRefreshToken = async (
     alepha: Alepha,
     hostname: string,
     userId: string,
+    pollAs = "alepha-cli",
   ): Promise<string> => {
     const start = await fetch(`${hostname}/oauth/device_authorization`, {
       method: "POST",
@@ -817,7 +822,7 @@ describe("OAuthController refresh_token grant", () => {
       body: new URLSearchParams({
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         device_code,
-        client_id: "alepha-cli",
+        client_id: pollAs,
       }).toString(),
     });
     const body = (await resp.json()) as Record<string, string>;
@@ -896,6 +901,31 @@ describe("OAuthController refresh_token grant", () => {
     const body = (await resp.json()) as Record<string, string>;
     expect(body.error).toBe("invalid_grant");
     expect(body.id_token).toBeUndefined();
+  });
+
+  /**
+   * #Q2388, the same attack one step earlier: the device names the
+   * registered client on the poll rather than on the refresh. The session
+   * used to be bound to that client, so the refresh above let it through
+   * with an id_token whose `aud` was the registered client.
+   */
+  it("gives a device that polls as a registered client no session to refresh", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const registered = await registerClient(
+      hostname,
+      "https://registered.example/cb",
+    );
+
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+      registered,
+    );
+
+    expect(refreshToken).toBeUndefined();
   });
 
   /**
@@ -1239,6 +1269,11 @@ describe("device approval page", () => {
   const boot = async () => {
     class App {
       issuer = $issuer({ name: "users", secret: "test-secret" });
+      /**
+       * Nothing on the service revokes a client: revocation is a column
+       * other code writes.
+       */
+      oauthClients = $repository(oauthClientEntity);
     }
 
     const alepha = Alepha.create()
@@ -1261,15 +1296,37 @@ describe("device approval page", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    alepha
-      .inject(OAuthClientService)
-      .registerIssuer(
-        "users",
-        app.issuer,
-        async (id) => ({ id, roles: [] }) as UserAccount,
-      );
+    const clients = alepha.inject(OAuthClientService);
+    clients.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
 
     const { hostname } = alepha.inject(ServerProvider);
+
+    /**
+     * A client somebody registered, which a device may try to pass itself
+     * off as.
+     */
+    const registerClient = async () => {
+      const client = await clients.register({
+        realm: "users",
+        clientName: "Registered Client",
+        redirectUris: ["https://registered.example/cb"],
+        scopes: ["mcp"],
+      });
+      return client.clientId;
+    };
+
+    const revokeClient = async (clientId: string) => {
+      const row = await app.oauthClients.findOne({
+        where: { clientId: { eq: clientId } },
+      });
+      await app.oauthClients.updateById(row!.id, {
+        revokedAt: new Date().toISOString(),
+      });
+    };
 
     /**
      * A signed-in human, as the page sees one.
@@ -1286,11 +1343,11 @@ describe("device approval page", () => {
     /**
      * What `lore login` does first.
      */
-    const start = async () => {
+    const start = async (clientId = "alepha-cli") => {
       const res = await fetch(`${hostname}/oauth/device_authorization`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ client_id: "alepha-cli", scope: "mcp" }),
+        body: JSON.stringify({ client_id: clientId, scope: "mcp" }),
       });
       return (await res.json()) as {
         device_code: string;
@@ -1303,14 +1360,14 @@ describe("device approval page", () => {
     /**
      * What `lore login` does next, until it is let through.
      */
-    const poll = async (deviceCode: string) => {
+    const poll = async (deviceCode: string, clientId = "alepha-cli") => {
       const res = await fetch(`${hostname}/oauth/token`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
           device_code: deviceCode,
-          client_id: "alepha-cli",
+          client_id: clientId,
         }),
       });
       return { status: res.status, body: await res.json() };
@@ -1356,7 +1413,17 @@ describe("device approval page", () => {
         .inject(DateTimeProvider)
         .travel([DEVICE_POLL_INTERVAL_SECONDS + 1, "seconds"]);
 
-    return { hostname, session, start, poll, open, answer, waitInterval };
+    return {
+      hostname,
+      session,
+      start,
+      poll,
+      open,
+      answer,
+      waitInterval,
+      registerClient,
+      revokeClient,
+    };
   };
 
   const decodeJwt = (jwt: string) =>
@@ -1460,6 +1527,7 @@ describe("device approval page", () => {
     expect(granted.status).toBe(200);
     expect(granted.body.scope).toBe("mcp");
     expect(decodeJwt(granted.body.access_token).sub).toBe("user-1");
+    expect(decodeJwt(granted.body.access_token).client_id).toBe("alepha-cli");
   });
 
   it("tells the device access_denied when the human says no", async ({
@@ -1528,6 +1596,83 @@ describe("device approval page", () => {
 
     expect(res.status).toBe(403);
     expect((await poll(device_code)).body.error).toBe("authorization_pending");
+  });
+
+  /**
+   * #Q2388. The human approved `alepha-cli`; a poll naming a registered
+   * client used to get a session bound to that client, which the refresh
+   * grant then honoured with an id_token whose `aud` was that client.
+   */
+  it("refuses a device that polls as a client it did not start as", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer, waitInterval, registerClient } =
+      await boot();
+    const registered = await registerClient();
+    const { device_code, user_code } = await start();
+    await answer(user_code, "allow", { token: await session("user-1") });
+
+    const refused = await poll(device_code, registered);
+
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toBe("invalid_grant");
+    expect(refused.body.access_token).toBeUndefined();
+    // Spent, like any code that has been answered: presenting it wrongly is
+    // not a free first try.
+    await waitInterval();
+    expect((await poll(device_code)).body.error).toBe("expired_token");
+  });
+
+  /**
+   * A flow started with no `client_id` is recorded under the default one,
+   * and a poll naming none is held to the same default rather than refused:
+   * otherwise the default at the start would only ever produce a code that
+   * cannot be redeemed.
+   */
+  it("binds a flow that named no client to the default one", async ({
+    expect,
+  }) => {
+    const { hostname, session, answer } = await boot();
+    const start = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "mcp" }),
+    });
+    const { device_code, user_code } = (await start.json()) as Record<
+      string,
+      string
+    >;
+    await answer(user_code, "allow", { token: await session("user-1") });
+
+    const res = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, string>;
+    expect(decodeJwt(body.access_token).client_id).toBe("cli");
+  });
+
+  it("refuses a device grant for a client revoked since the flow started", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer, registerClient, revokeClient } =
+      await boot();
+    const registered = await registerClient();
+    const { device_code, user_code } = await start(registered);
+    await answer(user_code, "allow", { token: await session("user-1") });
+    await revokeClient(registered);
+
+    const refused = await poll(device_code, registered);
+
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toBe("invalid_client");
+    expect(refused.body.access_token).toBeUndefined();
   });
 });
 
