@@ -152,6 +152,16 @@ export const DataTableFilterControl = (props: DataTableFilterControlProps) => {
         "[&_[data-slot=input]]:rounded-none [&_[data-slot=input]]:border-0 [&_[data-slot=input]]:bg-transparent [&_[data-slot=input]]:shadow-none [&_[data-slot=input]]:focus-visible:ring-0",
         "[&_[data-slot=combobox-trigger]]:rounded-none [&_[data-slot=combobox-trigger]]:border-0 [&_[data-slot=combobox-trigger]]:bg-transparent [&_[data-slot=combobox-trigger]]:shadow-none [&_[data-slot=combobox-trigger]]:focus-visible:ring-0",
         "[&_[data-slot=date-trigger]]:rounded-none [&_[data-slot=date-trigger]]:border-0 [&_[data-slot=date-trigger]]:bg-transparent [&_[data-slot=date-trigger]]:shadow-none [&_[data-slot=date-trigger]]:focus-visible:ring-0",
+        // A segmented filter (`control: { segmented: true }`) loses its frame
+        // the same way, and keeps its muted track, which now fills the box.
+        //
+        // ⚠️ Its segments size from their labels here. `ControlSelect` always
+        // draws it `fullWidth`, whose segments start from a zero basis, and a
+        // slot sized to its content then splits the width evenly below what
+        // the longest label needs: "Disabled" was drawn against the edge.
+        // `basis-auto` keeps the stretch and starts each one from its label.
+        "[&_[data-slot=segmented]]:rounded-none [&_[data-slot=segmented]]:border-0",
+        "[&_[data-slot=segmented-item]]:basis-auto",
         // See the docblock: the control's own clear cross would be a second,
         // identical glyph beside the remove one. Only then, though: a filter
         // given neither `onClear` nor `onRemove` draws no button of its own,
