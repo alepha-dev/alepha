@@ -1,11 +1,11 @@
 import { renderHook } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 

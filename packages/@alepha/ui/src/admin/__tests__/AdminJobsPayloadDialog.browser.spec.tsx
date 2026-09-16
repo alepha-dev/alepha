@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import type { JobExecutionResource } from "alepha/api/jobs";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AdminJobsPayloadDialog } from "../AdminJobsPayloadDialog.tsx";

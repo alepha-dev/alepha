@@ -1,10 +1,10 @@
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EpicController } from "../src/api/controllers/EpicController.ts";

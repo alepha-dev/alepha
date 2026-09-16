@@ -9,7 +9,7 @@ import { Alepha, z } from "alepha";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { $page, ReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 

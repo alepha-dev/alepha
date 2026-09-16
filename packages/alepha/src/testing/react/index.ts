@@ -16,11 +16,11 @@ export * from "./setup.ts";
  * - `fillForm()` / `submitForm()` - Form testing helpers
  * - `setupJsdomMocks()` - Mock browser APIs for jsdom
  *
- * @module alepha.react.testing
+ * @module alepha.testing.react
  *
  * @example
  * ```tsx
- * import { renderWithAlepha, fillForm, submitForm, setupJsdomMocks } from "alepha/react/testing";
+ * import { renderWithAlepha, fillForm, submitForm, setupJsdomMocks } from "alepha/testing/react";
  *
  * // Setup mocks before tests
  * beforeAll(() => {
@@ -39,6 +39,6 @@ export * from "./setup.ts";
  * });
  * ```
  */
-export const AlephaReactTesting = $module({
-  name: "alepha.react.testing",
+export const AlephaTestingReact = $module({
+  name: "alepha.testing.react",
 });

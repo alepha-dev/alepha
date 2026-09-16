@@ -31,6 +31,23 @@ describe("alepha test", () => {
     expect(shell.calls[0].command).not.toMatch(/--project/);
   });
 
+  /**
+   * Project names are package names, and this repo's own CLAUDE.md spells a
+   * workspace selection `--project '<name>*'`. `--project` does not declare
+   * `atFile`, so a leading `@` is a literal: reading it as a file would look
+   * for `alepha/ui*` and refuse a command the docs tell people to type.
+   */
+  it("should forward a scoped package project with its leading @ as typed", async () => {
+    const { shell, cli, cmd } = createTestEnv();
+
+    await cli.run(cmd.test, {
+      argv: ["--project", "@alepha/ui*"],
+      root: "/project",
+    });
+
+    expect(shell.calls[0].command).toMatch(/--project @alepha\/ui\*/);
+  });
+
   it("should forward a single project to vitest", async () => {
     const { shell, cli, cmd } = createTestEnv();
 

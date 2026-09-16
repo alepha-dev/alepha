@@ -33,4 +33,5 @@ Configurable logging with multiple outputs.
 ### Providers
 
 - [`CliFormatterProvider`](/docs/reference-providers-cliformatterprovider) - Compact formatter for CLI output.
+- [`ConsoleDestinationProvider`](/docs/reference-providers-consoledestinationprovider) - Writes log lines to the console: stdout by default, stderr when the
 - [`LogBufferProvider`](/docs/reference-providers-logbufferprovider) - Access to the log buffer of the current execution context.

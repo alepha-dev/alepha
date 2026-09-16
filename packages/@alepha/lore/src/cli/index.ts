@@ -4,15 +4,21 @@ import { AlephaServerLinksClient } from "alepha/server/links";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
+import { FolioCommand } from "./commands/FolioCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
+import { ProjectCommand } from "./commands/ProjectCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
+import { QuestCommand } from "./commands/QuestCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
+import { LoreOutput } from "./services/LoreOutput.ts";
 import { LoreProjectResolver } from "./services/LoreProjectResolver.ts";
+import { LoreReferences } from "./services/LoreReferences.ts";
+import { LoreRefusals } from "./services/LoreRefusals.ts";
 import { LoreTokenStore } from "./services/LoreTokenStore.ts";
 import { QualityReportReader } from "./services/QualityReportReader.ts";
 
@@ -36,9 +42,9 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
  * ## ⚠️ Top-level commands, and no root of its own
  *
  * `quality`, `artifacts`, `attachments`, `releases`, `apps`, `deploy`,
- * `secrets`, `login` and `logout` register at the top level, because the
- * binary IS the root. A `lore` command inside a `lore` binary reads
- * `lore lore quality push`.
+ * `secrets`, `login`, `logout`, `project`, `quest` and `folio` register at
+ * the top level, because the binary IS the root. A `lore` command inside a
+ * `lore` binary reads `lore lore quality push`.
  *
  * That also means nothing here may inject a command from `alepha/cli`:
  * `Alepha.inject` registers the module that declares a service, so one such
@@ -71,7 +77,7 @@ export const AlephaLoreCli = $module({
     GitContextService,
     ArtifactUploader,
     LoreTokenStore,
-    // ⚠️ None of the eight below is re-exported. Each names, directly or
+    // ⚠️ None of the services below is re-exported. Each names, directly or
     // through what it injects, a type from the private `lore` workspace, and
     // an exported signature carrying one would put that workspace in the
     // published `.d.ts`. `scripts/check-dts.ts` fails the build if it does.
@@ -83,6 +89,15 @@ export const AlephaLoreCli = $module({
     // `$client<QuestController>` / `$client<FolioAttachmentController>`.
     AttachmentUploader,
     LoreProjectResolver,
+    // These three name nothing private, and are unexported anyway: how a
+    // `lore project`, `quest` or `folio` command refuses, renders and reads a
+    // reference is the binary's behaviour, not an API.
+    LoreRefusals,
+    LoreOutput,
+    LoreReferences,
+    ProjectCommand,
+    QuestCommand,
+    FolioCommand,
     QualityCommand,
     AppsCommand,
     ArtifactCommand,

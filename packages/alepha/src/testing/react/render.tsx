@@ -62,7 +62,7 @@ export interface RenderWithAlephaResult extends RenderResult {
  *
  * @example
  * ```tsx
- * import { renderWithAlepha } from "alepha/react/testing";
+ * import { renderWithAlepha } from "alepha/testing/react";
  *
  * test("renders component", async () => {
  *   const { alepha, getByText } = await renderWithAlepha(<MyComponent />);
@@ -74,7 +74,7 @@ export interface RenderWithAlephaResult extends RenderResult {
  * @example
  * ```tsx
  * // With custom Alepha configuration
- * import { renderWithAlepha } from "alepha/react/testing";
+ * import { renderWithAlepha } from "alepha/testing/react";
  * import { MyService, MockService } from "./services";
  *
  * test("renders with mocked service", async () => {
@@ -89,7 +89,7 @@ export interface RenderWithAlephaResult extends RenderResult {
  * @example
  * ```tsx
  * // With UI framework provider
- * import { renderWithAlepha } from "alepha/react/testing";
+ * import { renderWithAlepha } from "alepha/testing/react";
  * import { ThemeProvider } from "my-ui-library";
  *
  * test("renders themed component", async () => {

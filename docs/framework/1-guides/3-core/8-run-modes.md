@@ -108,7 +108,11 @@ alepha report monthly --format=csv --verbose
 ```
 
 Everything on the declaration does double duty. `flags` and `args` are parsed
-_and_ validated _and_ printed in `--help`. `env` is validated before the handler
+_and_ validated _and_ printed in `--help`, which `help` also answers as a word:
+`alepha help report` prints exactly what `alepha report --help` prints, unless
+the CLI registers a command named `help` of its own. A positional prints under
+its schema's `title` (`args: z.text({ title: "month" })` reads `<month>`), and
+a flag's help line is its description. `env` is validated before the handler
 runs, so a missing token is a clear failure at second zero rather than a
 `undefined` three API calls in.
 
@@ -117,7 +121,79 @@ runs, so a missing token is a clear failure at second zero rather than a
 `--name value` and `--name=value` are equivalent. A boolean flag needs no value:
 `--compile` turns it on, and `--no-compile` or `--compile=false` turns it off. A
 bare `--` ends flag parsing, so everything after it is an argument even when it
-starts with a dash.
+starts with a dash. An empty value is a value: `--summary ""` and `--summary=`
+both pass `""`.
+
+**An array flag repeats.** `--tag a --tag b` is `["a", "b"]`: each occurrence is
+cast against the element schema, so `--count 1 --count 2` on a
+`z.array(z.integer())` is `[1, 2]`. An occurrence written as a JSON array is
+spread, so `--tag '["a","b"]'` keeps working and `--tag '["a","b"]' --tag c` is
+`["a", "b", "c"]`. A scalar flag given twice keeps the last value. The help line
+of an array flag says `(repeatable)`.
+
+### Reading a value from a file or stdin
+
+A shell cannot pass a Markdown body as a flag value: `--body "## H\nBody"` is the
+two characters `\` and `n`, not a newline. A flag that declares `atFile: true`
+reads it from a file instead:
+
+```typescript check
+import { z } from "alepha";
+import { $command } from "alepha/command";
+
+class NoteCommands {
+  create = $command({
+    name: "create",
+    description: "Create a note",
+    flags: z.object({
+      title: z.text({ description: "The note's title" }),
+      body: z.text({
+        size: "rich",
+        atFile: true,
+        description: "The note, in Markdown",
+      }),
+      tag: z.array(z.text()).describe("A tag").optional(),
+    }),
+    handler: async ({ flags, print }) => {
+      print(
+        `${flags.title}: ${flags.body.length} chars, ${flags.tag?.length ?? 0} tags`,
+      );
+    },
+  });
+}
+```
+
+```bash
+alepha create --title "Plan" --body @plan.md --tag cli --tag docs
+git log -1 --format=%B | alepha create --title "Last commit" --body @-
+```
+
+| Value    | On a flag with `atFile: true`                                  |
+| -------- | -------------------------------------------------------------- |
+| `@path`  | The content of the file, resolved against the command's `root` |
+| `@-`     | The whole of stdin                                             |
+| `@@text` | The literal `@text`                                            |
+| anything | Itself                                                         |
+
+The file is read after the token is bound to its flag and before it is cast, so
+a body that starts with `- ` is still a value, and a file holding JSON reaches a
+string flag as that string. On an array flag, the content goes through the
+repeat rule once. An empty file is accepted, since it was named on purpose.
+
+`@-` is stricter, because the failure it guards against is silent. It may be
+used once per invocation. It is refused when stdin is a terminal, since waiting
+on a keyboard nobody is at is a hang. And it is refused when stdin is empty,
+since an agent's shell tool with nothing piped in has an empty stdin, and
+sending an empty body without a word is how that goes unnoticed: pass `""` to
+mean empty.
+
+**`atFile` is opt-in, never implied by a string.** `alepha test --project` takes
+package names, and `--project '@alepha/ui*'` has to reach Vitest as typed. On a
+flag without `atFile`, `@` is just a character. The help line of a flag that
+declares it says `(takes @file, or @- for stdin; @@ for a literal @)`.
+
+Stdin is read through `ConsoleInputProvider`; substitute `MemoryInputProvider`
+in a spec, and `MemoryFileSystemProvider` for the files.
 
 ### What the handler gets
 
@@ -135,12 +211,54 @@ starts with a dash.
 | `help`  | Prints this command's help                                        |
 
 **`print` is not the logger, and the distinction matters.** Output is what a
-command _produces_; the logger is what it _reports_. Anything a caller might
-pipe, parse or redirect goes through `print`. Sending it to the logger instead
+command _produces_; the logger is what it _reports_. They go to different
+streams: `print` to stdout, and in a CLI every log line to stderr (see
+[Logging](/docs/guides-core-logging#which-stream-stdout-or-stderr)). Anything a caller
+might pipe, parse or redirect goes through `print`. Sending it to the logger instead
 is how `alepha --version` once answered `18:21:36 I Alepha v0.24.0`, in colour,
 in a shape that changed with `LOG_FORMAT`: an environment variable the calling
 script does not control. `print` strips colour when stdout is not a TTY, so a
 coloured string is still safe to pipe.
+
+### Failing, and exit codes
+
+Throw a `CommandError` to fail a command. The CLI reports its message, and the
+message of its innermost `cause` when that says something the message does not,
+without a stack trace (`--verbose` keeps it), and exits non-zero. Any other
+error is a crash and keeps its stack.
+
+`exitCode` says why it failed, so a script can branch without parsing the
+sentence:
+
+```typescript check
+import { z } from "alepha";
+import { $command, CommandError } from "alepha/command";
+
+class SyncCommands {
+  sync = $command({
+    name: "sync",
+    env: z.object({ SYNC_TOKEN: z.text().optional() }),
+    handler: async ({ env }) => {
+      if (!env.SYNC_TOKEN) {
+        throw new CommandError("Not authenticated. Set SYNC_TOKEN.", {
+          exitCode: 3,
+        });
+      }
+    },
+  });
+}
+```
+
+| Code | Meaning                                                       |
+| ---- | ------------------------------------------------------------- |
+| 0    | Success                                                       |
+| 1    | Generic failure: the default when a `CommandError` names none |
+| 2    | Reserved: `alepha i18n check` found drift                     |
+| 3    | Not authenticated, or the credential was not accepted         |
+| 4    | Forbidden                                                     |
+
+A mistyped command, flag or argument is a `UsageError`, a `CommandError` of its
+own: the reason, then the help, then exit 1.
 
 ### Subcommands
 

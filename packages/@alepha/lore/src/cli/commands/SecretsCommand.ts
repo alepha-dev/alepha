@@ -86,6 +86,7 @@ export class SecretsCommand {
       "Set one secret (KEY=VALUE, or KEY to read $KEY), or every one in --file",
     args: z
       .text({
+        title: "KEY=VALUE",
         description:
           "KEY=VALUE, or KEY alone to take the value of that variable from the environment.",
       })
@@ -166,7 +167,7 @@ export class SecretsCommand {
   public readonly unset = $command({
     name: "unset",
     description: "Remove one secret from a copy",
-    args: z.text({ description: "The key to remove." }),
+    args: z.text({ title: "KEY", description: "The key to remove." }),
     flags: z.object(SecretsCommand.TARGET_FLAGS),
     handler: async ({ args, flags, root }) => {
       const { projectId, instanceId, label } = await this.target(flags, root);

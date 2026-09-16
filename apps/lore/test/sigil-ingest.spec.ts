@@ -2,11 +2,11 @@ import { SIGIL_INGEST_PATH } from "@alepha/lore/sigil";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
+import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";

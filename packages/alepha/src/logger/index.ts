@@ -251,6 +251,17 @@ declare module "alepha" {
     "alepha.logger.format"?: string;
 
     /**
+     * Which console stream `ConsoleDestinationProvider` writes to, read at
+     * write time. Unset or `"stdout"` is stdout.
+     *
+     * `CliProvider` sets `"stderr"` on its own container when it runs a
+     * command, so a CLI's stdout carries only what the command prints. Set on
+     * one container's store, it never reaches another container in the same
+     * process.
+     */
+    "alepha.logger.stream"?: "stdout" | "stderr";
+
+    /**
      * Per-context log buffer, read by {@link LogBufferProvider} when an entry
      * point opens a context. `size` caps how many entries a single request or
      * job run retains; `0` disables the capture entirely.

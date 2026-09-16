@@ -24,7 +24,7 @@ export interface FillFormOptions {
  *
  * @example
  * ```tsx
- * import { fillForm } from "alepha/react/testing";
+ * import { fillForm } from "alepha/testing/react";
  *
  * // For a form with id="user-form" and fields: name, email, age
  * await fillForm(screen, "user-form", {
@@ -95,7 +95,7 @@ export const fillForm = async (
  *
  * @example
  * ```tsx
- * import { fillField } from "alepha/react/testing";
+ * import { fillField } from "alepha/testing/react";
  *
  * await fillField(screen, "user-form-email", "alice@example.com");
  * ```
@@ -155,7 +155,7 @@ export interface SubmitFormOptions {
  *
  * @example
  * ```tsx
- * import { submitForm } from "alepha/react/testing";
+ * import { submitForm } from "alepha/testing/react";
  *
  * // Submit by clicking "Submit" button (default)
  * await submitForm(screen);
@@ -182,7 +182,7 @@ export const submitForm = async (
  *
  * @example
  * ```tsx
- * import { resetForm } from "alepha/react/testing";
+ * import { resetForm } from "alepha/testing/react";
  *
  * await resetForm(screen); // Clicks "Reset" button
  * await resetForm(screen, "Clear"); // Clicks "Clear" button
@@ -205,7 +205,7 @@ export const resetForm = async (
  *
  * @example
  * ```tsx
- * import { waitForFormSubmit } from "alepha/react/testing";
+ * import { waitForFormSubmit } from "alepha/testing/react";
  *
  * fireEvent.click(submitButton);
  * await waitForFormSubmit(alepha, "my-form");
@@ -244,7 +244,7 @@ export const waitForFormSubmit = async (
  *
  * @example
  * ```tsx
- * import { toggleSwitch } from "alepha/react/testing";
+ * import { toggleSwitch } from "alepha/testing/react";
  *
  * // Toggle the first switch on the page
  * await toggleSwitch(screen, "switch");

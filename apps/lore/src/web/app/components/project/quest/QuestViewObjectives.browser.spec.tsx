@@ -3,11 +3,11 @@ import { ActionErrorToaster } from "@alepha/ui/shell";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import {

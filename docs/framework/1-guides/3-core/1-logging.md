@@ -116,6 +116,34 @@ quiet run such as `alepha verify` is not buried under thousands of sub-process
 lines. Captured output is still surfaced (stdout **and** stderr) if the task
 fails, and the `Starting … / Finished … after Ns` lines always print.
 
+### Which stream: stdout or stderr
+
+A server writes its log lines to **stdout**: they are its output, and that is
+where a container runtime or a log collector reads them.
+
+A CLI writes them to **stderr**. As soon as `CliProvider` runs a command, or
+prints help or a usage error, it switches its own container's logs over, so
+stdout carries only what the command prints: `--version`, help, a rendered
+result. That is what keeps a pipe honest:
+
+```bash
+alepha --version | cat        # 0.29.0, and nothing else
+lore quest list --output json | jq length
+```
+
+| Stream | In a CLI                                                         |
+| ------ | ---------------------------------------------------------------- |
+| stdout | `print()`: help, `--version`, a command's result                 |
+| stderr | every log line: progress, warnings, and the reason for a failure |
+
+The switch is the store key `alepha.logger.stream`, read by
+`ConsoleDestinationProvider` each time it writes, and it is set on the CLI's
+container only. An application container that a command boots in the same
+process, the way `alepha dev` does, keeps writing to stdout.
+
+A container that registers commands but is started with nothing to run (a
+server carrying a maintenance command) is not a CLI, and keeps stdout too.
+
 ## Log Entry Structure
 
 Every log call produces a `LogEntry`:

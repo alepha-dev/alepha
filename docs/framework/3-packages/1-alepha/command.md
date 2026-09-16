@@ -29,8 +29,10 @@ Declarative CLI command framework.
 ### Providers
 
 - [`CliProvider`](/docs/reference-providers-cliprovider) - CLI provider for parsing and executing commands.
+- [`ConsoleInputProvider`](/docs/reference-providers-consoleinputprovider) - What a command reads from stdin, as a seam a spec can substitute.
 - [`ConsoleOutputProvider`](/docs/reference-providers-consoleoutputprovider) - What a command _produces_, as opposed to what it _reports_.
 - [`ExclusiveProvider`](/docs/reference-providers-exclusiveprovider) - A machine-wide FIFO queue for CLI commands that must not run concurrently.
+- [`MemoryInputProvider`](/docs/reference-providers-memoryinputprovider) - Stdin from memory, for specs.
 - [`MemoryOutputProvider`](/docs/reference-providers-memoryoutputprovider) - Captures command output instead of writing it to stdout.
 
 ### Environment Variables
