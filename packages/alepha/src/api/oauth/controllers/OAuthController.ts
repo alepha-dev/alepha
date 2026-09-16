@@ -222,6 +222,14 @@ export class OAuthController {
   protected readonly deviceCodeRefused =
     "That code is not valid, has expired, or has already been used. Start again on your device to get a new one.";
 
+  /**
+   * The client a device flow is recorded under when the device names none.
+   *
+   * Read by both halves of the grant: a poll naming no client is held to the
+   * same default, since the flow it redeems was recorded under it.
+   */
+  protected readonly defaultDeviceClientId = "cli";
+
   metadata = $route({
     method: "GET",
     path: "/.well-known/oauth-authorization-server",
@@ -610,7 +618,7 @@ export class OAuthController {
     handler: async ({ body, url, reply }) => {
       reply.headers["content-type"] = "application/json";
       const record = await this.deviceCodes.start({
-        clientId: body.client_id ?? "cli",
+        clientId: body.client_id ?? this.defaultDeviceClientId,
         scopes: (body.scope ?? "").split(" ").filter(Boolean),
         resource: body.resource,
       });
@@ -847,16 +855,45 @@ export class OAuthController {
             reply.body = JSON.stringify({ error: errors[result.status] });
             return;
           }
+
+          // The session belongs to the client the flow was STARTED as, the
+          // one the human approved, never to the id this poll names: a device
+          // could otherwise start as `alepha-cli` and collect a session bound
+          // to any registered client, which the refresh grant then honours
+          // with an id_token for that client (#Q2388). RFC 6749 §5.2 names
+          // this case: a grant "issued to another client" is `invalid_grant`.
+          // The code is already spent, so a device that presents it wrongly
+          // does not get a second try.
+          const pollClientId = body.client_id ?? this.defaultDeviceClientId;
+          if (pollClientId !== result.clientId) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_grant" });
+            return;
+          }
+
+          // An unregistered id is the ordinary case here (`lore login` runs
+          // as `alepha-cli`, which no table holds), so only a registered
+          // client is looked at, and a revoked one is refused as the other
+          // grants refuse it. Checked at the poll rather than at the start,
+          // because a revocation can land while the human is still reading
+          // the code.
+          const client = await this.clients.findByClientId(result.clientId);
+          if (client?.revokedAt) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_client" });
+            return;
+          }
+
           const tokens = await this.clients.issueAccessToken(
             this.options.realm,
             {
               userId: result.userId,
               scopes: result.scopes,
               resource: result.resource,
-              clientId: body.client_id,
+              clientId: result.clientId,
             },
           );
-          await this.clients.markClientUsed(body.client_id ?? "");
+          await this.clients.markClientUsed(result.clientId);
           reply.body = JSON.stringify({
             access_token: tokens.access_token,
             token_type: "Bearer",
