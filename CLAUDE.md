@@ -45,8 +45,9 @@ alternative cost something.
 
 ### Verifying
 
-- `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, lint, then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s. It catches a typo, a bad import, a broken unit test, a missing i18n key. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
+- `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, `yarn copy` (every workspace's generators, then lint), then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s, and the generators ~20s. It catches a typo, a bad import, a broken unit test, a missing i18n key, a JSDoc that breaks a docs rule. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
   - **Needs Docker running** for the service checks (postgres, redis, s3mock).
+  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any of them that differs from the index. A JSDoc change is therefore a two-part commit: the source and the pages it regenerates. Review the pages `yarn v` wrote, stage them, and run it again. Until #Q2358 this lane ran a bare `lint` and scanned whatever the checkout last generated, while CI scanned pages generated from the commit, which is how #Q2357 was green here and red on main for four commits.
   - `--fast` is accepted and does nothing. There is one lane now.
   - **One run per machine, across every worktree.** The command takes a machine-wide slot keyed on the package name, so a second `yarn v` queues instead of interleaving: `test` and `test:bun` both drive the one postgres on 15432, and two concurrent lanes are two suites sharing a database. It prints who holds the slot while it waits. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
 - **Pushing the branch** - the real gate. `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel on GitHub's runners, ~5 minutes. Four epics verify at once without touching each other, which is the whole point: this used to be four concurrent local pipelines on one machine, about thirty minutes of contended wall clock.
@@ -67,7 +68,7 @@ These fan out via `yarn workspaces foreach -Apt run …`, so every workspace tha
 - `yarn check:deps` - depcheck across every workspace (unused/missing deps)
 - `yarn check:i18n` - i18n catalog audit (each app's `alepha i18n check`)
 - `yarn check:migrations` - DB migration drift check (each app's `alepha db migrations check`)
-- `yarn check:docs` - the code samples of the guides and READMEs against the source (`apps/docs/scripts/check-docs.ts`)
+- `yarn check:docs` - the code samples of the guides and READMEs against the source, and the generated pages against the index (`apps/docs/scripts/check-docs.ts`). That second half is only meaningful after `yarn copy`, which `yarn v` and CI both run first
 - `yarn check:conventions` - the conventions below, mechanically (`scripts/check-conventions.mjs`)
 
 The convention is `check:<thing>` at the app level → `yarn check:<thing>` at the root that fans out. To add a new check that spans apps, follow the same shape (workspace script + root aggregator + add it to the `verify` pipeline in `alepha.config.ts`).
@@ -454,7 +455,7 @@ If a later change moves one of these rules, it updates this section in the same 
 
 ## Notes for AI Assistants
 
-- Update docs/framework/1-guides/ if you change any public API or behavior (docs/framework/2-reference and docs/framework/3-packages are regenerated from source JSDoc by `yarn copy` — fix the JSDoc, never those files)
+- Update docs/framework/1-guides/ if you change any public API or behavior (docs/framework/2-reference and docs/framework/3-packages are regenerated from source JSDoc by `yarn copy`: fix the JSDoc, never those files, and commit the pages it regenerates, which `check:docs` enforces)
 - The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
 - All async operations should use `Alepha.create()` and proper lifecycle management
 - HTTP client (`HttpClient`) has built-in request deduplication and caching

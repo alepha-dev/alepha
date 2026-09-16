@@ -6,6 +6,7 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
+import { DocsCommand } from "./gen-docs.ts";
 import { snippets } from "./snippets.ts";
 
 /**
@@ -31,12 +32,17 @@ import { snippets } from "./snippets.ts";
  *    in an earlier block on the page; compiling those would be all noise.
  *    A fence earns the marker by becoming self-contained - which also makes
  *    it copy-pasteable, so the incentive points the right way.
+ *
+ * Both layers read the generated reference pages, so a third step first
+ * refuses a checkout whose generated pages differ from what is staged: see
+ * `unstagedOutputs`.
  */
 export class CheckDocsCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly checker = $inject(DocsChecker);
+  protected readonly generator = $inject(DocsCommand);
 
   /**
    * `docs/superpowers/` is an archive of past plans - a record of what was
@@ -106,6 +112,27 @@ export class CheckDocsCommand {
 
       let failures = 0;
 
+      await run("generated files staged", async () => {
+        const outputs = await this.generator.outputs(root);
+        const problems = await this.unstagedOutputs(root, outputs);
+        for (const it of problems) {
+          this.log.error(it.message);
+        }
+        if (problems.length > 0) {
+          // Single-quoted, because reference pages are named after
+          // primitives and `"$page.md"` is `.md` to a shell.
+          const paths = problems.map((it) => `'${it.path}'`).join(" ");
+          this.log.error(
+            `${problems.length} generated file(s) differ from what is staged. ` +
+              "`yarn copy` writes them from the JSDoc, and `yarn v` runs it " +
+              "first: review what it wrote, then stage it with " +
+              `git add -- ${paths}`,
+          );
+        }
+        failures += problems.length;
+        this.log.info(`${problems.length} unstaged generated file(s)`);
+      });
+
       await run("banned symbols", async () => {
         const violations = await this.checker.check(files);
         for (const it of violations) {
@@ -166,6 +193,75 @@ export class CheckDocsCommand {
       }
     },
   });
+
+  /**
+   * The generated paths whose working copy differs from the index.
+   *
+   * CI runs `yarn copy` before this command, so it scans pages generated from
+   * the commit's own JSDoc. A checkout scans whatever it generated last, and
+   * the two part ways as soon as a source changes without a regeneration.
+   * #Q2357 was exactly that: an export made the generator emit a page for the
+   * first time, and its JSDoc carried two em dashes. No checkout had the
+   * page, so nothing refused it locally; CI generated it and refused it, four
+   * commits later.
+   *
+   * So a generated page that differs from the index is a failure of its own.
+   * The comparison is with the index, not HEAD: a regenerated page that is
+   * already staged passes, because it goes into the commit this run is
+   * checking. In CI nothing is staged, so the same rule refuses a commit that
+   * left its pages behind, and stale pages cannot reach main to turn every
+   * later checkout red on files it never touched.
+   *
+   * ⚠️ Only meaningful after `yarn copy`, which is why `yarn v` runs it
+   * first, in the order CI's `checks` job always has. Run on its own, this
+   * compares a tree nothing regenerated, and can only catch a hand edit.
+   */
+  protected async unstagedOutputs(
+    root: string,
+    paths: string[],
+  ): Promise<{ path: string; message: string }[]> {
+    // `-z` because the output is parsed, `--no-renames` so every entry is
+    // one status and one path.
+    const changed = await this.shell.run(
+      ["git", "diff", "--name-status", "--no-renames", "-z", "--", ...paths],
+      { capture: true, root },
+    );
+    const untracked = await this.shell.run(
+      [
+        "git",
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+        "-z",
+        "--",
+        ...paths,
+      ],
+      { capture: true, root },
+    );
+
+    const problems: { path: string; message: string }[] = [];
+
+    const fields = changed.split("\0").filter(Boolean);
+    for (let i = 0; i + 1 < fields.length; i += 2) {
+      const [status, path] = [fields[i], fields[i + 1]];
+      problems.push({
+        path,
+        message:
+          status === "D"
+            ? `${path} - no longer generated, and its deletion is not staged`
+            : `${path} - generated, and differs from what is staged`,
+      });
+    }
+
+    for (const path of untracked.split("\0").filter(Boolean)) {
+      problems.push({
+        path,
+        message: `${path} - generated, and not added to git`,
+      });
+    }
+
+    return problems;
+  }
 
   /**
    * Compile every opted-in fence in ONE `tsc` pass.
