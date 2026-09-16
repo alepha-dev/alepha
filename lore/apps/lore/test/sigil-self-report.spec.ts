@@ -3,10 +3,10 @@ import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
+import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";

@@ -95,7 +95,7 @@ export class LoginCommand {
       // so the name costs nothing but what the page says.
       const start = await this.request<DeviceAuthorization>(
         `${hostname}/oauth/device_authorization`,
-        { client_id: "alepha-cli", scope: "cli" },
+        { client_id: LoreClientService.CLIENT_ID, scope: "cli" },
       );
 
       // Printed before the wait, and both forms of it: RFC 8628 §3.3.1 wants
@@ -165,7 +165,7 @@ export class LoginCommand {
         {
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
           device_code: start.device_code,
-          client_id: "alepha-cli",
+          client_id: LoreClientService.CLIENT_ID,
         },
         // A pending grant answers 400 by design, so it is not an error the
         // client may throw on.
@@ -173,15 +173,10 @@ export class LoginCommand {
       );
 
       if (res.access_token) {
-        return {
-          accessToken: res.access_token,
-          refreshToken: res.refresh_token,
-          // Stamped from the provider, never `Date.now()`: an expiry the
-          // clock decides is an expiry no test can pin.
-          expiresAt: res.expires_in
-            ? this.dateTime.now().add(res.expires_in, "seconds").toISOString()
-            : undefined,
-        };
+        return this.tokens.fromGrant({
+          ...res,
+          access_token: res.access_token,
+        });
       }
 
       if (res.error === "slow_down") {
