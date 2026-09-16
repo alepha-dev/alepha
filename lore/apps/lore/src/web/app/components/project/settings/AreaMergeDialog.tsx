@@ -10,7 +10,7 @@ import {
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
@@ -53,7 +53,6 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
   const areaApi = useClient<AreaController>();
   const [project] = useStore(currentProjectAtom);
   const [targetId, setTargetId] = useState<number | undefined>(undefined);
-  const [submitting, setSubmitting] = useState(false);
 
   // `keepDirty: false` so `close()`'s reset actually reaches the trigger:
   // with the default the picked value is treated as an unsaved edit and kept
@@ -74,32 +73,30 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
     props.onClose();
   };
 
-  const submit = async () => {
-    if (!project || !targetId) return;
-    setSubmitting(true);
-    try {
-      const result = await areaApi.mergeAreas({
-        params: { projectId: project.id },
-        body: { sourceIds: props.sources.map((s) => s.id), targetId },
-      });
-      toaster.success(
-        String(
+  const submitAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project || !targetId) return;
+        const result = await areaApi.mergeAreas({
+          params: { projectId: project.id },
+          body: { sourceIds: props.sources.map((s) => s.id), targetId },
+        });
+        toaster.success(
           result.movedQuests === 1
             ? tr("project.settings.areas.merge.done.one")
             : tr("project.settings.areas.merge.done", {
                 args: [String(result.movedQuests)],
               }),
-        ),
-      );
-      setTargetId(undefined);
-      props.onMerged();
-      props.onClose();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+        );
+        setTargetId(undefined);
+        props.onMerged();
+        props.onClose();
+      },
+    },
+    [areaApi, project, targetId, props, toaster, tr],
+  );
+  const submitting = submitAction.loading;
+  const submit = submitAction.run;
 
   return (
     <Dialog open={props.open} onOpenChange={(o) => !o && close()}>
@@ -109,7 +106,7 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
         </DialogHeader>
         <Control
           input={form.input.targetId}
-          label={String(tr("project.settings.areas.merge.target"))}
+          label={tr("project.settings.areas.merge.target")}
           triggerClassName="w-full"
           items={props.candidates.map((c) => ({
             value: String(c.id),

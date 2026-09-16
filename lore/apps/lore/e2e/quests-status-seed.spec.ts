@@ -129,7 +129,7 @@ test.describe("Quests — the URL seeds the filters", () => {
       await page.waitForLoadState("networkidle");
       // Two things at once. The param must not reappear in the address bar
       // (the #156 write-back), and the seed must not have been persisted as
-      // though the reader had chosen it: AlephaTable writes filters from
+      // though the reader had chosen it: DataTable writes filters from
       // `form:change` / `form:submit:success`, never on mount, so arriving
       // through a link leaves the stored preference alone.
       expect(new URL(page.url()).search).toBe("");

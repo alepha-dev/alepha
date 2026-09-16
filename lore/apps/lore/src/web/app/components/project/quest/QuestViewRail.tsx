@@ -1,6 +1,6 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -20,7 +20,6 @@ import {
   User,
   UserMinus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
@@ -29,6 +28,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { capabilityOption } from "../../../services/projectCapabilities.ts";
+import CommitLink from "../../shared/CommitLink.tsx";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import { formatEstimate } from "./questEstimate.ts";
@@ -76,7 +76,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
-  const [epic, setEpic] = useState<EpicSummary | undefined>(undefined);
 
   // Every one of these is an option inside Work: a capability that is off
   // reads its options off, which is the epic's narrow-never-widen rule and
@@ -89,24 +88,24 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.
-  useEffect(() => {
-    if (!project?.id || !quest.epicId || !epicsEnabled) {
-      // Early return of the epic fetch below.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setEpic(undefined);
-      return;
-    }
-    let alive = true;
-    epicApi
-      .getEpics({ params: { projectId: project.id } })
-      .then((epics) => {
-        if (alive) setEpic(epics.find((e) => e.id === quest.epicId));
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [project?.id, quest.epicId, epicsEnabled]);
+  //
+  // A `useQuery` keyed on the project (#E59, #Q2328), so every quest page of
+  // one project shares the list. Quiet on failure: the row is a link to the
+  // epic, and a quest page without it is still the quest page.
+  const epicsQuery = useQuery(
+    {
+      key: ["epics", project?.id],
+      enabled: !!project?.id && !!quest.epicId && epicsEnabled,
+      handler: () =>
+        epicApi.getEpics({ params: { projectId: project?.id as number } }),
+      onError: () => {},
+    },
+    [epicApi, project?.id],
+  );
+  const epic: EpicSummary | undefined =
+    quest.epicId && epicsEnabled
+      ? epicsQuery.data?.find((e) => e.id === quest.epicId)
+      : undefined;
 
   const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
 
@@ -214,23 +213,13 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             // detail is one hover away rather than four words wide.
             <span className="flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-0.5">
               {quest.commits.map((commit) => {
-                const short = commit.sha.slice(0, 7);
-                // Leaves Lore, and still carries no `ExternalLink` icon, by
-                // decision (#Q2222): a monospace sha already reads as "this
-                // commit, in the repository", and the rail wraps two or three
-                // of them to a line, where an icon each would double the
-                // weight of a list whose shas are the whole content.
-                const sha = project?.repositoryUrl ? (
-                  <a
-                    href={`${project.repositoryUrl}/commit/${commit.sha}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono underline-offset-2 hover:underline"
-                  >
-                    {short}
-                  </a>
-                ) : (
-                  <code className="font-mono">{short}</code>
+                // Linked or not, and why it carries no icon, is `CommitLink`'s
+                // to decide, shared with both artifact views (#Q2336).
+                const sha = (
+                  <CommitLink
+                    sha={commit.sha}
+                    repositoryUrl={project?.repositoryUrl}
+                  />
                 );
 
                 // `quest_commit_add` accepts a bare sha, so a tooltip with

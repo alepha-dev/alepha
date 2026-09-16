@@ -111,11 +111,9 @@ const Home = () => {
           createDisabled={createDisabled}
           createDisabledLabel={
             createDisabled && maxProjects
-              ? String(
-                  tr("home.create-project.max", {
-                    args: [String(maxProjects)],
-                  }),
-                )
+              ? tr("home.create-project.max", {
+                  args: [String(maxProjects)],
+                })
               : undefined
           }
         />

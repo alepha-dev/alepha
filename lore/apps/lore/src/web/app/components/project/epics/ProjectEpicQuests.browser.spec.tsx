@@ -175,6 +175,7 @@ describe("ProjectEpicQuests - columns", () => {
             projectId={1}
             epic={epicOf(status)}
             quests={quests}
+            busy={false}
             onAttach={() => undefined}
             onDetach={(quest) => detached.push(quest.shortId)}
             onCreated={(quest) => {

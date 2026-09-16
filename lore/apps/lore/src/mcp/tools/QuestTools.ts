@@ -259,7 +259,8 @@ export class QuestTools {
     description:
       "Leave a comment on a quest, as yourself. Comments interleave with the quest's own history into its Discussion, and are what an agent uses to report what it decided, what it could not do, or what the next session should know. Read them back with `quest_get`. " +
       "Anything posted through this tool is recorded as agent-authored and shown that way in Lore, so do not sign your messages or announce that you are an AI: the thread already says so. " +
-      "⚠️ **`@name` reaches a person.** A handle matching a project member puts a message in their inbox and, unless they have turned it off, sends them an email. Mention somebody when you need them, not to address the room.",
+      "⚠️ **`@name` reaches a person.** A handle matching a project member puts a message in their inbox and, unless they have turned it off, sends them an email. Mention somebody when you need them, not to address the room. " +
+      "That includes the owner of the API key you are working as: a comment written here is yours, not theirs, so `@<their handle>` lands in their bell, named after your `as`. Use it when you need their decision.",
     title: "Comment on a quest",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {
@@ -626,7 +627,7 @@ export class QuestTools {
     description:
       "Put a quest on hold: it is blocked on something outside itself and cannot move until that resolves. Use it when work is waiting on an answer, a credential, a decision or a deploy window — for waiting on ANOTHER QUEST use `dependsOn` on `quest_update` instead, which draws the questline. " +
       "A held quest keeps everything it had (its assignee, its objectives, its kanban column) and reads as `on_hold` rather than as `todo` or `in_progress`; `quest_unhold` gives the previous status back with nothing to restore by hand. While held, `quest_accept` and `quest_complete` are both refused and say so. " +
-      "`reason` is REQUIRED and is posted as a comment on the quest's discussion, so an `@handle` in it reaches that project member's inbox — mention whoever you are waiting on rather than hoping they look. " +
+      "`reason` is REQUIRED and is posted as a comment on the quest's discussion, so an `@handle` in it reaches that project member's inbox: mention whoever you are waiting on rather than hoping they look, the owner of the API key you are working as included. " +
       "Reachable from 'todo' and 'in_progress' only, and NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
     title: "Hold quest",
     annotations: {
@@ -642,7 +643,9 @@ export class QuestTools {
       const id = await this.resolveQuestId(params);
       const quest = await this.questController.holdQuest({
         params: { id },
-        body: { reason: params.reason },
+        // Only ever reached over MCP, so an agent wrote the reason: that is
+        // what lets an `@owner` in it reach the key's owner (#Q2348).
+        body: { reason: params.reason, agent: true },
       });
 
       return {

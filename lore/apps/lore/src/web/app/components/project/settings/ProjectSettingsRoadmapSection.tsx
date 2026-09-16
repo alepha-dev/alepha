@@ -1,9 +1,8 @@
 import { Button, Segmented, useDialog, useToast } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy } from "lucide-react";
-import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { RoadmapVisibility } from "@/api/schemas/roadmapVisibilitySchema.ts";
@@ -36,11 +35,38 @@ const ProjectSettingsRoadmapSection = () => {
   const toaster = useToast();
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
-  const [pending, setPending] = useState(false);
+  const current: RoadmapVisibility = project?.roadmapVisibility ?? "off";
+
+  const applyAction = useAction<[next: RoadmapVisibility], void>(
+    {
+      handler: async (next) => {
+        if (!project || next === current) return;
+
+        if (next === "public") {
+          const confirmed = await dialog.confirm({
+            title: tr("project.settings.roadmap.publicConfirm.title"),
+            description: tr(
+              "project.settings.roadmap.publicConfirm.description",
+            ),
+            confirmLabel: tr("project.settings.roadmap.publicConfirm.confirm"),
+          });
+          if (!confirmed) return;
+        }
+
+        const updated = await projectApi.updateProjectById({
+          params: { id: project.id },
+          // `off` is the absence of a preference rather than a value, so it
+          // clears the column instead of writing a second way to say closed.
+          body: { roadmapVisibility: next === "off" ? null : next },
+        });
+        setCurrentProject(alepha, updated);
+      },
+    },
+    [projectApi, alepha, dialog, project, current, tr],
+  );
+  const pending = applyAction.loading;
 
   if (!project) return null;
-
-  const current: RoadmapVisibility = project.roadmapVisibility ?? "off";
   // Relative when there is no window (SSR, prerender): the settings page is
   // member-gated and therefore client-rendered, but a path is still the
   // honest answer rather than an origin invented on the server.
@@ -48,34 +74,6 @@ const ProjectSettingsRoadmapSection = () => {
     typeof window === "undefined"
       ? `/${project.slug}/roadmap`
       : `${window.location.origin}/${project.slug}/roadmap`;
-
-  const apply = async (next: RoadmapVisibility) => {
-    if (next === current) return;
-
-    if (next === "public") {
-      const confirmed = await dialog.confirm({
-        title: tr("project.settings.roadmap.publicConfirm.title"),
-        description: tr("project.settings.roadmap.publicConfirm.description"),
-        confirmLabel: tr("project.settings.roadmap.publicConfirm.confirm"),
-      });
-      if (!confirmed) return;
-    }
-
-    setPending(true);
-    try {
-      const updated = await projectApi.updateProjectById({
-        params: { id: project.id },
-        // `off` is the absence of a preference rather than a value, so it
-        // clears the column instead of writing a second way to say closed.
-        body: { roadmapVisibility: next === "off" ? null : next },
-      });
-      setCurrentProject(alepha, updated);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setPending(false);
-    }
-  };
 
   return (
     <SettingsSection
@@ -95,7 +93,7 @@ const ProjectSettingsRoadmapSection = () => {
           value={current}
           disabled={pending || !projectApi.updateProjectById.can()}
           onChange={(next) => {
-            void apply(next as RoadmapVisibility);
+            void applyAction.run(next as RoadmapVisibility);
           }}
           options={[
             { value: "off", label: tr("project.settings.roadmap.level.off") },

@@ -132,6 +132,7 @@ describe("write controls under a rank", () => {
           <ProjectEpicFolios
             projectId={1}
             folios={[aFolio]}
+            busy={false}
             onAttach={() => {}}
             onDetach={() => {}}
           />

@@ -41,7 +41,7 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
   const tabs: PlateTab[] = reportsTabs(project, props.hasQualityRun).map(
     (tab) => ({
       key: tab.route,
-      label: String(tr(tab.labelKey)),
+      label: tr(tab.labelKey),
       // Each tab is its own route, so each is a link: middle-click, copy-link
       // and the back button all depend on it.
       href: router.path(tab.route),

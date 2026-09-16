@@ -246,37 +246,123 @@ const Spotlight = (): ReactElement => {
     return <FileText />;
   };
 
-  const quests = hits.filter((h) => h.kind === "quest");
-  const epics = hits.filter((h) => h.kind === "epic");
-  const releases = hits.filter((h) => h.kind === "release");
-  const feedback = hits.filter((h) => h.kind === "feedback");
-  const folios = hits.filter(
-    (h) => h.kind === "folio" || h.kind === "directory",
-  );
+  const hitRows = (kind: (hit: SpotlightHit) => boolean): SpotlightRow[] =>
+    hits
+      .filter(kind)
+      .map((hit) => ({ key: `${hit.kind}:${hit.id}`, kind: "hit", hit }));
 
-  const row = (hit: SpotlightHit) => (
-    <CommandItem
-      key={`${hit.kind}:${hit.id}`}
-      value={`${hit.kind}:${hit.id}`}
-      onSelect={() => void go(hit)}
-    >
-      {iconFor(hit)}
-      {/* `min-w-0` is what lets both lines truncate: a flex child defaults to
-          `min-width: auto`, so without it the column refuses to shrink below
-          its longest line and the `#N` on the right gets pushed off. */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate">{hit.title}</span>
-        {hit.description && (
-          <span className="text-muted-foreground truncate text-xs">
-            {hit.description}
-          </span>
-        )}
-      </div>
-      <span className="text-muted-foreground text-xs tabular-nums">
-        {hit.kind !== "directory" && formatReference(hit.kind, hit.shortId)}
-      </span>
-    </CommandItem>
-  );
+  // The palette is data-driven: one group per heading, in the order they
+  // render, each dropped when it has nothing to show. Outside a project the
+  // only group is the project switcher; inside one, pages come first.
+  const groups: SpotlightGroup[] = (
+    projectId === undefined
+      ? [
+          {
+            // The heading is the mode indicator. Without it, typing a quest
+            // name here and getting nothing reads as broken search rather
+            // than as the wrong surface.
+            key: "projects",
+            heading: tr("spotlight.group.projects"),
+            items: projectMatches.map((it): SpotlightRow => ({
+              key: `project:${it.id}`,
+              kind: "project",
+              project: it,
+            })),
+          },
+        ]
+      : [
+          {
+            // Pages first. A page label is short and specific, so a match on
+            // one is a strong signal of navigation intent - and when the
+            // query is really a folio title it matches no page at all, so
+            // this group simply does not render.
+            key: "pages",
+            heading: tr("spotlight.group.pages"),
+            items: navMatches.map((entry): SpotlightRow => ({
+              key: `nav:${entry.href}`,
+              kind: "nav",
+              entry,
+            })),
+          },
+          {
+            key: "quests",
+            heading: tr("spotlight.group.quests"),
+            items: hitRows((h) => h.kind === "quest"),
+          },
+          {
+            key: "epics",
+            heading: tr("spotlight.group.epics"),
+            items: hitRows((h) => h.kind === "epic"),
+          },
+          {
+            key: "releases",
+            heading: tr("spotlight.group.releases"),
+            items: hitRows((h) => h.kind === "release"),
+          },
+          {
+            key: "feedback",
+            heading: tr("spotlight.group.feedback"),
+            items: hitRows((h) => h.kind === "feedback"),
+          },
+          {
+            key: "folios",
+            heading: tr("spotlight.group.folios"),
+            items: hitRows((h) => h.kind === "folio" || h.kind === "directory"),
+          },
+        ]
+  ).filter((group) => group.items.length > 0);
+
+  const row = (item: SpotlightRow) => {
+    if (item.kind === "project") {
+      return (
+        <CommandItem
+          key={item.key}
+          value={item}
+          onClick={() => void goProject(item.project.slug)}
+        >
+          <LayoutGrid />
+          <span className="flex-1 truncate">{item.project.title}</span>
+        </CommandItem>
+      );
+    }
+    if (item.kind === "nav") {
+      return (
+        <CommandItem
+          key={item.key}
+          value={item}
+          onClick={() => void goNav(item.entry)}
+        >
+          {item.entry.kind === "app" ? <AppWindow /> : <PanelsTopLeft />}
+          <span className="flex-1 truncate">{item.entry.label}</span>
+          {item.entry.kind === "app" && (
+            <span className="text-muted-foreground text-xs">
+              {tr("spotlight.group.apps")}
+            </span>
+          )}
+        </CommandItem>
+      );
+    }
+    const hit = item.hit;
+    return (
+      <CommandItem key={item.key} value={item} onClick={() => void go(hit)}>
+        {iconFor(hit)}
+        {/* `min-w-0` is what lets both lines truncate: a flex child defaults to
+            `min-width: auto`, so without it the column refuses to shrink below
+            its longest line and the `#N` on the right gets pushed off. */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate">{hit.title}</span>
+          {hit.description && (
+            <span className="text-muted-foreground truncate text-xs">
+              {hit.description}
+            </span>
+          )}
+        </div>
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {hit.kind !== "directory" && formatReference(hit.kind, hit.shortId)}
+        </span>
+      </CommandItem>
+    );
+  };
 
   return (
     <CommandDialog
@@ -285,123 +371,78 @@ const Spotlight = (): ReactElement => {
         if (!open) close();
       }}
       /* `CommandDialog` sets position and padding but never a width, so it
-         inherited `DialogContent`'s `sm:max-w-sm` — 384px. Widened HERE and
-         not in `command.tsx`: the width is this spotlight's, and every other
+         inherited `DialogContent`'s `sm:max-w-sm` - 384px. Widened HERE and
+         not in `Command.tsx`: the width is this spotlight's, and every other
          command dialog keeps its own. */
       className="sm:max-w-2xl"
-      title={String(tr("spotlight.title"))}
-      description={String(
-        tr(
-          projectId === undefined
-            ? "spotlight.description.projects"
-            : "spotlight.description",
-        ),
+      title={tr("spotlight.title")}
+      description={tr(
+        projectId === undefined
+          ? "spotlight.description.projects"
+          : "spotlight.description",
       )}
     >
-      {/* `CommandDialog` drops its children straight into the dialog
-          without a `Command` around them, so the store the input and list
-          subscribe to has to be supplied here.
-
-          `shouldFilter={false}` because the filtering already happened on
-          the server, ranked across types. Left on, cmdk would filter the
-          rows AGAIN against each item's `value` — which is `kind:id`, not
-          the title — and quietly hide every result. */}
-      <Command shouldFilter={false}>
+      {/* `mode="none"` because the filtering already happened on the server,
+          ranked across types. Left on `list`, the palette would rank the rows
+          AGAIN against their text and could reorder or hide results the
+          server put first. The query is controlled here, because typing is
+          what sends the search. */}
+      <Command<SpotlightRow>
+        items={groups}
+        mode="none"
+        value={query}
+        onValueChange={onQueryChange}
+      >
         <CommandInput
-          value={query}
-          onValueChange={onQueryChange}
-          placeholder={String(
-            tr(
-              projectId === undefined
-                ? "spotlight.placeholder.projects"
-                : "spotlight.placeholder",
-            ),
+          placeholder={tr(
+            projectId === undefined
+              ? "spotlight.placeholder.projects"
+              : "spotlight.placeholder",
           )}
         />
+        <CommandEmpty>
+          {tr(
+            projectId === undefined
+              ? "spotlight.empty.projects"
+              : query.trim()
+                ? "spotlight.empty"
+                : "spotlight.hint",
+          )}
+        </CommandEmpty>
         <CommandList>
-          <CommandEmpty>
-            {tr(
-              projectId === undefined
-                ? "spotlight.empty.projects"
-                : query.trim()
-                  ? "spotlight.empty"
-                  : "spotlight.hint",
-            )}
-          </CommandEmpty>
-          {projectId === undefined ? (
-            projectMatches.length > 0 && (
-              // The heading is the mode indicator. Without it, typing a quest
-              // name here and getting nothing reads as broken search rather
-              // than as the wrong surface.
-              <CommandGroup heading={String(tr("spotlight.group.projects"))}>
-                {projectMatches.map((it) => (
-                  <CommandItem
-                    key={it.id}
-                    value={`project:${it.id}`}
-                    onSelect={() => void goProject(it.slug)}
-                  >
-                    <LayoutGrid />
-                    <span className="flex-1 truncate">{it.title}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )
-          ) : (
-            <>
-              {/* Pages first. A page label is short and specific, so a match on
-                  one is a strong signal of navigation intent — and when the
-                  query is really a folio title it matches no page at all, so
-                  this group simply does not render. */}
-              {navMatches.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.pages"))}>
-                  {navMatches.map((entry) => (
-                    <CommandItem
-                      key={`nav:${entry.href}`}
-                      value={`nav:${entry.href}`}
-                      onSelect={() => void goNav(entry)}
-                    >
-                      {entry.kind === "app" ? <AppWindow /> : <PanelsTopLeft />}
-                      <span className="flex-1 truncate">{entry.label}</span>
-                      {entry.kind === "app" && (
-                        <span className="text-muted-foreground text-xs">
-                          {tr("spotlight.group.apps")}
-                        </span>
-                      )}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-              {quests.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.quests"))}>
-                  {quests.map(row)}
-                </CommandGroup>
-              )}
-              {epics.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.epics"))}>
-                  {epics.map(row)}
-                </CommandGroup>
-              )}
-              {releases.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.releases"))}>
-                  {releases.map(row)}
-                </CommandGroup>
-              )}
-              {feedback.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.feedback"))}>
-                  {feedback.map(row)}
-                </CommandGroup>
-              )}
-              {folios.length > 0 && (
-                <CommandGroup heading={String(tr("spotlight.group.folios"))}>
-                  {folios.map(row)}
-                </CommandGroup>
-              )}
-            </>
+          {(group: SpotlightGroup) => (
+            <CommandGroup
+              key={group.key}
+              items={group.items}
+              heading={group.heading}
+            >
+              {row}
+            </CommandGroup>
           )}
         </CommandList>
       </Command>
     </CommandDialog>
   );
 };
+
+/**
+ * One row of the palette: a project to switch to, a page or app the sidebar
+ * offers, or a search hit. Tagged so each renders and navigates its own way.
+ */
+type SpotlightRow =
+  | {
+      key: string;
+      kind: "project";
+      project: { id: number; slug: string; title: string };
+    }
+  | { key: string; kind: "nav"; entry: ProjectNavEntry }
+  | { key: string; kind: "hit"; hit: SpotlightHit };
+
+interface SpotlightGroup {
+  [key: string]: unknown;
+  key: string;
+  heading: string;
+  items: SpotlightRow[];
+}
 
 export default Spotlight;

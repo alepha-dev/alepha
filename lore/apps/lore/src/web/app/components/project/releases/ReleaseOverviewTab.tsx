@@ -55,7 +55,7 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
                 "release.kpi.ready.remaining.one",
                 "release.kpi.ready.remaining.many",
               )
-            : String(tr("release.kpi.ready.allLanded")),
+            : tr("release.kpi.ready.allLanded"),
           buckets.shelved > 0 &&
             count(
               buckets.shelved,
@@ -81,11 +81,11 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
       ? { value: "—", note: tr("release.kpi.target.none") }
       : daysToTarget < 0
         ? {
-            value: String(
-              tr("release.kpi.target.late", { args: [String(-daysToTarget)] }),
-            ),
+            value: tr("release.kpi.target.late", {
+              args: [String(-daysToTarget)],
+            }),
             note: tr("release.kpi.target.note", {
-              args: [String(l(release.targetDate as string, { date: "ll" }))],
+              args: [l(release.targetDate as string, { date: "ll" })],
             }),
           }
         : {
@@ -97,7 +97,7 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
                   }),
             ),
             note: tr("release.kpi.target.note", {
-              args: [String(l(release.targetDate as string, { date: "ll" }))],
+              args: [l(release.targetDate as string, { date: "ll" })],
             }),
           };
 
@@ -109,30 +109,28 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
   }> = [
     {
       icon: Gauge,
-      label: String(tr("release.kpi.ready.label")),
+      label: tr("release.kpi.ready.label"),
       value: `${buckets.percent}%`,
       note: String(readiness),
     },
     published
       ? {
           icon: CalendarClock,
-          label: String(tr("release.kpi.shipped.label")),
-          value: String(l(release.releasedAt as string, { date: "MMM D" })),
-          note: String(
-            tr("release.kpi.shipped.note", {
-              args: [String(l(release.releasedAt as string, { date: "ll" }))],
-            }),
-          ),
+          label: tr("release.kpi.shipped.label"),
+          value: l(release.releasedAt as string, { date: "MMM D" }),
+          note: tr("release.kpi.shipped.note", {
+            args: [l(release.releasedAt as string, { date: "ll" })],
+          }),
         }
       : {
           icon: CalendarClock,
-          label: String(tr("release.kpi.target.label")),
+          label: tr("release.kpi.target.label"),
           value: target.value,
           note: String(target.note),
         },
     {
       icon: Package,
-      label: String(tr("release.kpi.artifacts.label")),
+      label: tr("release.kpi.artifacts.label"),
       value: String(props.artifactCount),
       // Zero is a normal state, not a gap: an artifact with no release and a
       // release with no artifact are both ordinary, since the two are matched

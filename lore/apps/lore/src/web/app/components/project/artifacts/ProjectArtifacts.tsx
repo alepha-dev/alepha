@@ -1,6 +1,10 @@
-import { FilterSlot, Badge } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import { TimeAgo, Badge } from "@alepha/ui";
+import {
+  type BulkAction,
+  DataTable,
+  type DataTableFilterFields,
+  type RowActionContext,
+} from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
@@ -12,9 +16,9 @@ import {
   Container,
   GitCommitHorizontal,
   Package,
-  Search,
   SearchX,
   Server,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -27,6 +31,8 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
+import CommitLink from "../../shared/CommitLink.tsx";
+import { useDeleteArtifact } from "./useDeleteArtifact.ts";
 
 /**
  * One artifact, flattened out of the endpoint's groups.
@@ -38,6 +44,12 @@ import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
  */
 interface ArtifactRow {
   key: string;
+  /**
+   * The variant's own id, which is what a delete names. Not the row key: the
+   * key was chosen to read as the entity's uniqueness, and it stays that.
+   */
+  id: string;
+  projectId: number;
   app: string;
   tag: string;
   runtime: string;
@@ -59,13 +71,6 @@ interface ArtifactRow {
   commitSha?: string | null;
   pushedAt?: string | null;
 }
-
-const filtersSchema = z.object({
-  search: z.string().optional(),
-  app: z.array(z.string()).optional(),
-  runtime: z.array(z.string()).optional(),
-  format: z.array(z.string()).optional(),
-});
 
 /**
  * Every build this project has, across every app (feedback #2111).
@@ -107,6 +112,7 @@ const ProjectArtifacts = () => {
   const artifactApi = useClient<ArtifactController>();
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
+  const deleteArtifact = useDeleteArtifact();
 
   // ⚠️ No `loading`. It existed to keep the page-level empty panel off screen
   // while the first read was in flight; the table owns the empty state now
@@ -122,6 +128,9 @@ const ProjectArtifacts = () => {
           params: { projectId: project.id },
         });
       },
+      // Handled: the page renders its own error state, so the root
+      // `ActionErrorToaster` must not toast the same failure on top of it.
+      onError: () => {},
     },
     [project?.id],
   );
@@ -136,6 +145,8 @@ const ProjectArtifacts = () => {
         // and a node image of one tag collide into ONE React key, and the
         // table renders one row where the registry holds two.
         key: `${group.app}:${group.tag}:${variant.runtime}:${variant.format}`,
+        id: variant.id,
+        projectId: variant.projectId,
         app: group.app,
         tag: group.tag,
         runtime: variant.runtime,
@@ -201,6 +212,78 @@ const ProjectArtifacts = () => {
       ? "N/A"
       : `${l(bytes / 1_000_000, { number: { maximumFractionDigits: 1 } })} MB`;
 
+  /**
+   * The lists are hidden below two values, the way the Epics table hides its
+   * release filter: a multi-select offering one option that matches
+   * everything is a control with nothing to do.
+   */
+  const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: {
+          // ⚠️ The kit's plain "Search" is the placeholder, like every filter
+          // bar (#Q1750), and "Search" alone is thin for a screen reader on a
+          // bar carrying three more controls.
+          "aria-label": tr("artifacts.filter.searchLabel"),
+        },
+      },
+    },
+    app: {
+      schema: z.array(z.string()),
+      label: tr("artifacts.filter.app"),
+      icon: AppWindow,
+      items: appItems,
+      hidden: appItems.length <= 1,
+      control: {
+        clearLabel: tr("artifacts.filter.allApps"),
+      },
+    },
+    runtime: {
+      schema: z.array(z.string()),
+      label: tr("artifacts.filter.runtime"),
+      icon: Server,
+      items: runtimeItems,
+      hidden: runtimeItems.length <= 1,
+      control: {
+        clearLabel: tr("artifacts.filter.allRuntimes"),
+      },
+    },
+    format: {
+      schema: z.array(z.string()),
+      label: tr("artifacts.filter.format"),
+      icon: Container,
+      items: formatItems,
+      hidden: formatItems.length <= 1,
+      control: {
+        clearLabel: tr("artifacts.filter.allFormats"),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
+  // ⚠️ This array is the table's CHECKBOX COLUMN. `DataTable` derives
+  // `hasCheckbox` from it being non-empty, and Delete is the only bulk action
+  // here, so a rank that may not delete gets `[]` and the table exactly as it
+  // was before: no column, and no selection with nothing to do.
+  //
+  // Page-wide busy: the bulk bar has no disabled state, so it hides while a
+  // delete runs. The hook invalidates the listing, which is what refreshes
+  // the rows; `ctx.refresh()` would fetch nothing in static-data mode.
+  const bulkActions: BulkAction<ArtifactRow>[] = deleteArtifact.can
+    ? [
+        {
+          icon: Trash2,
+          label: tr("board.bulk.delete"),
+          destructive: true,
+          visible: () => !deleteArtifact.busy,
+          onClick: async (selected, ctx) => {
+            if (!(await deleteArtifact.removeMany(selected))) return;
+            ctx.clearSelection();
+          },
+        },
+      ]
+    : [];
+
   return (
     <div
       data-testid="artifacts-table"
@@ -214,7 +297,7 @@ const ProjectArtifacts = () => {
 
         ⚠️ The EMPTY state is the table's now (feedback #P2130). The page used
         to paint its own panel whenever `rows.length === 0`, which collapsed
-        `AlephaTable`'s two states into one: a reader whose filters excluded
+        `DataTable`'s two states into one: a reader whose filters excluded
         everything was told the project had no artifacts, and offered the
         command to push their first. See [[#F1216]] - the table chooses
         between them on `activeFilterCount`, which a page-level branch cannot
@@ -238,9 +321,10 @@ const ProjectArtifacts = () => {
               <span>{tr("artifacts.truncated")}</span>
             </div>
           )}
-          <AlephaTable<ArtifactRow>
+          <DataTable<ArtifactRow, typeof filterFields>
             className="min-h-0 flex-1"
             persistenceKey={`lor.artifacts.${project.id}`}
+            bulkActions={bulkActions}
             data={rows}
             rowKey={(row) => row.key}
             defaultSort={{ field: "pushedAt", direction: "desc" }}
@@ -248,127 +332,33 @@ const ProjectArtifacts = () => {
              * ⚠️ Two states, never `emptyMessage`. That prop is the one-line
              * escape hatch: it replaces the title in BOTH states and
              * suppresses the description, which is precisely the collapse
-             * this quest undid. `AlephaTable` picks between these on
+             * this quest undid. `DataTable` picks between these on
              * `activeFilterCount`.
              */
             emptyState={{
               icon: Package,
-              title: String(tr("artifacts.empty.title")),
+              title: tr("artifacts.empty.title"),
               // The answer to "there is nothing here", which is what an
               // empty state's description is for: why the page is empty, and
               // the one link that says what to do about it.
               description: (
                 <ArtifactsEmpty
-                  description={String(tr("artifacts.empty.description"))}
+                  description={tr("artifacts.empty.description")}
                 />
               ),
             }}
             noMatchState={{
               icon: SearchX,
-              title: String(tr("artifacts.noMatch")),
-              description: String(tr("artifacts.list.empty")),
+              title: tr("artifacts.noMatch"),
+              description: tr("artifacts.list.empty"),
             }}
-            filters={{
-              schema: filtersSchema,
-              render: (form) => (
-                <>
-                  <FilterSlot>
-                    <Control
-                      input={form.input.search}
-                      label=""
-                      icon={Search}
-                      placeholder={tr("artifacts.filter.search")}
-                      inputProps={{
-                        // ⚠️ A different key from the placeholder, which now
-                        // says plain "Search" like every filter bar
-                        // (#Q1750). "Search" alone is thin for a screen
-                        // reader on a bar carrying three controls.
-                        "aria-label": tr("artifacts.filter.searchLabel"),
-                      }}
-                    />
-                  </FilterSlot>
-                  {/* Both hidden below two values, the way the Epics table
-                      hides its release filter: a multi-select offering one
-                      option that matches everything is a control with
-                      nothing to do. */}
-                  {appItems.length > 1 && (
-                    <FilterSlot>
-                      <Control
-                        input={form.input.app}
-                        label=""
-                        clearable
-                        icon={AppWindow}
-                        clearLabel={tr("artifacts.filter.allApps")}
-                        countLabel={(n) =>
-                          String(
-                            tr("artifacts.filter.appCount", {
-                              args: [String(n)],
-                            }),
-                          )
-                        }
-                        triggerClassName="w-full"
-                        items={appItems}
-                        inputProps={{
-                          "aria-label": tr("artifacts.filter.app"),
-                        }}
-                      />
-                    </FilterSlot>
-                  )}
-                  {runtimeItems.length > 1 && (
-                    <FilterSlot>
-                      <Control
-                        input={form.input.runtime}
-                        label=""
-                        clearable
-                        icon={Server}
-                        clearLabel={tr("artifacts.filter.allRuntimes")}
-                        countLabel={(n) =>
-                          String(
-                            tr("artifacts.filter.runtimeCount", {
-                              args: [String(n)],
-                            }),
-                          )
-                        }
-                        triggerClassName="w-full"
-                        items={runtimeItems}
-                        inputProps={{
-                          "aria-label": tr("artifacts.filter.runtime"),
-                        }}
-                      />
-                    </FilterSlot>
-                  )}
-                  {formatItems.length > 1 && (
-                    <FilterSlot>
-                      <Control
-                        input={form.input.format}
-                        label=""
-                        clearable
-                        icon={Container}
-                        clearLabel={tr("artifacts.filter.allFormats")}
-                        countLabel={(n) =>
-                          String(
-                            tr("artifacts.filter.formatCount", {
-                              args: [String(n)],
-                            }),
-                          )
-                        }
-                        triggerClassName="w-full"
-                        items={formatItems}
-                        inputProps={{
-                          "aria-label": tr("artifacts.filter.format"),
-                        }}
-                      />
-                    </FilterSlot>
-                  )}
-                </>
-              ),
-            }}
+            filters={{ fields: filterFields }}
             // `app` and `runtime` would both be answered by the built-in
             // field matching, but `search` spans the tag AND the commit, so
             // once the predicate exists it owns all three rather than
             // leaving the reader to work out which filter runs where.
             filter={(row, values) => {
-              const search = String(values.search ?? "").toLowerCase();
+              const search = (values.search ?? "").toLowerCase();
               if (
                 search &&
                 !row.tag.toLowerCase().includes(search) &&
@@ -376,18 +366,44 @@ const ProjectArtifacts = () => {
               ) {
                 return false;
               }
-              const apps = values.app as string[] | undefined;
+              const apps = values.app;
               if (apps?.length && !apps.includes(row.app)) return false;
-              const runtimes = values.runtime as string[] | undefined;
+              const runtimes = values.runtime;
               if (runtimes?.length && !runtimes.includes(row.runtime)) {
                 return false;
               }
-              const formats = values.format as string[] | undefined;
+              const formats = values.format;
               if (formats?.length && !formats.includes(row.format)) {
                 return false;
               }
               return true;
             }}
+            // Absent rather than an empty list when the rank may not delete:
+            // Delete is the menu's only entry, and a `rowActions` that exists
+            // draws the actions column whatever it returns.
+            //
+            // The selection is cleared too, since a row deleted from its menu
+            // may be ticked, and a selection that survives a delete points at
+            // a row that no longer exists.
+            rowActions={
+              deleteArtifact.can
+                ? () => [
+                    {
+                      icon: Trash2,
+                      label: tr("artifacts.delete.action"),
+                      destructive: true,
+                      disabled: () => deleteArtifact.busy,
+                      onClick: (
+                        row: ArtifactRow,
+                        { clearSelection }: RowActionContext,
+                      ) =>
+                        void deleteArtifact
+                          .remove(row)
+                          .then((done) => done && clearSelection()),
+                    },
+                  ]
+                : undefined
+            }
             columns={{
               app: {
                 label: tr("artifacts.table.app"),
@@ -472,8 +488,18 @@ const ProjectArtifacts = () => {
               pushedAt: {
                 label: tr("artifacts.table.pushed"),
                 sortable: true,
+                // A push is an event, so its age is the answer and the exact
+                // instant is the hover (feedback #P2202). The sort reads the
+                // row's ISO value, never this cell, so it stays on the instant.
                 cell: (row) =>
-                  row.pushedAt ? String(l(row.pushedAt, { date: "lll" })) : "—",
+                  row.pushedAt ? (
+                    <TimeAgo
+                      value={row.pushedAt}
+                      className="text-muted-foreground text-xs"
+                    />
+                  ) : (
+                    "N/A"
+                  ),
               },
               commitSha: {
                 label: tr("artifacts.table.commit"),
@@ -487,7 +513,10 @@ const ProjectArtifacts = () => {
                         className="size-3.5 shrink-0"
                         aria-hidden
                       />
-                      {row.commitSha.slice(0, 7)}
+                      <CommitLink
+                        sha={row.commitSha}
+                        repositoryUrl={project?.repositoryUrl}
+                      />
                     </span>
                   ) : (
                     "—"

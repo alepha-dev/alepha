@@ -41,8 +41,8 @@ export interface FolioDocumentProps {
   draft: FolioDraft;
   actions: UseFolioActionsResult;
   /**
-   * Where the menubar row renders — a slot above all three panes, owned by
-   * `FolioWorkspace`.
+   * Where the menubar row renders: a slot above all three panes, owned by
+   * `FolioWorkspaceShell`.
    *
    * It is a portal target purely for LAYOUT now. It used to be a necessity:
    * the menubar had to be created inside MDXEditor's realm, the only place
@@ -262,9 +262,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
 
       <FolioMoveDialog
         open={props.actions.moveDialogOpen}
-        folioTitle={
-          values.title.trim() || String(tr("folios.title-placeholder"))
-        }
+        folioTitle={values.title.trim() || tr("folios.title-placeholder")}
         currentDirectoryId={directoryId}
         onCancel={props.actions.closeMoveDialog}
         onConfirm={props.actions.confirmMove}

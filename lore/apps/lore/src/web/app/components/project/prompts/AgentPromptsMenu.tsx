@@ -58,7 +58,7 @@ export interface AgentPromptsMenuProps {
  * ⚠️ A menu with a visible label needs that caret back if this is ever
  * reversed. Do not reintroduce the labelled trigger without it.
  *
- * The row-menu form of this is a `RowActionGroup` handed to `AlephaTable`;
+ * The row-menu form of this is a `RowActionGroup` handed to `DataTable`;
  * this is the same set of entries behind a button of its own, for the pages
  * that have no row menu to hang them off. One component rather than one per
  * page: an epic, a quest and a feedback item offer different entries but the
@@ -69,7 +69,7 @@ export interface AgentPromptsMenuProps {
  * `items` is empty.** The second half matters: callers build their entries
  * under status gates, so an epic that is `done` hands over an empty list, and
  * a button opening an empty menu is worse than no button. Same rule
- * `AlephaTable` applies to an empty group.
+ * `DataTable` applies to an empty group.
  *
  * The subject is built by the caller through `useAgentPromptSubject`, field
  * by field, and never from a resource.
@@ -89,8 +89,8 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={String(tr("agentPrompts.menu"))}
-            title={String(tr("agentPrompts.menu"))}
+            aria-label={tr("agentPrompts.menu")}
+            title={tr("agentPrompts.menu")}
           />
         }
       >

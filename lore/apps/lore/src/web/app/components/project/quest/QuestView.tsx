@@ -1,6 +1,13 @@
 import { Badge, Button, useDialog } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -86,24 +93,7 @@ const QuestView = (props: QuestViewProps) => {
   const dt = useInject(DateTimeProvider);
   const [showDialog, setShowDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
-  const [completing, setCompleting] = useState(false);
   const [quest, setQuest] = useState<QuestResource>(props.quest);
-  const [questline, setQuestline] = useState<{
-    predecessor?: {
-      id: number;
-      shortId: number;
-      title: string;
-      completedAt?: string;
-      shelvedAt?: string;
-    };
-    dependents: Array<{
-      id: number;
-      shortId: number;
-      title: string;
-      completedAt?: string;
-      shelvedAt?: string;
-    }>;
-  }>({ dependents: [] });
 
   // Mirror the prop into local state, which the inline editors then mutate.
   // Re-seeded during render on a prop change rather than from an effect.
@@ -116,25 +106,26 @@ const QuestView = (props: QuestViewProps) => {
   // The Discussion's composer is a `LoreEditor` now (#Q2014), so the
   // CodeMirror chunk is needed on this page where the read-only description
   // never asked for it. Warmed on mount rather than paid at the first click
-  // in the composer, the same way `FolioWorkspace` warms it.
+  // in the composer, the same way `FolioWorkspaceShell` warms it.
   useEffect(() => {
     preloadMarkdownEditor();
   }, []);
 
   // Pull predecessor + dependents whenever the quest identity flips
   // (route change or duplicate spawn). Cheap — at most a few rows.
-  useEffect(() => {
-    let alive = true;
-    questApi
-      .getQuestLine({ params: { id: quest.id } })
-      .then((data) => {
-        if (alive) setQuestline(data);
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [quest.id]);
+  //
+  // A `useQuery` keyed on the quest (#E59, #Q2328), quiet on failure: the
+  // questline is context around the quest, and a quest page without it is
+  // still the quest page.
+  const questline =
+    useQuery(
+      {
+        key: ["quest-line", quest.id],
+        handler: () => questApi.getQuestLine({ params: { id: quest.id } }),
+        onError: () => {},
+      },
+      [questApi, quest.id],
+    ).data ?? NO_QUESTLINE;
 
   const [project] = useStore(currentProjectAtom);
   const [epics] = useStore(currentEpicsAtom);
@@ -156,13 +147,11 @@ const QuestView = (props: QuestViewProps) => {
   const withheldReason = questAgentGate(quest, epics);
   const acceptWithheld =
     withheldReason && questEpic
-      ? String(
-          tr(
-            withheldReason === "epicDraft"
-              ? "quest.view.accept.epicDraft"
-              : "quest.view.accept.epicCompleted",
-            { args: [String(questEpic.number)] },
-          ),
+      ? tr(
+          withheldReason === "epicDraft"
+            ? "quest.view.accept.epicDraft"
+            : "quest.view.accept.epicCompleted",
+          { args: [String(questEpic.number)] },
         )
       : undefined;
 
@@ -191,7 +180,7 @@ const QuestView = (props: QuestViewProps) => {
             <CalendarClock className="size-3" />
             {tr("quest.view.due", {
               args: [
-                String(l(quest.dueAt, { date: due.dateFormat }) ?? ""),
+                l(quest.dueAt, { date: due.dateFormat }),
                 String(dt.of(quest.dueAt).fromNow()),
               ],
             })}
@@ -259,121 +248,230 @@ const QuestView = (props: QuestViewProps) => {
   const titleText = `${formatReference("quest", quest.shortId)} - ${quest.title}`;
 
   /**
+   * Writes a quest a lifecycle verb answered with into the page and into
+   * `currentQuestAtom`, which the breadcrumb and the route read.
+   */
+  const applyLifecycle = (updated: QuestResource) => {
+    updateQuest(updated);
+    alepha.store.set(currentQuestAtom, updated);
+  };
+
+  // The lifecycle verbs, one `useAction` each (#E59, #Q2328). Each runs
+  // `useQuestMutations`, which keeps rejecting (#E59 rule 2), inside its
+  // handler with its confirmation and its follow-ups, so a refusal is toasted
+  // once by the root `ActionErrorToaster` and nothing after it runs. They
+  // were unhandled rejections before: a refused shelve said nothing at all.
+
+  /**
    * Unassign (`unassignQuest`, called `abandonQuest` until #Q2269). It
    * clears `acceptedAt` / `acceptedBy` / the kanban column / the reminders
    * and pushes an `unassigned` history event — it has never deleted
    * anything, so the label and the trash icon both promised the wrong
    * thing. Deletion lives in the quest table's row actions.
    */
+  const unassignAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("quest.view.unassign.title"),
+          description: tr("quest.view.unassign.confirm"),
+          confirmLabel: tr("quest.view.unassign.confirmButton"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+
+        updateQuest(await questMutations.unassign(quest.id));
+        // Deliberately stays put. Unassigning releases the quest, it does not
+        // remove it, so navigating back to the list read as "that is gone"
+        // for something still sitting right there with its assignee cleared.
+      },
+    },
+    [questMutations, quest.id, dialog, tr, props.onQuestChange],
+  );
+
+  const shelveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        // Shelving a quest others depend on leaves them blocked with no
+        // path forward — call that out before it happens rather than
+        // letting the dependent quietly stall.
+        const blocked = questline.dependents.filter((d) => !d.completedAt);
+        const ok = await dialog.confirm({
+          title: tr("quest.view.shelve.title"),
+          description: blocked.length
+            ? tr("quest.view.shelve.confirmWithDependents", {
+                args: [
+                  blocked
+                    .map((d) => formatReference("quest", d.shortId))
+                    .join(", "),
+                ],
+              })
+            : tr("quest.view.shelve.confirm"),
+          confirmLabel: tr("quest.view.shelve.confirmButton"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!ok) return;
+
+        applyLifecycle(await questMutations.shelve(quest.id));
+
+        // The board drops a shelved card from every column, so leaving the
+        // drawer open would strand it over a card that is no longer there.
+        // Only the `card` mount: the `dialog` mount previews a quest over an
+        // epic page that deliberately lists shelved quests, and `Questline`
+        // re-resolves the open node every render, so it simply restyles.
+        if (context === "card") props.onClose?.();
+      },
+    },
+    [
+      questMutations,
+      quest.id,
+      questline,
+      dialog,
+      tr,
+      context,
+      props.onClose,
+      props.onQuestChange,
+    ],
+  );
+
+  const unshelveAction = useAction<[], void>(
+    {
+      handler: async () => {
+        applyLifecycle(await questMutations.unshelve(quest.id));
+      },
+    },
+    [questMutations, quest.id, props.onQuestChange],
+  );
+
+  const holdAction = useAction<[], void>(
+    {
+      handler: async () => {
+        // A prompt rather than the markdown composer the discussion uses. The
+        // reason IS a comment, so the composer would be the consistent
+        // choice, but a hold reason is one sentence and `validate` is what
+        // makes the requirement visible before the request rather than as a
+        // 400 after it. Mentions are unaffected: nothing in Lore
+        // autocompletes a handle anywhere, the composer included -
+        // `MentionNotifier` matches `@name` out of whatever text it is given.
+        const reason = await dialog.prompt({
+          title: tr("quest.view.hold.title"),
+          description: tr("quest.view.hold.description"),
+          placeholder: tr("quest.view.hold.placeholder"),
+          confirmLabel: tr("quest.view.hold.submit"),
+          cancelLabel: tr("common.cancel"),
+          validate: (value) =>
+            value.trim() ? null : tr("quest.view.hold.reasonRequired"),
+        });
+        // `null` is cancel; the validator has already refused empty text, so
+        // this cannot be an accidental hold with no reason.
+        if (!reason?.trim()) return;
+
+        applyLifecycle(await questMutations.hold(quest.id, reason.trim()));
+      },
+    },
+    [questMutations, quest.id, dialog, tr, props.onQuestChange],
+  );
+
+  const unholdAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("quest.view.unhold.title"),
+          description: tr("quest.view.unhold.confirm"),
+          confirmLabel: tr("quest.view.unhold.confirmButton"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!ok) return;
+
+        applyLifecycle(await questMutations.unhold(quest.id));
+      },
+    },
+    [questMutations, quest.id, dialog, tr, props.onQuestChange],
+  );
+
+  const acceptAction = useAction<[], void>(
+    {
+      handler: async () => {
+        applyLifecycle(await questMutations.accept(quest.id));
+      },
+    },
+    [questMutations, quest.id, props.onQuestChange],
+  );
+
+  const completeAction = useAction<
+    [
+      message: string | undefined,
+      waive: Array<{ objectiveId: number; reason: string }>,
+    ],
+    void
+  >(
+    {
+      handler: async (message, waive) => {
+        applyLifecycle(
+          await questMutations.complete(quest.id, { message, waive }),
+        );
+        setShowCompleteDialog(false);
+        // The page mount STAYS. Completing used to push back to the list,
+        // which threw away the summary that was just written — the one
+        // moment the reader most wants to see it rendered. The card mount
+        // still closes: the board behind it is the thing being worked, and
+        // its column has already been updated through `onQuestChange`.
+        props.onClose?.();
+      },
+    },
+    [questMutations, quest.id, props.onClose, props.onQuestChange],
+  );
+  const completing = completeAction.loading;
+
+  /**
+   * The attachment row's write. A refused save is toasted by the root
+   * listener, where it used to be an unhandled rejection.
+   */
+  const attachmentsAction = useAction<[attachments: string[]], void>(
+    {
+      handler: async (attachments) => {
+        applyLifecycle(
+          await questApi.updateQuestById({
+            params: { id: quest.id },
+            body: { attachments },
+          }),
+        );
+      },
+    },
+    [questApi, quest.id, props.onQuestChange],
+  );
+
+  // Page-wide (#E59 rule 10): every lifecycle control waits while any verb
+  // runs, since `run()` drops a second call in silence.
+  const busy =
+    unassignAction.loading ||
+    shelveAction.loading ||
+    unshelveAction.loading ||
+    holdAction.loading ||
+    unholdAction.loading ||
+    acceptAction.loading ||
+    completing;
+
   const unassignQuest = {
-    disabled: !questApi.unassignQuest.can(),
-    onClick: async () => {
-      const ok = await dialog.confirm({
-        title: tr("quest.view.unassign.title"),
-        description: tr("quest.view.unassign.confirm"),
-        confirmLabel: tr("quest.view.unassign.confirmButton"),
-        cancelLabel: tr("common.cancel"),
-        destructive: true,
-      });
-      if (!ok) return;
-
-      const updatedQuest = await questMutations.unassign(quest.id);
-      updateQuest(updatedQuest);
-      // Deliberately stays put. Unassigning releases the quest, it does not
-      // remove it, so navigating back to the list read as "that is gone"
-      // for something still sitting right there with its assignee cleared.
-    },
+    disabled: busy || !questApi.unassignQuest.can(),
+    onClick: () => void unassignAction.run(),
   };
-
   const shelveQuest = {
-    disabled: !questApi.shelveQuest.can(),
-    onClick: async () => {
-      // Shelving a quest others depend on leaves them blocked with no
-      // path forward — call that out before it happens rather than
-      // letting the dependent quietly stall.
-      const blocked = questline.dependents.filter((d) => !d.completedAt);
-      const ok = await dialog.confirm({
-        title: tr("quest.view.shelve.title"),
-        description: blocked.length
-          ? tr("quest.view.shelve.confirmWithDependents", {
-              args: [
-                blocked
-                  .map((d) => formatReference("quest", d.shortId))
-                  .join(", "),
-              ],
-            })
-          : tr("quest.view.shelve.confirm"),
-        confirmLabel: tr("quest.view.shelve.confirmButton"),
-        cancelLabel: tr("common.cancel"),
-      });
-      if (!ok) return;
-
-      const updatedQuest = await questMutations.shelve(quest.id);
-      updateQuest(updatedQuest);
-      alepha.store.set(currentQuestAtom, updatedQuest);
-
-      // The board drops a shelved card from every column, so leaving the
-      // drawer open would strand it over a card that is no longer there.
-      // Only the `card` mount: the `dialog` mount previews a quest over an
-      // epic page that deliberately lists shelved quests, and `Questline`
-      // re-resolves the open node every render, so it simply restyles.
-      if (context === "card") props.onClose?.();
-    },
+    disabled: busy || !questApi.shelveQuest.can(),
+    onClick: () => void shelveAction.run(),
   };
-
   const unshelveQuest = {
-    disabled: !questApi.unshelveQuest.can(),
-    onClick: async () => {
-      const updatedQuest = await questMutations.unshelve(quest.id);
-      updateQuest(updatedQuest);
-      alepha.store.set(currentQuestAtom, updatedQuest);
-    },
+    disabled: busy || !questApi.unshelveQuest.can(),
+    onClick: () => void unshelveAction.run(),
   };
-
   const holdQuest = {
-    disabled: !questApi.holdQuest.can(),
-    onClick: async () => {
-      // A prompt rather than the markdown composer the discussion uses. The
-      // reason IS a comment, so the composer would be the consistent choice,
-      // but a hold reason is one sentence and `validate` is what makes the
-      // requirement visible before the request rather than as a 400 after
-      // it. Mentions are unaffected: nothing in Lore autocompletes a handle
-      // anywhere, the composer included - `MentionNotifier` matches `@name`
-      // out of whatever text it is given.
-      const reason = await dialog.prompt({
-        title: tr("quest.view.hold.title"),
-        description: tr("quest.view.hold.description"),
-        placeholder: String(tr("quest.view.hold.placeholder")),
-        confirmLabel: tr("quest.view.hold.submit"),
-        cancelLabel: tr("common.cancel"),
-        validate: (value) =>
-          value.trim() ? null : String(tr("quest.view.hold.reasonRequired")),
-      });
-      // `null` is cancel; the validator has already refused empty text, so
-      // this cannot be an accidental hold with no reason.
-      if (!reason?.trim()) return;
-
-      const updatedQuest = await questMutations.hold(quest.id, reason.trim());
-      updateQuest(updatedQuest);
-      alepha.store.set(currentQuestAtom, updatedQuest);
-    },
+    disabled: busy || !questApi.holdQuest.can(),
+    onClick: () => void holdAction.run(),
   };
-
   const unholdQuest = {
-    disabled: !questApi.unholdQuest.can(),
-    onClick: async () => {
-      const ok = await dialog.confirm({
-        title: tr("quest.view.unhold.title"),
-        description: tr("quest.view.unhold.confirm"),
-        confirmLabel: tr("quest.view.unhold.confirmButton"),
-        cancelLabel: tr("common.cancel"),
-      });
-      if (!ok) return;
-
-      const updatedQuest = await questMutations.unhold(quest.id);
-      updateQuest(updatedQuest);
-      alepha.store.set(currentQuestAtom, updatedQuest);
-    },
+    disabled: busy || !questApi.unholdQuest.can(),
+    onClick: () => void unholdAction.run(),
   };
 
   // Hoisted so the two mounts can place the same rail differently: the page
@@ -639,7 +737,7 @@ const QuestView = (props: QuestViewProps) => {
                     // dialog now asks for a reason per unticked objective
                     // and waives it. The old gate's only escape was to tick
                     // a box for work nobody did.
-                    disabled={!questApi.completeQuest.can()}
+                    disabled={busy || !questApi.completeQuest.can()}
                     onClick={() => setShowCompleteDialog(true)}
                   >
                     <Swords className="size-4" />
@@ -652,17 +750,12 @@ const QuestView = (props: QuestViewProps) => {
                     type="button"
                     className="bg-blue-600 text-white hover:bg-blue-700"
                     disabled={
+                      busy ||
                       !questApi.acceptQuest.can() ||
                       acceptWithheld !== undefined
                     }
                     title={acceptWithheld}
-                    onClick={async () => {
-                      const updatedQuest = await questMutations.accept(
-                        quest.id,
-                      );
-                      updateQuest(updatedQuest);
-                      alepha.store.set(currentQuestAtom, updatedQuest);
-                    }}
+                    onClick={() => void acceptAction.run()}
                   >
                     <Signature className="size-4" />
                     <span className="hidden sm:inline">
@@ -759,7 +852,7 @@ const QuestView = (props: QuestViewProps) => {
               {(quest.attachments?.length || !quest.completedAt) && (
                 <CollapsibleBlock
                   icon={<Paperclip className="size-5" />}
-                  label={String(tr("quest.view.attachments"))}
+                  label={tr("quest.view.attachments")}
                   defaultOpen
                   // The count, so a folded section still says whether there
                   // is anything in it. Without it a collapsed Attachments
@@ -778,14 +871,9 @@ const QuestView = (props: QuestViewProps) => {
                     disabled={
                       !!quest.completedAt || !questApi.updateQuestById.can()
                     }
-                    onChange={async (attachments) => {
-                      const updated = await questApi.updateQuestById({
-                        params: { id: quest.id },
-                        body: { attachments },
-                      });
-                      updateQuest(updated);
-                      alepha.store.set(currentQuestAtom, updated);
-                    }}
+                    onChange={(attachments) =>
+                      void attachmentsAction.run(attachments)
+                    }
                   />
                 </CollapsibleBlock>
               )}
@@ -838,27 +926,7 @@ const QuestView = (props: QuestViewProps) => {
         }}
         submitting={completing}
         unticked={quest.objectives.filter((o) => !o.completed)}
-        onConfirm={async (message, waive) => {
-          setCompleting(true);
-          try {
-            const updatedQuest = await questMutations.complete(quest.id, {
-              message,
-              waive,
-            });
-            updateQuest(updatedQuest);
-            alepha.store.set(currentQuestAtom, updatedQuest);
-            setShowCompleteDialog(false);
-            // The page mount STAYS. Completing used to push back to the
-            // list, which threw away the summary that was just written —
-            // the one moment the reader most wants to see it rendered. The
-            // card mount still closes: the board behind it is the thing
-            // being worked, and its column has already been updated through
-            // `onQuestChange`.
-            props.onClose?.();
-          } finally {
-            setCompleting(false);
-          }
-        }}
+        onConfirm={(message, waive) => void completeAction.run(message, waive)}
       />
     </div>
   );
@@ -872,5 +940,25 @@ const QuestView = (props: QuestViewProps) => {
  * here therefore pays twice, which is why this is a prop over a fork.
  */
 export type QuestViewContext = "page" | "card" | "dialog";
+
+/**
+ * The questline before it has answered: no predecessor, no dependents.
+ */
+const NO_QUESTLINE: {
+  predecessor?: {
+    id: number;
+    shortId: number;
+    title: string;
+    completedAt?: string;
+    shelvedAt?: string;
+  };
+  dependents: Array<{
+    id: number;
+    shortId: number;
+    title: string;
+    completedAt?: string;
+    shelvedAt?: string;
+  }>;
+} = { dependents: [] };
 
 export default QuestView;

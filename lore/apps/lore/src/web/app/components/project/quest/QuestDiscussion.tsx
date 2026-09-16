@@ -1,7 +1,6 @@
-import { useClient } from "alepha/react";
+import { useClient, useQuery, useQueryClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { MessageSquare } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import type { QuestCommentController } from "@/api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSchema.ts";
@@ -43,26 +42,39 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
   const { tr } = useI18n<I18n, "en">();
   const commentApi = useClient<QuestCommentController>();
   const users = useProjectUsers();
-  const [comments, setComments] = useState<QuestCommentResource[]>([]);
+  const queries = useQueryClient();
 
-  useEffect(() => {
-    let alive = true;
-    commentApi
-      .listQuestComments({ params: { id: props.quest.id }, query: {} })
-      .then((rows) => {
-        if (alive) setComments(rows);
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-    // ⚠️ `updatedAt`, not just `id`. A quest write can ADD a comment without
-    // the reader touching the composer: `holdQuest` posts its reason into
-    // this thread in the same transaction. Keyed on the id alone, the reason
-    // the user just typed never appeared until a full page load - the one
-    // place it is meant to be read. Every quest mutation now costs one small
-    // list call, which is what keeps the thread honest after any of them.
-  }, [props.quest.id, props.quest.updatedAt]);
+  // ⚠️ Keyed on `updatedAt`, not just the id. A quest write can ADD a comment
+  // without the reader touching the composer: `holdQuest` posts its reason
+  // into this thread in the same transaction. Keyed on the id alone, the
+  // reason the user just typed never appeared until a full page load - the
+  // one place it is meant to be read. Every quest mutation costs one small
+  // list call, which is what keeps the thread honest after any of them.
+  //
+  // A `useQuery` (#E59, #Q2328). The answer carries the quest it was read
+  // for: `keepPreviousData` holds the thread through the re-read a mutation
+  // causes, and must never show one quest's thread under the next. A failed
+  // read toasts now; it used to leave "no comments yet" standing over a
+  // thread that has some.
+  const commentsKey = ["quest-comments", props.quest.id, props.quest.updatedAt];
+  const commentsQuery = useQuery(
+    {
+      key: commentsKey,
+      keepPreviousData: true,
+      handler: async () => ({
+        questId: props.quest.id,
+        rows: await commentApi.listQuestComments({
+          params: { id: props.quest.id },
+          query: {},
+        }),
+      }),
+    },
+    [commentApi, props.quest.id, props.quest.updatedAt],
+  );
+  const comments =
+    commentsQuery.data?.questId === props.quest.id
+      ? commentsQuery.data.rows
+      : NO_COMMENTS;
 
   const shown = buildQuestDiscussionEntries(props.quest, comments);
 
@@ -73,7 +85,7 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
     // the way. Still open by default: it is what a returning reader came for.
     <CollapsibleBlock
       icon={<MessageSquare className="size-5" />}
-      label={String(tr("quest.discussion.title"))}
+      label={tr("quest.discussion.title")}
       defaultOpen
     >
       {shown.length === 0 ? (
@@ -111,7 +123,16 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
           // compares against: a roster built any other way disagrees with
           // the renderer and the notifier about what `@nfo` is.
           members={users.map((user) => displayName(user))}
-          onPosted={(comment) => setComments((prev) => [...prev, comment])}
+          // Written into the thread's cache: the server already answered
+          // with the row.
+          onPosted={(comment) => {
+            const current = commentsQuery.data;
+            if (current?.questId !== props.quest.id) return;
+            queries.setData(commentsKey, {
+              ...current,
+              rows: [...current.rows, comment],
+            });
+          }}
         />
       )}
     </CollapsibleBlock>
@@ -119,3 +140,9 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
 };
 
 export default QuestDiscussion;
+
+/**
+ * One empty thread, so a quest whose comments are loading keeps the entries'
+ * identity across renders.
+ */
+const NO_COMMENTS: QuestCommentResource[] = [];

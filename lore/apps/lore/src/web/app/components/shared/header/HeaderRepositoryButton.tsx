@@ -56,7 +56,7 @@ const HeaderRepositoryButton = (): ReactElement | null => {
     return null;
   }
 
-  const label = String(tr("header.actions.repository"));
+  const label = tr("header.actions.repository");
   // Endswith rather than includes, so `github.com.example.org` is not GitHub.
   const isGithub = host === "github.com" || host.endsWith(".github.com");
 

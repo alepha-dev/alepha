@@ -55,11 +55,22 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
 
   const rows: DetailAsideRow[] = [
     {
-      label: String(tr("epic.aside.number")),
+      label: tr("epic.aside.number"),
       copy: formatReference("epic", props.epic.number),
     },
     {
-      label: String(tr("epic.aside.status")),
+      // The name as a row rather than as the panel's heading (#Q2352): the
+      // heading truncated a long title with an ellipsis, and a row's value
+      // wraps, so the whole name reads.
+      label: tr("epic.aside.name"),
+      value: (
+        <span className="text-sm font-medium break-words">
+          {props.epic.title}
+        </span>
+      ),
+    },
+    {
+      label: tr("epic.aside.status"),
       /*
         The same chip the list renders, from the same two tables. Whatever
         an epic looks like in `ProjectEpics` it looks like here, which is
@@ -81,7 +92,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
     ...(props.epic.dependsOnNumber !== undefined
       ? [
           {
-            label: String(tr("epic.aside.predecessor")),
+            label: tr("epic.aside.predecessor"),
             value: (
               <Link
                 href={router.path("projectEpic", {
@@ -101,14 +112,14 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
         ]
       : []),
     {
-      label: String(tr("epic.aside.release")),
+      label: tr("epic.aside.release"),
       // A control, not a label. Attaching from the release side is #1559; the
       // epic's own page is where this attachment is actually made, and a row
       // that only reports it would leave the FK writable by nothing but MCP.
       value: <EpicReleaseControl epic={props.epic} onChange={props.onChange} />,
     },
     {
-      label: String(tr("epic.aside.progress")),
+      label: tr("epic.aside.progress"),
       value: (
         <div className="flex flex-col gap-1.5">
           <Progress value={pct} />
@@ -132,7 +143,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
       (q) => q.dependsOn == null || !ids.has(q.dependsOn),
     ).length;
     rows.push({
-      label: String(tr("epic.aside.upNext")),
+      label: tr("epic.aside.upNext"),
       value: (
         <span className="text-sm">
           {tr("epic.aside.upNext.value", {
@@ -144,7 +155,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
 
     const areas = [...new Set(props.quests.map((q) => q.area))].sort();
     rows.push({
-      label: String(tr("epic.aside.areas")),
+      label: tr("epic.aside.areas"),
       value: (
         <div className="flex flex-wrap gap-1">
           {areas.map((area) => (
@@ -158,38 +169,30 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   }
 
   rows.push({
-    label: String(tr("epic.aside.lastActivity")),
+    label: tr("epic.aside.lastActivity"),
     value: (
       <span className="text-sm">{dt.of(props.epic.updatedAt).fromNow()}</span>
     ),
   });
   rows.push({
-    label: String(tr("epic.aside.created")),
+    label: tr("epic.aside.created"),
     value: (
       <span className="text-sm">
-        {String(i18n.l(props.epic.createdAt, { date: "ll" }))}
+        {i18n.l(props.epic.createdAt, { date: "ll" })}
       </span>
     ),
   });
 
   /*
-   * The epic's name, at the top of the panel, through `DetailAside`'s own
-   * `title` slot rather than a heading rendered here: the component owns the
-   * type, the truncation and the spacing above its list, and a second way of
-   * printing a name is a second way for two asides to disagree.
-   *
-   * This used to be omitted, on the grounds that the breadcrumb leaf already
-   * named the epic a few pixels above and a heading here printed the same
-   * words twice. That was true of the old breadcrumb; the leaf is now the
-   * epic's `#number`, so the two say different things and neither is
-   * redundant. The number stays as a row as well, because that row is not a
-   * label but the copy-to-clipboard affordance.
+   * No `title`: the name is the second row, under the ID (#Q2352). The
+   * heading `DetailAside` draws truncates to one line, and an epic's name is
+   * often a sentence. With no title and `avatar={false}` the component
+   * renders no header at all, so the list starts at the top of the panel.
    *
    * `avatar={false}` still: an epic has no picture concept at all, and the
-   * letter fallback is for something that HAS one and is missing it, not for
-   * printing a title's first character beside the title.
+   * letter fallback is for something that HAS one and is missing it.
    */
-  return <DetailAside avatar={false} title={props.epic.title} rows={rows} />;
+  return <DetailAside avatar={false} rows={rows} />;
 };
 
 export default ProjectEpicAside;

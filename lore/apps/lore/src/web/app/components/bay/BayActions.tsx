@@ -1,5 +1,5 @@
 import { Button, useDialog, useToast } from "@alepha/ui";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { HttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
@@ -55,6 +55,30 @@ const BayActions = (props: BayActionsProps) => {
   const { command, busy, run } = useBayCommand(estate);
   const row = props.row;
 
+  const refreshAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate) return;
+        try {
+          await estateApi.refreshEstate({ params: { estateId: estate.id } });
+        } catch (error) {
+          if (HttpError.is(error, 429)) {
+            // Six a minute per estate. A cooldown, not a failure: said in
+            // this page's own words, and not reported as a crash.
+            toaster.error(tr("bay.actions.refresh.cooldown"));
+            return;
+          }
+          throw error;
+        }
+        // The machine answers on its own connection, so the page re-reads a
+        // moment later rather than pretending the call returned an inventory.
+        setTimeout(() => void refetch(), REREAD_MS);
+        toaster.success(tr("bay.actions.refresh.asked"));
+      },
+    },
+    [estateApi, estate, refetch, toaster, tr],
+  );
+
   if (!estate) {
     return null;
   }
@@ -84,34 +108,17 @@ const BayActions = (props: BayActionsProps) => {
   const confirmStop = async () => {
     const domains = row.reported ? (row.domains ?? []) : [];
     const ok = await dialog.confirm({
-      title: String(tr("bay.actions.stop.title", { args: [row.app, row.env] })),
+      title: tr("bay.actions.stop.title", { args: [row.app, row.env] }),
       description: String(
         domains.length
           ? tr("bay.actions.stop.description", { args: [domains.join(", ")] })
           : tr("bay.actions.stop.description.noDomains"),
       ),
-      confirmLabel: String(tr("bay.actions.stop")),
+      confirmLabel: tr("bay.actions.stop"),
       destructive: true,
     });
     if (ok) {
       await enqueue("stop");
-    }
-  };
-
-  const refresh = async () => {
-    try {
-      await estateApi.refreshEstate({ params: { estateId: estate.id } });
-      // The machine answers on its own connection, so the page re-reads a
-      // moment later rather than pretending the call returned an inventory.
-      setTimeout(() => void refetch(), REREAD_MS);
-      toaster.success(String(tr("bay.actions.refresh.asked")));
-    } catch (error) {
-      if (HttpError.is(error, 429)) {
-        // Six a minute per estate. A cooldown, not a failure.
-        toaster.error(String(tr("bay.actions.refresh.cooldown")));
-        return;
-      }
-      toaster.error(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -171,8 +178,8 @@ const BayActions = (props: BayActionsProps) => {
           size="sm"
           // Refuses offline rather than queueing, so it is disabled and the
           // sentence below says which of the two behaviours this is.
-          disabled={!estate.online}
-          onClick={() => void refresh()}
+          disabled={!estate.online || refreshAction.loading}
+          onClick={() => void refreshAction.run()}
           data-testid="bay-action-refresh"
         >
           <RefreshCw className="size-4" />
@@ -192,7 +199,7 @@ const BayActions = (props: BayActionsProps) => {
             : command.status === "failed"
               ? // The machine's own sentence about the host, verbatim.
                 tr("bay.actions.failed", {
-                  args: [command.reason ?? String(tr("bay.actions.noReason"))],
+                  args: [command.reason ?? tr("bay.actions.noReason")],
                 })
               : command.status === "done"
                 ? tr("bay.actions.done")

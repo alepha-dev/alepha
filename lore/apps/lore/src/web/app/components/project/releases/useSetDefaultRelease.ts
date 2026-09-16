@@ -1,5 +1,5 @@
 import { useDialog, useToast } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
@@ -42,54 +42,67 @@ export const useSetDefaultRelease = (): SetDefaultRelease => {
   const name = (release: ReleaseResource): string =>
     release.tag ?? formatReference("release", release.number);
 
-  const apply = async (
-    projectId: number,
-    releaseId: number | null,
-  ): Promise<boolean> => {
-    try {
-      setReleases(
-        await releaseApi.setDefaultRelease({
-          params: { projectId },
-          body: { releaseId },
-        }),
-      );
-      return true;
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-      return false;
-    }
+  const apply = async (projectId: number, releaseId: number | null) => {
+    setReleases(
+      await releaseApi.setDefaultRelease({
+        params: { projectId },
+        body: { releaseId },
+      }),
+    );
   };
+
+  // One `useAction` per verb (#E59 rule 1, #Q2326): `true` when it happened,
+  // `false` when the reader backed out, `undefined` when the server refused,
+  // which the root `ActionErrorToaster` has already shown.
+  const setAction = useAction<[release: ReleaseResource], boolean>(
+    {
+      handler: async (release) => {
+        const label = name(release);
+        const ok = await dialog.confirm({
+          title: tr("release.default.confirm.title", { args: [label] }),
+          description: tr("release.default.confirm.description", {
+            args: [label],
+          }),
+          confirmLabel: tr("release.default.set"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!ok) return false;
+        await apply(release.projectId, release.id);
+        return true;
+      },
+    },
+    [releaseApi, dialog, tr],
+  );
+
+  const clearAction = useAction<[release: ReleaseResource], boolean>(
+    {
+      handler: async (release) => {
+        await apply(release.projectId, null);
+        toaster.success(
+          tr("release.default.cleared", { args: [name(release)] }),
+        );
+        return true;
+      },
+    },
+    [releaseApi, toaster, tr],
+  );
 
   return {
     can: releaseApi.setDefaultRelease.can(),
-    set: async (release) => {
-      const label = name(release);
-      const ok = await dialog.confirm({
-        title: String(tr("release.default.confirm.title", { args: [label] })),
-        description: String(
-          tr("release.default.confirm.description", { args: [label] }),
-        ),
-        confirmLabel: String(tr("release.default.set")),
-        cancelLabel: String(tr("common.cancel")),
-      });
-      if (!ok) return false;
-      return await apply(release.projectId, release.id);
-    },
-    clear: async (release) => {
-      const done = await apply(release.projectId, null);
-      if (done) {
-        toaster.success(
-          String(tr("release.default.cleared", { args: [name(release)] })),
-        );
-      }
-      return done;
-    },
+    busy: setAction.loading || clearAction.loading,
+    set: setAction.run,
+    clear: clearAction.run,
   };
 };
 
 export interface SetDefaultRelease {
   /** Whether this rank may point intake anywhere. Hide the control when false. */
   can: boolean;
-  set: (release: ReleaseResource) => Promise<boolean>;
-  clear: (release: ReleaseResource) => Promise<boolean>;
+  /**
+   * True while either verb runs. A second call made meanwhile is dropped, so
+   * the caller disables its control for that time.
+   */
+  busy: boolean;
+  set: (release: ReleaseResource) => Promise<boolean | undefined>;
+  clear: (release: ReleaseResource) => Promise<boolean | undefined>;
 }

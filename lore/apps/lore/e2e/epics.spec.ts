@@ -330,7 +330,7 @@ test.describe("Epics — the backlog gate", () => {
 
 /**
  * The Epics LIST, which the gate test above never visits — it goes straight
- * to `/epics/:number`. Since the list moved onto `AlephaTable` it owns its
+ * to `/epics/:number`. Since the list moved onto `DataTable` it owns its
  * own fetch (the route loader was removed), so "the page renders rows at
  * all" is now a client-side path with nothing server-rendered behind it to
  * mask a failure.
@@ -1289,10 +1289,10 @@ test.describe("Epics — the release control", () => {
         })
         .click();
 
-      await expect(control).toContainText("No release", { timeout: 15_000 });
+      await expect(control).toContainText("None", { timeout: 15_000 });
       expect((await saved).status()).toBe(200);
       await page.reload();
-      await expect(control).toContainText("No release", { timeout: 15_000 });
+      await expect(control).toContainText("None", { timeout: 15_000 });
       // And with nothing attached there is nothing to clear, so the button
       // is gone rather than sitting there offering the state it is in.
       await expect(
@@ -1527,5 +1527,198 @@ test.describe("Epics — the lifecycle on the epic page", () => {
         page.getByText(`After Epic ${first.number}`).first(),
       ).toBeVisible();
     });
+  });
+});
+
+/**
+ * #Q2349: the predecessor link on an epic page opens the predecessor.
+ *
+ * The link changed the URL and the breadcrumb and left the page showing the
+ * epic it was clicked on: the router handed the mounted `ProjectEpic` the new
+ * epic as a prop, and the page had seeded its state from that prop at mount.
+ * A page now remounts when its params change. Everything below is a
+ * client-side navigation on purpose, since a `page.goto` remounts by
+ * reloading and would pass on the broken router too.
+ */
+test.describe("Epics - the predecessor link", () => {
+  test("opens the predecessor: its title, its aside and its quests", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `pred${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Pr${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
+
+    const createEpic = (title: string, dependsOn?: number) =>
+      page.evaluate(
+        async ({ projectId, title, dependsOn }) => {
+          const r = await fetch(`/api/createEpic/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(
+              dependsOn === undefined ? { title } : { title, dependsOn },
+            ),
+          });
+          if (!r.ok)
+            throw new Error(`createEpic ${r.status} ${await r.text()}`);
+          return r.json() as Promise<{ id: number; number: number }>;
+        },
+        { projectId, title, dependsOn },
+      );
+
+    const questIn = async (epicId: number, title: string) => {
+      const quest = await apiPost<{ id: number }>(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the predecessor link",
+        area: "orm",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+      });
+      const status = await page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          return r.status;
+        },
+        { epicId, questId: quest.id },
+      );
+      expect(status).toBe(200);
+    };
+
+    const firstTitle = `Before${t}`;
+    const secondTitle = `After${t}`;
+    const first = await createEpic(firstTitle);
+    const second = await createEpic(secondTitle, first.id);
+    const firstQuest = `QuestBefore${t}`;
+    const secondQuest = `QuestAfter${t}`;
+    await questIn(first.id, firstQuest);
+    await questIn(second.id, secondQuest);
+
+    await page.goto(`/${slug}/epics/${second.number}?tab=quests`);
+    await expect(page.getByText(secondQuest).first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // The predecessor is a draft, so the link reads "Blocked by".
+    await page
+      .getByRole("link", { name: `Blocked by Epic ${first.number}` })
+      .click();
+    await page.waitForURL(new RegExp(`/${slug}/epics/${first.number}(\\?|$)`), {
+      timeout: 15_000,
+    });
+
+    await expect(
+      page.getByText(firstTitle, { exact: true }).first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(secondTitle, { exact: true })).toHaveCount(0);
+    // The predecessor has no predecessor of its own.
+    await expect(page.getByText(/Blocked by Epic|After Epic/)).toHaveCount(0);
+
+    await page.getByRole("radio", { name: /^Quests/ }).click();
+    await expect(page.getByText(firstQuest).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(secondQuest)).toHaveCount(0);
+  });
+});
+
+/**
+ * #Q2352: the epic aside names the epic in a row under its ID.
+ *
+ * The name used to be the panel's heading, which truncates to one line, so a
+ * title as long as most epic titles in the Alepha project read as "Static
+ * files carry the app's headers on ...". A row's value wraps. Checked at the
+ * reporter's own viewport and at `md`, the narrowest width the 288px aside is
+ * shown at; below `md` `DetailLayout` hides the aside altogether.
+ */
+test.describe("Epics - the aside", () => {
+  test("labels the reference ID and reads a long name in full", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `aside${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `As${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
+
+    // 71 characters: `epicCreateSchema` caps a title at 80, and the aside's
+    // card is 254px wide, so this wraps over several lines wherever it is
+    // shown.
+    const title =
+      "Static files carry the app's headers on every host, the binary included";
+    const epic = await page.evaluate(
+      async ({ projectId, title }) => {
+        const r = await fetch(`/api/createEpic/${projectId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title }),
+        });
+        if (!r.ok) throw new Error(`createEpic ${r.status} ${await r.text()}`);
+        return r.json() as Promise<{ number: number }>;
+      },
+      { projectId, title },
+    );
+
+    for (const viewport of [
+      { width: 2144, height: 1055 },
+      { width: 768, height: 1024 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`/${slug}/epics/${epic.number}`);
+
+      const list = page.locator("aside dl");
+      await expect(list).toBeVisible({ timeout: 15_000 });
+      const labels = list.locator("dt");
+      await expect(labels.nth(0)).toHaveText("ID");
+      await expect(list.locator("dd").nth(0)).toContainText(`#E${epic.number}`);
+      await expect(labels.nth(1)).toHaveText("Name");
+      const name = list.locator("dd").nth(1);
+      await expect(name).toHaveText(title);
+
+      // Wrapped over several lines, never clipped to one.
+      const shape = await name.evaluate((el) => {
+        const text = el.firstElementChild as HTMLElement;
+        const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight);
+        return {
+          clipped: text.scrollWidth > text.clientWidth + 1,
+          lines: Math.round(text.getBoundingClientRect().height / lineHeight),
+        };
+      });
+      expect(shape.clipped).toBe(false);
+      expect(shape.lines).toBeGreaterThan(1);
+
+      // No heading above the list repeats the name.
+      await expect(page.locator("aside").getByText(title)).toHaveCount(1);
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/${slug}/epics/${epic.number}`);
+    await expect(page.getByRole("radio", { name: /^Quests/ })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator("aside dl")).toBeHidden();
   });
 });

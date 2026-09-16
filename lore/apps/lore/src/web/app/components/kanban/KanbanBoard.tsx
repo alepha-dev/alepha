@@ -2,14 +2,19 @@ import { FilterSlot, Button, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
   DndContext,
-  type DragEndEvent,
   PointerSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -45,15 +50,11 @@ import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { KanbanAging } from "./kanbanAging.ts";
-import KanbanColumn, {
-  type ColumnDescriptor,
-  type ColumnKind,
-} from "./KanbanColumn.tsx";
+import KanbanColumn, { type ColumnDescriptor } from "./KanbanColumn.tsx";
 import { KanbanGrouping } from "./kanbanGrouping.ts";
 import { KanbanLanes, type LaneMode } from "./kanbanLanes.ts";
 import { useKanbanColumnOps } from "./useKanbanColumnOps.ts";
-
-type QuestStatus = "todo" | "in_progress" | "completed";
+import { useKanbanMove } from "./useKanbanMove.ts";
 
 /**
  * Stateless, so one instance serves every mount.
@@ -79,7 +80,6 @@ export interface KanbanBoardProps {
 const KanbanBoard = (props: KanbanBoardProps) => {
   const { project, quests: initialQuests } = props;
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
-  const [loading, setLoading] = useState(false);
   const [currentAreas] = useStore(currentAreasAtom);
   const areaOptions = useMemo(
     () => (currentAreas ?? []).map((a) => ({ value: a.name, label: a.name })),
@@ -152,14 +152,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     }
     patchFilters({ areas: areaFilter, tags: tagFilter, search });
   }, [areaFilter, tagFilter, search, project.id]);
-  const [knownTags, setKnownTags] = useState<string[]>([]);
   // Board-local, not persisted: collapsing is a "get this out of my way for
   // a minute" gesture, and a column still folded away three days later
   // reads as a card that vanished.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [collapsedLanes, setCollapsedLanes] = useState<Set<string>>(new Set());
   const [laneMode, setLaneMode] = useState<LaneMode>("none");
-  const [epicTitles, setEpicTitles] = useState<Map<number, string>>(new Map());
   const [reloadKey] = useStore(kanbanReloadAtom);
   // The open card lives on its own route (`projectKanbanCard`), which
   // renders the sheet into this page's `NestedView`. The board only has to
@@ -194,31 +192,32 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const columnOps = useKanbanColumnOps(project.id, () => reloadRef.current());
   const canManageColumns = columnOps.can;
 
-  useEffect(() => {
-    questApi
-      .listQuestTags({ query: { projectId: project.id } })
-      .then(setKnownTags)
-      .catch(() => null);
-  }, [project.id]);
+  // Quiet on purpose: the tag filter simply offers nothing without them.
+  const knownTags =
+    useQuery(
+      {
+        handler: () =>
+          questApi.listQuestTags({ query: { projectId: project.id } }),
+        onError: () => {},
+      },
+      [questApi, project.id],
+    ).data ?? [];
 
   // Only when the grouping actually needs them: the board payload carries
   // `epicId` but no title, and a board nobody is grouping by epic must not
-  // pay for the lookup.
-  useEffect(() => {
-    if (laneMode !== "epic") return;
-    let alive = true;
-    epicApi
-      .getEpics({ params: { projectId: project.id } })
-      .then((epics) => {
-        if (alive) {
-          setEpicTitles(new Map(epics.map((e) => [e.id, e.title])));
-        }
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [laneMode, project.id]);
+  // pay for the lookup. Quiet: a lane without its title still groups.
+  const epics = useQuery(
+    {
+      enabled: laneMode === "epic",
+      handler: () => epicApi.getEpics({ params: { projectId: project.id } }),
+      onError: () => {},
+    },
+    [epicApi, project.id, laneMode],
+  ).data;
+  const epicTitles = useMemo(
+    () => new Map((epics ?? []).map((e) => [e.id, e.title])),
+    [epics],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -298,8 +297,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    */
   const columns: ColumnDescriptor[] = useMemo(() => {
     const resolved = columnConfig.resolve(project, {
-      todo: String(tr("kanban.column.todo")),
-      completed: String(tr("kanban.column.completed")),
+      todo: tr("kanban.column.todo"),
+      completed: tr("kanban.column.completed"),
     });
     let acceptedSeen = 0;
     return resolved.map((column) => ({
@@ -392,29 +391,34 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     return blocked;
   }, [quests]);
 
-  const reload = async () => {
-    setLoading(true);
-    try {
-      const data = await kanbanApi.getBoard({
-        params: { projectId: project.id },
-      });
-      setQuests(data.quests);
-    } finally {
-      setLoading(false);
-    }
-  };
+  /**
+   * A fresh board, into local state.
+   *
+   * An action rather than a keyed `useQuery`, on purpose: drops patch
+   * `quests` optimistically, and a query's data would have to be patched
+   * through the cache instead. Always called through `refetch`, which
+   * supersedes a reload in flight rather than dropping the newer one.
+   */
+  const reloadAction = useAction<[], void>(
+    {
+      handler: async ({ signal }) => {
+        const data = await kanbanApi.getBoard({
+          params: { projectId: project.id },
+        });
+        if (!signal.aborted) setQuests(data.quests);
+      },
+    },
+    [kanbanApi, project.id],
+  );
+  const loading = reloadAction.loading;
 
   // Filled here rather than passed directly to `useKanbanColumnOps` above:
-  // that hook is declared before `reload` exists, and reading the binding
-  // there is a use-before-initialisation the linter refuses.
-  reloadRef.current = () => void reload();
+  // that hook is declared before `reloadAction` exists, and reading the
+  // binding there is a use-before-initialisation the linter refuses.
+  reloadRef.current = () => void reloadAction.refetch();
 
   useEffect(() => {
-    // An effect that starts an I/O load is the "synchronize with an external
-    // system" case the rule exempts; it reports it because the loader flips
-    // `loading` before its first await.
-    // oxlint-disable-next-line react/set-state-in-effect
-    if (reloadKey?.key) void reload();
+    if (reloadKey?.key) void reloadAction.refetch();
   }, [reloadKey]);
 
   useEffect(() => {
@@ -444,55 +448,60 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    * nothing honest to send, so the composer says so rather than creating
    * one nobody asked for.
    */
-  const handleCompose = async (
-    descriptor: ColumnDescriptor,
-    title: string,
-    position: "head" | "foot",
-  ) => {
-    const area = areaFilter[0] ?? currentAreas?.[0]?.name;
-    if (!area) {
-      toaster.show(tr("kanban.composer.needsArea"), "warning");
-      return;
-    }
+  const composeAction = useAction<
+    [descriptor: ColumnDescriptor, title: string, position: "head" | "foot"],
+    boolean
+  >(
+    {
+      handler: async (descriptor, title, position) => {
+        const area = areaFilter[0] ?? currentAreas?.[0]?.name;
+        if (!area) {
+          toaster.show(tr("kanban.composer.needsArea"), "warning");
+          return false;
+        }
 
-    const created = await questApi.createQuest({
-      body: {
-        projectId: project.id,
-        title,
-        description: "",
-        area,
-        priority: "medium",
-        objectives: [],
-      },
-    });
-
-    // A quest is born `todo`. Landing it in an accepted lane is a second
-    // call, the same two-step the drag handler makes.
-    if (descriptor.kind === "in_progress") {
-      await questMutations.accept(created.id);
-      if (descriptor.subColumn && descriptor.subColumn !== acceptLandsIn) {
-        await questApi.setQuestKanbanColumn({
-          params: { id: created.id },
-          body: { kanbanColumn: descriptor.subColumn },
+        const created = await questApi.createQuest({
+          body: {
+            projectId: project.id,
+            title,
+            description: "",
+            area,
+            priority: "medium",
+            objectives: [],
+          },
         });
-      }
-    }
 
-    // Place it where it was composed rather than wherever the default sort
-    // puts it — which is the whole point of composing at a specific end.
-    const siblings = grouped[descriptor.key] ?? [];
-    if (siblings.length > 0) {
-      await kanbanApi.moveQuestOnBoard({
-        params: { id: created.id },
-        body:
-          position === "head"
-            ? { afterQuestId: siblings[0].id }
-            : { beforeQuestId: siblings[siblings.length - 1].id },
-      });
-    }
+        // A quest is born `todo`. Landing it in an accepted lane is a second
+        // call, the same two-step the drag handler makes.
+        if (descriptor.kind === "in_progress") {
+          await questMutations.accept(created.id);
+          if (descriptor.subColumn && descriptor.subColumn !== acceptLandsIn) {
+            await questApi.setQuestKanbanColumn({
+              params: { id: created.id },
+              body: { kanbanColumn: descriptor.subColumn },
+            });
+          }
+        }
 
-    await reload();
-  };
+        // Place it where it was composed rather than wherever the default sort
+        // puts it — which is the whole point of composing at a specific end.
+        const siblings = grouped[descriptor.key] ?? [];
+        if (siblings.length > 0) {
+          await kanbanApi.moveQuestOnBoard({
+            params: { id: created.id },
+            body:
+              position === "head"
+                ? { afterQuestId: siblings[0].id }
+                : { beforeQuestId: siblings[siblings.length - 1].id },
+          });
+        }
+
+        await reloadAction.refetch();
+        return true;
+      },
+    },
+    [questApi, kanbanApi, questMutations, project.id, toaster, tr],
+  );
 
   const openCard = (quest: QuestResource) => {
     void router.push("projectKanbanCard", {
@@ -501,199 +510,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   };
 
   /**
-   * Drop onto another card: place the dragged card immediately above it.
-   *
-   * Only within one column. A card dropped onto a card in a DIFFERENT
-   * column falls through to the column handler below, because crossing
-   * columns is a lifecycle transition first and a position second — and
-   * answering both from one gesture would make an accept depend on where
-   * in the lane the cursor happened to be.
+   * A drop, as one action: the rollback, the fall-through from a card drop to
+   * a column move and the reload after it live in `useKanbanMove`.
    */
-  const handleCardDrop = async (
-    quest: QuestResource,
-    target: QuestResource,
-  ): Promise<boolean> => {
-    const columnKey = Object.keys(grouped).find((key) =>
-      grouped[key].some((row) => row.id === target.id),
-    );
-    const column = columnKey ? grouped[columnKey] : undefined;
-    if (!column || !column.some((row) => row.id === quest.id)) {
-      return false;
-    }
-
-    // Neighbours as they will be once the card has left its old slot, which
-    // is what the server ranks between.
-    const without = column.filter((row) => row.id !== quest.id);
-    const targetIndex = without.findIndex((row) => row.id === target.id);
-    if (targetIndex === -1) return false;
-    const before = without[targetIndex - 1];
-    const after = without[targetIndex];
-    if (before?.id === quest.id) return false;
-
-    // Optimistic: the card follows the cursor's release. Reordering used to
-    // cost a full board refetch per drop, which blanked every column for the
-    // length of a round trip.
-    const previous = quests;
-    const reordered = [...without];
-    reordered.splice(targetIndex, 0, quest);
-    setQuests((all) => [
-      ...all.filter((row) => !reordered.some((r) => r.id === row.id)),
-      ...reordered,
-    ]);
-
-    try {
-      const updated = await kanbanApi.moveQuestOnBoard({
-        params: { id: quest.id },
-        body: { beforeQuestId: before?.id, afterQuestId: after?.id },
-      });
-      // The server is the authority on the rank it minted, and the ranks it
-      // may have just backfilled across the rest of the column — so take a
-      // fresh board rather than trusting the local splice.
-      await reload();
-      return Boolean(updated);
-    } catch (error: any) {
-      setQuests(previous);
-      toaster.show(error?.message || tr("kanban.error.actionFailed"), "danger");
-      return true;
-    }
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const questData = active.data.current;
-    const columnData = over.data.current;
-    if (questData?.type !== "quest") return;
-
-    // Dropped onto another card — a position within a column.
-    if (columnData?.type === "card") {
-      const target = columnData.quest as QuestResource;
-      const dragged = questData.quest as QuestResource;
-      if (target.id === dragged.id) return;
-      if (await handleCardDrop(dragged, target)) return;
-      // Not a same-column drop: fall through and treat it as a drop on the
-      // target's column, which is the lifecycle move it really is.
-    }
-
-    if (columnData?.type !== "column" && columnData?.type !== "card") return;
-
-    const quest = questData.quest as QuestResource;
-    const fromStatus = quest.metadata.status as QuestStatus;
-    // A column droppable names its own lane; a card droppable does not, so
-    // read the lane off the card that was landed on.
-    const target =
-      columnData.type === "card"
-        ? (columnData.quest as QuestResource)
-        : undefined;
-    const toKind = (
-      target ? target.metadata.status : columnData.kind
-    ) as ColumnKind;
-    const toSubColumn = (
-      target ? target.kanbanColumn : columnData.subColumn
-    ) as string | undefined;
-
-    // No-op if the card was dropped onto its current column.
-    if (fromStatus === toKind) {
-      if (toKind !== "in_progress") return;
-      if (quest.kanbanColumn === toSubColumn) return;
-    }
-
-    // WIP limits are SOFT (#1228). A hard block on your own board is a
-    // tool arguing with you, so this warns and proceeds — the point of the
-    // limit is to make the overload visible, not to police it.
-    const targetColumn = columns.find(
-      (col) => col.kind === toKind && col.subColumn === toSubColumn,
-    );
-    if (
-      targetColumn?.wipLimit != null &&
-      (grouped[targetColumn.key]?.length ?? 0) >= targetColumn.wipLimit &&
-      // Only when the card is arriving from somewhere else: shuffling
-      // within an already-full column does not make it fuller.
-      !grouped[targetColumn.key]?.some((row) => row.id === quest.id)
-    ) {
-      toaster.show(
-        String(
-          tr("kanban.wip.exceeded", {
-            args: [targetColumn.label, String(targetColumn.wipLimit)],
-          }),
-        ),
-        "warning",
-      );
-    }
-
-    // Done → anywhere was a reopen, and reopen is gone (epic #E48): a quest
-    // is immutable, and follow-up work is a NEW quest linked to the old one.
-    //
-    // ⚠️ **Refused out loud, never swallowed.** Done cards are not draggable
-    // at all now (`draggable` below), so this arm only catches the paths a
-    // drag block cannot - and a card that snapped back in silence would read
-    // as a bug rather than as a rule. The string predates reopen and is the
-    // one the board used before it existed.
-    if (fromStatus === "completed") {
-      toaster.show(tr("kanban.error.completedCannotMove"), "warning");
-      return;
-    }
-
-    if (fromStatus === "todo" && toKind === "completed") {
-      toaster.show(tr("kanban.error.acceptFirst"), "warning");
-      return;
-    }
-
-    // Optimistic: paint the destination before the round trip. The board
-    // used to `await reload()` after every drop, so a card sat in its old
-    // column for the length of a request and then teleported. The reload
-    // still happens afterwards — a transition can change more than the
-    // column (an accept stamps the assignee, a complete stamps the
-    // timestamp) — but it is no longer what the eye is waiting for.
-    const before = quests;
-    setQuests((prev) =>
-      prev.map((row) =>
-        row.id === quest.id
-          ? {
-              ...row,
-              metadata: { ...row.metadata, status: toKind },
-              kanbanColumn: toKind === "in_progress" ? toSubColumn : undefined,
-            }
-          : row,
-      ),
-    );
-
-    try {
-      // Every branch goes through `useQuestMutations`, which owns what each
-      // transition does to the Quest Log and the sidebar badge. Dragging is
-      // the surface where that mattered most and was answered least: a
-      // board accept never reached the assigned list at all, and a board
-      // completion never refreshed the count.
-      if (fromStatus === "todo" && toKind === "in_progress") {
-        // Accept the quest then (if needed) move it to the chosen sub-column;
-        // acceptQuest drops it in the first column by default.
-        await questMutations.accept(quest.id);
-        if (toSubColumn && toSubColumn !== acceptLandsIn) {
-          await questApi.setQuestKanbanColumn({
-            params: { id: quest.id },
-            body: { kanbanColumn: toSubColumn },
-          });
-        }
-      } else if (fromStatus === "in_progress" && toKind === "todo") {
-        await questMutations.unassign(quest.id);
-      } else if (fromStatus === "in_progress" && toKind === "in_progress") {
-        if (!toSubColumn) return;
-        await questApi.setQuestKanbanColumn({
-          params: { id: quest.id },
-          body: { kanbanColumn: toSubColumn },
-        });
-      } else if (fromStatus === "in_progress" && toKind === "completed") {
-        await questMutations.complete(quest.id, {});
-      }
-      await reload();
-    } catch (error: any) {
-      // Put the card back where it was: the server refused, so the
-      // optimistic position is a lie.
-      setQuests(before);
-      toaster.show(error?.message || tr("kanban.error.actionFailed"), "danger");
-    }
-  };
+  const move = useKanbanMove({
+    quests,
+    setQuests,
+    grouped,
+    columns,
+    acceptLandsIn,
+    reload: () => reloadAction.refetch(),
+  });
 
   return (
     <div
@@ -748,9 +575,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               input={filterForm.input.search}
               label=""
               icon={Search}
-              placeholder={String(tr("kanban.filter.search"))}
+              placeholder={tr("kanban.filter.search")}
               inputProps={{
-                "aria-label": String(tr("kanban.filter.search")),
+                "aria-label": tr("kanban.filter.search"),
                 "data-testid": "kanban-search",
               }}
             />
@@ -766,7 +593,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 triggerClassName="w-full"
                 items={areaOptions}
                 inputProps={{
-                  "aria-label": String(tr("kanban.filter.allAreas")),
+                  "aria-label": tr("kanban.filter.allAreas"),
                 }}
               />
             </FilterSlot>
@@ -782,7 +609,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 triggerClassName="w-full"
                 items={knownTags.map((t) => ({ value: t, label: t }))}
                 inputProps={{
-                  "aria-label": String(tr("kanban.filter.allTags")),
+                  "aria-label": tr("kanban.filter.allTags"),
                 }}
               />
             </FilterSlot>
@@ -899,7 +726,11 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         computes `overflow-y` to `auto`, which would put a second scrollbar
         on the row beside the one each column body already has.
       */}
-      <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        onDragEnd={(event) => void move.run(event)}
+      >
         {/*
           ⚠️ The lane stack scrolls, and ONLY when there are lanes.
 
@@ -999,8 +830,14 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                           // nowhere for it to go since reopen was deleted,
                           // and refusing the gesture before the user commits
                           // to it beats catching it after the drop.
+                          //
+                          // Nor while a move runs: `run()` would drop a
+                          // second drag in silence, so the cards are held
+                          // until the first one lands (#E59 rule 10).
                           draggable={
-                            canMoveCards && descriptor.kind !== "completed"
+                            canMoveCards &&
+                            descriptor.kind !== "completed" &&
+                            !move.loading
                           }
                           key={scoped.key}
                           descriptor={scoped}
@@ -1023,18 +860,15 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                             descriptor.kind === "completed"
                               ? undefined
                               : (title, position) =>
-                                  handleCompose(descriptor, title, position)
+                                  composeAction.run(descriptor, title, position)
                           }
+                          composing={composeAction.loading}
                           assigneeOf={(q) =>
                             q.acceptedBy
                               ? membersById.get(q.acceptedBy)
                               : undefined
                           }
-                          busy={
-                            columnOps.pending?.endsWith(
-                              `:${descriptor.label}`,
-                            ) ?? false
-                          }
+                          busy={columnOps.loading}
                           onRename={
                             canManageColumns
                               ? (name) =>
@@ -1071,19 +905,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                         <button
                           type="button"
                           data-testid="kanban-column-add"
-                          disabled={columnOps.pending === "add"}
+                          disabled={columnOps.loading}
                           onClick={() =>
                             void columnOps.add(
-                              String(
-                                tr("kanban.column.addDefault", {
-                                  args: [
-                                    String(
-                                      columns.filter((c) => c.editable).length +
-                                        1,
-                                    ),
-                                  ],
-                                }),
-                              ),
+                              tr("kanban.column.addDefault", {
+                                args: [
+                                  String(
+                                    columns.filter((c) => c.editable).length +
+                                      1,
+                                  ),
+                                ],
+                              }),
                             )
                           }
                           className="text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"

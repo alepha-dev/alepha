@@ -1,5 +1,5 @@
 import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
-import { NavigationProgress } from "@alepha/ui/shell";
+import { ActionErrorToaster, NavigationProgress } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
@@ -36,6 +36,16 @@ const Layout = () => {
             happen to render a header. */}
         <Spotlight />
         <Toaster />
+        {/* The one listener that turns a failed `useAction`, `useQuery`,
+            `useForm` or table load into a toast, on every page. Lore had
+            none: `ProjectView`'s `AppShell` is `embedded`, and an embedded
+            shell mounts no toaster of its own, so a managed request failed
+            in silence even inside a project, and everywhere else
+            (`/account`, `/new-project`, the landing page) too. A call site
+            that shows its own error passes `onError`, which marks the
+            failure handled and keeps it out of here. `/admin` is not under
+            this layout: its `NavShell` mounts its own. */}
+        <ActionErrorToaster />
       </DialogProvider>
     </TooltipProvider>
   );

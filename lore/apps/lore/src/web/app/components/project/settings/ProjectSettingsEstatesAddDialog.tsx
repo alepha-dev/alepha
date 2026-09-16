@@ -9,10 +9,10 @@ import {
   useToast,
   cn,
 } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type {
   EstateController,
@@ -73,31 +73,21 @@ const ProjectSettingsEstatesAddDialog = (
   const [project] = useStore(currentProjectAtom);
 
   const [mode, setMode] = useState<Mode>("existing");
-  const [mine, setMine] = useState<EstateResource[] | undefined>();
   const [selected, setSelected] = useState<string | undefined>();
   const [draft, setDraft] = useState<EstateCreateDraft>(emptyEstateDraft);
-  const [busy, setBusy] = useState(false);
   const [createError, setCreateError] = useState<
     { message: string; field?: "accountId" | "token" } | undefined
   >();
 
-  useEffect(() => {
-    if (!props.open) return;
-    let cancelled = false;
-    estateApi
-      .listMyEstates()
-      .then((res) => {
-        if (!cancelled) setMine(res.items);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          toaster.error(error instanceof Error ? error.message : String(error));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [props.open, estateApi]);
+  // Read each time the dialog opens; a failure is toasted by the root
+  // listener, and the picker simply has nothing to offer.
+  const mine: EstateResource[] | undefined = useQuery(
+    {
+      enabled: props.open,
+      handler: () => estateApi.listMyEstates(),
+    },
+    [estateApi, props.open],
+  ).data?.items;
 
   const heldIds = new Set(props.held.map((item) => item.id));
   const available = (mine ?? []).filter((item) => !heldIds.has(item.id));
@@ -136,46 +126,60 @@ const ProjectSettingsEstatesAddDialog = (
     props.onOpenChange(open);
   };
 
-  const submit = async () => {
-    if (!project || !target) return;
-    setBusy(true);
-    try {
-      if (activeMode === "existing" && chosen) {
-        const lent = await projectEstateApi.attachEstate({
-          params: { projectId: project.id },
-          body: { estateId: chosen.id },
-        });
-        props.onAttached(lent);
-        toaster.success(tr("estates.toast.attached"));
-      } else {
-        const minted = await projectEstateApi.createProjectEstate({
-          params: { projectId: project.id },
-          body: estateDraftBody(draft),
-        });
-        const { secret, ...lent } = minted;
-        // Absent for a cloudflare create, because nothing was minted.
-        props.onAttached(lent, secret);
-        toaster.success(tr("estates.toast.created"));
-      }
-      setDraft(emptyEstateDraft());
-      setSelected(undefined);
-      props.onOpenChange(false);
-    } catch (error) {
+  const submitAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project || !target) return;
+        if (activeMode === "existing" && chosen) {
+          const lent = await projectEstateApi.attachEstate({
+            params: { projectId: project.id },
+            body: { estateId: chosen.id },
+          });
+          props.onAttached(lent);
+          toaster.success(tr("estates.toast.attached"));
+        } else {
+          const minted = await projectEstateApi.createProjectEstate({
+            params: { projectId: project.id },
+            body: estateDraftBody(draft),
+          });
+          const { secret, ...lent } = minted;
+          // Absent for a cloudflare create, because nothing was minted.
+          props.onAttached(lent, secret);
+          toaster.success(tr("estates.toast.created"));
+        }
+        setDraft(emptyEstateDraft());
+        setSelected(undefined);
+        props.onOpenChange(false);
+      },
       // The create path keeps the dialog open with the message beside the
-      // field it concerns; attaching an existing estate has no field to
-      // point at, so it stays a toast.
-      if (activeMode === "new") {
-        setCreateError({
-          message: estateErrorMessage(error),
-          field: estateErrorField(error),
-        });
-      } else {
-        toaster.error(estateErrorMessage(error));
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
+      // field it concerns; attaching an existing estate has no field to point
+      // at, so it stays a toast. Shown here, because an `onError` marks the
+      // failure handled and the root listener skips it.
+      onError: (error) => {
+        if (activeMode === "new") {
+          setCreateError({
+            message: estateErrorMessage(error),
+            field: estateErrorField(error),
+          });
+        } else {
+          toaster.error(estateErrorMessage(error));
+        }
+      },
+    },
+    [
+      projectEstateApi,
+      project,
+      target,
+      activeMode,
+      chosen,
+      draft,
+      props,
+      toaster,
+      tr,
+    ],
+  );
+  const busy = submitAction.loading;
+  const submit = submitAction.run;
 
   if (!project) return null;
 

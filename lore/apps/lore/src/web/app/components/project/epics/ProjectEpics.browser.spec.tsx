@@ -1,4 +1,5 @@
-import { DialogProvider } from "@alepha/ui";
+import { DialogProvider, Toaster } from "@alepha/ui";
+import { ActionErrorToaster } from "@alepha/ui/shell";
 import {
   fireEvent,
   render,
@@ -54,6 +55,17 @@ class FakeLinkProvider extends LinkProvider {
     epicOf(4, "Completed epic", "completed"),
   ];
 
+  /**
+   * Every `setEpicStatus` call, in order: what a bulk entry asked of the
+   * server, read back by the case that drives it.
+   */
+  statusCalls: Array<{ id: number; status: string }> = [];
+
+  /**
+   * How many times `deleteEpic` was asked, which always refuses.
+   */
+  deleteCalls = 0;
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     const action = <T extends (...args: any[]) => Promise<unknown>>(fn: T) =>
@@ -61,6 +73,27 @@ class FakeLinkProvider extends LinkProvider {
     return new Proxy(
       {
         getEpics: action(async () => [...this.epics]),
+        deleteEpic: action(async () => {
+          this.deleteCalls += 1;
+          throw new Error("This epic still has a quest in progress (spec)");
+        }),
+        setEpicStatus: action(
+          async (request: {
+            params: { id: number };
+            body: { status: string };
+          }) => {
+            this.statusCalls.push({
+              id: request.params.id,
+              status: request.body.status,
+            });
+            this.epics = this.epics.map((epic) =>
+              epic.id === request.params.id
+                ? ({ ...epic, status: request.body.status } as EpicResource)
+                : epic,
+            );
+            return {};
+          },
+        ),
       } as Record<string, unknown>,
       {
         get: (target, prop: string) =>
@@ -132,6 +165,8 @@ describe("ProjectEpics - the status filter", () => {
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
+          <Toaster visibleToasts={20} />
+          <ActionErrorToaster />
           <ProjectEpics />
         </DialogProvider>
       </AlephaContext.Provider>,
@@ -146,6 +181,21 @@ describe("ProjectEpics - the status filter", () => {
 
   const row = (name: string) => screen.queryByRole("link", { name });
 
+  /**
+   * Put a filter on the bar from the funnel-plus menu. Every filter here is
+   * optional, so it starts off the bar (#E58), and adding one opens its list,
+   * which is why the options are the next thing a case reaches for.
+   */
+  const addFilter = async (label: string) => {
+    fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: new RegExp(`^${label}`) }),
+    );
+    return screen.findByRole("combobox", { name: label });
+  };
+
   it("shows every status while nothing is selected", async () => {
     await mount();
 
@@ -158,8 +208,7 @@ describe("ProjectEpics - the status filter", () => {
   it("keeps Draft and Ready when both are selected, and hides the rest", async () => {
     await mount();
 
-    const status = screen.getByRole("combobox", { name: "Status" });
-    fireEvent.keyDown(status, { key: "ArrowDown" });
+    const status = await addFilter("Status");
     fireEvent.click(await screen.findByRole("option", { name: /Draft/ }));
     fireEvent.click(await screen.findByRole("option", { name: /Ready/ }));
 
@@ -167,8 +216,8 @@ describe("ProjectEpics - the status filter", () => {
     expect(row("#E3 - Started epic")).toBeNull();
     expect(row("#E1 - Draft epic")).not.toBeNull();
     expect(row("#E2 - Ready epic")).not.toBeNull();
-    // The trigger says how many, the way the Quests list's does.
-    expect(status.textContent).toContain("2 status");
+    // The trigger names both, in the list's order, the way the Quests list's does.
+    expect(status.textContent).toContain("Draft, Ready");
   });
 
   /**
@@ -207,17 +256,19 @@ describe("ProjectEpics - the status filter", () => {
       epicOf(3, "Unassigned epic", "draft"),
     ];
 
-    const openFilter = async () => {
-      const trigger = screen.getByRole("combobox", { name: "Release" });
-      fireEvent.keyDown(trigger, { key: "ArrowDown" });
-      return trigger;
-    };
+    const openFilter = () => addFilter("Release");
 
     it("is absent while the project has no release", async () => {
       await mount();
 
-      // One value that matches everything is a control with nothing to do.
+      // One value that matches everything is a control with nothing to do:
+      // not on the bar, and not offered by the menu either.
       expect(screen.queryByRole("combobox", { name: "Release" })).toBeNull();
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+        key: "ArrowDown",
+      });
+      await screen.findByRole("menuitem", { name: /^Status/ });
+      expect(screen.queryByRole("menuitem", { name: /^Release/ })).toBeNull();
     });
 
     it("narrows to the epics attached to the picked release", async () => {
@@ -252,9 +303,7 @@ describe("ProjectEpics - the status filter", () => {
       await mount(RELEASES, EPICS);
 
       await openFilter();
-      fireEvent.click(
-        await screen.findByRole("option", { name: "No release" }),
-      );
+      fireEvent.click(await screen.findByRole("option", { name: "None" }));
 
       await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
       expect(row("#E2 - Next epic")).toBeNull();
@@ -269,18 +318,16 @@ describe("ProjectEpics - the status filter", () => {
       await mount(RELEASES, EPICS);
 
       await openFilter();
-      fireEvent.click(
-        await screen.findByRole("option", { name: "No release" }),
-      );
+      fireEvent.click(await screen.findByRole("option", { name: "None" }));
       fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
 
       await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
       expect(row("#E2 - Next epic")).not.toBeNull();
       expect(row("#E3 - Unassigned epic")).not.toBeNull();
-      // The trigger counts, the way its neighbour does.
+      // The trigger names both, "None" first as the list leads with it.
       expect(
         screen.getByRole("combobox", { name: "Release" }).textContent,
-      ).toContain("2 releases");
+      ).toContain("None, 0.29.0");
     });
   });
 
@@ -326,6 +373,80 @@ describe("ProjectEpics - the status filter", () => {
       expect(
         screen.getByRole("button", { name: /Add to release/ }),
       ).toBeTruthy();
+    });
+
+    /**
+     * Mark as ready over a selection (feedback #P2198, #Q2339). Offered only
+     * when EVERY selected epic is a draft: a mixed selection would have to
+     * refuse most of what it held, which is why #Q2223 had refused the bulk
+     * entry outright. Hidden, never disabled.
+     */
+    describe("Mark as ready", () => {
+      const DRAFTS = [
+        epicOf(1, "First draft", "draft"),
+        epicOf(2, "Second draft", "draft"),
+        epicOf(3, "Ready epic", "ready"),
+      ];
+
+      const markReady = () =>
+        screen.queryByRole("button", { name: "Mark as ready" });
+
+      it("is offered when every selected epic is a draft", async () => {
+        await mount([], DRAFTS);
+
+        selectRow("#E1 - First draft");
+        selectRow("#E2 - Second draft");
+
+        await waitFor(() => expect(markReady()).not.toBeNull());
+      });
+
+      it("is hidden for a selection that holds anything but drafts", async () => {
+        await mount([], DRAFTS);
+
+        selectRow("#E1 - First draft");
+        selectRow("#E3 - Ready epic");
+
+        // The bar is up, so the absence is the entry's own `visible`.
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("button", { name: "Delete" }),
+          ).not.toBeNull(),
+        );
+        expect(markReady()).toBeNull();
+      });
+
+      it("marks each epic ready after one confirmation naming how many", async () => {
+        const view = await mount([], DRAFTS);
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E1 - First draft");
+        selectRow("#E2 - Second draft");
+        fireEvent.click(await waitFor(() => markReady()!));
+
+        const dialog = await screen.findByRole("alertdialog");
+        expect(dialog.textContent).toContain("Mark 2 epics as ready?");
+        expect(dialog.textContent).toContain('"First draft", "Second draft"');
+        expect(fake.statusCalls).toEqual([]);
+
+        fireEvent.click(
+          within(dialog).getByRole("button", { name: "Mark 2 epics as ready" }),
+        );
+
+        await waitFor(() =>
+          expect([...fake.statusCalls].sort((a, b) => a.id - b.id)).toEqual([
+            { id: 1, status: "ready" },
+            { id: 2, status: "ready" },
+          ]),
+        );
+        // Refreshed and cleared: the rows are ready now, and nothing is
+        // selected for the bar to act on.
+        await waitFor(() => expect(markReady()).toBeNull());
+        expect(
+          view.container.querySelectorAll(
+            'tbody input[type="checkbox"]:checked',
+          ),
+        ).toHaveLength(0);
+      });
     });
 
     it("leaves a published release out of the Add to release menu", async () => {
@@ -655,7 +776,7 @@ describe("ProjectEpics - the status filter", () => {
       const labels = entries.map((entry) => entry.textContent ?? "");
       expect(labels.join(" ")).toContain("0.29.0");
       expect(labels.join(" ")).toContain("0.30.0");
-      expect(labels.join(" ")).toContain("No release");
+      expect(labels.join(" ")).toContain("None");
       // 0.28.0 is published, and this epic is not in it. Attaching would be
       // refused server-side, so it is never offered.
       expect(labels.join(" ")).not.toContain("0.28.0");
@@ -672,7 +793,7 @@ describe("ProjectEpics - the status filter", () => {
       expect(checked[0]?.textContent).toContain("0.30.0");
     });
 
-    it("marks No release when the epic is in none", async () => {
+    it("marks None when the epic is in no release", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft")]);
 
       const entries = await openReleases(await openRowMenu("#E1 - Draft epic"));
@@ -680,7 +801,7 @@ describe("ProjectEpics - the status filter", () => {
         (entry) => entry.getAttribute("aria-checked") === "true",
       );
       expect(checked).toHaveLength(1);
-      expect(checked[0]?.textContent).toContain("No release");
+      expect(checked[0]?.textContent).toContain("None");
     });
 
     /**
@@ -724,6 +845,41 @@ describe("ProjectEpics - the status filter", () => {
       expect(items.join(" ")).not.toContain("Set Release");
       // The rest of the menu is untouched.
       expect(items.join(" ")).toContain("Mark as ready");
+    });
+  });
+  /**
+   * The row Delete is a `useAction` whose handler holds the confirmation
+   * (#E59, #Q2326): a refusal is toasted exactly once, by the root listener,
+   * with the server's message, and the row stays.
+   */
+  describe("the row delete", () => {
+    it("toasts a refused delete exactly once, and keeps the row", async () => {
+      await mount();
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const row = screen.getByRole("link", { name: "#E1 - Draft epic" });
+      fireEvent.click(
+        within(row.closest("tr")!).getByRole("button", {
+          name: "Open row actions",
+        }),
+      );
+      const remove = await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (item) => item.textContent === "Delete",
+        );
+        if (!found) throw new Error("not open yet");
+        return found;
+      });
+      fireEvent.click(remove);
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+      const message = "This epic still has a quest in progress (spec)";
+      await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(screen.getAllByText(message)).toHaveLength(1);
+      expect(fake.deleteCalls).toBe(1);
+      expect(row.isConnected).toBe(true);
     });
   });
 });

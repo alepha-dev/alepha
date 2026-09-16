@@ -112,12 +112,12 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
         items={[
           {
             value: "bay",
-            label: String(tr("estates.type.bay")),
+            label: tr("estates.type.bay"),
             icon: <Server className="size-3.5" />,
           },
           {
             value: "cloudflare",
-            label: String(tr("estates.type.cloudflare")),
+            label: tr("estates.type.cloudflare"),
             icon: <Cloud className="size-3.5" />,
           },
         ]}
@@ -132,7 +132,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
           slugError ? tr("estates.add.invalid") : tr("estates.add.slug.hint")
         }
         icon={Tag}
-        placeholder={String(tr("estates.add.slugPlaceholder"))}
+        placeholder={tr("estates.add.slugPlaceholder")}
         disabled={props.busy}
         inputProps={{
           "data-testid": "estate-create-slug",
@@ -150,9 +150,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
               // the two together; a Control puts it where it belongs.
               description={tr("estates.cloudflare.accountId.hint")}
               icon={Fingerprint}
-              placeholder={String(
-                tr("estates.cloudflare.accountId.placeholder"),
-              )}
+              placeholder={tr("estates.cloudflare.accountId.placeholder")}
               disabled={props.busy}
               // Not clearable: an optional text field grows a clear button,
               // and this one is required the moment Cloudflare is picked -
@@ -185,7 +183,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
               input={form.input.token}
               label={tr("estates.cloudflare.token")}
               icon={KeyRound}
-              placeholder={String(tr("estates.cloudflare.token.placeholder"))}
+              placeholder={tr("estates.cloudflare.token.placeholder")}
               disabled={props.busy}
               clearable={false}
               // ⚠️ The second half of the protection this file documents,

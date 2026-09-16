@@ -1,5 +1,5 @@
-import { Badge, Button, useToast } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { Badge, Button } from "@alepha/ui";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Lock, X } from "lucide-react";
@@ -90,7 +90,6 @@ export interface ReleaseContentsData {
  */
 const ReleaseContents = (props: ReleaseContentsProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const router = useRouter<AppRouter>();
   const [areas] = useStore(currentAreasAtom);
   const count = useCountLabel();
@@ -114,22 +113,26 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
 
   const areaColor = useMemo(() => new AreaDotColor(areas), [areas]);
 
-  const detachEpic = async (epicId: number) => {
-    try {
-      const updated = await epicApi.updateEpic({
-        params: { id: epicId },
-        body: { releaseId: null },
-      });
-      props.onChanged();
-      reportCascade(updated.releaseCascade);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  // A `useAction` (#E59, #Q2326): a refusal is the server's sentence, toasted
+  // by the root `ActionErrorToaster`, and the refresh and the cascade report
+  // run inside the handler, so neither follows a failure.
+  const detachAction = useAction<[epicId: number], void>(
+    {
+      handler: async (epicId) => {
+        const updated = await epicApi.updateEpic({
+          params: { id: epicId },
+          body: { releaseId: null },
+        });
+        props.onChanged();
+        reportCascade(updated.releaseCascade);
+      },
+    },
+    [epicApi, props.onChanged, reportCascade],
+  );
 
   const byArea = new Map<string, ReleaseContentQuest[]>();
   for (const quest of looseQuests) {
-    const area = quest.area || String(tr("release.contents.uncategorized"));
+    const area = quest.area || tr("release.contents.uncategorized");
     const list = byArea.get(area) ?? [];
     list.push(quest);
     byArea.set(area, list);
@@ -237,8 +240,9 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={String(tr("release.contents.remove"))}
-                  onClick={() => void detachEpic(epic.id)}
+                  aria-label={tr("release.contents.remove")}
+                  disabled={detachAction.loading}
+                  onClick={() => void detachAction.run(epic.id)}
                 >
                   <X className="size-3.5" />
                 </Button>

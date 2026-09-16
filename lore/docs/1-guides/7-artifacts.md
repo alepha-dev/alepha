@@ -85,3 +85,18 @@ tag you want is `latest`.
 - A **release** shows the artifacts matching its tag. The match is on tag
   equality with no join table, so retagging a release changes what it shows.
 - The **Deploy** tab is the same list with a ship button per row.
+
+## Deleting a build
+
+A build pushed by mistake is removed from the project's **Artifacts** page:
+tick rows and use **Delete** in the bar that appears, or use **Delete** in a
+row's menu. It needs the `artifact:delete` permission, which the Admin rank
+carries and Contributor and Viewer do not. Pushing does not need it.
+
+The build leaves the registry with its stored bytes and source maps, and the
+deploy history keeps its records. Two deletes are allowed and named in the
+confirmation before they happen:
+
+- **A build a deployed copy runs.** A redeploy or a rollback that needs it has
+  nothing to deploy afterwards.
+- **`latest`.** Deploys that name no tag fail until CI pushes it again.

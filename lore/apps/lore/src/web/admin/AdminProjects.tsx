@@ -1,11 +1,14 @@
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
-import { AlephaError, type Infer, z } from "alepha";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+} from "@alepha/ui/table";
+import { AlephaError, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Activity, Search, Trash2 } from "lucide-react";
+import { Activity, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
@@ -20,27 +23,37 @@ import type { AdminProjectResource } from "@/api/schemas/adminProjectResourceSch
  * same sidebar as the built-in Users / Sessions / Jobs pages without
  * `@alepha/ui` knowing anything about Lore.
  */
-/*
- * Module scope so the reference is stable across renders — `AlephaTable`'s
- * internal `useForm` captures it once, and a fresh object per render would
- * re-anchor the form initialization for nothing.
- */
-const filtersSchema = z.object({
-  search: z.string().optional(),
-  activity: z.string().optional(),
-});
-type AdminProjectFilters = Infer<typeof filtersSchema>;
-
 export const AdminProjects = () => {
   const client = useClient<AdminProjectController>();
   const { l } = useI18n();
+
+  // Literal English, like the rest of the Lore admin: it is untranslated.
+  const filterFields = {
+    search: {
+      preset: "search",
+      placeholder: "Search projects…",
+      control: { inputProps: { "aria-label": "Search projects by title" } },
+    },
+    // Clearing means "any activity": the empty value is the third option
+    // rather than a separate "All" entry to keep selected.
+    activity: {
+      schema: z.enum(["active", "dormant"]),
+      label: "Activity",
+      icon: Activity,
+      items: [
+        { value: "active", label: "Active (30d)" },
+        { value: "dormant", label: "Dormant (30d+)" },
+      ],
+      control: { clearLabel: "Any activity" },
+    },
+  } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
     async (params: {
       page: number;
       size: number;
       sort?: string;
-      filters?: AdminProjectFilters;
+      filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
       return client.findProjects({
         query: {
@@ -120,42 +133,11 @@ export const AdminProjects = () => {
 
   return (
     <AdminPage>
-      <AlephaTable<AdminProjectResource>
+      <DataTable<AdminProjectResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey="lore.admin.projects"
         fetch={fetcher}
-        filters={{
-          schema: filtersSchema,
-          render: (form) => (
-            <div className="flex items-center gap-2">
-              <div className="w-72">
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder="Search projects…"
-                  inputProps={{ "aria-label": "Search projects by title" }}
-                />
-              </div>
-              {/*
-                Clearing means "any activity" — the empty value is the third
-                option rather than a separate "All" entry to keep selected.
-              */}
-              <Control
-                input={form.input.activity}
-                label=""
-                clearable
-                icon={Activity}
-                clearLabel="Any activity"
-                triggerClassName="w-44"
-                items={[
-                  { value: "active", label: "Active (30d)" },
-                  { value: "dormant", label: "Dormant (30d+)" },
-                ]}
-              />
-            </div>
-          ),
-        }}
+        filters={{ fields: filterFields }}
         bulkActions={[
           {
             label: "Delete selected",
@@ -227,7 +209,7 @@ export const AdminProjects = () => {
             sortable: true,
             cell: (project) => (
               <span className="text-muted-foreground text-xs">
-                {String(l(project.createdAt, { date: "ll" }))}
+                {l(project.createdAt, { date: "ll" })}
               </span>
             ),
           },
@@ -241,9 +223,7 @@ export const AdminProjects = () => {
             sortable: true,
             cell: (project) => (
               <span className="text-muted-foreground text-xs">
-                {project.updatedAt
-                  ? String(l(project.updatedAt, { date: "ll" }))
-                  : "—"}
+                {project.updatedAt ? l(project.updatedAt, { date: "ll" }) : "—"}
               </span>
             ),
           },

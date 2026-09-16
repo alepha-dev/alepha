@@ -140,6 +140,9 @@ export const useAppInsights = () => {
           },
         });
       },
+      // Handled: both tabs reading this hook render `insights.error` inline,
+      // so the root `ActionErrorToaster` must not toast it on top.
+      onError: () => {},
     },
     [project?.id, sigil?.id, range, traffic, filterKey, enabled],
   );

@@ -51,6 +51,22 @@ export class LoreInboxNotifications {
   public readonly lang = "en";
 
   /**
+   * Who a mention message says wrote the text: the author's name, an agent's
+   * own name when it gave one, and "An agent" in the message's language when
+   * it did not (`quest_hold` takes no `as`, and 138 production comments carry
+   * `kind: "mcp"` with no client).
+   */
+  protected mentionWriter(
+    it: { authorName: string; agent?: boolean },
+    lang: "en" | "fr",
+  ): string {
+    if (!it.agent || it.authorName) {
+      return it.authorName;
+    }
+    return lang === "fr" ? "Un agent" : "An agent";
+  }
+
+  /**
    * Somebody wrote your name in a comment.
    *
    * `reference` is built by the caller through `formatReference`, never by
@@ -60,14 +76,25 @@ export class LoreInboxNotifications {
     name: "lore:inbox:mention",
     category: "mentions",
     description:
-      "Sent to a project member whose name appears in a quest or feedback comment written by another member.",
+      "Sent to a project member whose name appears in a quest or feedback comment written by another member, or by an agent working as any member, themselves included.",
     schema: z.object({
       /**
        * The reference the comment is on, already formatted: `#Q402`, `#P120`.
        */
       reference: z.text(),
       subjectTitle: z.text(),
+      /**
+       * Who wrote the text. For an agent (`agent`), its self-reported name,
+       * and empty when it gave none.
+       */
       authorName: z.text(),
+      /**
+       * An agent wrote the text over MCP, as the key's owner (#Q2348). Its
+       * own name is `authorName`, and an unnamed one is worded per language
+       * by {@link mentionWriter}. Optional, so a message queued before this
+       * existed still renders.
+       */
+      agent: z.boolean().optional(),
       /**
        * A short plain-text excerpt of the comment, for the email body.
        */
@@ -87,17 +114,19 @@ export class LoreInboxNotifications {
       scope: z.text(),
     }),
     inbox: {
-      title: (it) => `${it.authorName} mentioned you in ${it.reference}`,
+      title: (it) =>
+        `${this.mentionWriter(it, "en")} mentioned you in ${it.reference}`,
       body: (it) => it.subjectTitle,
       href: (it) => it.href,
       scope: (it) => it.scope,
       scopeLabel: (it) => it.projectTitle,
     },
     email: {
-      subject: (it) => `${it.authorName} mentioned you in ${it.reference}`,
+      subject: (it) =>
+        `${this.mentionWriter(it, "en")} mentioned you in ${it.reference}`,
       body: (it) => {
         const projectTitle = this.html.escape(it.projectTitle);
-        const authorName = this.html.escape(it.authorName);
+        const authorName = this.html.escape(this.mentionWriter(it, "en"));
         const subjectTitle = this.html.escape(it.subjectTitle);
         const reference = this.html.escape(it.reference);
         const excerpt = this.html.escape(it.excerpt);
@@ -118,7 +147,7 @@ export class LoreInboxNotifications {
       fr: {
         inbox: {
           title: (it) =>
-            `${it.authorName} vous a mentionné dans ${it.reference}`,
+            `${this.mentionWriter(it, "fr")} vous a mentionné dans ${it.reference}`,
           body: (it) => it.subjectTitle,
           href: (it) => it.href,
           scope: (it) => it.scope,
@@ -126,10 +155,10 @@ export class LoreInboxNotifications {
         },
         email: {
           subject: (it) =>
-            `${it.authorName} vous a mentionné dans ${it.reference}`,
+            `${this.mentionWriter(it, "fr")} vous a mentionné dans ${it.reference}`,
           body: (it) => {
             const projectTitle = this.html.escape(it.projectTitle);
-            const authorName = this.html.escape(it.authorName);
+            const authorName = this.html.escape(this.mentionWriter(it, "fr"));
             const subjectTitle = this.html.escape(it.subjectTitle);
             const reference = this.html.escape(it.reference);
             const excerpt = this.html.escape(it.excerpt);

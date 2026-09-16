@@ -8,7 +8,7 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { currentUserAtom } from "alepha/security";
@@ -90,7 +90,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const toaster = useToast();
   const dialog = useDialog();
 
-  const [busy, setBusy] = useState(false);
   const [questCreateOpen, setQuestCreateOpen] = useState(false);
   /**
    * The attachment the lightbox is open on, `null` while it is shut. The id
@@ -98,24 +97,73 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
    */
   const [lightboxId, setLightboxId] = useState<string | null>(null);
 
-  if (!project) return null;
+  // One `useAction` per triage verb (#E59, #Q2328). A refusal is the server's
+  // sentence, toasted by the root `ActionErrorToaster`; the translated
+  // fallbacks it used to sit behind never fired, and left the catalogs.
+  const promoteAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        if (feedback.status === "pending") {
+          await feedbackApi.acceptFeedback({
+            params: { projectId: project.id, feedbackId: feedback.id },
+          });
+          toaster.show(tr("feedback.acceptedToast"), "success");
+        }
+        setQuestCreateOpen(true);
+      },
+    },
+    [feedbackApi, project?.id, feedback.id, feedback.status, toaster, tr],
+  );
 
-  const handlePromote = async () => {
-    setBusy(true);
-    try {
-      if (feedback.status === "pending") {
-        await feedbackApi.acceptFeedback({
+  const rejectAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        await feedbackApi.rejectFeedback({
           params: { projectId: project.id, feedbackId: feedback.id },
         });
-        toaster.show(tr("feedback.acceptedToast"), "success");
-      }
-      setQuestCreateOpen(true);
-    } catch (err: any) {
-      toaster.show(err?.message ?? tr("feedback.acceptError"), "danger");
-    } finally {
-      setBusy(false);
-    }
-  };
+        toaster.show(tr("feedback.rejected"), "success");
+        props.onChanged();
+      },
+    },
+    [feedbackApi, project?.id, feedback.id, props.onChanged, toaster, tr],
+  );
+
+  const deleteAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        const confirmed = await dialog.confirm({
+          title: tr("feedback.deleteConfirmTitle"),
+          description: tr("feedback.deleteConfirm"),
+        });
+        if (!confirmed) return;
+        await feedbackApi.removeFeedback({
+          params: { projectId: project.id, feedbackId: feedback.id },
+        });
+        toaster.show(tr("feedback.deleted"), "success");
+        props.onChanged();
+      },
+    },
+    [
+      feedbackApi,
+      project?.id,
+      feedback.id,
+      dialog,
+      props.onChanged,
+      toaster,
+      tr,
+    ],
+  );
+
+  const busy =
+    promoteAction.loading || rejectAction.loading || deleteAction.loading;
+  const handlePromote = () => void promoteAction.run();
+  const handleReject = () => void rejectAction.run();
+  const handleDelete = () => void deleteAction.run();
+
+  if (!project) return null;
 
   const handleQuestCreated = () => {
     setQuestSheetOpen(false);
@@ -138,41 +186,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const setQuestSheetOpen = (open: boolean) => {
     setQuestCreateOpen(open);
     if (!open) props.onChanged();
-  };
-
-  const handleReject = async () => {
-    setBusy(true);
-    try {
-      await feedbackApi.rejectFeedback({
-        params: { projectId: project.id, feedbackId: feedback.id },
-      });
-      toaster.show(tr("feedback.rejected"), "success");
-      props.onChanged();
-    } catch (err: any) {
-      toaster.show(err?.message ?? tr("feedback.rejectError"), "danger");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    const confirmed = await dialog.confirm({
-      title: tr("feedback.deleteConfirmTitle"),
-      description: tr("feedback.deleteConfirm"),
-    });
-    if (!confirmed) return;
-    setBusy(true);
-    try {
-      await feedbackApi.removeFeedback({
-        params: { projectId: project.id, feedbackId: feedback.id },
-      });
-      toaster.show(tr("feedback.deleted"), "success");
-      props.onChanged();
-    } catch (err: any) {
-      toaster.show(err?.message ?? tr("feedback.deleteError"), "danger");
-    } finally {
-      setBusy(false);
-    }
   };
 
   const linkedQuests = feedback.linkedQuests ?? [];

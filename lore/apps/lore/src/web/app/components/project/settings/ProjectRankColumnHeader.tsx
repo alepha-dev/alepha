@@ -61,11 +61,9 @@ const ProjectRankColumnHeader = (props: ProjectRankColumnHeaderProps) => {
                 variant="ghost"
                 size="icon"
                 className="size-6"
-                aria-label={String(
-                  tr("project.settings.ranks.actions", {
-                    args: [props.name],
-                  }),
-                )}
+                aria-label={tr("project.settings.ranks.actions", {
+                  args: [props.name],
+                })}
               />
             }
           >

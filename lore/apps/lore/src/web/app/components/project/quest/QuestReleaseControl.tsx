@@ -88,10 +88,10 @@ const QuestReleaseControl = (props: QuestReleaseControlProps) => {
       // The rail row beside it carries the label, so the trigger names itself
       // to assistive tech instead.
       label=""
-      inputProps={{ "aria-label": String(tr("quest.rail.release")) }}
+      inputProps={{ "aria-label": tr("quest.rail.release") }}
       icon={Flag}
       clearable
-      clearLabel={String(tr("quest.rail.release.none"))}
+      clearLabel={tr("quest.rail.release.none")}
       // `minimal size="xs"` rather than a hand-rolled className: the rail is
       // `text-xs` throughout, and the row above this one (Assigned) is a
       // small transparent trigger that sits on the line like text. A boxed,

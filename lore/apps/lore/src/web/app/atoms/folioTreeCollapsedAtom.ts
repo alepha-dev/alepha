@@ -3,13 +3,14 @@ import { $atom, z } from "alepha";
 /**
  * Which folio directories are collapsed, and for which project.
  *
- * ⚠️ An atom rather than state inside `useFolioTreeModel`, and the reason is
- * a remount the hook cannot see. `FoliosLayout` renders
- * `{name === "projectFolios" ? <FolioWorkspace empty /> : <NestedView />}` -
- * two different element positions of two different component types - so
- * walking from `/folios` to `/folios/:shortId` unmounts one and mounts the
- * other. The hook's `initializedRef` guard survives re-renders but not that,
- * so its one-time seed ran a second time and re-collapsed every directory
+ * ⚠️ An atom rather than state inside `useFolioTreeModel`, because the tree
+ * does not live forever. It survives every navigation INSIDE `/folios` since
+ * #Q2349 hoisted it into `FolioWorkspaceShell`, but leaving `/folios` (to the
+ * quests, say) unmounts the layout, and coming back mounts a fresh tree.
+ *
+ * Before that hoist the step from `/folios` to a folio remounted it too, and
+ * the hook's `initializedRef` guard, which survives re-renders but not a
+ * remount, let the one-time seed run again and re-collapse every directory
  * except the opened folio's own ancestors (feedback #2100, which is feedback
  * #14 arriving through a door its guard was never watching).
  *

@@ -6,7 +6,7 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
-import { useClient, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { RefreshCw, Trash2, Unlink } from "lucide-react";
@@ -55,115 +55,126 @@ const BaySettings = () => {
   const api = useClient<EstateController>();
   const projectEstateApi = useClient<ProjectEstateController>();
   const [estate, setEstate] = useStore(currentEstateAtom);
-  const [busy, setBusy] = useState(false);
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
+
+  // One `useAction` per write, the way `MyEstateDrawer` sends the same four
+  // (#E59, #Q2329). A refusal is not caught here: the root
+  // `ActionErrorToaster` shows the server's message.
+  const updateAction = useAction<
+    [
+      body: {
+        deployAllowed?: boolean;
+        collectSeries?: boolean;
+        statsIntervalSeconds?: number;
+      },
+    ],
+    void
+  >(
+    {
+      handler: async (body) => {
+        if (!estate) return;
+        // The row is re-read from the server's answer rather than assumed, so
+        // a switch that was refused does not stay flipped on screen.
+        const updated = await api.updateEstate({
+          params: { estateId: estate.id },
+          body,
+        });
+        // The loans are not on the update's answer, and they did not change.
+        setEstate({ ...updated, projects: estate.projects });
+      },
+    },
+    [api, estate],
+  );
+
+  const rotateAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate) return;
+        const ok = await dialog.confirm({
+          title: tr("account.estates.rotate.confirmTitle", {
+            args: [estate.slug],
+          }),
+          description: tr("account.estates.rotate.confirmDescription"),
+          confirmLabel: tr("account.estates.rotate.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        const minted = await api.rotateEstate({
+          params: { estateId: estate.id },
+        });
+        const { secret, ...rotated } = minted;
+        setEstate({ ...rotated, projects: estate.projects });
+        setFreshSecret(secret);
+        toaster.success(tr("account.estates.toast.rotated"));
+      },
+    },
+    [api, estate, dialog, toaster, tr],
+  );
+
+  const removeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!estate) return;
+        const ok = await dialog.confirm({
+          title: tr("account.estates.delete.confirmTitle", {
+            args: [estate.slug],
+          }),
+          description: tr("account.estates.delete.confirmDescription"),
+          confirmLabel: tr("account.estates.delete.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await api.deleteEstate({ params: { estateId: estate.id } });
+        toaster.success(tr("account.estates.toast.deleted"));
+        // The estate this console is about no longer exists, so the console
+        // cannot stay open over it.
+        await router.push("accountEstates");
+      },
+    },
+    [api, estate, dialog, router, toaster, tr],
+  );
+
+  const detachAction = useAction<[loan: { id: number; title: string }], void>(
+    {
+      handler: async (loan) => {
+        if (!estate) return;
+        const ok = await dialog.confirm({
+          title: tr("account.estates.detach.confirmTitle", {
+            args: [estate.slug, loan.title],
+          }),
+          description: tr("estates.detach.confirmDescription"),
+          confirmLabel: tr("estates.detach.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await projectEstateApi.detachEstate({
+          params: { projectId: loan.id, estateId: estate.id },
+        });
+        toaster.success(tr("estates.toast.detached"));
+        // The loans live on the owned-list resource, which this page does not
+        // hold; the list is where they are read, so it is re-read there.
+        await router.push("accountEstates");
+      },
+    },
+    [projectEstateApi, estate, dialog, router, toaster, tr],
+  );
+
+  // Page-wide: every control waits while any write runs, since `run()` drops
+  // a call made while its own is in flight.
+  const busy =
+    updateAction.loading ||
+    rotateAction.loading ||
+    removeAction.loading ||
+    detachAction.loading;
 
   if (!estate) {
     return null;
   }
 
-  const fail = (error: unknown) =>
-    toaster.error(error instanceof Error ? error.message : String(error));
-
-  const update = async (body: {
-    deployAllowed?: boolean;
-    collectSeries?: boolean;
-    statsIntervalSeconds?: number;
-  }) => {
-    setBusy(true);
-    try {
-      // The row is re-read from the server's answer rather than assumed, so a
-      // switch that was refused does not stay flipped on screen.
-      const updated = await api.updateEstate({
-        params: { estateId: estate.id },
-        body,
-      });
-      // The loans are not on the update's answer, and they did not change.
-      setEstate({ ...updated, projects: estate.projects });
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const rotate = async () => {
-    const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.rotate.confirmTitle", { args: [estate.slug] }),
-      ),
-      description: String(tr("account.estates.rotate.confirmDescription")),
-      confirmLabel: String(tr("account.estates.rotate.confirm")),
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      const minted = await api.rotateEstate({
-        params: { estateId: estate.id },
-      });
-      const { secret, ...rotated } = minted;
-      setEstate({ ...rotated, projects: estate.projects });
-      setFreshSecret(secret);
-      toaster.success(tr("account.estates.toast.rotated"));
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const remove = async () => {
-    const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.delete.confirmTitle", { args: [estate.slug] }),
-      ),
-      description: String(tr("account.estates.delete.confirmDescription")),
-      confirmLabel: String(tr("account.estates.delete.confirm")),
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await api.deleteEstate({ params: { estateId: estate.id } });
-      toaster.success(tr("account.estates.toast.deleted"));
-      // The estate this console is about no longer exists, so the console
-      // cannot stay open over it.
-      await router.push("accountEstates");
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const detach = async (loan: { id: number; title: string }) => {
-    const ok = await dialog.confirm({
-      title: String(
-        tr("account.estates.detach.confirmTitle", {
-          args: [estate.slug, loan.title],
-        }),
-      ),
-      description: String(tr("estates.detach.confirmDescription")),
-      confirmLabel: String(tr("estates.detach.confirm")),
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await projectEstateApi.detachEstate({
-        params: { projectId: loan.id, estateId: estate.id },
-      });
-      toaster.success(tr("estates.toast.detached"));
-      // The loans live on the owned-list resource, which this page does not
-      // hold; the list is where they are read, so it is re-read there.
-      await router.push("accountEstates");
-    } catch (error) {
-      fail(error);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const update = updateAction.run;
+  const rotate = rotateAction.run;
+  const remove = removeAction.run;
+  const detach = detachAction.run;
 
   return (
     <div className="flex flex-col gap-4">

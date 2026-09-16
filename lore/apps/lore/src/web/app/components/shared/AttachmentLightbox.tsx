@@ -42,7 +42,7 @@ export interface AttachmentLightboxProps {
  *
  * Images render as images; markdown renders as markdown; anything else
  * text-like renders inside a fenced block so the shared `MarkdownView` gives
- * it `rehype-highlight`'s colouring for free.
+ * it the highlighter's colouring for free (see `LANGUAGES` in `attachmentPreview.ts`).
  *
  * HTML is shown as SOURCE, never rendered. It is an uploaded file served
  * from our own origin, so rendering it would execute it, and the fence is

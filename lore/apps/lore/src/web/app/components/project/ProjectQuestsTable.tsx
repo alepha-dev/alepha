@@ -13,14 +13,22 @@ import {
   UserAvatar,
 } from "@alepha/ui";
 import {
-  AlephaTable,
+  DataTable,
+  dataTableFilterKeys,
+  type DataTableFilterFields,
   type BulkAction,
+  type BulkActionContext,
   type BulkMenuAction,
-  AlephaTableFilterBar,
 } from "@alepha/ui/table";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -40,14 +48,13 @@ import {
   Tag,
   Trash,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { User } from "@/api/entities/users.ts";
 import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
+  type QuestStatus,
   questStatusSchema,
 } from "@/api/schemas/questResourceSchema.ts";
 
@@ -61,6 +68,7 @@ import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import { useBulkReport } from "../shared/useBulkReport.ts";
+import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { questAgentGate } from "./prompts/questAgentGate.ts";
 import { useAgentPrompt } from "./prompts/useAgentPrompt.ts";
@@ -74,59 +82,6 @@ import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
 import { releaseRowMenu } from "./releaseRowMenu.ts";
 
-/**
- * Board filter shape. Empty by default → "All statuses", which means
- * everything still in scope: shelved quests are excluded server-side
- * until you ask for them explicitly. AlephaTable persists the chosen
- * values per project via `persistenceKey` (see #113).
- */
-/**
- * ⚠️ Every filter but `search` is a LIST, and empty means all.
- *
- * The board has taken lists since it was written while this table took one
- * value each, so "new or in progress", or two areas at once, was expressible
- * on one surface and not the other (quest #1644). The shape is ported from
- * `KanbanBoard.tsx` rather than designed, and `Control` needs nothing new:
- * an array field already renders as a multi-select.
- *
- * On the wire each list is comma-joined into a single query param, which is
- * what `getQuests` accepts. A repeated key would be the other option and is
- * not available: `ServerProvider.parseQueryString` returns
- * `Record<string, string>`, so `?area=a&area=b` keeps only the last one.
- */
-const boardFiltersSchema = z.object({
-  search: z.string().optional(),
-  /**
-   * ⚠️ `questStatusSchema` rather than a hand-written enum, and that is a
-   * fix rather than tidying. This listed four values while the filter's own
-   * dropdown offered five: `on_hold` reached the control and was refused here,
-   * so `?status=held` decoded to nothing and was DROPPED - `queryToFilters`
-   * degrades a value the schema refuses to the unfiltered list rather than
-   * to an error, which is right and is why nobody saw it: nothing linked to
-   * one of these filters. The filter control itself does, through
-   * `fromQuery`, so a held view that is bookmarked or reloaded is the case
-   * this keeps working.
-   *
-   * The item list below stays hand-written on purpose; see the ⚠️ on it. The
-   * two drifted in opposite directions, and only this half can be derived.
-   */
-  status: z.array(questStatusSchema).optional(),
-  /**
-   * How `status` compares. Absent is `is`; the bar sends no key for a filter
-   * on its default operator, so plain links stay plain.
-   */
-  statusOp: z.enum(["is", "not"]).optional(),
-  area: z.array(z.string()).optional(),
-  tag: z.array(z.string()).optional(),
-  /**
-   * How `tag` compares: any (absent), all or none of the picked tags.
-   */
-  tagOp: z.enum(["any", "all", "none"]).optional(),
-  // The releases' numeric ids, carried as strings because that is what a
-  // select's value is. Coerced back on the way into the query.
-  release: z.array(z.string()).optional(),
-});
-
 const ProjectQuestsTable = () => {
   const [project] = useStore(currentProjectAtom);
   const [currentAreas] = useStore(currentAreasAtom);
@@ -137,13 +92,15 @@ const ProjectQuestsTable = () => {
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const reportBulk = useBulkReport();
-  const projectApi = useClient<ProjectController>();
   const dateFormatter = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const toaster = useToast();
-  const [users, setUsers] = useState<Array<User>>([]);
+  // Shared with every surface that names a member, under
+  // `["project-users", projectId]` (#E59, #Q2331), rather than a second copy
+  // of the same read in an effect.
+  const users = useProjectUsers();
   // The row whose edit drawer is open, or nothing. Held here rather than per
   // row: one Sheet for the table, the same way the delete confirm is one
   // dialog rather than 25.
@@ -155,7 +112,29 @@ const ProjectQuestsTable = () => {
   // The create sheet, opened from the toolbar's primary action. The same
   // drawer as the edit one below, with no row in it.
   const [creating, setCreating] = useState(false);
-  const [knownTags, setKnownTags] = useState<string[]>([]);
+  // The tag filter's options. Quiet on failure: the filter hides itself
+  // with nothing to offer, and the table still works. Shared by key with the
+  // create form and the tag input.
+  const knownTags =
+    useQuery(
+      {
+        key: ["quest-tags", project?.id],
+        enabled: !!project?.id,
+        handler: () =>
+          questApi.listQuestTags({
+            query: { projectId: project?.id as number },
+          }),
+        onError: () => {},
+      },
+      [questApi, project?.id],
+    ).data ?? NO_TAGS;
+
+  // Every write below is a `useAction` (#E59, #Q2331). The eight
+  // `useQuestMutations` calls keep rejecting (#E59 rule 2) and run inside
+  // the handlers, with their confirmation and `refresh()`, so a refusal is
+  // toasted once by the root `ActionErrorToaster` and nothing follows it.
+  // `DataTable` runs row and bulk actions fire-and-forget, so before this a
+  // refusal was an unhandled rejection that said nothing.
 
   /**
    * The same write `QuestReleaseControl` makes on the quest's own rail, from
@@ -166,51 +145,245 @@ const ProjectQuestsTable = () => {
    * Not `questMutations.attachToRelease`: that one is the bulk path, takes a
    * list, and its `releaseId` is a plain number because bulk never detaches.
    */
-  const setRelease = async (
-    quest: QuestResource,
-    releaseId: number | null,
-    refresh: () => void,
-  ) => {
-    try {
-      await questApi.updateQuestById({
-        params: { id: quest.id },
-        body: { releaseId },
-      });
-      // The Release column is drawn from the row, so it repaints only once
-      // the fetch comes back with the new value.
-      refresh();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const setReleaseAction = useAction<
+    [quest: QuestResource, releaseId: number | null, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, releaseId, refresh) => {
+        await questApi.updateQuestById({
+          params: { id: quest.id },
+          body: { releaseId },
+        });
+        // The Release column is drawn from the row, so it repaints only once
+        // the fetch comes back with the new value.
+        refresh();
+      },
+    },
+    [questApi],
+  );
 
-  /**
-   * The slice of the URL the table seeds from, as a remount key.
-   *
-   * Derived from the filter schema rather than a hand-written list, so a
-   * filter added there is linkable and re-seedable without a second edit
-   * here. Reading `router.query` is all this does: the filters are never
-   * written back (#156).
-   */
-  const seedKey = Object.keys(z.schema.shape(boardFiltersSchema))
-    .map((key) => `${key}=${router.query[key] ?? ""}`)
-    .join("&");
+  const acceptAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        await questMutations.accept(quest.id);
+        refresh();
+      },
+    },
+    [questMutations],
+  );
 
-  useEffect(() => {
-    if (!project?.id) return;
-    questApi
-      .listQuestTags({ query: { projectId: project.id } })
-      .then(setKnownTags)
-      .catch(() => null);
-  }, [project?.id]);
+  const shelveAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        // Same warning QuestView gives: shelving a quest others depend on
+        // leaves them blocked with no path forward. The questline is fetched
+        // on click rather than per row - a table of 25 quests should not
+        // cost 25 extra requests for a menu entry most rows never open.
+        //
+        // ⚠️ Still swallowed, on purpose: a warning that could not be read
+        // must not block the shelve it would have warned about.
+        const questline = await questApi
+          .getQuestLine({ params: { id: quest.id } })
+          .catch(() => ({ dependents: [] }));
+        const blocked = questline.dependents.filter((d) => !d.completedAt);
+        const confirmed = await dialog.confirm({
+          title: tr("quest.view.shelve.title"),
+          description: blocked.length
+            ? tr("quest.view.shelve.confirmWithDependents", {
+                args: [
+                  blocked
+                    .map((d) => formatReference("quest", d.shortId))
+                    .join(", "),
+                ],
+              })
+            : tr("quest.view.shelve.confirm"),
+          confirmLabel: tr("quest.view.shelve.confirmButton"),
+          cancelLabel: tr("common.cancel"),
+        });
+        if (!confirmed) return;
+        await questMutations.shelve(quest.id);
+        refresh();
+      },
+    },
+    [questApi, questMutations, dialog, tr],
+  );
 
-  useEffect(() => {
-    if (!project?.id) return;
-    projectApi
-      .getProjectUsers({ params: { id: project.id } })
-      .then(setUsers)
-      .catch(() => null);
-  }, [project?.id]);
+  const unshelveAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        await questMutations.unshelve(quest.id);
+        refresh();
+      },
+    },
+    [questMutations],
+  );
+
+  const removeAction = useAction<
+    [quest: QuestResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (quest, refresh) => {
+        const confirmed = await dialog.confirm({
+          title: tr("board.confirm-delete-title"),
+          description: tr("board.confirm-delete-message"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await questMutations.remove(quest.id);
+        refresh();
+      },
+    },
+    [questMutations, dialog, tr],
+  );
+
+  // The bulk writes settle per id through `settleBulk` and report refusals
+  // in `useBulkReport`, so they do not throw for a refused row; they are
+  // actions for the busy state and for anything failing outside that.
+  const count = (ids: number[]) => String(ids.length);
+
+  const shelveManyAction = useAction<
+    [selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        // Only a `todo` quest can be shelved, and the server refuses the
+        // rest one by one. They are counted here and never sent, so an
+        // accepted row in the selection costs a note, not the batch.
+        const eligible = selected.filter(
+          (quest) =>
+            !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
+        );
+        const skipped = selected.length - eligible.length;
+        if (eligible.length === 0) {
+          toaster.error(tr("board.bulk.shelve.none"));
+          return;
+        }
+        const outcome = await questMutations.shelveMany(
+          eligible.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.shelved", { args: [count(outcome.done)] }),
+          skipped > 0
+            ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
+            : undefined,
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, toaster, tr],
+  );
+
+  const unshelveManyAction = useAction<
+    [selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        const eligible = selected.filter((quest) => quest.shelvedAt);
+        const skipped = selected.length - eligible.length;
+        if (eligible.length === 0) {
+          toaster.error(tr("board.bulk.unshelve.none"));
+          return;
+        }
+        const outcome = await questMutations.unshelveMany(
+          eligible.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.unshelved", { args: [count(outcome.done)] }),
+          skipped > 0
+            ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
+            : undefined,
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, toaster, tr],
+  );
+
+  const attachToReleaseAction = useAction<
+    [
+      release: { id: number; tag?: string; title: string },
+      selected: QuestResource[],
+      ctx: BulkActionContext,
+    ],
+    void
+  >(
+    {
+      handler: async (release, selected, ctx) => {
+        const outcome = await questMutations.attachToRelease(
+          selected.map((quest) => quest.id),
+          release.id,
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.released", {
+            args: [count(outcome.done), release.tag ?? release.title],
+          }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, tr],
+  );
+
+  const removeManyAction = useAction<
+    [selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        const n = String(selected.length);
+        const confirmed = await dialog.confirm({
+          title: tr("board.bulk.delete.title", { args: [n] }),
+          description: tr("board.confirm-delete-message"),
+          confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        const outcome = await questMutations.removeMany(
+          selected.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.deleted", { args: [count(outcome.done)] }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, dialog, tr],
+  );
+
+  // Page-wide (#E59 rule 10): every row and bulk write waits while any of
+  // them runs. The bulk bar has no disabled state, so its buttons hide.
+  const busy =
+    setReleaseAction.loading ||
+    acceptAction.loading ||
+    shelveAction.loading ||
+    unshelveAction.loading ||
+    removeAction.loading ||
+    shelveManyAction.loading ||
+    unshelveManyAction.loading ||
+    attachToReleaseAction.loading ||
+    removeManyAction.loading;
 
   const renderAvatar = (userId?: string) => {
     const user = userId ? users.find((u) => u.id === userId) : undefined;
@@ -242,7 +415,7 @@ const ProjectQuestsTable = () => {
   const releaseOptions = [
     {
       value: QUEST_RELEASE_NONE,
-      label: String(tr("board.filter.noRelease")),
+      label: tr("board.filter.noRelease"),
     },
     ...(releases ?? []).map((r) => ({
       value: String(r.id),
@@ -250,7 +423,90 @@ const ProjectQuestsTable = () => {
     })),
   ];
 
-  const count = (ids: number[]) => String(ids.length);
+  /**
+   * The board's filters. Every filter but `search` is a LIST, and empty means
+   * all: "new or in progress", or two areas at once, has to be expressible
+   * here as it is on the board (quest #1644). On the wire each list is
+   * comma-joined into one query param, which is what `getQuests` accepts; a
+   * repeated key keeps only the last value.
+   *
+   * `statusOp` and `tagOp` are generated by the table from `operators`, under
+   * the names a shared link already carries.
+   */
+  const filterFields = {
+    search: { preset: "search" },
+    /**
+     * `questStatusSchema` gives the options, so widening the enum brings its
+     * new value here; the list used to be hand-written, and a status added to
+     * the schema was silently missing from the filter. Its order is the
+     * enum's, which is the order the list always had.
+     *
+     * is / is not: several statuses under "is not" exclude all of them, and
+     * shelved quests stay out unless named - see `getQuests`.
+     */
+    status: {
+      schema: z.array(questStatusSchema),
+      label: tr("board.filter.status"),
+      icon: CircleDot,
+      operators: "is",
+      optionLabel: (status: QuestStatus) => tr(QUEST_STATUS_LABEL_KEYS[status]),
+      control: {
+        clearLabel: tr("board.filter.allStatuses"),
+      },
+    },
+    area: {
+      schema: z.array(z.string()),
+      label: tr("board.filter.area"),
+      icon: MapPin,
+      items: areaOptions,
+      hidden: areaOptions.length === 0,
+      control: {
+        clearLabel: tr("board.filter.allAreas"),
+        // Opted in rather than left to the option count. Areas are named by
+        // import path (`lore/quests`, `lore/folios`), so the "select every
+        // match" row - the whole of feedback #2009 - only appears once a
+        // prefix has been TYPED, and typing needs this field.
+        searchable: true,
+      },
+    },
+    tag: {
+      schema: z.array(z.string()),
+      label: tr("board.filter.tag"),
+      icon: Tag,
+      items: knownTags.map((tag) => ({ label: tag, value: tag })),
+      hidden: knownTags.length === 0,
+      // Tags are the one column here holding several values, so they alone
+      // get "all of".
+      operators: "any-all-none",
+      control: {
+        clearLabel: tr("board.filter.allTags"),
+      },
+    },
+    // The releases' numeric ids, carried as strings because that is what a
+    // select's value is. Coerced back on the way into the query.
+    release: {
+      schema: z.array(z.string()),
+      label: tr("board.filter.release"),
+      icon: Flag,
+      items: releaseOptions,
+      hidden: (releases ?? []).length === 0,
+      control: {
+        clearLabel: tr("board.filter.allReleases"),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
+  /**
+   * The slice of the URL the table seeds from, as a remount key.
+   *
+   * Derived from the filters' own keys, operator keys included, rather than a
+   * hand-written list, so a filter added above is linkable and re-seedable
+   * without a second edit here. Reading `router.query` is all this does: the
+   * filters are never written back (#156).
+   */
+  const seedKey = dataTableFilterKeys(filterFields)
+    .map((key) => `${key}=${router.query[key] ?? ""}`)
+    .join("&");
 
   // Triage in bulk: the checkbox column exists because this array is not
   // empty. Every action refreshes and then clears, in that order, since a
@@ -265,35 +521,9 @@ const ProjectQuestsTable = () => {
       label: tr("board.bulk.shelve"),
       // Offered only when something in the selection is not shelved yet; a
       // selection of shelved rows has nothing for it to do (feedback #2063).
-      visible: (selected) => selected.some((quest) => !quest.shelvedAt),
-      onClick: async (selected, ctx) => {
-        // Only a `todo` quest can be shelved, and the server refuses the
-        // rest one by one. They are counted here and never sent, so an
-        // accepted row in the selection costs a note, not the batch.
-        const eligible = selected.filter(
-          (quest) =>
-            !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
-        );
-        const skipped = selected.length - eligible.length;
-        if (eligible.length === 0) {
-          toaster.error(tr("board.bulk.shelve.none"));
-          return;
-        }
-        const outcome = await questMutations.shelveMany(
-          eligible.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          String(tr("board.bulk.shelved", { args: [count(outcome.done)] })),
-          skipped > 0
-            ? String(
-                tr("board.bulk.shelve.skipped", { args: [String(skipped)] }),
-              )
-            : undefined,
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: (selected) =>
+        !busy && selected.some((quest) => !quest.shelvedAt),
+      onClick: (selected, ctx) => void shelveManyAction.run(selected, ctx),
     });
   }
 
@@ -303,29 +533,8 @@ const ProjectQuestsTable = () => {
       label: tr("board.bulk.unshelve"),
       // And this one only when at least one selected row is shelved. A mixed
       // selection shows both, each acting on the rows it fits.
-      visible: (selected) => selected.some((quest) => quest.shelvedAt),
-      onClick: async (selected, ctx) => {
-        const eligible = selected.filter((quest) => quest.shelvedAt);
-        const skipped = selected.length - eligible.length;
-        if (eligible.length === 0) {
-          toaster.error(tr("board.bulk.unshelve.none"));
-          return;
-        }
-        const outcome = await questMutations.unshelveMany(
-          eligible.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          String(tr("board.bulk.unshelved", { args: [count(outcome.done)] })),
-          skipped > 0
-            ? String(
-                tr("board.bulk.unshelve.skipped", { args: [String(skipped)] }),
-              )
-            : undefined,
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: (selected) => !busy && selected.some((quest) => quest.shelvedAt),
+      onClick: (selected, ctx) => void unshelveManyAction.run(selected, ctx),
     });
   }
 
@@ -333,6 +542,7 @@ const ProjectQuestsTable = () => {
     bulkActions.push({
       icon: Flag,
       label: tr("board.bulk.release"),
+      visible: () => !busy,
       // The filter column above lists EVERY release, published included,
       // because it filters over history. This must not: attaching to a
       // published release is refused server-side, so a published entry
@@ -342,22 +552,8 @@ const ProjectQuestsTable = () => {
           .filter((release) => !release.releasedAt)
           .map((release) => ({
             label: release.tag ?? release.title,
-            onClick: async (selected, ctx) => {
-              const outcome = await questMutations.attachToRelease(
-                selected.map((quest) => quest.id),
-                release.id,
-              );
-              reportBulk(
-                outcome,
-                String(
-                  tr("board.bulk.released", {
-                    args: [count(outcome.done), release.tag ?? release.title],
-                  }),
-                ),
-              );
-              ctx.refresh();
-              ctx.clearSelection();
-            },
+            onClick: (selected, ctx) =>
+              void attachToReleaseAction.run(release, selected, ctx),
           })),
     });
   }
@@ -367,26 +563,8 @@ const ProjectQuestsTable = () => {
       icon: Trash,
       label: tr("board.bulk.delete"),
       destructive: true,
-      onClick: async (selected, ctx) => {
-        const n = String(selected.length);
-        const confirmed = await dialog.confirm({
-          title: tr("board.bulk.delete.title", { args: [n] }),
-          description: tr("board.confirm-delete-message"),
-          confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        const outcome = await questMutations.removeMany(
-          selected.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          String(tr("board.bulk.deleted", { args: [count(outcome.done)] })),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
-      },
+      visible: () => !busy,
+      onClick: (selected, ctx) => void removeManyAction.run(selected, ctx),
     });
   }
 
@@ -395,14 +573,14 @@ const ProjectQuestsTable = () => {
       data-testid="quests-table"
       className="flex flex-1 flex-col overflow-hidden"
     >
-      <AlephaTable<QuestResource>
+      <DataTable<QuestResource, typeof filterFields>
         // The seed is part of the identity: `initialValues` are captured once
         // per mount, and arriving from a different drill-through link on a
         // route the app is already showing would otherwise change nothing.
         key={`${project.id}:${seedKey}`}
         className="min-h-0 flex-1"
         emptyMessage={tr("common.noResults")}
-        // AlephaTable owns the filter form + toolbar, and persists filter
+        // DataTable owns the filter form + toolbar, and persists filter
         // values, column visibility, and sort under this key (replaces the
         // hand-rolled toolbar + localStorage that used to live here).
         persistenceKey={`lor.board.${project.id}`}
@@ -421,16 +599,15 @@ const ProjectQuestsTable = () => {
           },
         ]}
         filters={{
-          schema: boardFiltersSchema,
+          fields: filterFields,
           /**
            * Every filter on this table is linkable: `?status=todo,in_progress`,
-           * `?tag=need-answer`, `?search=auth`. The five keys are the ones
-           * `boardFiltersSchema` declares, and AlephaTable reads them once on
-           * arrival — a value the schema refuses is dropped, so a stale
-           * bookmark lands on the unfiltered list rather than an error page.
+           * `?tag=need-answer&tagOp=none`, `?search=auth`. DataTable reads
+           * every key of the fields once on arrival, operator keys included;
+           * a value a schema refuses is dropped, so a stale bookmark lands on
+           * the unfiltered list rather than an error page.
            *
-           * This used to be a hand-rolled `seedValues` for `?status=` alone.
-           * Its precedence is unchanged: a link outranks the filter the
+           * Its precedence is `seedValues`': a link outranks the filter the
            * reader stored last time, or a drill-through would do nothing.
            *
            * ⚠️ Read-only, and it stays that way. Nothing writes a filter back
@@ -439,142 +616,13 @@ const ProjectQuestsTable = () => {
            * from.
            */
           fromQuery: true,
-          render: (form) => (
-            <AlephaTableFilterBar
-              form={form}
-              search={{
-                placeholder: String(tr("board.filter.search")),
-                control: {
-                  inputProps: { "aria-label": tr("board.filter.search") },
-                },
-              }}
-              fields={[
-                {
-                  key: "status",
-                  label: String(tr("board.filter.status")),
-                  icon: CircleDot,
-                  // is / is not. Several statuses under "is not" exclude all
-                  // of them, and shelved quests stay out unless named - see
-                  // `getQuests`.
-                  operators: "is",
-                  items:
-                    // ⚠️ Hand-written, so widening `questStatusSchema`
-                    // does NOT bring a value here and typecheck stays
-                    // green while the filter silently offers one fewer
-                    // option than the table can render.
-                    (
-                      [
-                        "todo",
-                        "in_progress",
-                        "on_hold",
-                        "completed",
-                        "shelved",
-                      ] as const
-                    ).map((status) => ({
-                      label: String(tr(QUEST_STATUS_LABEL_KEYS[status])),
-                      value: status,
-                    })),
-                  control: {
-                    clearLabel: tr("board.filter.allStatuses"),
-                    countLabel: (n) =>
-                      String(
-                        tr("board.filter.statusCount", { args: [String(n)] }),
-                      ),
-                    triggerClassName: "w-full",
-                    inputProps: { "aria-label": tr("board.filter.status") },
-                  },
-                },
-                ...(areaOptions.length > 0
-                  ? [
-                      {
-                        key: "area",
-                        label: String(tr("board.filter.area")),
-                        icon: MapPin,
-                        items: areaOptions,
-                        control: {
-                          clearLabel: tr("board.filter.allAreas"),
-                          countLabel: (n: number) =>
-                            String(
-                              tr("board.filter.areaCount", {
-                                args: [String(n)],
-                              }),
-                            ),
-                          // Opted in rather than left to the option count.
-                          // Areas are named by import path (`lore/quests`,
-                          // `lore/folios`), so the "select every match" row
-                          // - the whole of feedback #2009 - only appears once
-                          // a prefix has been TYPED, and typing needs this
-                          // field.
-                          searchable: true,
-                          triggerClassName: "w-full",
-                          inputProps: { "aria-label": tr("board.filter.area") },
-                        },
-                      },
-                    ]
-                  : []),
-                ...((releases ?? []).length > 0
-                  ? [
-                      {
-                        key: "release",
-                        label: String(tr("board.filter.release")),
-                        icon: Flag,
-                        items: releaseOptions,
-                        control: {
-                          clearLabel: tr("board.filter.allReleases"),
-                          countLabel: (n: number) =>
-                            String(
-                              tr("board.filter.releaseCount", {
-                                args: [String(n)],
-                              }),
-                            ),
-                          triggerClassName: "w-full",
-                          inputProps: {
-                            "aria-label": tr("board.filter.release"),
-                          },
-                        },
-                      },
-                    ]
-                  : []),
-                ...(knownTags.length > 0
-                  ? [
-                      {
-                        key: "tag",
-                        label: String(tr("board.filter.tag")),
-                        icon: Tag,
-                        items: knownTags.map((tag) => ({
-                          label: tag,
-                          value: tag,
-                        })),
-                        // Tags are the one column here holding several
-                        // values, so they alone get "all of". Stored as
-                        // `tagOp`.
-                        operators: "any-all-none" as const,
-                        control: {
-                          clearLabel: tr("board.filter.allTags"),
-                          countLabel: (n: number) =>
-                            String(
-                              tr("board.filter.tagCount", {
-                                args: [String(n)],
-                              }),
-                            ),
-                          triggerClassName: "w-full",
-                          inputProps: { "aria-label": tr("board.filter.tag") },
-                        },
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          ),
         }}
         fetch={async ({ page, size, sort, filters: f }) => {
           // Comma-joined, and omitted entirely when empty. An empty list and
           // an absent filter are the same question, and sending `status=`
           // would be a third thing for the endpoint to interpret.
-          const list = (values: unknown): string | undefined =>
-            Array.isArray(values) && values.length > 0
-              ? values.join(",")
-              : undefined;
+          const list = (values: string[] | undefined): string | undefined =>
+            values && values.length > 0 ? values.join(",") : undefined;
           return questApi.getQuests({
             params: { projectId: project.id },
             query: {
@@ -960,11 +1008,13 @@ const ProjectQuestsTable = () => {
                         checked: (row: QuestResource) =>
                           row.releaseId === release.id,
                         disabled: () =>
+                          busy ||
                           releaseRowMenu(releases, quest.releaseId).locked,
                         onClick: (
                           row: QuestResource,
                           { refresh }: { refresh: () => void },
-                        ) => setRelease(row, release.id, refresh),
+                        ) =>
+                          void setReleaseAction.run(row, release.id, refresh),
                       }),
                     ),
                     {
@@ -972,11 +1022,12 @@ const ProjectQuestsTable = () => {
                       label: tr("board.action.noRelease"),
                       checked: (row: QuestResource) => row.releaseId == null,
                       disabled: () =>
+                        busy ||
                         releaseRowMenu(releases, quest.releaseId).locked,
                       onClick: (
                         row: QuestResource,
                         { refresh }: { refresh: () => void },
-                      ) => setRelease(row, null, refresh),
+                      ) => void setReleaseAction.run(row, null, refresh),
                     },
                   ],
                 },
@@ -998,13 +1049,11 @@ const ProjectQuestsTable = () => {
                 {
                   icon: Signature,
                   label: tr("board.action.acceptQuest"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    await questMutations.accept(quest.id);
-                    refresh();
-                  },
+                  ) => void acceptAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -1013,39 +1062,11 @@ const ProjectQuestsTable = () => {
                 {
                   icon: Archive,
                   label: tr("board.action.shelveQuest"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    // Same warning QuestView gives: shelving a quest others
-                    // depend on leaves them blocked with no path forward.
-                    // The questline is fetched on click rather than per row —
-                    // a table of 25 quests should not cost 25 extra requests
-                    // for a menu entry most rows never open.
-                    const questline = await questApi
-                      .getQuestLine({ params: { id: quest.id } })
-                      .catch(() => ({ dependents: [] }));
-                    const blocked = questline.dependents.filter(
-                      (d) => !d.completedAt,
-                    );
-                    const confirmed = await dialog.confirm({
-                      title: tr("quest.view.shelve.title"),
-                      description: blocked.length
-                        ? tr("quest.view.shelve.confirmWithDependents", {
-                            args: [
-                              blocked
-                                .map((d) => formatReference("quest", d.shortId))
-                                .join(", "),
-                            ],
-                          })
-                        : tr("quest.view.shelve.confirm"),
-                      confirmLabel: tr("quest.view.shelve.confirmButton"),
-                      cancelLabel: tr("common.cancel"),
-                    });
-                    if (!confirmed) return;
-                    await questMutations.shelve(quest.id);
-                    refresh();
-                  },
+                  ) => void shelveAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -1054,13 +1075,11 @@ const ProjectQuestsTable = () => {
                 {
                   icon: ArchiveRestore,
                   label: tr("board.action.unshelveQuest"),
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    await questMutations.unshelve(quest.id);
-                    refresh();
-                  },
+                  ) => void unshelveAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -1070,19 +1089,11 @@ const ProjectQuestsTable = () => {
                   icon: Trash,
                   label: tr("board.action.deleteQuest"),
                   destructive: true,
-                  onClick: async (
+                  disabled: () => busy,
+                  onClick: (
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
-                  ) => {
-                    const confirmed = await dialog.confirm({
-                      title: tr("board.confirm-delete-title"),
-                      description: tr("board.confirm-delete-message"),
-                      destructive: true,
-                    });
-                    if (!confirmed) return;
-                    await questMutations.remove(quest.id);
-                    refresh();
-                  },
+                  ) => void removeAction.run(quest, refresh),
                 },
               ]
             : []),
@@ -1135,3 +1146,9 @@ const ProjectQuestsTable = () => {
 };
 
 export default ProjectQuestsTable;
+
+/**
+ * One empty tag list, so the filter's options keep their identity while the
+ * tags load.
+ */
+const NO_TAGS: string[] = [];

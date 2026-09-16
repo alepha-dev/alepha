@@ -16,11 +16,13 @@ import type {
   AttachmentRef,
   EpicRef,
   FeedbackRef,
+  FolioRef,
   QuestRef,
   ReleaseRef,
 } from "../../folios/folioWikiLinkResolver.ts";
 import { rewriteFolioWikiLinks } from "../../folios/rewriteFolioWikiLinks.ts";
 import type { ElementRef } from "./elementRef.ts";
+import { referencedIds } from "./referencedIds.ts";
 import { formatReference } from "./typedReference.ts";
 
 export interface ElementLinks {
@@ -66,6 +68,17 @@ export interface ElementLinks {
  * Quests and epics are fetched on both branches, through `useQuery` with a
  * project-scoped key — so walking from a quest to a folio to an epic pays
  * for them once, not once per surface.
+ *
+ * ## The picker's lists are not what a reference resolves against
+ *
+ * The quest and folio lists above are capped pages, sized for the picker:
+ * the 100 most recently updated quests, the first 100 folios. A reference is
+ * resolved by the numbers the body names instead, through the two refs
+ * endpoints, two columns per quest or folio named (#Q2355). Before that, a
+ * `[[#Q2165]]` to a quest outside the recent page rendered as a broken link
+ * in a project holding thousands of them. The pages still feed the picker
+ * and still resolve what they happen to hold, so a token the author has just
+ * typed from a suggestion renders at once.
  */
 export const useElementLinks = (
   element: ElementRef,
@@ -89,6 +102,16 @@ export const useElementLinks = (
   // `[[#Q42]]` never pays for them.
   const hasAssets = /\]\(assets\//i.test(content);
   const hasFeedbackRefs = /\[\[\s*#p\d+\s*\]\]/i.test(content);
+
+  // The numbers the body names, as the refs lookups' query and key.
+  const namedQuestIds = useMemo(
+    () => referencedIds(content, "quest").join(","),
+    [content],
+  );
+  const namedFolioIds = useMemo(
+    () => referencedIds(content, "folio"),
+    [content],
+  );
 
   // The inbox is paged, so a feedback item's title cannot be read off a
   // list the page already holds the way a release's can. Three columns for
@@ -163,6 +186,25 @@ export const useElementLinks = (
     [questApi, projectId],
   );
 
+  // Every quest the body names, wherever it would fall in the list above.
+  // Kept across a key change so a link does not flash broken while the
+  // author adds a reference beside it.
+  const { data: namedQuests } = useQuery<QuestRef[]>(
+    {
+      key: ["elementLinks:quest-refs", projectId, namedQuestIds],
+      enabled: namedQuestIds !== "" && projectId > 0,
+      staleTime: [5, "minutes"],
+      keepPreviousData: true,
+      handler: async () =>
+        await questApi.listQuestRefs({
+          params: { projectId },
+          query: { shortIds: namedQuestIds },
+        }),
+      onError: () => {},
+    },
+    [questApi, projectId, namedQuestIds],
+  );
+
   const { data: epics } = useQuery<EpicRef[]>(
     {
       key: ["elementLinks:epics", projectId],
@@ -205,6 +247,42 @@ export const useElementLinks = (
   );
 
   const folios = inFolioWorkspace ? atomFolios : (fetchedFolios ?? []);
+
+  // Inside the workspace the tree atom is already in memory, so only the
+  // folios it does not hold are asked for, and opening a folio that links
+  // recent ones costs no request. Outside it the list is itself a fetch
+  // still in flight, so every named folio is asked for rather than waiting
+  // on it to learn which are missing.
+  const missingFolioIds = useMemo(() => {
+    if (!inFolioWorkspace) return namedFolioIds.join(",");
+    const held = new Set(atomFolios.map((f) => f.shortId));
+    return namedFolioIds.filter((id) => !held.has(id)).join(",");
+  }, [namedFolioIds, inFolioWorkspace, atomFolios]);
+
+  const { data: namedFolios } = useQuery<FolioRef[]>(
+    {
+      key: ["elementLinks:folio-refs", projectId, missingFolioIds],
+      enabled: missingFolioIds !== "" && projectId > 0,
+      staleTime: [5, "minutes"],
+      keepPreviousData: true,
+      handler: async () =>
+        await folioApi.listFolioRefs({
+          params: { projectId },
+          query: { shortIds: missingFolioIds },
+        }),
+      onError: () => {},
+    },
+    [folioApi, projectId, missingFolioIds],
+  );
+
+  const resolvableFolios = useMemo<FolioRef[]>(
+    () => [...folios, ...(namedFolios ?? [])],
+    [folios, namedFolios],
+  );
+  const resolvableQuests = useMemo<QuestRef[]>(
+    () => [...(quests ?? []), ...(namedQuests ?? [])],
+    [quests, namedQuests],
+  );
   const attachments = useMemo<AttachmentRef[]>(
     () =>
       inFolioWorkspace
@@ -278,8 +356,8 @@ export const useElementLinks = (
         ? rewriteFolioWikiLinks(
             content,
             projectSlug,
-            folios,
-            quests ?? [],
+            resolvableFolios,
+            resolvableQuests,
             attachments,
             epics ?? [],
             feedbackRefs ?? [],
@@ -289,8 +367,8 @@ export const useElementLinks = (
     [
       content,
       projectSlug,
-      folios,
-      quests,
+      resolvableFolios,
+      resolvableQuests,
       attachments,
       epics,
       feedbackRefs,

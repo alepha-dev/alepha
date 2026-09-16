@@ -30,7 +30,7 @@ const FolioTreeRail = (props: FolioTreeRailProps): ReactElement => {
   return (
     <PaneRail
       side="left"
-      label={String(tr("folios.editor.tree.expand"))}
+      label={tr("folios.editor.tree.expand")}
       onExpand={props.onExpand}
     />
   );

@@ -48,6 +48,7 @@ import {
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { BoundParameters } from "../services/BoundParameters.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
@@ -118,6 +119,13 @@ export class QuestController {
     "tags",
   ]);
 
+  /**
+   * How many numbers one `listQuestRefs` call reads. A document naming more
+   * quests than this is not one anybody writes by hand; the cap keeps a
+   * crafted query from turning into dozens of D1 statements.
+   */
+  static readonly MAX_REF_IDS = 500;
+
   log = $logger();
   quests = $repository(quests);
   feedback = $repository(feedback);
@@ -176,6 +184,7 @@ export class QuestController {
   areaService = $inject(AreaService);
   releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(FolioLinkService);
+  bound = $inject(BoundParameters);
 
   attachments = $storage({
     description: "Quest attachments",
@@ -1448,6 +1457,56 @@ export class QuestController {
   });
 
   /**
+   * The quests a document names, as `{ shortId, title }`, for the wiki-link
+   * resolver (#Q2355).
+   *
+   * The resolver used to look a `[[#Q12]]` up in the picker's page of the
+   * 100 most recently updated quests, so any older quest rendered as a
+   * broken link. It now asks for exactly the numbers the body carries: two
+   * columns per quest named, never a description, whatever the size of the
+   * project. Draft epics are not gated, since a reference is direct
+   * addressing and a link into a draft epic must still resolve.
+   *
+   * `shortIds` is comma-separated and parsed like every list filter here:
+   * anything that is not a positive integer is dropped rather than refused.
+   * At most {@link QuestController.MAX_REF_IDS} are read.
+   */
+  listQuestRefs = $action({
+    use: [this.ownsProject("quest:read")],
+    method: "GET",
+    path: "/projects/:projectId/quests/refs",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({ shortIds: z.string() }),
+      response: z.array(
+        z.object({
+          shortId: z.integer(),
+          title: z.string(),
+        }),
+      ),
+    },
+    handler: async ({ params, query }) => {
+      const shortIds = [
+        ...new Set(
+          this.parseList(query.shortIds)
+            .map((entry) => Number(entry))
+            .filter((n) => Number.isSafeInteger(n) && n > 0),
+        ),
+      ].slice(0, QuestController.MAX_REF_IDS);
+      const rows = await this.bound.collect(shortIds, (batch) =>
+        this.quests.findMany({
+          where: {
+            projectId: { eq: params.projectId },
+            shortId: { inArray: batch },
+          },
+          columns: ["shortId", "title"],
+        }),
+      );
+      return rows.map((r) => ({ shortId: r.shortId, title: r.title }));
+    },
+  });
+
+  /**
    * Questline data for a single quest — the predecessor it depends on
    * (if any) and the quests that depend on it. Surfaces a "Blocked by"
    * badge and an "Unlocks" backlink in the UI; agents can read it via
@@ -1864,6 +1923,13 @@ export class QuestController {
          * so `@handle` works here exactly as it does in the composer.
          */
         reason: z.string().min(1).meta({ size: "rich" }),
+        /**
+         * Set by `QuestTools.quest_hold` and by nothing else: an agent wrote
+         * `reason`, over MCP, as the key's owner. It only lets a self-mention
+         * in the reason reach that owner (#Q2348). It is never stored: the
+         * hold comment still carries no `source`, for the reason given below.
+         */
+        agent: z.boolean().optional(),
       }),
       response: questResourceSchema,
     },
@@ -1912,10 +1978,14 @@ export class QuestController {
         body: body.reason,
       });
 
+      // The comment keeps no `source`, but the mention pass still needs to
+      // know an agent wrote the reason: "waiting on @owner to pick X" is the
+      // case where reaching the owner matters most.
       await this.mentions.notify({
         subject: this.questMentionSubject(quest, project),
         authorId: user.id,
         body: body.reason,
+        agent: body.agent ? {} : undefined,
       });
 
       await this.logQuest("hold", quest, user);

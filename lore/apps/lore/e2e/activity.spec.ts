@@ -16,7 +16,7 @@ import {
  * `e2e/dashboard.spec.ts` pins the root's own destination from the other
  * side.
  *
- * Since the page became an `AlephaTable` over scoped `audits` rows, the last
+ * Since the page became a `DataTable` over scoped `audits` rows, the last
  * step also pins the half that no unit test can: that a filter is answered by
  * the SERVER. The unit specs can only assert that the query was built; only a
  * real request proves it was honoured.
@@ -117,12 +117,11 @@ test.describe("Activity", () => {
         { timeout: 15_000 },
       );
 
-      // Base UI renders a `Control` as a role=combobox BUTTON, not a native
-      // <select>, so the option is reached by opening the popover.
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: /All resources/i })
-        .click();
+      // Every filter here is optional, so it starts off the bar (#E58) and is
+      // added from the funnel-plus menu. Adding one opens its list, which is
+      // why the option is the next click.
+      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("menuitem", { name: /^Resource/ }).click();
       await page.getByRole("option", { name: "Folio", exact: true }).click();
       await request;
 

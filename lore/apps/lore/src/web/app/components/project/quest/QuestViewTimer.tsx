@@ -1,6 +1,6 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
-import { ClientOnly, useClient, useInject } from "alepha/react";
+import { ClientOnly, useAction, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Clock, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -51,21 +51,32 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
     return `${secs}s`;
   };
 
-  const toggleTimer = async () => {
-    if (isTimerRunning()) {
-      const updatedQuest = await client.stopTimer({ params: { id: quest.id } });
-      props.onUpdate(updatedQuest);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    } else {
-      const updatedQuest = await client.startTimer({
-        params: { id: quest.id },
-      });
-      props.onUpdate(updatedQuest);
-    }
-  };
+  // A `useAction` (#E59, #Q2328): a refused start or stop is the server's
+  // sentence, toasted by the root `ActionErrorToaster`, where it used to be an
+  // unhandled rejection. The button waits while it runs, so a double click
+  // cannot start and stop in one go.
+  const toggleAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (isTimerRunning()) {
+          const updatedQuest = await client.stopTimer({
+            params: { id: quest.id },
+          });
+          props.onUpdate(updatedQuest);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        } else {
+          const updatedQuest = await client.startTimer({
+            params: { id: quest.id },
+          });
+          props.onUpdate(updatedQuest);
+        }
+      },
+    },
+    [client, quest.id, quest.timerSessions, props.onUpdate],
+  );
 
   useEffect(() => {
     // Seeds the clock before starting the interval below — the elapsed time is
@@ -110,8 +121,11 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
               variant="ghost"
               size="sm"
               className="h-6 px-1"
-              onClick={toggleTimer}
-              disabled={!client.startTimer.can() && !client.stopTimer.can()}
+              onClick={() => void toggleAction.run()}
+              disabled={
+                toggleAction.loading ||
+                (!client.startTimer.can() && !client.stopTimer.can())
+              }
             />
           }
         >

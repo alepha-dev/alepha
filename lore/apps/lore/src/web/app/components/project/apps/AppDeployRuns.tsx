@@ -11,12 +11,6 @@ export interface AppDeployRunsProps {
   projectId: number;
   instanceId: string;
   canWrite: boolean;
-  /**
-   * Bumped by the parent after a deploy starts, so the list picks the new run
-   * up without the parent knowing how this component fetches.
-   */
-  reloadToken: number;
-  onChanged: () => void;
 }
 
 /**
@@ -39,12 +33,11 @@ const AppDeployRuns = (props: AppDeployRunsProps) => {
 
   const { data, loading, error, refetch } = useQuery(
     {
-      key: [
-        "app-deployments",
-        props.projectId,
-        props.instanceId,
-        props.reloadToken,
-      ],
+      // Invalidated by the writes that add a run: a deploy started on this
+      // tab, and a rollback from one of the rows below (#E59, #Q2329).
+      key: ["app-deployments", props.projectId, props.instanceId],
+      // The list stays on screen while it is re-read after a write.
+      keepPreviousData: true,
       handler: async () =>
         await deployApi.listDeployments({
           params: {
@@ -52,8 +45,11 @@ const AppDeployRuns = (props: AppDeployRunsProps) => {
             instanceId: props.instanceId,
           },
         }),
+      // Handled: the card renders its own error state below, so the root
+      // `ActionErrorToaster` must not toast the same failure on top of it.
+      onError: () => {},
     },
-    [props.projectId, props.instanceId, props.reloadToken],
+    [props.projectId, props.instanceId],
   );
 
   const items = (data?.items ?? []) as Array<Record<string, any>>;
@@ -89,7 +85,6 @@ const AppDeployRuns = (props: AppDeployRunsProps) => {
                 canWrite={props.canWrite}
                 live={live}
                 onFollow={refetch}
-                onChanged={props.onChanged}
               />
             ))}
           </div>

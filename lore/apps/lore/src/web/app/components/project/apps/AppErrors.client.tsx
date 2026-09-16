@@ -211,7 +211,7 @@ const AppErrors = () => {
                   {group.count.toLocaleString()}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  {String(l(group.lastSeenAt, { date: "lll" }))}
+                  {l(group.lastSeenAt, { date: "lll" })}
                 </span>
               </div>
             ))}

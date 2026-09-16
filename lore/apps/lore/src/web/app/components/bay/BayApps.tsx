@@ -1,5 +1,5 @@
 import { Badge, formatBytes } from "@alepha/ui";
-import { AlephaTable } from "@alepha/ui/table";
+import { DataTable } from "@alepha/ui/table";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
@@ -54,18 +54,18 @@ const BayApps = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AlephaTable<BayInstanceRow>
+      <DataTable<BayInstanceRow>
         className="min-h-0 flex-1"
         data={rows}
         // The two empty states are different sentences: a machine that runs
         // nothing is not a filter that matched nothing.
         emptyState={{
-          title: String(tr("bay.apps.empty")),
-          description: String(tr("bay.apps.empty.description")),
+          title: tr("bay.apps.empty"),
+          description: tr("bay.apps.empty.description"),
         }}
         noMatchState={{
-          title: String(tr("bay.apps.noMatch")),
-          description: String(tr("bay.apps.noMatch.description")),
+          title: tr("bay.apps.noMatch"),
+          description: tr("bay.apps.noMatch.description"),
         }}
         // Memory descending, resolved in `bayInstanceRows` rather than handed
         // to the table's own sort: the answer has to put unmeasured rows last,
@@ -180,7 +180,7 @@ const BayApps = () => {
             cell: (row) => (
               <span className="text-muted-foreground text-xs">
                 {row.reported && row.startedAt
-                  ? String(l(row.startedAt, { date: "fromNow" }))
+                  ? l(row.startedAt, { date: "fromNow" })
                   : "-"}
               </span>
             ),
@@ -191,7 +191,7 @@ const BayApps = () => {
             cell: (row) => (
               <span className="text-muted-foreground text-xs">
                 {row.reported && row.lastRequestAt
-                  ? String(l(row.lastRequestAt, { date: "fromNow" }))
+                  ? l(row.lastRequestAt, { date: "fromNow" })
                   : row.reported && row.crons
                     ? // A cron changes the meaning of silence: an app that
                       // sends a weekly email answers nobody and is not
@@ -211,7 +211,7 @@ const BayApps = () => {
               return (
                 <span className="flex items-center gap-1.5 text-xs">
                   {row.lastBackupAt
-                    ? String(l(row.lastBackupAt, { date: "fromNow" }))
+                    ? l(row.lastBackupAt, { date: "fromNow" })
                     : tr("bay.apps.backupNever")}
                   {row.backupStale && (
                     <Badge variant="outline" className="text-xs">
@@ -248,7 +248,7 @@ const BayApps = () => {
               row.reported && row.problems.length > 0 ? (
                 <span
                   className="text-muted-foreground flex flex-col gap-0.5 font-mono text-xs"
-                  title={String(tr("bay.apps.problems.source"))}
+                  title={tr("bay.apps.problems.source")}
                 >
                   {row.problems.map((problem) => (
                     <span key={problem}>{problem}</span>

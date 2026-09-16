@@ -1,5 +1,4 @@
 import {
-  FilterSlot,
   TimeAgo,
   Badge,
   Dialog,
@@ -9,12 +8,16 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { AlephaTable } from "@alepha/ui/table";
+import {
+  type BulkActionContext,
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+} from "@alepha/ui/table";
 import { type Page, z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   AppWindow,
   CheckCircle2,
@@ -37,37 +40,11 @@ import { hasCapability } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import BlightSourceCell from "./BlightSourceCell.tsx";
+import { sigilNameParts } from "./sigilNameParts.ts";
 
 /**
- * Filter form, owned by AlephaTable: a status multi-select (open / resolved,
- * empty meaning both) and a sigil select (`"all"` or a sigil id). Both are
- * applied client-side over the already-fetched list.
- */
-const blightsFiltersSchema = z.object({
-  /**
-   * An ARRAY, and empty means every status (feedback #2092).
-   *
-   * ⚠️ `all` left the ENUM, not just the dropdown. It was a value standing in
-   * for the absence of a filter, which the convention expresses as an empty
-   * selection - and while it was a state, `fetchBlights` had to branch on it
-   * as though a blight could BE "all".
-   *
-   * The default is still `["open"]`, so the inbox opens on the triage queue
-   * rather than on its whole history.
-   */
-  status: z.array(z.enum(["open", "resolved"])).optional(),
-  /**
-   * Absent means every app, the same way an empty `status` means every
-   * status. It carried a literal `"all"` until feedback #2098: the select
-   * drew it as a row of its own, so "All sigils" sat in the list looking
-   * like an app you could pick, and `fetchBlights` had to branch on a
-   * sigil id that is not one.
-   */
-  sigilId: z.string().optional(),
-});
-
-/**
- * Owner-facing Blights inbox, built on {@link AlephaTable}.
+ * Owner-facing Blights inbox, built on {@link DataTable}.
  *
  * The `listBlights` endpoint returns the full deduplicated list (crashes are
  * folded by root cause, so the row count stays small), so sort + paging are
@@ -104,6 +81,118 @@ const ProjectBlights = () => {
     { id: string; label: string }[]
   >([]);
 
+  // One `useAction` per triage verb (#E59, #Q2329). A refusal is the server's
+  // sentence, toasted by the root `ActionErrorToaster`; follow-ups (the
+  // refresh, the navigation) run inside the handler, so none follows a
+  // failure.
+  const deleteManyAction = useAction<
+    [selected: BlightResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (selected, ctx) => {
+        if (!project || selected.length === 0) return;
+        const ok = await dialog.confirm({
+          title: tr("blights.deleteSelectedConfirm", {
+            args: [String(selected.length)],
+          }),
+          confirmLabel: tr("blights.action.delete"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await blightApi.deleteBlights({
+          params: { projectId: project.id },
+          body: { ids: selected.map((b) => b.id) },
+        });
+        toaster.success(
+          tr("blights.toast.deletedMany", {
+            args: [String(res.deleted)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [blightApi, project, dialog, toaster, tr],
+  );
+
+  const resolveAction = useAction<
+    [blight: BlightResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (blight, refresh) => {
+        if (!project) return;
+        await blightApi.resolveBlight({
+          params: { projectId: project.id, blightId: blight.id },
+        });
+        toaster.success(tr("blights.toast.resolved"));
+        refresh();
+      },
+    },
+    [blightApi, project, toaster, tr],
+  );
+
+  const forwardAction = useAction<
+    [blight: BlightResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (blight, refresh) => {
+        if (!project) return;
+        const res = await blightApi.forwardBlightToQuest({
+          params: { projectId: project.id, blightId: blight.id },
+        });
+        toaster.success(
+          tr("blights.toast.forwarded", {
+            args: [formatReference("quest", res.questShortId)],
+          }),
+        );
+        refresh();
+        void router.push("projectQuest", {
+          params: {
+            projectSlug: project.slug,
+            shortId: String(res.questShortId),
+          },
+        });
+      },
+    },
+    [blightApi, project, router, toaster, tr],
+  );
+
+  const deleteAction = useAction<
+    [blight: BlightResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (blight, refresh) => {
+        if (!project) return;
+        const ok = await dialog.confirm({
+          title: tr("blights.deleteConfirm"),
+          confirmLabel: tr("blights.action.delete"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await blightApi.deleteBlight({
+          params: { projectId: project.id, blightId: blight.id },
+        });
+        toaster.success(tr("blights.toast.deleted"));
+        refresh();
+      },
+    },
+    [blightApi, project, dialog, toaster, tr],
+  );
+
+  // Page-wide: every triage control waits while any verb runs, since `run()`
+  // drops a call made while its own is in flight.
+  const busy =
+    deleteManyAction.loading ||
+    resolveAction.loading ||
+    forwardAction.loading ||
+    deleteAction.loading;
+
   const renderStatus = (status: string) => {
     if (status === "resolved") {
       return <Badge variant="secondary">{tr("blights.status.resolved")}</Badge>;
@@ -117,8 +206,54 @@ const ProjectBlights = () => {
     return null;
   };
 
+  /**
+   * Both filters are applied client-side over the already-fetched list, and
+   * both are optional: the inbox has no search box.
+   */
+  const filterFields = {
+    /**
+     * An ARRAY, and empty means every status (feedback #2092).
+     *
+     * ⚠️ `all` left the ENUM, not just the dropdown. It was a value standing
+     * in for the absence of a filter, which the convention expresses as an
+     * empty selection - and while it was a state, `fetchBlights` had to branch
+     * on it as though a blight could BE "all".
+     *
+     * The default is still `["open"]` (`initialValues` below), so the inbox
+     * opens on the triage queue rather than on its whole history, and the
+     * filter holding that value keeps it on the bar.
+     */
+    status: {
+      schema: z.array(z.enum(["open", "resolved"])),
+      label: tr("blights.filter.status"),
+      icon: CircleDot,
+      items: [
+        { label: tr("blights.filter.open"), value: "open" },
+        { label: tr("blights.filter.resolved"), value: "resolved" },
+      ],
+      control: {
+        clearLabel: tr("blights.filter.all"),
+      },
+    },
+    /**
+     * Absent means every app, the same way an empty `status` means every
+     * status. It carried a literal `"all"` until feedback #2098: the select
+     * drew it as a row of its own, so "All sigils" sat in the list looking
+     * like an app you could pick. The options are filled by the fetcher, so
+     * the filter is hidden until there are some.
+     */
+    sigilId: {
+      schema: z.string(),
+      label: tr("blights.filter.sigil"),
+      icon: AppWindow,
+      items: sigilOptions.map((s) => ({ label: s.label, value: s.id })),
+      hidden: sigilOptions.length === 0,
+      control: { clearLabel: tr("blights.filter.allApps") },
+    },
+  } satisfies DataTableFilterFields;
+
   // Fetch the full list, keep the sidebar badge in sync, then sort + slice
-  // client-side into the `Page` shape AlephaTable consumes.
+  // client-side into the `Page` shape DataTable consumes.
   const fetchBlights = async ({
     page,
     size,
@@ -128,7 +263,7 @@ const ProjectBlights = () => {
     page: number;
     size: number;
     sort?: string;
-    filters?: Record<string, any>;
+    filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<BlightResource>> => {
     if (!project) {
       return emptyPage(page, size);
@@ -137,7 +272,7 @@ const ProjectBlights = () => {
     // Anything else needs the full set, with `resolved` narrowed client-side:
     // an empty selection now means every status, which is the case the old
     // `"all"` value used to name.
-    const statuses = (filters?.status as string[] | undefined) ?? [];
+    const statuses = filters?.status ?? [];
     const openOnly = statuses.length === 1 && statuses[0] === "open";
     const res = await blightApi.listBlights({
       params: { projectId: project.id },
@@ -151,13 +286,13 @@ const ProjectBlights = () => {
     alepha.store.set(currentBlightCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
 
-    const stored = filters?.sigilId as string | undefined;
+    const stored = filters?.sigilId;
     // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
     // machine of anyone who used the inbox before feedback #2098 - filters
     // persist per `persistenceKey`, and `reconcilePersistedFilters` reshapes
     // containers rather than values, so it arrives here untouched. Read as
     // absent: no blight carries it, so the alternative is an empty table
-    // under a trigger that says "All sigils", which is the worst of both.
+    // under a trigger that says "All apps", which is the worst of both.
     const sigilId = stored === "all" ? undefined : stored;
     const resolvedOnly = statuses.length === 1 && statuses[0] === "resolved";
     const statusFiltered = resolvedOnly
@@ -187,55 +322,18 @@ const ProjectBlights = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <AlephaTable<BlightResource>
+      <DataTable<BlightResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={project ? `lor.blights.${project.id}` : "lor.blights"}
         defaultSort={{ field: "count", direction: "desc" }}
         emptyMessage={tr("blights.empty")}
         filters={{
-          schema: blightsFiltersSchema,
+          fields: filterFields,
           initialValues: { status: ["open"] },
-          render: (form) => (
-            <div className="flex flex-wrap gap-2">
-              <FilterSlot>
-                <Control
-                  input={form.input.status}
-                  label=""
-                  clearable
-                  icon={CircleDot}
-                  clearLabel={tr("blights.filter.all")}
-                  countLabel={(n) =>
-                    String(
-                      tr("blights.filter.statusCount", { args: [String(n)] }),
-                    )
-                  }
-                  triggerClassName="w-full"
-                  items={[
-                    { label: tr("blights.filter.open"), value: "open" },
-                    { label: tr("blights.filter.resolved"), value: "resolved" },
-                  ]}
-                />
-              </FilterSlot>
-              <div className="w-52">
-                <Control
-                  input={form.input.sigilId}
-                  label=""
-                  clearable
-                  icon={AppWindow}
-                  clearLabel={tr("blights.filter.allSigils")}
-                  triggerClassName="w-full"
-                  items={sigilOptions.map((s) => ({
-                    label: s.label,
-                    value: s.id,
-                  }))}
-                />
-              </div>
-            </div>
-          ),
         }}
         // ⚠️ `toolbar`, not `actions`: `AgentPromptsMenu` is a dropdown
         // trigger rather than a button that acts on click, which is the
-        // distinction `AlephaTable`'s own note draws between the two slots.
+        // distinction `DataTable`'s own note draws between the two slots.
         //
         // Two switches, like the feedback inbox: the menu renders nothing
         // when the project has `agentPrompts` off, and this passes no items
@@ -265,35 +363,12 @@ const ProjectBlights = () => {
                   icon: Trash2,
                   label: tr("blights.action.deleteSelected"),
                   destructive: true,
-                  onClick: async (selected, { refresh, clearSelection }) => {
-                    if (!project || selected.length === 0) return;
-                    const ok = await dialog.confirm({
-                      title: tr("blights.deleteSelectedConfirm", {
-                        args: [String(selected.length)],
-                      }) as string,
-                      confirmLabel: tr("blights.action.delete"),
-                      cancelLabel: tr("common.cancel"),
-                      destructive: true,
-                    });
-                    if (!ok) return;
-                    try {
-                      const res = await blightApi.deleteBlights({
-                        params: { projectId: project.id },
-                        body: { ids: selected.map((b) => b.id) },
-                      });
-                      toaster.success(
-                        tr("blights.toast.deletedMany", {
-                          args: [String(res.deleted)],
-                        }),
-                      );
-                      clearSelection();
-                      refresh();
-                    } catch (error) {
-                      toaster.error(
-                        error instanceof Error ? error.message : String(error),
-                      );
-                    }
-                  },
+                  // Hidden while a triage verb runs: the bulk bar has no
+                  // disabled state, and a second click would be dropped by
+                  // `run()` without a word.
+                  visible: () => !busy,
+                  onClick: (selected, ctx) =>
+                    void deleteManyAction.run(selected, ctx),
                 },
               ]
         }
@@ -319,20 +394,40 @@ const ProjectBlights = () => {
               </div>
             ),
           },
+          app: {
+            label: tr("blights.col.app"),
+            className: "max-w-[180px]",
+            // The app that reported the blight most recently, linked to its
+            // page, named "lore/production" the way the filter lists it. A
+            // blight whose sigil was deleted keeps a null `sigilId`.
+            cell: (b) => {
+              const name = sigilOptions.find((s) => s.id === b.sigilId)?.label;
+              const parts = name ? sigilNameParts(name) : undefined;
+              if (!project || !parts) {
+                return <span className="text-muted-foreground text-xs">-</span>;
+              }
+              return (
+                <Link
+                  href={router.path("app", {
+                    params: {
+                      projectSlug: project.slug,
+                      app: parts.app,
+                      env: parts.env,
+                    },
+                  })}
+                  className="block truncate hover:underline"
+                >
+                  {name}
+                </Link>
+              );
+            },
+          },
           page: {
             label: tr("blights.col.page"),
             className: "max-w-[260px]",
-            cell: (b) =>
-              b.sourceUrl ? (
-                <span
-                  className="text-muted-foreground block truncate text-xs"
-                  title={b.sourceUrl}
-                >
-                  {b.sourceUrl}
-                </span>
-              ) : (
-                <span className="text-muted-foreground text-xs">—</span>
-              ),
+            // A link out for an http(s) page, text for a route pattern or a
+            // job name (feedback #P2200); the scheme check lives in the cell.
+            cell: (b) => <BlightSourceCell sourceUrl={b.sourceUrl} />,
           },
           count: {
             label: tr("blights.col.count"),
@@ -373,64 +468,20 @@ const ProjectBlights = () => {
                   {
                     icon: CheckCircle2,
                     label: tr("blights.action.resolve"),
-                    onClick: async (
+                    disabled: () => busy,
+                    onClick: (
                       blight: BlightResource,
                       { refresh }: { refresh: () => void },
-                    ) => {
-                      if (!project) return;
-                      try {
-                        await blightApi.resolveBlight({
-                          params: {
-                            projectId: project.id,
-                            blightId: blight.id,
-                          },
-                        });
-                        toaster.success(tr("blights.toast.resolved"));
-                        refresh();
-                      } catch (error) {
-                        toaster.error(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                        );
-                      }
-                    },
+                    ) => void resolveAction.run(blight, refresh),
                   },
                   {
                     icon: Send,
                     label: tr("blights.action.forward"),
-                    onClick: async (
+                    disabled: () => busy,
+                    onClick: (
                       blight: BlightResource,
                       { refresh }: { refresh: () => void },
-                    ) => {
-                      if (!project) return;
-                      try {
-                        const res = await blightApi.forwardBlightToQuest({
-                          params: {
-                            projectId: project.id,
-                            blightId: blight.id,
-                          },
-                        });
-                        toaster.success(
-                          tr("blights.toast.forwarded", {
-                            args: [formatReference("quest", res.questShortId)],
-                          }),
-                        );
-                        refresh();
-                        void router.push("projectQuest", {
-                          params: {
-                            projectSlug: project.slug,
-                            shortId: String(res.questShortId),
-                          },
-                        });
-                      } catch (error) {
-                        toaster.error(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                        );
-                      }
-                    },
+                    ) => void forwardAction.run(blight, refresh),
                   },
                 ]),
             ...(!canTriage
@@ -440,35 +491,11 @@ const ProjectBlights = () => {
                     icon: Trash2,
                     label: tr("blights.action.delete"),
                     destructive: true,
-                    onClick: async (
+                    disabled: () => busy,
+                    onClick: (
                       blight: BlightResource,
                       { refresh }: { refresh: () => void },
-                    ) => {
-                      if (!project) return;
-                      const ok = await dialog.confirm({
-                        title: tr("blights.deleteConfirm"),
-                        confirmLabel: tr("blights.action.delete"),
-                        cancelLabel: tr("common.cancel"),
-                        destructive: true,
-                      });
-                      if (!ok) return;
-                      try {
-                        await blightApi.deleteBlight({
-                          params: {
-                            projectId: project.id,
-                            blightId: blight.id,
-                          },
-                        });
-                        toaster.success(tr("blights.toast.deleted"));
-                        refresh();
-                      } catch (error) {
-                        toaster.error(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                        );
-                      }
-                    },
+                    ) => void deleteAction.run(blight, refresh),
                   },
                 ]),
           ];

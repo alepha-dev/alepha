@@ -178,7 +178,7 @@ const ProjectSettingsMembersSection = (
               <Control
                 select
                 input={inviteForm.input.rank}
-                label={String(tr("project.settings.members.invite.rank"))}
+                label={tr("project.settings.members.invite.rank")}
                 items={projectRanks.ranks
                   // `owner` is not an assignment target, so it is not an
                   // invitation target either.
@@ -186,9 +186,7 @@ const ProjectSettingsMembersSection = (
                   .map((rank) => ({ value: rank.key, label: rank.name }))}
                 inputProps={{
                   "data-testid": "invite-rank",
-                  "aria-label": String(
-                    tr("project.settings.members.invite.rank"),
-                  ),
+                  "aria-label": tr("project.settings.members.invite.rank"),
                 }}
               />
             )}
@@ -280,11 +278,9 @@ const ProjectSettingsMembersSection = (
                           size="icon"
                           data-testid="member-actions"
                           disabled={removeMember.loading}
-                          aria-label={String(
-                            tr("project.settings.members.actions", {
-                              args: [nameOf(member)],
-                            }),
-                          )}
+                          aria-label={tr("project.settings.members.actions", {
+                            args: [nameOf(member)],
+                          })}
                         />
                       }
                     >
@@ -364,11 +360,9 @@ const ProjectSettingsMembersSection = (
                           size="icon"
                           data-testid="invitation-actions"
                           disabled={revokeInvitation.loading}
-                          aria-label={String(
-                            tr("project.settings.members.actions", {
-                              args: [invitation.email],
-                            }),
-                          )}
+                          aria-label={tr("project.settings.members.actions", {
+                            args: [invitation.email],
+                          })}
                         />
                       }
                     >

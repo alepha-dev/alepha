@@ -1,7 +1,14 @@
 import { useDialog, cn } from "@alepha/ui";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ProjectDashboardController } from "@/api/controllers/ProjectDashboardController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -81,8 +88,6 @@ const ProjectDashboard = () => {
   const [releases] = useStore(currentReleasesAtom);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
-  const [apps, setApps] = useState<DashboardScopeApp[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
 
   const projectId = project?.id;
   /**
@@ -121,89 +126,107 @@ const ProjectDashboard = () => {
   const cards = board.projectId === projectId ? board.cards : [];
   const values = board.projectId === projectId ? board.values : undefined;
 
-  const resolve = async (next: DashboardCardResource[]) => {
-    if (!projectId) return;
-    if (next.length === 0) {
-      alepha.store.set(projectDashboardAtom, {
-        projectId,
-        cards: next,
-        values: [],
-      });
-      return;
-    }
-    const resolved = await boardApi
-      .resolveProjectDashboardCards({ params: { projectId }, body: {} })
-      .catch(() => undefined);
-    alepha.store.set(projectDashboardAtom, {
-      projectId,
-      cards: next,
-      values: resolved?.values ?? [],
-      refreshedAt: resolved?.refreshedAt,
-    });
-  };
-
   /**
-   * One list-and-resolve per project.
+   * One list-and-resolve per project, and a resolve after each mutation.
    *
-   * ⚠️ `cards` is deliberately NOT in the dependency list: every mutation
-   * below re-resolves explicitly, and keying this on state the same effect
-   * writes is precisely how a loader turns into a request loop.
+   * Lists only when the store does not already hold this project's cards, so
+   * a mutation (which writes them first and calls this through `refetch`)
+   * resolves without listing again. A project change supersedes the run in
+   * flight, and the `signal` check keeps its late answer out of the store.
+   *
+   * ⚠️ Reads the cards from the store, never from a dependency: keying this on
+   * state it writes is precisely how a loader turns into a request loop.
    */
-  useEffect(() => {
-    if (!projectId) return;
-    let cancelled = false;
-    void (async () => {
-      const held = alepha.store.get(projectDashboardAtom);
-      const listed =
-        held.projectId === projectId
-          ? held.cards
-          : ((
-              await boardApi
-                .listProjectDashboardCards({ params: { projectId } })
-                .catch(() => undefined)
-            )?.cards ?? []);
-      if (!cancelled) await resolve(listed);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
+  const loadAction = useAction<[], void>(
+    {
+      handler: async ({ signal }) => {
+        if (!projectId) return;
+        const held = alepha.store.get(projectDashboardAtom);
+        const listed =
+          held.projectId === projectId
+            ? held.cards
+            : (
+                await boardApi.listProjectDashboardCards({
+                  params: { projectId },
+                })
+              ).cards;
+        if (signal.aborted) return;
+        if (listed.length === 0) {
+          alepha.store.set(projectDashboardAtom, {
+            projectId,
+            cards: listed,
+            values: [],
+          });
+          return;
+        }
+        const resolved = await boardApi.resolveProjectDashboardCards({
+          params: { projectId },
+          body: {},
+        });
+        if (signal.aborted) return;
+        const current = alepha.store.get(projectDashboardAtom);
+        alepha.store.set(projectDashboardAtom, {
+          projectId,
+          // A mutation that landed while this resolved wrote the newer list.
+          cards: current.projectId === projectId ? current.cards : listed,
+          values: resolved.values,
+          refreshedAt: resolved.refreshedAt,
+        });
+      },
+      // Quiet on purpose: a board that cannot list or resolve renders its
+      // cards empty (or its empty state), and error reporting still sees it.
+      onError: () => {
+        if (!projectId) return;
+        const held = alepha.store.get(projectDashboardAtom);
+        alepha.store.set(projectDashboardAtom, {
+          projectId,
+          cards: held.projectId === projectId ? held.cards : [],
+          values: [],
+        });
+      },
+      runOnInit: true,
+    },
+    [alepha, boardApi, projectId],
+  );
 
   /**
    * What the scope and filter steps can offer, fetched only when the panel
    * opens: a board with no app-scoped or tag-filtered card never needs either,
    * and the project's landing page must not pay for a picker nobody opened.
-   * Failures cost the picker its options, never the page.
+   * Each read's failure costs the picker its options, never the page: the two
+   * catches are deliberate partial success, not swallowed errors.
    */
-  useEffect(() => {
-    if (!catalogueOpen || !projectId) return;
-    let cancelled = false;
-    void Promise.all([
-      sigilApi
-        .listSigils({ params: { projectId } })
-        .then((res) =>
-          res.items.map((sigil) => ({
-            id: sigil.id,
-            name: sigil.name,
-            projectId,
-            projectTitle: project?.title ?? "",
-            beacon: (sigil.kinds ?? []).includes("beacon"),
-          })),
-        )
-        .catch(() => []),
-      questApi
-        .listQuestTags({ query: { projectId } })
-        .then((res) => res)
-        .catch(() => []),
-    ]).then(([foundApps, foundTags]) => {
-      if (cancelled) return;
-      setApps(foundApps);
-      setTags(foundTags);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [catalogueOpen, projectId]);
+  const pickers = useQuery(
+    {
+      key: ["project-dashboard-pickers", projectId],
+      staleTime: [5, "minutes"],
+      enabled: catalogueOpen && !!projectId,
+      handler: async () => {
+        const id = projectId as number;
+        const [foundApps, foundTags] = await Promise.all([
+          sigilApi
+            .listSigils({ params: { projectId: id } })
+            .then((res) =>
+              res.items.map((sigil) => ({
+                id: sigil.id,
+                name: sigil.name,
+                projectId: id,
+                projectTitle: project?.title ?? "",
+                beacon: (sigil.kinds ?? []).includes("beacon"),
+              })),
+            )
+            .catch((): DashboardScopeApp[] => []),
+          questApi
+            .listQuestTags({ query: { projectId: id } })
+            .catch((): string[] => []),
+        ]);
+        return { apps: foundApps, tags: foundTags };
+      },
+    },
+    [sigilApi, questApi, projectId, catalogueOpen],
+  ).data;
+  const apps = pickers?.apps ?? [];
+  const tags = pickers?.tags ?? [];
 
   /**
    * Adopt a new card list and re-resolve it.
@@ -219,7 +242,7 @@ const ProjectDashboard = () => {
       projectId,
       cards: next,
     });
-    void resolve(next);
+    void loadAction.refetch();
   };
 
   const currentCards = () => {
@@ -227,73 +250,125 @@ const ProjectDashboard = () => {
     return held.projectId === projectId ? held.cards : [];
   };
 
-  const onReorder = async (ids: number[]) => {
-    if (!projectId) return;
-    // Optimistic: the drop already moved the tile under the reader's cursor,
-    // and putting it back for the length of a round-trip would read as the
-    // drag having failed.
-    const byId = new Map(currentCards().map((card) => [card.id, card]));
-    const next = ids.map((id) => byId.get(id)!).filter(Boolean);
-    alepha.store.set(projectDashboardAtom, {
-      ...alepha.store.get(projectDashboardAtom),
-      projectId,
-      cards: next,
-    });
-    await boardApi
-      .reorderProjectDashboardCards({ params: { projectId }, body: { ids } })
-      .catch(() => undefined);
-  };
+  const reorderAction = useAction<[ids: number[]], void>(
+    {
+      handler: async (ids) => {
+        if (!projectId) return;
+        // Optimistic: the drop already moved the tile under the reader's
+        // cursor, and putting it back for the length of a round-trip would
+        // read as the drag having failed.
+        const byId = new Map(currentCards().map((card) => [card.id, card]));
+        const next = ids.map((id) => byId.get(id)!).filter(Boolean);
+        alepha.store.set(projectDashboardAtom, {
+          ...alepha.store.get(projectDashboardAtom),
+          projectId,
+          cards: next,
+        });
+        await boardApi.reorderProjectDashboardCards({
+          params: { projectId },
+          body: { ids },
+        });
+      },
+      // ⚠️ Deliberately quiet, and deliberately no rollback: a failed reorder
+      // keeps the new order on screen until the next load, and does not
+      // toast. A tile that jumped back after the drop would read as the drag
+      // failing, and error reporting still sees the refusal.
+      onError: () => {},
+    },
+    [alepha, boardApi, projectId],
+  );
 
-  const onRemove = async (card: DashboardCardResource) => {
-    if (!projectId) return;
-    const confirmed = await dialog.confirm({
-      title: String(tr("dashboard.card.delete.confirm")),
-      description: String(tr("project.dashboard.card.delete.shared")),
-      confirmLabel: String(tr("dashboard.card.delete")),
-      destructive: true,
-    });
-    if (!confirmed) return;
-    await boardApi.removeProjectDashboardCard({
-      params: { projectId, cardId: card.id },
-    });
-    apply(currentCards().filter((it) => it.id !== card.id));
-  };
+  const removeAction = useAction<[card: DashboardCardResource], void>(
+    {
+      handler: async (card) => {
+        if (!projectId) return;
+        const confirmed = await dialog.confirm({
+          title: tr("dashboard.card.delete.confirm"),
+          description: tr("project.dashboard.card.delete.shared"),
+          confirmLabel: tr("dashboard.card.delete"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await boardApi.removeProjectDashboardCard({
+          params: { projectId, cardId: card.id },
+        });
+        apply(currentCards().filter((it) => it.id !== card.id));
+      },
+    },
+    [alepha, boardApi, dialog, projectId, tr],
+  );
 
-  const onDuplicate = async (card: DashboardCardResource) => {
-    if (!projectId) return;
-    const made = await boardApi.addProjectDashboardCard({
-      params: { projectId },
-      body: { metric: card.metric, scope: card.scope, filters: card.filters },
-    });
-    apply([...currentCards(), made]);
-  };
+  const duplicateAction = useAction<[card: DashboardCardResource], void>(
+    {
+      handler: async (card) => {
+        if (!projectId) return;
+        const made = await boardApi.addProjectDashboardCard({
+          params: { projectId },
+          body: {
+            metric: card.metric,
+            scope: card.scope,
+            filters: card.filters,
+          },
+        });
+        apply([...currentCards(), made]);
+      },
+    },
+    [alepha, boardApi, projectId],
+  );
 
-  const onAdd = async (input: {
-    metric: string;
-    scope: DashboardScope;
-    filters: Record<string, unknown>;
-  }) => {
-    if (!projectId) return;
-    const made = await boardApi.addProjectDashboardCard({
-      params: { projectId },
-      body: input as never,
-    });
-    setCatalogueOpen(false);
-    apply([...currentCards(), made]);
-  };
+  const addAction = useAction<
+    [
+      input: {
+        metric: string;
+        scope: DashboardScope;
+        filters: Record<string, unknown>;
+      },
+    ],
+    void
+  >(
+    {
+      handler: async (input) => {
+        if (!projectId) return;
+        const made = await boardApi.addProjectDashboardCard({
+          params: { projectId },
+          body: input as never,
+        });
+        setCatalogueOpen(false);
+        apply([...currentCards(), made]);
+      },
+    },
+    [alepha, boardApi, projectId],
+  );
 
-  const onUpdate = async (
-    card: DashboardCardResource,
-    input: { scope: DashboardScope; filters: Record<string, unknown> },
-  ) => {
-    if (!projectId) return;
-    const updated = await boardApi.updateProjectDashboardCard({
-      params: { projectId, cardId: card.id },
-      body: input as never,
-    });
-    setCatalogueOpen(false);
-    apply(currentCards().map((it) => (it.id === card.id ? updated : it)));
-  };
+  const updateAction = useAction<
+    [
+      card: DashboardCardResource,
+      input: { scope: DashboardScope; filters: Record<string, unknown> },
+    ],
+    void
+  >(
+    {
+      handler: async (card, input) => {
+        if (!projectId) return;
+        const updated = await boardApi.updateProjectDashboardCard({
+          params: { projectId, cardId: card.id },
+          body: input as never,
+        });
+        setCatalogueOpen(false);
+        apply(currentCards().map((it) => (it.id === card.id ? updated : it)));
+      },
+    },
+    [alepha, boardApi, projectId],
+  );
+
+  /**
+   * Every card control waits while a write runs (#E59 rule 10).
+   */
+  const busy =
+    removeAction.loading ||
+    duplicateAction.loading ||
+    addAction.loading ||
+    updateAction.loading;
 
   const openCatalogue = () => {
     setEditing(undefined);
@@ -333,14 +408,15 @@ const ProjectDashboard = () => {
             metrics={metrics}
             boardProjectId={projectId}
             canEdit={canEdit}
-            onReorder={onReorder}
+            onReorder={(ids) => void reorderAction.run(ids)}
             onAdd={openCatalogue}
             onChangeScope={(card) => {
               setEditing(card);
               setCatalogueOpen(true);
             }}
-            onDuplicate={onDuplicate}
-            onRemove={onRemove}
+            onDuplicate={(card) => void duplicateAction.run(card)}
+            onRemove={(card) => void removeAction.run(card)}
+            busy={busy}
           />
         </>
       )}
@@ -364,8 +440,9 @@ const ProjectDashboard = () => {
         projectTags={tags}
         editing={editing}
         onClose={() => setCatalogueOpen(false)}
-        onAdd={onAdd}
-        onUpdate={onUpdate}
+        onAdd={(input) => void addAction.run(input)}
+        onUpdate={(card, input) => void updateAction.run(card, input)}
+        busy={busy}
       />
     </div>
   );

@@ -31,7 +31,7 @@ export interface ProjectQuestLogRailProps {
 const ProjectQuestLogRail = (props: ProjectQuestLogRailProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const [quests = []] = useStore(currentAssignedQuestsAtom);
-  const label = String(tr("quest-log.expand-panel"));
+  const label = tr("quest-log.expand-panel");
 
   return (
     <button

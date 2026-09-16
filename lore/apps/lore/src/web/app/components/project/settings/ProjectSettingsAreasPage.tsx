@@ -15,7 +15,7 @@ import {
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useAction, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
@@ -71,30 +71,32 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
   // One permission behind three areas verbs on the server, so one flag here.
   const canManage = areaApi.deleteArea.can();
 
-  const remove = async (area: AreaResource) => {
-    const ok = await dialog.confirm({
-      title: String(tr("project.settings.areas.delete.confirm")),
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await areaApi.deleteArea({ params: { id: area.id } });
-      await reload();
-    } catch (error) {
+  const removeAction = useAction<[area: AreaResource], void>(
+    {
+      handler: async (area) => {
+        const ok = await dialog.confirm({
+          title: tr("project.settings.areas.delete.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await areaApi.deleteArea({ params: { id: area.id } });
+        await reload();
+      },
       // The row only offers this button when the loader's snapshot showed
-      // `questCount === 0`, but a quest can land here between that read
-      // and this click (another tab, another member). The server's own
-      // refusal is authoritative; show its friendlier localized wording
-      // instead of the raw `BadRequestError` message.
-      toaster.error(
-        HttpError.is(error, 400)
-          ? String(tr("project.settings.areas.delete.blocked"))
-          : error instanceof Error
-            ? error.message
-            : String(error),
-      );
-    }
-  };
+      // `questCount === 0`, but a quest can land here between that read and
+      // this click (another tab, another member). The server's own refusal
+      // is authoritative; its friendlier localized wording is shown instead
+      // of the raw `BadRequestError` message. Toasted here, since an
+      // `onError` marks the failure handled and the root listener skips it.
+      onError: (error) =>
+        toaster.error(
+          HttpError.is(error, 400)
+            ? tr("project.settings.areas.delete.blocked")
+            : error.message,
+        ),
+    },
+    [areaApi, dialog, toaster, tr],
+  );
 
   const sources = props.areas.filter((a) => selected.has(a.id));
   const candidates = props.areas.filter((a) => !selected.has(a.id));
@@ -210,7 +212,8 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void remove(area)}
+                          disabled={removeAction.loading}
+                          onClick={() => void removeAction.run(area)}
                         >
                           {tr("project.settings.areas.delete.action")}
                         </Button>

@@ -66,7 +66,7 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         value={props.find.query}
         onChange={(e) => props.find.setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={String(tr("folios.editor.find.placeholder"))}
+        placeholder={tr("folios.editor.find.placeholder")}
         className="h-7 w-56 text-xs"
       />
       <span className="folio-mono text-muted-foreground w-20 shrink-0 text-center text-xs tabular-nums">
@@ -77,8 +77,8 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         size="icon"
         className="size-7"
         disabled={props.find.total === 0}
-        aria-label={String(tr("folios.editor.find.previous"))}
-        title={String(tr("folios.editor.find.previous"))}
+        aria-label={tr("folios.editor.find.previous")}
+        title={tr("folios.editor.find.previous")}
         onClick={props.find.previous}
       >
         <ChevronUp className="size-4" />
@@ -88,8 +88,8 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         size="icon"
         className="size-7"
         disabled={props.find.total === 0}
-        aria-label={String(tr("folios.editor.find.next"))}
-        title={String(tr("folios.editor.find.next"))}
+        aria-label={tr("folios.editor.find.next")}
+        title={tr("folios.editor.find.next")}
         onClick={props.find.next}
       >
         <ChevronDown className="size-4" />
@@ -98,8 +98,8 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         variant="ghost"
         size="icon"
         className="size-7"
-        aria-label={String(tr("folios.editor.find.close"))}
-        title={String(tr("folios.editor.find.close"))}
+        aria-label={tr("folios.editor.find.close")}
+        title={tr("folios.editor.find.close")}
         onClick={props.find.close}
       >
         <X className="size-4" />

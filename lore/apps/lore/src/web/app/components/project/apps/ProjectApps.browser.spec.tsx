@@ -100,7 +100,7 @@ describe("the Apps list", () => {
     } as never;
   });
 
-  // ⚠️ `AlephaTable` persists its filters, so a case would otherwise inherit
+  // ⚠️ `DataTable` persists its filters, so a case would otherwise inherit
   // the previous one's selection and narrow a table it never touched.
   afterEach(() => {
     localStorage.clear();
@@ -240,11 +240,36 @@ describe("the Apps list", () => {
       anInstance("club", "production"),
     ];
 
+    /**
+     * The add menu, opened. Every filter here is optional, so it starts off
+     * the bar (#E58) and is reached through this menu.
+     */
+    const openAddMenu = async () => {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+        key: "ArrowDown",
+      });
+      return screen.findByRole("menu");
+    };
+
+    /**
+     * Pick one option of a filter: added from the menu when it is not on the
+     * bar yet, which opens its list, or opened where it stands.
+     */
     const pick = async (filter: string, option: string | RegExp) => {
-      const trigger = screen.getByRole("combobox", { name: filter });
-      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      if (!screen.queryByRole("combobox", { name: filter })) {
+        const menu = await openAddMenu();
+        fireEvent.click(
+          within(menu).getByRole("menuitem", {
+            name: new RegExp(`^${filter}`),
+          }),
+        );
+      } else {
+        fireEvent.keyDown(screen.getByRole("combobox", { name: filter }), {
+          key: "ArrowDown",
+        });
+      }
       fireEvent.click(await screen.findByRole("option", { name: option }));
-      return trigger;
+      return screen.getByRole("combobox", { name: filter });
     };
 
     it("narrows to one app, keeping every env of it", async ({ expect }) => {
@@ -327,9 +352,9 @@ describe("the Apps list", () => {
       ).toEqual(["api", "club"]);
       fireEvent.keyDown(list, { key: "Escape" });
 
-      fireEvent.click(
-        screen.getAllByRole("button", { name: "Clear selection" })[0]!,
-      );
+      // The bar's own cross, which empties the filter and leaves it on the
+      // bar; the select's in-field one is hidden inside the bar's box.
+      fireEvent.click(screen.getByRole("button", { name: "Clear value: App" }));
 
       // Env survives: two apps are in production.
       await waitFor(() => expect(rowText(view)).toHaveLength(2));
@@ -346,13 +371,17 @@ describe("the Apps list", () => {
         anInstance("api", "staging"),
       ]);
 
-      await waitFor(() =>
-        expect(screen.queryByRole("combobox", { name: "App" })).toBeNull(),
-      );
+      // Not on the bar, and not offered by the menu either: hidden is off
+      // both.
+      const menu = await openAddMenu();
+      expect(within(menu).queryByRole("menuitem", { name: /^App/ })).toBeNull();
       expect(
-        screen.queryByRole("combobox", { name: "Environment" }),
+        within(menu).queryByRole("menuitem", { name: /^Environment/ }),
       ).not.toBeNull();
-      expect(screen.queryByRole("combobox", { name: "Status" })).not.toBeNull();
+      expect(
+        within(menu).queryByRole("menuitem", { name: /^Status/ }),
+      ).not.toBeNull();
+      expect(screen.queryByRole("combobox", { name: "App" })).toBeNull();
     });
   });
 
@@ -490,7 +519,7 @@ describe("the Apps list", () => {
 
     /**
      * ⚠️ A row in this table navigates to the instance page
-     * (`AlephaTable`'s `onRowClick`, which is React's own `onClick` on the
+     * (`DataTable`'s `onRowClick`, which is React's own `onClick` on the
      * `<tr>`). Without `stopPropagation` one click both opens the app in a
      * new tab AND moves the page underneath, so the reader comes back to
      * somewhere they never asked for.

@@ -33,6 +33,10 @@ const FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
  * Returns `undefined` when disabled — protected folios must not upload
  * plaintext bytes next to encrypted content, and the editor hides its
  * image button when no handler is provided.
+ *
+ * A plain function, not a `useAction` run, on purpose (#E59): the markdown
+ * editor awaits the path it returns and needs a failure to reject, which a
+ * `run()` resolving `undefined` would not do.
  */
 export const useFolioImageUpload = (
   projectId: number | undefined,

@@ -6,7 +6,7 @@ import {
 } from "./_helpers.ts";
 
 /**
- * `AlephaTable` on a phone, driven at 412x915 - the real Chrome-on-Android
+ * `DataTable` on a phone, driven at 412x915 - the real Chrome-on-Android
  * viewport feedback #2106 was filed from, not a round number.
  *
  * The table is `@alepha/ui`, but its two layouts are decided by
@@ -22,7 +22,7 @@ import {
  * opening line is that the table is much better than it was: the risk in this
  * change is undoing that above the breakpoint, not failing to help below it.
  */
-test.describe("AlephaTable on a phone", () => {
+test.describe("DataTable on a phone", () => {
   test("filters move into a dialog and the footer fits one line", async ({
     page,
   }) => {
@@ -48,7 +48,7 @@ test.describe("AlephaTable on a phone", () => {
 
     const filterTrigger = page.locator('[data-slot="dialog-trigger"]').first();
     // The bar's own form, which is the element that must NOT exist below the
-    // breakpoint. Matched on the layout classes `AlephaTable` gives it rather
+    // breakpoint. Matched on the layout classes `DataTable` gives it rather
     // than on a test id, so a rewrite of the bar fails this rather than
     // silently passing against a hook nobody renders any more.
     const filterBar = page.locator("form.flex.flex-1.flex-wrap");
