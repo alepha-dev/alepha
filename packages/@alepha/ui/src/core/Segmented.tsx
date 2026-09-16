@@ -199,6 +199,55 @@ export const Segmented = (props: SegmentedProps) => {
     onChange?.(next);
   };
 
+  /**
+   * Arrow-key navigation, which `role="radiogroup"` promises and this did not
+   * deliver: a radio group moves between its options with the arrow keys, and
+   * moving the selection moves the focus with it. Home and End jump to the
+   * ends, and the walk wraps.
+   *
+   * Disabled options are stepped OVER rather than landed on, so a group whose
+   * neighbour is disabled still reaches the one past it. A group with nothing
+   * enabled to move to leaves the selection alone rather than looping forever.
+   */
+  const moveSelection = (from: number, step: number) => {
+    for (let i = 1; i <= options.length; i++) {
+      const next =
+        (from + step * i + options.length * options.length) % options.length;
+      const opt = options[next];
+      if (!opt || opt.disabled) continue;
+      handleSelect(opt.value);
+      itemRefs.current[next]?.focus();
+      return;
+    }
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    const current = options.findIndex((o) => o.value === value);
+    const from = current === -1 ? 0 : current;
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        event.preventDefault();
+        moveSelection(from, 1);
+        return;
+      case "ArrowLeft":
+      case "ArrowUp":
+        event.preventDefault();
+        moveSelection(from, -1);
+        return;
+      case "Home":
+        event.preventDefault();
+        moveSelection(-1, 1);
+        return;
+      case "End":
+        event.preventDefault();
+        moveSelection(options.length, -1);
+        return;
+      default:
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -265,6 +314,7 @@ export const Segmented = (props: SegmentedProps) => {
             name={name}
             value={opt.value}
             onClick={() => !itemDisabled && handleSelect(opt.value)}
+            onKeyDown={onKeyDown}
             className={cn(
               "relative z-10 inline-flex min-w-0 items-center justify-center rounded-[calc(var(--radius)-2px)] font-medium whitespace-nowrap",
               "transition-colors duration-150 ease-in-out",
