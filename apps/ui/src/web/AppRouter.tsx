@@ -28,7 +28,8 @@ export class AppRouter {
       this.autoFormBasic,
       this.autoFormObject,
       this.autoFormArray,
-      this.blocksTable,
+      this.dataTableBasic,
+      this.dataTableAddons,
       this.blocksTree,
       this.blocksDialog,
       this.blocksToast,
@@ -191,11 +192,18 @@ export class AppRouter {
     lazy: () => import("./pages/blocks/auto-form/Array.tsx"),
   });
 
-  blocksTable = $page({
-    path: "/blocks/table",
+  dataTableBasic = $page({
+    path: "/blocks/data-table/basic",
     static: true,
-    head: { title: "Table - Alepha UI" },
-    lazy: () => import("./pages/blocks/Table.tsx"),
+    head: { title: "DataTable - Alepha UI" },
+    lazy: () => import("./pages/blocks/data-table/Basic.tsx"),
+  });
+
+  dataTableAddons = $page({
+    path: "/blocks/data-table/addons",
+    static: true,
+    head: { title: "DataTable addons - Alepha UI" },
+    lazy: () => import("./pages/blocks/data-table/Addons.tsx"),
   });
 
   blocksTree = $page({

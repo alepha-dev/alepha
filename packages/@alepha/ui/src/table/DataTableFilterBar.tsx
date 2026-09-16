@@ -88,7 +88,7 @@ export interface DataTableFilterBarProps {
  * Internal to the table: a table given `fields` and no `filters.render`
  * mounts it, in the toolbar and in the phone dialog.
  *
- * Built and settled on the `apps/ui` showcase (`/blocks/table`) in #Q2308.
+ * Built and settled on the `apps/ui` showcase (`/blocks/data-table/basic`) in #Q2308.
  */
 export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
   const { tr } = useI18n();

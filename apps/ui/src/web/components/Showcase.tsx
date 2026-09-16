@@ -45,7 +45,7 @@ const KNOBS_MESSAGE = "showcase:knobs";
 export interface ShowcaseProps<T extends ZObject> {
   /**
    * This page's module path under `web/pages/`, without the extension:
-   * `blocks/Table`, `pages/admin/Users`.
+   * `blocks/data-table/Basic`, `pages/admin/Users`.
    *
    * It is what `/preview` loads for the viewport iframe, resolved through a
    * `import.meta.glob`, so a wrong value fails loudly in the frame rather than

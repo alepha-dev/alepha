@@ -26,10 +26,11 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ## The workflow
 
 ⚠️ **CI is the gate. A green terminal is not.** This is the shape of every
-change, and the steps are not optional garnish - each one exists because the
-alternative cost something.
+change but a small one (see "Small edits skip the ceremony" below), and the
+steps are not optional garnish - each one exists because the alternative cost
+something.
 
-1. **Work in a worktree, always.** One epic, one worktree, one branch. Never
+1. **Work in a worktree.** One epic, one worktree, one branch. Never
    edit the primary checkout: parallel sessions share it, and a `git add` there
    sweeps up somebody else's work.
 2. **Commit as you go, and name the quest.** Small commits, staged by explicit
@@ -43,6 +44,23 @@ alternative cost something.
 4. **When it is green, finish the branch.** Merge to main, push, then delete
    the branch locally and on the remote, and remove the worktree.
 
+### Small edits skip the ceremony
+
+A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`, no
+branch to finish. Small means a few lines in one or two files, carrying no
+decision a later session would look for in Lore: a `.gitignore` entry, a typo,
+a comment, a sentence of this file, a one-line config tweak. A fix to a bug
+somebody reported, or anything you would want to explain, gets its quest
+however short it is. If you cannot tell, ask.
+
+1. Read `git status` on the primary checkout first. If the file already
+   carries somebody else's uncommitted edit, use a worktree after all.
+2. Run only the check that can see the change (see "Verifying"): nothing for a
+   `.gitignore` line, `yarn oxfmt <file>` for prose, `yarn v` for code. There
+   is no branch in front of `main` here, so a red CI run lands on `main` itself.
+3. Stage the path by name, commit, `git fetch`, check that
+   `git log origin/main..main` lists only your commit, and push.
+
 ### Verifying
 
 - `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, `yarn copy` (every workspace's generators, then lint), then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s, and the generators ~20s. It catches a typo, a bad import, a broken unit test, a missing i18n key, a JSDoc that breaks a docs rule. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
@@ -50,6 +68,7 @@ alternative cost something.
   - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any of them that differs from the index. A JSDoc change is therefore a two-part commit: the source and the pages it regenerates. Review the pages `yarn v` wrote, stage them, and run it again. Until #Q2358 this lane ran a bare `lint` and scanned whatever the checkout last generated, while CI scanned pages generated from the commit, which is how #Q2357 was green here and red on main for four commits.
   - `--fast` is accepted and does nothing. There is one lane now.
   - **One run per machine, across every worktree.** The command takes a machine-wide slot keyed on the package name, so a second `yarn v` queues instead of interleaving: `test` and `test:bun` both drive the one postgres on 15432, and two concurrent lanes are two suites sharing a database. It prints who holds the slot while it waits. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
+  - **Skip it when it has nothing to read.** It checks code, the generated docs, the i18n catalogs and the migrations, and an edit that touches none of them gets three minutes of a machine-wide slot for no answer. A `.gitignore` entry needs no check at all. A prose edit to a markdown file needs only `yarn oxfmt <file>`, since the formatter is the one step that reads it, plus `yarn check:docs` when the file is a guide or a README with code samples.
 - **Pushing the branch** - the real gate. `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel on GitHub's runners, ~5 minutes. Four epics verify at once without touching each other, which is the whole point: this used to be four concurrent local pipelines on one machine, about thirty minutes of contended wall clock.
   - ⚠️ **The full local pipeline is deleted, not hidden behind a flag.** Measured over 30 days before the change: 1,325 full runs across 243 sessions, 84 machine-hours a month, and **82% of them were re-runs inside a single session** because the lane opened and closed with `yarn clean` and so was cold by construction. A flag would have been reached for; the lane is gone.
 - `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** - `yarn v` will not, and a green `yarn v` says nothing about Go. The `bay` CI job also runs on every push, so the branch push covers it too; this is for the tighter loop.
@@ -126,7 +145,7 @@ Everything that came from Lore carries a **shortId offset of +1000** (quest `#20
 
 #### Every commit belongs to a quest
 
-Lore is the log of what was done, and a quest is the unit of that log. So a session that commits in this repo works under a quest, whether or not the user named one. A session started from a suggested background task is no exception, and neither is a one-line fix.
+Lore is the log of what was done, and a quest is the unit of that log. So a session that commits in this repo works under a quest, whether or not the user named one, and a session started from a suggested background task is no exception. The one exception is a small edit, which goes straight to `main` without one: see "Small edits skip the ceremony".
 
 1. **Find the quest or file it.** Look for the one this work belongs to with `quest_list` / `quest_get` in project `1`. Failing that, `quest_create` with `accept: true`: a title saying what changes, a description saying why, and an existing `area` (`project_context` lists them).
 2. **Accept it before the first commit** with `quest_accept`, unless `quest_create` already did.
@@ -364,9 +383,11 @@ yarn v
 
 Then **push the branch** and read the CI run. `yarn v` is the inner loop and is
 allowed to be wrong about the whole; the CI graph is what says the change is
-sound. Neither is optional, and a green `yarn v` is not a result you may report
-as "verified".
+sound. Neither is optional for a code change, and a green `yarn v` is not a
+result you may report as "verified".
 
+- An edit `yarn v` cannot read (a `.gitignore` entry, prose in a markdown file)
+  skips it: see "Verifying" for what to run instead.
 - If `yarn v` fails, fix it before pushing - do not spend a CI run on something
   a local lint would have caught.
 - If CI fails, fix it and push again. The previous run cancels itself
