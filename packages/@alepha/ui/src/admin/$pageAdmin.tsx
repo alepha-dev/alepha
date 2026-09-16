@@ -26,7 +26,9 @@ import { AdminRouter } from "./AdminRouter.tsx";
  * `nav`, the same as any other page hung off `AdminRouter.layout`.
  *
  * **Its tab reads `Admin - <title>`**, the way every built-in page's does: a
- * static `head.title` or the title a `head` function returns is prefixed.
+ * static `head.title` or the title a `head` function returns is prefixed,
+ * with the prefix in the reader's language (`admin.title`). The title itself
+ * is the application's to translate: a static one is used as written.
  * When the page names no `nav.label` and no `label`, its unprefixed static
  * title becomes the `label`, so its sidebar entry and breadcrumb do not carry
  * the prefix.
@@ -77,10 +79,12 @@ export const $pageAdmin = <
   const { alepha } = $context();
   const admin = alepha.inject(AdminRouter);
 
-  // "Admin - <Page>" in the tab, like the built-ins. A static title also
-  // stands in for the label when the page names none, since the sidebar and
-  // the breadcrumb fall back to `head.title`: keeping the unprefixed one there
-  // is what keeps a crumb reading "Produit" rather than "Admin - Produit".
+  // "Admin - <Page>" in the tab, like the built-ins, with the prefix in the
+  // reader's language: so the head is always a function here, since a
+  // static one is read before any request has a language. A static title
+  // also stands in for the label when the page names none, since the sidebar
+  // and the breadcrumb fall back to it: keeping the unprefixed one there is
+  // what keeps a crumb reading "Produit" rather than "Admin - Produit".
   const head = options.head;
   let label = options.label;
   let prefixed = head;
@@ -88,14 +92,15 @@ export const $pageAdmin = <
     prefixed = (props: TProps, previous?: Parameters<typeof head>[1]) => {
       const resolved = head(props, previous);
       return resolved.title
-        ? { ...resolved, title: `${admin.adminTitlePrefix}${resolved.title}` }
+        ? { ...resolved, title: admin.adminTitle(resolved.title) }
         : resolved;
     };
   } else if (head?.title) {
     if (options.nav?.label == null && label == null) {
       label = head.title;
     }
-    prefixed = { ...head, ...admin.adminHead(head.title) };
+    const title = head.title;
+    prefixed = () => ({ ...head, title: admin.adminTitle(title) });
   }
 
   return $pageNav<TConfig, TProps, TPropsParent>({

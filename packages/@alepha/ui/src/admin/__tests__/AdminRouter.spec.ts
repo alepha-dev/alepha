@@ -1,4 +1,5 @@
 import { $inject, Alepha, OPTIONS } from "alepha";
+import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import {
   $page,
   AlephaReactRouter,
@@ -8,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { $pageAdmin } from "../$pageAdmin.tsx";
 import { AccountRouter } from "../../account/AccountRouter.tsx";
+import { uiFr } from "../../i18n/fr/uiFr.ts";
 import type { NavMeta } from "../../shell/navTreeUtil.ts";
 import { AdminRouter } from "../AdminRouter.tsx";
 
@@ -305,8 +307,14 @@ describe("AdminRouter", () => {
     const account = alepha.inject(AccountRouter);
     await alepha.start();
 
-    const titleOf = (page: PagePrimitive) =>
-      (page.options.head as { title?: string } | undefined)?.title;
+    // A function since #Q2392, resolved the way `HeadProvider` does.
+    const titleOf = (page: PagePrimitive) => {
+      const head = page.options.head as
+        | { title?: string }
+        | ((...args: any[]) => { title?: string })
+        | undefined;
+      return (typeof head === "function" ? head({}) : head)?.title;
+    };
 
     const adminPages = alepha
       .primitives($page)
@@ -361,13 +369,18 @@ describe("AdminRouter", () => {
     const app = alepha.inject(AppAdmin);
     await alepha.start();
 
+    // A static head comes back as a function, so its prefix is read in the
+    // language of the request that renders it.
+    const resolve = (page: PagePrimitive) =>
+      (page.options.head as () => { title?: string })();
+
     // No nav label and no label: the unprefixed title becomes the label the
     // sidebar and the breadcrumb fall back to.
-    expect(app.product.options.head).toEqual({ title: "Admin - Product" });
+    expect(resolve(app.product)).toEqual({ title: "Admin - Product" });
     expect(app.product.options.label).toBe("Product");
 
     // A nav label already names it: nothing is invented.
-    expect(app.labelled.options.head).toEqual({ title: "Admin - Orders" });
+    expect(resolve(app.labelled)).toEqual({ title: "Admin - Orders" });
     expect(app.labelled.options.label).toBeUndefined();
 
     // A function head is wrapped, and has no static title to label with.
@@ -376,5 +389,45 @@ describe("AdminRouter", () => {
     };
     expect(head({ name: "Q3" }).title).toBe("Admin - Report Q3");
     expect(app.dynamic.options.label).toBeUndefined();
+  });
+
+  /**
+   * #Q2392: the tab was English on a French back office. Both halves follow
+   * the language now: the page's title through its nav key, the prefix
+   * through `admin.title`, for a built-in page and for an application's.
+   */
+  it("titles the tab in the reader's language", async () => {
+    class Catalogues {
+      en = $dictionary({ lazy: async () => ({ default: {} }) });
+      fr = $dictionary({ lazy: async () => ({ default: uiFr }) });
+    }
+    class AppAdmin {
+      product = $pageAdmin({
+        path: "/products/:productId",
+        head: { title: "Produit" },
+        component: () => "product",
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    const admin = alepha.inject(AdminRouter);
+    const app = alepha.inject(AppAdmin);
+    alepha.inject(Catalogues);
+    await alepha.start();
+    const title = (page: PagePrimitive) =>
+      (page.options.head as () => { title?: string })().title;
+
+    const i18n = alepha.inject(I18nProvider);
+    await i18n.setLang("en");
+    expect(title(admin.users)).toBe("Admin - Users");
+    expect(title(admin.keys)).toBe("Admin - API keys");
+
+    await i18n.setLang("fr");
+    expect(title(admin.users)).toBe("Administration - Utilisateurs");
+    expect(title(admin.jobDetail)).toBe("Administration - Tâche");
+    // The application's own title is used as written.
+    expect(title(app.product)).toBe("Administration - Produit");
   });
 });

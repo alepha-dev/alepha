@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { useI18n } from "alepha/react/i18n";
 import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
@@ -34,6 +35,7 @@ export interface ControlDatePopoverProps {
 }
 
 export const ControlDatePopover = (props: ControlDatePopoverProps) => {
+  const { tr, l } = useI18n();
   const [open, setOpen] = useState(false);
   const date = props.value
     ? !props.withTime && DATE_ONLY.test(props.value)
@@ -41,10 +43,23 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
       : new Date(props.value)
     : undefined;
 
+  // In the page's language, never the browser's. `toLocaleString()` with no
+  // locale followed the browser, so an English browser on a French page
+  // printed 9/10/2026 for the 10th of September, and the server, which has no
+  // browser, rendered yet another shape before hydration (#Q2392). The
+  // runtime's time zone is unchanged: `Intl` still formats in it.
   const formatted = date
     ? props.withTime
-      ? date.toLocaleString()
-      : date.toLocaleDateString()
+      ? l(date, {
+          date: {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          },
+        })
+      : l(date)
     : "";
 
   const handleDate = (d: Date | undefined) => {
@@ -140,7 +155,10 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
             <CalendarIcon
               className={cn("text-muted-foreground shrink-0", size.icon)}
             />
-            <span className="truncate">{formatted || "Pick a date"}</span>
+            <span className="truncate">
+              {formatted ||
+                tr("controlDate.placeholder", { default: "Pick a date" })}
+            </span>
           </span>
           {/* Same trailing caret a select trigger carries, for the same
               reason: this opens a popover, and without it the control reads
