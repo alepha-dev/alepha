@@ -648,9 +648,22 @@ export const z = {
     getDefault: (s: any): unknown => {
       // An explicit own `default` property (attached by the ORM's `default()`
       // helper via Object.assign) takes precedence over a zod ZodDefault
-      // wrapper. Guarded with hasOwn so the prototype `.default()` *method* is
-      // never mistaken for a default value.
-      if (s && Object.hasOwn(s, "default")) return s.default;
+      // wrapper.
+      //
+      // ⚠️ `hasOwn` alone is NOT the guard it reads as. zod 4 installs its
+      // `.default()` METHOD as an own property the first time that method is
+      // called on a schema, so any schema someone has chained `.default()` on
+      // anywhere — a shared enum with `.default("month")` in a settings atom,
+      // reused as an entity column — reports an own `default` that is the
+      // function. It was then read as a function-valued column default, which
+      // breaks the schema sync.
+      //
+      // The ORM only ever attaches a VALUE (`Object.assign(type, { default:
+      // value })`, typed `Infer<T>` and skipped when nullish), so a function
+      // here is always zod's method and never a column default.
+      if (s && Object.hasOwn(s, "default") && typeof s.default !== "function") {
+        return s.default;
+      }
       let cur = s;
       while (cur) {
         if (cur instanceof zod.ZodDefault) {
