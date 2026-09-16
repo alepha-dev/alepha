@@ -106,6 +106,14 @@ describe("the wiki-link hover card", () => {
       await waitFor(() => {
         if (!card()) throw new Error("the card has not opened");
       });
+      // On screen is not yet following its link. The hover delay's timer
+      // commits the card outside `act`, and React yields for a paint after
+      // that commit, so the passive effect that attaches the scroll listener
+      // runs in a later Scheduler task. `waitFor` returns through a
+      // `setTimeout(0)`, which a process that lost the CPU for a millisecond
+      // runs first: the next scroll then had nobody listening. An awaited
+      // `act` waits a macrotask queued behind that task.
+      await act(async () => {});
     };
     const scrollTo = (top: number) => {
       linkTop = top;
