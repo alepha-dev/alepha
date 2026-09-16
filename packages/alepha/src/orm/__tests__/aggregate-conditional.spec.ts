@@ -191,6 +191,52 @@ const testKeyRules = async (alepha: Alepha) => {
   ).rejects.toThrow(AlephaError);
 };
 
+/**
+ * Two conditional SUMs over the SAME column, split by an equality on another
+ * column - the shape a revenue report takes when it nets one amount column by
+ * direction. Both render to the very same SQL text, their conditions
+ * differing only in a bound parameter, so an unaliased select list collapsed
+ * them into one result field: the pair came back 0 and null instead of 90 and
+ * 10 (quest #Q344, found from #Q311, which worked around it by grouping).
+ */
+const testTwoConditionalSumsOnOneColumn = async (alepha: Alepha) => {
+  const app = await seed(alepha);
+
+  const [row] = await app.repository.aggregate({
+    select: {
+      queueA: { sum: { column: "amount", where: { queue: { eq: "a" } } } },
+      queueB: { sum: { column: "amount", where: { queue: { eq: "b" } } } },
+    },
+  });
+
+  // 10 + 20 + 30 in queue a, 40 in queue b: the buckets partition the table.
+  expect(row?.queueA.sum).toBe(60);
+  expect(row?.queueB.sum).toBe(40);
+};
+
+/**
+ * The same collision one step subtler: a sum and a count over one column
+ * under the SAME condition. The count was right all along and the sum was
+ * not, which is what made the bug read like a `sum` problem.
+ */
+const testSumAndCountUnderOneCondition = async (alepha: Alepha) => {
+  const app = await seed(alepha);
+
+  const [row] = await app.repository.aggregate({
+    select: {
+      queueA: {
+        sum: { column: "amount", where: { queue: { eq: "a" } } },
+        count: { column: "amount", where: { queue: { eq: "a" } } },
+      },
+      queueB: { sum: { column: "amount", where: { queue: { eq: "b" } } } },
+    },
+  });
+
+  expect(row?.queueA.sum).toBe(60);
+  expect(row?.queueA.count).toBe(3);
+  expect(row?.queueB.sum).toBe(40);
+};
+
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
 const postgres = () => Alepha.create().with(AlephaOrmPostgres);
@@ -202,6 +248,22 @@ describe("aggregate conditional buckets", () => {
 
   it("counts several differently-conditioned buckets in one pass (postgres)", async () => {
     await testConditionalBuckets(postgres());
+  });
+
+  it("sums two conditions on one column in one pass (sqlite)", async () => {
+    await testTwoConditionalSumsOnOneColumn(sqlite());
+  });
+
+  it("sums two conditions on one column in one pass (postgres)", async () => {
+    await testTwoConditionalSumsOnOneColumn(postgres());
+  });
+
+  it("sums a sum and a count under one condition (sqlite)", async () => {
+    await testSumAndCountUnderOneCondition(sqlite());
+  });
+
+  it("sums a sum and a count under one condition (postgres)", async () => {
+    await testSumAndCountUnderOneCondition(postgres());
   });
 
   it("reports an empty bucket as zero (sqlite)", async () => {

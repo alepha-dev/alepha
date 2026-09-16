@@ -34,7 +34,7 @@ import {
   max,
   min,
   ne,
-  type SQL,
+  SQL,
   sql,
   sum,
 } from "drizzle-orm";
@@ -1806,7 +1806,17 @@ export abstract class Repository<T extends ZObject> {
       for (const op of Object.keys(select) as AggregateOp[]) {
         const spec = (select as Record<string, unknown>)[op];
         if (!spec) continue;
-        flatFields[`${key}${AGG_SEPARATOR}${op}`] = aggExpr(key, op, spec);
+        const alias = `${key}${AGG_SEPARATOR}${op}`;
+        const expr = aggExpr(key, op, spec);
+        // ⚠️ ALIAS every aggregate. A raw SQL expression in a select list is
+        // emitted verbatim, so the driver names that result column after the
+        // expression TEXT — and two conditioned aggregates over the same
+        // column render to the very same text, their conditions differing
+        // only in a bound parameter. They then collapse into one field on the
+        // way back: two sums split by direction came back 0 and null instead
+        // of 700 and 0 (quest #Q344). A plain `sum(col)` never collided,
+        // because two of those differ in the column they name.
+        flatFields[alias] = expr instanceof SQL ? expr.as(alias) : expr;
       }
     }
 
