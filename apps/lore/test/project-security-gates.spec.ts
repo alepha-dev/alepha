@@ -2,10 +2,10 @@ import { Alepha, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { InvitationController } from "../src/api/controllers/InvitationController.ts";

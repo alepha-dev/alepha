@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { FakeProvider } from "alepha/fake";
+import { FakeProvider } from "alepha/testing/faker";
 ```
 
 ## Overview

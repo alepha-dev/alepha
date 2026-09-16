@@ -222,6 +222,14 @@ export class OAuthController {
   protected readonly deviceCodeRefused =
     "That code is not valid, has expired, or has already been used. Start again on your device to get a new one.";
 
+  /**
+   * The client a device flow is recorded under when the device names none.
+   *
+   * Read by both halves of the grant: a poll naming no client is held to the
+   * same default, since the flow it redeems was recorded under it.
+   */
+  protected readonly defaultDeviceClientId = "cli";
+
   metadata = $route({
     method: "GET",
     path: "/.well-known/oauth-authorization-server",
@@ -610,7 +618,7 @@ export class OAuthController {
     handler: async ({ body, url, reply }) => {
       reply.headers["content-type"] = "application/json";
       const record = await this.deviceCodes.start({
-        clientId: body.client_id ?? "cli",
+        clientId: body.client_id ?? this.defaultDeviceClientId,
         scopes: (body.scope ?? "").split(" ").filter(Boolean),
         resource: body.resource,
       });
@@ -847,16 +855,45 @@ export class OAuthController {
             reply.body = JSON.stringify({ error: errors[result.status] });
             return;
           }
+
+          // The session belongs to the client the flow was STARTED as, the
+          // one the human approved, never to the id this poll names: a device
+          // could otherwise start as `alepha-cli` and collect a session bound
+          // to any registered client, which the refresh grant then honours
+          // with an id_token for that client (#Q2388). RFC 6749 §5.2 names
+          // this case: a grant "issued to another client" is `invalid_grant`.
+          // The code is already spent, so a device that presents it wrongly
+          // does not get a second try.
+          const pollClientId = body.client_id ?? this.defaultDeviceClientId;
+          if (pollClientId !== result.clientId) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_grant" });
+            return;
+          }
+
+          // An unregistered id is the ordinary case here (`lore login` runs
+          // as `alepha-cli`, which no table holds), so only a registered
+          // client is looked at, and a revoked one is refused as the other
+          // grants refuse it. Checked at the poll rather than at the start,
+          // because a revocation can land while the human is still reading
+          // the code.
+          const client = await this.clients.findByClientId(result.clientId);
+          if (client?.revokedAt) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_client" });
+            return;
+          }
+
           const tokens = await this.clients.issueAccessToken(
             this.options.realm,
             {
               userId: result.userId,
               scopes: result.scopes,
               resource: result.resource,
-              clientId: body.client_id,
+              clientId: result.clientId,
             },
           );
-          await this.clients.markClientUsed(body.client_id ?? "");
+          await this.clients.markClientUsed(result.clientId);
           reply.body = JSON.stringify({
             access_token: tokens.access_token,
             token_type: "Bearer",
@@ -874,15 +911,21 @@ export class OAuthController {
           // the id_token `aud` unvalidated: a relying party that forwards
           // id_tokens as its Bearer would accept a token minted for it out of
           // a session belonging to an entirely different client.
-          const client = await this.clients.findByClientId(
-            body.client_id ?? "",
-          );
-          if (!client || client.revokedAt) {
+          //
+          // ⚠️ An UNREGISTERED client_id is not refused here, because the
+          // device grant never asks for a registration: `lore login` starts
+          // as `alepha-cli`, which no table holds, and its session is bound
+          // to that string (#Q2388). Refusing it cost every CLI login its refresh token,
+          // so the login lasted one access token (#Q2387). Such a client is
+          // held to the binding check below instead, and gets no id_token.
+          const clientId = body.client_id ?? "";
+          const client = await this.clients.findByClientId(clientId);
+          if (!clientId || client?.revokedAt) {
             reply.status = 400;
             reply.body = JSON.stringify({ error: "invalid_client" });
             return;
           }
-          if (client.type === "confidential") {
+          if (client?.type === "confidential") {
             const ok = await this.clients.verifySecret(
               client.clientId,
               body.client_secret ?? "",
@@ -902,9 +945,37 @@ export class OAuthController {
           // Bind the refresh to the client the session was issued to. A
           // session with no recorded client (an ordinary password login) is
           // not an OAuth grant and cannot be refreshed here at all.
-          if (tokens.clientId !== client.clientId) {
+          //
+          // The refresh above is safe to have run first: a session refresh
+          // hands back the same refresh token rather than rotating it, so a
+          // refused request has spent nothing.
+          if (tokens.clientId !== clientId) {
             reply.status = 400;
-            reply.body = JSON.stringify({ error: "invalid_grant" });
+            reply.body = JSON.stringify({
+              // Unregistered and not the session's client: to the caller,
+              // that is simply a client nobody knows.
+              error: client ? "invalid_grant" : "invalid_client",
+            });
+            return;
+          }
+
+          const response: Record<string, unknown> = {
+            access_token: tokens.access_token,
+            token_type: "Bearer",
+            expires_in: tokens.expires_in,
+            refresh_token: tokens.refresh_token,
+          };
+
+          // A device-grant client: the session names it, and nothing else
+          // does. `/oauth/authorize` requires a registered client, so the
+          // device grant is what binds a session to an id no table holds.
+          // The other way is a client deleted under a live session, and the
+          // prune job, the only code that deletes one, takes public DCR
+          // clients alone: such a session never needed a secret either. It
+          // had no id_token from the device grant, and gets none here: an
+          // `aud` no relying party registered is one nothing should accept.
+          if (!client) {
+            reply.body = JSON.stringify(response);
             return;
           }
 
@@ -913,12 +984,6 @@ export class OAuthController {
           // minutes, so `lastUsedAt` tracks the app rather than only its
           // first authorization.
           await this.clients.markClientUsed(client.clientId);
-          const response: Record<string, unknown> = {
-            access_token: tokens.access_token,
-            token_type: "Bearer",
-            expires_in: tokens.expires_in,
-            refresh_token: tokens.refresh_token,
-          };
           // Re-mint an OIDC `id_token` so id_token-based relying parties (e.g. a
           // stateless OIDC RP that forwards the id_token as the request Bearer)
           // actually renew their identity on refresh — without it the RP keeps

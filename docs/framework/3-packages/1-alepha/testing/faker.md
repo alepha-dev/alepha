@@ -1,8 +1,8 @@
-# Alepha - Fake
+# Alepha - Testing Faker
 
 ## Installation
 
-Part of the `alepha` package. Import from `alepha/fake`.
+Part of the `alepha` package. Import from `alepha/testing/faker`.
 
 ```bash
 npm install alepha

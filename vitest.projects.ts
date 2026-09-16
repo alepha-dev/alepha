@@ -2,9 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { jsdomProject } from "alepha/testing/vitest";
 import type { TestProjectInlineConfiguration } from "vitest/config";
-
-const repoRoot = dirname(fileURLToPath(import.meta.url));
 
 /**
  * The projects of one workspace, built the same way wherever they are read.
@@ -60,26 +59,26 @@ export const workspaceProjects = (
   ];
 
   if (options.jsdom) {
+    // The jsdom settings themselves (environment, Node flags, resolve
+    // conditions, polyfills) are the published `jsdomProject`, so this
+    // repository and a consumer cannot drift apart. What is added here is
+    // only what is this repository's: the stamped shared options, the name,
+    // the root, the alias, and `extends: false` in place of its `true`.
+    //
+    // The browser conditions are also why a workspace's self-named tsconfig
+    // path is skipped in `tsconfigAlias`: an alias resolves before the
+    // exports map and would hand back the node entry point instead.
+    const jsdom = jsdomProject(["**/*.browser.spec.{ts,tsx}"]);
     projects.push({
+      ...jsdom,
       extends: false,
-      resolve: {
-        alias,
-        // A browser build is what a jsdom spec is testing, so the conditions
-        // have to say so. This is also why a workspace's self-named tsconfig
-        // path is skipped in `tsconfigAlias`: an alias resolves before the
-        // exports map and would hand back the node entry point instead.
-        conditions: ["browser", "module", "import", "default"],
-        mainFields: ["browser", "module", "main"],
-      },
+      resolve: { ...jsdom.resolve, alias },
       test: {
         ...sharedTestOptions(),
+        ...jsdom.test,
         name: `${options.name}:jsdom`,
         root,
-        environment: "jsdom",
-        include: ["**/*.browser.spec.{ts,tsx}"],
         exclude: sharedExclude,
-        execArgv: ["--no-experimental-webstorage"],
-        setupFiles: [resolve(repoRoot, "vitest.jsdom.setup.ts")],
       },
     });
   }

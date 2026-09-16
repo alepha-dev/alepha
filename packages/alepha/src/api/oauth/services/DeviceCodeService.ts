@@ -60,13 +60,24 @@ export interface DeviceAuthorization {
 
 /**
  * The result of one poll, shaped so the caller cannot forget a case.
+ *
+ * An approved result names the client the flow was STARTED as, which is the
+ * one the human approved. The token endpoint binds the session to it and holds
+ * the poll's own `client_id` to it (#Q2388): taking the poll's word instead let
+ * a device start as one client and collect a session bound to another.
  */
 export type DevicePollResult =
   | { status: "pending" }
   | { status: "slow_down" }
   | { status: "denied" }
   | { status: "expired" }
-  | { status: "approved"; userId: string; scopes: string[]; resource?: string };
+  | {
+      status: "approved";
+      userId: string;
+      clientId: string;
+      scopes: string[];
+      resource?: string;
+    };
 
 /**
  * OAuth 2.0 Device Authorization Grant (RFC 8628).
@@ -257,6 +268,7 @@ export class DeviceCodeService {
         return {
           status: "approved",
           userId: record.userId!,
+          clientId: record.clientId,
           scopes: record.scopes,
           resource: record.resource,
         };

@@ -3,8 +3,8 @@ import { Alepha } from "alepha";
 import type { ApiKeyOptionsResponse } from "alepha/api/keys";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/react/testing";
 import { AlephaServerLinks } from "alepha/server/links";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DialogProvider } from "../../core/useDialog.tsx";
