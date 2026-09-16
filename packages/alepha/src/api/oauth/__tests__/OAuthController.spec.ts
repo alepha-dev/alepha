@@ -794,11 +794,14 @@ describe("OAuthController refresh_token grant", () => {
   /**
    * The device grant, as `lore login` runs it: a client id no table holds,
    * approved through the service the approval page calls, then polled once.
+   * `pollAs` is the client id the poll names, which a well-behaved device
+   * keeps equal to the one it started as.
    */
   const mintDeviceRefreshToken = async (
     alepha: Alepha,
     hostname: string,
     userId: string,
+    pollAs = "alepha-cli",
   ): Promise<string> => {
     const start = await fetch(`${hostname}/oauth/device_authorization`, {
       method: "POST",
@@ -819,7 +822,7 @@ describe("OAuthController refresh_token grant", () => {
       body: new URLSearchParams({
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         device_code,
-        client_id: "alepha-cli",
+        client_id: pollAs,
       }).toString(),
     });
     const body = (await resp.json()) as Record<string, string>;
@@ -898,6 +901,31 @@ describe("OAuthController refresh_token grant", () => {
     const body = (await resp.json()) as Record<string, string>;
     expect(body.error).toBe("invalid_grant");
     expect(body.id_token).toBeUndefined();
+  });
+
+  /**
+   * #Q2388, the same attack one step earlier: the device names the
+   * registered client on the poll rather than on the refresh. The session
+   * used to be bound to that client, so the refresh above let it through
+   * with an id_token whose `aud` was the registered client.
+   */
+  it("gives a device that polls as a registered client no session to refresh", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const registered = await registerClient(
+      hostname,
+      "https://registered.example/cb",
+    );
+
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+      registered,
+    );
+
+    expect(refreshToken).toBeUndefined();
   });
 
   /**

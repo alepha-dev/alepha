@@ -913,9 +913,9 @@ export class OAuthController {
           // a session belonging to an entirely different client.
           //
           // ⚠️ An UNREGISTERED client_id is not refused here, because the
-          // device grant never asks for a registration: `lore login` polls as
-          // `alepha-cli`, which no table holds, and its session is bound to
-          // that string. Refusing it cost every CLI login its refresh token,
+          // device grant never asks for a registration: `lore login` starts
+          // as `alepha-cli`, which no table holds, and its session is bound
+          // to that string (#Q2388). Refusing it cost every CLI login its refresh token,
           // so the login lasted one access token (#Q2387). Such a client is
           // held to the binding check below instead, and gets no id_token.
           const clientId = body.client_id ?? "";
