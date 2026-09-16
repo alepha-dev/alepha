@@ -1,10 +1,45 @@
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
+import { $route, AlephaServer, ServerProvider } from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreTokenStore } from "../services/LoreTokenStore.ts";
+
+/**
+ * Lore's token endpoint, as far as a refresh sees it. The real one, and the
+ * rule that lets `alepha-cli` refresh at all, is covered by
+ * `OAuthController.spec.ts`; this pins what the CLI sends and what it does
+ * with each answer.
+ */
+class FakeTokenEndpoint {
+  public answer: { status: number; body: Record<string, unknown> } = {
+    status: 200,
+    body: { access_token: "fresh", expires_in: 900, refresh_token: "r1" },
+  };
+
+  public requests: Array<Record<string, string | undefined>> = [];
+
+  public token = $route({
+    method: "POST",
+    path: "/oauth/token",
+    schema: {
+      body: z.object({
+        grant_type: z.text().optional(),
+        refresh_token: z.text().optional(),
+        client_id: z.text().optional(),
+      }),
+    },
+    use: [],
+    handler: async ({ body, reply }) => {
+      this.requests.push(body);
+      reply.status = this.answer.status;
+      reply.headers["content-type"] = "application/json";
+      reply.body = JSON.stringify(this.answer.body);
+    },
+  });
+}
 
 /**
  * Which credential a command uses, and where a device-flow token is kept.
@@ -193,6 +228,154 @@ describe("Lore credentials", () => {
       });
 
       await expect(ctx.client.authorization()).rejects.toThrow();
+    });
+  });
+
+  /**
+   * #Q2387. Lore's access tokens last fifteen minutes, and the refresh token
+   * stored beside one was never sent, so a `lore login` lasted fifteen
+   * minutes.
+   */
+  describe("the refresh", () => {
+    const setupWithEndpoint = async (env: Record<string, string> = {}) => {
+      const server = Alepha.create({
+        env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+      })
+        .with(AlephaServer)
+        .with(FakeTokenEndpoint);
+      await server.start();
+
+      // The port is only known once the server is up, and the CLI resolves
+      // `LORE_URL` when it boots: two containers, in this order.
+      const hostname = server.inject(ServerProvider).hostname;
+      const ctx = await setup({ LORE_URL: hostname, ...env });
+      return {
+        ...ctx,
+        hostname,
+        endpoint: server.inject(FakeTokenEndpoint),
+      };
+    };
+
+    const writeExpired = async (
+      ctx: Awaited<ReturnType<typeof setupWithEndpoint>>,
+      withRefreshToken = true,
+    ) => {
+      await ctx.tokens.write(ctx.hostname, {
+        accessToken: "stale",
+        refreshToken: withRefreshToken ? "r0" : undefined,
+        expiresAt: ctx.dateTime.now().subtract(1, "hour").toISOString(),
+      });
+    };
+
+    it("trades an expired login for a fresh token, and keeps it", async () => {
+      const ctx = await setupWithEndpoint();
+      // Frozen, so the expiry below is exact rather than a few ms off.
+      ctx.dateTime.pause();
+      await writeExpired(ctx);
+
+      expect(await ctx.client.authorization()).toBe("Bearer fresh");
+
+      // Under the client the login was granted to: the server binds the
+      // session to it and refuses a refresh under any other.
+      expect(ctx.endpoint.requests).toEqual([
+        {
+          grant_type: "refresh_token",
+          refresh_token: "r0",
+          client_id: "alepha-cli",
+        },
+      ]);
+      expect(await ctx.tokens.entry(ctx.hostname)).toEqual({
+        accessToken: "fresh",
+        refreshToken: "r1",
+        expiresAt: ctx.dateTime.now().add(900, "seconds").toISOString(),
+      });
+    });
+
+    it("sends nothing while the cached token is still good", async () => {
+      const ctx = await setupWithEndpoint();
+      await ctx.tokens.write(ctx.hostname, {
+        accessToken: "current",
+        refreshToken: "r0",
+        expiresAt: ctx.dateTime.now().add(10, "minutes").toISOString(),
+      });
+
+      expect(await ctx.client.authorization()).toBe("Bearer current");
+      expect(ctx.endpoint.requests).toHaveLength(0);
+    });
+
+    /**
+     * RFC 6749 §6 lets a server keep the old refresh token valid and name
+     * none. Dropping it would end the login at the next expiry.
+     */
+    it("keeps the refresh token it had when the answer names none", async () => {
+      const ctx = await setupWithEndpoint();
+      ctx.endpoint.answer.body = { access_token: "fresh", expires_in: 900 };
+      await writeExpired(ctx);
+
+      await ctx.client.authorization();
+
+      expect((await ctx.tokens.entry(ctx.hostname))?.refreshToken).toBe("r0");
+    });
+
+    it("refreshes once for requests that ask at the same time", async () => {
+      const ctx = await setupWithEndpoint();
+      await writeExpired(ctx);
+
+      const headers = await Promise.all([
+        ctx.client.authorization(),
+        ctx.client.authorization(),
+        ctx.client.authorization(),
+      ]);
+
+      expect(headers).toEqual(["Bearer fresh", "Bearer fresh", "Bearer fresh"]);
+      expect(ctx.endpoint.requests).toHaveLength(1);
+    });
+
+    /**
+     * A refusal means the session is gone: revoked, or idle past its window.
+     * Keeping the entry would send the dead token again on every command.
+     */
+    it("forgets a login the server refuses, and asks for a new one", async () => {
+      const ctx = await setupWithEndpoint();
+      ctx.endpoint.answer = { status: 400, body: { error: "invalid_grant" } };
+      await writeExpired(ctx);
+
+      await expect(ctx.client.authorization()).rejects.toThrow(/lore login/);
+      expect(await ctx.tokens.entry(ctx.hostname)).toBeUndefined();
+    });
+
+    /**
+     * ⚠️ The other half of the rule above: an outage is not a refusal, and
+     * must not cost the laptop the login it would work with again tomorrow.
+     */
+    it("keeps the login when the server fails rather than refuses", async () => {
+      const ctx = await setupWithEndpoint();
+      ctx.endpoint.answer = { status: 503, body: { error: "unavailable" } };
+      await writeExpired(ctx);
+
+      await expect(ctx.client.authorization()).rejects.toThrow();
+      expect((await ctx.tokens.entry(ctx.hostname))?.refreshToken).toBe("r0");
+    });
+
+    it("asks for a login when the expired token carries nothing to refresh", async () => {
+      const ctx = await setupWithEndpoint();
+      await writeExpired(ctx, false);
+
+      await expect(ctx.client.authorization()).rejects.toThrow(/lore login/);
+      expect(ctx.endpoint.requests).toHaveLength(0);
+    });
+
+    /**
+     * The key still wins, and a laptop with one exported never spends its
+     * stored login on a refresh it does not need.
+     */
+    it("does not refresh when LORE_API_KEY is set", async () => {
+      // Through the boot env: `$env` is read when the container starts.
+      const ctx = await setupWithEndpoint({ LORE_API_KEY: "lore_secret" });
+      await writeExpired(ctx);
+
+      expect(await ctx.client.authorization()).toBe("Bearer lore_secret");
+      expect(ctx.endpoint.requests).toHaveLength(0);
     });
   });
 });

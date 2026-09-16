@@ -52,10 +52,14 @@ export class LoreTokenStore {
   public static readonly FILE = "credentials.json";
 
   /**
-   * The token for a hostname, refreshed if it has aged out and can be.
+   * The token for a hostname, if it has not expired.
    *
    * `undefined` rather than a throw when there is none: a missing token is one
    * of three ways to authenticate and the caller decides what to do about it.
+   *
+   * ⚠️ This never refreshes. An expired token reads as absent here, and
+   * `LoreClientService.authorization` is what trades it for a fresh one,
+   * through {@link entry}.
    */
   public async read(hostname: string): Promise<string | undefined> {
     const file = await this.load();
@@ -66,17 +70,16 @@ export class LoreTokenStore {
     if (!this.expired(entry)) {
       return entry.accessToken;
     }
-    // An expired token with nothing to refresh from is a token that is simply
-    // gone. Returning it would send a credential the server will refuse, and
-    // the refusal would read as "your key is wrong" rather than "log in
-    // again".
+    // Returning an expired token would send a credential the server will
+    // refuse, and the refusal would read as "your key is wrong" rather than
+    // "log in again".
     return undefined;
   }
 
   /**
-   * The whole entry, for a caller that can refresh it. Kept separate from
-   * {@link read} so the common path - "give me a bearer" - cannot accidentally
-   * become a network call.
+   * The whole entry, refresh token included, for the caller that refreshes
+   * it. Kept separate from {@link read} so the common path - "give me a
+   * bearer" - cannot accidentally become a network call.
    */
   public async entry(hostname: string): Promise<LoreToken | undefined> {
     const file = await this.load();
@@ -93,6 +96,35 @@ export class LoreTokenStore {
       this.dateTime.of(token.expiresAt).valueOf() - 60_000 <
       this.dateTime.nowMillis()
     );
+  }
+
+  /**
+   * What a token endpoint answered, as the entry this store keeps.
+   *
+   * One place for both grants that fill the store, `lore login`'s device code
+   * and the refresh that follows it, so the expiry is stamped the same way by
+   * each. From the provider, never `Date.now()`: an expiry the clock decides
+   * is an expiry no test can pin.
+   *
+   * @param previous The refresh token already held. A refresh answer may omit
+   * one (RFC 6749 §6 lets the server keep the old token valid), and dropping
+   * it would end the login at the next expiry.
+   */
+  public fromGrant(
+    grant: {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    },
+    previous?: string,
+  ): LoreToken {
+    return {
+      accessToken: grant.access_token,
+      refreshToken: grant.refresh_token ?? previous,
+      expiresAt: grant.expires_in
+        ? this.dateTime.now().add(grant.expires_in, "seconds").toISOString()
+        : undefined,
+    };
   }
 
   public async write(hostname: string, token: LoreToken): Promise<void> {
