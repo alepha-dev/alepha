@@ -1,4 +1,4 @@
-# Alepha - React Testing
+# Alepha - Testing React
 
 ## Installation
 

@@ -1,4 +1,4 @@
-# Alepha - Fake
+# Alepha - Testing Faker
 
 ## Installation
 
