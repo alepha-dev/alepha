@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import { I18n } from "../../../services/I18n.ts";
