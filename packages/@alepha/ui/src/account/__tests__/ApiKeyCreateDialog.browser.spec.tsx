@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import type { ApiKeyOptionsResponse } from "alepha/api/keys";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { AlephaServerLinks } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 

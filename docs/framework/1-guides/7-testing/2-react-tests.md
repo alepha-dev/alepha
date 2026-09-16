@@ -1,6 +1,6 @@
 # React Tests
 
-Alepha provides testing utilities for React components through `alepha/react/testing`. Browser tests run in jsdom via Vitest and use `@testing-library/react` under the hood.
+Alepha provides testing utilities for React components through `alepha/testing/react`. Browser tests run in jsdom via Vitest and use `@testing-library/react` under the hood.
 
 ## File Naming Convention
 
@@ -27,7 +27,7 @@ src/
 
 ## Utilities
 
-The `alepha/react/testing` module exports:
+The `alepha/testing/react` module exports:
 
 | Function                                  | Purpose                                                                                     |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -44,7 +44,7 @@ The `alepha/react/testing` module exports:
 ## Basic Rendering
 
 ```tsx
-import { renderWithAlepha, setupJsdomMocks } from "alepha/react/testing";
+import { renderWithAlepha, setupJsdomMocks } from "alepha/testing/react";
 
 beforeAll(() => setupJsdomMocks());
 
@@ -66,7 +66,7 @@ describe("Greeting", () => {
 Pass a pre-configured Alepha instance to swap services or providers:
 
 ```tsx
-import { renderWithAlepha } from "alepha/react/testing";
+import { renderWithAlepha } from "alepha/testing/react";
 
 describe("UserProfile", () => {
   it("should render with mocked service", async () => {
@@ -87,7 +87,7 @@ describe("UserProfile", () => {
 Use the `wrapper` option to add UI framework providers (theme, i18n):
 
 ```tsx
-import { renderWithAlepha } from "alepha/react/testing";
+import { renderWithAlepha } from "alepha/testing/react";
 import { ThemeProvider } from "my-ui-library";
 
 describe("Button", () => {
@@ -112,7 +112,7 @@ import {
   submitForm,
   waitForFormSubmit,
   setupJsdomMocks,
-} from "alepha/react/testing";
+} from "alepha/testing/react";
 import { screen } from "@testing-library/react";
 
 beforeAll(() => setupJsdomMocks());
@@ -159,7 +159,7 @@ await fillForm(screen, "settings-form", {
 You can also toggle switches directly:
 
 ```typescript
-import { toggleSwitch } from "alepha/react/testing";
+import { toggleSwitch } from "alepha/testing/react";
 
 await toggleSwitch(screen, "switch", "Enable notifications");
 ```
@@ -169,7 +169,7 @@ await toggleSwitch(screen, "switch", "Enable notifications");
 Call `setupJsdomMocks()` in `beforeAll` to mock browser APIs that jsdom does not implement. This is required for components that use responsive styles, scroll behavior, or intersection observers.
 
 ```typescript
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 
 beforeAll(() => {
   setupJsdomMocks();

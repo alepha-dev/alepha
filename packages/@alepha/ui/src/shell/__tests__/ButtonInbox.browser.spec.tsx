@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { LinkProvider } from "alepha/server/links";
 import { beforeAll, describe, expect, it } from "vitest";
 

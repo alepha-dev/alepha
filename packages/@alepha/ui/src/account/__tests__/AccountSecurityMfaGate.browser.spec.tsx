@@ -4,7 +4,7 @@ import type { RealmConfig } from "alepha/api/users";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { AlephaServerLinks } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 

@@ -2,7 +2,7 @@ import { act, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { uiAtom } from "alepha/react/ui";
 import { toast } from "sonner";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";

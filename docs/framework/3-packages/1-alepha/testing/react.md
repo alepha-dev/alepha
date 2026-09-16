@@ -2,7 +2,7 @@
 
 ## Installation
 
-Part of the `alepha` package. Import from `alepha/react/testing`.
+Part of the `alepha` package. Import from `alepha/testing/react`.
 
 ```bash
 npm install alepha
