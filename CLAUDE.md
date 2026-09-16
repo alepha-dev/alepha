@@ -222,7 +222,9 @@ workspaces and `yarn w <workspace> test` is exactly one of them. Both read the
 same array; they cannot disagree.
 
 The helper is where the shared settings live: the service env block, the Paris
-timezone, the timeout, `globals`, and the jsdom settings. It also turns the
+timezone, the timeout, `globals`, and the jsdom settings, which it takes from
+`jsdomProject` in `alepha/testing/vitest` (the published half, with the jsdom
+polyfill setup file) rather than restating them. It also turns the
 workspace's own tsconfig `paths` into aliases, which is what makes `@/` resolve
 in tests the way it already does in the dev server and both builds. A path whose
 prefix is the workspace's own package name is skipped on purpose, because the

@@ -468,6 +468,11 @@
       "import": "./src/testing/react/index.ts",
       "default": "./src/testing/react/index.ts"
     },
+    "./testing/vitest": {
+      "types": "./src/testing/vitest/index.ts",
+      "import": "./src/testing/vitest/index.ts",
+      "default": "./src/testing/vitest/index.ts"
+    },
     "./topic": {
       "types": "./src/topic/core/index.ts",
       "import": "./src/topic/core/index.ts",
@@ -922,6 +927,11 @@
         "types": "./dist/testing/react/index.d.ts",
         "import": "./dist/testing/react/index.js",
         "default": "./dist/testing/react/index.js"
+      },
+      "./testing/vitest": {
+        "types": "./dist/testing/vitest/index.d.ts",
+        "import": "./dist/testing/vitest/index.js",
+        "default": "./dist/testing/vitest/index.js"
       },
       "./topic": {
         "types": "./dist/topic/core/index.d.ts",

@@ -3,8 +3,8 @@
  *
  * Loaded by `jsdomProject` for the whole browser test project, for the same
  * reason `execArgv` lives there: a shim added to one spec is a shim the next
- * one has to rediscover, and there are two vitest configs in this repo that
- * cannot see each other's settings.
+ * one has to rediscover, and every config declaring a browser project would
+ * otherwise have to restate it.
  */
 
 /**
