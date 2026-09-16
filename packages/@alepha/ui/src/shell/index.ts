@@ -1,6 +1,10 @@
 /**
  * Application shells and their chrome.
  *
+ * `$pageNav` declares a page that appears in a shell's sidebar, for an app
+ * that hangs its pages off its OWN layout rather than the admin shell's
+ * (`$pageAdmin` is the same thing already parented to `AdminRouter`).
+ *
  * `AppShell` is the sidebar-and-header frame of an application and `NavShell`
  * the page-tree variant with its `Spotlight` search. `PlateLayout` and
  * `DetailLayout` frame a page, `AppActions` a toolbar. `ButtonDark`,
@@ -14,6 +18,7 @@ export {
   ActionErrorToaster,
   type ActionErrorToasterProps,
 } from "./ActionErrorToaster.tsx";
+export { $pageNav, type PageNavOptions } from "./$pageNav.tsx";
 export { AppActions, type AppActionsProps } from "./AppActions.tsx";
 export {
   AppShell,
