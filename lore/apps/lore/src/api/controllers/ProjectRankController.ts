@@ -6,7 +6,7 @@ import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
- * The one thing the rank editor needs that `alepha/api/ranks` cannot answer.
+ * The one thing the rank editor needs that `alepha/api/organizations` cannot answer.
  *
  * The module ships the catalogue, the rank list and the four writes; none of
  * that is Lore-shaped. A **preset** is: it is computed from the project's
