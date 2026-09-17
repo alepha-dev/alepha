@@ -74,6 +74,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
       clientSecret: `${providerRef}_secret_${this.crypto.randomText(16)}`,
       publishableKey: "pk_memory",
       provider: "memory",
+      providerRef,
     };
   }
 

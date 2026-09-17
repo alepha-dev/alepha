@@ -190,6 +190,9 @@ export class StripePaymentProvider implements PaymentProvider {
    * decide what the Element offers, which is what makes the Element worth using
    * over a hand-rolled card input.
    *
+   * The PaymentIntent id comes back as `providerRef`: the `payment_intent.*`
+   * webhooks carry it, and it is what the sweep polls and cancels.
+   *
    * The publishable key is required here and only here: a redirect flow never
    * needs it, so it stays optional in the env schema and is checked at the point
    * of use rather than at boot.
@@ -228,6 +231,7 @@ export class StripePaymentProvider implements PaymentProvider {
       clientSecret: paymentIntent.client_secret,
       publishableKey,
       provider: "stripe",
+      providerRef: paymentIntent.id,
     };
   }
 
@@ -860,7 +864,16 @@ export class StripePaymentProvider implements PaymentProvider {
           undefined,
           requestOptions,
         );
+        return;
       }
+      // No Checkout session owns it: a Payment Element PaymentIntent. It
+      // never expires on its own, so an abandoned one stays confirmable
+      // until it is cancelled here.
+      await this.stripe.paymentIntents.cancel(
+        providerRef,
+        { cancellation_reason: "abandoned" },
+        requestOptions,
+      );
     } catch (error) {
       this.log.warn(
         `Failed to expire Stripe session for ${providerRef}`,
