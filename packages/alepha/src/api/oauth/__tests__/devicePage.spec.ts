@@ -30,6 +30,7 @@ describe("renderDevicePage", () => {
     const html = renderDevicePage({
       step: "confirm",
       userCode: "CDFG-HJKM",
+      clientId: "alepha-cli",
       userName: "Bob",
       scopes: [{ id: "mcp", label: "Your projects" }],
     });
@@ -56,6 +57,7 @@ describe("renderDevicePage", () => {
     const html = renderDevicePage({
       step: "confirm",
       userCode: "CDFG-HJKM",
+      clientId: "alepha-cli",
       userName: "Bob",
       scopes: [],
     });
@@ -70,6 +72,7 @@ describe("renderDevicePage", () => {
     const confirm = {
       step: "confirm" as const,
       userCode: "CDFG-HJKM",
+      clientId: "alepha-cli",
       userName: "Bob",
       scopes: [],
     };
@@ -78,6 +81,50 @@ describe("renderDevicePage", () => {
       "your Lore account",
     );
     expect(renderDevicePage(confirm)).toContain("your account");
+  });
+
+  it("labels the registered name or unregistered id as client-provided", ({
+    expect,
+  }) => {
+    const options = {
+      step: "confirm" as const,
+      userCode: "CDFG-HJKM",
+      userName: "Bob",
+      clientId: "alepha-cli",
+      scopes: [],
+    };
+    const registered = renderDevicePage({
+      ...options,
+      clientName: "Example Tool",
+    });
+    expect(registered).toContain("Client-provided name");
+    expect(registered).toContain("Example Tool");
+    expect(registered).toContain("has not been verified");
+    const unregistered = renderDevicePage(options);
+    expect(unregistered).toContain("Client-provided ID");
+    expect(unregistered).toContain("alepha-cli");
+    expect(unregistered).toContain("has not been verified");
+  });
+
+  it("escapes both registered names and unregistered client ids", ({
+    expect,
+  }) => {
+    const options = {
+      step: "confirm" as const,
+      userCode: "CDFG-HJKM",
+      userName: "Bob",
+      clientId: '<img src=x onerror="bad()">',
+      scopes: [],
+    };
+    const named = renderDevicePage({
+      ...options,
+      clientName: "<script>bad()</script>",
+    });
+    expect(named).not.toContain("<script>");
+    expect(named).toContain("&lt;script&gt;bad()&lt;/script&gt;");
+    const unnamed = renderDevicePage(options);
+    expect(unnamed).not.toContain("<img");
+    expect(unnamed).toContain("&lt;img");
   });
 
   it("says which way it went, and that the device is the next place to look", ({
@@ -95,6 +142,7 @@ describe("renderDevicePage", () => {
     const html = renderDevicePage({
       step: "confirm",
       userCode: "CDFG-HJKM",
+      clientId: "alepha-cli",
       userName: "Bob",
       scopes: [{ id: "mcp" }],
       productName: "Lore",
@@ -111,6 +159,7 @@ describe("renderDevicePage", () => {
     const confirm = renderDevicePage({
       step: "confirm",
       userCode: '"><script>x</script>',
+      clientId: "alepha-cli",
       userName: '"><img src=x onerror=alert(1)>',
       productName: "<b>Lore</b>",
       scopes: [{ id: "<x>", label: "<y>", description: "<z>" }],

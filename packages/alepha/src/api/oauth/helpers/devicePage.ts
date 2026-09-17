@@ -52,6 +52,9 @@ export interface DevicePageConfirmOptions {
   step: "confirm";
   userCode: string;
   userName: string;
+  /** Client-provided values, never a verified application identity. */
+  clientId: string;
+  clientName?: string;
   scopes: ConsentScope[];
   /**
    * The app the device signs in to, e.g. "Lore". Never defaulted, for the
@@ -117,7 +120,13 @@ const renderConfirm = (options: DevicePageConfirmOptions): string => {
     ? `your ${escapeHtml(options.productName)} account`
     : "your account";
   const code = escapeHtml(options.userCode);
+  const clientLabel = options.clientName
+    ? "Client-provided name"
+    : "Client-provided ID";
+  const client = escapeHtml(options.clientName || options.clientId);
   return `<h1>Connect a device to ${account}</h1>
+<p class="sub">${clientLabel}: <strong>${client}</strong></p>
+<p class="notice">This identity is supplied by the client and has not been verified.</p>
 <p class="sub">Check that this code matches the code on your device.</p>
 <div class="code">${code}</div>
 <p class="notice">If you did not start this sign-in yourself, deny it: someone may be trying to get into your account.</p>

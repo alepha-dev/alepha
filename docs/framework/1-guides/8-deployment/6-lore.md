@@ -57,6 +57,16 @@ bytes. It must not: a value frozen into a stored artifact breaks promotion,
 which is the whole reason a registry exists. Two environments on one estate type
 produce byte-identical output, and a test exists to keep that true.
 
+The project's Artifacts table offers **Download** for stored tarballs. It uses
+an authenticated endpoint requiring `artifact:read`; deleting builds is a
+separate permission. Image variants are registry references and have no bytes
+to download from Lore.
+
+Deploys cache the server-computed asset manifest by the build's SHA-256, so
+redeploying or promoting unchanged bytes skips asset hashing. Server files
+are still unpacked each time, and a missing or damaged cache is rebuilt.
+Replacing or deleting a build also removes its disposable manifest sidecar.
+
 `lore artifacts push` packs `dist/` and stores it. It reads the runtime out of
 the build's own `dist/manifest.json` rather than from a flag, so an artifact is
 identified by `(project, app, tag, runtime, format)` - `1.2.3` built for

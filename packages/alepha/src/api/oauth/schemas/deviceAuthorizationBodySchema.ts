@@ -9,6 +9,7 @@ import { z } from "alepha";
  */
 export const deviceAuthorizationBodySchema = z.object({
   client_id: z.text({ maxLength: 256 }).optional(),
+  client_secret: z.text({ maxLength: 2048 }).optional(),
   scope: z.text({ maxLength: 1024 }).optional(),
   resource: z.text({ maxLength: 2048 }).optional(),
 });

@@ -127,6 +127,10 @@ puts a name on it, and `changeDescription` is what makes the history readable si
 months later. Both are optional and both are the difference between an audit
 trail and a list of timestamps.
 
+Immediate writes refresh the writing process's cache before returning, whether
+they come from `set()`, the admin API, or `ParameterProvider.save()`. Subscribers
+receive the validated value when it changes.
+
 ### Scheduling a change
 
 `activationDate` in the future stores the version without making it current:

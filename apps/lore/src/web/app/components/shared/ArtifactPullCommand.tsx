@@ -23,11 +23,9 @@ export interface ArtifactPullCommandProps {
  *
  * ## ⚠️ It is not, and must never become, a Download button
  *
- * There is no Download button on any variant anywhere - the authenticated
- * download endpoint does not exist, and a control that cannot do its job is
- * worse than an absent one. When that endpoint lands it must not grow one
- * HERE either: an image row points at bytes Lore never stored, so the button
- * would be offering a file that does not exist on this server.
+ * `downloadArtifact` serves tarballs from the project Artifacts table.
+ * Image rows keep this pull command: Lore holds their references, never the
+ * bytes that the download endpoint would need.
  *
  * ## The command, not the reference
  *
