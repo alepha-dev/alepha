@@ -337,8 +337,7 @@ const inviteAndAccept = async (
   await owner.getByRole("button", { name: /^invite$/i }).click();
   await owner.getByPlaceholder("user@example.com").fill(member.email);
   const invited = owner.waitForResponse(
-    (r) =>
-      r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+    (r) => r.request().method() === "POST" && r.url().endsWith("/invitations"),
     { timeout: 20_000 },
   );
   await owner.getByRole("button", { name: /send invitation/i }).click();

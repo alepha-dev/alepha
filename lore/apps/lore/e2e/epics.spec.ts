@@ -794,8 +794,7 @@ test.describe("Epics — a member, not just the owner", () => {
         await page.getByPlaceholder("user@example.com").fill(member.email);
         const invited = page.waitForResponse(
           (r) =>
-            r.request().method() === "POST" &&
-            r.url().endsWith("/api/invitations"),
+            r.request().method() === "POST" && r.url().endsWith("/invitations"),
           { timeout: 15_000 },
         );
         await page.getByRole("button", { name: /send invitation/i }).click();
