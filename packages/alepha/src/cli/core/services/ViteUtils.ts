@@ -680,4 +680,17 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
 
     return (await this.viteDevServer.ssrLoadModule(specifier)) as T;
   }
+
+  /**
+   * Close the dev server {@link runAlepha} opened, if any.
+   *
+   * The CLI's own container does this in its `ready` and `stop` hooks. A
+   * process that borrows this service without starting a container (the
+   * drizzle-kit child of `alepha db migrations create`) calls it instead,
+   * since the server's file watchers would otherwise keep it alive.
+   */
+  public async close(): Promise<void> {
+    await this.viteDevServer?.close();
+    this.viteDevServer = undefined;
+  }
 }
