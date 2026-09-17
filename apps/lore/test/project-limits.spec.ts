@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { InvitationService } from "alepha/api/invitations";
+import { InvitationService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -14,6 +14,7 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
+import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -31,6 +32,7 @@ interface TestContext {
   invitationController: InvitationController;
   invitationService: InvitationService;
   limits: ProjectLimits;
+  projectSecurity: ProjectSecurityService;
   fakeProvider: FakeProvider;
 }
 
@@ -62,6 +64,7 @@ const setup = async (): Promise<TestContext> => {
     invitationController: alepha.inject(InvitationController),
     invitationService: alepha.inject(InvitationService),
     limits: alepha.inject(ProjectLimits),
+    projectSecurity: alepha.inject(ProjectSecurityService),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -206,10 +209,9 @@ describe("ProjectLimits enforcement", () => {
     const guest = await createTestUser(ctx);
     await expect(
       ctx.invitationService.create(
+        await ctx.projectSecurity.organizationIdOf(p.id),
         {
           email: guest.email,
-          resourceType: "project",
-          resourceId: String(p.id),
         },
         { ...owner, email: `${owner.id}@example.com` },
       ),
@@ -225,10 +227,9 @@ describe("ProjectLimits enforcement", () => {
 
     // Invited while there is room...
     const invitation = await ctx.invitationService.create(
+      await ctx.projectSecurity.organizationIdOf(p.id),
       {
         email: guest.email,
-        resourceType: "project",
-        resourceId: String(p.id),
       },
       { ...owner, email: `${owner.id}@example.com` },
     );
@@ -250,10 +251,9 @@ describe("ProjectLimits enforcement", () => {
     await tighten({ maxMembersPerProject: 2 });
 
     const invitation = await ctx.invitationService.create(
+      await ctx.projectSecurity.organizationIdOf(p.id),
       {
         email: guest.email,
-        resourceType: "project",
-        resourceId: String(p.id),
       },
       { ...owner, email: `${owner.id}@example.com` },
     );
@@ -262,8 +262,7 @@ describe("ProjectLimits enforcement", () => {
     // a project from a booking, and Lore's controller is what maps
     // `resourceId` back onto `projectId` for the HTTP response.
     expect(accepted).toEqual({
-      resourceType: "project",
-      resourceId: String(p.id),
+      organizationId: await ctx.projectSecurity.organizationIdOf(p.id),
     });
   });
 });

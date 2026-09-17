@@ -1,7 +1,7 @@
 import { sigilScrubUrl } from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import {
   $repository,
   $sequence,

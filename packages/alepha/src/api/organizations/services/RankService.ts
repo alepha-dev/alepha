@@ -24,6 +24,37 @@ export class RankService {
   protected readonly members = $repository(organizationMembers);
 
   public async ranksOf(organizationId: string): Promise<Rank[]> {
+    return this.ranksFromRows(await this.definitionsOf(organizationId));
+  }
+
+  public async ranksOfMany(
+    organizationIds: string[],
+  ): Promise<Map<string, Rank[]>> {
+    const result = new Map<string, Rank[]>();
+    if (organizationIds.length === 0) return result;
+    const rows = await this.definitions.findMany(
+      { where: { organizationId: { inArray: organizationIds } } },
+      { cache: { ttl: RankService.DEFINITIONS_CACHE_TTL_MS } },
+    );
+    for (const organizationId of organizationIds) {
+      result.set(
+        organizationId,
+        this.ranksFromRows(
+          rows.filter((row) => row.organizationId === organizationId),
+        ),
+      );
+    }
+    return result;
+  }
+
+  protected ranksFromRows(
+    rows: Array<{
+      key: string;
+      name: string;
+      permissions: string[];
+      builtin: boolean;
+    }>,
+  ): Rank[] {
     const config = this.alepha.store.get(organizationConfigAtom);
     const byKey = new Map<string, Rank>([
       [
@@ -48,7 +79,7 @@ export class RankService {
       ],
     ]);
 
-    for (const row of await this.definitionsOf(organizationId)) {
+    for (const row of rows) {
       const declared = byKey.get(row.key);
       byKey.set(row.key, {
         key: row.key,
@@ -124,6 +155,10 @@ export class RankService {
   ): Promise<void> {
     if (await this.can(organizationId, permission, user)) return;
     const membership = await this.membership(organizationId, user.id);
+    const key = membership?.rank ?? "member";
+    const rank = membership
+      ? (await this.ranksOf(organizationId)).find((item) => item.key === key)
+      : undefined;
     const rows: RankRows = { membership: membership ?? undefined, user };
     throw new ForbiddenError(
       await this.refusal(
@@ -131,8 +166,8 @@ export class RankService {
           organizationId,
           rank: membership
             ? {
-                key: membership.rank ?? "member",
-                name: membership.rank ?? "Member",
+                key,
+                name: rank?.name ?? key,
               }
             : undefined,
           missing: [permission],
@@ -211,6 +246,9 @@ export class RankService {
     key: string,
     writer: UserAccountToken,
   ): Promise<void> {
+    if (key === "owner") {
+      throw new BadRequestError("Ownership is transferred, not assigned");
+    }
     if (userId === writer.id) {
       throw new BadRequestError("You cannot change your own rank");
     }

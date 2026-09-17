@@ -16,6 +16,7 @@ export const $ownsOrganization = (
     from: options.from,
     requires: options.requires,
     secure: options.secure,
+    cache: options.cache,
     through: options.through,
     via: {
       repository: () => memberRepository,
@@ -23,13 +24,13 @@ export const $ownsOrganization = (
       user: "userId",
       key: options.key,
     },
-    message: "Not a member of this organization",
+    message: options.message ?? "Not a member of this organization",
   });
 };
 
 export interface OwnsOrganizationOptions extends Pick<
   OwnsOptions,
-  "param" | "from" | "requires" | "secure"
+  "param" | "from" | "requires" | "secure" | "cache" | "message"
 > {
   repository?: () => Repository<any>;
   through?: OwnsHop | OwnsHop[];

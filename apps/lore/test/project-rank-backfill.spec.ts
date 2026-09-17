@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { rankDefinitions, RankService } from "alepha/api/ranks";
+import { organizationRanks, RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -9,6 +9,7 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ProjectRankJobs } from "../src/api/jobs/ProjectRankJobs.ts";
 
@@ -19,7 +20,8 @@ import { ProjectRankJobs } from "../src/api/jobs/ProjectRankJobs.ts";
  * to CREATE one of these any more - only to make one.
  */
 class DefinitionsProbe {
-  definitions = $repository(rankDefinitions);
+  definitions = $repository(organizationRanks);
+  projects = $repository(projects);
 }
 
 /**
@@ -69,8 +71,9 @@ const setup = async () => {
         body: capabilities ? { title, capabilities } : { title },
       } as never),
     );
+    const projectRow = await probe.projects.findById(project.id);
     for (const row of await probe.definitions.findMany({
-      where: { type: { eq: "project" }, scopeId: { eq: String(project.id) } },
+      where: { organizationId: { eq: projectRow!.organizationId! } },
     })) {
       await probe.definitions.deleteById(row.id);
     }
@@ -80,7 +83,11 @@ const setup = async () => {
   const keysOf = async (projectId: number) =>
     (
       await probe.definitions.findMany({
-        where: { type: { eq: "project" }, scopeId: { eq: String(projectId) } },
+        where: {
+          organizationId: {
+            eq: (await probe.projects.findById(projectId))!.organizationId!,
+          },
+        },
       })
     )
       .map((row) => row.key)
@@ -117,9 +124,11 @@ describe("the preset-rank backfill", () => {
     ]);
     // Admin is everything short of the two acts that belong to the owner
     // structurally - which is the rank the report was asking for.
-    const admin = (await ctx.ranks.ranksOf("project", String(project.id))).find(
-      (rank) => rank.key === "admin",
-    );
+    const admin = (
+      await ctx.ranks.ranksOf(
+        (await ctx.probe.projects.findById(project.id))!.organizationId!,
+      )
+    ).find((rank) => rank.key === "admin");
     expect(admin?.name).toBe("Admin");
     expect(admin?.permissions).toContain("member:manage");
     expect(admin?.permissions).toContain("rank:manage");
@@ -136,8 +145,8 @@ describe("the preset-rank backfill", () => {
     const ctx = await setup();
     const project = await ctx.aLegacyProject("Decided");
     await ctx.probe.definitions.create({
-      type: "project",
-      scopeId: String(project.id),
+      organizationId: (await ctx.probe.projects.findById(project.id))!
+        .organizationId!,
       key: "contributor",
       name: "Writers",
       permissions: ["project:read", "quest:read", "quest:create"],
@@ -146,9 +155,11 @@ describe("the preset-rank backfill", () => {
     await ctx.jobs.seedMissingPresetRanks.run();
 
     expect(await ctx.keysOf(project.id)).toEqual(["contributor"]);
-    const kept = (await ctx.ranks.ranksOf("project", String(project.id))).find(
-      (rank) => rank.key === "contributor",
-    );
+    const kept = (
+      await ctx.ranks.ranksOf(
+        (await ctx.probe.projects.findById(project.id))!.organizationId!,
+      )
+    ).find((rank) => rank.key === "contributor");
     expect(kept?.name).toBe("Writers");
 
     await ctx.alepha.stop();
@@ -187,7 +198,9 @@ describe("the preset-rank backfill", () => {
     await ctx.jobs.seedMissingPresetRanks.run();
 
     const contributor = (
-      await ctx.ranks.ranksOf("project", String(project.id))
+      await ctx.ranks.ranksOf(
+        (await ctx.probe.projects.findById(project.id))!.organizationId!,
+      )
     ).find((rank) => rank.key === "contributor");
     expect(contributor?.permissions).toContain("folio:write");
     expect(contributor?.permissions).not.toContain("quest:create");

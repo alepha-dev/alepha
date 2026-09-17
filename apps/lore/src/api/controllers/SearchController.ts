@@ -1,4 +1,5 @@
 import { $inject, type Infer, z } from "alepha";
+import { organizationMembers } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { $action } from "alepha/server";
@@ -8,7 +9,6 @@ import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
-import { members } from "../entities/members.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 /**
@@ -61,7 +61,7 @@ export class SearchController {
   protected readonly epics = $repository(epics);
   protected readonly releases = $repository(releases);
   protected readonly feedback = $repository(feedback);
-  protected readonly members = $repository(members);
+  protected readonly members = $repository(organizationMembers);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly registry = $inject(CapabilityRegistry);
   protected readonly permissions = $inject(ProjectPermissions);
@@ -300,7 +300,12 @@ export class SearchController {
     user: UserAccountToken,
   ): Promise<Set<string>> {
     const member = await this.members.findOne({
-      where: { projectId: { eq: projectId }, userId: { eq: user.id } },
+      where: {
+        organizationId: {
+          eq: await this.security.organizationIdOf(projectId),
+        },
+        userId: { eq: user.id },
+      },
     });
     const { permissions } = await this.permissions.of(projectId, user, member);
     return new Set(permissions);

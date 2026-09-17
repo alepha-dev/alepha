@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -10,8 +11,8 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestCommentController } from "../src/api/controllers/QuestCommentController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * Membership rows have no endpoint that takes a user id directly — joining a
@@ -201,7 +202,7 @@ describe("QuestCommentController", () => {
     const owner = await createUser(ctx);
     const member = await createUser(ctx);
     const projectId = await createProject(ctx, owner);
-    await ctx.probe.members.create({ userId: member.id, projectId });
+    await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
     const quest = await createQuest(ctx, owner, projectId);
 
     const theirs = await ctx.comments.createQuestComment.fetch(
@@ -225,7 +226,7 @@ describe("QuestCommentController", () => {
     const owner = await createUser(ctx);
     const member = await createUser(ctx);
     const projectId = await createProject(ctx, owner);
-    await ctx.probe.members.create({ userId: member.id, projectId });
+    await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
     const quest = await createQuest(ctx, owner, projectId);
 
     const theirs = await ctx.comments.createQuestComment.fetch(

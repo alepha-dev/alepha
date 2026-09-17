@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -8,8 +9,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
+import { createTestMemberByProjectId } from "../../../test/fixtures/entities.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
-import { members } from "../../api/entities/members.ts";
 import { projects } from "../../api/entities/projects.ts";
 import { LoreApi } from "../../api/index.ts";
 import { LoreMcp } from "../index.ts";
@@ -54,7 +55,7 @@ const setup = async () => {
   alepha.with(LoreApi);
   alepha.with(LoreMcp);
 
-  const membersProbe = alepha.inject(MembersProbe);
+  alepha.inject(MembersProbe);
   const projectsProbe = alepha.inject(ProjectsProbe);
   const projectTools = alepha.inject(ProjectTools);
   const projectApi = alepha.inject(ProjectController);
@@ -81,10 +82,7 @@ const setup = async () => {
     const member = await users.createUser({
       username: `member-${crypto.randomUUID().slice(0, 8)}`,
     });
-    await membersProbe.members.create({
-      userId: member.id,
-      projectId: project.id,
-    });
+    await createTestMemberByProjectId(alepha, project.id, member.id);
     return member.id;
   };
 

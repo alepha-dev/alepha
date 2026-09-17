@@ -1,7 +1,6 @@
 import { organizationMembers } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 
-import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 
@@ -26,7 +25,6 @@ import { quests } from "../entities/quests.ts";
  */
 export class ProjectDeletionService {
   protected readonly projects = $repository(projects);
-  protected readonly members = $repository(members);
   protected readonly organizationMembers = $repository(organizationMembers);
   protected readonly quests = $repository(quests);
 
@@ -51,7 +49,6 @@ export class ProjectDeletionService {
     const project = await this.projects.findById(projectId);
     await this.freeSlug(projectId);
     await this.projects.deleteById(projectId, { force: options.force });
-    await this.members.deleteMany({ projectId: { eq: projectId } });
     if (project?.organizationId) {
       await this.organizationMembers.deleteMany({
         organizationId: { eq: project.organizationId },

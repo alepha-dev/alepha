@@ -1,5 +1,6 @@
 import { sigilKeyProject } from "@alepha/lore/sigil";
 import { Alepha, z } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -11,11 +12,11 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { AppController } from "../src/api/controllers/AppController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -498,7 +499,7 @@ describe("SigilController", () => {
     const owner = await createTestUser(ctx);
     const member = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    await ctx.probe.members.create({ userId: member.id, projectId });
+    await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
 
     const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(

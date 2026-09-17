@@ -1,5 +1,9 @@
 import type { Alepha, Infer } from "alepha";
-import { organizationMembers, organizations } from "alepha/api/organizations";
+import {
+  type OrganizationMember,
+  organizationMembers,
+  organizations,
+} from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 
@@ -8,12 +12,12 @@ import { type Epic, epics } from "@/api/entities/epics.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
-import { type Member, members } from "@/api/entities/members.ts";
 import { projectCapabilities } from "@/api/entities/projectCapabilities.ts";
 import { type Project, projects } from "@/api/entities/projects.ts";
 import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
 import { releases } from "@/api/entities/releases.ts";
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
+import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 type ProjectInsert = Infer<typeof projects.insertSchema>;
 type EpicInsert = Infer<typeof epics.insertSchema>;
@@ -40,8 +44,8 @@ type FolioInsert = Infer<typeof folios.insertSchema>;
 export class TestEntityRepositories {
   organizations = $repository(organizations);
   organizationMembers = $repository(organizationMembers);
+  members = $repository(organizationMembers);
   projects = $repository(projects);
-  members = $repository(members);
   releases = $repository(releases);
   feedback = $repository(feedback);
   users = $repository(users);
@@ -115,6 +119,9 @@ export const createTestProject = async (
   projectSeq += 1;
   const title = overrides.title ?? `Test Project ${projectSeq}`;
   const { capabilities, ...columns } = overrides;
+  const organization = columns.organizationId
+    ? undefined
+    : await repo.organizations.create({ name: title });
   const project = await repo.projects.create({
     ...columns,
     // Spread first, defaults last: `Partial<ProjectInsert>` types every
@@ -130,10 +137,11 @@ export const createTestProject = async (
       overrides.slug ??
       `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${projectSeq}`,
     createdBy: overrides.createdBy ?? owner.id,
+    organizationId: columns.organizationId ?? organization!.id,
   });
 
-  await repo.members.create({
-    projectId: project.id,
+  await repo.organizationMembers.create({
+    organizationId: project.organizationId!,
     userId: project.createdBy,
     rank: "owner",
   });
@@ -260,7 +268,7 @@ export const createTestMember = async (
   // that could still set it would let a spec claim to be testing a non-owner
   // while the only column anything reads says otherwise.
   overrides: Partial<{ rank: string }> = {},
-): Promise<Member> => {
+): Promise<OrganizationMember> => {
   const repo = alepha.inject(TestEntityRepositories);
 
   // ⚠️ Idempotent, because `createTestProject` now writes the creator's own
@@ -268,19 +276,47 @@ export const createTestMember = async (
   // so a spec that adds the creator explicitly - a perfectly reasonable thing
   // to have written before ranks existed - would otherwise fail on a
   // constraint rather than on anything it was testing.
-  const existing = await repo.members.findOne({
-    where: { projectId: { eq: project.id }, userId: { eq: userId } },
+  const existing = await repo.organizationMembers.findOne({
+    where: {
+      organizationId: { eq: project.organizationId! },
+      userId: { eq: userId },
+    },
   });
 
   if (existing) {
     if (overrides.rank !== undefined) {
-      return repo.members.updateById(existing.id, { rank: overrides.rank });
+      return repo.organizationMembers.updateById(existing.id, {
+        rank: overrides.rank,
+      });
     }
     return existing;
   }
 
-  return repo.members.create({
-    projectId: project.id,
+  return repo.organizationMembers.create({
+    organizationId: project.organizationId!,
+    userId,
+    ...(overrides.rank === undefined ? {} : { rank: overrides.rank }),
+  });
+};
+
+export const createTestMemberByProjectId = async (
+  alepha: Alepha,
+  projectId: number,
+  userId: string,
+  overrides: Partial<{ rank: string }> = {},
+): Promise<OrganizationMember> => {
+  const security = alepha.inject(ProjectSecurityService);
+  const organizationId = await security.organizationIdOf(projectId);
+  const existing = await security.members.findOne({
+    where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
+  });
+  if (existing) {
+    return overrides.rank === undefined
+      ? existing
+      : security.members.updateById(existing.id, { rank: overrides.rank });
+  }
+  return security.members.create({
+    organizationId,
     userId,
     ...(overrides.rank === undefined ? {} : { rank: overrides.rank }),
   });

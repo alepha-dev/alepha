@@ -786,7 +786,8 @@ export class AppRouter {
       ]);
 
       this.alepha.store.set(currentProjectAtom, project);
-      this.alepha.store.set(currentProjectMemberAtom, member);
+      // Q2394 moves this browser atom to the organization member schema.
+      this.alepha.store.set(currentProjectMemberAtom, member as any);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
       this.alepha.store.set(currentReleasesAtom, releases);
       this.alepha.store.set(currentFeedbackCountAtom, {
@@ -1883,7 +1884,11 @@ export class AppRouter {
             })
           : Promise.resolve([]),
       ]);
-      return { members, pendingInvitations };
+      // Q2394 moves the members page onto the organization browser types.
+      return {
+        members: members as any,
+        pendingInvitations: pendingInvitations as any,
+      };
     },
   });
 

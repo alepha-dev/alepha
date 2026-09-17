@@ -1,4 +1,5 @@
 import { Alepha, AlephaError } from "alepha";
+import { MemberService as OrganizationMemberService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -8,7 +9,6 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, describe, it } from "vitest";
 
 import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
-import { members as membersEntity } from "../entities/members.ts";
 import { projects as projectsEntity } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { ProjectController } from "./ProjectController.ts";
@@ -24,45 +24,16 @@ import { ProjectController } from "./ProjectController.ts";
  * The refusal is one-shot, so the retry that the handler's rethrow is asking
  * the caller to make can be exercised in the same container.
  */
-class FailingMembersProjectController extends ProjectController {
+class FailingMemberService extends OrganizationMemberService {
   public failures = 0;
 
-  /**
-   * A second repository over the same table, not a capture of `this.members`:
-   * the override below shadows that property, and TypeScript rightly refuses
-   * to read it from an initializer. Two repositories over one entity is the
-   * normal shape here — `TestEntityRepositories` already holds another.
-   */
-  protected readonly realMembers = $repository(membersEntity);
-
-  /**
-   * Only `create` refuses. Everything else falls through to the real
-   * repository - the handler also COUNTS owner rows now, for the project
-   * quota, and a fake that answered only `create` turned the compensating
-   * delete into a `TypeError` before the write it is about ever ran.
-   */
-  override members = new Proxy(
-    {},
-    {
-      get: (_target, prop: string) => {
-        if (prop === "create") {
-          return async (...args: unknown[]) => {
-            this.failures += 1;
-            if (this.failures === 1) {
-              throw new AlephaError("members.create refused");
-            }
-            return (this.realMembers.create as (...a: unknown[]) => unknown)(
-              ...args,
-            );
-          };
-        }
-        const real = (this.realMembers as unknown as Record<string, unknown>)[
-          prop
-        ];
-        return typeof real === "function" ? real.bind(this.realMembers) : real;
-      },
-    },
-  ) as unknown as ProjectController["members"];
+  public override async addOwner(organizationId: string, userId: string) {
+    this.failures += 1;
+    if (this.failures === 1) {
+      throw new AlephaError("members.create refused");
+    }
+    return super.addOwner(organizationId, userId);
+  }
 }
 
 class FailingProjectSaveController extends ProjectController {
@@ -114,8 +85,8 @@ const setup = async (
 
   if (options.failMembership) {
     alepha.with({
-      provide: ProjectController,
-      use: FailingMembersProjectController,
+      provide: OrganizationMemberService,
+      use: FailingMemberService,
     });
   } else if (options.failProjectSave) {
     alepha.with({
@@ -162,11 +133,6 @@ describe("ProjectController.createProject", () => {
     );
 
     expect(resource.slug).toBe("a-real-project");
-
-    const membership = await ctx.repos.members.findOne({
-      where: { projectId: { eq: resource.id }, userId: { eq: account.id } },
-    });
-    expect(membership).toBeDefined();
 
     const project = await ctx.repos.projects.getById(resource.id);
     expect(project.organizationId).toBeDefined();

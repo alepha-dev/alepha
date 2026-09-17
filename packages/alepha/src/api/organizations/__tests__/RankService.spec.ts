@@ -187,7 +187,7 @@ describe("alepha/api/organizations - RankService", () => {
     );
     await expect(
       ctx.ranks.assign(ctx.organization.id, ctx.member.id, "owner", ctx.owner),
-    ).rejects.toThrow("Ownership is transferred, not invited");
+    ).rejects.toThrow("Ownership is transferred, not assigned");
   });
 
   it("refuses self-lockout and deleting a held rank", async ({ expect }) => {

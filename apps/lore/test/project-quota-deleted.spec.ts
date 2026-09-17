@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -8,7 +9,6 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";

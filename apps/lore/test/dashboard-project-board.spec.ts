@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -13,6 +13,7 @@ import { projectDashboardCards } from "@/api/entities/projectDashboardCards.ts";
 import { LoreApi } from "@/api/index.ts";
 
 import {
+  createTestMemberByProjectId,
   createTestEpic,
   createTestProject,
   createTestQuest,
@@ -98,9 +99,7 @@ const contributorOf = async (
 ): Promise<UserAccountToken> => {
   const user = token(crypto.randomUUID());
   await ctx.repos.users.create({ id: user.id });
-  await ctx.repos.members.create({
-    projectId,
-    userId: user.id,
+  await createTestMemberByProjectId(ctx.alepha, projectId, user.id, {
     rank: "contributor",
   });
   return user;
@@ -375,14 +374,23 @@ describe("the project dashboard controller", () => {
       // nothing about Contributor.
       const held = await ctx.alepha
         .inject(RankService)
-        .permissionsOf("project", String(projectId), "contributor");
+        .permissionsOf(
+          (await ctx.repos.projects.findById(projectId))!.organizationId!,
+          "contributor",
+        );
 
       expect(held).toContain("project:read");
       expect(held).not.toContain("project:update");
       expect(
         (
           await ctx.repos.members.getOne({
-            where: { projectId: { eq: projectId }, userId: { eq: reader.id } },
+            where: {
+              organizationId: {
+                eq: (await ctx.repos.projects.findById(projectId))!
+                  .organizationId!,
+              },
+              userId: { eq: reader.id },
+            },
           })
         ).rank,
       ).toBe("contributor");

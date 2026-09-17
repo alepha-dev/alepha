@@ -11,6 +11,7 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectPromptController } from "../src/api/controllers/ProjectPromptController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * The storage half of the agent prompts: one row per customised kind,
@@ -104,7 +105,7 @@ const addMember = async (
   projectId: number,
   userId: string,
 ): Promise<void> => {
-  await ctx.security.members.create({ projectId, userId, owner: false });
+  await createTestMemberByProjectId(ctx.alepha, projectId, userId);
 };
 
 describe("Project agent prompts", () => {

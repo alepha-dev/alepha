@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectRankController } from "../src/api/controllers/ProjectRankController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { ProjectInvitationResource } from "../src/api/providers/ProjectInvitationResource.ts";
 import { LorePermissions } from "../src/api/security/LorePermissions.ts";
 import { ProjectRankPresets } from "../src/api/security/ProjectRankPresets.ts";
 import {
@@ -61,6 +60,9 @@ const root: UserAccountToken = {
   ownership: false,
 };
 
+const organizationIdOf = async (ctx: Ctx, projectId: number) =>
+  (await ctx.repos.projects.findById(projectId))!.organizationId!;
+
 describe("Lore's rank resource", () => {
   let ctx: Ctx;
 
@@ -80,12 +82,11 @@ describe("Lore's rank resource", () => {
     // ⚠️ The acceptance criterion of the whole epic, as one assertion. A
     // fixture project stores ZERO definition rows, so both ranks come from
     // code and `member` is what a NULL `members.rank` column reads as.
-    const ranks = await ctx.ranks.ranksOf("project", String(project.id));
+    const ranks = await ctx.ranks.ranksOf(project.organizationId!);
     expect(ranks.map((it) => it.key)).toEqual(["owner", "member"]);
 
     const member = await ctx.ranks.permissionsOf(
-      "project",
-      String(project.id),
+      project.organizationId!,
       "member",
     );
     expect(member?.sort()).toEqual([...LorePermissions.MEMBER_DEFAULT].sort());
@@ -94,8 +95,7 @@ describe("Lore's rank resource", () => {
     // enumerated: an owner written out permission by permission falls behind
     // every time a new one is declared.
     const owner = await ctx.ranks.permissionsOf(
-      "project",
-      String(project.id),
+      project.organizationId!,
       "owner",
     );
     expect(owner).toContain("*");
@@ -105,31 +105,24 @@ describe("Lore's rank resource", () => {
     const project = await createTestProject(ctx.alepha);
     const invitee = await ctx.repos.users.create({});
     await ctx.repos.members.create({
-      projectId: project.id,
+      organizationId: project.organizationId!,
       userId: invitee.id,
     });
 
     // Ownership is transferred, not handed out: a project with two owners is
     // a state nothing else in this app can express.
     await expect(
-      ctx.ranks.assign(
-        "project",
-        String(project.id),
-        invitee.id,
-        "owner",
-        root,
-      ),
+      ctx.ranks.assign(project.organizationId!, invitee.id, "owner", root),
     ).rejects.toThrow("transferred, not assigned");
   });
 
   it("refuses the ceiling and requires the floor", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
-    const scope = String(project.id);
+    const scope = project.organizationId!;
 
     for (const ceiling of LorePermissions.OWNER_ONLY) {
       await expect(
         ctx.ranks.save(
-          "project",
           scope,
           { key: "c", name: "C", permissions: ["project:read", ceiling] },
           root,
@@ -139,7 +132,6 @@ describe("Lore's rank resource", () => {
 
     await expect(
       ctx.ranks.save(
-        "project",
         scope,
         { key: "c", name: "C", permissions: ["quest:read"] },
         root,
@@ -199,7 +191,8 @@ describe("Lore's rank resource", () => {
       { user },
     );
 
-    const ranks = await ctx.ranks.ranksOf("project", String(created.id));
+    const organizationId = await organizationIdOf(ctx, created.id);
+    const ranks = await ctx.ranks.ranksOf(organizationId);
     expect(ranks.map((it) => it.key).sort()).toEqual([
       "admin",
       "contributor",
@@ -214,13 +207,16 @@ describe("Lore's rank resource", () => {
     // The creator's membership row says owner, which is what makes the seeding
     // pass the subset rule and what the whole epic reads afterwards.
     const membership = await ctx.repos.members.findOne({
-      where: { projectId: { eq: created.id }, userId: { eq: account.id } },
+      where: {
+        organizationId: { eq: organizationId },
+        userId: { eq: account.id },
+      },
     });
     expect(membership?.rank).toBe("owner");
 
     // An older project - one the fixture built directly - keeps zero rows.
     const old = await createTestProject(ctx.alepha);
-    const oldRanks = await ctx.ranks.ranksOf("project", String(old.id));
+    const oldRanks = await ctx.ranks.ranksOf(old.organizationId!);
     expect(oldRanks.map((it) => it.key)).toEqual(["owner", "member"]);
   });
 
@@ -240,8 +236,7 @@ describe("Lore's rank resource", () => {
     // it was `configurable`, the module refused the write and the matrix had
     // a column nobody could edit with nothing on screen to say why.
     await ctx.ranks.save(
-      "project",
-      String(created.id),
+      await organizationIdOf(ctx, created.id),
       {
         key: "member",
         name: "Member",
@@ -250,7 +245,9 @@ describe("Lore's rank resource", () => {
       user,
     );
 
-    const ranks = await ctx.ranks.ranksOf("project", String(created.id));
+    const ranks = await ctx.ranks.ranksOf(
+      await organizationIdOf(ctx, created.id),
+    );
     const member = ranks.find((it) => it.key === "member");
 
     expect(member?.permissions).toEqual(["project:read", "quest:read"]);
@@ -262,8 +259,7 @@ describe("Lore's rank resource", () => {
     // Owner is the other kind, and stays refused.
     await expect(
       ctx.ranks.save(
-        "project",
-        String(created.id),
+        await organizationIdOf(ctx, created.id),
         { key: "owner", name: "Boss", permissions: ["project:read"] },
         user,
       ),
@@ -316,7 +312,7 @@ describe("Lore's rank resource", () => {
       { user },
     );
     await ctx.repos.members.create({
-      projectId: created.id,
+      organizationId: await organizationIdOf(ctx, created.id),
       userId: taker.id,
       rank: "member",
     });
@@ -327,7 +323,9 @@ describe("Lore's rank resource", () => {
     );
 
     const rows = await ctx.repos.members.findMany({
-      where: { projectId: { eq: created.id } },
+      where: {
+        organizationId: { eq: await organizationIdOf(ctx, created.id) },
+      },
     });
 
     // ⚠️ The property that matters, and the reason this is one UPDATE: D1 has
@@ -350,7 +348,7 @@ describe("Lore's rank resource", () => {
       { user },
     );
     await ctx.repos.members.create({
-      projectId: created.id,
+      organizationId: await organizationIdOf(ctx, created.id),
       userId: other.id,
       // `admin` holds `member:manage`, so it passes the gate and is refused
       // by the owner check inside - which is the point: transfer is not a
@@ -364,7 +362,7 @@ describe("Lore's rank resource", () => {
         { params: { id: created.id }, body: { userId: owner.id } },
         { user: { id: other.id, roles: ["user"] } },
       ),
-    ).rejects.toThrow("Only the project owner");
+    ).rejects.toThrow("Only the organization owner");
   });
 
   it("counts the project quota on owner rows, so a transfer moves the slot", async ({
@@ -379,7 +377,7 @@ describe("Lore's rank resource", () => {
       { user },
     );
     await ctx.repos.members.create({
-      projectId: created.id,
+      organizationId: await organizationIdOf(ctx, created.id),
       userId: taker.id,
       rank: "member",
     });
@@ -417,7 +415,7 @@ describe("Lore's rank resource", () => {
       { user },
     );
     await ctx.repos.members.create({
-      projectId: created.id,
+      organizationId: await organizationIdOf(ctx, created.id),
       userId: taker.id,
       rank: "member",
     });
@@ -438,7 +436,9 @@ describe("Lore's rank resource", () => {
     await ctx.projects.leaveProject({ params: { id: created.id } }, { user });
 
     const rows = await ctx.repos.members.findMany({
-      where: { projectId: { eq: created.id } },
+      where: {
+        organizationId: { eq: await organizationIdOf(ctx, created.id) },
+      },
     });
     expect(rows.map((it) => it.userId)).toEqual([taker.id]);
   });
@@ -456,66 +456,13 @@ describe("Lore's rank resource", () => {
     // stop you handing yourself LESS, and a scope whose only manager has
     // demoted themselves out of `rank:manage` is locked with no way back.
     await expect(
-      ctx.ranks.assign("project", String(created.id), owner.id, "viewer", user),
+      ctx.ranks.assign(
+        await organizationIdOf(ctx, created.id),
+        owner.id,
+        "viewer",
+        user,
+      ),
     ).rejects.toThrow("cannot change your own rank");
-  });
-
-  it("lands an invitee on the rank the invitation named", async ({
-    expect,
-  }) => {
-    const owner = await ctx.repos.users.create({});
-    const guest = await ctx.repos.users.create({});
-    const user: UserAccountToken = { id: owner.id, roles: ["user"] };
-    const created = await ctx.projects.createProject(
-      { body: { title: "Invited" } },
-      { user },
-    );
-
-    const resource = ctx.alepha.inject(ProjectInvitationResource);
-
-    await resource.project.options.grant?.(guest.id, {
-      resourceType: "project",
-      resourceId: String(created.id),
-      roles: ["viewer"],
-    } as never);
-
-    const row = await ctx.repos.members.findOne({
-      where: {
-        projectId: { eq: created.id },
-        userId: { eq: guest.id },
-      },
-    });
-    expect(row?.rank).toBe("viewer");
-  });
-
-  it("falls back to member when the named rank is gone", async ({ expect }) => {
-    const owner = await ctx.repos.users.create({});
-    const guest = await ctx.repos.users.create({});
-    const user: UserAccountToken = { id: owner.id, roles: ["user"] };
-    const created = await ctx.projects.createProject(
-      { body: { title: "Stale" } },
-      { user },
-    );
-
-    const resource = ctx.alepha.inject(ProjectInvitationResource);
-
-    // A real state rather than a defensive branch: the matrix refuses to
-    // delete a HELD rank, and an unanswered invitation holds nothing. Same
-    // path as every invitation sent before this quest, which names no rank at
-    // all.
-    await resource.project.options.grant?.(guest.id, {
-      resourceType: "project",
-      resourceId: String(created.id),
-      roles: ["deleted-since"],
-    } as never);
-
-    const row = await ctx.repos.members.findOne({
-      where: {
-        projectId: { eq: created.id },
-        userId: { eq: guest.id },
-      },
-    });
-    expect(row?.rank).toBe("member");
   });
 
   it("names a seeded rank in the creator's language", ({ expect }) => {
@@ -543,7 +490,7 @@ describe("Lore's rank resource", () => {
 
     const member = await ctx.repos.users.create({});
     await ctx.repos.members.create({
-      projectId: created.id,
+      organizationId: await organizationIdOf(ctx, created.id),
       userId: member.id,
       rank: "contributor",
     });
@@ -552,10 +499,14 @@ describe("Lore's rank resource", () => {
     // quest:create", the member asks the owner for a better rank, the owner
     // opens the matrix, and there is no `quest:create` row there at all.
     await expect(
-      ctx.ranks.assert("project", String(created.id), "quest:create", {
-        id: member.id,
-        roles: ["user"],
-      }),
+      ctx.ranks.assert(
+        await organizationIdOf(ctx, created.id),
+        "quest:create",
+        {
+          id: member.id,
+          roles: ["user"],
+        },
+      ),
     ).rejects.toThrow("does not have");
 
     // And when the rank really is the reason, the refusal names the RANK, the
@@ -564,10 +515,14 @@ describe("Lore's rank resource", () => {
     // better rank, or nothing the owner can do at all. A message that only
     // said "forbidden" would leave an agent with nowhere to go.
     await expect(
-      ctx.ranks.assert("project", String(created.id), "member:manage", {
-        id: member.id,
-        roles: ["user"],
-      }),
+      ctx.ranks.assert(
+        await organizationIdOf(ctx, created.id),
+        "member:manage",
+        {
+          id: member.id,
+          roles: ["user"],
+        },
+      ),
     ).rejects.toThrow(
       "Your rank (Contributor) does not grant member:manage. Ask the project owner.",
     );

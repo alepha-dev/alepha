@@ -3,19 +3,14 @@ import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
 import {
   MemberService as OrganizationMemberService,
+  type OrganizationMember,
   organizationMembers,
   organizations,
+  RankService,
 } from "alepha/api/organizations";
-import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import {
-  $repository,
-  $transactional,
-  db,
-  pageQuerySchema,
-  sql,
-} from "alepha/orm";
+import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
 import {
   $secure,
   OwnedResourceProvider,
@@ -36,7 +31,6 @@ import { $etag } from "alepha/server/etag";
 // `FolioAttachmentService` imports `folioAssetPath` from the same tree. Pure
 // function, no imports of its own.
 import { displayName } from "../../web/app/services/displayName.ts";
-import { type Member, members } from "../entities/members.ts";
 import {
   defaultProjectFeatures,
   type Project,
@@ -64,7 +58,6 @@ import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
-import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -92,16 +85,16 @@ export class ProjectController {
   alepha = $inject(Alepha);
   projectDeletion = $inject(ProjectDeletionService);
   projects = $repository(projects);
-  members = $repository(members);
   organizations = $repository(organizations);
   organizationMembers = $repository(organizationMembers);
+  memberService = $inject(OrganizationMemberService);
   /**
    * Relation-aware views of the two tables above, for the reads that used to
    * fetch one and then look up the other. Same tables, same rows — `include`
    * is the only thing they add.
    */
   projectsWith = $repository(relations, "projects");
-  membersWith = $repository(relations, "members");
+  membersWith = $repository(relations, "organizationMembers");
   usersWith = $repository(relations, "users");
   quests = $repository(quests);
   releases = $repository(releases);
@@ -181,8 +174,7 @@ export class ProjectController {
         capabilities.map((it) => it.key),
       )) {
         await this.ranks.save(
-          "project",
-          String(projectId),
+          await this.projectSecurity.organizationIdOf(projectId),
           {
             key: preset.key,
             name: this.rankPresets.nameFor(preset, language),
@@ -397,19 +389,7 @@ export class ProjectController {
       // migration is complete, every read still uses Lore's old membership
       // table, so the owner is written to both stores.
       try {
-        await this.members.create({
-          projectId: project.id,
-          userId: user.id,
-          // The creator is the project's one owner, and this is the column
-          // that says so from now on. `owner` above is the frozen boolean,
-          // still written only because its two readers have not gone yet.
-          rank: ProjectRankResource.OWNER_KEY,
-        });
-        await this.organizationMembers.create({
-          organizationId: organization.id,
-          userId: user.id,
-          rank: OrganizationMemberService.OWNER,
-        });
+        await this.memberService.addOwner(organization.id, user.id);
       } catch (error) {
         // `deleteProject` and not a bare `deleteById`: it also frees the slug,
         // which a soft-deleted row would otherwise hold hostage against the
@@ -1020,7 +1000,7 @@ export class ProjectController {
         id: z.integer(),
       }),
       response: projectResourceSchema.extend({
-        member: members.schema.optional(),
+        member: organizationMembers.schema.optional(),
         quests: z.array(questResourceSchema),
         /**
          * Total number of members in this project (including the viewer).
@@ -1050,9 +1030,9 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       const project = this.owned.get<Project>();
 
-      const member = await this.members.findOne({
+      const member = await this.organizationMembers.findOne({
         where: {
-          projectId: { eq: params.id },
+          organizationId: { eq: project.organizationId! },
           userId: { eq: user.id },
         },
       });
@@ -1065,8 +1045,8 @@ export class ProjectController {
         },
       });
 
-      const memberCount = await this.members.count({
-        projectId: { eq: params.id },
+      const memberCount = await this.organizationMembers.count({
+        organizationId: { eq: project.organizationId! },
       });
 
       return {
@@ -1113,7 +1093,7 @@ export class ProjectController {
         slug: z.string(),
       }),
       response: projectResourceSchema.extend({
-        member: members.schema.optional(),
+        member: organizationMembers.schema.optional(),
         quests: z.array(questResourceSchema),
         /**
          * Total number of members in this project (including the viewer).
@@ -1157,9 +1137,9 @@ export class ProjectController {
       // field of the response. This handler used to read it twice - once
       // inside `assertMember` and once for the field - which is six sequential
       // awaits in the loader every project navigation runs.
-      const member = await this.members.findOne({
+      const member = await this.organizationMembers.findOne({
         where: {
-          projectId: { eq: project.id },
+          organizationId: { eq: project.organizationId! },
           userId: { eq: user.id },
         },
       });
@@ -1170,12 +1150,7 @@ export class ProjectController {
         throw new ForbiddenError("Not a member of this project");
       }
 
-      await this.ranks.assert(
-        "project",
-        String(project.id),
-        "project:read",
-        user,
-      );
+      await this.ranks.assert(project.organizationId!, "project:read", user);
 
       const projectQuests = await this.quests.findMany({
         where: {
@@ -1185,8 +1160,8 @@ export class ProjectController {
         },
       });
 
-      const memberCount = await this.members.count({
-        projectId: { eq: project.id },
+      const memberCount = await this.organizationMembers.count({
+        organizationId: { eq: project.organizationId! },
       });
 
       return {
@@ -1219,19 +1194,23 @@ export class ProjectController {
         id: z.integer(),
       }),
       response: z.array(
-        members.schema.extend({
+        organizationMembers.schema.extend({
           user: users.schema,
         }),
       ),
     },
     handler: async ({ params }) => {
       const projectMembers = await this.membersWith.findMany({
-        where: { projectId: { eq: params.id } },
+        where: {
+          organizationId: {
+            eq: await this.projectSecurity.organizationIdOf(params.id),
+          },
+        },
         include: { user: true },
       });
 
       const membersWithUsers: Array<
-        Member & {
+        OrganizationMember & {
           user: User;
         }
       > = [];
@@ -1303,56 +1282,10 @@ export class ProjectController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const project = await this.projects.getOne({
-        where: { id: { eq: params.id } },
-      });
-
-      const member = await this.members.findOne({
-        where: {
-          userId: { eq: user.id },
-          projectId: { eq: params.id },
-        },
-      });
-
-      if (!member) {
-        // Idempotent: leaving a project you're not a member of is a no-op.
-        return { ok: true };
-      }
-
-      // ⚠️ The RANK, not `projects.createdBy`. The two agreed until ownership
-      // could be transferred; after a transfer the creator is an ordinary
-      // member who may leave, and the new owner is the one who may not. The
-      // message names the transfer because it exists now.
-      if (member.rank === ProjectRankResource.OWNER_KEY) {
-        throw new ForbiddenError(
-          "The owner cannot leave their own project. Transfer ownership first, or delete the project.",
-        );
-      }
-
-      // Release any in-flight quests the user accepted but did not complete,
-      // so other members can pick them up. Completed quests stay attributed.
-      await this.quests.updateMany(
-        {
-          projectId: { eq: params.id },
-          acceptedBy: { eq: user.id },
-          completedAt: { isNull: true },
-        },
-        {
-          acceptedAt: null,
-          acceptedBy: null,
-        },
+      await this.memberService.leave(
+        await this.projectSecurity.organizationIdOf(params.id),
+        user,
       );
-
-      await this.members.deleteById(member.id);
-
-      await this.audits.member.logSuccess("leave", {
-        ...this.audits.actor(user),
-        ...this.audits.scope(params.id),
-        resourceType: "project",
-        resourceId: String(params.id),
-        description: project.title,
-      });
-
       return { ok: true };
     },
   });
@@ -1412,78 +1345,12 @@ export class ProjectController {
     },
     handler: async ({ params, body, user }) => {
       const project = this.owned.get<Project>();
-
-      if (body.userId === user.id) {
-        throw new BadRequestError("You already own this project.");
-      }
-
-      const [mine, theirs] = await Promise.all([
-        this.members.findOne({
-          where: {
-            projectId: { eq: params.id },
-            userId: { eq: user.id },
-          },
-        }),
-        this.members.findOne({
-          where: {
-            projectId: { eq: params.id },
-            userId: { eq: body.userId },
-          },
-        }),
-      ]);
-
-      if (mine?.rank !== ProjectRankResource.OWNER_KEY) {
-        throw new ForbiddenError(
-          "Only the project owner can transfer ownership.",
-        );
-      }
-
-      if (!theirs) {
-        throw new BadRequestError(
-          "That person is not a member of this project.",
-        );
-      }
-
-      const promoterRank = body.rank ?? ProjectRankResource.DEFAULT_KEY;
-
-      if (promoterRank === ProjectRankResource.OWNER_KEY) {
-        throw new BadRequestError(
-          "A project has exactly one owner. Pick the rank you keep.",
-        );
-      }
-
-      const ranks = await this.ranks.ranksOf("project", String(params.id));
-      if (!ranks.some((it) => it.key === promoterRank)) {
-        throw new BadRequestError(`No rank "${promoterRank}" in this project.`);
-      }
-
-      await this.members.query(
-        (t) => sql`
-          UPDATE ${t}
-          SET ${sql.identifier(t.rank.name)} = CASE
-            WHEN ${t.userId} = ${body.userId} THEN ${ProjectRankResource.OWNER_KEY}
-            ELSE ${promoterRank}
-          END
-          WHERE ${t.projectId} = ${params.id}
-            AND ${t.userId} IN (${body.userId}, ${user.id})
-          RETURNING ${t.userId}
-        `,
-        // ⚠️ One column, and a schema for it. `RETURNING *` decodes every
-        // returned row through the ENTITY schema, and SQLite hands `createdAt`
-        // back as a number - so the statement succeeds and the decode throws,
-        // which reads as a failed transfer that already happened.
-        z.object({ userId: z.uuid() }),
+      await this.memberService.transfer(
+        project.organizationId!,
+        body.userId,
+        body.rank,
+        user,
       );
-
-      await this.audits.member.logSuccess("transfer", {
-        ...this.audits.actor(user),
-        ...this.audits.scope(params.id),
-        severity: "warning",
-        resourceType: "project",
-        resourceId: String(params.id),
-        description: project.title,
-        metadata: { toUserId: body.userId, keptRank: promoterRank },
-      });
 
       return { ok: true };
     },
@@ -1522,54 +1389,11 @@ export class ProjectController {
     },
     handler: async ({ params, user }) => {
       const project = this.owned.get<Project>();
-
-      const member = await this.members.findOne({
-        where: {
-          userId: { eq: params.userId },
-          projectId: { eq: params.id },
-        },
-      });
-
-      if (!member) {
-        // Idempotent, like `leaveProject`: removing somebody who is already
-        // gone is the state the caller asked for.
-        return { ok: true };
-      }
-
-      // The owner's own row is not removable, for the reason they cannot
-      // leave either: a project with no owner has nobody who can delete it,
-      // rename it, or let anybody back in. Read off the rank since a transfer
-      // can move it away from the creator.
-      if (member.rank === ProjectRankResource.OWNER_KEY) {
-        throw new ForbiddenError(
-          "The owner cannot be removed from their own project.",
-        );
-      }
-
-      await this.quests.updateMany(
-        {
-          projectId: { eq: params.id },
-          acceptedBy: { eq: params.userId },
-          completedAt: { isNull: true },
-        },
-        {
-          acceptedAt: null,
-          acceptedBy: null,
-        },
+      await this.memberService.remove(
+        project.organizationId!,
+        params.userId,
+        user,
       );
-
-      await this.members.deleteById(member.id);
-
-      // The same action as a member leaving of their own accord, and the
-      // actor on the row is what tells the two apart.
-      await this.audits.member.logSuccess("leave", {
-        ...this.audits.actor(user),
-        ...this.audits.scope(params.id),
-        resourceType: "project",
-        resourceId: String(params.id),
-        description: project.title,
-        metadata: { removedUserId: params.userId },
-      });
 
       return { ok: true };
     },

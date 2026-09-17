@@ -5,6 +5,7 @@ import {
   NotificationInboxRecipientProvider,
   NotificationJobs,
 } from "alepha/api/notifications";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -15,9 +16,9 @@ import { describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 class Probe {
   members = $repository(members);
@@ -113,8 +114,8 @@ const seed = async (ctx: Ctx) => {
   );
   const projectId = project.data.id;
 
-  await ctx.probe.members.create({ userId: first.id, projectId });
-  await ctx.probe.members.create({ userId: second.id, projectId });
+  await createTestMemberByProjectId(ctx.alepha, projectId, first.id);
+  await createTestMemberByProjectId(ctx.alepha, projectId, second.id);
 
   const release = await ctx.releases.createRelease.fetch(
     { params: { projectId }, body: { title: "Lore Inbox", tag: "0.30.0" } },

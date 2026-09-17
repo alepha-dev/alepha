@@ -67,16 +67,16 @@ export class InvitationNotifications {
   });
 
   protected onInvitationCreated = $hook({
-    on: "invitation:created",
+    on: "organization:invitation:created",
     handler: async ({ invitation, inviter, token }) => {
       try {
         const project = await this.projects.findOne({
-          where: { id: { eq: Number(invitation.resourceId) } },
+          where: { organizationId: { eq: invitation.organizationId } },
         });
         if (!project) {
           this.log.warn("Skipping invitation email — project not found", {
             invitationId: invitation.id,
-            resourceId: invitation.resourceId,
+            organizationId: invitation.organizationId,
           });
           return;
         }
