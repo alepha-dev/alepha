@@ -1,6 +1,7 @@
 import { Alepha, type FileLike, z } from "alepha";
 import { RankService } from "alepha/api/ranks";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { MemoryFileStorageProvider } from "alepha/bucket";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
@@ -13,6 +14,7 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ArtifactService } from "../src/api/services/ArtifactService.ts";
+import { DeployAssetCache } from "../src/api/services/DeployAssetCache.ts";
 import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
 import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
@@ -471,6 +473,14 @@ describe("artifacts", () => {
         tag: "latest",
         file: await packedArtifact(),
       });
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const cache = ctx.alepha.inject(DeployAssetCache);
+      const sidecar = cache.key(first.data.artifact.sha256);
+      await storage.upload(
+        ArtifactService.BUCKET,
+        new File(["{}"], "cache.json"),
+        sidecar,
+      );
       const second = await push(projectId, owner, {
         tag: "latest",
         file: await packedArtifact({ filler: "// a later commit" }),
@@ -480,6 +490,7 @@ describe("artifacts", () => {
       // The same row, moved - not a second one beside the first.
       expect(second.data.artifact.id).toBe(first.data.artifact.id);
       expect(second.data.artifact.sha256).not.toBe(first.data.artifact.sha256);
+      expect(await storage.exists(ArtifactService.BUCKET, sidecar)).toBe(false);
       expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
 
       // The previous bytes are reclaimed, which is the half a row count
@@ -1034,7 +1045,7 @@ describe("artifacts", () => {
         { user },
       );
 
-    it("removes the row, its stored bytes and its source maps", async ({
+    it("removes the row, its stored bytes, source maps and asset cache", async ({
       expect,
     }) => {
       const { owner, projectId } = await anAppsProject();
@@ -1044,9 +1055,17 @@ describe("artifacts", () => {
       });
       const [row] = await ctx.rows.artifacts.findMany({});
 
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const sidecar = ctx.alepha.inject(DeployAssetCache).key(row.sha256);
+      await storage.upload(
+        ArtifactService.BUCKET,
+        new File(["{}"], "cache.json"),
+        sidecar,
+      );
       const answer = await remove(projectId, owner, row.id);
 
       expect(answer.data.ok).toBe(true);
+      expect(await storage.exists(ArtifactService.BUCKET, sidecar)).toBe(false);
       expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
       await expect(
         ctx.artifactController.artifactBucket.get(row.fileId as string),
