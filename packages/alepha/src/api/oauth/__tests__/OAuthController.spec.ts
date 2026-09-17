@@ -1309,10 +1309,12 @@ describe("device approval page", () => {
      * A client somebody registered, which a device may try to pass itself
      * off as.
      */
-    const registerClient = async () => {
+    const registerClient = async (secret?: string) => {
       const client = await clients.register({
         realm: "users",
         clientName: "Registered Client",
+        type: secret ? "confidential" : "public",
+        secret,
         redirectUris: ["https://registered.example/cb"],
         scopes: ["mcp"],
       });
@@ -1343,11 +1345,15 @@ describe("device approval page", () => {
     /**
      * What `lore login` does first.
      */
-    const start = async (clientId = "alepha-cli") => {
+    const start = async (clientId = "alepha-cli", secret?: string) => {
       const res = await fetch(`${hostname}/oauth/device_authorization`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ client_id: clientId, scope: "mcp" }),
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: secret,
+          scope: "mcp",
+        }),
       });
       return (await res.json()) as {
         device_code: string;
@@ -1360,7 +1366,11 @@ describe("device approval page", () => {
     /**
      * What `lore login` does next, until it is let through.
      */
-    const poll = async (deviceCode: string, clientId = "alepha-cli") => {
+    const poll = async (
+      deviceCode: string,
+      clientId = "alepha-cli",
+      secret?: string,
+    ) => {
       const res = await fetch(`${hostname}/oauth/token`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1368,6 +1378,7 @@ describe("device approval page", () => {
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
           device_code: deviceCode,
           client_id: clientId,
+          client_secret: secret,
         }),
       });
       return { status: res.status, body: await res.json() };
@@ -1428,6 +1439,49 @@ describe("device approval page", () => {
 
   const decodeJwt = (jwt: string) =>
     JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString());
+
+  it("authenticates confidential clients before starting a device flow", async ({
+    expect,
+  }) => {
+    const { hostname, registerClient } = await boot();
+    const clientId = await registerClient("correct-secret");
+    for (const secret of [undefined, "wrong-secret", "correct-secret"]) {
+      const response = await fetch(`${hostname}/oauth/device_authorization`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: clientId, client_secret: secret }),
+      });
+      const body = await response.json();
+      if (secret === "correct-secret") {
+        expect(response.status).toBe(200);
+        expect(body.device_code).toBeTruthy();
+      } else {
+        expect(response.status).toBe(401);
+        expect(body).toEqual({ error: "invalid_client" });
+      }
+    }
+  });
+
+  it("rejects missing and wrong device secrets without spending an approved code", async ({
+    expect,
+  }) => {
+    const { registerClient, start, session, answer, poll } = await boot();
+    const clientId = await registerClient("correct-secret");
+    const { device_code, user_code } = await start(clientId, "correct-secret");
+    await answer(user_code, "allow", { token: await session("user-1") });
+
+    for (const secret of [undefined, "wrong-secret"]) {
+      const refused = await poll(device_code, clientId, secret);
+      expect(refused.status).toBe(401);
+      expect(refused.body).toEqual({ error: "invalid_client" });
+    }
+    const granted = await poll(device_code, clientId, "correct-secret");
+    expect(granted.status).toBe(200);
+    expect(decodeJwt(granted.body.access_token).client_id).toBe(clientId);
+    expect(
+      (await poll(device_code, clientId, "correct-secret")).body.error,
+    ).toBe("expired_token");
+  });
 
   it("advertises a verification URI that answers", async ({ expect }) => {
     const { hostname, session, start, open } = await boot();
