@@ -63,6 +63,28 @@ const aRing = (catalog: CatalogService) =>
     config: { trackStock: true },
   });
 
+/**
+ * The memory provider's own webhook: what its `parseWebhook` reads, delivered
+ * through the same entry point a PSP's request takes. Settling this way goes
+ * through the stored `providerRef`, which a direct `handleWebhookEvent(intentId)`
+ * would skip.
+ */
+const pspWebhook = (providerRef: string, status: string) =>
+  new Request("https://bijoux.example/api/payments/webhook", {
+    method: "POST",
+    body: JSON.stringify({ providerRef, status }),
+  });
+
+const providerRefOf = async (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  intentId: string,
+) => {
+  const { providerRef } = await ctx.payments.getIntent(intentId);
+  if (!providerRef)
+    throw new Error("the element session stored no providerRef");
+  return providerRef;
+};
+
 const reachPayment = async (ctx: Awaited<ReturnType<typeof setup>>) => {
   const ring = await aRing(ctx.catalog);
   await ctx.stock.recordIntake(ring.id, 3);
@@ -122,7 +144,9 @@ describe("embedded payment", () => {
     // Whatever the browser reports, nothing is settled until the PSP says so.
     expect((await ctx.checkout.getById(session.id)).status).toBe("paying");
 
-    await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
+    await ctx.payments.handleWebhook(
+      pspWebhook(await providerRefOf(ctx, handoff.intentId), "captured"),
+    );
 
     expect((await ctx.checkout.getById(session.id)).status).toBe("completed");
     expect((await ctx.orders.getById(session.orderId!)).status).toBe("paid");
@@ -133,7 +157,9 @@ describe("embedded payment", () => {
     const ctx = await setup();
     const { ring, handoff } = await reachPayment(ctx);
 
-    await ctx.payments.handleWebhookEvent(handoff.intentId, "failed");
+    await ctx.payments.handleWebhook(
+      pspWebhook(await providerRefOf(ctx, handoff.intentId), "failed"),
+    );
 
     expect(await ctx.stock.available(ring.id)).toBe(3);
   });

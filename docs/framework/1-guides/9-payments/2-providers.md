@@ -15,7 +15,7 @@ abstract class PaymentProvider {
 
   // optional: embedded card fields (Stripe Payment Element and friends);
   // PaymentService.supportsEmbeddedPayment() dispatches on its presence
-  createElementSession?(intent, options): Promise<ElementSession>;
+  createElementSession?(intent, options): Promise<{ clientSecret, publishableKey, provider, providerRef }>;
 
   // non-abstract, returns null by default - but providers SHOULD override it:
   // it is the reconciliation path when a webhook goes missing. The shipped
@@ -25,6 +25,8 @@ abstract class PaymentProvider {
 ```
 
 `createSession` options also carry Connect-style fields (`stripeAccount`, `applicationFeeAmount`, `customerEmail`). Every later call about that session takes the same `{ stripeAccount }` (`ProviderAccountOptions`): a Stripe direct charge lives on the connected account only, and the platform account cannot see it. `PaymentService` records the account on the intent (`providerAccount`) when it creates the session and passes it on every poll, expiry, capture, void and refund, so a provider only has to honour the option.
+
+`createElementSession` returns a `providerRef` too: the PSP's own id for the payment the browser confirms (a Stripe PaymentIntent). `PaymentService` stores it, with the account, before handing the client secret back, so the webhook that settles the payment matches the intent the same way a redirect session's does, and the stale-intent sweep can poll it. `expireSession` receives that ref for an abandoned embedded payment and must leave it unpayable: the Stripe provider cancels the PaymentIntent (`cancellation_reason: "abandoned"`), since a PaymentIntent, unlike a Checkout session, never expires on its own.
 
 `PaymentService` and `PaymentMethodService` call these methods; you never call them directly.
 
