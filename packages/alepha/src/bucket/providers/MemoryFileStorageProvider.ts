@@ -1,6 +1,5 @@
 import { $inject, Alepha, type FileLike } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
-import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -97,12 +96,10 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * In-memory key, tenant-scoped when a tenant is active (`currentTenantAtom`),
-   * mirroring the R2/Local/S3 layout: `{tenantId}/{bucket}/{fileId}`.
+   * In-memory key matching the R2, Local and S3 layout: `{bucket}/{fileId}`.
    */
   protected key(bucket: string, fileId = ""): string {
-    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
-    return tenantId ? `${tenantId}/${bucket}/${fileId}` : `${bucket}/${fileId}`;
+    return `${bucket}/${fileId}`;
   }
 
   protected createId(): string {

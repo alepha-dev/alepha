@@ -45,7 +45,7 @@ class MediaService {
 
 ## A storage is a prefix, not a bucket
 
-Every backend keys objects as `{prefix}/{tenantId}/{storage}/{fileId}` inside
+Every backend keys objects as `{prefix}/{storage}/{fileId}` inside
 **one** bucket (or one directory, on disk). Declaring twenty storages costs
 nothing and provisions nothing - there is no per-storage cloud bucket and no
 account bucket limit to worry about.

@@ -14,7 +14,6 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
-import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -232,11 +231,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
         `Invalid file id: ${fileId} ('${this.metaSuffix}' is reserved)`,
       );
     }
-    // Per-tenant directory when a tenant is active, mirroring R2/S3 isolation.
-    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
-    return tenantId
-      ? join(this.storagePath, tenantId, bucket, fileId)
-      : join(this.storagePath, bucket, fileId);
+    return join(this.storagePath, bucket, fileId);
   }
 
   /**

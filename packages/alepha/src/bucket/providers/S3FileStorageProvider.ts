@@ -13,7 +13,6 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
-import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 
@@ -84,7 +83,7 @@ declare module "alepha" {
  * MinIO, DigitalOcean Spaces, Backblaze B2, and any other S3-compatible service.
  *
  * Uses path-style addressing (`<endpoint>/<S3_BUCKET_NAME>`), and keys every
- * object as `{prefix}/{tenantId}/{container}/{fileId}` - the same scheme as
+ * object as `{prefix}/{container}/{fileId}` - the same scheme as
  * {@link R2FileStorageProvider}.
  *
  * **Required environment variables:**
@@ -134,18 +133,14 @@ export class S3FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Object key: `{prefix}/{tenantId}/{container}/{fileId}`, with the optional
-   * segments omitted when absent. Mirrors R2 exactly so a container means the
-   * same thing on every backend.
+   * Object key: `{prefix}/{container}/{fileId}`, with the optional prefix
+   * omitted when absent. Mirrors R2 exactly so a container means the same
+   * thing on every backend.
    */
   protected key(container: string, fileId: string): string {
     this.assertKeySegment(container, "bucket name");
     this.assertKeySegment(fileId, "file id");
     const parts = [container, fileId];
-    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
-    if (tenantId) {
-      parts.unshift(tenantId);
-    }
     if (this.prefix) {
       parts.unshift(this.prefix);
     }
@@ -162,7 +157,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
   /**
    * File ids and container names are path segments of the object key. A
    * separator or a dot-dot in either would read or delete outside the
-   * container (and outside the tenant prefix), so they are refused here,
+   * container, so they are refused here,
    * the same way the local provider refuses them for filesystem paths.
    */
   protected assertKeySegment(value: string, label: string): void {

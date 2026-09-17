@@ -11,7 +11,7 @@ import { R2FileStorageProvider } from "alepha/bucket";
 Cloudflare R2 storage provider.
 
 Uses a single R2 bucket binding for every container.
-Files are organized as: {prefix}/{tenantId}/{container}/{fileId}
+Files are organized as: {prefix}/{container}/{fileId}
 
 **Required environment variables:**
 

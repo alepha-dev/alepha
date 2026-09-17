@@ -10,7 +10,6 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
-import { currentTenantAtom } from "alepha/security";
 import { FileDetector } from "alepha/system";
 
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -23,7 +22,7 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
  * Cloudflare R2 storage provider.
  *
  * Uses a single R2 bucket binding for every container.
- * Files are organized as: {prefix}/{tenantId}/{container}/{fileId}
+ * Files are organized as: {prefix}/{container}/{fileId}
  *
  * **Required environment variables:**
  * - `R2_BUCKET_NAME` - The actual R2 bucket name in Cloudflare
@@ -313,21 +312,12 @@ export class R2FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Build the full R2 key: {prefix}/{tenantId}/{bucketName}/{fileId}
-   *
-   * When a tenant is active on the current request/job (`currentTenantAtom`),
-   * its id is inserted as a directory so a pooled multi-tenant worker keeps
-   * each tenant's objects isolated. No tenant → the historical
-   * `{prefix}/{bucketName}/{fileId}` layout is unchanged.
+   * Build the full R2 key: {prefix}/{bucketName}/{fileId}
    */
   protected key(bucketName: string, fileId: string): string {
     this.assertKeySegment(bucketName, "bucket name");
     this.assertKeySegment(fileId, "file id");
     const parts = [bucketName, fileId];
-    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
-    if (tenantId) {
-      parts.unshift(tenantId);
-    }
     if (this.prefix) {
       parts.unshift(this.prefix);
     }
@@ -353,7 +343,7 @@ export class R2FileStorageProvider implements FileStorageProvider {
   /**
    * File ids and bucket names are path segments of the object key. A
    * separator or a dot-dot in either would read or delete outside the
-   * bucket (and outside the tenant prefix), so they are refused here, the
+   * bucket, so they are refused here, the
    * same way the local provider refuses them for filesystem paths.
    */
   protected assertKeySegment(value: string, label: string): void {
