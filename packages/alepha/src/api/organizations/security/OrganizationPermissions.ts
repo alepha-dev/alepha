@@ -36,4 +36,12 @@ export class OrganizationPermissions {
     groupLabel: "permission.group.rank",
     groupOrder: 3,
   });
+
+  public readonly invitationCreate = $permission({
+    group: "invitation",
+    name: "create",
+    label: "permission.invitation.create",
+    groupLabel: "permission.group.invitation",
+    groupOrder: 4,
+  });
 }

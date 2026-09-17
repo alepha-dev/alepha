@@ -50,6 +50,10 @@ const setup = async (options: { countDefinitions?: boolean } = {}) => {
     memberPermissions: ["organization:read"],
     floor: ["organization:read"],
     ownerOnly: ["organization:delete"],
+    invitationExpirationDays: 7,
+    maxPendingInvitationsPerOrganization: 50,
+    maxPendingInvitationsPerInviter: 100,
+    invitationPurgeDays: 90,
   });
   await alepha.start();
 
@@ -177,7 +181,7 @@ describe("alepha/api/organizations - RankService", () => {
     );
     await expect(
       ctx.ranks.assign(ctx.organization.id, ctx.member.id, "owner", ctx.owner),
-    ).rejects.toThrow("cannot be assigned");
+    ).rejects.toThrow("Ownership is transferred, not invited");
   });
 
   it("refuses self-lockout and deleting a held rank", async ({ expect }) => {

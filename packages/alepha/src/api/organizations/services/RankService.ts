@@ -214,20 +214,29 @@ export class RankService {
     if (userId === writer.id) {
       throw new BadRequestError("You cannot change your own rank");
     }
-    if (key === "owner") {
-      throw new BadRequestError("The owner rank cannot be assigned");
-    }
-    const rank = (await this.ranksOf(organizationId)).find(
-      (item) => item.key === key,
-    );
-    if (!rank) throw new NotFoundError(`No rank "${key}" in this organization`);
-    await this.assertWithinWriterSet(organizationId, rank.permissions, writer);
+    await this.assertAssignable(organizationId, key, writer);
     const member = await this.members.getOne({
       where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
     });
     await this.members.updateById(member.id, {
       rank: key === "member" ? undefined : key,
     });
+  }
+
+  public async assertAssignable(
+    organizationId: string,
+    key: string,
+    writer: UserAccountToken,
+  ): Promise<Rank> {
+    if (key === "owner") {
+      throw new BadRequestError("Ownership is transferred, not invited");
+    }
+    const rank = (await this.ranksOf(organizationId)).find(
+      (item) => item.key === key,
+    );
+    if (!rank) throw new NotFoundError(`No rank "${key}" in this organization`);
+    await this.assertWithinWriterSet(organizationId, rank.permissions, writer);
+    return rank;
   }
 
   public async refusal(refusal: RankRefusal, rows: RankRows): Promise<string> {

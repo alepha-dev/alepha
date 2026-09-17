@@ -25,4 +25,6 @@ export class OrganizationPolicyProvider {
   ): Promise<string | undefined> {
     return undefined;
   }
+
+  public async assertRoom(_organizationId: string): Promise<void> {}
 }
