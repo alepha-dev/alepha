@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { organizations } from "alepha/api/organizations";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { describe, it } from "vitest";
 
@@ -15,6 +16,7 @@ describe("sigil entities", () => {
     // tables must have a repository too or schema sync throws "Referenced
     // table ... not found" before this test ever gets to assert anything.
     class Repos {
+      organizations = $repository(organizations);
       projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);
@@ -87,6 +89,7 @@ describe("sigil entities", () => {
     // no FK constraint at all. `.optional()` must be applied to the type
     // passed *into* `db.ref(...)`, not chained onto its result.
     class Repos {
+      organizations = $repository(organizations);
       projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);

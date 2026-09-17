@@ -86,6 +86,20 @@ export const AlephaApiOrganizations = $module({
   ],
   atoms: [currentOrganizationRankAtom],
   register: (alepha) => {
+    // A migration may mount this module beside the legacy ranks module for
+    // one release. Keep the provider that was registered first in that
+    // deliberate overlap. A constructed default is different: `with()` below
+    // still throws, because silently keeping the permissive default would
+    // disable rank enforcement.
+    if (
+      alepha.has(ResourceGrantsProvider, {
+        inStack: false,
+        inRegistry: false,
+        inSubstitutions: true,
+      })
+    ) {
+      return;
+    }
     alepha.with({
       provide: ResourceGrantsProvider,
       use: RankGrantsProvider,

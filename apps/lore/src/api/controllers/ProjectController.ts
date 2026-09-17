@@ -1,6 +1,11 @@
 import { $inject, Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
+import {
+  MemberService as OrganizationMemberService,
+  organizationMembers,
+  organizations,
+} from "alepha/api/organizations";
 import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
@@ -88,6 +93,8 @@ export class ProjectController {
   projectDeletion = $inject(ProjectDeletionService);
   projects = $repository(projects);
   members = $repository(members);
+  organizations = $repository(organizations);
+  organizationMembers = $repository(organizationMembers);
   /**
    * Relation-aware views of the two tables above, for the reads that used to
    * fetch one and then look up the other. Same tables, same rows — `include`
@@ -351,31 +358,44 @@ export class ProjectController {
       const { capabilities: requested, ...columns } = body;
       const capabilities = requested ?? this.capabilityRegistry.defaultSet();
 
-      const project = await this.projects.create({
-        ...columns,
-        slug: slug || undefined,
-        // ⚠️ Still written, and still `defaultProjectFeatures`. Nothing reads
-        // it any more, but every row on disk has to keep decoding against the
-        // schema that still describes it, and four of its keys are REQUIRED.
-        // The column is frozen rather than dropped, because dropping one from
-        // `projects` is the D1 rebuild that cascade-wipes its children.
-        features: defaultProjectFeatures,
-        createdBy: user.id,
+      const organization = await this.organizations.create({
+        name: body.title,
       });
 
-      // A title that transliterates to nothing (e.g. "日本語") has no slug
-      // until the row has an id, so this is the one path that writes the slug
-      // twice. It cannot collide: `isReserved` keeps the `project-<n>`
-      // namespace out of user hands.
-      if (!project.slug) {
-        project.slug = this.slugs.fallbackSlug(project.id);
-        await this.projects.save(project);
+      let project: Project | undefined;
+      try {
+        project = await this.projects.create({
+          ...columns,
+          slug: slug || undefined,
+          // ⚠️ Still written, and still `defaultProjectFeatures`. Nothing reads
+          // it any more, but every row on disk has to keep decoding against the
+          // schema that still describes it, and four of its keys are REQUIRED.
+          // The column is frozen rather than dropped, because dropping one from
+          // `projects` is the D1 rebuild that cascade-wipes its children.
+          features: defaultProjectFeatures,
+          createdBy: user.id,
+          organizationId: organization.id,
+        });
+
+        // A title that transliterates to nothing (e.g. "日本語") has no slug
+        // until the row has an id, so this is the one path that writes the slug
+        // twice. It cannot collide: `isReserved` keeps the `project-<n>`
+        // namespace out of user hands.
+        if (!project.slug) {
+          project.slug = this.slugs.fallbackSlug(project.id);
+          await this.projects.save(project);
+        }
+      } catch (error) {
+        if (project) {
+          await this.projectDeletion.deleteProject(project.id, { force: true });
+        }
+        await this.organizations.deleteById(organization.id);
+        throw error;
       }
 
-      // The one write whose failure must leave nothing behind. A project row
-      // whose creator holds no membership is a permanent lockout the moment
-      // the `createdBy` fallback goes away, and on D1 the transaction above is
-      // a no-op — so the compensation is written out rather than assumed.
+      // The two writes whose failure must leave nothing behind. Until the
+      // migration is complete, every read still uses Lore's old membership
+      // table, so the owner is written to both stores.
       try {
         await this.members.create({
           projectId: project.id,
@@ -385,11 +405,19 @@ export class ProjectController {
           // still written only because its two readers have not gone yet.
           rank: ProjectRankResource.OWNER_KEY,
         });
+        await this.organizationMembers.create({
+          organizationId: organization.id,
+          userId: user.id,
+          rank: OrganizationMemberService.OWNER,
+        });
       } catch (error) {
         // `deleteProject` and not a bare `deleteById`: it also frees the slug,
         // which a soft-deleted row would otherwise hold hostage against the
-        // retry this rethrow is asking the caller to make.
-        await this.projectDeletion.deleteProject(project.id);
+        // retry this rethrow is asking the caller to make. A failed brand-new
+        // project has no history worth retaining, so force removes its
+        // tombstone before the restricted organization delete.
+        await this.projectDeletion.deleteProject(project.id, { force: true });
+        await this.organizations.deleteById(organization.id);
         this.log.error(
           "createProject: membership write failed, project rolled back by hand",
           { projectId: project.id, userId: user.id, error },
@@ -943,6 +971,11 @@ export class ProjectController {
       }
 
       await this.projects.save(project);
+      if (body.title && project.organizationId) {
+        await this.organizations.updateById(project.organizationId, {
+          name: body.title,
+        });
+      }
       // Scoped, unlike `create` and `delete`. Those two are app-layer events:
       // a creation belongs to the deployment rather than to a project that
       // did not exist yet, and a deletion outlives the scope it would have

@@ -77,7 +77,13 @@ export class LoreOAuthScopes {
    * Groups a connected app never reaches although they are not `admin:`.
    * Each has its reason in the class JSDoc.
    */
-  public static readonly EXCLUDED_GROUPS: string[] = ["api-key"];
+  public static readonly EXCLUDED_GROUPS: string[] = [
+    "api-key",
+    // Lore exposes project lifecycle through its project endpoints. The
+    // organization routes are migration plumbing until the organization UI
+    // replaces them, so connected project clients do not receive them.
+    "organization",
+  ];
 
   /**
    * The member groups as the patterns a scope declaration takes.

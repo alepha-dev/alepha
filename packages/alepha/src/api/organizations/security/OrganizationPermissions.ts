@@ -42,6 +42,6 @@ export class OrganizationPermissions {
     name: "create",
     label: "permission.invitation.create",
     groupLabel: "permission.group.invitation",
-    groupOrder: 4,
+    groupOrder: 5,
   });
 }
