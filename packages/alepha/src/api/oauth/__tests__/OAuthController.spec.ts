@@ -1309,10 +1309,13 @@ describe("device approval page", () => {
      * A client somebody registered, which a device may try to pass itself
      * off as.
      */
-    const registerClient = async (secret?: string) => {
+    const registerClient = async (
+      secret?: string,
+      clientName = "Registered Client",
+    ) => {
       const client = await clients.register({
         realm: "users",
-        clientName: "Registered Client",
+        clientName,
         type: secret ? "confidential" : "public",
         secret,
         redirectUris: ["https://registered.example/cb"],
@@ -1539,12 +1542,31 @@ describe("device approval page", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain(user_code);
+    expect(html).toContain("Client-provided ID");
+    expect(html).toContain("alepha-cli");
     // What the device will get, in the app's own words.
     expect(html).toContain("Your projects");
     // Who is granting it, so a wrong-account grant is caught before it happens.
     expect(html).toContain("Bob");
     expect(html).toContain('value="allow"');
     expect(html).toContain('value="deny"');
+  });
+
+  it("shows the name claimed by the registered client that started the flow", async ({
+    expect,
+  }) => {
+    const { registerClient, start, open, session } = await boot();
+    const id = await registerClient(undefined, "<b>Claimed Tool</b>");
+    const { user_code } = await start(id);
+    const response = await open(
+      `/oauth/device?user_code=${user_code}`,
+      await session("user-1"),
+    );
+    const html = await response.text();
+    expect(html).toContain("Client-provided name");
+    expect(html).toContain("&lt;b&gt;Claimed Tool&lt;/b&gt;");
+    expect(html).not.toContain("<b>Claimed Tool</b>");
+    expect(html).toContain("has not been verified");
   });
 
   it("refuses a code it does not know, without saying whether it ever existed", async ({

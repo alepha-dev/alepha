@@ -706,8 +706,11 @@ export class OAuthController {
         return;
       }
 
+      const client = await this.clients.findByClientId(record.clientId);
       reply.body = renderDevicePage({
         step: "confirm",
+        clientId: record.clientId,
+        clientName: client?.clientName,
         // The canonical form, not what was typed: it is what the device
         // shows, and comparing the two is the whole point of the screen.
         userCode: record.userCode,
