@@ -14,6 +14,7 @@ import {
   AppWindow,
   Cloud,
   Container,
+  Download,
   GitCommitHorizontal,
   Package,
   SearchX,
@@ -378,32 +379,43 @@ const ProjectArtifacts = () => {
               }
               return true;
             }}
-            // Absent rather than an empty list when the rank may not delete:
-            // Delete is the menu's only entry, and a `rowActions` that exists
-            // draws the actions column whatever it returns.
-            //
-            // The selection is cleared too, since a row deleted from its menu
-            // may be ticked, and a selection that survives a delete points at
-            // a row that no longer exists.
-            rowActions={
-              deleteArtifact.can
-                ? () => [
+            rowActions={(row) => [
+              ...(row.format === "archive" && artifactApi.downloadArtifact.can()
+                ? [
+                    {
+                      icon: Download,
+                      label: tr("common.download"),
+                      onClick: (item: ArtifactRow) => {
+                        // Same-origin navigation carries the session cookie and
+                        // streams the response without buffering it in React.
+                        const link = document.createElement("a");
+                        link.href = `/api/projects/${item.projectId}/artifacts/${item.id}/download`;
+                        link.download = "";
+                        document.body.append(link);
+                        link.click();
+                        link.remove();
+                      },
+                    },
+                  ]
+                : []),
+              ...(deleteArtifact.can
+                ? [
                     {
                       icon: Trash2,
                       label: tr("artifacts.delete.action"),
                       destructive: true,
                       disabled: () => deleteArtifact.busy,
                       onClick: (
-                        row: ArtifactRow,
+                        item: ArtifactRow,
                         { clearSelection }: RowActionContext,
                       ) =>
                         void deleteArtifact
-                          .remove(row)
+                          .remove(item)
                           .then((done) => done && clearSelection()),
                     },
                   ]
-                : undefined
-            }
+                : []),
+            ]}
             columns={{
               app: {
                 label: tr("artifacts.table.app"),

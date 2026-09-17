@@ -1,4 +1,5 @@
 import { Alepha, type FileLike, z } from "alepha";
+import { RankService } from "alepha/api/ranks";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
@@ -748,6 +749,90 @@ describe("artifacts", () => {
       const stranger = await createTestUser(ctx);
 
       expect(await statusOf(list(projectId, stranger))).toBe(403);
+    });
+  });
+
+  describe("downloading a build", () => {
+    const download = (
+      projectId: number,
+      artifactId: string,
+      user: { id: string },
+    ) =>
+      ctx.artifactController.downloadArtifact.fetch(
+        { params: { projectId, artifactId } },
+        { user },
+      );
+
+    it("returns the stored tarball bytes and filename without caching", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const file = await packedArtifact();
+      const pushed = await push(projectId, owner, { file });
+      const response = await download(
+        projectId,
+        pushed.data.artifact.id,
+        owner,
+      );
+      const received = response.data as unknown as FileLike;
+      expect(new Uint8Array(await received.arrayBuffer())).toEqual(
+        new Uint8Array(await file.arrayBuffer()),
+      );
+      expect(received.name).toBe(file.name);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    });
+
+    it("refuses image references with an explanatory 404", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+      const image = await pushImage(projectId, owner, {});
+      const request = () => download(projectId, image.data.artifact.id, owner);
+      expect(await statusOf(request())).toBe(404);
+      await expect(request()).rejects.toThrow(/reference.*bytes/);
+    });
+
+    it("refuses unknown and cross-project artifact ids", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      const other = await aProject();
+      const pushed = await push(other.projectId, other.owner, {
+        file: await packedArtifact(),
+      });
+      for (const id of [crypto.randomUUID(), pushed.data.artifact.id]) {
+        expect(await statusOf(download(projectId, id, owner))).toBe(404);
+        await expect(download(projectId, id, owner)).rejects.toThrow(
+          /No such artifact in this project/,
+        );
+      }
+    });
+
+    it("requires artifact:read even from a project member", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+      });
+      const reader = await createTestUser(ctx);
+      await ctx.alepha.inject(RankService).save(
+        "project",
+        String(projectId),
+        {
+          key: "no-artifacts",
+          name: "No artifacts",
+          permissions: ["project:read"],
+        },
+        owner,
+      );
+      await (ctx.projectController as any).members.create({
+        userId: reader.id,
+        projectId,
+        rank: "no-artifacts",
+      });
+      expect(
+        await statusOf(download(projectId, pushed.data.artifact.id, reader)),
+      ).toBe(403);
     });
   });
 

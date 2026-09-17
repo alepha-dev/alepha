@@ -44,10 +44,9 @@ export interface AppArtifactsRowProps {
  *
  * ## No download button
  *
- * There is no anonymous artifact surface and no signed URL in this epic: bytes
- * come back through an authenticated endpoint or not at all, and that endpoint
- * does not exist yet. A control that cannot do its job is worse than an absent
- * one, so it arrives with the endpoint rather than before it.
+ * The project Artifacts table offers authenticated tarball downloads through
+ * `downloadArtifact`. This app tab keeps its existing summary and pull-command
+ * surface; image references have no bytes stored in Lore.
  */
 const AppArtifactsRow = (props: AppArtifactsRowProps) => {
   const { tr, l } = useI18n<I18n, "en">();

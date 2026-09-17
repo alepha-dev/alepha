@@ -545,7 +545,7 @@ describe("ProjectArtifacts", () => {
    *
    * ⚠️ Both doors hang on `deleteArtifact.can()`, which the real client
    * narrows by the viewer's rank. A rank without `artifact:delete` must get
-   * the table exactly as it was before: no checkbox column and no menu.
+   * no checkbox column, while artifact readers retain Download in the menu.
    */
   describe("deleting", () => {
     beforeAll(() => {
@@ -605,10 +605,10 @@ describe("ProjectArtifacts", () => {
       const labels = (await openRowMenu("1.0.0")).map(
         (item) => item.textContent ?? "",
       );
-      expect(labels).toEqual(["Delete"]);
+      expect(labels).toEqual(["Download", "Delete"]);
     });
 
-    it("offers neither the checkboxes nor the row menu without it", async () => {
+    it("offers Download without delete permission or selection checkboxes", async () => {
       await show(listing([group()]), [], undefined, {
         denied: ["deleteArtifact"],
       });
@@ -617,9 +617,34 @@ describe("ProjectArtifacts", () => {
       // The checkbox column exists only because `bulkActions` is non-empty,
       // and Delete is the only entry in it and in the menu.
       expect(screen.queryAllByRole("checkbox")).toEqual([]);
+      const entries = await openRowMenu("1.0.0");
+      expect(entries.map((entry) => entry.textContent)).toEqual(["Download"]);
+      const downloads: string[] = [];
+      const captureDownload = (event: MouseEvent) => {
+        if (event.target instanceof HTMLAnchorElement) {
+          event.preventDefault();
+          downloads.push(event.target.getAttribute("href") ?? "");
+        }
+      };
+      document.addEventListener("click", captureDownload);
+      try {
+        fireEvent.click(entries[0]);
+        expect(downloads).toEqual([
+          "/api/projects/1/artifacts/00000000-0000-4000-8000-000000000001/download",
+        ]);
+      } finally {
+        document.removeEventListener("click", captureDownload);
+      }
+    });
+
+    it("offers no download for an image reference", async () => {
+      const image = group();
+      image.variants[0].format = "image";
+      await show(listing([image]));
+      await screen.findByText("1.0.0");
       expect(
-        screen.queryByRole("button", { name: "Open row actions" }),
-      ).toBeNull();
+        (await openRowMenu("1.0.0")).map((entry) => entry.textContent),
+      ).toEqual(["Delete"]);
     });
 
     it("asks first, and dismissing the confirm deletes nothing", async () => {

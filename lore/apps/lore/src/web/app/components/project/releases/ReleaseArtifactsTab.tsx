@@ -69,10 +69,9 @@ export interface ReleaseArtifactsTabProps {
  * exists or it does not. Ready / building / failed chips would be modelling a
  * build pipeline, which is a different system that reports elsewhere.
  *
- * No `Upload` button and no per-row `Download`. Uploading is `lore artifacts
- * push`, from CI, with a credential this page does not hold; there is
- * no authenticated download endpoint yet. A control that cannot do its job is
- * worse than an absent one.
+ * Uploading stays in `lore artifacts push`. Authenticated tarball downloads
+ * through `downloadArtifact` are offered in the project Artifacts table;
+ * this release summary keeps its existing rows without download controls.
  */
 const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
   const { tr, l } = useI18n<I18n, "en">();

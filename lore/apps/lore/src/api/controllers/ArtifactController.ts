@@ -273,6 +273,44 @@ export class ArtifactController {
   });
 
   /**
+   * Download a stored tarball through the project's read permission.
+   * Image artifacts hold registry references, so they have no local bytes.
+   */
+  downloadArtifact = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "GET",
+    path: "/projects/:projectId/artifacts/:artifactId/download",
+    description:
+      "Download a packed build from the project's artifact registry.",
+    schema: {
+      params: z.object({ projectId: z.integer(), artifactId: z.uuid() }),
+      response: z.file(),
+    },
+    handler: async ({ params, reply }) => {
+      const artifact = await this.artifacts.findById(
+        params.projectId,
+        params.artifactId,
+      );
+      if (!artifact) {
+        throw new NotFoundError("No such artifact in this project.");
+      }
+      if (artifact.format === "image") {
+        throw new NotFoundError(
+          "This artifact is an image reference. Lore stores its reference, never its bytes.",
+        );
+      }
+      if (!artifact.fileId) {
+        throw new NotFoundError("This artifact has no stored tarball.");
+      }
+      const file = await this.files.streamFile(artifact.fileId, {
+        bucket: ArtifactService.BUCKET,
+      });
+      reply.setHeader("cache-control", "no-store");
+      return file;
+    },
+  });
+
+  /**
    * The source maps of one stored build.
    *
    * ⚠️ **The only way back to them**, which is what makes excluding `*.map`
