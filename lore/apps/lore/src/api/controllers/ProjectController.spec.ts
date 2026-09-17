@@ -3,12 +3,13 @@ import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, describe, it } from "vitest";
 
 import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
 import { members as membersEntity } from "../entities/members.ts";
+import { projects as projectsEntity } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { ProjectController } from "./ProjectController.ts";
 
@@ -64,6 +65,34 @@ class FailingMembersProjectController extends ProjectController {
   ) as unknown as ProjectController["members"];
 }
 
+class FailingProjectSaveController extends ProjectController {
+  protected readonly realProjects = $repository(projectsEntity);
+  public failures = 0;
+
+  override projects = new Proxy(
+    {},
+    {
+      get: (_target, prop: string) => {
+        if (prop === "save") {
+          return async (...args: unknown[]) => {
+            this.failures += 1;
+            if (this.failures === 1) {
+              throw new AlephaError("projects.save refused");
+            }
+            return (this.realProjects.save as (...a: unknown[]) => unknown)(
+              ...args,
+            );
+          };
+        }
+        const real = (this.realProjects as unknown as Record<string, unknown>)[
+          prop
+        ];
+        return typeof real === "function" ? real.bind(this.realProjects) : real;
+      },
+    },
+  ) as unknown as ProjectController["projects"];
+}
+
 interface TestContext {
   alepha: Alepha;
   controller: ProjectController;
@@ -77,7 +106,7 @@ interface TestContext {
  * `yarn w lore test` and fails under `yarn test`.
  */
 const setup = async (
-  options: { failMembership?: boolean } = {},
+  options: { failMembership?: boolean; failProjectSave?: boolean } = {},
 ): Promise<TestContext> => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
@@ -87,6 +116,11 @@ const setup = async (
     alepha.with({
       provide: ProjectController,
       use: FailingMembersProjectController,
+    });
+  } else if (options.failProjectSave) {
+    alepha.with({
+      provide: ProjectController,
+      use: FailingProjectSaveController,
     });
   }
 
@@ -133,6 +167,38 @@ describe("ProjectController.createProject", () => {
       where: { projectId: { eq: resource.id }, userId: { eq: account.id } },
     });
     expect(membership).toBeDefined();
+
+    const project = await ctx.repos.projects.getById(resource.id);
+    expect(project.organizationId).toBeDefined();
+
+    const organization = await ctx.repos.organizations.getById(
+      project.organizationId!,
+    );
+    expect(organization.name).toBe("A Real Project");
+    expect(organization.slug).toBeUndefined();
+    expect(organization.logo).toBeUndefined();
+
+    const organizationOwners = await ctx.repos.organizationMembers.findMany({
+      where: {
+        organizationId: { eq: organization.id },
+        rank: { eq: "owner" },
+      },
+    });
+    expect(organizationOwners).toHaveLength(1);
+    expect(organizationOwners[0].userId).toBe(account.id);
+
+    await ctx.alepha.context.run(async () => {
+      ctx.alepha.store.set(currentUserAtom, user);
+      await ctx.controller.updateProjectById({
+        params: { id: resource.id },
+        body: { title: "Renamed Project" },
+      } as any);
+    });
+
+    const renamed = await ctx.repos.organizations.getById(organization.id);
+    expect(renamed.name).toBe("Renamed Project");
+    expect(renamed.slug).toBeUndefined();
+    expect(renamed.logo).toBeUndefined();
   });
 
   it("leaves no project row behind when the membership write fails", async ({
@@ -156,6 +222,30 @@ describe("ProjectController.createProject", () => {
       where: { createdBy: { eq: account.id } },
     });
     expect(projects).toHaveLength(0);
+
+    const organizations = await ctx.repos.organizations.findMany({});
+    expect(organizations).toHaveLength(0);
+
+    const organizationMembers = await ctx.repos.organizationMembers.findMany(
+      {},
+    );
+    expect(organizationMembers).toHaveLength(0);
+  });
+
+  it("removes the organization when the fallback project write fails", async ({
+    expect,
+  }) => {
+    ctx = await setup({ failProjectSave: true });
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+
+    await expect(
+      ctx.controller.createProject({ body: { title: "日本語" } }, { user }),
+    ).rejects.toThrow(AlephaError);
+
+    expect(await ctx.repos.projects.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizations.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizationMembers.findMany({})).toHaveLength(0);
   });
 
   it("frees the slug, so the same title can be created again after a failure", async ({

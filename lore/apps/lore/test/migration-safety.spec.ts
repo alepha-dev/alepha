@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 
 import { Alepha } from "alepha";
+import { organizations } from "alepha/api/organizations";
 import { $repository, PG_REF, type PgRefOptions } from "alepha/orm";
 import { describe, it } from "vitest";
 
@@ -550,6 +551,7 @@ describe("migration safety", () => {
     // resolves every `db.ref(...)` eagerly at boot — so each referenced table
     // needs a repository too or schema sync throws before any assertion runs.
     class Repos {
+      organizations = $repository(organizations);
       projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);

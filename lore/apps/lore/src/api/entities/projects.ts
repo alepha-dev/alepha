@@ -1,4 +1,5 @@
 import { type Infer, z } from "alepha";
+import { organizations } from "alepha/api/organizations";
 import { $entity, db } from "alepha/orm";
 
 import { APP_NAME_MAX_LENGTH } from "../schemas/appNameSchema.ts";
@@ -142,6 +143,9 @@ export const projects = $entity({
      */
     slug: z.string().optional(),
     createdBy: z.uuid(),
+    organizationId: db.ref(z.uuid().optional(), () => organizations.cols.id, {
+      onDelete: "restrict",
+    }),
     /**
      * @deprecated — the public-project feature was removed. Column is kept
      * in the schema to avoid a Drizzle/D1 rebuild migration (which would

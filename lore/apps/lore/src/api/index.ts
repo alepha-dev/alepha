@@ -5,6 +5,7 @@ import {
 } from "alepha/api/analytics";
 import { AlephaApiInvitations } from "alepha/api/invitations";
 import { AlephaApiJobsQueue } from "alepha/api/jobs";
+import { AlephaApiOrganizations } from "alepha/api/organizations";
 import { AlephaApiRanks } from "alepha/api/ranks";
 import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
@@ -184,6 +185,10 @@ export const LoreApi = $module({
     // controllers whose gates use one - which is what `imports:` guarantees.
     // What a project's rank MEANS stays here, in `ProjectRankResource`.
     AlephaApiRanks,
+    // Mounted beside the legacy rank and invitation modules for the migration
+    // window. The legacy grants provider stays active until the project gate
+    // moves to organization membership.
+    AlephaApiOrganizations,
     LoreDashboardCatalog,
     // The estates websocket (epic #20). The first websocket in Lore: on
     // Cloudflare the build derives the Durable Object binding and its

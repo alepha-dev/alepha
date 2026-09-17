@@ -1,4 +1,5 @@
 import type { Alepha, Infer } from "alepha";
+import { organizationMembers, organizations } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 
@@ -37,6 +38,8 @@ type FolioInsert = Infer<typeof folios.insertSchema>;
  * whole FK closure gets registered up front.
  */
 export class TestEntityRepositories {
+  organizations = $repository(organizations);
+  organizationMembers = $repository(organizationMembers);
   projects = $repository(projects);
   members = $repository(members);
   releases = $repository(releases);
