@@ -290,13 +290,11 @@ for (const engine of ENGINES) {
     });
 
     /**
-     * The resource is deliberately narrower than the row: `userId` and
-     * `organizationId` are the server's business, and every row in a
-     * response already belongs to the caller.
+     * The resource is deliberately narrower than the row: `userId` is the
+     * server's business, and every row in a response already belongs to the
+     * caller.
      */
-    it("publishes the row without userId or organizationId", async ({
-      expect,
-    }) => {
+    it("publishes the row without userId", async ({ expect }) => {
       const ctx = await boot(engine);
       await seed(ctx, { scope: "project:65", scopeLabel: "Alepha" });
 

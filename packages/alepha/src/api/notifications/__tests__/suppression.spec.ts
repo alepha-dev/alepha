@@ -13,9 +13,6 @@ import {
   NotificationSuppressionService,
 } from "../index.ts";
 
-const ORG_A = "11111111-1111-4111-8111-111111111111";
-const ORG_B = "22222222-2222-4222-8222-222222222222";
-
 class Templates {
   readonly reminder = $notification({
     name: "sup-reminder",
@@ -222,37 +219,6 @@ describe("notification suppression gate", () => {
     });
   });
 
-  describe("tenancy", () => {
-    it("keeps one org's suppression out of another org's mail", async ({
-      expect,
-    }) => {
-      const { suppressions, sender, mail } = await boot();
-      await suppressions.suppress({
-        organizationId: ORG_A,
-        contact: "a@example.com",
-        channel: "email",
-        reason: "unsubscribed",
-        source: "link",
-      });
-
-      await sender.send(
-        emailPayload("sup-reminder", "a@example.com", {
-          organizationId: ORG_A,
-          category: "reminders",
-        }),
-      );
-      expect(mail.records).toHaveLength(0);
-
-      await sender.send(
-        emailPayload("sup-reminder", "a@example.com", {
-          organizationId: ORG_B,
-          category: "reminders",
-        }),
-      );
-      expect(mail.records).toHaveLength(1);
-    });
-  });
-
   describe("the store", () => {
     it("leaves one row when the same suppression is written twice", async ({
       expect,
@@ -271,7 +237,9 @@ describe("notification suppression gate", () => {
       expect(await suppressions.list({})).toHaveLength(1);
     });
 
-    it("leaves one row per org for the same contact", async ({ expect }) => {
+    it("leaves one row when the same suppression is written concurrently", async ({
+      expect,
+    }) => {
       const { suppressions } = await boot();
       const args = {
         contact: "a@example.com",
@@ -280,11 +248,12 @@ describe("notification suppression gate", () => {
         source: "link",
       };
 
-      await suppressions.suppress({ ...args, organizationId: ORG_A });
-      await suppressions.suppress({ ...args, organizationId: ORG_A });
-      await suppressions.suppress({ ...args, organizationId: ORG_B });
+      await Promise.all([
+        suppressions.suppress(args),
+        suppressions.suppress(args),
+      ]);
 
-      expect(await suppressions.list({})).toHaveLength(2);
+      expect(await suppressions.list({})).toHaveLength(1);
     });
 
     it("normalizes the contact so casing and spacing cannot dodge the gate", async ({

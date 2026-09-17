@@ -8,7 +8,6 @@ import {
 } from "alepha";
 import type { PushManyItem } from "alepha/api/jobs";
 import type { DurationLike } from "alepha/datetime";
-import { currentTenantAtom } from "alepha/security";
 
 import { NotificationChannel } from "../channels/NotificationChannel.ts";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
@@ -184,7 +183,6 @@ export class NotificationPrimitive<
       lang?: string;
       attachments?: NotificationAttachment[];
     },
-    organizationId?: string,
   ) {
     return {
       type,
@@ -195,7 +193,6 @@ export class NotificationPrimitive<
       critical: this.options.critical,
       sensitive: this.options.sensitive,
       lang: entry.lang,
-      organizationId,
       attachments: entry.attachments,
     };
   }
@@ -217,19 +214,9 @@ export class NotificationPrimitive<
 
   public async push(options: NotificationPushOptions<T, O>) {
     const lang = this.resolveLang(options.lang);
-    // Tag the outbox row with the owning tenant so the notification admin list
-    // stays org-scoped (the outbox is shared by every tenant in a pooled
-    // worker). Explicit `organizationId` wins (cron sweeps run out of request
-    // context and pass the subject's org); otherwise fall back to the tenant
-    // resolved for the current request.
-    const organizationId =
-      options.organizationId ?? this.alepha.store.get(currentTenantAtom)?.id;
     for (const type of this.channels()) {
       await this.notificationJobs.sendNotification.push(
-        // `organizationId` goes in the payload as well as on the row: the
-        // sender runs inside a job and never sees its own row, so this is
-        // the only way the suppression gate learns whose message this is.
-        this.payloadFor(type, { ...options, lang }, organizationId),
+        this.payloadFor(type, { ...options, lang }),
         {
           scheduledAt: options.scheduledAt,
           delay: options.delay,
@@ -264,15 +251,13 @@ export class NotificationPrimitive<
       return 0;
     }
 
-    const organizationId =
-      options.organizationId ?? this.alepha.store.get(currentTenantAtom)?.id;
     const channels = this.channels();
 
     const items: PushManyItem[] = [];
     for (const entry of options.contacts) {
       for (const type of channels) {
         items.push({
-          payload: this.payloadFor(type, entry, organizationId),
+          payload: this.payloadFor(type, entry),
           scheduledAt: options.scheduledAt,
           delay: options.delay,
           key: this.channelKey(options.key?.(entry.contact), type),
@@ -394,13 +379,6 @@ export interface NotificationPushOptionsBase<T extends ZObject> {
    * They are read at send time, never carried in the queued payload.
    */
   attachments?: NotificationAttachment[];
-  /**
-   * Owning tenant for this notification. Defaults to the tenant resolved for
-   * the current request. Pass it explicitly when sending from a context with no
-   * request tenant — e.g. a cron sweep that fans out across clubs (use the
-   * subject entity's `organizationId`) — so the row stays correctly org-scoped.
-   */
-  organizationId?: string;
 }
 
 export interface NotificationPushManyOptions<T extends ZObject> {
@@ -419,11 +397,6 @@ export interface NotificationPushManyOptions<T extends ZObject> {
      */
     lang?: string;
   }>;
-  /**
-   * Owning tenant for every row in this batch. From a cron there is no
-   * request to resolve one, so pass it.
-   */
-  organizationId?: string;
   scheduledAt?: Date;
   delay?: DurationLike;
   /**

@@ -11,9 +11,8 @@ import {
  * Writes and updates the receipt that says what happened to a notification.
  *
  * Two writers feed it. The sender writes one at send time, on all three
- * outcomes, and that receipt is the only thing that knows which tenant a
- * provider `messageId` belongs to. Provider events arrive later on the
- * `notification:delivery` hook and update it in place.
+ * outcomes. Provider events arrive later on the `notification:delivery` hook
+ * and update it in place.
  */
 export class NotificationDeliveryService {
   protected readonly alepha = $inject(Alepha);
@@ -40,13 +39,9 @@ export class NotificationDeliveryService {
   }
 
   public async list(options: {
-    organizationId?: string;
     messageId?: string;
   }): Promise<NotificationDeliveryEntity[]> {
     const where: Record<string, unknown> = {};
-    if (options.organizationId !== undefined) {
-      where.organizationId = options.organizationId;
-    }
     if (options.messageId !== undefined) {
       where.messageId = options.messageId;
     }
@@ -60,20 +55,12 @@ export class NotificationDeliveryService {
   }
 
   /**
-   * Delete receipts by id, confined to one tenant when there is one.
-   *
    * Only the receipt goes: the outbox row it points at is on its own,
    * shorter clock and the purge sweep owns it.
    */
-  public async deleteMany(
-    ids: string[],
-    options: { organizationId?: string } = {},
-  ): Promise<string[]> {
+  public async deleteMany(ids: string[]): Promise<string[]> {
     const deleted = await this.repo.deleteMany({
       id: { inArray: ids },
-      ...(options.organizationId
-        ? { organizationId: { eq: options.organizationId } }
-        : {}),
     });
     return deleted.map(String);
   }
@@ -109,27 +96,21 @@ export class NotificationDeliveryService {
    * a `where` carrying an undefined value throws, and used to be dropped
    * silently, which produced a query with no `WHERE` at all.
    */
-  public async paginate(
-    query: {
-      sort?: string;
-      page?: number;
-      size?: number;
-      status?: NotificationDeliveryRecord["status"];
-      search?: string;
-      template?: string;
-      channel?: NotificationDeliveryRecord["channel"];
-      category?: string;
-      hasError?: boolean;
-      createdAfter?: string;
-      createdBefore?: string;
-    },
-    options: { organizationId?: string } = {},
-  ) {
+  public async paginate(query: {
+    sort?: string;
+    page?: number;
+    size?: number;
+    status?: NotificationDeliveryRecord["status"];
+    search?: string;
+    template?: string;
+    channel?: NotificationDeliveryRecord["channel"];
+    category?: string;
+    hasError?: boolean;
+    createdAfter?: string;
+    createdBefore?: string;
+  }) {
     query.sort ??= "-createdAt";
     const where = this.repo.createQueryWhere();
-    if (options.organizationId) {
-      where.organizationId = { eq: options.organizationId };
-    }
     if (query.status) {
       where.status = { eq: query.status };
     }
@@ -212,7 +193,6 @@ export class NotificationDeliveryService {
 
 export interface NotificationDeliveryRecord {
   executionId: string;
-  organizationId?: string | null;
   messageId?: string | null;
   provider: string;
   channel: string;

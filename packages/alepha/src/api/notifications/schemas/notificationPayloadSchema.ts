@@ -33,18 +33,6 @@ export const notificationPayloadSchema = z.object({
    */
   lang: z.text().optional(),
   /**
-   * Owning tenant for this notification.
-   *
-   * It is also stamped on the `job_executions` row, which is what keeps the
-   * admin list org-scoped. This copy exists because the sender runs inside a
-   * job and a job handler never sees its own row: without it, nothing that
-   * runs at send time (the suppression gate, the preference seam) can know
-   * which tenant a message belongs to.
-   *
-   * Additive: rows pushed before this field existed simply lack it.
-   */
-  organizationId: z.uuid().optional(),
-  /**
    * Files to attach, as references. Resolved to bytes at send time; see
    * {@link notificationAttachmentSchema} for why they are never inlined here.
    */

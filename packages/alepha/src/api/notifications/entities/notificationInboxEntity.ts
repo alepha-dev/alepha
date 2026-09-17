@@ -12,9 +12,8 @@ import { $entity, db } from "alepha/orm";
  *
  * ## `userId` is a bare uuid with no foreign key
  *
- * The same reason `notification_deliveries.organizationId` is: the writer
- * runs inside a tenant-less job, and this module deliberately imports
- * nothing from `alepha/api/users`, so there is no table here to point at.
+ * The writer runs inside a job, and this module deliberately imports nothing
+ * from `alepha/api/users`, so there is no table here to point at.
  * The cost is orphan rows when an account is deleted, and the app pays it:
  * `NotificationInboxService.deleteForUser()` from the app's own
  * `user:delete:before` handler. Nothing here cascades, so a module that
@@ -100,13 +99,6 @@ export const notificationInboxEntity = $entity({
      * boolean cannot.
      */
     readAt: z.datetime().nullable().optional(),
-
-    /**
-     * Owning tenant, from the payload, for the same reason the delivery and
-     * suppression tables carry one: the writer runs inside a tenant-less job
-     * and an auto-scoped column would read nothing.
-     */
-    organizationId: z.uuid().nullable().optional(),
   }),
   indexes: [
     // The unread count and the unread list, which is every page load.

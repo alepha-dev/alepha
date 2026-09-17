@@ -189,7 +189,9 @@ describe("bounce and complaint ingestion", () => {
     await alepha.stop();
   });
 
-  it("writes nothing for a messageId with no receipt", async ({ expect }) => {
+  it("suppresses a hard bounce even when its receipt is gone", async ({
+    expect,
+  }) => {
     const { alepha, suppressions } = await boot();
 
     await alepha.events.emit(
@@ -197,7 +199,7 @@ describe("bounce and complaint ingestion", () => {
       cloudflareEvent("bounced", "never-issued", "hard") as never,
     );
 
-    expect(await suppressions.list({})).toHaveLength(0);
+    expect(await suppressions.list({})).toHaveLength(1);
 
     await alepha.stop();
   });

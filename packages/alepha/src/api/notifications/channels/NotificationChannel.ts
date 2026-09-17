@@ -52,7 +52,7 @@ export interface NotificationRenderInput<M> {
   variables: Record<string, unknown>;
   /**
    * The queued payload, for anything the channel needs beyond the
-   * variables: the contact, the category, `critical`, the owning tenant.
+   * variables: the contact, the category, and `critical`.
    */
   payload: NotificationPayload;
 }

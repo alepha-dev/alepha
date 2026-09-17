@@ -21,17 +21,6 @@ export const notificationSuppressionEntity = $entity({
     updatedAt: db.updatedAt(),
 
     /**
-     * Owning tenant, or null in a single-tenant app.
-     *
-     * Deliberately NOT `db.organization()`. That column auto-scopes every
-     * query to the current request's tenant, and the sender runs inside a
-     * job with no request at all, so an auto-scoped read would see nothing
-     * and the gate would silently pass everyone. Same reasoning, and same
-     * comment, as `job_executions.organizationId`.
-     */
-    organizationId: z.uuid().nullable().optional(),
-
-    /**
      * The suppressed address or number, normalized (trimmed, lower-cased)
      * so that casing cannot walk around the gate.
      */
@@ -71,10 +60,10 @@ export const notificationSuppressionEntity = $entity({
   }),
   indexes: [
     {
-      columns: ["organizationId", "channel", "contact", "reason", "category"],
+      columns: ["channel", "contact", "reason", "category"],
       unique: true,
     },
-    { columns: ["organizationId", "channel", "contact"] },
+    { columns: ["channel", "contact"] },
   ],
 });
 

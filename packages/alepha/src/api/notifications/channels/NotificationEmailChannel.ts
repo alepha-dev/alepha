@@ -85,7 +85,6 @@ export class NotificationEmailChannel extends NotificationChannel<
           channel: this.channel,
           category: payload.category,
           template: payload.template,
-          organizationId: payload.organizationId,
         });
 
     // The body sees it as one more variable, so an app can put a visible

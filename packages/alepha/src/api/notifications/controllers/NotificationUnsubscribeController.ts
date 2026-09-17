@@ -73,7 +73,6 @@ export class NotificationUnsubscribeController {
       }
 
       await this.suppressions.suppress({
-        organizationId: claims.organizationId,
         contact: claims.contact,
         channel: claims.channel,
         reason: "unsubscribed",

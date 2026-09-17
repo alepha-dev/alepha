@@ -24,9 +24,8 @@ export class NotificationSuppressionService {
   /**
    * Record that a contact must not be mailed.
    *
-   * Find-then-insert rather than a bare insert: the unique index cannot
-   * dedupe rows whose `organizationId` is null, which is every row in a
-   * single-tenant app, so the check has to happen here too.
+   * The unique index is the concurrency boundary. A racing insert re-reads
+   * and returns the row the other writer created, keeping this idempotent.
    */
   public async suppress(options: {
     contact: string;
@@ -34,10 +33,8 @@ export class NotificationSuppressionService {
     reason: "unsubscribed" | "bounced" | "complained";
     category?: string;
     source: string;
-    organizationId?: string;
   }): Promise<NotificationSuppressionEntity> {
     const row = {
-      organizationId: options.organizationId ?? null,
       contact: this.normalize(options.contact),
       channel: options.channel,
       reason: options.reason,
@@ -48,7 +45,6 @@ export class NotificationSuppressionService {
 
     const existing = await this.repo.findOne({
       where: {
-        ...this.tenantFilter(options.organizationId),
         contact: row.contact,
         channel: row.channel,
         reason: row.reason,
@@ -59,21 +55,22 @@ export class NotificationSuppressionService {
       return existing;
     }
 
-    return await this.repo.create(row);
-  }
-
-  /**
-   * Match one tenant's rows, or the tenant-less ones in a single-tenant app.
-   *
-   * A bare `{ organizationId: null }` is refused by the query layer, because
-   * a null condition would be dropped from the WHERE clause and the query
-   * would silently match every tenant. `isNull` is how you actually ask for
-   * the rows that have no owner.
-   */
-  protected tenantFilter(organizationId?: string) {
-    return organizationId
-      ? { organizationId }
-      : { organizationId: { isNull: true } };
+    try {
+      return await this.repo.create(row);
+    } catch (error) {
+      const concurrent = await this.repo.findOne({
+        where: {
+          contact: row.contact,
+          channel: row.channel,
+          reason: row.reason,
+          category: row.category,
+        },
+      });
+      if (concurrent) {
+        return concurrent;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -90,23 +87,14 @@ export class NotificationSuppressionService {
 
   /**
    * Query the list.
-   *
-   * ⚠️ Omitting `organizationId` lists **across every tenant**, which is what
-   * an operator's unscoped view wants and never what a send wants. The gate
-   * uses {@link isSuppressed}, which scopes to exactly one tenant (or to the
-   * tenant-less rows) instead.
    */
   public async list(options: {
-    organizationId?: string;
     contact?: string;
     channel?: string;
   }): Promise<NotificationSuppressionEntity[]> {
     // Never pass undefined into a where-filter: it throws. Build the filter
     // from the keys that were actually given.
     const where: Record<string, unknown> = {};
-    if (options.organizationId !== undefined) {
-      where.organizationId = options.organizationId;
-    }
     if (options.contact !== undefined) {
       where.contact = this.normalize(options.contact);
     }
@@ -119,21 +107,14 @@ export class NotificationSuppressionService {
 
   /**
    * A page of the list for an operator, newest first.
-   *
-   * `organizationId` here is the acting tenant, or undefined in a
-   * single-tenant app where every row belongs to this app anyway. It is the
-   * same shape the notification outbox listing uses, so the two tabs of the
-   * admin page behave identically.
    */
-  public async paginate(
-    query: { sort?: string; page?: number; size?: number },
-    options: { organizationId?: string } = {},
-  ) {
+  public async paginate(query: {
+    sort?: string;
+    page?: number;
+    size?: number;
+  }) {
     query.sort ??= "-createdAt";
     const where = this.repo.createQueryWhere();
-    if (options.organizationId) {
-      where.organizationId = { eq: options.organizationId };
-    }
     return await this.repo.paginate(query, { where }, { count: true });
   }
 
@@ -156,16 +137,11 @@ export class NotificationSuppressionService {
   public async isSuppressed(options: {
     contact: string;
     channel: string;
-    organizationId?: string;
     category?: string;
     critical?: boolean;
   }): Promise<boolean> {
-    // Deliberately not `list()`: an absent tenant must mean "the rows with no
-    // tenant", not "every tenant's rows". Getting that backwards would let
-    // one club's unsubscribe silence another club's mail.
     const rows = await this.repo.findMany({
       where: {
-        ...this.tenantFilter(options.organizationId),
         contact: this.normalize(options.contact),
         channel: options.channel,
       },

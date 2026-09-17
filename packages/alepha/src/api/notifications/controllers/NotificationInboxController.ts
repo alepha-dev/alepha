@@ -263,7 +263,7 @@ export class NotificationInboxController {
   }
 
   /**
-   * The row as its owner sees it: no `userId`, no `organizationId`.
+   * The row as its owner sees it, without the internal `userId`.
    *
    * Both are the server's business, and every row in a response already
    * belongs to the caller, so repeating who they are on each one buys

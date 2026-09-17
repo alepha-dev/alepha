@@ -147,7 +147,6 @@ await this.reminder.pushMany({
     contact: p.email,
     variables: { name: p.name },
   })),
-  organizationId: club.id,
 });
 ```
 
@@ -165,8 +164,7 @@ await this.reminder.pushMany({
 > second row and sends a second message. For "at most one reminder per day",
 > keep your own marker on the subject row.
 
-Outside a request there is no tenant and no language to infer, so **pass
-`organizationId` explicitly from a cron**, and give each contact its own
+Outside a request there is no language to infer, so give each contact its own
 `lang` if it matters.
 
 ## 5. Suppression and preferences
@@ -221,9 +219,8 @@ automatically, and the body can render the same URL from an `unsubscribeUrl`
 variable. Both need `PUBLIC_URL`; without it the headers are omitted rather
 than made relative.
 
-The token is a stateless HMAC over `(organizationId, contact, channel,
-category, template)` with **no expiry**, because a link in a six-month-old
-mail must still work.
+The token is a stateless HMAC over `(contact, channel, category, template)`
+with **no expiry**, because a link in a six-month-old mail must still work.
 
 > ⚠️ **Rotating `APP_SECRET` invalidates every outstanding unsubscribe link**,
 > in mail already delivered, with no fallback and no way to tell the

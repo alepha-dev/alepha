@@ -127,10 +127,4 @@ export interface UnsubscribeClaims {
    * prompted the opt-out; it does not narrow what gets suppressed.
    */
   template: string;
-  /**
-   * The owning tenant. On the token rather than looked up later, because the
-   * route is unauthenticated and has no other way to know: a player
-   * unsubscribing from one club must keep receiving the other club's mail.
-   */
-  organizationId?: string;
 }

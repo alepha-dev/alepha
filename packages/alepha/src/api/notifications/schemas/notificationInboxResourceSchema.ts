@@ -3,9 +3,9 @@ import { type Infer, z } from "alepha";
 /**
  * One message as the owner's own client sees it.
  *
- * Deliberately narrower than the row: `organizationId` and `userId` are the
- * server's business, and every message in a response already belongs to the
- * caller, so repeating who they are on each row buys nothing.
+ * Deliberately narrower than the row: `userId` is the server's business, and
+ * every message in a response already belongs to the caller, so repeating
+ * who they are on each row buys nothing.
  *
  * ⚠️ `title` and `body` are **plain text**, rendered once at send time and
  * frozen in the language they were written in. A reader who later switches

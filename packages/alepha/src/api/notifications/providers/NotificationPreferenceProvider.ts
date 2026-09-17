@@ -58,8 +58,7 @@ export class NotificationPreferenceProvider {
    * Whether this contact accepts this message.
    *
    * Called at send time, inside a job with no request context, so anything
-   * it needs must come from the arguments rather than from the current
-   * tenant or the current user.
+   * it needs must come from the arguments rather than from the current user.
    *
    * It is consulted **after** the suppression check and never overrides it:
    * returning true cannot resurrect an address that bounced or complained.
@@ -85,11 +84,6 @@ export interface NotificationPreferenceOptions {
    * The template's category, when it declares one.
    */
   category?: string;
-  /**
-   * The owning tenant, from the job payload. Undefined in a single-tenant
-   * app, and never read from the current request: there is none.
-   */
-  organizationId?: string;
   /**
    * Whether the template is marked `critical`. A critical message is one the
    * recipient needs in order to use their account (a password reset, a

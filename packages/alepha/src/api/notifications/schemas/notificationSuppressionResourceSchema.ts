@@ -10,7 +10,6 @@ import { type Infer, z } from "alepha";
 export const notificationSuppressionResourceSchema = z.object({
   id: z.uuid(),
   createdAt: z.datetime(),
-  organizationId: z.uuid().nullable().optional(),
   contact: z.text(),
   channel: z.text({ maxLength: 32 }),
   reason: z.enum(["unsubscribed", "bounced", "complained"]),

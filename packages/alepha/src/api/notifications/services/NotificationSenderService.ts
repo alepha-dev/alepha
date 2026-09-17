@@ -213,7 +213,6 @@ export class NotificationSenderService {
       const sensitive = payload.sensitive === true;
       await this.deliveries.record({
         executionId: context.executionId,
-        organizationId: payload.organizationId ?? null,
         messageId: outcome.messageId ?? null,
         provider: this.providerName(payload.type),
         channel: payload.type,
@@ -283,9 +282,6 @@ export class NotificationSenderService {
     const suppressed = await this.suppressions.isSuppressed({
       contact,
       channel,
-      // From the payload, never from `currentTenantAtom`: this runs inside a
-      // job and there is no request to read a tenant from.
-      organizationId: payload.organizationId,
       category: payload.category,
       critical: payload.critical,
     });
@@ -298,7 +294,6 @@ export class NotificationSenderService {
       channel,
       template: payload.template,
       category: payload.category,
-      organizationId: payload.organizationId,
       critical: payload.critical,
     });
     if (!allowed) {

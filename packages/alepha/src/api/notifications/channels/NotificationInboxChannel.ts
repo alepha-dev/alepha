@@ -38,7 +38,6 @@ export interface NotificationInboxRendered extends NotificationRendered {
   scopeLabel: string | null;
   template: string;
   category: string | null;
-  organizationId: string | null;
 }
 
 /**
@@ -120,7 +119,6 @@ export class NotificationInboxChannel extends NotificationChannel<
         : null,
       template: payload.template,
       category: payload.category ?? null,
-      organizationId: payload.organizationId ?? null,
     };
   }
 
@@ -135,7 +133,6 @@ export class NotificationInboxChannel extends NotificationChannel<
       body: rendered.body ?? null,
       href: rendered.href,
       readAt: null,
-      organizationId: rendered.organizationId,
     });
 
     // The row's own id, so a receipt points at the message it produced.

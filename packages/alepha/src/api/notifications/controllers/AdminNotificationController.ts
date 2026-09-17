@@ -1,8 +1,8 @@
-import { $inject, Alepha, AlephaError, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { $secure, currentTenantAtom, tenancyAtom } from "alepha/security";
+import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { NotificationDeliveryEntity } from "../entities/notificationDeliveryEntity.ts";
@@ -39,54 +39,6 @@ export class AdminNotificationController {
     return this.notificationJobs.sendNotification.name;
   }
 
-  /**
-   * The tenant this request is acting in, when multi-tenant. The notification
-   * outbox (`job_executions`) is shared across tenants in a pooled worker, so
-   * every read/delete here is scoped to this org to prevent cross-tenant access.
-   * Undefined in single-tenant apps → no extra filter (all rows are this app's).
-   */
-  protected get organizationId(): string | undefined {
-    return this.alepha.store.get(currentTenantAtom)?.id;
-  }
-
-  /**
-   * The tenant every read and write here must be confined to, or `undefined`
-   * in a single-tenant app where there is nothing to confine.
-   *
-   * `job_executions` is deliberately NOT an org-scoped entity — the outbox is
-   * shared, and `organizationId` rides in the push context. So the repository's
-   * own fail-closed guard never fires on this table and these three call sites
-   * are the entire gate. All three used to be written as `if (org) { filter }`,
-   * which means an unresolved tenant removed the filter instead of refusing:
-   * on a pooled worker, one admin listing — or deleting — every tenant's
-   * notifications.
-   *
-   * @throws when the app declares itself multi-tenant and no tenant resolved.
-   *   There is no row such a caller is entitled to, so refusing beats returning
-   *   everything.
-   */
-  protected requireTenantScope(): string | undefined {
-    const org = this.organizationId;
-    if (org) {
-      return org;
-    }
-    if (this.alepha.store.get(tenancyAtom).mode === "multi") {
-      throw new AlephaError(
-        "Refusing to serve the notification outbox with no resolved tenant (multi-tenant mode). " +
-          "Resolve the tenant into `currentTenantAtom` before reaching this endpoint.",
-      );
-    }
-    return undefined;
-  }
-
-  /**
-   * True when `exec` belongs to the acting tenant.
-   */
-  protected sameTenant(exec: { organizationId?: string | null }): boolean {
-    const org = this.requireTenantScope();
-    return !org || exec.organizationId === org;
-  }
-
   public readonly findNotifications = $action({
     path: this.url,
     group: this.group,
@@ -99,7 +51,7 @@ export class AdminNotificationController {
   });
 
   /**
-   * Page the delivery receipts, scoped to this tenant.
+   * Page the delivery receipts.
    *
    * ⚠️ **The receipts ARE the list**, not a merge with the outbox. Two
    * tables with two retention clocks and two sort keys cannot be paged as
@@ -112,9 +64,7 @@ export class AdminNotificationController {
    * pretending otherwise.
    */
   protected async list(query: NotificationQuery) {
-    const page = await this.deliveries.paginate(query, {
-      organizationId: this.requireTenantScope(),
-    });
+    const page = await this.deliveries.paginate(query);
     const alive = await this.liveExecutionIds(
       page.content.map((receipt) => receipt.executionId),
     );
@@ -223,9 +173,7 @@ export class AdminNotificationController {
       response: z.page(notificationSuppressionResourceSchema),
     },
     handler: async ({ query }) =>
-      (await this.suppressions.paginate(query, {
-        organizationId: this.requireTenantScope(),
-      })) as any,
+      (await this.suppressions.paginate(query)) as any,
   });
 
   /**
@@ -249,8 +197,7 @@ export class AdminNotificationController {
     },
     handler: async ({ params }) => {
       const row = await this.suppressions.findById(params.id);
-      const org = this.requireTenantScope();
-      if (!row || (org && row.organizationId !== org)) {
+      if (!row) {
         throw new NotFoundError(`Suppression not found: ${params.id}`);
       }
       await this.suppressions.lift(params.id);
@@ -424,8 +371,7 @@ export class AdminNotificationController {
 
   protected async requireReceipt(id: string) {
     const receipt = await this.deliveries.findById(id);
-    const org = this.requireTenantScope();
-    if (!receipt || (org && receipt.organizationId !== org)) {
+    if (!receipt) {
       throw new NotFoundError(`Notification not found: ${id}`);
     }
     return receipt;
@@ -447,9 +393,7 @@ export class AdminNotificationController {
       await this.requireReceipt(params.id);
       // Only the receipt. The outbox row is on its own, shorter clock and
       // the purge sweep owns it.
-      await this.deliveries.deleteMany([params.id], {
-        organizationId: this.requireTenantScope(),
-      });
+      await this.deliveries.deleteMany([params.id]);
       return { ok: true, id: params.id };
     },
   });
@@ -469,11 +413,7 @@ export class AdminNotificationController {
       }),
     },
     handler: async ({ body }) => {
-      // Confined to this org when multi-tenant, so one club cannot delete
-      // another club's records.
-      const deleted = await this.deliveries.deleteMany(body.ids, {
-        organizationId: this.requireTenantScope(),
-      });
+      const deleted = await this.deliveries.deleteMany(body.ids);
       return { deleted };
     },
   });

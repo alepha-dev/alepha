@@ -3,7 +3,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import type { NotificationDeliveryEvent } from "../schemas/notificationDeliveryEventSchema.ts";
-import { NotificationDeliveryService } from "./NotificationDeliveryService.ts";
 import { NotificationSuppressionService } from "./NotificationSuppressionService.ts";
 
 /**
@@ -22,7 +21,6 @@ import { NotificationSuppressionService } from "./NotificationSuppressionService
 export class NotificationIngestService {
   protected readonly alepha = $inject(Alepha);
   protected readonly suppressions = $inject(NotificationSuppressionService);
-  protected readonly deliveries = $inject(NotificationDeliveryService);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
 
@@ -55,22 +53,7 @@ export class NotificationIngestService {
         return;
       }
 
-      // The receipt is the only thing that knows which tenant this message
-      // belonged to. Without one, suppressing would either be scoped to no
-      // tenant (wrong in a multi-tenant app: it would leak across clubs) or
-      // guessed. Log and skip instead.
-      const receipt = await this.deliveries.findByMessageId(event.messageId);
-      if (!receipt) {
-        this.log.info("Delivery event has no receipt, not suppressing", {
-          provider: event.provider,
-          status: event.status,
-          eventId: event.eventId,
-        });
-        return;
-      }
-
       await this.suppressions.suppress({
-        organizationId: receipt.organizationId ?? undefined,
         contact: event.contact,
         channel: event.channel,
         reason,

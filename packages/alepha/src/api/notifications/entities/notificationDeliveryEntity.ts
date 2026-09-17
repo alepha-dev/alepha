@@ -14,9 +14,6 @@ import { $entity, db } from "alepha/orm";
  * **No foreign key to `job_executions`.** The outbox row is purged after
  * `retentionDays` (7 by default) and a complaint can arrive on day 9, so the
  * receipt outlives what it points at and keeps its own 90-day clock.
- *
- * It is also the only place that maps a provider `messageId` back to an
- * `organizationId`, which is why it has to exist before bounce ingestion can.
  */
 export const notificationDeliveryEntity = $entity({
   name: "notification_deliveries",
@@ -30,13 +27,6 @@ export const notificationDeliveryEntity = $entity({
      * notification, however many attempts it took.
      */
     executionId: z.text({ maxLength: 64 }),
-
-    /**
-     * Owning tenant, from the payload. Not `db.organization()`, for the same
-     * reason as the suppression table: the writer runs inside a tenant-less
-     * job and an auto-scoped column would read nothing.
-     */
-    organizationId: z.uuid().nullable().optional(),
 
     /**
      * The transport's id for the message, when there was one. Nullable and
@@ -109,7 +99,7 @@ export const notificationDeliveryEntity = $entity({
   indexes: [
     { columns: ["executionId"], unique: true },
     { columns: ["messageId"] },
-    { columns: ["organizationId", "createdAt"] },
+    { columns: ["createdAt"] },
   ],
 });
 

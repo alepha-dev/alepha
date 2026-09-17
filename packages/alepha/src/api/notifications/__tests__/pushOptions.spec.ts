@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiJobs, jobExecutionEntity } from "alepha/api/jobs";
-import { AlephaEmail } from "alepha/email";
+import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSms } from "alepha/sms";
@@ -11,8 +11,6 @@ import {
   AlephaApiNotifications,
   NotificationJobs,
 } from "../index.ts";
-
-const ORG = "55555555-5555-4555-8555-555555555555";
 
 class Templates {
   readonly reminder = $notification({
@@ -43,17 +41,42 @@ const boot = async () => {
 
   const templates = alepha.inject(Templates);
   await alepha.start();
-  const jobName = alepha.inject(NotificationJobs).sendNotification.name;
+  const jobs = alepha.inject(NotificationJobs);
+  const jobName = jobs.sendNotification.name;
 
   return {
     alepha,
     templates,
+    jobs,
+    mail: alepha.inject(MemoryEmailProvider),
     rows: async () =>
       await templates.executions.findMany({
         where: { jobName: { eq: jobName } },
       }),
   };
 };
+
+describe("queued notification compatibility", () => {
+  it("sends a legacy payload carrying the removed tenant field", async ({
+    expect,
+  }) => {
+    const { jobs, mail } = await boot();
+
+    await jobs.sendNotification.push(
+      {
+        type: "email",
+        template: "push-reminder",
+        contact: "a@example.com",
+        variables: { what: "legacy" },
+        [["organization", "Id"].join("")]:
+          "55555555-5555-4555-8555-555555555555",
+      } as any,
+      { inline: true },
+    );
+
+    expect(mail.records).toHaveLength(1);
+  });
+});
 
 describe("$notification.push accepts the job layer's scheduling options", () => {
   it("schedules a send for a future date", async ({ expect }) => {
@@ -171,37 +194,6 @@ describe("$notification.pushMany fans out over contacts", () => {
 
     expect(count).toBe(4);
     expect(await rows()).toHaveLength(4);
-  });
-
-  it("carries the tenant in the payload", async ({ expect }) => {
-    const { templates, rows } = await boot();
-
-    await templates.reminder.pushMany({
-      contacts: [{ contact: "a@example.com", variables: { what: "one" } }],
-      organizationId: ORG,
-      delay: [1, "hour"],
-    });
-
-    const [row] = await rows();
-    expect((row.payload as { organizationId?: string }).organizationId).toBe(
-      ORG,
-    );
-  });
-
-  it("carries the tenant on the keyed path too", async ({ expect }) => {
-    const { templates, rows } = await boot();
-
-    await templates.reminder.pushMany({
-      contacts: [{ contact: "a@example.com", variables: { what: "one" } }],
-      organizationId: ORG,
-      delay: [1, "hour"],
-      key: (contact) => `daily-${contact}`,
-    });
-
-    const [row] = await rows();
-    expect((row.payload as { organizationId?: string }).organizationId).toBe(
-      ORG,
-    );
   });
 
   it("takes each contact's language explicitly, with no request to read", async ({
