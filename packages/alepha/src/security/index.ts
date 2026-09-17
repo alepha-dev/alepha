@@ -3,9 +3,7 @@ import type { FetchOptions } from "alepha/server";
 
 import { currentAuthorityAtom } from "./atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "./atoms/currentResourceAtom.ts";
-import { currentTenantAtom } from "./atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "./atoms/currentUserAtom.ts";
-import { tenancyAtom } from "./atoms/tenancyAtom.ts";
 import type { UserAccountToken } from "./interfaces/UserAccountToken.ts";
 import { $issuer } from "./primitives/$issuer.ts";
 import { $permission } from "./primitives/$permission.ts";
@@ -22,9 +20,7 @@ import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 export * from "alepha/crypto";
 export * from "./atoms/currentAuthorityAtom.ts";
 export * from "./atoms/currentResourceAtom.ts";
-export * from "./atoms/currentTenantAtom.ts";
 export * from "./atoms/currentUserAtom.ts";
-export * from "./atoms/tenancyAtom.ts";
 export * from "./errors/InvalidCredentialsError.ts";
 export * from "./errors/InvalidPermissionError.ts";
 export * from "./errors/SecurityError.ts";
@@ -73,15 +69,6 @@ declare module "alepha" {
      * The current authenticated user.
      */
     "alepha.security.user"?: UserAccount;
-
-    /**
-     * The tenant the current request is acting in.
-     *
-     * Typically set by an app-level middleware from the request `Host`. When
-     * present, `Repository` scoping and session creation prefer this value
-     * over `currentUserAtom.organization`.
-     */
-    "alepha.security.tenant"?: { id: string };
   }
 }
 
@@ -127,13 +114,7 @@ declare module "alepha/server" {
 export const AlephaSecurity = $module({
   name: "alepha.security",
   primitives: [$issuer, $role, $permission],
-  atoms: [
-    currentUserAtom,
-    currentTenantAtom,
-    currentResourceAtom,
-    currentAuthorityAtom,
-    tenancyAtom,
-  ],
+  atoms: [currentUserAtom, currentResourceAtom, currentAuthorityAtom],
   services: [
     SecurityProvider,
     JwtProvider,

@@ -99,8 +99,10 @@ class App {
 Realms share a signing key by default, so a signature alone does not say which
 realm a token came from. What does is its `aud` claim, which `createToken`
 sets to the issuing realm's name; a resolver refuses a token whose audience
-names a different realm, the way the tenant check already refuses a token
-minted on another tenant.
+names a different realm.
+
+Each deployed worker must have its own `APP_SECRET`. A token minted by another
+worker then fails signature verification before any claim is read.
 
 That matters when you mint a token by hand. `JwtProvider.create`'s second
 argument picks a signing key, not a realm, so in a multi-realm app a token

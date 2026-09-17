@@ -154,7 +154,7 @@ export interface SecureGuardContext {
  *
  * The resolved user is published to `currentUserAtom` and to the request
  * **before** the guard runs, so anything the guard calls (a repository read in
- * `$owns`, for instance) resolves the same tenant the handler would.
+ * `$owns`, for instance) sees the same identity the handler would.
  *
  * ## Browser Behavior
  *
@@ -299,14 +299,11 @@ export function $secure(options?: SecureOptions): Middleware {
 
         // 7. Publish the resolved user BEFORE the guard runs.
         //
-        // A guard runs real code — `$owns` loads a row through a repository —
-        // and `Repository.resolveOrganizationValue()` reads `currentUserAtom`.
-        // Publishing afterwards meant every guard on the HTTP path (where
-        // `$secure` itself resolved the user from headers) queried with no
-        // tenant in context: a non-strict entity was read unscoped, and a
-        // strict one refused outright with a 500. Over `action.run()` / MCP the
-        // atom was already populated by the caller, so the two transports
-        // disagreed on the same route.
+        // A guard runs real code. `$owns`, for example, loads a row and reads
+        // `currentUserAtom` to decide whether the caller owns it. Publishing
+        // afterwards meant a guard on the HTTP path saw no identity, while
+        // `action.run()` and MCP already populated the atom. The transports
+        // therefore disagreed on the same route.
         //
         // Denial still aborts before `next()`, so a published-then-rejected
         // user is never observable by the handler.

@@ -114,7 +114,7 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * with, so adding the flag there changes no runtime behaviour; it
    * documents intent and closes the door on a future in-request
    * `store.set`. The flag only bites for atoms genuinely written inside a
-   * request — `currentResourceAtom`, `currentTenantAtom`.
+   * request, such as `currentResourceAtom`.
    *
    * **Cannot be combined with `persist`.** Every persistence adapter
    * (`"cookie"`, `"localStorage"`, `"sessionStorage"`) targets the browser

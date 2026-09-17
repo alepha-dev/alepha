@@ -12,7 +12,6 @@ import { ForbiddenError } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
 
-import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
@@ -171,39 +170,10 @@ export class SecurityProvider {
           return null;
         }
 
-        if (!this.matchesTenantClaim(result.payload)) {
-          return null;
-        }
-
         // Extract user info from JWT payload
         return this.createUserFromPayload(result.payload, realmName);
       },
     };
-  }
-
-  /**
-   * Reject tokens whose tenant claim doesn't match the tenant resolved for
-   * the current request. Prevents a token minted on tenant A from being
-   * replayed on tenant B (subdomain spoofing, leaked bearer tokens). Tokens
-   * minted without a tenant claim (no active tenant at session creation)
-   * pass through — single-tenant apps are unaffected.
-   *
-   * Every JWT resolver (the default one AND `$issuer`'s) must call this
-   * before turning a payload into a user.
-   */
-  public matchesTenantClaim(payload: JWTPayload): boolean {
-    const claimTenant = this.getTenantFromPayload(payload);
-    if (claimTenant) {
-      const activeTenant = this.alepha.store.get(currentTenantAtom)?.id;
-      if (activeTenant && activeTenant !== claimTenant) {
-        this.log.warn("JWT tenant claim does not match active tenant", {
-          claim: claimTenant,
-          active: activeTenant,
-        });
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
@@ -658,7 +628,6 @@ export class SecurityProvider {
       typeof payload.given_name === "string" ? payload.given_name : undefined;
     const lastName =
       typeof payload.family_name === "string" ? payload.family_name : undefined;
-    const organization = this.getOrganizationFromPayload(payload);
     const credential = realmName
       ? this.getCredentialFromPayload(payload)
       : undefined;
@@ -696,7 +665,6 @@ export class SecurityProvider {
       email,
       username,
       picture,
-      organization,
       sessionId,
       credential,
       permissionScope,
@@ -915,7 +883,7 @@ export class SecurityProvider {
       } catch (error) {
         // Trying the next resolver is deliberate — with several realms
         // registered, "this one cannot read the token" is the normal case.
-        // But swallowing it silently meant a tenant mismatch or a malformed
+        // But swallowing it silently meant a malformed
         // bearer ended as a bare `undefined` (i.e. "unauthenticated") with
         // nothing anywhere to explain why. Debug, so it costs nothing in
         // production and is there when someone goes looking.
@@ -1617,37 +1585,6 @@ export class SecurityProvider {
     }
 
     return this.UNKNOWN_USER_NAME;
-  }
-
-  public getOrganizationFromPayload(
-    payload: Record<string, any>,
-  ): string | undefined {
-    if (!payload) {
-      return;
-    }
-
-    if (typeof payload.organization === "string") {
-      return payload.organization;
-    }
-  }
-
-  /**
-   * Extracts the tenant id from the JWT payload, when present.
-   *
-   * Tokens minted with no active tenant (single-tenant apps, server-to-server
-   * calls before any request-scoped middleware runs) omit the claim, in which
-   * case the resolver does not enforce a tenant match.
-   */
-  public getTenantFromPayload(
-    payload: Record<string, any>,
-  ): string | undefined {
-    if (!payload) {
-      return;
-    }
-
-    if (typeof payload.tenant === "string") {
-      return payload.tenant;
-    }
   }
 }
 

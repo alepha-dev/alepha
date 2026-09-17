@@ -15,7 +15,6 @@ import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 
-import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
 import { JwtProvider, type SigningConfig } from "../providers/JwtProvider.ts";
@@ -301,13 +300,6 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
           return null;
         }
 
-        // Anti-replay: a token minted on tenant A must not authenticate on
-        // tenant B. This is the primary auth path for `$realm`-based apps —
-        // skipping the check here would make it dead code.
-        if (!this.securityProvider.matchesTenantClaim(result.payload)) {
-          return null;
-        }
-
         // Extract user info from JWT payload
         return this.securityProvider.createUserFromPayload(
           result.payload,
@@ -438,12 +430,6 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       aud: this.name,
     });
 
-    // Bind the token to the tenant the request is acting in. The default JWT
-    // resolver compares this claim against `currentTenantAtom` on every
-    // request, so a token minted on `b14.club.alepha.dev` is rejected on
-    // `viska.club.alepha.dev` even when the user belongs to both.
-    const tenant = this.alepha.store.get(currentTenantAtom)?.id;
-
     // A token issued to an OAuth client says so, and keeps saying so: the
     // claim is what makes a connected app's identity a machine credential
     // rather than a session (see `SecureOptions.sessionOnly`). Read from the
@@ -493,9 +479,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         preferred_username: user.username,
         picture: user.picture,
         // our claims
-        organization: user.organization,
         roles: user.roles,
-        tenant,
         client_id: clientId,
         permission_scope: permissionScope,
       },

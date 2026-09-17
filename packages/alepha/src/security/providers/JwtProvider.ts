@@ -86,10 +86,7 @@ export class JwtProvider {
    * declared first is an accident.
    *
    * `createToken` sets `aud` to the issuing realm's name, so comparing it
-   * against the resolving realm is the whole check. This is the same idea as
-   * {@link SecurityProvider.matchesTenantClaim} one level up, whose comment
-   * already says "a token minted on tenant A must not authenticate on tenant
-   * B"; realms had no equivalent.
+   * against the resolving realm is the whole check.
    *
    * Enforced only for realms whose key we hold, exactly like
    * {@link JwtProvider.isAccessToken}: an external IdP sets `aud` to its own
@@ -394,7 +391,6 @@ export interface ExtendedJWTPayload extends JWTPayload {
   name?: string;
   roles?: string[];
   email?: string;
-  organization?: string;
   // keycloak specific
   realm_access?: { roles: string[] };
 }

@@ -5,7 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { describe, test } from "vitest";
 
-import { $issuer, currentTenantAtom, SecurityProvider } from "../index.ts";
+import { $issuer, JwtProvider, SecurityProvider } from "../index.ts";
 
 describe("$issuer federated tokens", () => {
   /**
@@ -143,7 +143,7 @@ describe("$issuer", () => {
     });
   });
 
-  test("rejects a token minted on another tenant (issuer resolver path)", async ({
+  test("accepts legacy tenant claims without publishing an organization", async ({
     expect,
   }) => {
     class App {
@@ -156,30 +156,30 @@ describe("$issuer", () => {
     const alepha = Alepha.create();
     const app = alepha.inject(App);
     const securityProvider = alepha.inject(SecurityProvider);
+    const jwt = alepha.inject(JwtProvider);
     await alepha.start();
 
-    // Mint a token while tenant A is active — it carries `tenant: "tenant-a"`.
-    alepha.store.set(currentTenantAtom, { id: "tenant-a" });
-    const token = await app.issuer.createToken({
-      id: randomUUID(),
-      roles: ["user"],
+    const id = randomUUID();
+    const token = await jwt.create(
+      {
+        sub: id,
+        aud: app.issuer.name,
+        organization: "11111111-1111-1111-1111-111111111111",
+        tenant: "legacy-tenant",
+        roles: ["user"],
+      },
+      app.issuer.name,
+      { header: { typ: jwt.accessTokenTyp } },
+    );
+
+    const accepted = await securityProvider.resolveUserFromServerRequest({
+      url: "http://localhost/",
+      headers: { authorization: `Bearer ${token}` },
     });
 
-    const request = {
-      url: "http://localhost/",
-      headers: { authorization: `Bearer ${token.access_token}` },
-    };
-
-    // Replaying it on tenant B must be refused.
-    alepha.store.set(currentTenantAtom, { id: "tenant-b" });
-    const rejected =
-      await securityProvider.resolveUserFromServerRequest(request);
-    expect(rejected).toBeUndefined();
-
-    // The right tenant still works.
-    alepha.store.set(currentTenantAtom, { id: "tenant-a" });
-    const accepted =
-      await securityProvider.resolveUserFromServerRequest(request);
-    expect(accepted?.id).toBeDefined();
+    expect(accepted?.id).toBe(id);
+    expect(
+      (accepted as unknown as Record<string, unknown>)?.organization,
+    ).toBeUndefined();
   });
 });

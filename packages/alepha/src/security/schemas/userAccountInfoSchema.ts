@@ -53,11 +53,6 @@ export const userAccountInfoSchema = z.object({
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  organization: z
-    .uuid()
-    .describe("Organization the user belongs to.")
-    .optional(),
-
   roles: z
     .array(z.text())
     .describe("List of roles assigned to the user.")

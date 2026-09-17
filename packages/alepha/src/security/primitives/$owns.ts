@@ -1,8 +1,7 @@
 import { $context, AlephaError, type Middleware } from "alepha";
-// Type-only on purpose. `alepha/orm` already imports `alepha/security` for its
-// tenant/user atoms, so a value import here would close a runtime cycle and
-// leave one module's exports undefined depending on which is evaluated first.
-// Erased at compile time, this edge does not exist at runtime.
+// Type-only on purpose. Authorization may depend on repository shapes without
+// creating a runtime module edge from security back to the ORM. Erased at
+// compile time, this import does not participate in module initialization.
 import type { Repository, StatementOptions } from "alepha/orm";
 import { ForbiddenError, NotFoundError } from "alepha/server";
 

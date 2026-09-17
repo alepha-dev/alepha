@@ -40,7 +40,7 @@ whole call, whatever order the list was written in.
 
 The resolved user is published to `currentUserAtom` and to the request
 **before** the guard runs, so anything the guard calls (a repository read in
-`$owns`, for instance) resolves the same tenant the handler would.
+`$owns`, for instance) sees the same identity the handler would.
 
 ## Browser Behavior
 
