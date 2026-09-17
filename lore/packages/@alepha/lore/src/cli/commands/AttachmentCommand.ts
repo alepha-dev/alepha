@@ -53,7 +53,7 @@ export class AttachmentCommand {
   public readonly push = $command({
     name: "push",
     description: "Attach a file to a quest or a folio",
-    args: z.text().describe("Path to the file to attach"),
+    args: z.text({ title: "file", description: "Path to the file to attach" }),
     flags: z.object({
       project: z
         .text({

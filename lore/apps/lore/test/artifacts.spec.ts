@@ -2,10 +2,10 @@ import { Alepha, type FileLike, z } from "alepha";
 import { RankService } from "alepha/api/ranks";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { ArtifactController } from "../src/api/controllers/ArtifactController.ts";

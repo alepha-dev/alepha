@@ -94,6 +94,19 @@ describe("LoreClientService", () => {
     });
 
     /**
+     * A `CommandError`, so the CLI reports a sentence rather than a crash, and
+     * exit code 3, so a script can tell "not authenticated" from any other
+     * failure without reading it.
+     */
+    it("refuses with exit code 3", async () => {
+      const scope = create().scope();
+
+      await expect(
+        (scope.authorization as () => Promise<string>)(),
+      ).rejects.toMatchObject({ name: "CommandError", exitCode: 3 });
+    });
+
+    /**
      * Resolving the key lazily is what lets a command be constructed, and its
      * `--help` printed, on a machine that holds no credential at all.
      */

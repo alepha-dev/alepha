@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import pkg from "@alepha/lore/package.json" with { type: "json" };
 import { Alepha, run } from "alepha";
-import { AlephaCommand } from "alepha/command";
+import { AlephaCommand, cliOptions } from "alepha/command";
 
 import { AlephaLoreCli } from "../cli/index.ts";
+import { LoreConventions } from "../cli/services/LoreConventions.ts";
 
 /**
  * The `lore` binary.
@@ -33,7 +34,6 @@ const alepha = Alepha.create({
   env: {
     APP_NAME: "CLI",
     CLI_NAME: "lore",
-    CLI_DESCRIPTION: `Lore CLI v${pkg.version} - Talk to a Lore instance from a build or a CI job.`,
     LOG_FORMAT: (process.env.LOG_FORMAT ?? "cli") as any,
     LOG_LEVEL: process.env.LOG_LEVEL ?? "alepha.core:warn,info",
   },
@@ -41,5 +41,13 @@ const alepha = Alepha.create({
 
 alepha.with(AlephaCommand);
 alepha.with(AlephaLoreCli);
+
+// Through the store and not `CLI_DESCRIPTION`: the conventions block is a
+// dozen lines, and an environment variable schema caps a text at 255
+// characters.
+alepha.store.mut(cliOptions, (options) => ({
+  ...options,
+  description: LoreConventions.describe(pkg.version),
+}));
 
 run(alepha);
