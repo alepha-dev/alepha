@@ -17,6 +17,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import type { Artifact } from "../entities/artifacts.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
+import { DeployAssetCache } from "./DeployAssetCache.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 
 /**
@@ -137,6 +138,7 @@ export class DeployRunner {
   protected readonly reader = $inject(ArtifactTarReader);
   protected readonly registry = $inject(DeployRegistry);
   protected readonly assetManifest = $inject(CloudflareAssetManifest);
+  protected readonly assetCache = $inject(DeployAssetCache);
 
   /**
    * Where the artifact is unpacked inside the in-memory filesystem.
@@ -181,34 +183,13 @@ export class DeployRunner {
       const bytes = await this.artifactBytes(request.artifact);
 
       await this.registry.line(deployment, "Unpacking");
-      // ⚠️ `dist/public` is walked and hashed, never stored. See `assetsOf`.
-      const manifest: Record<string, CloudflareAssetEntry> = {};
-      // ⚠️ The one exception to "never stored": the text of `_headers` and
-      // `_redirects`, which is configuration Cloudflare applies rather than a
-      // file it serves. Uploaded as an asset it is published and applies
-      // nothing (`CloudflareAssetManifest.isConfigFile`). Two small files.
-      const configTexts: Record<string, string> = {};
-      const unpacked = await this.reader.extract(bytes, fs, DeployRunner.ROOT, {
-        skip: (path) => path.startsWith(DeployRunner.ASSETS),
-        onSkipped: (path, body) => {
-          const key = this.assetManifest.key(
-            path.slice(DeployRunner.ASSETS.length),
-          );
-          if (this.assetManifest.isConfigFile(key)) {
-            const field = this.assetManifest.configField(key);
-            if (field) {
-              // Decoded at once: `body` may be a view into a buffer the
-              // reader moves past as soon as this returns.
-              configTexts[field] = new TextDecoder().decode(body);
-            }
-            return;
-          }
-          manifest[key] = {
-            hash: this.assetManifest.hash(body, key),
-            size: body.length,
-          };
-        },
-      });
+      const { manifest, configTexts, unpacked } = await this.assetCache.prepare(
+        ArtifactService.BUCKET,
+        request.artifact.sha256,
+        bytes,
+        fs,
+        DeployRunner.ROOT,
+      );
       await this.registry.line(
         deployment,
         `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB), ${unpacked.skipped} assets streamed`,
@@ -347,9 +328,9 @@ export class DeployRunner {
    * a row reading `running` for ever, because the timer meant to abandon it
    * died with the isolate.
    *
-   * So the archive is walked TWICE and nothing is kept either time. The first
-   * pass hashes each asset as it goes past, which is all the upload session
-   * needs. The second feeds `CloudflareDeployClient` file by file, and it
+   * The first pass unpacks server files and hashes assets only when the
+   * digest has no cached manifest. The second pass feeds
+   * `CloudflareDeployClient` file by file, and it
    * uploads each batch as that batch fills, so what is resident is one batch.
    *
    * ⚠️ The cost is a second inflate of the archive, paid only for the assets

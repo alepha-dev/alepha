@@ -5,7 +5,8 @@ import { type Infer, z } from "alepha";
  *
  * ⚠️ **The bytes are never in here.** A listing is a page of metadata and an
  * MCP response is a token budget; a multi-megabyte tarball has no business in
- * either. Fetching the artifact itself is a separate, authenticated download.
+ * either. `downloadArtifact` serves archive bytes through a separate,
+ * authenticated endpoint. Image references have no bytes stored in Lore.
  *
  * ⚠️ `z.string()`, not `z.text()`. `z.text()` caps at 255 characters, which is
  * fine for every field here and would be a silent blank screen the day one of

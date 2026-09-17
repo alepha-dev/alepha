@@ -587,6 +587,19 @@ describe("ParameterProvider", () => {
   });
 });
 
+class ExternalWriteParameterProvider extends ParameterProvider {
+  async writeBehindCache(name: string, content: Record<string, unknown>) {
+    const versions = await this.getHistory(name);
+    return this.repo.create({
+      name,
+      content,
+      schemaHash: this.schemaHashes.get(name) ?? "",
+      version: (versions[0]?.version ?? 0) + 1,
+      activationDate: this.dateTimeProvider.now().toISOString(),
+    });
+  }
+}
+
 describe("Cross-instance sync", () => {
   it("should pick up changes via load() when database is updated externally", async () => {
     class AppConfig {
@@ -597,13 +610,16 @@ describe("Cross-instance sync", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with({
+      provide: ParameterProvider,
+      use: ExternalWriteParameterProvider,
+    });
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
 
     const config = alepha.inject(AppConfig);
-    const provider = alepha.inject(ParameterProvider);
+    const provider = alepha.inject(ExternalWriteParameterProvider);
 
     // Should start with default
     expect(await config.features.get()).toEqual({
@@ -611,12 +627,11 @@ describe("Cross-instance sync", () => {
       maxUploadSize: 10485760,
     });
 
-    // Simulate another instance writing to DB (bypass primitive, use provider directly)
-    await provider.save(
-      "app.features.sync",
-      { enableBeta: true, maxUploadSize: 20971520 },
-      "external-hash",
-    );
+    // An external writer updates the database without this instance's cache.
+    await provider.writeBehindCache("app.features.sync", {
+      enableBeta: true,
+      maxUploadSize: 20971520,
+    });
 
     // Primitive still has cached default (hasn't reloaded)
     expect(config.features.cachedCurrentContent).toEqual({
@@ -1107,14 +1122,12 @@ describe("Schema migration", () => {
       "old-hash-notify",
     );
 
+    received.length = 0;
+
     // Reload triggers migration (merge adds default age)
     await config.param.reload();
 
-    // Subscriber should have been notified with the migrated value
-    expect(received.length).toBeGreaterThanOrEqual(1);
-    const lastReceived = received[received.length - 1] as any;
-    expect(lastReceived.name).toBe("alice");
-    expect(lastReceived.age).toBe(0);
+    expect(received).toEqual([{ name: "alice", age: 0 }]);
   });
 
   it("should handle completely new shape by resetting to defaults", async () => {
@@ -2469,11 +2482,6 @@ describe("$parameter multi-tenant isolation", () => {
     // in-memory cache — exactly what a `set()` handled by ANOTHER worker
     // isolate looks like from here (the sync topic rides the in-memory
     // queue, so it never crosses isolates).
-    class TestableProvider extends ParameterProvider {
-      writeBehindCache(name: string, value: Record<string, unknown>) {
-        return this.save(name, value, this.schemaHashes.get(name) ?? "", {});
-      }
-    }
 
     // A generous TTL driven by `travel()` rather than a short one raced
     // against the wall clock. At 50ms the "still stale" assertion below
@@ -2483,7 +2491,10 @@ describe("$parameter multi-tenant isolation", () => {
     const alepha = Alepha.create({
       env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "60000" },
     });
-    alepha.with({ provide: ParameterProvider, use: TestableProvider });
+    alepha.with({
+      provide: ParameterProvider,
+      use: ExternalWriteParameterProvider,
+    });
     alepha.with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
@@ -2494,7 +2505,9 @@ describe("$parameter multi-tenant isolation", () => {
     await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
     expect((await config.flags.get()).enableBeta).toBe(false);
 
-    const provider = alepha.inject(ParameterProvider) as TestableProvider;
+    const provider = alepha.inject(
+      ParameterProvider,
+    ) as ExternalWriteParameterProvider;
     await provider.writeBehindCache("app.ttlRevalidation.flags", {
       enableBeta: true,
       maxUploadSize: 2,
@@ -2519,16 +2532,13 @@ describe("$parameter multi-tenant isolation", () => {
       });
     }
 
-    class TestableProvider extends ParameterProvider {
-      writeBehindCache(name: string, value: Record<string, unknown>) {
-        return this.save(name, value, this.schemaHashes.get(name) ?? "", {});
-      }
-    }
-
     const alepha = Alepha.create({
       env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "0" },
     });
-    alepha.with({ provide: ParameterProvider, use: TestableProvider });
+    alepha.with({
+      provide: ParameterProvider,
+      use: ExternalWriteParameterProvider,
+    });
     alepha.with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
@@ -2537,7 +2547,9 @@ describe("$parameter multi-tenant isolation", () => {
     const config = alepha.inject(AppConfig);
     await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
 
-    const provider = alepha.inject(ParameterProvider) as TestableProvider;
+    const provider = alepha.inject(
+      ParameterProvider,
+    ) as ExternalWriteParameterProvider;
     await provider.writeBehindCache("app.ttlZero.flags", {
       enableBeta: true,
       maxUploadSize: 2,

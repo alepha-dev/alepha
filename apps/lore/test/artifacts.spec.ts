@@ -1,5 +1,7 @@
 import { Alepha, type FileLike, z } from "alepha";
+import { RankService } from "alepha/api/ranks";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { MemoryFileStorageProvider } from "alepha/bucket";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
@@ -12,6 +14,7 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ArtifactService } from "../src/api/services/ArtifactService.ts";
+import { DeployAssetCache } from "../src/api/services/DeployAssetCache.ts";
 import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
 import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
@@ -470,6 +473,14 @@ describe("artifacts", () => {
         tag: "latest",
         file: await packedArtifact(),
       });
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const cache = ctx.alepha.inject(DeployAssetCache);
+      const sidecar = cache.key(first.data.artifact.sha256);
+      await storage.upload(
+        ArtifactService.BUCKET,
+        new File(["{}"], "cache.json"),
+        sidecar,
+      );
       const second = await push(projectId, owner, {
         tag: "latest",
         file: await packedArtifact({ filler: "// a later commit" }),
@@ -479,6 +490,7 @@ describe("artifacts", () => {
       // The same row, moved - not a second one beside the first.
       expect(second.data.artifact.id).toBe(first.data.artifact.id);
       expect(second.data.artifact.sha256).not.toBe(first.data.artifact.sha256);
+      expect(await storage.exists(ArtifactService.BUCKET, sidecar)).toBe(false);
       expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
 
       // The previous bytes are reclaimed, which is the half a row count
@@ -751,6 +763,90 @@ describe("artifacts", () => {
     });
   });
 
+  describe("downloading a build", () => {
+    const download = (
+      projectId: number,
+      artifactId: string,
+      user: { id: string },
+    ) =>
+      ctx.artifactController.downloadArtifact.fetch(
+        { params: { projectId, artifactId } },
+        { user },
+      );
+
+    it("returns the stored tarball bytes and filename without caching", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const file = await packedArtifact();
+      const pushed = await push(projectId, owner, { file });
+      const response = await download(
+        projectId,
+        pushed.data.artifact.id,
+        owner,
+      );
+      const received = response.data as unknown as FileLike;
+      expect(new Uint8Array(await received.arrayBuffer())).toEqual(
+        new Uint8Array(await file.arrayBuffer()),
+      );
+      expect(received.name).toBe(file.name);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    });
+
+    it("refuses image references with an explanatory 404", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+      const image = await pushImage(projectId, owner, {});
+      const request = () => download(projectId, image.data.artifact.id, owner);
+      expect(await statusOf(request())).toBe(404);
+      await expect(request()).rejects.toThrow(/reference.*bytes/);
+    });
+
+    it("refuses unknown and cross-project artifact ids", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      const other = await aProject();
+      const pushed = await push(other.projectId, other.owner, {
+        file: await packedArtifact(),
+      });
+      for (const id of [crypto.randomUUID(), pushed.data.artifact.id]) {
+        expect(await statusOf(download(projectId, id, owner))).toBe(404);
+        await expect(download(projectId, id, owner)).rejects.toThrow(
+          /No such artifact in this project/,
+        );
+      }
+    });
+
+    it("requires artifact:read even from a project member", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+      });
+      const reader = await createTestUser(ctx);
+      await ctx.alepha.inject(RankService).save(
+        "project",
+        String(projectId),
+        {
+          key: "no-artifacts",
+          name: "No artifacts",
+          permissions: ["project:read"],
+        },
+        owner,
+      );
+      await (ctx.projectController as any).members.create({
+        userId: reader.id,
+        projectId,
+        rank: "no-artifacts",
+      });
+      expect(
+        await statusOf(download(projectId, pushed.data.artifact.id, reader)),
+      ).toBe(403);
+    });
+  });
+
   /**
    * #1515: `*.map` left the tarball, so the maps have to arrive and leave
    * beside it.
@@ -949,7 +1045,7 @@ describe("artifacts", () => {
         { user },
       );
 
-    it("removes the row, its stored bytes and its source maps", async ({
+    it("removes the row, its stored bytes, source maps and asset cache", async ({
       expect,
     }) => {
       const { owner, projectId } = await anAppsProject();
@@ -959,9 +1055,17 @@ describe("artifacts", () => {
       });
       const [row] = await ctx.rows.artifacts.findMany({});
 
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const sidecar = ctx.alepha.inject(DeployAssetCache).key(row.sha256);
+      await storage.upload(
+        ArtifactService.BUCKET,
+        new File(["{}"], "cache.json"),
+        sidecar,
+      );
       const answer = await remove(projectId, owner, row.id);
 
       expect(answer.data.ok).toBe(true);
+      expect(await storage.exists(ArtifactService.BUCKET, sidecar)).toBe(false);
       expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
       await expect(
         ctx.artifactController.artifactBucket.get(row.fileId as string),

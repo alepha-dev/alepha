@@ -14,6 +14,7 @@ import {
   RELEASE_TAG_PATTERN,
 } from "../schemas/releaseTagSchema.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
+import { DeployAssetCache } from "./DeployAssetCache.ts";
 import { ImageRegistryClient } from "./ImageRegistryClient.ts";
 
 /**
@@ -41,6 +42,7 @@ export class ArtifactService {
   protected readonly reader = $inject(ArtifactTarReader);
   protected readonly registry = $inject(ImageRegistryClient);
   protected readonly files = $inject(FileService);
+  protected readonly assetCache = $inject(DeployAssetCache);
 
   /**
    * Store a build, or recognise that it is already stored.
@@ -391,6 +393,7 @@ export class ArtifactService {
         Boolean(id),
       ),
     );
+    await this.assetCache.remove(ArtifactService.BUCKET, existing.sha256);
     return updated;
   }
 
@@ -550,6 +553,7 @@ export class ArtifactService {
    */
   public async delete(artifact: Artifact): Promise<void> {
     await this.rows.deleteById(artifact.id);
+    await this.assetCache.remove(ArtifactService.BUCKET, artifact.sha256);
     await this.files.deleteFiles(
       [artifact.fileId, artifact.mapsFileId].filter((id): id is string =>
         Boolean(id),
