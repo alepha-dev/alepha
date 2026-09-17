@@ -153,6 +153,27 @@ $owns({
 
 `owner` and `via` keep their meaning; `through` only says which row they apply to. `via.resource` is matched against the resolved foreign key, so a membership in a _different_ campaign does not accidentally match.
 
+When the authority row is itself a container, `via.key` names the column on
+that row whose value identifies the membership scope. It defaults to the
+authority's primary key, preserving the direct-resource form above:
+
+```typescript
+$owns({
+  repository: () => this.projects,
+  param: "projectId",
+  via: {
+    repository: () => this.organizationMembers,
+    resource: "organizationId",
+    user: "userId",
+    key: "organizationId",
+  },
+});
+```
+
+Here the authority remains the project row, but the membership lookup uses
+`project.organizationId`. A null or absent `via.key` value denies with the
+same membership message. This makes an incomplete backfill fail closed.
+
 A **null or absent foreign key denies**. An orphan row must not become world-readable, and falling through would refuse it only by accident.
 
 Pass an array to chain, when the resource does not carry the foreign key itself and neither does the next row:

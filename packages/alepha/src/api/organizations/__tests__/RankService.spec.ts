@@ -29,10 +29,16 @@ class Permissions {
 
 class CountingRankService extends RankService {
   public definitionReads = 0;
+  public membershipReads = 0;
 
   protected override loadDefinitions(organizationId: string) {
     this.definitionReads += 1;
     return super.loadDefinitions(organizationId);
+  }
+
+  protected override loadMembership(organizationId: string, userId: string) {
+    this.membershipReads += 1;
+    return super.loadMembership(organizationId, userId);
   }
 }
 
@@ -277,5 +283,35 @@ describe("alepha/api/organizations - RankService", () => {
     });
 
     expect(ranks.definitionReads).toBe(1);
+  });
+
+  it("shares the gate's organization membership memo on imperative checks", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ countDefinitions: true });
+    const ranks = ctx.ranks as CountingRankService;
+    const membership = (await ctx.members.list(ctx.organization.id)).find(
+      (item) => item.userId === ctx.member.id,
+    )!;
+
+    await ctx.alepha.context.run(async () => {
+      const memo = new Map<string, Promise<unknown>>();
+      memo.set(
+        ResourceGateMemoProvider.membershipKey({
+          table: "organization_members",
+          resourceColumn: "organizationId",
+          resourceId: ctx.organization.id,
+          userColumn: "userId",
+          userId: ctx.member.id,
+        }),
+        Promise.resolve(membership),
+      );
+      ctx.alepha.context.set(ResourceGateMemoProvider.KEY, memo);
+      await expect(
+        ranks.can(ctx.organization.id, "organization:read", ctx.member),
+      ).resolves.toBe(true);
+    });
+
+    expect(ranks.membershipReads).toBe(0);
   });
 });

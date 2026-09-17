@@ -341,14 +341,17 @@ export class RankService {
         userColumn: "userId",
         userId,
       }),
-      () =>
-        this.members.findOne({
-          where: {
-            organizationId: { eq: organizationId },
-            userId: { eq: userId },
-          },
-        }),
+      () => this.loadMembership(organizationId, userId),
     );
+  }
+
+  protected loadMembership(organizationId: string, userId: string) {
+    return this.members.findOne({
+      where: {
+        organizationId: { eq: organizationId },
+        userId: { eq: userId },
+      },
+    });
   }
 
   protected definitionsOf(organizationId: string) {

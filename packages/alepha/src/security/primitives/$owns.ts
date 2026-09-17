@@ -262,6 +262,21 @@ export function $owns(options: OwnsOptions): Middleware {
         }
 
         const link = via.repository();
+        const membershipResourceId = via.key
+          ? (authority[via.key] as string | number | null | undefined)
+          : authorityId;
+
+        // A container may keep its organization reference nullable for
+        // migration safety. Missing the backfill must deny, never turn the
+        // container into a resource whose membership lookup is skipped.
+        if (
+          membershipResourceId === undefined ||
+          membershipResourceId === null
+        ) {
+          throw new ForbiddenError(
+            options.message ?? "Not a member of this resource",
+          );
+        }
 
         // The key is built by `ResourceGateMemoProvider` rather than written
         // here, so an imperative read of the same membership row lands on the
@@ -270,17 +285,14 @@ export function $owns(options: OwnsOptions): Middleware {
           ResourceGateMemoProvider.membershipKey({
             table: link.tableName,
             resourceColumn: via.resource,
-            resourceId: authorityId,
+            resourceId: membershipResourceId,
             userColumn: via.user,
             userId: ctx.user.id,
           }),
           () =>
             link.findOne({
               where: {
-                // `authorityId`, not `id`: with `through` the membership rows
-                // point at the authority (the project), never at the row the
-                // param names.
-                [via.resource]: { eq: authorityId },
+                [via.resource]: { eq: membershipResourceId },
                 [via.user]: { eq: ctx.user.id },
               },
             } as any),
@@ -475,6 +487,16 @@ export interface OwnsOptions {
      * Column on the join entity referencing the user id.
      */
     user: string;
+
+    /**
+     * Column on the authority row whose value identifies the membership
+     * scope. Defaults to the authority row's own primary key.
+     *
+     * Use this when the authority is a container, such as a project carrying
+     * `organizationId`, while membership belongs to the organization. A null
+     * or absent value denies with the gate's membership message.
+     */
+    key?: string;
   };
 
   /**
