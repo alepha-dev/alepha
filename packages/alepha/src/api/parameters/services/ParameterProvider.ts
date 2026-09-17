@@ -297,24 +297,6 @@ export class ParameterProvider {
       creatorId: options.creatorId,
       creatorName: options.creatorName,
     });
-
-    // Update local cache
-    const ck = this.cacheKey(name);
-    const now = this.dateTimeProvider.now().toDate();
-    if (!options.activationDate || options.activationDate <= now) {
-      const prev = this.cachedCurrent.get(ck);
-      this.cachedCurrent.set(ck, value);
-      if (JSON.stringify(prev) !== JSON.stringify(value)) {
-        this.notifySubscribers(name);
-      }
-    } else {
-      this.cachedNext.set(ck, {
-        content: value,
-        activationDate: options.activationDate.toISOString(),
-      });
-    }
-    // The writer is by definition fresh — restart its revalidation window.
-    this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
   }
 
   /**
@@ -551,6 +533,34 @@ export class ParameterProvider {
     // Calculate status from existing versions + the newly inserted row
     const withStatuses = this.calculateStatuses([...versions, inserted]);
     const insertedWithStatus = withStatuses.find((v) => v.id === inserted.id)!;
+
+    // Every writer, including the admin API, updates its own cache before
+    // publishing: this instance ignores its own change notifications.
+    // An expired version must not displace the actual current value.
+    const ck = this.cacheKey(name);
+    const current = withStatuses.find(
+      (version) => version.status === "current",
+    );
+    const next = withStatuses.find((version) => version.status === "next");
+    const previous = this.cachedCurrent.get(ck);
+    if (current) {
+      this.cachedCurrent.set(ck, current.content);
+    }
+    if (next) {
+      this.cachedNext.set(ck, {
+        content: next.content,
+        activationDate: next.activationDate,
+      });
+    } else {
+      this.cachedNext.delete(ck);
+    }
+    this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
+    if (
+      current &&
+      JSON.stringify(previous) !== JSON.stringify(current.content)
+    ) {
+      this.notifySubscribers(name);
+    }
 
     // Publish change notification if activation is immediate
     if (isImmediate) {
@@ -910,7 +920,7 @@ export class ParameterProvider {
         this.loaded.add(ck);
         this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
         this.loadPromises.delete(ck);
-        this.notifySubscribers(name);
+        // save() already notified subscribers of the migrated value.
         return;
       }
     }
