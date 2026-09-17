@@ -614,21 +614,41 @@ export class StripePaymentProvider implements PaymentProvider {
     return { url: session.url, sessionId: session.id };
   }
 
+  /**
+   * A Checkout session in `subscription` mode.
+   *
+   * On the platform account by default (billing a customer of the platform).
+   * With `stripeAccount` it runs on that CONNECTED account instead (a direct
+   * subscription: the account bills its own customer, who is created there),
+   * which is how a connected merchant sells recurring plans or pays a price
+   * in installments.
+   *
+   * `oneOffItems` are one-time prices charged with the first invoice only
+   * (a setup fee), next to the recurring price.
+   */
   public async createCheckoutSubscription(opts: {
     priceId?: string;
     priceData?: {
       currency: string;
       unitAmount: number;
-      interval: "month" | "year";
+      interval: "day" | "week" | "month" | "year";
+      /** Bill every `intervalCount` intervals (3 months = quarterly). */
+      intervalCount?: number;
       productName: string;
     };
+    oneOffItems?: Array<{
+      currency: string;
+      unitAmount: number;
+      productName: string;
+    }>;
     successUrl: string;
     cancelUrl: string;
     customerEmail?: string;
     customerId?: string;
     metadata?: Record<string, string>;
+    stripeAccount?: string;
   }): Promise<{ url: string; sessionId: string }> {
-    const line_items: Stripe.Checkout.SessionCreateParams["line_items"] =
+    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       opts.priceData
         ? [
             {
@@ -636,24 +656,42 @@ export class StripePaymentProvider implements PaymentProvider {
               price_data: {
                 currency: opts.priceData.currency,
                 unit_amount: opts.priceData.unitAmount,
-                recurring: { interval: opts.priceData.interval },
+                recurring: {
+                  interval: opts.priceData.interval,
+                  ...(opts.priceData.intervalCount
+                    ? { interval_count: opts.priceData.intervalCount }
+                    : {}),
+                },
                 product_data: { name: opts.priceData.productName },
               },
             },
           ]
         : [{ price: opts.priceId as string, quantity: 1 }];
-    const session = await this.stripe.checkout.sessions.create({
-      mode: "subscription",
-      line_items,
-      success_url: opts.successUrl,
-      cancel_url: opts.cancelUrl,
-      customer: opts.customerId,
-      customer_email: opts.customerId ? undefined : opts.customerEmail,
-      metadata: opts.metadata,
-      subscription_data: opts.metadata
-        ? { metadata: opts.metadata }
-        : undefined,
-    });
+    for (const item of opts.oneOffItems ?? []) {
+      line_items.push({
+        quantity: 1,
+        price_data: {
+          currency: item.currency,
+          unit_amount: item.unitAmount,
+          product_data: { name: item.productName },
+        },
+      });
+    }
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: "subscription",
+        line_items,
+        success_url: opts.successUrl,
+        cancel_url: opts.cancelUrl,
+        customer: opts.customerId,
+        customer_email: opts.customerId ? undefined : opts.customerEmail,
+        metadata: opts.metadata,
+        subscription_data: opts.metadata
+          ? { metadata: opts.metadata }
+          : undefined,
+      },
+      opts.stripeAccount ? { stripeAccount: opts.stripeAccount } : undefined,
+    );
     if (!session.url) {
       throw new AlephaError("Stripe Checkout session created without url");
     }
@@ -662,20 +700,55 @@ export class StripePaymentProvider implements PaymentProvider {
 
   public async retrieveSubscription(
     subscriptionId: string,
+    opts: { stripeAccount?: string } = {},
   ): Promise<Stripe.Subscription> {
-    return this.stripe.subscriptions.retrieve(subscriptionId);
+    return this.stripe.subscriptions.retrieve(
+      subscriptionId,
+      undefined,
+      opts.stripeAccount ? { stripeAccount: opts.stripeAccount } : undefined,
+    );
   }
 
   public async cancelSubscription(
     subscriptionId: string,
-    opts: { atPeriodEnd?: boolean } = {},
+    opts: { atPeriodEnd?: boolean; stripeAccount?: string } = {},
   ): Promise<Stripe.Subscription> {
+    const account = opts.stripeAccount
+      ? { stripeAccount: opts.stripeAccount }
+      : undefined;
     if (opts.atPeriodEnd === false) {
-      return this.stripe.subscriptions.cancel(subscriptionId);
+      return this.stripe.subscriptions.cancel(
+        subscriptionId,
+        undefined,
+        account,
+      );
     }
-    return this.stripe.subscriptions.update(subscriptionId, {
-      cancel_at_period_end: true,
-    });
+    return this.stripe.subscriptions.update(
+      subscriptionId,
+      { cancel_at_period_end: true },
+      account,
+    );
+  }
+
+  /**
+   * Schedule a subscription to end at `cancelAt` (epoch seconds), or clear
+   * the schedule with `null`. A subscription paid in N installments ends
+   * right after the Nth: Checkout cannot set this, so it is set once the
+   * subscription exists.
+   *
+   * Never prorated: ending a schedule must neither credit the customer for
+   * the rest of a period nor bill a partial one.
+   */
+  public async setSubscriptionCancelAt(
+    subscriptionId: string,
+    cancelAt: number | null,
+    opts: { stripeAccount?: string } = {},
+  ): Promise<Stripe.Subscription> {
+    return this.stripe.subscriptions.update(
+      subscriptionId,
+      { cancel_at: cancelAt ?? "", proration_behavior: "none" },
+      opts.stripeAccount ? { stripeAccount: opts.stripeAccount } : undefined,
+    );
   }
 
   public async createBillingPortalSession(opts: {
