@@ -4,8 +4,8 @@ import { type Infer, z } from "alepha";
  * The signed-in account as exposed to ITSELF.
  *
  * Deliberately not `users.schema`. The entity carries fields that are an
- * operator's business and not the account holder's — `realm`,
- * `organizationId`, `enabled`, `version` — and returning the row wholesale
+ * operator's business and not the account holder's: `realm`, `enabled`, and
+ * `version`. Returning the row wholesale
  * means every column added to `users` in future is published to the browser
  * the day it lands, with nobody deciding that it should be.
  *

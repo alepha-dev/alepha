@@ -416,9 +416,7 @@ export class AdminNotificationController {
         );
       }
 
-      await this.notificationJobs.sendNotification.push(exec.payload as any, {
-        organizationId: receipt.organizationId ?? undefined,
-      });
+      await this.notificationJobs.sendNotification.push(exec.payload as any);
 
       return { ok: true, id: params.id };
     },

@@ -100,7 +100,6 @@ export class ShowcaseUsers {
         lastLoginAt: enabled
           ? new Date(Date.UTC(2026, 8, 4, 8, 15 + i)).toISOString()
           : undefined,
-        organizationId: undefined,
       }),
     ) as UserResource[];
   }

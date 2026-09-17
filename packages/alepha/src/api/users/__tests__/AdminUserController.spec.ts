@@ -242,7 +242,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     expect(result.roles).toEqual(["admin", "moderator"]);
   });
 
-  it("should not let an admin move a user to another realm or organization", async ({
+  it("should not let an admin move a user to another realm", async ({
     expect,
   }) => {
     const { alepha, controller } = await setup();
@@ -264,11 +264,9 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     const body = alepha.codec.validate(updateUserSchema, {
       firstName: "Stay",
       realm: "somebody-elses-realm",
-      organizationId: "00000000-0000-0000-0000-0000000000ff",
     });
 
     expect(body).not.toHaveProperty("realm");
-    expect(body).not.toHaveProperty("organizationId");
 
     const result = await controller.updateUser(
       { params: { id: created.id }, body },
@@ -277,7 +275,6 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
 
     expect(result.firstName).toBe("Stay");
     expect(result.realm).toBe(created.realm);
-    expect(result.organizationId).toBe(created.organizationId);
   });
 
   it("should delete a user", async ({ expect }) => {

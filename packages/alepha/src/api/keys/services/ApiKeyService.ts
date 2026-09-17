@@ -1177,9 +1177,7 @@ export class ApiKeyService {
    * Selects live keys expiring within `expiryWarningDays` whose notice has
    * not gone out, soonest first, in the purge's bounded batches. Each owner is
    * read through the same registry-resolved `users` join the admin listing
-   * uses (this module does not import `alepha/api/users`), and each push
-   * carries the key's own `organizationId`, since a job has no request to
-   * take a tenant from.
+   * uses (this module does not import `alepha/api/users`).
    *
    * `expiryNoticeSentAt` is the marker that keeps it to one notice rather
    * than one a day for the whole window. A key whose owner has no email is
@@ -1230,7 +1228,6 @@ export class ApiKeyService {
         );
         await notifications.expiring.push({
           contact: email,
-          organizationId: row.organizationId,
           variables: {
             email,
             name: row.name,

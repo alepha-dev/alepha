@@ -67,13 +67,6 @@ export interface PushOptions {
    * machinery.
    */
   inline?: boolean;
-  /**
-   * Owning tenant for this execution. Persisted on the row so tenant-facing
-   * views (e.g. the notification admin list) can org-scope it. Plumbed through
-   * verbatim — callers in a tenant context pass it explicitly (the resolved
-   * tenant), cron/global pushes leave it undefined.
-   */
-  organizationId?: string;
 }
 
 export interface PushManyItem<T extends ZType = ZType> {
@@ -81,14 +74,6 @@ export interface PushManyItem<T extends ZType = ZType> {
   key?: string;
   delay?: DurationLike;
   scheduledAt?: Date;
-  /**
-   * Owning tenant for this row, per item.
-   *
-   * `pushMany` takes no batch-level options, so per-item is the only place
-   * it can go. A fan-out over a roster is usually one tenant repeated, but
-   * nothing here assumes that.
-   */
-  organizationId?: string;
 }
 
 export interface JobTriggerContext<T extends ZType = ZType> {
@@ -899,7 +884,6 @@ export class JobProvider {
         scheduledAt,
         triggeredBy: options.triggeredBy,
         triggeredByName: options.triggeredByName,
-        organizationId: options.organizationId,
       });
       if (!created) {
         // Lost the race to a concurrent same-key push — the winner dispatches.
@@ -923,7 +907,6 @@ export class JobProvider {
       scheduledAt,
       triggeredBy: options?.triggeredBy,
       triggeredByName: options?.triggeredByName,
-      organizationId: options?.organizationId,
     });
 
     if (inline) {
@@ -1040,7 +1023,6 @@ export class JobProvider {
     scheduledAt?: string;
     triggeredBy?: string;
     triggeredByName?: string;
-    organizationId?: string;
   }): Promise<{ id: string; created: boolean }> {
     try {
       const execution = await this.executions.create(fields);
@@ -1133,7 +1115,6 @@ export class JobProvider {
       status: JobStatus;
       maxAttempts: number;
       scheduledAt?: string;
-      organizationId?: string;
     }> = [];
 
     for (const item of items) {
@@ -1159,7 +1140,6 @@ export class JobProvider {
         status,
         maxAttempts,
         scheduledAt,
-        organizationId: item.organizationId,
       });
     }
 
@@ -1170,11 +1150,6 @@ export class JobProvider {
         key: item.key,
         delay: item.delay,
         scheduledAt: item.scheduledAt,
-        // The third place. Adding the field to `PushManyItem` and to the
-        // bulk builder is not enough: keyed items never touch the bulk
-        // insert, so without this line every keyed row silently loses its
-        // tenant and the admin list stops showing it.
-        organizationId: item.organizationId,
       });
       ids.push(id);
     }

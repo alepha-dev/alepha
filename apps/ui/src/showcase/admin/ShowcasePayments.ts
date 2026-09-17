@@ -60,7 +60,6 @@ export class ShowcasePayments {
       version: 1,
       createdAt: this.at(i * 7 + 2),
       updatedAt: this.at(i * 7),
-      organizationId: undefined,
       amount,
       currency,
       status,

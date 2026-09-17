@@ -110,12 +110,11 @@ const executionId = await this.welcome.push({ userId: "u1" });
 
 `push()` accepts a second options argument:
 
-| Option           | Type           | Description                                                       |
-| ---------------- | -------------- | ----------------------------------------------------------------- |
-| `delay`          | `DurationLike` | Run no earlier than now + delay                                   |
-| `scheduledAt`    | `Date`         | Run no earlier than this instant                                  |
-| `key`            | `string`       | Deduplication key - see the caveat below                          |
-| `organizationId` | `string`       | Owning tenant, persisted on the row for tenant-scoped admin views |
+| Option        | Type           | Description                              |
+| ------------- | -------------- | ---------------------------------------- |
+| `delay`       | `DurationLike` | Run no earlier than now + delay          |
+| `scheduledAt` | `Date`         | Run no earlier than this instant         |
+| `key`         | `string`       | Deduplication key - see the caveat below |
 
 `pushMany()` takes an array of `{ payload, key?, delay?, scheduledAt? }`
 and writes them in a batched INSERT.

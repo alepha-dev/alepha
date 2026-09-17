@@ -130,7 +130,6 @@ export class NotificationEmailChannel extends NotificationChannel<
     // with no invoice.
     const attachments = await this.attachmentService.resolve(
       payload.attachments,
-      { organizationId: payload.organizationId },
     );
 
     return {

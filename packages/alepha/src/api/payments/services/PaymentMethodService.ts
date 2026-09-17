@@ -16,7 +16,6 @@ export class PaymentMethodService {
 
   public async addPaymentMethod(
     userId: string,
-    organizationId: string,
     token: string,
   ): Promise<PaymentMethodEntity> {
     const result = await this.provider.createPaymentMethod(userId, token);
@@ -27,7 +26,6 @@ export class PaymentMethodService {
 
     return await this.methodRepo.create({
       userId,
-      organizationId,
       type: result.type,
       brand: result.brand,
       last4: result.last4,

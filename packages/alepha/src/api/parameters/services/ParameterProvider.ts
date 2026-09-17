@@ -13,11 +13,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { $repository, RepositoryProvider } from "alepha/orm";
-import {
-  currentTenantAtom,
-  currentUserAtom,
-  tenancyAtom,
-} from "alepha/security";
 import { $topic } from "alepha/topic";
 
 import { type Parameter, parameters } from "../entities/parameters.ts";
@@ -72,38 +67,12 @@ export class ParameterProvider {
 
   protected cachedInstanceId: string | undefined;
 
-  /**
-   * Resolve the active tenant for cache keying — MIRRORS the Repository's
-   * `resolveOrganizationValue` (tenant atom → user org) so the in-memory
-   * value caches partition exactly the way the DB rows do. Returns a sentinel
-   * for the org-less (single-tenant / no-request) case.
-   *
-   * Why this matters: the DB table is now org-scoped, but these process-global
-   * Maps are keyed by parameter NAME — without folding the org into the key, a
-   * pooled multi-tenant worker would hand org A's cached `club.settings` to a
-   * request for org B. (Cross-instance topic sync + the `ready` preload run
-   * with no request atom → the sentinel key; they refresh only org-less rows,
-   * leaving per-org caches to lazy-load + the immediate local update on `set`.
-   * That is bounded staleness, never a cross-tenant read.)
-   */
-  protected orgKey(): string {
-    const tenant = this.alepha.store.get(currentTenantAtom);
-    if (tenant?.id) return tenant.id;
-    const user = this.alepha.store.get(currentUserAtom);
-    return user?.organization ?? "~global";
-  }
-
-  /**
-   * Per-org cache key for the value caches (`${org}:${name}`).
-   */
   protected cacheKey(name: string): string {
-    return `${this.orgKey()}:${name}`;
+    return name;
   }
 
   /**
-   * In-memory cache of registered parameter primitives. Keyed by NAME only —
-   * the `$parameter` definition (schema + default) is identical for every
-   * tenant; only the stored VALUE is per-org (see the value caches below).
+   * In-memory cache of registered parameter primitives, keyed by name.
    */
   protected readonly primitives = new Map<string, ParameterPrimitive<any>>();
 
@@ -182,24 +151,12 @@ export class ParameterProvider {
   protected readonly schemaHashes = new Map<string, string>();
 
   /**
-   * Pre-load all registered parameters on ready (non-serverless, single-tenant
-   * only).
-   *
-   * The preload runs with no request atom, so it can only ever touch the
-   * org-less rows. Under `tenancy: "multi"` an org-scoped query with no
-   * resolved tenant fails closed by design, so there is nothing this pass can
-   * legitimately warm — every value is per-org and loads lazily on the first
-   * request that carries a tenant. Skipping keeps a multi-tenant app bootable.
-   * (Serverless already skips it, which is where multi-tenant apps typically
-   * run anyway.)
+   * Pre-load all registered parameters on ready outside serverless runtimes.
    */
   protected readonly onReady = $hook({
     on: "ready",
     handler: async () => {
       if (this.alepha.isServerless()) {
-        return;
-      }
-      if (this.alepha.store.get(tenancyAtom).mode === "multi") {
         return;
       }
       for (const name of this.primitives.keys()) {
@@ -689,7 +646,7 @@ export class ParameterProvider {
    *
    * Deliberately NOT cached: the caller supplies an arbitrary instant, so the
    * per-name value caches (which model "now") do not apply. Reads hit the
-   * `(organizationId, name, activationDate)` index.
+   * `(name, activationDate)` index.
    */
   public async getVersionAt(
     name: string,

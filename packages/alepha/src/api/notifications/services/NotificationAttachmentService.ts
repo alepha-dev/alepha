@@ -29,7 +29,6 @@ export class NotificationAttachmentService {
    */
   public async resolve(
     attachments: NotificationAttachment[] | undefined,
-    context: { organizationId?: string },
   ): Promise<EmailAttachment[] | undefined> {
     if (!attachments?.length) {
       return undefined;
@@ -46,7 +45,7 @@ export class NotificationAttachmentService {
     let total = 0;
 
     for (const attachment of attachments) {
-      const file = await this.read(attachment, context);
+      const file = await this.read(attachment);
       total += file.content.length;
 
       if (total > maxAttachmentBytes) {
@@ -63,7 +62,6 @@ export class NotificationAttachmentService {
 
   protected async read(
     attachment: NotificationAttachment,
-    context: { organizationId?: string },
   ): Promise<EmailAttachment> {
     const storage = this.alepha
       .primitives($storage)
@@ -75,7 +73,6 @@ export class NotificationAttachmentService {
       );
     }
 
-    let entity: { organizationId?: string | null };
     let file: {
       name: string;
       type: string;
@@ -83,7 +80,7 @@ export class NotificationAttachmentService {
     };
 
     try {
-      entity = await storage.get(attachment.fileId);
+      await storage.get(attachment.fileId);
       file = await storage.download(attachment.fileId);
     } catch (error) {
       // Every failure here is rewritten to name the attachment. The ORM's
@@ -97,20 +94,6 @@ export class NotificationAttachmentService {
       // looking like a provider outage.
       throw new AlephaError(
         `Notification attachment ${attachment.fileId} could not be read from storage '${attachment.storage}': ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    // The sender runs tenant-less, so nothing scopes that read for us. A
-    // payload naming another tenant's file id would otherwise mail one org's
-    // document to another org's contact. Outside the try: this is a refusal,
-    // not a storage failure, and must not be rewritten as one.
-    if (
-      context.organizationId &&
-      entity.organizationId &&
-      entity.organizationId !== context.organizationId
-    ) {
-      throw new AlephaError(
-        `Notification attachment ${attachment.fileId} belongs to another tenant.`,
       );
     }
 

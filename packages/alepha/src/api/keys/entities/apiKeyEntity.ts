@@ -7,8 +7,6 @@ export const apiKeyEntity = $entity({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     // Owner
     userId: z.uuid(),
 

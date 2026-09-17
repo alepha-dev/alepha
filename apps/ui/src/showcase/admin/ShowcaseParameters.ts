@@ -154,7 +154,6 @@ export class ShowcaseParameters {
       id: `00000000-0000-4000-e000-${String(version).padStart(12, "0")}`,
       createdAt: this.at(hoursAgo),
       updatedAt: this.at(hoursAgo),
-      organizationId: undefined,
       name,
       content,
       schemaHash: "sha256:showcase",

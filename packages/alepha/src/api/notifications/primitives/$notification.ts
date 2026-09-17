@@ -231,7 +231,6 @@ export class NotificationPrimitive<
         // the only way the suppression gate learns whose message this is.
         this.payloadFor(type, { ...options, lang }, organizationId),
         {
-          organizationId,
           scheduledAt: options.scheduledAt,
           delay: options.delay,
           key: this.channelKey(options.key, type),
@@ -274,7 +273,6 @@ export class NotificationPrimitive<
       for (const type of channels) {
         items.push({
           payload: this.payloadFor(type, entry, organizationId),
-          organizationId,
           scheduledAt: options.scheduledAt,
           delay: options.delay,
           key: this.channelKey(options.key?.(entry.contact), type),

@@ -8,7 +8,6 @@ export const paymentIntents = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
     amount: z.integer(),
     currency: z.text({ size: "short" }),
     status: z.enum([
@@ -35,7 +34,7 @@ export const paymentIntents = $entity({
     paymentMethodId: z.uuid().optional(),
     userId: z.uuid().optional(),
   }),
-  indexes: ["status", "organizationId", "userId", "createdAt"],
+  indexes: ["status", "userId", "createdAt"],
 });
 
 export type PaymentIntentEntity = Infer<typeof paymentIntents.schema>;

@@ -8,7 +8,6 @@ export const files = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
     blobId: z.text(),
     creator: z.uuid().optional(),
     creatorRealm: z.string().optional(),

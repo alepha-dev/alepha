@@ -8,7 +8,6 @@ export const refunds = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
     intentId: z.uuid(),
     amount: z.integer(),
     currency: z.text({ size: "short" }),
@@ -16,7 +15,7 @@ export const refunds = $entity({
     reason: z.text().optional(),
     providerRef: z.text().optional(),
   }),
-  indexes: ["intentId", "organizationId", "status"],
+  indexes: ["intentId", "status"],
 });
 
 export type RefundEntity = Infer<typeof refunds.schema>;

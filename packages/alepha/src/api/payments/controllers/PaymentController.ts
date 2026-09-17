@@ -2,7 +2,6 @@ import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
-import { PaymentError } from "../errors/PaymentError.ts";
 import {
   checkoutResponseSchema,
   createCheckoutSchema,
@@ -47,18 +46,8 @@ export class PaymentController {
       body: addPaymentMethodSchema,
       response: paymentMethodResourceSchema,
     },
-    handler: ({ body, user }) => {
-      if (!user.organization) {
-        throw new PaymentError(
-          "Organization is required to add a payment method",
-        );
-      }
-      return this.paymentMethods.addPaymentMethod(
-        user.id,
-        user.organization,
-        body.token,
-      );
-    },
+    handler: ({ body, user }) =>
+      this.paymentMethods.addPaymentMethod(user.id, body.token),
   });
 
   /**

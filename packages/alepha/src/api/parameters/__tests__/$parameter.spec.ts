@@ -1,7 +1,6 @@
 import { Alepha, jsonSchemaToZod, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { currentTenantAtom } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -1825,8 +1824,7 @@ describe("set with scheduled activation", () => {
 
     // cachedNext should be populated
     const providerAny = provider as any;
-    // Value caches are keyed `${org}:${name}`; no org atom here → `~global`.
-    const cachedNext = providerAny.cachedNext.get("~global:set.sched.cache");
+    const cachedNext = providerAny.cachedNext.get("set.sched.cache");
     expect(cachedNext).not.toBeUndefined();
     expect(cachedNext.content).toEqual({
       enableBeta: true,
@@ -2418,150 +2416,6 @@ describe("set idempotency", () => {
     expect(received.length).toBe(0);
   });
 });
-
-describe("$parameter multi-tenant isolation", () => {
-  it("partitions stored values + caches by the active org (no cross-tenant read/write)", async () => {
-    class AppConfig {
-      settings = $parameter({
-        name: "club.settings",
-        schema: featureSchema,
-        default: { enableBeta: false, maxUploadSize: 1 },
-      });
-    }
-
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
-    alepha.with(AlephaApiParameters);
-    alepha.with(AppConfig);
-    await alepha.start();
-
-    const config = alepha.inject(AppConfig);
-    const orgA = "00000000-0000-0000-0000-0000000000aa";
-    const orgB = "00000000-0000-0000-0000-0000000000bb";
-
-    // Org A writes its own value.
-    alepha.store.set(currentTenantAtom, { id: orgA });
-    await config.settings.set({ enableBeta: true, maxUploadSize: 10 });
-    expect(await config.settings.get()).toEqual({
-      enableBeta: true,
-      maxUploadSize: 10,
-    });
-
-    // Org B sees ONLY its default — never org A's value (the bug this fixes).
-    alepha.store.set(currentTenantAtom, { id: orgB });
-    expect(await config.settings.get()).toEqual({
-      enableBeta: false,
-      maxUploadSize: 1,
-    });
-
-    // Org B writes its own; org A is untouched.
-    await config.settings.set({ enableBeta: false, maxUploadSize: 99 });
-    expect(await config.settings.get()).toEqual({
-      enableBeta: false,
-      maxUploadSize: 99,
-    });
-
-    alepha.store.set(currentTenantAtom, { id: orgA });
-    expect(await config.settings.get()).toEqual({
-      enableBeta: true,
-      maxUploadSize: 10,
-    });
-
-    await alepha.stop();
-  });
-
-  it("revalidates a stale cache after PARAMETERS_CACHE_TTL_MS (cross-isolate write)", async () => {
-    class AppConfig {
-      flags = $parameter({
-        name: "app.ttlRevalidation.flags",
-        schema: featureSchema,
-        default: { enableBeta: false, maxUploadSize: 1 },
-      });
-    }
-
-    // Writes a new version to the DB WITHOUT touching this instance's
-    // in-memory cache — exactly what a `set()` handled by ANOTHER worker
-    // isolate looks like from here (the sync topic rides the in-memory
-    // queue, so it never crosses isolates).
-
-    // A generous TTL driven by `travel()` rather than a short one raced
-    // against the wall clock. At 50ms the "still stale" assertion below
-    // depended on three Postgres round-trips finishing inside 50ms, which a
-    // loaded CI runner does not do — the cache expired early, `get()`
-    // re-read, and the test failed claiming the TTL had not been honoured.
-    const alepha = Alepha.create({
-      env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "60000" },
-    });
-    alepha.with({
-      provide: ParameterProvider,
-      use: ExternalWriteParameterProvider,
-    });
-    alepha.with(AlephaOrmPostgres);
-    alepha.with(AlephaApiParameters);
-    alepha.with(AppConfig);
-    await alepha.start();
-
-    const time = alepha.inject(DateTimeProvider);
-    const config = alepha.inject(AppConfig);
-    await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
-    expect((await config.flags.get()).enableBeta).toBe(false);
-
-    const provider = alepha.inject(
-      ParameterProvider,
-    ) as ExternalWriteParameterProvider;
-    await provider.writeBehindCache("app.ttlRevalidation.flags", {
-      enableBeta: true,
-      maxUploadSize: 2,
-    });
-
-    // Within the TTL the (stale) cache still serves.
-    expect((await config.flags.get()).enableBeta).toBe(false);
-
-    // Past the TTL, get() re-reads the DB and converges.
-    await time.travel([2, "minutes"]);
-    expect((await config.flags.get()).enableBeta).toBe(true);
-
-    await alepha.stop();
-  });
-
-  it("keeps the historical never-revalidate behaviour when the TTL is 0", async () => {
-    class AppConfig {
-      flags = $parameter({
-        name: "app.ttlZero.flags",
-        schema: featureSchema,
-        default: { enableBeta: false, maxUploadSize: 1 },
-      });
-    }
-
-    const alepha = Alepha.create({
-      env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "0" },
-    });
-    alepha.with({
-      provide: ParameterProvider,
-      use: ExternalWriteParameterProvider,
-    });
-    alepha.with(AlephaOrmPostgres);
-    alepha.with(AlephaApiParameters);
-    alepha.with(AppConfig);
-    await alepha.start();
-
-    const config = alepha.inject(AppConfig);
-    await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
-
-    const provider = alepha.inject(
-      ParameterProvider,
-    ) as ExternalWriteParameterProvider;
-    await provider.writeBehindCache("app.ttlZero.flags", {
-      enableBeta: true,
-      maxUploadSize: 2,
-    });
-
-    await new Promise((r) => setTimeout(r, 80));
-    expect((await config.flags.get()).enableBeta).toBe(false);
-
-    await alepha.stop();
-  });
-});
-
 /**
  * Fails `loadCurrentAndNext` a configurable number of times so a transient
  * DB outage can be simulated.

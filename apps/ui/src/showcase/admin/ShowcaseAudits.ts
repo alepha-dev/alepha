@@ -141,7 +141,6 @@ export class ShowcaseAudits {
       createdAt: new Date(
         Date.UTC(2026, 8, 4, 18, 0) - i * 37 * 60_000,
       ).toISOString(),
-      organizationId: undefined,
       // Half the rows carry a scope so the layer filter has both sides to
       // show; the app-level rows leave it unset.
       scopeType: i % 3 === 0 ? "project" : undefined,

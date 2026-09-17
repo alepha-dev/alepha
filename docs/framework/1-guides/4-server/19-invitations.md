@@ -177,14 +177,6 @@ immediately while the audit trail survives until the purge.
 the application's: hook `invitation:created` and send whatever your product
 should say.
 
-## Multi-tenancy
-
-`organizationId` is nullable, following `parameters`. A single-tenant app
-resolves no tenant and keeps writing NULL rows with global semantics. A pooled
-multi-tenant worker gets isolation for free: the Repository stamps the active
-tenant on write and filters by it on read, so one org's pending invitations
-can never be listed, revoked or accepted from another.
-
 ## See also
 
 - [Resource Authorization](/docs/guides-server-resource-authorization)

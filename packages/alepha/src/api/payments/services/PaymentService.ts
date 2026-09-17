@@ -587,7 +587,6 @@ export class PaymentService {
     // three concurrent 500s then all pass a "1000 remaining" check.
     const pending = await this.refundRepo.create({
       intentId: fresh.id,
-      organizationId: fresh.organizationId,
       amount,
       currency: fresh.currency,
       status: "pending",

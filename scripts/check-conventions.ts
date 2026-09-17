@@ -804,7 +804,7 @@ const specFiles = [
       .split("\n")
       .filter(Boolean),
   ),
-].filter((file) => !file.includes("/e2e/"));
+].filter((file) => existsSync(file) && !file.includes("/e2e/"));
 
 const flatSpecViolations: string[] = [];
 
@@ -857,7 +857,7 @@ const assertionFiles = [
       .split("\n")
       .filter(Boolean),
   ]),
-];
+].filter((file) => existsSync(file));
 
 const aliasViolations: string[] = [];
 

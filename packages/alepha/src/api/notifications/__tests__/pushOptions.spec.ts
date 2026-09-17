@@ -173,7 +173,7 @@ describe("$notification.pushMany fans out over contacts", () => {
     expect(await rows()).toHaveLength(4);
   });
 
-  it("carries the tenant on the row AND in the payload", async ({ expect }) => {
+  it("carries the tenant in the payload", async ({ expect }) => {
     const { templates, rows } = await boot();
 
     await templates.reminder.pushMany({
@@ -183,7 +183,6 @@ describe("$notification.pushMany fans out over contacts", () => {
     });
 
     const [row] = await rows();
-    expect(row.organizationId).toBe(ORG);
     expect((row.payload as { organizationId?: string }).organizationId).toBe(
       ORG,
     );
@@ -200,7 +199,6 @@ describe("$notification.pushMany fans out over contacts", () => {
     });
 
     const [row] = await rows();
-    expect(row.organizationId).toBe(ORG);
     expect((row.payload as { organizationId?: string }).organizationId).toBe(
       ORG,
     );

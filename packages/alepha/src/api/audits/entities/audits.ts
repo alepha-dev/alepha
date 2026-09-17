@@ -26,8 +26,6 @@ export const audits = $entity({
   schema: z.object({
     id: db.primaryKey(z.bigint()),
     createdAt: db.createdAt(),
-    organizationId: db.organization(),
-
     /**
      * The container the event happened inside, when there is one.
      *
@@ -44,10 +42,6 @@ export const audits = $entity({
      * string like `"project:42"` reinvents a convention this table already
      * has, and has to be parsed apart again to display.
      *
-     * ⚠️ Not {@link organizationId}. That column is auto-stamped from the
-     * *session's* organization and auto-filters every query, so it is session
-     * scope. A scope taken from the request path is a different thing and
-     * cannot be expressed through it.
      */
     scopeType: z.text().optional(),
 

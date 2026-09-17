@@ -5,8 +5,7 @@ import { type Infer, z } from "alepha";
  *
  * Deliberately not derived from `rankDefinitions.schema`: half the ranks a
  * scope has are declared in code and have no row, so a schema picked off the
- * entity would carry an `id`, a `version` and an `organizationId` that a
- * built-in cannot fill.
+ * entity would carry an `id` and a `version` that a built-in cannot fill.
  */
 export const rankResourceSchema = z.object({
   key: z.text({

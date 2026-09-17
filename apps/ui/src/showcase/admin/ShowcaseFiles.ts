@@ -90,7 +90,6 @@ export class ShowcaseFiles {
       version: 1,
       createdAt: this.at(24 * (i + 1)),
       updatedAt: this.at(24 * (i + 1)),
-      organizationId: undefined,
       blobId: `blob_${String(i + 1).padStart(6, "0")}`,
       creator: `00000000-0000-4000-8000-${String((i % 4) + 1).padStart(12, "0")}`,
       creatorRealm: "showcase",

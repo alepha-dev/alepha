@@ -284,7 +284,6 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
         emailVerified: user.emailVerified,
         username: user.username,
         picture: user.picture,
-        organization: user.organizationId ?? undefined,
         realm: name,
       };
     };

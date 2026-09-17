@@ -8,7 +8,6 @@ export const paymentMethods = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
     userId: z.uuid(),
     type: z.text({ size: "short" }),
     brand: z.text({ size: "short" }).optional(),
@@ -18,7 +17,7 @@ export const paymentMethods = $entity({
     isDefault: z.boolean(),
     providerRef: z.text(),
   }),
-  indexes: ["userId", "organizationId"],
+  indexes: ["userId"],
 });
 
 export type PaymentMethodEntity = Infer<typeof paymentMethods.schema>;

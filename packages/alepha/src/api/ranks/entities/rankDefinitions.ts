@@ -47,16 +47,6 @@ export const rankDefinitions = $entity({
     updatedAt: db.updatedAt(),
 
     /**
-     * Tenant scope, nullable, following `invitations` exactly.
-     *
-     * Deliberately NOT part of the unique index below: a NULL is distinct in
-     * a unique index on SQLite, so including it would give a single-tenant
-     * application no uniqueness at all. A pooled multi-tenant application
-     * makes its scope ids globally unique itself.
-     */
-    organizationId: db.organization(),
-
-    /**
      * Which `$rankResource` this row belongs to, e.g. `"project"`.
      */
     type: z.text({ minLength: 1, maxLength: 100 }),

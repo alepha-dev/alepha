@@ -49,8 +49,6 @@ export const users = $entity({
     emailVerified: db.default(z.boolean(), false),
 
     lastLoginAt: z.datetime().optional(),
-
-    organizationId: db.organization(),
   }),
   indexes: [
     {

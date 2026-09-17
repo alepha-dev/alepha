@@ -25,22 +25,6 @@ export const invitations = $entity({
     updatedAt: db.updatedAt(),
 
     /**
-     * Tenant scope, nullable, following the `parameters` precedent exactly.
-     *
-     * A single-tenant app never resolves a tenant, so it keeps writing NULL
-     * rows with the historic global semantics and reads them all back
-     * unfiltered. A pooled multi-tenant worker gets real isolation for free:
-     * the Repository stamps the active tenant on write and filters by it on
-     * read, so one org's pending invitations can never be listed, revoked or
-     * accepted from another.
-     *
-     * Not `strict`, again like `parameters`: whether a deployment is
-     * multi-tenant is a fact about the application, not about this table, and
-     * `tenancyAtom` is where that fact lives.
-     */
-    organizationId: db.organization(),
-
-    /**
      * Who sent it.
      *
      * A bare uuid and not `db.ref(() => users.cols.id)`, matching every other

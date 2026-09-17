@@ -122,7 +122,6 @@ export class ShowcaseJobs {
         updatedAt: this.at(hoursAgo),
         jobName,
         key: undefined,
-        organizationId: undefined,
         status,
         attempt: status === "error" ? 3 : 1,
         maxAttempts: 3,
