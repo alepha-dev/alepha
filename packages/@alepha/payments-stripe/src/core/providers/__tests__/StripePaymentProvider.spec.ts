@@ -21,6 +21,45 @@ class TestStripeProvider extends StripePaymentProvider {
   }
 
   /**
+   * Swap the Checkout and Subscriptions APIs for recorders: every call's
+   * params and request options land in `calls`.
+   */
+  public recordBilling(): Array<{
+    call: string;
+    params: unknown;
+    options: unknown;
+  }> {
+    const calls: Array<{ call: string; params: unknown; options: unknown }> =
+      [];
+    const subscription = { id: "sub_1", object: "subscription" };
+    (this as unknown as { stripe: unknown }).stripe = {
+      checkout: {
+        sessions: {
+          create: async (params: unknown, options: unknown) => {
+            calls.push({ call: "checkout", params, options });
+            return { id: "cs_1", url: "https://checkout.test/cs_1" };
+          },
+        },
+      },
+      subscriptions: {
+        retrieve: async (_id: string, params: unknown, options: unknown) => {
+          calls.push({ call: "retrieve", params, options });
+          return subscription;
+        },
+        update: async (_id: string, params: unknown, options: unknown) => {
+          calls.push({ call: "update", params, options });
+          return subscription;
+        },
+        cancel: async (_id: string, params: unknown, options: unknown) => {
+          calls.push({ call: "cancel", params, options });
+          return subscription;
+        },
+      },
+    };
+    return calls;
+  }
+
+  /**
    * Swap the v2 accounts API for a stub: `retrieve` answers `account`, and
    * every `create` call's params are recorded in the returned array.
    */
@@ -263,6 +302,135 @@ describe("StripePaymentProvider", () => {
           cancelUrl: "https://app.test/ko",
         }),
       ).rejects.toThrow(AlephaError);
+    });
+  });
+
+  describe("subscriptions on a connected account", () => {
+    it("opens the checkout on the account, with the interval count and the one-off items", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+
+      const result = await provider.createCheckoutSubscription({
+        priceData: {
+          currency: "eur",
+          unitAmount: 5000,
+          interval: "month",
+          intervalCount: 3,
+          productName: "Membre annuel (1/4)",
+        },
+        oneOffItems: [
+          {
+            currency: "eur",
+            unitAmount: 1500,
+            productName: "Frais de dossier",
+          },
+        ],
+        successUrl: "https://club.test/ok",
+        cancelUrl: "https://club.test/ko",
+        customerEmail: "ana@club.test",
+        metadata: { orderId: "o_1" },
+        stripeAccount: "acct_club",
+      });
+
+      expect(result).toEqual({
+        url: "https://checkout.test/cs_1",
+        sessionId: "cs_1",
+      });
+      expect(calls[0]).toEqual({
+        call: "checkout",
+        options: { stripeAccount: "acct_club" },
+        params: {
+          mode: "subscription",
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: "eur",
+                unit_amount: 5000,
+                recurring: { interval: "month", interval_count: 3 },
+                product_data: { name: "Membre annuel (1/4)" },
+              },
+            },
+            {
+              quantity: 1,
+              price_data: {
+                currency: "eur",
+                unit_amount: 1500,
+                product_data: { name: "Frais de dossier" },
+              },
+            },
+          ],
+          success_url: "https://club.test/ok",
+          cancel_url: "https://club.test/ko",
+          customer: undefined,
+          customer_email: "ana@club.test",
+          metadata: { orderId: "o_1" },
+          subscription_data: { metadata: { orderId: "o_1" } },
+        },
+      });
+    });
+
+    it("stays on the platform account without stripeAccount", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+
+      await provider.createCheckoutSubscription({
+        priceData: {
+          currency: "eur",
+          unitAmount: 7900,
+          interval: "month",
+          productName: "PRO",
+        },
+        successUrl: "https://app.test/ok",
+        cancelUrl: "https://app.test/ko",
+      });
+
+      const [checkout] = calls;
+      expect(checkout.options).toBeUndefined();
+      expect((checkout.params as { line_items: unknown[] }).line_items).toEqual(
+        [
+          {
+            quantity: 1,
+            price_data: {
+              currency: "eur",
+              unit_amount: 7900,
+              recurring: { interval: "month" },
+              product_data: { name: "PRO" },
+            },
+          },
+        ],
+      );
+    });
+
+    it("schedules, clears, reads and cancels a subscription on the account", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+      const account = { stripeAccount: "acct_club" };
+
+      await provider.setSubscriptionCancelAt("sub_1", 1_800_000_000, account);
+      await provider.setSubscriptionCancelAt("sub_1", null, account);
+      await provider.retrieveSubscription("sub_1", account);
+      await provider.cancelSubscription("sub_1", account);
+      await provider.cancelSubscription("sub_1", {
+        ...account,
+        atPeriodEnd: false,
+      });
+
+      expect(calls).toEqual([
+        {
+          call: "update",
+          params: { cancel_at: 1_800_000_000 },
+          options: account,
+        },
+        { call: "update", params: { cancel_at: "" }, options: account },
+        { call: "retrieve", params: undefined, options: account },
+        {
+          call: "update",
+          params: { cancel_at_period_end: true },
+          options: account,
+        },
+        { call: "cancel", params: undefined, options: account },
+      ]);
     });
   });
 
