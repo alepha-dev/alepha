@@ -419,10 +419,14 @@ describe("StripePaymentProvider", () => {
       expect(calls).toEqual([
         {
           call: "update",
-          params: { cancel_at: 1_800_000_000 },
+          params: { cancel_at: 1_800_000_000, proration_behavior: "none" },
           options: account,
         },
-        { call: "update", params: { cancel_at: "" }, options: account },
+        {
+          call: "update",
+          params: { cancel_at: "", proration_behavior: "none" },
+          options: account,
+        },
         { call: "retrieve", params: undefined, options: account },
         {
           call: "update",

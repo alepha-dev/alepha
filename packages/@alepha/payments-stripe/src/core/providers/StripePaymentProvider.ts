@@ -735,6 +735,9 @@ export class StripePaymentProvider implements PaymentProvider {
    * the schedule with `null`. A subscription paid in N installments ends
    * right after the Nth: Checkout cannot set this, so it is set once the
    * subscription exists.
+   *
+   * Never prorated: ending a schedule must neither credit the customer for
+   * the rest of a period nor bill a partial one.
    */
   public async setSubscriptionCancelAt(
     subscriptionId: string,
@@ -743,7 +746,7 @@ export class StripePaymentProvider implements PaymentProvider {
   ): Promise<Stripe.Subscription> {
     return this.stripe.subscriptions.update(
       subscriptionId,
-      { cancel_at: cancelAt ?? "" },
+      { cancel_at: cancelAt ?? "", proration_behavior: "none" },
       opts.stripeAccount ? { stripeAccount: opts.stripeAccount } : undefined,
     );
   }
