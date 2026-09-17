@@ -6,8 +6,8 @@ import { $atom, z } from "alepha";
  *
  * ### Why this is application config and not an entity option
  *
- * `db.organization({ strict: true })` has existed for a while and does the
- * right thing — but it is declared per entity, in framework code an
+ * The former strict organization-column option was declared per entity, in
+ * framework code an
  * application cannot edit. So every framework-owned table (`users`, `files`,
  * `audits`, `parameters`, `apiKeys`, the payment tables) is non-strict, and a
  * query issued with no resolved tenant runs **unfiltered**. A `$job` or an
@@ -40,7 +40,7 @@ import { $atom, z } from "alepha";
  *
  * ### Per-entity `strict` is now an override
  *
- * `db.organization({ strict })` still wins when set explicitly, in both
+ * The former per-entity `strict` option wins when set explicitly, in both
  * directions:
  *
  * - `strict: true` — always fail closed, even in `"single"` mode. For a table
@@ -53,7 +53,7 @@ import { $atom, z } from "alepha";
  *
  * ### What this atom deliberately does NOT change
  *
- * **Column nullability.** `db.organization({ nullable })` stays declarative
+ * **Column nullability.** The former `nullable` option stays declarative
  * and keeps driving migrations: a schema fact cannot be decided by a value
  * read at boot. `strict` used to imply `nullable: false`, which quietly
  * conflated a runtime policy with a DDL choice — the two are separated now.

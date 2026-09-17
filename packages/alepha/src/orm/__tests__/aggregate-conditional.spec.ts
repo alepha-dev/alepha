@@ -126,7 +126,7 @@ const testConditionNeverEscapesTheWhere = async (alepha: Alepha) => {
       inScope: { count: { column: "id" } },
       // Names rows the outer WHERE excludes. If the condition replaced or
       // short-circuited that clause this would count them anyway, which on a
-      // tenant-scoped or soft-deleted table is the leak.
+      // soft-deleted table is the leak.
       elsewhere: { count: { column: "id", where: { queue: { eq: "b" } } } },
     },
     where: { queue: { eq: "a" } },

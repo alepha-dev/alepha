@@ -154,7 +154,7 @@ describe("QueryManager", () => {
 
     it("should throw when a column is explicitly undefined", () => {
       // Drizzle silently drops `undefined` conditions, which turns a broken
-      // filter (e.g. tenant scoping) into an unfiltered query. Fail loudly.
+      // filter into an unfiltered query. Fail loudly.
       expect(() => qm.toSQL({ age: undefined } as any, options)).toThrow(
         /undefined/,
       );

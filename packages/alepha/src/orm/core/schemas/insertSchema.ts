@@ -1,11 +1,7 @@
 import type { ZObject, ZodOptional, ZType } from "alepha";
 import { z } from "alepha";
 
-import {
-  PG_DEFAULT,
-  PG_GENERATED,
-  PG_ORGANIZATION,
-} from "../constants/PG_SYMBOLS.ts";
+import { PG_DEFAULT, PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Transforms a ZObject schema for insert operations.
@@ -21,7 +17,7 @@ export type TObjectInsert<T extends ZObject> = ZObject<{
     K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
       ? never
       : K
-  ]: T["shape"][K] extends { [PG_DEFAULT]: any } | { [PG_ORGANIZATION]: any }
+  ]: T["shape"][K] extends { [PG_DEFAULT]: any }
     ? ZodOptional<Extract<T["shape"][K], ZType>>
     : T["shape"][K];
 }>;
@@ -37,10 +33,9 @@ export const insertSchema = <T extends ZObject>(obj: T): TObjectInsert<T> => {
       continue;
     }
 
-    if (PG_DEFAULT in prop || PG_ORGANIZATION in prop) {
-      // PG_DEFAULT fields have a server-side default; PG_ORGANIZATION fields are
-      // auto-stamped by stampOrganization() inside create(). Both are optional
-      // at the TypeScript call-site even when the DB column is NOT NULL.
+    if (PG_DEFAULT in prop) {
+      // PG_DEFAULT fields have a server-side default, so they are optional at
+      // the TypeScript call-site even when the database column is NOT NULL.
       newProperties[key] = prop.optional();
     } else if (z.schema.isOptional(prop)) {
       // An optional field maps to a NULLABLE column, so an explicit `null` is a

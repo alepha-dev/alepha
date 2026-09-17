@@ -13,11 +13,6 @@ import {
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
-  currentTenantAtom,
-  currentUserAtom,
-  tenancyAtom,
-} from "alepha/security";
-import {
   asc,
   avg,
   count,
@@ -53,7 +48,6 @@ import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
 import {
   PG_DELETED_AT,
-  PG_ORGANIZATION,
   PG_PRIMARY_KEY,
   PG_UPDATED_AT,
   PG_VERSION,
@@ -523,8 +517,9 @@ export abstract class Repository<T extends ZObject> {
       );
     }
 
-    const where = this.withOrganization(
-      this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts),
+    const where = this.withDeletedAt(
+      (query.where ?? {}) as PgQueryWhere<T>,
+      opts,
     );
 
     builder.where(() => this.toSQL(where, joins));
@@ -688,15 +683,8 @@ export abstract class Repository<T extends ZObject> {
 
     const tasks: Promise<any>[] = [];
 
-    // Built BEFORE the row query is dispatched: `withOrganization` throws
-    // SYNCHRONOUSLY under strict tenancy, and doing that once `findMany` is
-    // already in flight would abandon its promise before `Promise.all` below
-    // ever attaches a handler — surfacing as an unhandled rejection attributed
-    // to whatever happened to be running at the time.
     const countWhere = opts.count
-      ? this.withOrganization(
-          this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts),
-        )
+      ? this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts)
       : undefined;
 
     tasks.push(
@@ -881,7 +869,6 @@ export abstract class Repository<T extends ZObject> {
     data: Infer<TObjectInsert<T>>,
     opts: StatementOptions = {},
   ): Promise<Infer<T>> {
-    this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data,
@@ -938,10 +925,6 @@ export abstract class Repository<T extends ZObject> {
   ): Promise<Infer<T>[]> {
     if (values.length === 0) {
       return [];
-    }
-
-    for (const value of values) {
-      this.stampOrganization(value);
     }
 
     await this.alepha.events.emit("repository:create:before", {
@@ -1074,7 +1057,6 @@ export abstract class Repository<T extends ZObject> {
       set?: WithSQL<Infer<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Infer<T>> {
-    this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data,
@@ -1131,19 +1113,12 @@ export abstract class Repository<T extends ZObject> {
     // them, so `set: { hits: sql\`hits + 1\` }` still works.
     setData = this.cast(setData, false) as any;
 
-    // Scope the conflict-UPDATE to the current tenant and non-deleted rows so a
-    // conflict on a tenant-agnostic unique key (e.g. `email`) cannot silently
-    // overwrite — or resurrect — another organization's row. Only entities that
-    // are actually org- or soft-delete-scoped pay for this; plain entities keep
-    // the original statement byte-for-byte.
-    const setWhere =
-      this.organizationField() || this.deletedAt()
-        ? this.toSQL(
-            this.withOrganization(
-              this.withDeletedAt({} as PgQueryWhere<T>, opts),
-            ),
-          )
-        : undefined;
+    // Scope the conflict update to non-deleted rows so an upsert cannot
+    // silently resurrect a soft-deleted row. Plain entities keep the original
+    // statement byte-for-byte.
+    const setWhere = this.deletedAt()
+      ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
+      : undefined;
 
     try {
       const entity = await this.rawInsert(opts)
@@ -1156,11 +1131,11 @@ export abstract class Repository<T extends ZObject> {
         .returning(this.table)
         .then(([it]) => {
           if (!it) {
-            // The conflicting row is outside the current tenant/soft-delete
-            // scope, so the guarded UPDATE matched nothing and no row was
-            // inserted. Fail loudly rather than cleaning `undefined`.
+            // The conflicting row is already deleted, so the guarded UPDATE
+            // matched nothing and no row was inserted. Fail loudly rather
+            // than cleaning `undefined`.
             throw new AlephaError(
-              `Upsert on '${this.tableName}' conflicted with a row outside the current tenant (or an already-deleted row); refusing to overwrite it.`,
+              `Upsert on '${this.tableName}' conflicted with an already-deleted row; refusing to overwrite it.`,
             );
           }
           return this.clean(it, this.entity.schema);
@@ -1234,10 +1209,6 @@ export abstract class Repository<T extends ZObject> {
       return [];
     }
 
-    for (const value of values) {
-      this.stampOrganization(value);
-    }
-
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data: values,
@@ -1285,14 +1256,9 @@ export abstract class Repository<T extends ZObject> {
 
     setData = this.cast(setData, false) as any;
 
-    const setWhere =
-      this.organizationField() || this.deletedAt()
-        ? this.toSQL(
-            this.withOrganization(
-              this.withDeletedAt({} as PgQueryWhere<T>, opts),
-            ),
-          )
-        : undefined;
+    const setWhere = this.deletedAt()
+      ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
+      : undefined;
 
     try {
       const rows = await this.rawInsert(opts)
@@ -1356,7 +1322,7 @@ export abstract class Repository<T extends ZObject> {
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
-    where = this.withOrganization(this.withDeletedAt(where, opts));
+    where = this.withDeletedAt(where, opts);
     row = this.cast(row, false) as any;
 
     // do not update the ID field
@@ -1523,7 +1489,7 @@ export abstract class Repository<T extends ZObject> {
       } as typeof data;
     }
 
-    where = this.withOrganization(this.withDeletedAt(where, opts));
+    where = this.withDeletedAt(where, opts);
     data = this.cast(data, false) as any;
     try {
       const entities = await this.rawUpdate(opts)
@@ -1568,8 +1534,6 @@ export abstract class Repository<T extends ZObject> {
         opts,
       );
     }
-
-    where = this.withOrganization(where);
 
     await this.alepha.events.emit("repository:delete:before", {
       tableName: this.tableName,
@@ -1693,7 +1657,7 @@ export abstract class Repository<T extends ZObject> {
       query: { where },
     });
 
-    where = this.withOrganization(this.withDeletedAt(where, opts));
+    where = this.withDeletedAt(where, opts);
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     try {
       return await db.$count(this.table, this.toSQL(where));
@@ -1749,8 +1713,8 @@ export abstract class Repository<T extends ZObject> {
    * ```
    *
    * ⚠️ The per-aggregate `where` NARROWS: it is ANDed inside the CASE while
-   * this query's own `where` — carrying the tenant scoping and the
-   * soft-delete filter — still governs which rows are seen at all. A key is
+   * this query's own `where` and the soft-delete filter still govern which
+   * rows are seen at all. A key is
    * either a column or an alias, never both and never neither; see
    * {@link AggregateOpSelect} and `assertAggregateKey`.
    */
@@ -1789,10 +1753,9 @@ export abstract class Repository<T extends ZObject> {
      *
      * `column` re-points it; `where` wraps it in a CASE so only the matching
      * rows contribute. ⚠️ The condition is ANDed INSIDE the CASE and never
-     * touches the statement's own WHERE, which is where `withOrganization`
-     * and `withDeletedAt` live — a per-aggregate condition that replaced or
-     * short-circuited that clause would count across tenants and resurrect
-     * soft-deleted rows.
+     * touches the statement's own WHERE, which is where `withDeletedAt` lives.
+     * A per-aggregate condition that replaced or short-circuited that clause
+     * would resurrect soft-deleted rows.
      */
     const aggExpr = (key: string, op: AggregateOp, spec: any) => {
       const columnName =
@@ -1850,11 +1813,9 @@ export abstract class Repository<T extends ZObject> {
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     let builder = db.select(flatFields).from(this.table as PgTable);
 
-    // WHERE — tenant scoping and the soft-delete filter apply even when the
-    // caller passes no `where` (like every other read path).
-    const where = this.withOrganization(
-      this.withDeletedAt((query.where ?? {}) as any, opts),
-    );
+    // The soft-delete filter applies even when the caller passes no `where`,
+    // like every other read path.
+    const where = this.withDeletedAt((query.where ?? {}) as any, opts);
     const whereSql = this.toSQL(where);
     if (whereSql) {
       builder = builder.where(whereSql) as any;
@@ -2172,16 +2133,13 @@ export abstract class Repository<T extends ZObject> {
    * Public because some relational reads do not pass through `findMany` at
    * all: the relational query builder issues one statement for a whole tree.
    * Sharing the predicate rather than reproducing it is what keeps soft delete
-   * and tenancy true of those statements too — including the strict-tenancy
-   * refusal, which throws here exactly as it would on a direct read.
+   * true of those statements too.
    */
   public readWhere(
     where: unknown = {},
     opts: { force?: boolean } = {},
   ): unknown {
-    return this.withOrganization(
-      this.withDeletedAt((where ?? {}) as PgQueryWhereOrSQL<T>, opts),
-    );
+    return this.withDeletedAt((where ?? {}) as PgQueryWhereOrSQL<T>, opts);
   }
 
   /**
@@ -2253,117 +2211,6 @@ export abstract class Repository<T extends ZObject> {
     const deletedAtFields = getAttrFields(this.entity.schema, PG_DELETED_AT);
     if (deletedAtFields.length > 0) {
       return deletedAtFields[0];
-    }
-    return undefined;
-  }
-
-  /**
-   * Whether this entity fails closed when no tenant resolves.
-   *
-   * The entity's own `strict` wins in both directions when it was set at all;
-   * otherwise the application's {@link tenancyAtom} decides. That third state
-   * is the whole design: framework entities say nothing, so the app — which
-   * is the only place that knows whether it serves one tenant or many —
-   * answers for them.
-   */
-  protected isStrictTenancy(orgField: PgAttrField): boolean {
-    const declared = orgField.data?.strict;
-    if (typeof declared === "boolean") {
-      return declared;
-    }
-    return this.alepha.store.get(tenancyAtom).mode === "multi";
-  }
-
-  protected withOrganization(
-    where: PgQueryWhereOrSQL<T>,
-  ): PgQueryWhereOrSQL<T> {
-    const orgField = this.organizationField();
-    if (!orgField) {
-      return where;
-    }
-
-    const strict = this.isStrictTenancy(orgField);
-    const value = this.resolveOrganizationValue();
-    if (!value) {
-      if (strict) {
-        // Fail closed: refuse rather than fall through to an unfiltered query
-        // that would expose every tenant's rows on a sensitive table.
-        throw new AlephaError(
-          `Refusing to query tenant-scoped entity '${this.tableName}' with no resolved tenant/organization in context (strict tenancy).`,
-        );
-      }
-      return where;
-    }
-
-    return {
-      and: [
-        where,
-        // Strict entities drop the `OR org IS NULL` escape so a scoped tenant
-        // never sees global/NULL rows.
-        strict
-          ? ({ [orgField.key]: { eq: value } } as any)
-          : ({
-              or: [
-                { [orgField.key]: { eq: value } },
-                { [orgField.key]: { isNull: true } },
-              ],
-            } as any),
-      ],
-    } as PgQueryWhereOrSQL<T>;
-  }
-
-  protected stampOrganization(data: any): void {
-    const orgField = this.organizationField();
-    if (!orgField) {
-      return;
-    }
-
-    // An explicit value — including an explicit `null` "global row" — is a
-    // deliberate, auditable choice and is honored as-is. Strict only guards
-    // the fail-open accident: the org column simply omitted.
-    if (orgField.key in data && data[orgField.key] !== undefined) {
-      return;
-    }
-
-    const value = this.resolveOrganizationValue();
-    if (value) {
-      data[orgField.key] = value;
-      return;
-    }
-
-    if (this.isStrictTenancy(orgField)) {
-      // Fail closed: an unscoped insert would create a NULL/global row on a
-      // sensitive table. Require an explicit organization or a resolved tenant.
-      throw new AlephaError(
-        `Refusing to insert into tenant-scoped entity '${this.tableName}' with no organization set and no resolved tenant in context (strict tenancy).`,
-      );
-    }
-  }
-
-  /**
-   * Resolve the value used for `PG_ORGANIZATION` scoping.
-   *
-   * Priority:
-   * 1. Request-bound tenant (`currentTenantAtom`) — set by an app-level
-   *    middleware from the request `Host`. Lets cross-tenant users (admins,
-   *    agency operators) be scoped to the tenant they are acting in rather
-   *    than the one they belong to.
-   * 2. Authenticated user's `organization` — the legacy single-tenant case.
-   */
-  protected resolveOrganizationValue(): string | undefined {
-    const tenant = this.alepha.store.get(currentTenantAtom);
-    if (tenant?.id) {
-      return tenant.id;
-    }
-
-    const user = this.alepha.store.get(currentUserAtom);
-    return user?.organization;
-  }
-
-  protected organizationField(): PgAttrField | undefined {
-    const fields = getAttrFields(this.entity.schema, PG_ORGANIZATION);
-    if (fields.length > 0) {
-      return fields[0];
     }
     return undefined;
   }
@@ -2535,17 +2382,10 @@ export abstract class Repository<T extends ZObject> {
    * predicate this repository adds on top of it.
    *
    * The scope suffix is what makes `opts.cache` safe. Keyed on the caller's
-   * query alone, two tenants issuing the identical `findMany` shared one entry
-   * and whichever arrived first filled it for everyone — a cross-tenant read
-   * caused by nothing but switching on a performance flag. The same omission
-   * let a `force: true` read (which deliberately includes soft-deleted rows)
-   * poison the entry a normal read then consumed.
-   *
-   * `readWhere()` is exactly the org + soft-delete envelope applied to the
-   * statement, so folding it in keeps one cache entry per (query, tenant,
-   * visibility) triple. It also throws on strict tenancy with no tenant
-   * resolved, which is the correct answer on a cached read too — the entry
-   * must not be reachable without a tenant when the query itself would not be.
+   * query alone, a `force: true` read, which deliberately includes
+   * soft-deleted rows, could poison the entry a normal read then consumed.
+   * `readWhere()` includes the soft-delete envelope applied to the statement,
+   * so folding it in keeps one cache entry per query and visibility scope.
    */
   protected buildCacheKey(
     method: string,

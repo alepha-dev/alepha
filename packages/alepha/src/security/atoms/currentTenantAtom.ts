@@ -10,17 +10,12 @@ import { $atom, z } from "alepha";
  * request `Host` header (or another signal) and writes the resolved id to the
  * store. Framework code that reads this atom:
  *
- * - Repository scoping: `withOrganization` / `stampOrganization` prefer this
- *   value over `currentUserAtom.organization` so cross-tenant users (admins,
- *   agency operators) are scoped to the tenant they are currently acting in
- *   rather than the one they belong to.
  * - Session creation: the value is persisted into the JWT as a `tenant` claim,
  *   and the issuer resolver rejects tokens whose claim does not match the
  *   tenant resolved from the current request.
  *
  * `id` is a free-form string so the framework stays neutral on tenant identity
- * (slug, UUID, composite). Pick whatever matches the column marked with
- * `PG_ORGANIZATION` in your entities.
+ * (slug, UUID, composite).
  *
  * **`serverOnly`.** Unlike every other config atom, this one really is written
  * inside the request (that is the whole point), so without the flag the

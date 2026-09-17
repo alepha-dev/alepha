@@ -20,8 +20,8 @@ export type AggregateOp = "count" | "sum" | "avg" | "min" | "max";
  *   contribute.
  *
  * ⚠️ `where` NARROWS, it never widens. It is ANDed inside the CASE while the
- * query's own `where` - carrying the tenant scoping and the soft-delete
- * filter - still governs which rows the aggregate sees at all.
+ * query's own `where` and the soft-delete filter still govern which rows the
+ * aggregate sees at all.
  *
  * ⚠️ `COUNT(CASE WHEN c THEN col END)` also skips NULLs of `col` itself,
  * because that is what `COUNT(col)` does. For "how many rows match the
@@ -191,8 +191,9 @@ export interface AggregateQuery<
   /**
    * WHERE clause to filter rows before aggregation.
    *
-   * This is the ONLY place tenancy and soft-delete scoping is applied, and a
-   * per-aggregate `where` never replaces it - see {@link AggregateOpSelect}.
+   * This is the only place the caller's filter and soft-delete scoping are
+   * applied, and a per-aggregate `where` never replaces it. See
+   * {@link AggregateOpSelect}.
    */
   where?: PgQueryWhereOrSQL<T>;
 

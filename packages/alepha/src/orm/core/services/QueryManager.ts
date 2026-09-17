@@ -63,9 +63,8 @@ export class QueryManager {
         const operator = query[key] as SQL;
 
         // Drizzle silently drops `undefined` from WHERE, so a broken filter
-        // (e.g. `organizationId: maybeUndefined`) becomes an unfiltered query
-        // — the exact shape of a cross-tenant data leak. Fail loudly instead;
-        // callers that want an optional filter must omit the key.
+        // becomes an unfiltered query. Fail loudly instead; callers that want
+        // an optional filter must omit the key.
         if (operator === undefined) {
           throw new AlephaError(
             `Query filter '${key}' is explicitly undefined. ` +
@@ -349,9 +348,9 @@ export class QueryManager {
 
     const conditions: SQL[] = [];
 
-    // `eq: undefined` would be silently dropped (no condition at all) — the
-    // root cause of tenant-scoping leaks. Equality against "no value" is
-    // always a caller bug; `isNull` exists for NULL matching.
+    // `eq: undefined` would be silently dropped, leaving no condition at all.
+    // Equality against "no value" is always a caller bug; `isNull` exists for
+    // NULL matching.
     if ("eq" in operator && operator.eq === undefined) {
       throw new AlephaError(
         `Query filter${columnName ? ` '${columnName}'` : ""} has 'eq: undefined'. ` +

@@ -29,11 +29,10 @@ import { QueryManager } from "./QueryManager.ts";
  * - Drizzle's filter syntax has a `RAW` escape hatch that takes a Drizzle
  *   `SQL` object, so Alepha's existing where-to-SQL conversion is reused
  *   whole, with all of its operators.
- * - The predicates that make a read safe — soft delete, tenancy — are asked
- *   of the repository itself through {@link Repository.readWhere}, so they are
- *   the same predicates a direct read would apply, down to the strict-tenancy
- *   refusal. They are pushed onto every level of the tree, including relations
- *   the caller included with a bare `true`.
+ * - The soft-delete predicate is asked of the repository itself through
+ *   {@link Repository.readWhere}, so it is the same predicate a direct read
+ *   would apply. It is pushed onto every level of the tree, including
+ *   relations the caller included with a bare `true`.
  * - Rows come back decoded by the table but not validated, so each level is
  *   handed to its own repository afterwards. Relation fields belong to another
  *   entity's schema, so they are carried across that step rather than run
@@ -98,9 +97,9 @@ export class RqbExecutor {
       });
     }
 
-    // Translated outside the try: an unknown relation or an unresolvable
-    // tenant is a mistake in the query, and its own message says so far better
-    // than a driver-error classification would.
+    // Translated outside the try: an unknown relation is a mistake in the
+    // query, and its own message says so far better than a driver-error
+    // classification would.
     const translated = this.toRqbQuery(relations, entityKey, provider, query);
 
     let rows: Array<Record<string, any>>;
@@ -220,9 +219,9 @@ export class RqbExecutor {
       }
 
       // `true` still goes through the full translation rather than short-
-      // circuiting: that is where the target's soft-delete and tenancy
-      // predicates are attached, and a relation included with a bare `true` is
-      // exactly the call site that would otherwise leak deleted rows.
+      // circuiting: that is where the target's soft-delete predicate is
+      // attached, and a relation included with a bare `true` is exactly the
+      // call site that would otherwise leak deleted rows.
       out[name] = this.toRqbQuery(
         relations,
         relation.target,
@@ -350,10 +349,8 @@ export class RqbExecutor {
    * Alepha's where becomes a Drizzle `SQL` object handed over as `RAW`.
    *
    * The predicate is taken from the target's own repository, so soft delete
-   * and tenancy cross into the relational statement as the same expressions a
-   * direct read would use — and a strict tenant-scoped entity read with no
-   * resolved tenant throws here, rather than quietly returning every tenant's
-   * rows.
+   * crosses into the relational statement as the same expression a direct
+   * read would use.
    */
   protected toRawFilter(
     relations: RelationsPrimitive<EntitySchema, RelationMapFor<EntitySchema>>,

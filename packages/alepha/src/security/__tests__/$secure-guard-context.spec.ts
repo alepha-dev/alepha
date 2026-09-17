@@ -7,21 +7,17 @@ import { $owns, $secure } from "../index.ts";
 
 /**
  * A `$secure` guard runs real code — `$owns` loads a row through a repository.
- * Anything it calls must see the authenticated identity, otherwise
- * tenant-scoped reads inside the guard resolve no tenant: a non-strict entity
- * is read unscoped, and a strict one refuses outright.
+ * Anything it calls must see the authenticated identity so authorization
+ * helpers can evaluate the caller before the guarded handler runs.
  *
  * The user therefore has to be published to the store BEFORE the guard runs,
  * not after — and the behaviour must not differ between transports.
  */
 
-const ORG = "11111111-1111-1111-1111-111111111111";
-
 const docs = $entity({
   name: "guard_ctx_docs",
   schema: z.object({
     id: db.primaryKey(z.text()),
-    organization: db.organization({ strict: true }),
     createdBy: z.text(),
     title: z.text(),
   }),
@@ -31,7 +27,6 @@ const USER = {
   id: "u1",
   realm: "default",
   roles: [] as string[],
-  organization: ORG,
 };
 
 class Service {
@@ -95,7 +90,7 @@ describe("$secure publishes the user before running the guard", () => {
     expect(seen).toEqual(["present"]);
   });
 
-  it("should let $owns read a strict tenant entity over HTTP", async () => {
+  it("should let $owns read the entity over HTTP", async () => {
     const { alepha, svc } = await boot();
 
     const result = await alepha.context.run(async () => {

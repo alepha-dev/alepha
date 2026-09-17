@@ -3,6 +3,7 @@ import { $entity, $repository, db, type Repository } from "alepha/orm";
 import { $action, ForbiddenError, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
+import { AlephaSecurity } from "../index.ts";
 import { $owns } from "../primitives/$owns.ts";
 import { $role } from "../primitives/$role.ts";
 import {
@@ -126,7 +127,7 @@ interface AppOptions {
 const createApp = (options: AppOptions = {}) => {
   const alepha = Alepha.create({
     env: { DATABASE_URL: "sqlite://:memory:" },
-  });
+  }).with(AlephaSecurity);
 
   if (options.ranks) {
     alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });

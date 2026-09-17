@@ -18,7 +18,6 @@ import {
   PG_DEFAULT,
   PG_DELETED_AT,
   PG_IDENTITY,
-  PG_ORGANIZATION,
   PG_PRIMARY_KEY,
   PG_REF,
   PG_UPDATED_AT,
@@ -195,49 +194,6 @@ export class DatabaseTypeProvider {
    */
   public readonly deletedAt = () =>
     pgAttr(z.datetime().optional(), PG_DELETED_AT);
-
-  /**
-   * Creates an organization column for multi-tenant row scoping.
-   *
-   * When present, queries are automatically filtered by the current user's organization.
-   * On create, the column is auto-stamped with the current user's organization.
-   *
-   * @param options.nullable - When `false`, the column is NOT NULL in the database and
-   *   the ORM rejects inserts that arrive without an organization context.
-   *   Defaults to `true` (nullable) — unless `strict` is set, which flips the
-   *   default to non-nullable. NULL rows are visible to every tenant (the
-   *   historic "global row" semantics) only when the column is nullable AND
-   *   not strict.
-   * @param options.strict - Fail-closed tenant scoping: refuses reads/writes
-   *   with no resolved tenant (instead of a fail-open "see/write everything")
-   *   and drops the `OR org IS NULL` escape so a scoped tenant never sees
-   *   global rows.
-   *
-   *   **Omit it unless this entity is genuinely special.** Left unset, the
-   *   entity follows the application's `tenancyAtom` mode, which is where the
-   *   decision belongs — whether a deployment is multi-tenant is a fact about
-   *   the app, not about this table. Set it only to override that per entity:
-   *   `true` to fail closed even in a single-tenant app, `false` to stay
-   *   lenient inside an otherwise strict one (a shared reference table).
-   */
-  public readonly organization = (options?: {
-    nullable?: boolean;
-    strict?: boolean;
-  }) => {
-    // Kept as `undefined` when unset — that third state is what lets the
-    // application's tenancy mode decide, and what tells an explicit
-    // `strict: false` (an opt-out) apart from "never said".
-    const strict = options?.strict;
-    // Nullability stays a schema fact: it is written into the migration, so it
-    // cannot depend on a runtime mode. An explicitly strict entity has no
-    // "global row" concept and so defaults to NOT NULL; everything else stays
-    // nullable, including entities that will fail closed because the app is in
-    // `multi` mode. Those two used to be conflated.
-    const nullable = options?.nullable ?? strict !== true;
-    return pgAttr(nullable ? z.uuid().optional() : z.uuid(), PG_ORGANIZATION, {
-      strict,
-    });
-  };
 
   /**
    * Creates a reference to another table or schema. Basically a foreign key.
