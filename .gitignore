@@ -10,7 +10,7 @@ playwright-report
 .yarn
 .idea
 .env
-.claude
+/.claude/
 .codex
 .run
 .gen
