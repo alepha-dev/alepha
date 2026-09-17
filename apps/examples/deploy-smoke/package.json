@@ -5,7 +5,7 @@
   "scripts": {
     "build": "alepha build",
     "check:migrations": "alepha db migrations check",
-    "db:generate": "alepha db generate",
+    "db:generate": "alepha db migrations create",
     "dev": "alepha dev",
     "typecheck": "tsc --noEmit"
   },

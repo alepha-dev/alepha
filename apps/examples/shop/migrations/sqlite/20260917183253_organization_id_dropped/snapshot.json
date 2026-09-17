@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "de34a0ea-f9ed-4a5d-b591-f6bff00353f7",
+  "id": "8bc85b2d-d4bc-484e-a55a-b87feb50619d",
   "prevIds": ["f6289c1f-05a9-47f1-b2b3-e9257a5cf2f2"],
   "ddl": [
     {
@@ -512,16 +512,6 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "commerce_addresses"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
       "name": "user_id",
       "entityType": "columns",
       "table": "commerce_addresses"
@@ -718,16 +708,6 @@
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "commerce_carts"
-    },
-    {
-      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": null,
@@ -793,16 +773,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "updated_at",
-      "entityType": "columns",
-      "table": "commerce_checkout_sessions"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "commerce_checkout_sessions"
     },
@@ -953,16 +923,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "created_at",
-      "entityType": "columns",
-      "table": "commerce_invoices"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "commerce_invoices"
     },
@@ -1252,16 +1212,6 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "commerce_orders"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
       "name": "user_id",
       "entityType": "columns",
       "table": "commerce_orders"
@@ -1458,16 +1408,6 @@
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "commerce_products"
-    },
-    {
-      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": "'good'",
@@ -1628,16 +1568,6 @@
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "commerce_shipping_rates"
-    },
-    {
-      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": null,
@@ -1758,16 +1688,6 @@
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "commerce_shipping_zones"
-    },
-    {
-      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": null,
@@ -1813,16 +1733,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "created_at",
-      "entityType": "columns",
-      "table": "commerce_stock_movements"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "commerce_stock_movements"
     },
@@ -1903,16 +1813,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "updated_at",
-      "entityType": "columns",
-      "table": "commerce_stock_reservations"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "commerce_stock_reservations"
     },
@@ -2452,16 +2352,6 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "notification_deliveries"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
       "name": "message_id",
       "entityType": "columns",
       "table": "notification_deliveries"
@@ -2722,16 +2612,6 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "notification_inbox"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
       "name": "id",
       "entityType": "columns",
       "table": "notification_suppressions"
@@ -2753,16 +2633,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "updated_at",
-      "entityType": "columns",
-      "table": "notification_suppressions"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "notification_suppressions"
     },
@@ -4198,10 +4068,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "user_id",
           "isExpression": false
         }
@@ -4209,16 +4075,12 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_addresses_organization_id_user_id_idx",
+      "name": "commerce_addresses_user_id_idx",
       "entityType": "indexes",
       "table": "commerce_addresses"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "country",
           "isExpression": false
@@ -4227,7 +4089,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_addresses_organization_id_country_idx",
+      "name": "commerce_addresses_country_idx",
       "entityType": "indexes",
       "table": "commerce_addresses"
     },
@@ -4280,10 +4142,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "user_id",
           "isExpression": false
         }
@@ -4291,7 +4149,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_carts_organization_id_user_id_idx",
+      "name": "commerce_carts_user_id_idx",
       "entityType": "indexes",
       "table": "commerce_carts"
     },
@@ -4312,20 +4170,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "commerce_checkout_sessions_organization_id_idx",
-      "entityType": "indexes",
-      "table": "commerce_checkout_sessions"
-    },
-    {
-      "columns": [
-        {
           "value": "cart_id",
           "isExpression": false
         }
@@ -4340,10 +4184,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "status",
           "isExpression": false
         }
@@ -4351,7 +4191,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_checkout_sessions_organization_id_status_idx",
+      "name": "commerce_checkout_sessions_status_idx",
       "entityType": "indexes",
       "table": "commerce_checkout_sessions"
     },
@@ -4372,10 +4212,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "number",
           "isExpression": false
         }
@@ -4383,7 +4219,7 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "commerce_invoices_organization_id_number_idx",
+      "name": "commerce_invoices_number_idx",
       "entityType": "indexes",
       "table": "commerce_invoices"
     },
@@ -4404,10 +4240,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "year",
           "isExpression": false
         }
@@ -4415,7 +4247,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_invoices_organization_id_year_idx",
+      "name": "commerce_invoices_year_idx",
       "entityType": "indexes",
       "table": "commerce_invoices"
     },
@@ -4450,24 +4282,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "commerce_orders_organization_id_idx",
-      "entityType": "indexes",
-      "table": "commerce_orders"
-    },
-    {
-      "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "status",
           "isExpression": false
         }
@@ -4475,16 +4289,12 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_orders_organization_id_status_idx",
+      "name": "commerce_orders_status_idx",
       "entityType": "indexes",
       "table": "commerce_orders"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "user_id",
           "isExpression": false
@@ -4493,16 +4303,12 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_orders_organization_id_user_id_idx",
+      "name": "commerce_orders_user_id_idx",
       "entityType": "indexes",
       "table": "commerce_orders"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "created_at",
           "isExpression": false
@@ -4511,30 +4317,12 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_orders_organization_id_created_at_idx",
+      "name": "commerce_orders_created_at_idx",
       "entityType": "indexes",
       "table": "commerce_orders"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "commerce_products_organization_id_idx",
-      "entityType": "indexes",
-      "table": "commerce_products"
-    },
-    {
-      "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "slug",
           "isExpression": false
@@ -4543,16 +4331,12 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "commerce_products_organization_id_slug_idx",
+      "name": "commerce_products_slug_idx",
       "entityType": "indexes",
       "table": "commerce_products"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "kind",
           "isExpression": false
@@ -4561,16 +4345,12 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_products_organization_id_kind_idx",
+      "name": "commerce_products_kind_idx",
       "entityType": "indexes",
       "table": "commerce_products"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "published",
           "isExpression": false
@@ -4579,7 +4359,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_products_organization_id_published_idx",
+      "name": "commerce_products_published_idx",
       "entityType": "indexes",
       "table": "commerce_products"
     },
@@ -4600,10 +4380,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "code",
           "isExpression": false
         }
@@ -4611,30 +4387,12 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "commerce_shipping_rates_organization_id_code_idx",
+      "name": "commerce_shipping_rates_code_idx",
       "entityType": "indexes",
       "table": "commerce_shipping_rates"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "commerce_shipping_zones_organization_id_idx",
-      "entityType": "indexes",
-      "table": "commerce_shipping_zones"
-    },
-    {
-      "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "priority",
           "isExpression": false
@@ -4643,16 +4401,12 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_shipping_zones_organization_id_priority_idx",
+      "name": "commerce_shipping_zones_priority_idx",
       "entityType": "indexes",
       "table": "commerce_shipping_zones"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "product_id",
           "isExpression": false
@@ -4661,7 +4415,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_stock_movements_organization_id_product_id_idx",
+      "name": "commerce_stock_movements_product_id_idx",
       "entityType": "indexes",
       "table": "commerce_stock_movements"
     },
@@ -4682,10 +4436,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "product_id",
           "isExpression": false
         },
@@ -4697,7 +4447,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "commerce_stock_reservations_organization_id_product_id_status_idx",
+      "name": "commerce_stock_reservations_product_id_status_idx",
       "entityType": "indexes",
       "table": "commerce_stock_reservations"
     },
@@ -4996,10 +4746,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "created_at",
           "isExpression": false
         }
@@ -5007,7 +4753,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "notification_deliveries_organization_id_created_at_idx",
+      "name": "notification_deliveries_created_at_idx",
       "entityType": "indexes",
       "table": "notification_deliveries"
     },
@@ -5058,10 +4804,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "channel",
           "isExpression": false
         },
@@ -5081,16 +4823,12 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "notification_suppressions_organization_id_channel_contact_reason_category_idx",
+      "name": "notification_suppressions_channel_contact_reason_category_idx",
       "entityType": "indexes",
       "table": "notification_suppressions"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "channel",
           "isExpression": false
@@ -5103,7 +4841,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "notification_suppressions_organization_id_channel_contact_idx",
+      "name": "notification_suppressions_channel_contact_idx",
       "entityType": "indexes",
       "table": "notification_suppressions"
     },

@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "c7a5e27b-c8e7-476d-8bb1-e9174d937106",
+  "id": "355d110d-d0be-4d76-803b-74df6c9bce16",
   "prevIds": ["250bddab-6a4c-4157-8fd5-714010f0e62b"],
   "ddl": [
     {
@@ -4412,16 +4412,6 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "notification_deliveries"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
       "name": "message_id",
       "entityType": "columns",
       "table": "notification_deliveries"
@@ -4677,16 +4667,6 @@
       "table": "notification_inbox"
     },
     {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "notification_inbox"
-    },
-    {
       "type": "integer",
       "notNull": false,
       "autoincrement": true,
@@ -4773,16 +4753,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "updated_at",
-      "entityType": "columns",
-      "table": "notification_suppressions"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "notification_suppressions"
     },
@@ -10213,10 +10183,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "created_at",
           "isExpression": false
         }
@@ -10224,7 +10190,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "notification_deliveries_organization_id_created_at_idx",
+      "name": "notification_deliveries_created_at_idx",
       "entityType": "indexes",
       "table": "notification_deliveries"
     },
@@ -10289,10 +10255,6 @@
     {
       "columns": [
         {
-          "value": "organization_id",
-          "isExpression": false
-        },
-        {
           "value": "channel",
           "isExpression": false
         },
@@ -10312,16 +10274,12 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "notification_suppressions_organization_id_channel_contact_reason_category_idx",
+      "name": "notification_suppressions_channel_contact_reason_category_idx",
       "entityType": "indexes",
       "table": "notification_suppressions"
     },
     {
       "columns": [
-        {
-          "value": "organization_id",
-          "isExpression": false
-        },
         {
           "value": "channel",
           "isExpression": false
@@ -10334,7 +10292,7 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "notification_suppressions_organization_id_channel_contact_idx",
+      "name": "notification_suppressions_channel_contact_idx",
       "entityType": "indexes",
       "table": "notification_suppressions"
     },
