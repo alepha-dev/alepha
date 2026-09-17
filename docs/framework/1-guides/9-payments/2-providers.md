@@ -5,13 +5,13 @@ A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment 
 ```typescript
 abstract class PaymentProvider {
   createSession(intent, { returnUrl, authorize, ... }): Promise<{ url, providerRef }>;
-  capturePayment(providerRef, amount): Promise<void>;
-  voidPayment(providerRef): Promise<void>;
+  capturePayment(providerRef, amount, options?): Promise<void>;
+  voidPayment(providerRef, options?): Promise<void>;
   refundPayment(providerRef, amount, options?): Promise<{ providerRef }>;
   parseWebhook(request): Promise<{ providerRef, status, raw }>;
   createPaymentMethod(userId, token): Promise<CreatePaymentMethodResult>;
   deletePaymentMethod(providerRef): Promise<void>;
-  expireSession(providerRef): Promise<void>;
+  expireSession(providerRef, options?): Promise<void>;
 
   // optional: embedded card fields (Stripe Payment Element and friends);
   // PaymentService.supportsEmbeddedPayment() dispatches on its presence
@@ -20,11 +20,11 @@ abstract class PaymentProvider {
   // non-abstract, returns null by default - but providers SHOULD override it:
   // it is the reconciliation path when a webhook goes missing. The shipped
   // provider does.
-  retrieveSessionStatus(providerRef): Promise<SessionStatus | null>;
+  retrieveSessionStatus(providerRef, options?): Promise<SessionStatus | null>;
 }
 ```
 
-`createSession` options also carry Connect-style fields (`stripeAccount`, `applicationFeeAmount`, `customerEmail`), and `refundPayment` accepts `{ stripeAccount }`.
+`createSession` options also carry Connect-style fields (`stripeAccount`, `applicationFeeAmount`, `customerEmail`). Every later call about that session takes the same `{ stripeAccount }` (`ProviderAccountOptions`): a Stripe direct charge lives on the connected account only, and the platform account cannot see it. `PaymentService` records the account on the intent (`providerAccount`) when it creates the session and passes it on every poll, expiry, capture, void and refund, so a provider only has to honour the option.
 
 `PaymentService` and `PaymentMethodService` call these methods; you never call them directly.
 

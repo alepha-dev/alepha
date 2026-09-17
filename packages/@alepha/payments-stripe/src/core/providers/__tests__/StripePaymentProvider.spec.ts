@@ -46,6 +46,32 @@ class TestStripeProvider extends StripePaymentProvider {
     };
     return created;
   }
+
+  /**
+   * Swap the lookups of checkout sessions and PaymentIntents for stubs that
+   * answer a paid session / a succeeded PaymentIntent, recording the request
+   * options of every call (where the connected account travels).
+   */
+  public stubLookups(): Array<{ id: string; requestOptions: unknown }> {
+    const calls: Array<{ id: string; requestOptions: unknown }> = [];
+    (this as unknown as { stripe: unknown }).stripe = {
+      checkout: {
+        sessions: {
+          retrieve: async (id: string, _params: unknown, options: unknown) => {
+            calls.push({ id, requestOptions: options });
+            return { id, payment_status: "paid", status: "complete" };
+          },
+        },
+      },
+      paymentIntents: {
+        retrieve: async (id: string, _params: unknown, options: unknown) => {
+          calls.push({ id, requestOptions: options });
+          return { id, status: "succeeded" };
+        },
+      },
+    };
+    return calls;
+  }
 }
 
 const make = (env: Record<string, string> = {}) =>
@@ -301,6 +327,36 @@ describe("StripePaymentProvider", () => {
         displayName: "Padel Aix",
         metadata: { clubSlug: "padel-aix" },
       });
+    });
+  });
+
+  describe("retrieveSessionStatus", () => {
+    it("asks the connected account a direct charge lives on", async () => {
+      const provider = make();
+      const calls = provider.stubLookups();
+
+      await expect(
+        provider.retrieveSessionStatus("cs_test_1", {
+          stripeAccount: "acct_club",
+        }),
+      ).resolves.toBe("captured");
+      await expect(
+        provider.retrieveSessionStatus("pi_1", { stripeAccount: "acct_club" }),
+      ).resolves.toBe("captured");
+
+      expect(calls).toEqual([
+        { id: "cs_test_1", requestOptions: { stripeAccount: "acct_club" } },
+        { id: "pi_1", requestOptions: { stripeAccount: "acct_club" } },
+      ]);
+    });
+
+    it("asks the platform account when no account is given", async () => {
+      const provider = make();
+      const calls = provider.stubLookups();
+
+      await provider.retrieveSessionStatus("cs_test_1");
+
+      expect(calls).toEqual([{ id: "cs_test_1", requestOptions: undefined }]);
     });
   });
 });

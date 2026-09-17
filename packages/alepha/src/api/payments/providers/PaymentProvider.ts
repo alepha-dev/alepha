@@ -50,6 +50,19 @@ export interface ElementSessionResult {
   provider: string;
 }
 
+/**
+ * Where a PSP call runs. Every call about an intent names the sub-account its
+ * session was created on (recorded as `providerAccount`): a Stripe direct
+ * charge lives on the connected account only, and the platform account
+ * cannot see it.
+ */
+export interface ProviderAccountOptions {
+  /**
+   * Stripe connected account (`acct_…`). Omitted for the platform account.
+   */
+  stripeAccount?: string;
+}
+
 export interface CreatePaymentMethodResult {
   providerRef: string;
   type: string;
@@ -101,12 +114,19 @@ export abstract class PaymentProvider {
    * Capture a previously authorized payment.
    * Amount can differ from the original authorization (partial capture).
    */
-  abstract capturePayment(providerRef: string, amount: number): Promise<void>;
+  abstract capturePayment(
+    providerRef: string,
+    amount: number,
+    options?: ProviderAccountOptions,
+  ): Promise<void>;
 
   /**
    * Void/cancel a previously authorized payment before capture.
    */
-  abstract voidPayment(providerRef: string): Promise<void>;
+  abstract voidPayment(
+    providerRef: string,
+    options?: ProviderAccountOptions,
+  ): Promise<void>;
 
   /**
    * Refund a captured payment (partial or full).
@@ -114,7 +134,7 @@ export abstract class PaymentProvider {
   abstract refundPayment(
     providerRef: string,
     amount: number,
-    options?: { stripeAccount?: string },
+    options?: ProviderAccountOptions,
   ): Promise<RefundResult>;
 
   /**
@@ -157,7 +177,10 @@ export abstract class PaymentProvider {
    * Expire/cancel a checkout session on the PSP side.
    * Called during stale session cleanup.
    */
-  abstract expireSession(providerRef: string): Promise<void>;
+  abstract expireSession(
+    providerRef: string,
+    options?: ProviderAccountOptions,
+  ): Promise<void>;
 
   /**
    * Ask the PSP for the current status of a session/intent, mapped to the
@@ -172,8 +195,10 @@ export abstract class PaymentProvider {
    */
   public async retrieveSessionStatus(
     providerRef: string,
+    options?: ProviderAccountOptions,
   ): Promise<"authorized" | "captured" | "failed" | null> {
     void providerRef;
+    void options;
     return null;
   }
 }

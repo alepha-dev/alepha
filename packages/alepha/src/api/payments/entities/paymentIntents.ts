@@ -24,6 +24,12 @@ export const paymentIntents = $entity({
       "expired",
     ]),
     providerRef: z.text().optional(),
+    /**
+     * PSP sub-account the session was created on (a Stripe connected
+     * account, `acct_…`, for a direct charge). Every later call about this
+     * intent must name it: the PSP knows the session only there.
+     */
+    providerAccount: z.text().optional(),
     providerRaw: z.json().optional(),
     metadata: z.json().optional(),
     paymentMethodId: z.uuid().optional(),

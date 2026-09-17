@@ -279,6 +279,68 @@ describe("PaymentService", () => {
     expect(updated.status).toBe("captured");
   });
 
+  it("should settle a capture that lands after the sweep expired the intent", async ({
+    expect,
+  }) => {
+    const { alepha, payments } = await setup();
+    const captured: string[] = [];
+    alepha.events.on("payments:captured", ({ intentId }) => {
+      captured.push(intentId);
+    });
+
+    const intent = await payments.createIntent(1500, "eur");
+    await payments.createSession(intent.id, "https://example.com");
+    await payments.expireIntent(await payments.getIntent(intent.id));
+
+    // The PSP page outlived the local expiry and the buyer paid on it: the
+    // money exists, so the intent must say so and the domain must hear it.
+    await payments.handleWebhookEvent(intent.id, "captured");
+
+    expect((await payments.getIntent(intent.id)).status).toBe("captured");
+    expect(captured).toEqual([intent.id]);
+
+    // And the domain can give it back.
+    await payments.refund(intent.id, 1500);
+    expect((await payments.getIntent(intent.id)).status).toBe("refunded");
+  });
+
+  it("should record an authorization that lands after the sweep expired the intent", async ({
+    expect,
+  }) => {
+    const { payments } = await setup();
+
+    const intent = await payments.createIntent(1500, "eur");
+    await payments.createSession(intent.id, "https://example.com", true);
+    await payments.expireIntent(await payments.getIntent(intent.id));
+
+    await payments.handleWebhookEvent(intent.id, "authorized");
+    expect((await payments.getIntent(intent.id)).status).toBe("authorized");
+
+    // A hold nobody wants is released, not left on the buyer's card.
+    await payments.void(intent.id);
+    expect((await payments.getIntent(intent.id)).status).toBe("voided");
+  });
+
+  it("should ignore a failure reported for an expired intent", async ({
+    expect,
+  }) => {
+    const { alepha, payments } = await setup();
+    const failed: string[] = [];
+    alepha.events.on("payments:failed", ({ intentId }) => {
+      failed.push(intentId);
+    });
+
+    const intent = await payments.createIntent(1500, "eur");
+    await payments.createSession(intent.id, "https://example.com");
+    await payments.expireIntent(await payments.getIntent(intent.id));
+
+    // Stripe reports its own expiry of the session as a failure.
+    await payments.handleWebhookEvent(intent.id, "failed");
+
+    expect((await payments.getIntent(intent.id)).status).toBe("expired");
+    expect(failed).toEqual([]);
+  });
+
   it("should refuse mock checkout endpoints in production", async ({
     expect,
   }) => {

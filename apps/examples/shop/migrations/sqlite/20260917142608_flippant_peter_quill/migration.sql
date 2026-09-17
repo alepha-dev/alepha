@@ -1,0 +1,1 @@
+ALTER TABLE `payment_intents` ADD `provider_account` text;

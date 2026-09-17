@@ -18,6 +18,7 @@ import { PaymentError } from "../errors/PaymentError.ts";
 import {
   type ElementSessionResult,
   PaymentProvider,
+  type ProviderAccountOptions,
   type WebhookEvent,
 } from "../providers/PaymentProvider.ts";
 import { paymentsConfig } from "../schemas/paymentsConfigAtom.ts";
@@ -89,7 +90,10 @@ export class PaymentService {
 
     if (intent.providerRef) {
       try {
-        await this.provider.expireSession(intent.providerRef);
+        await this.provider.expireSession(
+          intent.providerRef,
+          this.accountOf(intent),
+        );
       } catch (error) {
         this.log.warn(`Failed to expire session for intent ${intent.id}`, {
           error,
@@ -136,6 +140,7 @@ export class PaymentService {
 
     const reported = await this.provider.retrieveSessionStatus(
       intent.providerRef,
+      this.accountOf(intent),
     );
     if (!reported || reported === intent.status) {
       return intent.status;
@@ -227,8 +232,13 @@ export class PaymentService {
         customerEmail: options?.customerEmail,
       });
 
+      // The account is recorded with the ref, because every later call
+      // about this session (poll, expiry, capture, refund) must name it.
       await this.intentRepo.updateById(intent.id, {
         providerRef: result.providerRef,
+        ...(options?.stripeAccount
+          ? { providerAccount: options.stripeAccount }
+          : {}),
       });
 
       return { url: result.url, intentId: intent.id };
@@ -304,12 +314,15 @@ export class PaymentService {
   }
 
   /**
-   * Process a webhook event by updating the intent status and emitting
-   * the corresponding payment event.
-   */
-  /**
    * Valid status transitions from webhook events.
    * Only these transitions are allowed — all others are silently ignored.
+   *
+   * `expired` accepts a late authorization or capture: the PSP page can
+   * outlive the sweep's local expiry (a failed or racing expire call), and a
+   * buyer who pays there has paid. Dropping that event would leave the money
+   * with the merchant, unrecorded, and out of reach of `refund()` and
+   * `void()`, which need the intent to say what the PSP holds. A late
+   * failure records nothing new, so it stays ignored.
    */
   protected static readonly VALID_WEBHOOK_TRANSITIONS: Record<
     string,
@@ -317,8 +330,13 @@ export class PaymentService {
   > = {
     processing: ["authorized", "captured", "failed"],
     authorized: ["captured", "failed"],
+    expired: ["authorized", "captured"],
   };
 
+  /**
+   * Process a webhook event by updating the intent status and emitting
+   * the corresponding payment event.
+   */
   public async handleWebhookEvent(
     intentId: string,
     status: string,
@@ -367,6 +385,13 @@ export class PaymentService {
         `Ignoring webhook: intent ${intent.id} left '${intent.status}' before the update landed`,
       );
       return;
+    }
+
+    if (intent.status === "expired") {
+      this.log.warn(
+        `Late ${webhookStatus} on expired intent ${intent.id}: the PSP session outlived the expiry`,
+        { intentId: intent.id },
+      );
     }
 
     await this.alepha.events.emit(eventMap[webhookStatus], {
@@ -448,7 +473,11 @@ export class PaymentService {
     }
 
     if (intent.providerRef) {
-      await this.provider.capturePayment(intent.providerRef, amount);
+      await this.provider.capturePayment(
+        intent.providerRef,
+        amount,
+        this.accountOf(intent),
+      );
     }
 
     const updated = await this.transition(
@@ -476,7 +505,10 @@ export class PaymentService {
     this.assertStatus(intent, "authorized", "void");
 
     if (intent.providerRef) {
-      await this.provider.voidPayment(intent.providerRef);
+      await this.provider.voidPayment(
+        intent.providerRef,
+        this.accountOf(intent),
+      );
     }
 
     const updated = await this.transition(
@@ -505,9 +537,9 @@ export class PaymentService {
     reason?: string,
     options: {
       /**
-       * PSP sub-account holding the charge (Stripe connected account) —
-       * required to refund payments that were created with the same option,
-       * e.g. direct charges on a club's connected account.
+       * PSP sub-account holding the charge (Stripe connected account).
+       * Defaults to the account the session was created on, so it is only
+       * needed for an intent that predates that record.
        */
       stripeAccount?: string;
     } = {},
@@ -590,7 +622,7 @@ export class PaymentService {
         const result = await this.provider.refundPayment(
           intent.providerRef,
           amount,
-          options,
+          options.stripeAccount ? options : this.accountOf(intent),
         );
         refundProviderRef = result.providerRef;
       }
@@ -749,6 +781,16 @@ export class PaymentService {
       { where, ...(withUser ? { with: withUser } : {}) },
       { count: true },
     );
+  }
+
+  /**
+   * The PSP account an intent's session lives on, in the provider's option
+   * shape. Empty for a session on the platform account.
+   */
+  protected accountOf(intent: PaymentIntentEntity): ProviderAccountOptions {
+    return intent.providerAccount
+      ? { stripeAccount: intent.providerAccount }
+      : {};
   }
 
   protected assertStatus(

@@ -24,6 +24,8 @@ Every state transition emits a hook on Alepha's event bus:
 
 `payments:expired` is emitted by the stale-intent sweep described below - wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
 
+An expiry is not always the last word. If the buyer pays on a PSP page that outlived it (the sweep raced the payment, or its call to close the session failed), the intent moves on to `captured` (or `authorized`) and the usual `payments:captured` fires. Your `payments:captured` listener must therefore handle a capture for something it already released: record it, then refund it with `PaymentService.refund()` or keep it, but never ignore it.
+
 Your own modules (accounting, notifications, fulfilment) listen via `$hook` - they never call the PSP directly.
 
 > **Recurring billing** is deliberately out of scope: let your PSP own it. Create

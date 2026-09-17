@@ -711,21 +711,35 @@ export class StripePaymentProvider implements PaymentProvider {
    * The reconciliation poll: map the live Stripe state of a checkout
    * session or PaymentIntent to the webhook vocabulary, so a lost
    * webhook can be synthesized instead of stranding a paid checkout.
+   *
+   * A direct charge lives on the connected account only: without
+   * `stripeAccount`, Stripe answers `resource_missing` for it.
    */
   public async retrieveSessionStatus(
     providerRef: string,
+    options: { stripeAccount?: string } = {},
   ): Promise<"authorized" | "captured" | "failed" | null> {
+    const requestOptions = options.stripeAccount
+      ? { stripeAccount: options.stripeAccount }
+      : undefined;
     try {
       if (providerRef.startsWith("cs_")) {
-        const session =
-          await this.stripe.checkout.sessions.retrieve(providerRef);
+        const session = await this.stripe.checkout.sessions.retrieve(
+          providerRef,
+          undefined,
+          requestOptions,
+        );
         if (session.payment_status === "paid") {
           return "captured";
         }
         return session.status === "expired" ? "failed" : null;
       }
 
-      const intent = await this.stripe.paymentIntents.retrieve(providerRef);
+      const intent = await this.stripe.paymentIntents.retrieve(
+        providerRef,
+        undefined,
+        requestOptions,
+      );
       switch (intent.status) {
         case "succeeded":
           return "captured";
