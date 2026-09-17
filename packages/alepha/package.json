@@ -90,6 +90,13 @@
       "import": "./src/api/oauth/index.ts",
       "default": "./src/api/oauth/index.ts"
     },
+    "./api/organizations": {
+      "types": "./src/api/organizations/index.ts",
+      "react-native": "./src/api/organizations/index.browser.ts",
+      "browser": "./src/api/organizations/index.browser.ts",
+      "import": "./src/api/organizations/index.ts",
+      "default": "./src/api/organizations/index.ts"
+    },
     "./api/parameters": {
       "types": "./src/api/parameters/index.ts",
       "react-native": "./src/api/parameters/index.browser.ts",
@@ -549,6 +556,13 @@
         "types": "./dist/api/oauth/index.d.ts",
         "import": "./dist/api/oauth/index.js",
         "default": "./dist/api/oauth/index.js"
+      },
+      "./api/organizations": {
+        "types": "./dist/api/organizations/index.d.ts",
+        "react-native": "./dist/api/organizations/index.browser.js",
+        "browser": "./dist/api/organizations/index.browser.js",
+        "import": "./dist/api/organizations/index.js",
+        "default": "./dist/api/organizations/index.js"
       },
       "./api/parameters": {
         "types": "./dist/api/parameters/index.d.ts",
