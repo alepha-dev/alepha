@@ -225,11 +225,11 @@ await repos.teams.findMany({ where: { players: {} } });
 
 Every operator works at any depth: `inArray`, `like`, `between`, all of them.
 
-## Soft delete and tenancy
+## Soft delete
 
-Both apply automatically, at every level of the tree, including a relation included with a bare `true`. The predicate is the one the repository itself would use - so an entity marked `db.organization({ strict: true })` still refuses a read with no resolved tenant, rather than returning every tenant's rows.
-
-A relation filter inherits the same rule: a soft-deleted player does not make its team match.
+Soft-delete filtering applies automatically at every level of the tree,
+including a relation included with a bare `true`. A soft-deleted player does
+not make its team match.
 
 ### force
 

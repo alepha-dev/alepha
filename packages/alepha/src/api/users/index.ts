@@ -94,7 +94,7 @@ export * from "./storage/UserStorage.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Complete user management with multi-realm support for multi-tenant applications.
+ * Complete user management with support for separate user realms.
  *
  * **Features:**
  * - User registration, login, and profile management
@@ -102,7 +102,7 @@ export * from "./storage/UserStorage.ts";
  * - Email verification
  * - Session management with multiple devices
  * - Identity management (social logins, SSO)
- * - Multi-realm support for tenant isolation
+ * - Multi-realm user separation
  * - Credential management
  * - Entities: `users`, `identities`, `sessions`
  *

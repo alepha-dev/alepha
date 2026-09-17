@@ -401,7 +401,7 @@ task_list = $tool({
 
 ## Context
 
-Every handler receives an optional `context` with HTTP headers and custom data. Use it for authentication or multi-tenancy:
+Every handler receives an optional `context` with HTTP headers and custom data. Use it for authentication or request-scoped metadata:
 
 ```typescript
 task_list = $tool({
@@ -433,7 +433,7 @@ task_list = $tool({
 });
 ```
 
-To carry anything else - a tenant, a project scope, a request id - override
+To carry anything else, such as a project scope or request id, override
 `buildContext` on the transport and register the subclass:
 
 ```typescript
@@ -443,7 +443,7 @@ class MyMcpTransport extends StreamableHttpMcpTransport {
   protected buildContext(request: any) {
     return {
       ...super.buildContext(request),
-      data: { user: request.user, tenant: request.headers.host },
+      data: { user: request.user, projectId: request.headers["x-project-id"] },
     };
   }
 }

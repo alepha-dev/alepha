@@ -229,8 +229,8 @@ await this.repo.aggregate({
 Four things to know about that form:
 
 - The per-aggregate `where` **narrows**, never widens. It is ANDed inside the
-  `CASE`, while the query's own `where` - carrying tenant scoping and the
-  soft-delete filter - still decides which rows the aggregate sees at all.
+  `CASE`, while the query's own `where` and the soft-delete filter still decide
+  which rows the aggregate sees at all.
 - A key is **either** a column name **or** an alias: a column key may not carry
   `column`, an alias key must carry it on every operation, and an alias may not
   be spelled like one of the entity's columns. Anything else is refused with the

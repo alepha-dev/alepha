@@ -10,7 +10,7 @@ npm install alepha
 
 ## Overview
 
-Complete user management with multi-realm support for multi-tenant applications.
+Complete user management with support for separate user realms.
 
 **Features:**
 
@@ -19,7 +19,7 @@ Complete user management with multi-realm support for multi-tenant applications.
 - Email verification
 - Session management with multiple devices
 - Identity management (social logins, SSO)
-- Multi-realm support for tenant isolation
+- Multi-realm user separation
 - Credential management
 - Entities: `users`, `identities`, `sessions`
 

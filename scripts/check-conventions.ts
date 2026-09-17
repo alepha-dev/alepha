@@ -1097,6 +1097,7 @@ const jobSources = execFileSync("git", ["ls-files", "packages", "apps"], {
   .split("\n")
   .filter(
     (file) =>
+      existsSync(file) &&
       /\.tsx?$/.test(file) &&
       !file.includes(".spec.") &&
       !file.includes("/__tests__/") &&
