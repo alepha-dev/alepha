@@ -1,3 +1,4 @@
+import { organizationMembers } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 
@@ -10,7 +11,6 @@ import { folioDirectories } from "./entities/folioDirectories.ts";
 import { folioLinks } from "./entities/folioLinks.ts";
 import { folioRevisions } from "./entities/folioRevisions.ts";
 import { folios } from "./entities/folios.ts";
-import { members } from "./entities/members.ts";
 import { projects } from "./entities/projects.ts";
 import { questComments } from "./entities/questComments.ts";
 import { quests } from "./entities/quests.ts";
@@ -35,7 +35,7 @@ import { sigils } from "./entities/sigils.ts";
 export const schema = {
   users,
   projects,
-  members,
+  organizationMembers,
   releases,
   epics,
   quests,
@@ -53,9 +53,9 @@ export const schema = {
 
 export const relations = $relations(schema, (r) => ({
   users: {
-    memberships: r.many.members({
+    memberships: r.many.organizationMembers({
       from: r.users.id,
-      to: r.members.userId,
+      to: r.organizationMembers.userId,
     }),
     /**
      * A user's projects, through the membership row.
@@ -67,8 +67,10 @@ export const relations = $relations(schema, (r) => ({
      * pins it.
      */
     projects: r.many.projects({
-      from: r.users.id.through(r.members.userId),
-      to: r.projects.id.through(r.members.projectId),
+      from: r.users.id.through(r.organizationMembers.userId),
+      to: r.projects.organizationId.through(
+        r.organizationMembers.organizationId,
+      ),
     }),
   },
 
@@ -79,16 +81,18 @@ export const relations = $relations(schema, (r) => ({
      * which declare their `author` here for exactly that reason.
      */
     owner: r.one.users({ from: r.projects.createdBy, to: r.users.id }),
-    memberships: r.many.members({
-      from: r.projects.id,
-      to: r.members.projectId,
+    memberships: r.many.organizationMembers({
+      from: r.projects.organizationId,
+      to: r.organizationMembers.organizationId,
     }),
     /**
      * The other side of the same junction, subject to the same index.
      */
     members: r.many.users({
-      from: r.projects.id.through(r.members.projectId),
-      to: r.users.id.through(r.members.userId),
+      from: r.projects.organizationId.through(
+        r.organizationMembers.organizationId,
+      ),
+      to: r.users.id.through(r.organizationMembers.userId),
     }),
     quests: r.many.quests({ from: r.projects.id, to: r.quests.projectId }),
     releases: r.many.releases({
@@ -115,11 +119,14 @@ export const relations = $relations(schema, (r) => ({
     }),
   },
 
-  members: {
-    user: r.one.users({ from: r.members.userId, to: r.users.id }),
+  organizationMembers: {
+    user: r.one.users({
+      from: r.organizationMembers.userId,
+      to: r.users.id,
+    }),
     project: r.one.projects({
-      from: r.members.projectId,
-      to: r.projects.id,
+      from: r.organizationMembers.organizationId,
+      to: r.projects.organizationId,
     }),
   },
 

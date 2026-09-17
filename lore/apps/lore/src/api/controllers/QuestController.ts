@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
@@ -774,8 +774,7 @@ export class QuestController {
         // linking a quest to a feedback item IS triage, and `createdBy`
         // stopped being an authorization input in epic #E39.
         await this.ranks.assert(
-          "project",
-          String(project.id),
+          project.organizationId!,
           "feedback:triage",
           user,
         );
@@ -2703,12 +2702,7 @@ export class QuestController {
       // quests here may rewrite somebody else's.
       if (
         quest.createdBy !== user.id &&
-        !(await this.ranks.can(
-          "project",
-          String(project.id),
-          "quest:delete",
-          user,
-        ))
+        !(await this.ranks.can(project.organizationId!, "quest:delete", user))
       ) {
         throw new ForbiddenError(
           "Only the quest creator, or somebody who may delete quests here, can edit this quest",
@@ -2843,8 +2837,7 @@ export class QuestController {
           patch.feedbackId = null;
         } else {
           await this.ranks.assert(
-            "project",
-            String(project.id),
+            project.organizationId!,
             "feedback:triage",
             user,
           );

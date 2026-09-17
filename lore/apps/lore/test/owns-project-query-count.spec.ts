@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -18,7 +19,6 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { members } from "../src/api/entities/members.ts";
 import { type Project, projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {
@@ -182,7 +182,7 @@ class InHandlerGateControl {
         );
         const member = await this.members.findOne({
           where: {
-            projectId: { eq: project.id },
+            organizationId: { eq: project.organizationId! },
             userId: { eq: user.id },
           },
         });
@@ -269,8 +269,8 @@ describe("$ownsProject, measured", () => {
     // fixture.
     expect(Object.fromEntries(ctx.counter.byTable)).toMatchObject({
       projects: 1,
-      members: 1,
-      rank_definitions: 1,
+      organization_members: 1,
+      organization_ranks: 1,
     });
   });
 
@@ -307,8 +307,8 @@ describe("$ownsProject, measured", () => {
     // the cost, stated rather than estimated.
     expect(Object.fromEntries(ctx.counter.byTable)).toMatchObject({
       projects: 1,
-      members: 1,
-      rank_definitions: 1,
+      organization_members: 1,
+      organization_ranks: 1,
     });
   });
 
@@ -326,13 +326,15 @@ describe("$ownsProject, measured", () => {
     // A rank that grants only the floor. Written directly, because what is
     // under test is the READ path's caching, not the write path's rules.
     const row = await ctx.repos.members.findOne({
-      where: { projectId: { eq: project.id }, userId: { eq: user.id } },
+      where: {
+        organizationId: { eq: project.organizationId! },
+        userId: { eq: user.id },
+      },
     });
     await ctx.alepha
       .inject(RankService)
       .save(
-        "project",
-        String(project.id),
+        project.organizationId!,
         { key: "walled", name: "Walled", permissions: ["project:read"] },
         { id: project.createdBy, roles: ["user"] },
       );
@@ -388,7 +390,7 @@ describe("$ownsProject, measured", () => {
     // LATER request.
     expect({
       projects: ctx.counter.of("projects"),
-      members: ctx.counter.of("members"),
+      members: ctx.counter.of("organization_members"),
     }).toEqual({ projects: 7, members: 7 });
   });
 
@@ -413,6 +415,6 @@ describe("$ownsProject, measured", () => {
     // would read once and keep answering - including for a membership
     // revoked in between, which is exactly the property the 30s project
     // cache is allowed to lose and this one is not.
-    expect(ctx.counter.of("members")).toBe(2);
+    expect(ctx.counter.of("organization_members")).toBe(2);
   });
 });

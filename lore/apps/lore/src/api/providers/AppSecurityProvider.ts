@@ -1,5 +1,5 @@
 import { $env, $inject, Alepha, z } from "alepha";
-import { InvitationRegistrationService } from "alepha/api/invitations";
+import { InvitationRegistrationService } from "alepha/api/organizations";
 import { $realm } from "alepha/api/users";
 
 /**

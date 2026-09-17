@@ -1,12 +1,10 @@
 import { $inject } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { type OrganizationMember, RankService } from "alepha/api/organizations";
 import { SecurityProvider, type UserAccountToken } from "alepha/security";
 
-import type { Member } from "../entities/members.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-import { ProjectRankResource } from "./ProjectRankResource.ts";
 
 /**
  * The caller's **effective** permission set inside one project, computed once,
@@ -47,7 +45,7 @@ export class ProjectPermissions {
   public async of(
     projectId: number,
     user: UserAccountToken,
-    member: Member | undefined,
+    member: OrganizationMember | undefined,
   ): Promise<ProjectPermissionSet> {
     const registered = this.security
       .getPermissions()
@@ -81,14 +79,13 @@ export class ProjectPermissions {
     );
 
     // 2. The rank, from the membership row the gate already read.
-    const key = member?.rank ?? ProjectRankResource.DEFAULT_KEY;
+    const key = member?.rank ?? "member";
+    const organizationId =
+      await this.projectSecurity.organizationIdOf(projectId);
     const rank = member
-      ? (await this.ranks.ranksOf("project", String(projectId))).find(
-          (it) => it.key === key,
-        )
+      ? (await this.ranks.ranksOf(organizationId)).find((it) => it.key === key)
       : undefined;
-    const granted =
-      (await this.ranks.permissionsOf("project", String(projectId), key)) ?? [];
+    const granted = (await this.ranks.permissionsOf(organizationId, key)) ?? [];
 
     // 3. The capabilities that are on. A permission whose group belongs to a
     // capability the project does not have is not offerable, whatever any rank

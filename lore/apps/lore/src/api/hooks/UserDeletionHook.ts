@@ -2,9 +2,8 @@ import { $hook, $inject, z } from "alepha";
 import { NotificationInboxService } from "alepha/api/notifications";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, ConflictError } from "alepha/server";
+import { $action } from "alepha/server";
 
-import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 
 /**
@@ -49,7 +48,6 @@ import { quests } from "../entities/quests.ts";
  * read filters it out — nothing can `assertOwner` on a row nothing returns.
  */
 export class UserDeletionHook {
-  protected readonly projects = $repository(projects);
   protected readonly quests = $repository(quests);
   protected readonly inbox = $inject(NotificationInboxService);
 
@@ -74,17 +72,9 @@ export class UserDeletionHook {
   onUserDelete = $hook({
     on: "user:delete:before",
     handler: async ({ userId }) => {
-      const owned = await this.projects.count({ createdBy: { eq: userId } });
-
-      if (owned > 0) {
-        throw new ConflictError(
-          owned === 1
-            ? "You still own 1 project. Delete it before deleting your account."
-            : `You still own ${owned} projects. Delete them before deleting your account.`,
-        );
-      }
-
-      // Past the refusal, so the account really is going.
+      // The organizations module registered its ownership refusal before
+      // this application hook, so reaching this handler means deletion will
+      // proceed and inbox cleanup cannot run for a refused account.
       await this.inbox.deleteForUser(userId);
     },
   });

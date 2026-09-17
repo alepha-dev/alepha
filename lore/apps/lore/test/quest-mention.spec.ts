@@ -5,6 +5,7 @@ import {
   NotificationInboxRecipientProvider,
   NotificationJobs,
 } from "alepha/api/notifications";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -17,11 +18,11 @@ import { describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestCommentController } from "../src/api/controllers/QuestCommentController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * The inbox is read directly rather than through the controller: the point
@@ -132,8 +133,8 @@ const seed = async (ctx: Ctx) => {
   );
   const projectId = project.data.id;
 
-  await ctx.probe.members.create({ userId: mentioned.id, projectId });
-  await ctx.probe.members.create({ userId: bystander.id, projectId });
+  await createTestMemberByProjectId(ctx.alepha, projectId, mentioned.id);
+  await createTestMemberByProjectId(ctx.alepha, projectId, bystander.id);
 
   const quest = await ctx.quests.createQuest.fetch(
     {

@@ -18,6 +18,7 @@ import { FolioTools } from "../src/mcp/tools/FolioTools.ts";
 import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 import { ReleaseTools } from "../src/mcp/tools/ReleaseTools.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * `project_activity`: one call for everything that moved, which is what
@@ -83,12 +84,10 @@ const setup = async () => {
   // The second account has to be a member before it can act on the project.
   // Direct repo insert, same as `project-leave.spec.ts`: the standard path
   // is through invitations, which is more plumbing than this needs.
-  await (projectApi as any).members.create({
-    userId: MATE,
-    projectId: project.id,
-  });
+  await createTestMemberByProjectId(alepha, project.id, MATE);
 
   return {
+    alepha,
     questTools,
     projectTools,
     epicTools,
@@ -210,6 +209,7 @@ describe("Lore MCP: project_activity", () => {
 
   it("never reports another project's events", async () => {
     const {
+      alepha,
       questTools,
       projectTools,
       projectApi,
@@ -233,10 +233,7 @@ describe("Lore MCP: project_activity", () => {
         },
       } as any),
     );
-    await (projectApi as any).members.create({
-      userId: MATE,
-      projectId: other.id,
-    });
+    await createTestMemberByProjectId(alepha, other.id, MATE);
 
     const since = anHourAgo(dt);
     await call(

@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -242,8 +242,7 @@ describe("the command palette and capabilities", () => {
     await numbered(project);
 
     await ctx.alepha.inject(RankService).save(
-      "project",
-      String(project.id),
+      project.organizationId!,
       {
         key: "no-feedback",
         name: "No feedback",

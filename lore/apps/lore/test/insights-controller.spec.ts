@@ -1,5 +1,6 @@
 import { VITALS_BUCKETS } from "@alepha/lore/sigil";
 import { $inject, Alepha, z } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -14,12 +15,12 @@ import { InsightsController } from "../src/api/controllers/InsightsController.ts
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
-import { members } from "../src/api/entities/members.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreAnalyticsStore } from "../src/api/services/LoreAnalyticsStore.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -1633,7 +1634,7 @@ describe("InsightsController", () => {
     const stranger = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
     await createSigil(ctx, projectId, "lore-prod", owner);
-    await ctx.probe.members.create({ userId: member.id, projectId });
+    await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
 
     const res = await ctx.insightsController.getInsights.fetch(
       { params: { projectId }, query: { range: "7d" } },

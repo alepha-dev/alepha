@@ -3,10 +3,12 @@ import {
   AlephaApiAnalyticsAdmin,
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
-import { AlephaApiInvitations } from "alepha/api/invitations";
 import { AlephaApiJobsQueue } from "alepha/api/jobs";
-import { AlephaApiOrganizations } from "alepha/api/organizations";
-import { AlephaApiRanks } from "alepha/api/ranks";
+import {
+  AlephaApiOrganizations,
+  organizationConfigAtom,
+  OrganizationPolicyProvider,
+} from "alepha/api/organizations";
 import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
@@ -51,6 +53,7 @@ import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
+import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
@@ -69,10 +72,9 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
-import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
+import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
-import { ProjectRankResource } from "./security/ProjectRankResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
@@ -108,6 +110,7 @@ import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
+import { FrozenLegacyOrganizationTables } from "./services/FrozenLegacyOrganizationTables.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
@@ -150,13 +153,11 @@ export const LoreApi = $module({
   // `AlephaApiAnalyticsAdmin` is the opt-in admin query surface behind
   // `admin:analytics:read` — it feeds the /admin/analytics page.
   //
-  // `AlephaApiInvitations` brings the invitation lifecycle, its hourly expiry
-  // and purge jobs, and the `admin:invitation:*` surface. What a project IS
-  // stays here, in `ProjectInvitationResource`.
+  // `AlephaApiOrganizations` owns the membership, rank, and invitation
+  // lifecycle. Lore supplies the project-specific policy and notifications.
   imports: [
     AlephaApiAnalyticsRollup,
     AlephaApiAnalyticsAdmin,
-    AlephaApiInvitations,
     // ⚠️ **Without this every `$job` runs inside `executionCtx.waitUntil`,
     // which Cloudflare cuts off about 30 seconds after the response.** That
     // is not a slow path, it is a hard ceiling, and `deploys.run` is the
@@ -180,14 +181,8 @@ export const LoreApi = $module({
     // the outbox row is the guarantee and the reconciliation sweep is the
     // backstop.
     AlephaApiJobsQueue,
-    // The rank module. Registering it IS what substitutes the grants
-    // provider `$owns({ requires })` asks, so it has to come before the
-    // controllers whose gates use one - which is what `imports:` guarantees.
-    // What a project's rank MEANS stays here, in `ProjectRankResource`.
-    AlephaApiRanks,
-    // Mounted beside the legacy rank and invitation modules for the migration
-    // window. The legacy grants provider stays active until the project gate
-    // moves to organization membership.
+    // Registering this module installs the grants provider used by
+    // `$ownsOrganization`, before the controllers whose gates depend on it.
     AlephaApiOrganizations,
     LoreDashboardCatalog,
     // The estates websocket (epic #20). The first websocket in Lore: on
@@ -236,6 +231,9 @@ export const LoreApi = $module({
     // snapshot now that nothing else holds a repository on either — see its
     // own doc for why that would otherwise read as a dropped table.
     FrozenSigilAnalyticsTables,
+    // The same schema-only registration for Lore's retired membership, rank,
+    // and invitation tables. Application code uses `organization_*` only.
+    FrozenLegacyOrganizationTables,
     FolioNameService,
     FolioDirectoryService,
     FolioAttachmentService,
@@ -244,11 +242,9 @@ export const LoreApi = $module({
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
-    ProjectInvitationResource,
     // Declares the `$rankResource` for `type: "project"`, for the same
     // reason: unlisted, the ranks module knows about no scope at all and
     // every `requires` allows.
-    ProjectRankResource,
     ProjectRankPresets,
     QuestJobs,
     BlightJobs,
@@ -258,6 +254,7 @@ export const LoreApi = $module({
     EstateCommandJobs,
     EstateCredentialJobs,
     UserDeletionHook,
+    OrganizationHooks,
     QuestNotifications,
     EstateNotifications,
     InvitationNotifications,
@@ -416,4 +413,16 @@ export const LoreApi = $module({
     // gated by `$ownsProject`, where home's hang off `/me` and cannot be.
     ProjectDashboardController,
   ],
+  register: (alepha) => {
+    alepha.with({
+      provide: OrganizationPolicyProvider,
+      use: LoreOrganizationPolicyProvider,
+    });
+    alepha.store.set(organizationConfigAtom, {
+      ...alepha.store.get(organizationConfigAtom),
+      memberPermissions: LorePermissions.MEMBER_DEFAULT,
+      floor: LorePermissions.FLOOR,
+      ownerOnly: LorePermissions.OWNER_ONLY,
+    });
+  },
 });
