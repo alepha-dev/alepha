@@ -12,7 +12,10 @@ import type {
 } from "alepha/orm";
 import { FileSystemProvider } from "alepha/system";
 
-import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
+import {
+  type AppEntry,
+  AppEntryProvider,
+} from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 
@@ -813,12 +816,11 @@ export class DbCommand {
           env: {
             ALEPHA_CLI_IMPORT: "true",
             NODE_PATH: drizzleOrm.nodePath,
-            // The resolver hook goes in FIRST: it has to be registered before
-            // tsx patches the CJS loader, or tsx resolves ahead of it.
+            // No TypeScript loader: the entities module loads the app through
+            // Vite (see generateEntitiesJs), which transforms it.
             NODE_OPTIONS: [
               process.env.NODE_OPTIONS,
               `--import "${drizzleOrm.hookUrl}"`,
-              "--import tsx",
             ]
               .filter(Boolean)
               .join(" "),
@@ -1427,7 +1429,7 @@ if (typeof registerHooks === "function") {
       ? Object.keys(options.kit.getModelsWithoutSchema(options.provider))
       : Object.keys(options.kit.getModels(options.provider));
     const entitiesJs = this.generateEntitiesJs(
-      options.entry,
+      { root: options.rootDir, server: options.entry },
       options.providerName,
       models,
       withoutSchema,
@@ -1515,9 +1517,18 @@ if (typeof registerHooks === "function") {
    *
    * When `withoutSchema` is true, uses `getModelsWithoutSchema()` to produce
    * schema-free models for migration generation.
+   *
+   * drizzle-kit imports this module natively, in a process of its own. The
+   * module loads the app through {@link ViteUtils.runAlepha}, the same path
+   * `migrations check` and the CLI itself take, rather than importing the
+   * entry with plain Node: that used to fail on anything only Vite
+   * understands in the server's import graph (an `?raw` asset, a CSS import),
+   * so `create` broke on apps that `check` passed. The ORM classes come from
+   * the app's graph for the same reason {@link ViteUtils.importFromAppGraph}
+   * exists: a native import of `alepha/orm` can be a second copy of them.
    */
   public generateEntitiesJs(
-    entry: string,
+    entry: AppEntry,
     provider: string,
     models: string[] = [],
     withoutSchema = false,
@@ -1526,21 +1537,28 @@ if (typeof registerHooks === "function") {
       ? "kit.getModelsWithoutSchema(provider)"
       : "kit.getModels(provider)";
 
-    // Interpolated as JSON, not into bare quotes: `entry` is a filesystem path
-    // and `provider` a name, and either containing a quote or a backslash —
-    // every Windows path contains backslashes — produces a module that does not
-    // parse, or worse, one that parses as something else.
-    const entrySpecifier = JSON.stringify(entry);
+    // Interpolated as JSON, not into bare quotes: the entry holds filesystem
+    // paths and `provider` is a name, and either containing a quote or a
+    // backslash (every Windows path contains backslashes) produces a module
+    // that does not parse, or worse, one that parses as something else.
+    const appEntry = JSON.stringify({ root: entry.root, server: entry.server });
     const providerName = JSON.stringify(provider);
 
     return `
-import ${entrySpecifier};
-import { DrizzleKitProvider, Repository } from "alepha/orm";
+import { Alepha } from "alepha";
+import { ViteUtils } from "alepha/cli";
 
-const alepha = globalThis.__alepha;
-const kit = alepha.inject(DrizzleKitProvider);
-const provider = alepha.services(Repository).find((it) => it.provider.name === ${providerName}).provider;
-const models = ${getModelsCall};
+const vite = Alepha.create().inject(ViteUtils);
+let models;
+try {
+  const alepha = await vite.runAlepha({ entry: ${appEntry}, mode: "development" });
+  const { DrizzleKitProvider, Repository } = await vite.importFromAppGraph("alepha/orm");
+  const kit = alepha.inject(DrizzleKitProvider);
+  const provider = alepha.services(Repository).find((it) => it.provider.name === ${providerName}).provider;
+  models = ${getModelsCall};
+} finally {
+  await vite.close();
+}
 
 ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
 

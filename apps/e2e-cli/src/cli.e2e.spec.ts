@@ -543,6 +543,51 @@ describe("Alepha CLI E2E", () => {
       expect(result.exitCode).toBe(0);
       expect(existsSync(join(SAAS_DIR, "dist/index.js"))).toBe(true);
     });
+
+    /**
+     * `migrations create` hands the entities to drizzle-kit in a process of
+     * its own, and that process used to import the server entry with plain
+     * Node and `tsx`. Anything only Vite understands in the server's import
+     * graph (here an `?raw` asset, the way an icon set is usually inlined)
+     * then failed with `Unknown file extension ".svg"`, while
+     * `migrations check`, which loads the app through Vite, stayed green.
+     * Init's own migration only warns when it fails, so it proves nothing
+     * here: the committed baseline has to be what `create` reads back as
+     * unchanged.
+     */
+    it("creates migrations when the server graph imports an ?raw asset", async () => {
+      const webIndex = join(SAAS_DIR, "src/web/index.ts");
+      const original = await readFile(webIndex, "utf-8");
+      await writeFile(
+        join(SAAS_DIR, "src/web/icon.svg"),
+        '<svg xmlns="http://www.w3.org/2000/svg"></svg>\n',
+      );
+      await writeFile(
+        webIndex,
+        `import iconRaw from "./icon.svg?raw";\n\nexport const icon: string = iconRaw;\n\n${original}`,
+      );
+
+      try {
+        expect(existsSync(join(SAAS_DIR, "migrations"))).toBe(true);
+
+        const result = await run(
+          `"${SAAS_CLI}" db migrations create`,
+          SAAS_DIR,
+          300_000,
+        );
+
+        if (result.exitCode !== 0) {
+          console.log("SAAS MIGRATIONS OUTPUT:", result.stdout.slice(-3000));
+          console.log("SAAS MIGRATIONS STDERR:", result.stderr.slice(-3000));
+        }
+
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("No schema changes");
+      } finally {
+        await writeFile(webIndex, original);
+        await rm(join(SAAS_DIR, "src/web/icon.svg"), { force: true });
+      }
+    });
   });
 
   describe("help and usage", () => {
