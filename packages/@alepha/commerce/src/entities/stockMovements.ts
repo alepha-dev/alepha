@@ -25,8 +25,6 @@ export const stockMovements = $entity({
   schema: z.object({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
-    organizationId: db.organization(),
-
     productId: z.uuid(),
 
     /**
@@ -43,10 +41,7 @@ export const stockMovements = $entity({
 
     note: z.text({ maxLength: 500 }).optional(),
   }),
-  indexes: [
-    { columns: ["organizationId", "productId"] },
-    { columns: ["orderId"] },
-  ],
+  indexes: [{ columns: ["productId"] }, { columns: ["orderId"] }],
 });
 
 export type StockMovementEntity = Infer<typeof stockMovements.schema>;

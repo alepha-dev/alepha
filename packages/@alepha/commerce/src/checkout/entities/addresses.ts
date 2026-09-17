@@ -20,8 +20,6 @@ export const addresses = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     /**
      * Null for a guest checkout: the address exists but belongs to nobody.
      */
@@ -51,10 +49,7 @@ export const addresses = $entity({
      */
     isDefault: db.default(z.boolean(), false),
   }),
-  indexes: [
-    { columns: ["organizationId", "userId"] },
-    { columns: ["organizationId", "country"] },
-  ],
+  indexes: [{ columns: ["userId"] }, { columns: ["country"] }],
 });
 
 export type AddressEntity = Infer<typeof addresses.schema>;

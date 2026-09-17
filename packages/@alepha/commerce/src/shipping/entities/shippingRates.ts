@@ -18,8 +18,6 @@ export const shippingRates = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     zoneId: db.ref(z.uuid(), () => shippingZones.cols.id, {
       onDelete: "cascade",
     }),
@@ -65,7 +63,7 @@ export const shippingRates = $entity({
      * return first. `products.slug` and `invoices.number` are unique for the
      * same reason.
      */
-    { columns: ["organizationId", "code"], unique: true },
+    { columns: ["code"], unique: true },
   ],
 });
 

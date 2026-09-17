@@ -38,8 +38,8 @@ export class InvoiceService {
   protected readonly seller = $store(sellerIdentityAtom);
 
   /**
-   * One counter per organisation and year, so numbering restarts each January
-   * without ever colliding — the usual French practice.
+   * One counter per year, so numbering restarts each January without ever
+   * colliding. The `default:` prefix preserves the historical sequence scope.
    */
   protected readonly invoiceNumber = $sequence({ name: "commerce_invoice" });
 
@@ -119,9 +119,7 @@ export class InvoiceService {
       // In the seller's timezone, not UTC — see `issuedOn`.
       const issuedAt = this.issuedOn(seller.timezone);
       const year = Number(issuedAt.slice(0, 4));
-      const seq = await this.invoiceNumber.next(
-        `${order.organizationId ?? "default"}:${year}`,
-      );
+      const seq = await this.invoiceNumber.next(`default:${year}`);
 
       return this.repo.create({
         number: this.formatNumber(seller.numberPrefix, year, seq),
@@ -171,9 +169,7 @@ export class InvoiceService {
       const seller = this.seller;
       const issuedAt = this.issuedOn(seller.timezone);
       const year = Number(issuedAt.slice(0, 4));
-      const seq = await this.invoiceNumber.next(
-        `${original.organizationId ?? "default"}:${year}`,
-      );
+      const seq = await this.invoiceNumber.next(`default:${year}`);
 
       return this.repo.create({
         number: this.formatNumber(seller.numberPrefix, year, seq),

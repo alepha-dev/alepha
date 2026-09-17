@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
+import { SequenceProvider } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
@@ -68,6 +69,7 @@ const setup = async (
     invoices: alepha.inject(InvoiceService),
     renderer: alepha.inject(InvoiceRenderer),
     vat: alepha.inject(VatCalculator),
+    sequences: alepha.inject(SequenceProvider),
     clock: alepha.inject(DateTimeProvider) as PinnableClock,
   };
   await alepha.start();
@@ -325,6 +327,19 @@ describe("invoice issuing", () => {
       `FA-${year}-000003`,
       `FA-${year}-000004`,
     ]);
+  });
+
+  it("continues the historical default year sequence", async ({ expect }) => {
+    const ctx = await setup();
+    const year = new Date().getFullYear();
+    await ctx.sequences.reset("commerce_invoice", `default:${year}`, 41);
+    const ring = await aRing(ctx.catalog);
+    await ctx.stock.recordIntake(ring.id, 1);
+
+    const orderId = await sell(ctx, ring.id);
+    const [invoice] = await ctx.invoices.listForOrder(orderId);
+
+    expect(invoice!.number).toBe(`FA-${year}-000042`);
   });
 
   it("does not issue twice for a redelivered webhook", async ({ expect }) => {

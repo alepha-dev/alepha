@@ -30,8 +30,6 @@ export const stockReservations = $entity({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     productId: z.uuid(),
     quantity: z.integer().min(1),
 
@@ -50,7 +48,7 @@ export const stockReservations = $entity({
     expiresAt: z.text(),
   }),
   indexes: [
-    { columns: ["organizationId", "productId", "status"] },
+    { columns: ["productId", "status"] },
     { columns: ["orderId"] },
     { columns: ["status", "expiresAt"] },
   ],

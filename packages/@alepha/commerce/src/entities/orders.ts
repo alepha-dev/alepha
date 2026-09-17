@@ -23,8 +23,6 @@ export const orders = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     /**
      * Buyer. Optional — a walk-in sale is anonymous.
      */
@@ -120,10 +118,9 @@ export const orders = $entity({
     strayCaptures: z.array(z.json()).optional(),
   }),
   indexes: [
-    { columns: ["organizationId"] },
-    { columns: ["organizationId", "status"] },
-    { columns: ["organizationId", "userId"] },
-    { columns: ["organizationId", "createdAt"] },
+    { columns: ["status"] },
+    { columns: ["userId"] },
+    { columns: ["createdAt"] },
   ],
 });
 

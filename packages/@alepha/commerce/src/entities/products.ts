@@ -27,8 +27,6 @@ export const products = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     /**
      * Registered with {@link ProductKindRegistry}. Core knows `good`.
      */
@@ -103,10 +101,9 @@ export const products = $entity({
     published: db.default(z.boolean(), false),
   }),
   indexes: [
-    { columns: ["organizationId"] },
-    { columns: ["organizationId", "slug"], unique: true },
-    { columns: ["organizationId", "kind"] },
-    { columns: ["organizationId", "published"] },
+    { columns: ["slug"], unique: true },
+    { columns: ["kind"] },
+    { columns: ["published"] },
   ],
 });
 

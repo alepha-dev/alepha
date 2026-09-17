@@ -17,8 +17,6 @@ export const shippingZones = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     name: z.text({ minLength: 1, maxLength: 100 }),
 
     /**
@@ -32,10 +30,7 @@ export const shippingZones = $entity({
      */
     priority: db.default(z.integer(), 0),
   }),
-  indexes: [
-    { columns: ["organizationId"] },
-    { columns: ["organizationId", "priority"] },
-  ],
+  indexes: [{ columns: ["priority"] }],
 });
 
 export type ShippingZoneEntity = Infer<typeof shippingZones.schema>;

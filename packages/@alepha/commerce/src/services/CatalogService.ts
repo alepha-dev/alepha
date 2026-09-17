@@ -157,8 +157,8 @@ export class CatalogService {
    *
    * The slug walks forward from the current row count rather than from 1, so a
    * catalogue of 200 does not probe 200 taken slugs to find a free one. Two
-   * operators clicking at once still collide — `(organizationId, slug)` is
-   * unique — which is why a failed insert re-checks and moves on rather than
+   * operators clicking at once still collide because `slug` is unique, which
+   * is why a failed insert re-checks and moves on rather than
    * surfacing a constraint error to whoever clicked second.
    */
   public async createDraft(): Promise<ProductEntity> {

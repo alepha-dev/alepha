@@ -18,8 +18,6 @@ export const carts = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     /**
      * Opaque handle for an anonymous visitor.
      */
@@ -39,7 +37,7 @@ export const carts = $entity({
   }),
   indexes: [
     { columns: ["token"], unique: true },
-    { columns: ["organizationId", "userId"] },
+    { columns: ["userId"] },
     { columns: ["expiresAt"] },
   ],
 });

@@ -21,10 +21,8 @@ export const invoices = $entity({
   schema: z.object({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
-    organizationId: db.organization(),
-
     /**
-     * The legal number: gapless, sequential, per organisation and year. Unique,
+     * The legal number: gapless and sequential within each year. Unique,
      * because a duplicate is the one failure mode an auditor looks for.
      */
     number: z.text({ minLength: 1, maxLength: 40 }),
@@ -101,9 +99,9 @@ export const invoices = $entity({
     currency: z.text({ minLength: 3, maxLength: 3 }),
   }),
   indexes: [
-    { columns: ["organizationId", "number"], unique: true },
+    { columns: ["number"], unique: true },
     { columns: ["orderId"] },
-    { columns: ["organizationId", "year"] },
+    { columns: ["year"] },
   ],
 });
 

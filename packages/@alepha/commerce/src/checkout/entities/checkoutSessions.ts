@@ -39,8 +39,6 @@ export const checkoutSessions = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    organizationId: db.organization(),
-
     /**
      * Plain uuid: a cart may be swept while an abandoned checkout lingers.
      */
@@ -78,9 +76,8 @@ export const checkoutSessions = $entity({
     paymentIntentId: z.text().optional(),
   }),
   indexes: [
-    { columns: ["organizationId"] },
     { columns: ["cartId"] },
-    { columns: ["organizationId", "status"] },
+    { columns: ["status"] },
     { columns: ["orderId"] },
   ],
 });

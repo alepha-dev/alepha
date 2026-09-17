@@ -10,9 +10,9 @@ import { StockService } from "../services/StockService.ts";
  * A product as a storefront needs it.
  *
  * Spelled out rather than `products.schema.extend({ available })`: the entity
- * schema is the wrong contract for a public endpoint, it would ship
- * `organizationId` and the row version to anyone who asked. (The admin
- * controller does extend it, for an audience that may see those.)
+ * schema is the wrong contract for a public endpoint, it would ship the row
+ * version to anyone who asked. (The admin controller does extend it, for an
+ * audience that may see that.)
  *
  * `available` and not `onHand`: what is in the drawer is nobody's business, and
  * quoting it would promise units already in someone else's checkout.
