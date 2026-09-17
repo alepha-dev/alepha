@@ -59,13 +59,6 @@
       "import": "./src/api/files/index.ts",
       "default": "./src/api/files/index.ts"
     },
-    "./api/invitations": {
-      "types": "./src/api/invitations/index.ts",
-      "react-native": "./src/api/invitations/index.browser.ts",
-      "browser": "./src/api/invitations/index.browser.ts",
-      "import": "./src/api/invitations/index.ts",
-      "default": "./src/api/invitations/index.ts"
-    },
     "./api/jobs": {
       "types": "./src/api/jobs/index.ts",
       "react-native": "./src/api/jobs/index.browser.ts",
@@ -108,13 +101,6 @@
       "types": "./src/api/payments/index.ts",
       "import": "./src/api/payments/index.ts",
       "default": "./src/api/payments/index.ts"
-    },
-    "./api/ranks": {
-      "types": "./src/api/ranks/index.ts",
-      "react-native": "./src/api/ranks/index.browser.ts",
-      "browser": "./src/api/ranks/index.browser.ts",
-      "import": "./src/api/ranks/index.ts",
-      "default": "./src/api/ranks/index.ts"
     },
     "./api/users": {
       "types": "./src/api/users/index.ts",
@@ -526,13 +512,6 @@
         "import": "./dist/api/files/index.js",
         "default": "./dist/api/files/index.js"
       },
-      "./api/invitations": {
-        "types": "./dist/api/invitations/index.d.ts",
-        "react-native": "./dist/api/invitations/index.browser.js",
-        "browser": "./dist/api/invitations/index.browser.js",
-        "import": "./dist/api/invitations/index.js",
-        "default": "./dist/api/invitations/index.js"
-      },
       "./api/jobs": {
         "types": "./dist/api/jobs/index.d.ts",
         "react-native": "./dist/api/jobs/index.browser.js",
@@ -575,13 +554,6 @@
         "types": "./dist/api/payments/index.d.ts",
         "import": "./dist/api/payments/index.js",
         "default": "./dist/api/payments/index.js"
-      },
-      "./api/ranks": {
-        "types": "./dist/api/ranks/index.d.ts",
-        "react-native": "./dist/api/ranks/index.browser.js",
-        "browser": "./dist/api/ranks/index.browser.js",
-        "import": "./dist/api/ranks/index.js",
-        "default": "./dist/api/ranks/index.js"
       },
       "./api/users": {
         "types": "./dist/api/users/index.d.ts",

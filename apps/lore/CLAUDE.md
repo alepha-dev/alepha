@@ -38,7 +38,7 @@ apps/lore/                # This app
 │   ├── api/              # Backend
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
-│   │   ├── providers/    # AppSecurityProvider (the `$realm`; the membership/owner gates are `services/ProjectSecurityService`), ProjectInvitationResource (the `$invitationResource` for `type: "project"`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
+│   │   ├── providers/    # AppSecurityProvider (the `$realm`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report)
 │   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep), ProjectRankJobs (preset-rank backfill)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
@@ -58,18 +58,14 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (34)** - `App` (every write to a deployed copy: create, rename either half, url, estate, delete - see "Apps and instances" below), `AppSecret` (the Environment tab: list masked, set, delete; reads member-gated, writes owner-gated behind `apps.deploy`, and no response ever carries a value), `Artifact`, `Blight`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is real since #1813, resolved from the estate plus the command's own `(app, environment)` and refused rather than guessed when that names more than one copy; ⚠️ it never carries a name Bay writes itself (`BAY_OWNED_SECRET_KEYS`), because Bay refuses such a set and fails the whole deploy, #Q2250), `AdminEstate` (the instance-wide backstop for an estate whose owner is gone: list and delete behind `admin:estate:read` / `admin:estate:delete`, masked like the owner's own view, no credential for the admin role either; #1838), `ProjectEstate`, `ProjectRank` (one action: the three presets computed from the project's enabled capabilities, which neither `alepha/api/ranks` nor the browser can work out - everything else about ranks is the module's own controller), `Feedback`, `FeedbackComment`, `Folio`, `FolioAttachment`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+**Controllers (34)** - `App` (every write to a deployed copy: create, rename either half, url, estate, delete - see "Apps and instances" below), `AppSecret` (the Environment tab: list masked, set, delete; reads member-gated, writes owner-gated behind `apps.deploy`, and no response ever carries a value), `Artifact`, `Blight`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is real since #1813, resolved from the estate plus the command's own `(app, environment)` and refused rather than guessed when that names more than one copy; it never carries a name Bay writes itself (`BAY_OWNED_SECRET_KEYS`), because Bay refuses such a set and fails the whole deploy, #Q2250), `AdminEstate` (the instance-wide backstop for an estate whose owner is gone: list and delete behind `admin:estate:read` / `admin:estate:delete`, masked like the owner's own view, no credential for the admin role either; #1838), `ProjectEstate`, `ProjectRank` (one action: the three presets computed from the project's enabled capabilities; everything else about ranks is `alepha/api/organizations`), `Feedback`, `FeedbackComment`, `Folio`, `FolioAttachment`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
 
-> **Invitations moved out of Lore entirely** (epic #23, quest #1663). The
-> entity, `InvitationService`, `InvitationJobs` and `AdminInvitationController`
-> now live in `alepha/api/invitations`; what a _project_ is lives in
-> `src/api/providers/ProjectInvitationResource.ts`, the one
-> `$invitationResource` Lore declares. `InvitationController` (the
-> owner/inbox routes) and `InvitationNotifications` (the mail) stay here,
-> because both are Lore's own surface. `accept` now answers
-> `{ resourceType, resourceId }` and `listForUser` answers `resourceTitle`;
-> `InvitationController` maps both back onto `projectId` / `projectTitle` so
-> the HTTP contract and the UI are unchanged.
+> **Project invitations are organization invitations.** The entity, services,
+> jobs, admin controller, membership grant, and signup token live in
+> `alepha/api/organizations`. Lore's `InvitationController` preserves the
+> older project-shaped HTTP surface where clients still need it, mapping a
+> project to its required `organizationId`. `InvitationNotifications` owns
+> the product-specific mail.
 >
 > ⚠️ The `invitations` table kept its two foreign keys into `users` on disk
 > while the entity stopped declaring them, deliberately. See
@@ -88,7 +84,7 @@ apps/lore/                # This app
 > `MySessionController`'s actions verbatim. Reach for the `alepha/api/users` and
 > `alepha/api/oauth` controllers instead of re-adding an app-local one.
 
-**Entities (37)** - `appInstances` (one deployed copy of one app, the pair `(app, env)`; **there is no `apps` table** - see "Apps and instances" below), `appSecrets` (that copy's environment, one row per variable, the value sealed under `lore:app-secrets:v1` and never read back by any endpoint; cascades from `app_instances`), `artifacts`, `blightIgnoreRules`, `blights`, `estates` (a user-owned deploy destination, lent to projects; epic #20, folio #1194), `estateProjects` (the lending join), `estateCommands` (the queue behind the connector, `pending` to `sent` to `running` to `done` or `failed`, swept by `EstateCommandJobs`), `feedback`, `feedbackComments`, `files`, `folioAttachments`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`, plus `rank_definitions` from `alepha/api/ranks` (Lore declares no entity for ranks: the definitions belong to the module, and the ASSIGNMENT is a column on `members`).
+**Entities (37)** - `appInstances` (one deployed copy of one app, the pair `(app, env)`; **there is no `apps` table** - see "Apps and instances" below), `appSecrets` (that copy's environment, one row per variable, the value sealed under `lore:app-secrets:v1` and never read back by any endpoint; cascades from `app_instances`), `artifacts`, `blightIgnoreRules`, `blights`, `estates` (a user-owned deploy destination, lent to projects; epic #20, folio #1194), `estateProjects` (the lending join), `estateCommands` (the queue behind the connector, `pending` to `sent` to `running` to `done` or `failed`, swept by `EstateCommandJobs`), `feedback`, `feedbackComments`, `files`, `folioAttachments`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`. Organization membership, active rank definitions, and invitations are owned by `alepha/api/organizations`. The old `members`, `rank_definitions`, and `invitations` declarations remain under `entities/frozen` only to preserve their deployed tables while migration cleanup is deferred.
 
 **Services (47)** - `AppService` (the one write path for a deployed copy, and the only writer of `sigils.name`), `AppSecretService` (seals, masks, refuses the derived names - and Bay's own names on a copy that deploys to a Bay estate - and owns the ONLY method that decrypts - whose one caller is the deploy), `BlightRuleService`, `EstateCommandService`, `EstateCommandTransport` (the seam; `WebSocketEstateCommandTransport` is the real one, substituted in `main.server.ts`), `EstateService`, `EstateStatsService` (the gauge upsert on the row on every push, and the `estate_stats` `$analytics` series only while `collectSeries` is on; the series is read back as daily means through `series()`, which carries the `estimated` disclosure), `EstateTokenService`, `FeedbackRateLimiter`, `FolioAttachmentService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `ProjectPermissions` (the effective set: application permission AND rank AND capability), `ProjectRankPresets`, `QuestCsvFormatter`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`.
 
@@ -443,24 +439,25 @@ dropping it on D1 triggers a cascade-wipe.
   narrowing only. A rank can never widen what a role grants, and a capability
   that is off removes its permissions from every rank at once.
 - **`projects.createdBy` is not an authorization input.** It cannot be, once
-  ownership can be transferred: `members.rank === "owner"` is the one answer,
-  and the creator column is history. `members.owner` is a frozen dead column
-  whose database default writes `true` on every new row and means nothing.
+  ownership can be transferred: `organization_members.rank === "owner"` is
+  the one answer, and the creator column is history. The old `members` table
+  is frozen and no longer read.
 - **Two acts are owner-only structurally** and are never grantable to a rank:
   `project:delete` and `capability:manage`. One permission is never removable:
   `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
   import - `LorePermissions` imports `$permission`, whose barrel has no
   browser condition.
-- **Ownership is transferred, not assigned.** `assignRank` refuses `owner`;
-  `ProjectController.transferOwnership` swaps the two rows in a single
-  `UPDATE ... CASE ... RETURNING`, because D1 has no transactions and a pair
-  of writes can leave a project with zero owners or two.
+- **Ownership is transferred, not assigned.** `assignOrganizationRank`
+  refuses `owner`; `MemberService.transfer` swaps the two rows in one
+  statement, because D1 has no transactions and a pair of writes can leave an
+  organization with zero owners or two.
 
 The vocabulary is `LorePermissions` (38 declarations, names that can never
-change - they are stored as data in every rank definition), the resource is
-`ProjectRankResource`, the presets are `ProjectRankPresets`, and the module is
-`alepha/api/ranks`. A new project is seeded with Admin, Contributor and Viewer
-as ordinary custom ranks, computed from the capabilities it actually has.
+change - they are stored as data in every rank definition), the active rank
+resource and services live in `alepha/api/organizations`, and the presets are
+`ProjectRankPresets`. A new project is seeded with Admin, Contributor and
+Viewer as ordinary custom ranks, computed from the capabilities it actually
+has.
 
 ⚠️ **A project holding NO definition rows is seeded nightly**
 (`ProjectRankJobs.seedMissingPresetRanks`). `createProject` is the only other
@@ -610,12 +607,11 @@ including `ProjectController`'s own seven, which used to build `$owns` by
 hand and restate the rule.
 
 `ProjectSecurityService.assertMember` / `assertOwner` are **gone**. What
-survives at exactly six call sites is the ranks module's own imperative check
+survives at the documented call sites is the organizations module's imperative check
 (`RankService.assert`), each carrying a `ranks: imperative` marker saying why
 a `use:` entry cannot serve it. Grep for that marker before adding a seventh:
 
 - `LoreFileAccessProvider.assertReadable` - a `$secure` guard on a file route, deciding which project to ask about per bucket.
-- `ProjectInvitationResource.assertCanInvite` - a closure handed to `alepha/api/invitations`, with no middleware chain to sit in.
 - `FeedbackController`'s `ensureOwner` / `ensureMember` - called from handlers, on a project resolved from a feedback row.
 - `ProjectTools`'s project resolver - MCP, and it turns the gate's 403 into a 404 on purpose.
 - `ProjectController.getProjectBySlug` - `$owns` keys on a primary key, and a slug is not one.

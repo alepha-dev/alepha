@@ -38,7 +38,7 @@ const members = $entity({
  * the seam exists for: the rank is a column on a row the gate already read,
  * so this implementation issues no query of its own.
  */
-class RankGrantsProvider extends ResourceGrantsProvider {
+class TestGrantsProvider extends ResourceGrantsProvider {
   public seen: ResourceGrantsRequest[] = [];
   public definitionReads = 0;
   protected readonly memo = $inject(ResourceGateMemoProvider);
@@ -63,7 +63,7 @@ class RankGrantsProvider extends ResourceGrantsProvider {
     );
 
     const rank = (request.membership?.rank as string | undefined) ?? "viewer";
-    const held = RankGrantsProvider.SETS[rank] ?? [];
+    const held = TestGrantsProvider.SETS[rank] ?? [];
     const missing = request.requires.filter((it) => !held.includes(it));
 
     if (missing.length) {
@@ -142,7 +142,7 @@ const createApp = (options: AppOptions = {}) => {
   }).with(AlephaSecurity);
 
   if (options.ranks) {
-    alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });
+    alepha.with({ provide: ResourceGrantsProvider, use: TestGrantsProvider });
   }
 
   class App {
@@ -359,7 +359,7 @@ describe("$owns requires", () => {
 
     await app.createQuest.run({ params: { id: "p1" } }, { user: app.token() });
 
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect(grants.seen).toHaveLength(1);
     expect(grants.seen[0].authority).toMatchObject({
       id: "p1",
@@ -384,7 +384,7 @@ describe("$owns requires", () => {
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
     ).rejects.toThrow(ForbiddenError);
 
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect(grants.seen).toHaveLength(0);
   });
 
@@ -401,7 +401,7 @@ describe("$owns requires", () => {
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
     ).rejects.toThrow("Permission 'quest:create' required");
 
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect(grants.seen).toHaveLength(0);
   });
 
@@ -566,7 +566,7 @@ describe("$owns requires", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(Array(7).fill("p1"));
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect({ ...app.counts(), definitions: grants.definitionReads }).toEqual({
       projects: 1,
       members: 1,

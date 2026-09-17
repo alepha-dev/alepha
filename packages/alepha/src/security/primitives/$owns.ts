@@ -73,8 +73,8 @@ export function $owns(options: OwnsOptions): Middleware {
 
   // ⚠️ Constructed here, at declaration time, which fixes an ordering rule a
   // module that SUBSTITUTES this provider has to respect: it must be
-  // registered before the classes whose gates use it. `alepha/api/ranks` is
-  // the one that does, and getting the order wrong throws
+  // registered before the classes whose gates use it.
+  // `alepha/api/organizations` does that, and getting the order wrong throws
   // `TooLateSubstitutionError` at boot, naming both classes.
   //
   // Loud is the right failure. Resolving it per request instead would throw

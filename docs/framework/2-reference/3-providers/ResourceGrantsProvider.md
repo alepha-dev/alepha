@@ -39,5 +39,7 @@ option. Substitute it the way every other seam in this framework is
 substituted:
 
 ```ts
+import { RankGrantsProvider } from "alepha/api/organizations";
+
 alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });
 ```

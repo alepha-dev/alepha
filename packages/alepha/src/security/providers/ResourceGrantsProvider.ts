@@ -32,6 +32,8 @@ import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
  * substituted:
  *
  * ```ts
+ * import { RankGrantsProvider } from "alepha/api/organizations";
+ *
  * alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });
  * ```
  */
