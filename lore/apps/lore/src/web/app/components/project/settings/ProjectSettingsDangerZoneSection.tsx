@@ -13,6 +13,7 @@ import {
   cn,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import type { MemberController } from "alepha/api/organizations";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -32,6 +33,7 @@ const ProjectSettingsDangerZoneSection = () => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
+  const memberApi = useClient<MemberController>();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -58,13 +60,15 @@ const ProjectSettingsDangerZoneSection = () => {
     {
       handler: async () => {
         if (!project) return;
-        await projectApi.leaveProject({ params: { id: project.id } });
+        await memberApi.leaveOrganization({
+          params: { organizationId: project.organizationId },
+        });
         alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
         setLeaveDialogOpen(false);
         await router.push("home");
       },
     },
-    [projectApi, alepha, router, project],
+    [projectApi, memberApi, alepha, router, project],
   );
 
   if (!project) {

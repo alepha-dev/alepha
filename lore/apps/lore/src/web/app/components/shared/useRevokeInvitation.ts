@@ -1,8 +1,8 @@
 import { useDialog, useToast } from "@alepha/ui";
+import type { OrganizationInvitationController } from "alepha/api/organizations";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -27,16 +27,16 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * resolves `undefined` for it.
  */
 export const useRevokeInvitation = (): RevokeInvitation => {
-  const invitationApi = useClient<InvitationController>();
+  const invitationApi = useClient<OrganizationInvitationController>();
   const toaster = useToast();
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
   const action = useAction<
-    [projectId: number, invitationId: string, email: string],
+    [organizationId: string, invitationId: string, email: string],
     boolean
   >(
     {
-      handler: async (projectId, invitationId, email) => {
+      handler: async (organizationId, invitationId, email) => {
         const confirmed = await dialog.confirm({
           title: tr("project.settings.members.revoke.title"),
           description: tr("project.settings.members.revoke.description", {
@@ -48,8 +48,8 @@ export const useRevokeInvitation = (): RevokeInvitation => {
         });
         if (!confirmed) return false;
 
-        await invitationApi.revokeProjectInvitation({
-          params: { projectId, id: invitationId },
+        await invitationApi.revokeOrganizationInvitation({
+          params: { organizationId, invitationId },
         });
         toaster.success(
           tr("project.settings.members.revoke.done", { args: [email] }),
@@ -63,7 +63,7 @@ export const useRevokeInvitation = (): RevokeInvitation => {
   return {
     revoke: action.run,
     loading: action.loading,
-    can: invitationApi.revokeProjectInvitation.can(),
+    can: invitationApi.revokeOrganizationInvitation.can(),
   };
 };
 
@@ -78,7 +78,7 @@ export interface RevokeInvitation {
    * itself, and is what the server asserts ownership against.
    */
   revoke: (
-    projectId: number,
+    organizationId: string,
     invitationId: string,
     email: string,
   ) => Promise<boolean | undefined>;

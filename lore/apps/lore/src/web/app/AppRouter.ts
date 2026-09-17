@@ -1,8 +1,8 @@
 import { AccountRouter } from "@alepha/ui/account";
 import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { $hook, $inject, Alepha, z } from "alepha";
-import type { AdminInvitationController } from "alepha/api/invitations";
 import type { NotificationInboxController } from "alepha/api/notifications";
+import type { OrganizationInvitationController } from "alepha/api/organizations";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -96,8 +96,8 @@ export class AppRouter {
   projectApi = $client<ProjectController>();
   projectReportsApi = $client<ProjectReportsController>();
   qualityApi = $client<QualityController>();
-  invitationAdminApi = $client<AdminInvitationController>();
   invitationApi = $client<InvitationController>();
+  organizationInvitationApi = $client<OrganizationInvitationController>();
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
   projectDashboardApi = $client<ProjectDashboardController>();
@@ -786,8 +786,7 @@ export class AppRouter {
       ]);
 
       this.alepha.store.set(currentProjectAtom, project);
-      // Q2394 moves this browser atom to the organization member schema.
-      this.alepha.store.set(currentProjectMemberAtom, member as any);
+      this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
       this.alepha.store.set(currentReleasesAtom, releases);
       this.alepha.store.set(currentFeedbackCountAtom, {
@@ -1879,16 +1878,12 @@ export class AppRouter {
           params: { id: project.id },
         }),
         manages
-          ? this.invitationApi.listProjectInvitations({
-              params: { projectId: project.id },
+          ? this.organizationInvitationApi.getOrganizationInvitations({
+              params: { organizationId: project.organizationId },
             })
           : Promise.resolve([]),
       ]);
-      // Q2394 moves the members page onto the organization browser types.
-      return {
-        members: members as any,
-        pendingInvitations: pendingInvitations as any,
-      };
+      return { members, pendingInvitations };
     },
   });
 

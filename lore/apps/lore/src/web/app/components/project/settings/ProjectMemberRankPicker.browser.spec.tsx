@@ -20,6 +20,7 @@ import ProjectMemberRankPicker from "./ProjectMemberRankPicker.tsx";
  * hand, and that is what the last case here is for.
  */
 describe("ProjectMemberRankPicker", () => {
+  const ORGANIZATION_ID = "00000000-0000-4000-8000-000000000002";
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -60,7 +61,7 @@ describe("ProjectMemberRankPicker", () => {
         {
           get: (_target, name) => {
             const fn: any = async (input: Record<string, unknown>) => {
-              if (name === "assignRank") {
+              if (name === "assignOrganizationRank") {
                 this.calls.push(input);
                 if (this.fails) {
                   throw new Error("You cannot change your own rank");
@@ -90,7 +91,7 @@ describe("ProjectMemberRankPicker", () => {
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <ProjectMemberRankPicker
-          projectId={1}
+          organizationId={ORGANIZATION_ID}
           userId="00000000-0000-4000-8000-000000000001"
           rank={rank}
           ranks={RANKS}
