@@ -28,4 +28,12 @@ export class OrganizationPermissions {
     name: "manage",
     label: "permission.member.manage",
   });
+
+  public readonly rankManage = $permission({
+    group: "rank",
+    name: "manage",
+    label: "permission.rank.manage",
+    groupLabel: "permission.group.rank",
+    groupOrder: 3,
+  });
 }
