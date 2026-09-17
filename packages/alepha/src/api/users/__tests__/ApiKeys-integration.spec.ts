@@ -4,10 +4,10 @@ import { Alepha, z } from "alepha";
 import { AdminApiKeyController, ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
+import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { AdminUserController } from "../controllers/AdminUserController.ts";

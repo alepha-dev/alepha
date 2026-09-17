@@ -7,8 +7,8 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/react/testing";
 import { LinkProvider } from "alepha/server/links";
+import { setupJsdomMocks } from "alepha/testing/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 

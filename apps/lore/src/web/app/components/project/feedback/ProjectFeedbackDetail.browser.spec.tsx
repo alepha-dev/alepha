@@ -105,9 +105,9 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
   /**
    * jsdom implements no `ResizeObserver`, and the create-a-quest sheet
    * mounts `@alepha/ui`'s segmented control, which measures itself with
-   * one. Defined here rather than in `vitest.jsdom.ts` because this is the
-   * only spec that needs it so far; the second one that does should move it
-   * there, the way that file asks.
+   * one. Defined here rather than in `alepha/testing/vitest`'s setup file
+   * because this is the only spec that needs it so far; the second one that
+   * does should move it there, the way that file asks.
    */
   beforeAll(() => {
     globalThis.ResizeObserver ??= class {

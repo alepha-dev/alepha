@@ -81,7 +81,7 @@ export class FakeProvider {
    * container reset the sequence of every other one in the process - two
    * containers in a test file, a test and the module it imports - and
    * "random" data repeated between them. It also reset the sequence of any
-   * application code using the `fake` export from `alepha/fake`, which is
+   * application code using the `fake` export from `alepha/testing/faker`, which is
    * that same singleton, from a provider it never asked for.
    */
   protected faker = new Faker({ locale: [allLocales.en, allLocales.base] });

@@ -565,7 +565,11 @@ describe("Alepha CLI E2E", () => {
       const output = result.stdout + result.stderr;
 
       expect(result.exitCode).toBe(1);
-      expect(output).toContain("Unknown flag: --nope");
+      // The reason is a log line, so it is on stderr; the help that follows it
+      // is output, so it is on stdout. Neither leaks into the other stream.
+      expect(result.stderr).toContain("Unknown flag: --nope");
+      expect(result.stdout).not.toContain("Unknown flag");
+      expect(result.stdout).toContain("Usage:");
       // A typo must not print a stack trace through CliProvider internals, nor
       // claim the app "failed to start".
       expect(output).not.toContain("failed to start");
@@ -577,7 +581,9 @@ describe("Alepha CLI E2E", () => {
       const output = result.stdout + result.stderr;
 
       expect(result.exitCode).toBe(1);
-      expect(output).toContain("Unknown command");
+      expect(result.stderr).toContain("Unknown command");
+      expect(result.stdout).not.toContain("Unknown command");
+      expect(result.stdout).toContain("Commands:");
       expect(output).not.toMatch(/^\s+at /m);
     });
   });

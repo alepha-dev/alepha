@@ -40,7 +40,7 @@ export interface DataTableFooterProps {
 export const DataTableFooter = (props: DataTableFooterProps) => {
   const { sizeForm, meta, isMobile, setPage } = props;
   const pageSizes = props.pageSizes ?? PAGE_SIZES;
-  const { tr } = useI18n();
+  const { tr, l } = useI18n();
 
   return (
     /* `bg-muted`, paired with the filter bar above, see the note on it in
@@ -99,20 +99,50 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
             ? // The row range is the half that goes on a phone: "where am
               // I" survives, "how many of how many" does not, and the two
               // together are what pushed this past one line.
-              `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""}${
+              //
+              // Every part is the reader's language: the words through the
+              // catalogue, the numbers through `l()`, so a French table
+              // reads "Page 1 sur 113 · 20 sur 2 250" rather than an English
+              // line with a French table above it (#Q2392).
+              `${
+                meta.totalPages
+                  ? tr("dataTable.pageOf", {
+                      default: "Page $1 of $2",
+                      args: [l(meta.number + 1), l(meta.totalPages)],
+                    })
+                  : tr("dataTable.page", {
+                      default: "Page $1",
+                      args: [l(meta.number + 1)],
+                    })
+              }${
                 isMobile
                   ? ""
-                  : ` · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
+                  : ` · ${tr("dataTable.rowsOf", {
+                      default: "$1 of $2",
+                      args: [
+                        l(meta.numberOfElements),
+                        meta.totalElements === undefined
+                          ? "?"
+                          : l(meta.totalElements),
+                      ],
+                    })}`
               }`
             : "—"}
         </p>
       </div>
       {meta && meta.totalPages && meta.totalPages > 1 ? (
-        <Pagination className="mx-0 w-auto justify-end">
+        <Pagination
+          className="mx-0 w-auto justify-end"
+          aria-label={tr("dataTable.pagination", { default: "Pagination" })}
+        >
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
                 href="#"
+                text={tr("dataTable.previous", { default: "Previous" })}
+                aria-label={tr("dataTable.previousPage", {
+                  default: "Go to previous page",
+                })}
                 onClick={(e) => {
                   e.preventDefault();
                   if (!meta.isFirst) setPage((p) => Math.max(0, p - 1));
@@ -133,7 +163,11 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
                 (item, idx) =>
                   item === "ellipsis" ? (
                     <PaginationItem key={`e-${idx}`}>
-                      <PaginationEllipsis />
+                      <PaginationEllipsis
+                        label={tr("dataTable.morePages", {
+                          default: "More pages",
+                        })}
+                      />
                     </PaginationItem>
                   ) : (
                     <PaginationItem key={item}>
@@ -153,6 +187,10 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
             <PaginationItem>
               <PaginationNext
                 href="#"
+                text={tr("dataTable.next", { default: "Next" })}
+                aria-label={tr("dataTable.nextPage", {
+                  default: "Go to next page",
+                })}
                 onClick={(e) => {
                   e.preventDefault();
                   if (!meta.isLast) setPage((p) => p + 1);

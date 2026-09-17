@@ -59,6 +59,9 @@ export const uiFr: Record<string, string> = {
   "dataTable.moveLeft": "Déplacer à gauche",
   "dataTable.moveRight": "Déplacer à droite",
   "dataTable.moveUp": "Monter",
+  "dataTable.morePages": "Autres pages",
+  "dataTable.next": "Suivant",
+  "dataTable.nextPage": "Aller à la page suivante",
   "dataTable.sortAsc": "Trier par ordre croissant",
   "dataTable.sortClear": "Annuler le tri",
   "dataTable.sortDesc": "Trier par ordre décroissant",
@@ -78,6 +81,11 @@ export const uiFr: Record<string, string> = {
   "dataTable.filtersDone": "Terminé",
   "dataTable.filtersHint": "Les changements s'appliquent au fur et à mesure.",
   "dataTable.openRowActions": "Ouvrir les actions de la ligne",
+  "dataTable.page": "Page $1",
+  "dataTable.pageOf": "Page $1 sur $2",
+  "dataTable.pagination": "Pagination",
+  "dataTable.previous": "Précédent",
+  "dataTable.previousPage": "Aller à la page précédente",
   "dataTable.operator.allOf": "tous",
   "dataTable.operator.anyOf": "l'un de",
   "dataTable.operator.is": "est",
@@ -88,6 +96,7 @@ export const uiFr: Record<string, string> = {
   "dataTable.refresh": "Actualiser",
   "dataTable.removeFilter": "Retirer le filtre",
   "dataTable.resetFilters": "Réinitialiser les filtres",
+  "dataTable.rowsOf": "$1 sur $2",
   "dataTable.search": "Rechercher",
   "dataTable.shareFilters": "Partager les filtres",
   "dataTable.shareFiltersCopied": "Lien copié",
@@ -123,6 +132,10 @@ export const uiFr: Record<string, string> = {
   "controlArray.moveDown": "Descendre",
   "controlArray.moveUp": "Monter",
   "controlArray.remove": "Retirer",
+
+  // Date and date range controls: the trigger while nothing is picked.
+  "controlDate.placeholder": "Choisir une date",
+  "controlDateRange.placeholder": "Choisir une période",
 
   // Object control: nested groups.
   "controlObject.clear": "Vider",
@@ -564,6 +577,8 @@ export const uiFr: Record<string, string> = {
   "admin.nav.jobDetail": "Tâche",
   "admin.nav.userDetail": "Utilisateur",
   "admin.nav.users": "Utilisateurs",
+  // The browser tab of every admin page, around the page's own title.
+  "admin.title": "Administration - $1",
 
   "admin.notifications.bulkDelete": "Supprimer la sélection",
   "admin.notifications.bulkDeleteConfirm":

@@ -41,7 +41,6 @@ export default defineConfig({
         "crypto",
         "datetime",
         "email",
-        "fake",
         "lock",
         "logger",
         "mcp",
@@ -55,6 +54,7 @@ export default defineConfig({
         "server",
         "sms",
         "system",
+        "testing",
         "topic",
         "websocket",
         // alepha: api sub-modules, also written bare

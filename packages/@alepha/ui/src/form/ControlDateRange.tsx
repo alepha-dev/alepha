@@ -8,6 +8,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
@@ -45,7 +46,8 @@ export interface ControlDateRangeProps {
    */
   clearable?: boolean;
   /**
-   * Shown on the trigger while the field is empty.
+   * Shown on the trigger while the field is empty. Defaults to the
+   * catalogue's `controlDateRange.placeholder`.
    */
   placeholder?: string;
   /**
@@ -89,6 +91,7 @@ export interface ControlDateRangeProps {
  * The two helpers are `control-date`'s own, shared rather than copied.
  */
 export const ControlDateRange = (props: ControlDateRangeProps) => {
+  const { tr, l } = useI18n();
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
   const [open, setOpen] = useState(false);
@@ -130,10 +133,13 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
   });
 
   const shown = draft ?? stored;
+  // Each end in the page's language, like `ControlDatePopover`: the
+  // browser's own `toLocaleDateString()` turned 10 to 12 September into
+  // "9/10/2026 - 9/12/2026" on a French page (#Q2392).
   const formatted = shown?.from
     ? shown.to
-      ? `${shown.from.toLocaleDateString()} - ${shown.to.toLocaleDateString()}`
-      : shown.from.toLocaleDateString()
+      ? `${l(shown.from)} - ${l(shown.to)}`
+      : l(shown.from)
     : "";
 
   const handleSelect = (next: DateRange | undefined) => {
@@ -234,7 +240,11 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
                     {props.triggerPrefix}{" "}
                   </span>
                 )}
-                {formatted || props.placeholder || "Pick a date range"}
+                {formatted ||
+                  props.placeholder ||
+                  tr("controlDateRange.placeholder", {
+                    default: "Pick a date range",
+                  })}
               </span>
             </span>
             {/* The same trailing caret a select trigger carries, appended by

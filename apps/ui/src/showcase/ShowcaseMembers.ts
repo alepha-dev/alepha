@@ -144,7 +144,7 @@ export class ShowcaseMembers {
    * suite would have nothing stable to assert.
    *
    * Which is also why this stayed a literal list when it grew from 24 to 75
-   * rather than moving to `alepha/fake`. A seeded faker is deterministic within
+   * rather than moving to `alepha/testing/faker`. A seeded faker is deterministic within
    * a build but not ACROSS versions: bumping `@faker-js/faker` would silently
    * rewrite every prerendered row here. `FakeProvider` also keeps its faker
    * `protected` and generates whole rows from a schema, so the only reachable

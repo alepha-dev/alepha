@@ -105,10 +105,16 @@ const PaginationNext = (props: PaginationNextProps) => {
   );
 };
 
-export type PaginationEllipsisProps = React.ComponentProps<"span">;
+export type PaginationEllipsisProps = React.ComponentProps<"span"> & {
+  /**
+   * What a screen reader hears for the gap. The primitive knows no language,
+   * so a caller that has one passes it translated.
+   */
+  label?: string;
+};
 
 const PaginationEllipsis = (props: PaginationEllipsisProps) => {
-  const { className, ...rest } = props;
+  const { className, label = "More pages", ...rest } = props;
   return (
     <span
       aria-hidden
@@ -120,7 +126,7 @@ const PaginationEllipsis = (props: PaginationEllipsisProps) => {
       {...rest}
     >
       <MoreHorizontalIcon />
-      <span className="sr-only">More pages</span>
+      <span className="sr-only">{label}</span>
     </span>
   );
 };

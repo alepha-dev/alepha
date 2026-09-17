@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { $page, AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/react/testing";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DropdownMenu, DropdownMenuContent } from "../../core/DropdownMenu.tsx";

@@ -24,7 +24,9 @@ step: `useNavEntries` walks the parent chain and reads each page's own
 `nav`, the same as any other page hung off `AdminRouter.layout`.
 
 **Its tab reads `Admin - <title>`**, the way every built-in page's does: a
-static `head.title` or the title a `head` function returns is prefixed.
+static `head.title` or the title a `head` function returns is prefixed,
+with the prefix in the reader's language (`admin.title`). The title itself
+is the application's to translate: a static one is used as written.
 When the page names no `nav.label` and no `label`, its unprefixed static
 title becomes the `label`, so its sidebar entry and breadcrumb do not carry
 the prefix.

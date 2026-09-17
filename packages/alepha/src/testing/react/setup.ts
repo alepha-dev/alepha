@@ -1,12 +1,19 @@
 /**
  * Setup jsdom mocks required for testing React components that use browser APIs.
- * This includes mocks needed by Mantine UI components and other common browser APIs.
+ * Covers the platform APIs jsdom does not implement and a component library
+ * reaches for on mount: the viewport queries, the two observers, and the two
+ * scroll and style helpers.
+ *
+ * ⚠️ Every branch is guarded on the global being absent, so this is a no-op
+ * for anything already installed. In a project using `jsdomProject` from
+ * `alepha/testing/vitest`, `matchMedia` is already polyfilled by its
+ * `setupFiles`, and this only adds the rest.
  *
  * Call this in your test setup (e.g., `beforeAll`) before rendering any components.
  *
  * @example
  * ```typescript
- * import { setupJsdomMocks } from "alepha/react/testing";
+ * import { setupJsdomMocks } from "alepha/testing/react";
  *
  * beforeAll(() => {
  *   setupJsdomMocks();
@@ -14,7 +21,8 @@
  * ```
  */
 export const setupJsdomMocks = (): void => {
-  // Mock window.matchMedia - required by Mantine for responsive styles
+  // Absent from jsdom entirely. Anything that asks the platform about the
+  // viewport or the user's preferences reaches for it on mount.
   if (typeof window !== "undefined" && !window.matchMedia) {
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -31,7 +39,7 @@ export const setupJsdomMocks = (): void => {
     });
   }
 
-  // Mock ResizeObserver - required by Mantine ScrollArea and other components
+  // Absent from jsdom. Any component that measures itself reaches for it.
   if (typeof window !== "undefined" && !window.ResizeObserver) {
     (window as any).ResizeObserver = class ResizeObserver {
       protected callback: ResizeObserverCallback;

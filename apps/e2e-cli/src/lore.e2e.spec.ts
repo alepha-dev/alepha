@@ -226,7 +226,7 @@ describe("the lore binary, as installed", () => {
    * container. This asserts them against the tarball, where a missing
    * `dist/bin` or a bad `bin` mapping fails first and for a different reason.
    */
-  it("answers --help with the five Lore commands", async () => {
+  it("answers --help with the Lore commands, the project, quest and folio subjects included", async () => {
     const result = await run(`"${LORE}" --help`, PROJECT_DIR);
 
     expect(result.exitCode).toBe(0);
@@ -236,6 +236,9 @@ describe("the lore binary, as installed", () => {
       "releases",
       "login",
       "logout",
+      "project",
+      "quest",
+      "folio",
     ]) {
       expect(result.stdout).toContain(command);
     }
