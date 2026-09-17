@@ -442,8 +442,36 @@ export class PaymentService {
       throw error;
     }
 
-    const session = await this.provider.createElementSession(intent, options);
-    return { ...session, intentId: intent.id };
+    try {
+      const session = await this.provider.createElementSession(intent, options);
+
+      // Stored before the client secret is handed back: the browser cannot
+      // confirm the payment without it, so no webhook for this payment can
+      // arrive before its ref is on the row to match.
+      await this.intentRepo.updateById(intent.id, {
+        providerRef: session.providerRef,
+        ...(options.stripeAccount
+          ? { providerAccount: options.stripeAccount }
+          : {}),
+      });
+
+      return { ...session, intentId: intent.id };
+    } catch (error) {
+      // Same release as createSession: an intent left "processing" with no
+      // payment behind it could only be expired, never paid.
+      await this.intentRepo
+        .updateOne(
+          { id: { eq: intent.id }, status: { eq: "processing" } },
+          { status: "created" },
+        )
+        .catch((releaseError) => {
+          this.log.warn(
+            `Failed to release intent ${intent.id} after element session failure`,
+            { error: releaseError },
+          );
+        });
+      throw error;
+    }
   }
 
   /**

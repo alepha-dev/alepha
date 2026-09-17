@@ -48,6 +48,13 @@ export interface ElementSessionResult {
    * dispatches on it, so swapping PSP changes no component code.
    */
   provider: string;
+  /**
+   * The PSP's own reference for the payment the browser confirms (Stripe: the
+   * PaymentIntent id). Stored on the intent like a redirect session's ref:
+   * webhooks are matched on it, and the stale-intent sweep polls and expires
+   * through it.
+   */
+  providerRef: string;
 }
 
 /**
@@ -176,6 +183,10 @@ export abstract class PaymentProvider {
   /**
    * Expire/cancel a checkout session on the PSP side.
    * Called during stale session cleanup.
+   *
+   * `providerRef` is whatever the session stored: a redirect session's ref, or
+   * an embedded session's payment. Either way, the payer must no longer be
+   * able to complete it afterwards.
    */
   abstract expireSession(
     providerRef: string,
