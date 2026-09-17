@@ -37,20 +37,20 @@ class Routes {
 }
 
 class Links extends LinkProvider {
-  removed: Array<{ id: number; userId: string }> = [];
+  removed: Array<{ organizationId: string; userId: string }> = [];
 
   override client(): any {
     // ⚠️ Keyed on the action NAME, not one function for every property. The
     // section reads more than one action now - the rank picker asks
-    // `getRanks` on mount - and a fake that recorded every call as a removal
+    // `getOrganizationRanks` on mount, and a fake that recorded every call as a removal
     // failed the "nothing was removed" case for a call about ranks.
     return new Proxy({} as Record<string, unknown>, {
       get: (_target, name: string) => {
         const action: any = async (input: any) => {
-          if (name === "removeMember") {
+          if (name === "removeOrganizationMember") {
             this.removed.push(input.params);
           }
-          return name === "getRanks" ? { items: [] } : { ok: true };
+          return name === "getOrganizationRanks" ? { items: [] } : { ok: true };
         };
         action.can = () => true;
         return action;
@@ -147,7 +147,12 @@ describe("ProjectSettingsMembersSection", () => {
     fireEvent.click(confirm);
 
     await waitFor(() =>
-      expect(links.removed).toEqual([{ id: 1, userId: MEMBER }]),
+      expect(links.removed).toEqual([
+        {
+          organizationId: projectFixture().organizationId,
+          userId: MEMBER,
+        },
+      ]),
     );
   });
 

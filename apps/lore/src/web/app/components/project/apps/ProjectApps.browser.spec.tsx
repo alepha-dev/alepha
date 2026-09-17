@@ -138,12 +138,12 @@ describe("the Apps list", () => {
           })) as never,
     );
     alepha.store.set(currentProjectMemberAtom, {
-      id: 1,
+      id: "00000000-0000-4000-8000-000000000003",
       createdAt: "2026-08-26T10:00:00.000Z",
       updatedAt: "2026-08-26T10:00:00.000Z",
       userId: "00000000-0000-4000-8000-000000000001",
-      projectId: 1,
-      owner,
+      organizationId: aProject.organizationId,
+      rank: owner ? "owner" : "member",
     } as never);
     alepha.store.set(currentInstancesAtom, instances as never);
 
