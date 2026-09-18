@@ -67,6 +67,28 @@ export default defineConfig({
          * Error 1102 rather than as a cancelled `waitUntil`.
          */
         limits: { cpu_ms: 300_000 },
+        /**
+         * Smart Placement: Cloudflare runs the Worker near what it talks to,
+         * here the D1 primary in WEUR, instead of in the colo that took the
+         * request (#Q2403).
+         *
+         * A page makes 10 to 20 sequential D1 queries, and each is a round
+         * trip to the primary. Measured before this line, 2026-09-15 to
+         * 2026-09-18: `POST /sigils/ingest` took a median 84 ms at CDG and
+         * 480 to 760 ms from IAD, DFW, SJC, LAX and SIN, with CPU at 9 to
+         * 60 ms everywhere, and about half of all requests arrive through US
+         * colos. Ingest is writes, which a read replica cannot serve, so this
+         * is the only lever for that path.
+         *
+         * It pulls against D1 read replicas, which move reads toward the
+         * user: with both on, Cloudflare places by measured latency and one
+         * can cancel the other's gain. So they are switched on one at a time
+         * and measured in between; replicas (`DATABASE_D1_MODE=sessions` plus
+         * the database's own switch) come second, if the numbers after this
+         * one leave anything to win. It needs traffic before it takes
+         * effect: read the Worker's placement status before measuring.
+         */
+        placement: { mode: "smart" },
       },
     },
     docker: {
