@@ -1,6 +1,6 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -47,6 +47,7 @@ const questOf = (id: number): QuestResource =>
  * the case lets them go.
  */
 class FakeLinkProvider extends LinkProvider {
+  activityQueries: Array<Record<string, unknown>> = [];
   release: () => void = () => {};
   // One gate for the whole provider: `client()` is called once per
   // `useClient`, and a gate built per call would release the wrong one.
@@ -69,6 +70,27 @@ class FakeLinkProvider extends LinkProvider {
         return { content: [questOf(21)] };
       },
       list: async () => [],
+      getProjectActivity: async (request: {
+        query: Record<string, unknown>;
+      }) => {
+        this.activityQueries.push(request.query);
+        return {
+          content: [],
+          page: {
+            number: 0,
+            size: 25,
+            offset: 0,
+            numberOfElements: 0,
+            totalElements: 0,
+            totalPages: 1,
+            isEmpty: true,
+            isFirst: true,
+            isLast: true,
+          },
+        };
+      },
+      getProjectUsers: async () => [],
+      getProjectActivityFilters: async () => ({ types: [], actions: [] }),
     });
   }
 }
@@ -133,6 +155,16 @@ describe("ProjectEpic", () => {
     fake.release();
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(questCount()).toBe("1");
+
+    // Activity is loaded only when its shareable tab is selected, and the
+    // request uses the epic number recorded on audit rows rather than its id.
+    expect(fake.activityQueries).toHaveLength(0);
+    fireEvent.click(screen.getByRole("radio", { name: "Activity" }));
+    await waitFor(() => expect(fake.activityQueries).toHaveLength(1));
+    expect(fake.activityQueries[0]).toMatchObject({
+      resourceType: "epic",
+      resourceId: "2",
+    });
   });
 });
 

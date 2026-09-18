@@ -2103,6 +2103,7 @@ export default {
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
   "epic.tab.folios": "Folios",
+  "epic.tab.activity": "Activité",
   "epic.aside.number": "ID",
   "epic.aside.name": "Nom",
   "epic.aside.status": "Statut",

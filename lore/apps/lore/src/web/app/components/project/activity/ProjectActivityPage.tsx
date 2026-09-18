@@ -23,6 +23,14 @@ import type { I18n } from "../../../services/I18n.ts";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import { activityResourceHref } from "./activityResourceHref.ts";
 
+export interface ProjectActivityPageProps {
+  resource?: {
+    type: string;
+    id: string;
+  };
+  persistenceKey?: string;
+}
+
 /**
  * What happened in this project: one row per recorded write, newest first.
  *
@@ -53,7 +61,10 @@ import { activityResourceHref } from "./activityResourceHref.ts";
  * indexed column behind the `(scopeType, scopeId)` prefix, so a filter is a
  * seek and not a scan.
  */
-const ProjectActivityPage = () => {
+const ProjectActivityPage = ({
+  resource,
+  persistenceKey,
+}: ProjectActivityPageProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
@@ -210,6 +221,8 @@ const ProjectActivityPage = () => {
         // condition. A single value still produces the `eq` it always did.
         type: filters?.type?.length ? filters.type.join(",") : undefined,
         action: filters?.action?.length ? filters.action.join(",") : undefined,
+        resourceType: resource?.type,
+        resourceId: resource?.id,
         // Passed as the pair, not as two params: the endpoint resolves the
         // days to an instant window (`ProjectController.activityWindow`), so
         // the UI names a range and the server decides what a day means.
@@ -243,7 +256,7 @@ const ProjectActivityPage = () => {
     <div className="flex min-h-0 flex-1 flex-col p-2">
       <DataTable<ProjectActivityRow, typeof filterFields>
         className="min-h-0 flex-1"
-        persistenceKey={`lor.activity.${project.id}`}
+        persistenceKey={persistenceKey ?? `lor.activity.${project.id}`}
         // Newest first, which is the question somebody opening this page is
         // asking. The column is sortable, so the other direction is one click.
         defaultSort={{ field: "createdAt", direction: "desc" }}
