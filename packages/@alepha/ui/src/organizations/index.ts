@@ -9,6 +9,7 @@ export * from "./OrganizationMemberIdentity.tsx";
 export * from "./OrganizationMemberRankPicker.tsx";
 export * from "./OrganizationMembers.tsx";
 export * from "./MyOrganizationInvitations.tsx";
+export * from "./MyOrganizations.tsx";
 export * from "./OrganizationInviteDialog.tsx";
 export * from "./OrganizationPendingInvitations.tsx";
 export * from "./OrganizationRankColumnHeader.tsx";

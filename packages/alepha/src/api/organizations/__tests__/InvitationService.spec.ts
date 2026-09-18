@@ -211,7 +211,7 @@ describe("alepha/api/organizations - InvitationService", () => {
 
     expect(
       await ctx.alepha.inject(OrganizationService).listMine(ctx.member.id),
-    ).toContainEqual(ctx.organization);
+    ).toContainEqual({ ...ctx.organization, rank: "member" });
     const acceptedMember = (await ctx.members.list(ctx.organization.id)).find(
       (item) => item.userId === ctx.member.id,
     );

@@ -1,4 +1,5 @@
 import {
+  Building2,
   FormInput,
   Home as HomeIcon,
   ListTree,
@@ -336,6 +337,32 @@ export const NAV: NavGroup[] = [
             href: "/pages/admin/audits",
             label: "Audit log",
             description: "The audit trail.",
+          },
+        ],
+      },
+      {
+        label: "Organizations",
+        icon: Building2,
+        children: [
+          {
+            href: "/pages/organizations",
+            label: "My organizations",
+            description: "Organizations this account belongs to.",
+          },
+          {
+            href: "/pages/organizations/members",
+            label: "Members",
+            description: "Members, invitations, and ownership transfer.",
+          },
+          {
+            href: "/pages/organizations/invitations",
+            label: "Invitations",
+            description: "Invitations waiting for this account.",
+          },
+          {
+            href: "/pages/organizations/ranks",
+            label: "Ranks",
+            description: "Organization permissions by rank.",
           },
         ],
       },

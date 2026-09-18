@@ -4,6 +4,7 @@ import { $action, okSchema } from "alepha/server";
 
 import { organizations } from "../entities/organizations.ts";
 import { createOrganizationSchema } from "../schemas/createOrganizationSchema.ts";
+import { organizationSummaryResourceSchema } from "../schemas/organizationSummaryResourceSchema.ts";
 import { updateOrganizationSchema } from "../schemas/updateOrganizationSchema.ts";
 import { $ownsOrganization } from "../security/$ownsOrganization.ts";
 import { OrganizationService } from "../services/OrganizationService.ts";
@@ -14,7 +15,7 @@ export class OrganizationController {
   public readonly getMyOrganizations = $action({
     path: "/organizations",
     use: [$secure()],
-    schema: { response: z.array(organizations.schema) },
+    schema: { response: z.array(organizationSummaryResourceSchema) },
     handler: ({ user }) => this.organizations.listMine(user.id),
   });
 

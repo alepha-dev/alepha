@@ -89,7 +89,7 @@ describe("alepha/api/organizations - organization and member services", () => {
       slug: "acme",
     });
     expect(await ctx.organizations.listMine(ctx.owner.id)).toEqual([
-      organization,
+      { ...organization, rank: "owner" },
     ]);
     expect(await ctx.members.list(organization.id)).toMatchObject([
       { userId: ctx.owner.id, rank: "owner" },

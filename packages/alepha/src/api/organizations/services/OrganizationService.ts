@@ -5,6 +5,7 @@ import type { UserAccountToken } from "alepha/security";
 import { organizationMembers } from "../entities/organizationMembers.ts";
 import { type Organization, organizations } from "../entities/organizations.ts";
 import { OrganizationPolicyProvider } from "../providers/OrganizationPolicyProvider.ts";
+import type { OrganizationSummaryResource } from "../schemas/organizationSummaryResourceSchema.ts";
 import { MemberService } from "./MemberService.ts";
 
 export class OrganizationService {
@@ -46,14 +47,26 @@ export class OrganizationService {
     await this.organizations.deleteById(id);
   }
 
-  public async listMine(userId: string): Promise<Organization[]> {
+  public async listMine(
+    userId: string,
+  ): Promise<OrganizationSummaryResource[]> {
     const memberships = await this.members.findMany({
       where: { userId: { eq: userId } },
     });
     if (memberships.length === 0) return [];
-    return this.organizations.findMany({
+    const rows = await this.organizations.findMany({
       where: { id: { inArray: memberships.map((row) => row.organizationId) } },
       orderBy: { column: "createdAt", direction: "asc" },
     });
+    const rankByOrganization = new Map(
+      memberships.map((row) => [
+        row.organizationId,
+        row.rank ?? MemberService.MEMBER,
+      ]),
+    );
+    return rows.map((organization) => ({
+      ...organization,
+      rank: rankByOrganization.get(organization.id) ?? MemberService.MEMBER,
+    }));
   }
 }

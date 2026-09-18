@@ -1169,6 +1169,22 @@ export const uiFr: Record<string, string> = {
   "organizations.invitations.revokeTitle": "Révoquer l'invitation de $1 ?",
   "organizations.invitations.send": "Envoyer l'invitation",
   "organizations.invitations.sent": "Invitation envoyée à $1",
+  "organizations.mine.cancel": "Annuler",
+  "organizations.mine.create": "Créer une organisation",
+  "organizations.mine.createConfirm": "Créer",
+  "organizations.mine.createDescription":
+    "Donnez un nom à la nouvelle organisation.",
+  "organizations.mine.created": "$1 créée",
+  "organizations.mine.createTitle": "Créer une organisation",
+  "organizations.mine.description":
+    "Ouvrez une organisation ou créez-en une nouvelle.",
+  "organizations.mine.empty":
+    "Vous n'appartenez pas encore à une organisation.",
+  "organizations.mine.name": "Nom de l'organisation",
+  "organizations.mine.nameRequired": "Saisissez un nom d'organisation",
+  "organizations.mine.open": "Ouvrir",
+  "organizations.mine.openLabel": "Ouvrir $1",
+  "organizations.mine.title": "Mes organisations",
   "organizations.ranks.actions": "Actions de $1",
   "organizations.ranks.blank": "Rang vide",
   "organizations.ranks.builtin": "Intégré",

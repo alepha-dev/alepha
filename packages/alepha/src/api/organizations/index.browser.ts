@@ -11,6 +11,7 @@ export * from "./entities/organizationInvitations.ts";
 export * from "./entities/organizations.ts";
 export * from "./entities/organizationRanks.ts";
 export * from "./schemas/organizationRankResourceSchema.ts";
+export * from "./schemas/organizationSummaryResourceSchema.ts";
 export * from "./schemas/organizationInvitationStatusSchema.ts";
 export * from "./schemas/createOrganizationSchema.ts";
 export * from "./schemas/updateOrganizationSchema.ts";

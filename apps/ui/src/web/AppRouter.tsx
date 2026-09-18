@@ -45,6 +45,10 @@ export class AppRouter {
       this.accountSessions,
       this.accountKeys,
       this.accountConnections,
+      this.organizations,
+      this.organizationMembers,
+      this.organizationInvitations,
+      this.organizationRanks,
       this.adminDashboard,
       this.adminUsers,
       this.adminUserDetail,
@@ -320,6 +324,34 @@ export class AppRouter {
     static: true,
     head: { title: "Connections - Alepha UI" },
     lazy: () => import("./pages/pages/account/Connections.tsx"),
+  });
+
+  organizations = $page({
+    path: "/pages/organizations",
+    static: true,
+    head: { title: "Organizations - Alepha UI" },
+    lazy: () => import("./pages/pages/organizations/Organizations.tsx"),
+  });
+
+  organizationMembers = $page({
+    path: "/pages/organizations/members",
+    static: true,
+    head: { title: "Organization members - Alepha UI" },
+    lazy: () => import("./pages/pages/organizations/Members.tsx"),
+  });
+
+  organizationInvitations = $page({
+    path: "/pages/organizations/invitations",
+    static: true,
+    head: { title: "Organization invitations - Alepha UI" },
+    lazy: () => import("./pages/pages/organizations/Invitations.tsx"),
+  });
+
+  organizationRanks = $page({
+    path: "/pages/organizations/ranks",
+    static: true,
+    head: { title: "Organization ranks - Alepha UI" },
+    lazy: () => import("./pages/pages/organizations/Ranks.tsx"),
   });
 
   adminDashboard = $page({
