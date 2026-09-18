@@ -1,9 +1,6 @@
-import { Card } from "@alepha/ui";
 import { useClient, useQuery, useStore } from "alepha/react";
-import { useState } from "react";
 
 import type { HomeController } from "@/api/controllers/HomeController.ts";
-import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { HomeActivityPanel } from "./HomeActivityPanel.tsx";
@@ -33,11 +30,6 @@ import { HomeProjectsTable } from "./HomeProjectsTable.tsx";
 const HomeBoard = () => {
   const homeApi = useClient<HomeController>();
   const [overview] = useStore(userProjectsAtom);
-  /**
-   * The row the pointer is on. Pointer state, so it is `useState` and not an
-   * atom: nothing outside this page reads it, and it dies with the page.
-   */
-  const [focused, setFocused] = useState<ProjectOverviewResource>();
 
   const projects = overview?.projects ?? [];
 
@@ -57,6 +49,15 @@ const HomeBoard = () => {
   );
 
   const days = board.data?.days ?? [];
+  const lastActivity = new Map(
+    (board.data?.lastActivity ?? []).map((entry) => [
+      entry.projectId,
+      entry.at,
+    ]),
+  );
+  const openCounts = new Map(
+    (board.data?.openCounts ?? []).map((entry) => [entry.projectId, entry]),
+  );
   const momentum = new Map(
     (board.data?.momentum ?? []).map((entry) => [
       entry.projectId,
@@ -67,42 +68,35 @@ const HomeBoard = () => {
   return (
     <div className="flex h-svh flex-col">
       <HomeHeader />
-      {/* No top gutter: the header carries no rule, so the card's own top
-          edge is what separates it from the header. */}
-      <div className="min-h-0 flex-1 px-4 pb-4">
-        {/* `gap-0` as well as `p-0`: a Card is a column of stacked blocks by
-            default and spaces them with `--card-spacing`, which between these
-            two panes is a gutter down the middle of one object. The panel's
-            own left border is the divider. */}
-        {/* The quest log's lattice, as the card's own material. It is drawn by
-            a `z-index: -1` pseudo inside the element's stacking context, so it
-            sits above the card's background and below its content. */}
-        <Card className="lore-quest-log-facets flex h-full min-h-0 flex-row gap-0 overflow-hidden p-0">
-          {/* No padding: the table is the pane, so its own toolbar, header
-              row and footer are what set the inset. A gutter here would put
-              the card's border and the table's own rules a few pixels apart,
-              which reads as a misalignment rather than as breathing room. */}
-          {/* `bg-card` and not transparent: the table is a grid of rows and
-              rules, and a lattice reading through it is two grids fighting.
-              The panel beside it has the texture; the table has a surface. */}
-          <div className="bg-card flex min-h-0 min-w-0 flex-1 flex-col">
-            <HomeProjectsTable
-              projects={projects}
-              momentum={momentum}
-              days={days}
-              onHover={setFocused}
-              // A deleted project has to leave the bars and the panel too, and
-              // both come from the one request this page makes.
-              onChanged={() => board.refetch()}
-            />
-          </div>
-          <HomeActivityPanel
-            rows={board.data?.activity ?? []}
-            projects={projects}
-            focused={focused}
-            loading={board.loading}
-          />
-        </Card>
+      {/* Two blocks side by side and no card around them: the table on the
+          left, the activity panel on the right, drawn as one unit. The table
+          squares its right corners and its right border is the line between
+          the two; the panel carries the top, right and bottom borders and the
+          rounded corners on that side. Below `lg` the panel is hidden and the
+          table keeps all four corners (`squareRight="lg"`).
+
+          No top gutter: the header carries no rule, so the blocks' own top
+          border is what separates them from it.
+
+          The surface is a project's main panel: `bg-background` (what the
+          shell's inset gives it) and the page dots (its `mainClassName`),
+          painted here, behind both blocks, so the dots run as one grid across
+          the line between them. Margins rather than padding, so this box is
+          exactly the two blocks and the gutter around them keeps the page's
+          own background. */}
+      <div className="lore-page-dots bg-background mx-4 mb-4 flex min-h-0 flex-1 flex-row rounded-md">
+        <HomeProjectsTable
+          projects={projects}
+          momentum={momentum}
+          days={days}
+          lastActivity={lastActivity}
+          openCounts={openCounts}
+        />
+        <HomeActivityPanel
+          rows={board.data?.activity ?? []}
+          projects={projects}
+          loading={board.loading}
+        />
       </div>
     </div>
   );

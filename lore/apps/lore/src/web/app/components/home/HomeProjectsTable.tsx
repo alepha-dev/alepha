@@ -1,18 +1,27 @@
-import { Button, TimeAgo, useDialog } from "@alepha/ui";
+import { Button } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
-import { useAction, useAlepha, useClient } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Crown, Sparkles, Trash2 } from "lucide-react";
+import { Bug, Crown, Inbox, Layers, Sparkles, Swords } from "lucide-react";
 
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
-import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import {
+  capabilityOption,
+  hasCapability,
+} from "../../services/projectCapabilities.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import {
+  activityAgeInDays,
+  HOME_INACTIVE_AFTER_DAYS,
+} from "./homeActivityAge.ts";
+import { HomeLastActivity } from "./HomeLastActivity.tsx";
 import { HomeMomentum } from "./HomeMomentum.tsx";
+import { type HomeOpenLink, HomeOpenLinks } from "./HomeOpenLinks.tsx";
 
 export interface HomeProjectsTableProps {
   projects: ProjectOverviewResource[];
@@ -25,15 +34,15 @@ export interface HomeProjectsTableProps {
    */
   days: string[];
   /**
-   * Called with the project under the pointer, and with `undefined` when the
-   * pointer leaves. Drives the activity panel beside the table.
+   * When each project last saw any activity, by project id, from
+   * `getHomeBoard`. Empty until the board has been read.
    */
-  onHover: (project: ProjectOverviewResource | undefined) => void;
+  lastActivity: Map<number, string>;
   /**
-   * Re-read the board after a row is deleted, so the bars and the panel stop
-   * describing a project that is gone.
+   * Draft epics, open blights and pending feedback, by project id, from
+   * `getHomeBoard`. Empty until the board has been read.
    */
-  onChanged: () => void;
+  openCounts: Map<number, { epics: number; blights: number; feedback: number }>;
 }
 
 /**
@@ -48,9 +57,7 @@ export interface HomeProjectsTableProps {
 export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
-  const alepha = useAlepha();
-  const dialog = useDialog();
-  const projectApi = useClient<ProjectController>();
+  const dt = useInject(DateTimeProvider);
 
   /**
    * The tallest day across every row, so one scale serves the column. Read
@@ -61,6 +68,75 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
     1,
     ...[...props.momentum.values()].flatMap((counts) => counts),
   );
+
+  /**
+   * Whether a project has gone quiet: no activity for a week. Its momentum
+   * and last activity turn muted, so the eye lands on the live rows.
+   *
+   * Never before the board arrives: without its last activity the answer is
+   * unknown, and muting first then lighting up would flicker every row that
+   * turns out to be busy.
+   */
+  const isInactive = (project: ProjectOverviewResource) => {
+    const at = props.lastActivity.get(project.id);
+    return !!at && activityAgeInDays(dt, at) >= HOME_INACTIVE_AFTER_DAYS;
+  };
+
+  /**
+   * The Open column's buttons for one project: quests, epics, blights and
+   * feedback, each only when the project has that feature on, the same
+   * switches that put the entry in its sidebar. A feature that is off has
+   * nothing to count, and a "0" for it would read as "all done" instead.
+   *
+   * The quest count comes with the project (`openQuestCount`), the others
+   * with the board, so until the board arrives those three read 0.
+   */
+  const openTags = (project: ProjectOverviewResource) => {
+    const counts = props.openCounts.get(project.id);
+    const tags: HomeOpenLink[] = [];
+    if (hasCapability(project, "work")) {
+      tags.push({
+        kind: "quests",
+        route: "projectQuests",
+        icon: Swords,
+        count: project.openQuestCount,
+        label: tr("home.table.open.quests", {
+          args: [String(project.openQuestCount)],
+        }),
+      });
+    }
+    if (capabilityOption(project, "work", "epics")) {
+      const count = counts?.epics ?? 0;
+      tags.push({
+        kind: "epics",
+        route: "projectEpics",
+        icon: Layers,
+        count,
+        label: tr("home.table.open.epics", { args: [String(count)] }),
+      });
+    }
+    if (capabilityOption(project, "apps", "track")) {
+      const count = counts?.blights ?? 0;
+      tags.push({
+        kind: "blights",
+        route: "projectBlights",
+        icon: Bug,
+        count,
+        label: tr("home.table.open.blights", { args: [String(count)] }),
+      });
+    }
+    if (hasCapability(project, "support")) {
+      const count = counts?.feedback ?? 0;
+      tags.push({
+        kind: "feedback",
+        route: "projectFeedback",
+        icon: Inbox,
+        count,
+        label: tr("home.table.open.feedback", { args: [String(count)] }),
+      });
+    }
+    return tags;
+  };
 
   /**
    * One filter, and it is the search box: `preset: "search"` is the locked
@@ -74,41 +150,19 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
     search: { preset: "search", placeholder: tr("home.table.search") },
   } satisfies DataTableFilterFields;
 
-  /**
-   * Deleting a project from its own row.
-   *
-   * ⚠️ The dialog is the guard, and the server is the gate: `deleteProjectById`
-   * refuses a non-owner whatever this menu offers, and the entry is hidden
-   * rather than disabled because a disabled item is a question and a missing
-   * one is an answer.
-   *
-   * The overview atom is re-read INSIDE the handler, so a refusal leaves both
-   * the list and the board untouched and the root `ActionErrorToaster` says
-   * why.
-   */
-  const deleteProject = useAction<[project: ProjectOverviewResource], void>(
-    {
-      handler: async (project) => {
-        const confirmed = await dialog.confirm({
-          title: tr("home.table.delete.title"),
-          description: tr("home.table.delete.description", {
-            args: [project.title],
-          }),
-          confirmLabel: tr("home.table.delete.confirm"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        await projectApi.deleteProjectById({ params: { id: project.id } });
-        alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
-        props.onChanged();
-      },
-    },
-    [projectApi, alepha, dialog, props.onChanged],
-  );
-
   return (
     <DataTable<ProjectOverviewResource, typeof filterFields>
-      className="h-full min-h-0 w-full flex-1"
+      className="h-full min-h-0 min-w-0 flex-1"
+      // One surface with the activity panel beside it: the filter bar, the
+      // column header and the footer take the page's own background rather
+      // than a band of their own, as the panel does.
+      chromeClassName="bg-transparent"
+      // The panel joins on the right from `lg`, where it appears.
+      squareRight="lg"
+      // Twenty and no picker: Home is a glance at your projects, not a list
+      // to page through, and with one page the footer goes too.
+      pageSizes={[]}
+      defaultSize={20}
       persistenceKey="lor.home.projects"
       data={props.projects}
       defaultSort={{ field: "updatedAt", direction: "desc" }}
@@ -122,7 +176,6 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
       onRowClick={(project) =>
         router.push("project", { params: { projectSlug: project.slug } })
       }
-      onRowHover={props.onHover}
       toolbar={
         <Button
           render={
@@ -140,18 +193,6 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
           {tr("home.create-project")}
         </Button>
       }
-      rowActions={(project) =>
-        project.owner
-          ? [
-              {
-                label: tr("home.table.delete.action"),
-                icon: Trash2,
-                destructive: true,
-                onClick: (row) => deleteProject.run(row),
-              },
-            ]
-          : []
-      }
       columns={{
         title: {
           label: tr("home.table.col.project"),
@@ -163,7 +204,23 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
                 className="size-7 rounded-md"
                 alt={project.title}
               />
-              <span className="truncate font-medium">{project.title}</span>
+              {/* A real anchor, so the name shows its URL on hover, opens in
+                  a new tab on a modified click and offers "copy link
+                  address"; a plain click still routes in place. The same
+                  shape as the quests table's title cell.
+
+                  `stopPropagation` because the row carries `onRowClick` too,
+                  and without it a plain click would navigate twice, and a
+                  modified click would open the tab AND navigate this one. */}
+              <Link
+                href={router.path("project", {
+                  params: { projectSlug: project.slug },
+                })}
+                onClick={(e) => e.stopPropagation()}
+                className="truncate font-medium underline-offset-2 hover:underline"
+              >
+                {project.title}
+              </Link>
               {/* Ownership, the one fact about a membership that compares
                   across projects. A rank name would not: two projects can
                   both have an "Admin" meaning different things. */}
@@ -198,31 +255,44 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
                 label={tr("home.table.momentum.label", {
                   args: [String(total), String(props.days.length)],
                 })}
+                inactive={isInactive(project)}
               />
             );
           },
         },
+        // Keyed `openQuestCount` still: the key is what `persistenceKey`
+        // stores a reader's sort and column choices under.
         openQuestCount: {
           label: tr("home.table.col.open"),
           sortable: true,
+          // Everything the row shows as open, so the busiest project sorts
+          // first whichever kind its work is.
+          sortValue: (project) =>
+            openTags(project).reduce((total, tag) => total + tag.count, 0),
           cell: (project) => (
-            <span className="text-sm">
-              {project.openQuestCount === 0 && tr("home.table.open.none")}
-              {project.openQuestCount === 1 && tr("home.table.open.quest")}
-              {project.openQuestCount > 1 &&
-                tr("home.table.open.quests", {
-                  args: [String(project.openQuestCount)],
-                })}
-            </span>
+            <HomeOpenLinks
+              projectSlug={project.slug}
+              links={openTags(project)}
+            />
           ),
         },
+        // Keyed `updatedAt` still, because the key is what `persistenceKey`
+        // stores a reader's sort and column choices under. What it shows
+        // is the board's last activity, not the project row's own
+        // `updatedAt`, which only moves when the project itself is edited:
+        // a quest, a folio or a release never touched it.
         updatedAt: {
           label: tr("home.table.col.lastActivity"),
           sortable: true,
+          // The row's own `updatedAt` until the board arrives, so the order
+          // is already close and does not reshuffle from nothing.
+          sortValue: (project) =>
+            Date.parse(props.lastActivity.get(project.id) ?? project.updatedAt),
           cell: (project) => (
-            <span className="text-muted-foreground text-sm whitespace-nowrap">
-              <TimeAgo value={project.updatedAt} />
-            </span>
+            <HomeLastActivity
+              at={props.lastActivity.get(project.id)}
+              inactive={isInactive(project)}
+            />
           ),
         },
       }}

@@ -12,8 +12,8 @@ import { audits } from "alepha/api/audits";
  * What it adds over that schema is {@link projectId} and {@link projectTitle},
  * because this feed spans projects: the panel names the project a line belongs
  * to, and hovering a row of the table beside it filters the panel down to that
- * project. What it drops is `metadata` and the burst span - the panel is one
- * line per event, not a table with a `title` on every cell.
+ * project. A line expands in place to show the rest of the event, which is
+ * why it also carries `metadata` (what changed) and the burst span.
  */
 export const homeActivityRowSchema = audits.schema
   .pick({
@@ -33,7 +33,18 @@ export const homeActivityRowSchema = audits.schema
      * does not rewrite what the feed says happened.
      */
     description: true,
+    /**
+     * What changed, read by the expanded line the same way the project's
+     * Activity table reads its Details column: `fields`, or a capability
+     * switch.
+     */
+    metadata: true,
     eventCount: true,
+    /**
+     * When the last event in a coalesced burst landed. Absent on a row that
+     * stands for one event.
+     */
+    updatedAt: true,
   })
   .extend({
     /**
@@ -54,6 +65,11 @@ export const homeActivityRowSchema = audits.schema
      * row carries no actor, or when the account has since been deleted.
      */
     actor: z.string().optional(),
+    /**
+     * The actor's picture, for the expanded line. Absent when the account
+     * has none, or no longer exists.
+     */
+    actorAvatarUrl: z.string().optional(),
     /**
      * Whether the actor is the viewer, so the panel can say "You" without
      * shipping the viewer's own id to the client to compare against.
