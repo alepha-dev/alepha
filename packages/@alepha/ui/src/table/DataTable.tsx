@@ -466,6 +466,7 @@ export const DataTable = <
               rowCtx={rowCtx}
               rowActions={props.rowActions}
               onRowClick={props.onRowClick}
+              onRowHover={props.onRowHover}
               empty={props.empty}
               emptyMessage={props.emptyMessage}
               emptyState={props.emptyState}

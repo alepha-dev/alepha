@@ -10,9 +10,9 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { realmSettingsAtom } from "../../atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Dashboard from "../dashboard/Dashboard.tsx";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
+import HomeBoard from "./HomeBoard.tsx";
 
 const Home = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -74,12 +74,12 @@ const Home = () => {
     void router.push("projectCreate");
   }, [router, auth.user, canCreate]);
 
-  // The signed-in landing page is the dashboard; the hero is what an
-  // anonymous visitor and a brand-new account still get. A dashboard of empty
-  // tiles is a worse first run than a welcome, and the hero is also the only
-  // place that explains what this app is.
+  // The signed-in landing page is the board; the hero is what an anonymous
+  // visitor and a brand-new account still get. A table with no rows is a
+  // worse first run than a welcome, and the hero is also the only place that
+  // explains what this app is.
   if (hasProjects) {
-    return <Dashboard />;
+    return <HomeBoard />;
   }
 
   return (

@@ -52,6 +52,37 @@ export default {
   "home.sign-in": "Sign in",
   "home.registration-closed":
     "New accounts are invitation-only right now. If you were invited, open the link in your email.",
+  // ── Home board ────────────────────────────────────────────────────────
+  // The landing page for a signed-in reader with projects: the table, its
+  // columns and the activity panel beside it.
+  "home.wordmark": "Alepha Lore",
+  "home.table.search": "Search",
+  "home.table.empty": "No projects yet",
+  "home.table.col.project": "Project",
+  // The window is in the label because the bars carry no axis: without it,
+  // "Momentum" is a shape with no unit of time.
+  "home.table.col.momentum": "Momentum · 14d",
+  "home.table.col.open": "Open",
+  "home.table.col.lastActivity": "Last activity",
+  "home.table.owner": "You own this project",
+  "home.table.momentum.label": "$1 events over the last $2 days",
+  "home.table.open.quest": "1 quest",
+  "home.table.open.quests": "$1 quests",
+  "home.table.open.none": "nothing open",
+  "home.table.delete.action": "Delete project",
+  "home.table.delete.title": "Delete this project?",
+  "home.table.delete.description":
+    "$1, its quests, folios and members are deleted for everyone. This cannot be undone.",
+  "home.table.delete.confirm": "Delete project",
+  "home.activity.title": "Recent activity",
+  "home.activity.you": "You",
+  "home.activity.unknown": "Someone",
+  "home.activity.empty": "Nothing has happened yet",
+  // ⚠️ "here", not "in this project": the panel holds the most recent events
+  // across every project, so a quiet project having none of them is not the
+  // same fact as that project having no history, and this line must not
+  // claim the second.
+  "home.activity.empty.project": "Nothing recent here",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
   "auth.register.intent.invitation":
@@ -2180,19 +2211,8 @@ export default {
   "project.dashboard.standfirst.one": "1 card on this project's board.",
   "project.dashboard.card.delete.shared":
     "The board belongs to the project, so this removes the card for everyone in it.",
-  "dashboard.greeting": "Welcome back, $1",
-  "dashboard.standfirst": "$1 cards.",
-  "dashboard.standfirst.one": "1 card.",
-  "dashboard.standfirst.empty": "An empty dashboard. Add the first card.",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
-  "dashboard.projects": "Projects",
-  "dashboard.search": "Search",
-  "dashboard.newProject": "New Project",
-  "dashboard.seeAll": "See all $1 projects",
-  "dashboard.empty.title": "Nothing on your dashboard yet",
-  "dashboard.empty.body":
-    "Add the numbers you check first thing: open quests on the project you are in, blights across everything, yesterday's visitors on a doc site.",
 
   "dashboard.card.options": "Card options",
   "dashboard.card.scope": "Change scope",
