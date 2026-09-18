@@ -9,12 +9,15 @@ import {
   sql,
 } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, NotFoundError } from "alepha/server";
 
 // The helper the UI labels a user with, so an actor reads identically here,
 // in a project's Activity table and on the quest page. Precedent for reaching
 // across: `ProjectController` imports the same function.
 import { displayName } from "../../web/app/services/displayName.ts";
+import { blights } from "../entities/blights.ts";
+import { epics } from "../entities/epics.ts";
+import { feedback } from "../entities/feedback.ts";
 import { relations } from "../relations.ts";
 import { homeActivityRowSchema } from "../schemas/homeActivityRowSchema.ts";
 
@@ -51,13 +54,15 @@ export class HomeController {
   /**
    * How many lines the activity panel holds.
    *
-   * Hovering a row filters the panel client-side, so this number is also the
-   * depth of that filtered view: at thirty, a project with two of the last
-   * thirty events shows two lines rather than an empty panel.
+   * The same number for every project and for one: picking a project in the
+   * panel reads that project's own last twenty (`getHomeActivity`).
    */
-  protected static readonly ACTIVITY_LIMIT = 30;
+  protected static readonly ACTIVITY_LIMIT = 20;
 
   auditRows = $repository(audits);
+  epicRows = $repository(epics);
+  blightRows = $repository(blights);
+  feedbackRows = $repository(feedback);
   users = $repository(users);
   usersWith = $repository(relations, "users");
   database = $inject(DatabaseProvider);
@@ -91,83 +96,317 @@ export class HomeController {
           }),
         ),
         activity: z.array(homeActivityRowSchema),
+        /**
+         * When each project last saw any activity, whatever its kind: the
+         * table's Last activity column. One entry per project.
+         */
+        lastActivity: z.array(
+          z.object({
+            projectId: z.integer(),
+            at: z.datetime(),
+          }),
+        ),
+        /**
+         * What is open in each project beyond its quests, for the table's
+         * Open column: draft epics, open blights, pending feedback. The
+         * quest count is already on the overview (`openQuestCount`). One
+         * entry per project, zeros included.
+         */
+        openCounts: z.array(
+          z.object({
+            projectId: z.integer(),
+            epics: z.integer(),
+            blights: z.integer(),
+            feedback: z.integer(),
+          }),
+        ),
       }),
     },
     handler: async ({ user }) => {
       const days = this.momentumDays();
-
-      const me = await this.usersWith.findById(user.id, {
-        include: {
-          projects: {
-            orderBy: { column: "updatedAt", direction: "desc" },
-          },
-        },
-      });
-      const projects = me?.projects ?? [];
+      const projects = await this.memberProjects(user.id);
 
       // ⚠️ Short-circuited on an empty membership list: `inArray: []` THROWS
       // rather than matching nothing, and a brand-new account is exactly the
       // request that hits it.
       if (projects.length === 0) {
-        return { days, momentum: [], activity: [] };
+        return {
+          days,
+          momentum: [],
+          activity: [],
+          lastActivity: [],
+          openCounts: [],
+        };
       }
 
-      const scopeIds = projects.map((project) => String(project.id));
-      const titles = new Map(
-        projects.map((project) => [project.id, project.title]),
-      );
-
-      const [momentum, rows] = await Promise.all([
-        this.momentum(scopeIds, days),
-        this.auditRows.findMany({
-          where: {
-            scopeType: "project",
-            scopeId: { inArray: scopeIds },
-          },
-          orderBy: { column: "createdAt", direction: "desc" },
-          limit: HomeController.ACTIVITY_LIMIT,
-        }),
+      const [momentum, activity, lastActivity, openCounts] = await Promise.all([
+        this.momentum(
+          projects.map((project) => String(project.id)),
+          days,
+        ),
+        this.recentActivity(user.id, projects),
+        this.lastActivity(projects),
+        this.openCounts(projects.map((project) => project.id)),
       ]);
 
-      // One lookup for the whole panel, and only when something needs a name.
-      // The actors span projects, so this cannot go through a project's member
-      // list the way `getProjectActivity` does.
-      const actorIds = [
-        ...new Set(rows.map((row) => row.userId).filter(Boolean)),
-      ] as string[];
-      const people = actorIds.length
-        ? await this.users.findMany({ where: { id: { inArray: actorIds } } })
-        : [];
-
-      return {
-        days,
-        momentum,
-        activity: rows.map((row) => ({
-          id: row.id,
-          createdAt: row.createdAt,
-          type: row.type,
-          action: row.action,
-          userId: row.userId,
-          resourceType: row.resourceType,
-          resourceId: row.resourceId,
-          description: row.description,
-          // Defaulted rather than passed through: rows written before the
-          // column existed read as null, and every consumer would need the
-          // same guard.
-          eventCount: row.eventCount ?? 1,
-          projectId: Number(row.scopeId),
-          projectTitle: titles.get(Number(row.scopeId)) ?? "",
-          actor: row.userId
-            ? displayName(
-                people.find((person) => person.id === row.userId),
-                row.userId,
-              )
-            : undefined,
-          isMe: row.userId === user.id,
-        })),
-      };
+      return { days, momentum, activity, lastActivity, openCounts };
     },
   });
+
+  /**
+   * The activity panel narrowed to one project, read when the viewer picks it
+   * in the panel's own select.
+   *
+   * A request rather than a filter over the board's lines: those are the most
+   * recent events across ALL projects, so a quiet project would show few of
+   * them or none. This reads that project's own last
+   * {@link HomeController.ACTIVITY_LIMIT}.
+   */
+  getHomeActivity = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    schema: {
+      query: z.object({
+        projectId: z.integer(),
+      }),
+      response: z.array(homeActivityRowSchema),
+    },
+    handler: async ({ user, query }) => {
+      // The viewer's own memberships are the only scope this reads, so a
+      // project somebody else belongs to answers the same as one that does
+      // not exist.
+      const project = (await this.memberProjects(user.id)).find(
+        (it) => it.id === query.projectId,
+      );
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      return this.recentActivity(user.id, [project]);
+    },
+  });
+
+  /**
+   * The projects the viewer belongs to, most recently updated first.
+   */
+  protected async memberProjects(
+    userId: string,
+  ): Promise<Array<{ id: number; title: string; updatedAt: string }>> {
+    const me = await this.usersWith.findById(userId, {
+      include: {
+        projects: {
+          orderBy: { column: "updatedAt", direction: "desc" },
+        },
+      },
+    });
+    return me?.projects ?? [];
+  }
+
+  /**
+   * The last {@link HomeController.ACTIVITY_LIMIT} events across `projects`,
+   * newest first, with each actor's name and picture resolved.
+   *
+   * `projects` must not be empty: `inArray: []` throws.
+   */
+  protected async recentActivity(
+    viewerId: string,
+    projects: Array<{ id: number; title: string }>,
+  ) {
+    const titles = new Map(
+      projects.map((project) => [project.id, project.title]),
+    );
+    const rows = await this.auditRows.findMany({
+      where: {
+        scopeType: "project",
+        scopeId: { inArray: projects.map((project) => String(project.id)) },
+      },
+      orderBy: { column: "createdAt", direction: "desc" },
+      limit: HomeController.ACTIVITY_LIMIT,
+    });
+
+    // One lookup for the whole panel, and only when something needs a name.
+    // The actors span projects, so this cannot go through a project's member
+    // list the way `getProjectActivity` does.
+    const actorIds = [
+      ...new Set(rows.map((row) => row.userId).filter(Boolean)),
+    ] as string[];
+    const people = actorIds.length
+      ? await this.users.findMany({ where: { id: { inArray: actorIds } } })
+      : [];
+    const byId = new Map(people.map((person) => [person.id, person]));
+
+    return rows.map((row) => {
+      const person = row.userId ? byId.get(row.userId) : undefined;
+      return {
+        id: row.id,
+        createdAt: row.createdAt,
+        type: row.type,
+        action: row.action,
+        userId: row.userId,
+        resourceType: row.resourceType,
+        resourceId: row.resourceId,
+        description: row.description,
+        metadata: row.metadata,
+        // Defaulted rather than passed through: rows written before the
+        // column existed read as null, and every consumer would need the
+        // same guard.
+        eventCount: row.eventCount ?? 1,
+        updatedAt: row.updatedAt,
+        projectId: Number(row.scopeId),
+        projectTitle: titles.get(Number(row.scopeId)) ?? "",
+        actor: row.userId ? displayName(person, row.userId) : undefined,
+        // The same `/api/files/<id>` form Folio History serves its authors
+        // with.
+        actorAvatarUrl: person?.picture
+          ? `/api/files/${person.picture}`
+          : undefined,
+        isMe: row.userId === viewerId,
+      };
+    });
+  }
+
+  /**
+   * When each project last saw any activity: its newest audit event, whatever
+   * its kind, or the project row's own `updatedAt` when that is later (and
+   * for a project with no events at all).
+   *
+   * ## One statement, one index seek per project
+   *
+   * A correlated subquery per project, over a `VALUES` list of their ids,
+   * rather than `MAX(createdAt) ... GROUP BY scopeId`. The grouped form reads
+   * every event of every project on each Home load, so it grows with the
+   * audit log; this one walks `(scopeType, scopeId, createdAt)` backwards and
+   * stops at the first row, so it grows with the number of projects only.
+   * `VALUES` names its column `column1` in both SQLite and Postgres.
+   *
+   * `COALESCE(updatedAt, createdAt)` because a coalesced burst starts at
+   * `createdAt` and ends at `updatedAt`. Taken from the burst that STARTED
+   * last, which can miss a longer burst that started earlier by at most its
+   * window (5 minutes in Lore): invisible at the column's "3 days ago"
+   * precision, and the price of reading one row instead of all of them.
+   */
+  protected async lastActivity(
+    projects: Array<{ id: number; updatedAt: string }>,
+  ): Promise<Array<{ projectId: number; at: string }>> {
+    const table = this.auditRows.table;
+    const rows = await this.database.run(
+      sql`
+        SELECT
+          v.column1 AS scope_id,
+          (
+            SELECT COALESCE(${table.updatedAt}, ${table.createdAt})
+            FROM ${table}
+            WHERE ${table.scopeType} = 'project'
+              AND ${table.scopeId} = v.column1
+            ORDER BY ${table.createdAt} DESC
+            LIMIT 1
+          ) AS last_at
+        FROM (VALUES ${sql.join(
+          projects.map((project) => sql`(${String(project.id)})`),
+          sql`, `,
+        )}) AS v
+      `,
+      z.object({
+        scope_id: z.text(),
+        // Integer milliseconds on SQLite, a timestamp on Postgres, and null
+        // for a project with no events. `dt.of` reads every one of them, so
+        // the column is decoded as whatever the driver returned.
+        last_at: z.any(),
+      }),
+    );
+
+    const lastEvent = new Map(
+      rows
+        .filter((row) => row.last_at != null)
+        .map((row) => [
+          Number(row.scope_id),
+          this.dt.of(row.last_at as number | string | Date).valueOf(),
+        ]),
+    );
+
+    return projects.map((project) => {
+      const own = this.dt.of(project.updatedAt).valueOf();
+      const event = lastEvent.get(project.id) ?? 0;
+      return {
+        projectId: project.id,
+        at: this.dt.of(Math.max(own, event)).toISOString(),
+      };
+    });
+  }
+
+  /**
+   * Draft epics, open blights and pending feedback per project, in ONE
+   * statement for every project at once.
+   *
+   * Each count is what the project's sidebar badge counts, so the two never
+   * disagree: `draft` epics only (the quests of a ready or in-progress epic
+   * are already in the quest count), `open` blights, `pending` feedback.
+   *
+   * The id list is bound once, as a `VALUES` table the three branches read,
+   * rather than as an `IN (...)` per branch: D1 caps a statement at 100
+   * bound parameters, and three copies of the list would reach it at 34
+   * projects. `CAST` because a bare `VALUES` parameter has no type of its
+   * own to compare against an integer column.
+   *
+   * Raw SQL, so the soft delete the repositories apply is spelled out:
+   * epics and feedback carry `deletedAt`, blights do not.
+   */
+  protected async openCounts(projectIds: number[]): Promise<
+    Array<{
+      projectId: number;
+      epics: number;
+      blights: number;
+      feedback: number;
+    }>
+  > {
+    const e = this.epicRows.table;
+    const b = this.blightRows.table;
+    const f = this.feedbackRows.table;
+    const rows = await this.database.run(
+      sql`
+        WITH ids(id) AS (VALUES ${sql.join(
+          projectIds.map((id) => sql`(CAST(${id} AS INTEGER))`),
+          sql`, `,
+        )})
+        SELECT 'epics' AS kind, ${e.projectId} AS project_id, COUNT(*) AS n
+        FROM ${e}
+        WHERE ${e.projectId} IN (SELECT id FROM ids)
+          AND ${e.status} = 'draft'
+          AND ${e.deletedAt} IS NULL
+        GROUP BY ${e.projectId}
+        UNION ALL
+        SELECT 'blights' AS kind, ${b.projectId} AS project_id, COUNT(*) AS n
+        FROM ${b}
+        WHERE ${b.projectId} IN (SELECT id FROM ids)
+          AND ${b.status} = 'open'
+        GROUP BY ${b.projectId}
+        UNION ALL
+        SELECT 'feedback' AS kind, ${f.projectId} AS project_id, COUNT(*) AS n
+        FROM ${f}
+        WHERE ${f.projectId} IN (SELECT id FROM ids)
+          AND ${f.status} = 'pending'
+          AND ${f.deletedAt} IS NULL
+        GROUP BY ${f.projectId}
+      `,
+      z.object({
+        kind: z.enum(["epics", "blights", "feedback"]),
+        project_id: z.coerce.number(),
+        n: z.coerce.number(),
+      }),
+    );
+
+    const byProject = new Map(
+      projectIds.map((projectId) => [
+        projectId,
+        { projectId, epics: 0, blights: 0, feedback: 0 },
+      ]),
+    );
+    for (const row of rows) {
+      const counts = byProject.get(row.project_id);
+      if (counts) {
+        counts[row.kind] = row.n;
+      }
+    }
+    return [...byProject.values()];
+  }
 
   /**
    * The bars, in one grouped statement for every project at once.

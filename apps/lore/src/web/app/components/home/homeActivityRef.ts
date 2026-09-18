@@ -17,11 +17,15 @@ import type { HomeActivityRow } from "@/api/schemas/homeActivityRowSchema.ts";
  * An unknown kind keeps its id with no letter rather than guessing one: a new
  * `$audit` type reaches this panel the moment it is declared, and a wrong
  * letter is worse than none.
+ *
+ * A UUID returns `undefined` too, and the line names the resource by its
+ * title instead (an estate is `ovh-1`, not `#01a0719b-...`): a UUID is a row
+ * id nobody reads, types or recognises, and it filled the line on its own.
  */
 export const homeActivityRef = (
   row: Pick<HomeActivityRow, "type" | "resourceId">,
 ): string | undefined => {
-  if (!row.resourceId) {
+  if (!row.resourceId || UUID.test(row.resourceId)) {
     return undefined;
   }
   const letter = HOME_ACTIVITY_LETTERS[row.type];
@@ -39,3 +43,8 @@ const HOME_ACTIVITY_LETTERS: Record<string, string> = {
   feedback: "P",
   blight: "B",
 };
+
+/**
+ * Any RFC 4122 shape, whatever its version: estates carry v7 ids.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

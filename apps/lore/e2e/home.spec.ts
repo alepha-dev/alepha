@@ -136,7 +136,7 @@ test.describe("Home (mobile chrome)", () => {
 
 /**
  * The landing page itself: the table of projects, the bars beside them, and
- * the activity panel that narrows to the row under the pointer.
+ * the activity panel and its project picker.
  *
  * Three things here cannot be covered anywhere else.
  *
@@ -144,8 +144,9 @@ test.describe("Home (mobile chrome)", () => {
  * bootstrap atom and the bars from `getHomeBoard`, so a page that renders its
  * rows proves nothing about the aggregate behind them.
  *
- * **Hovering filters.** It is pointer state feeding a sibling panel, which no
- * unit spec can see.
+ * **Picking a project reads that project.** The picker asks the server for
+ * the project's own history (`getHomeActivity`) rather than filtering the
+ * board's lines, which no unit spec can see.
  *
  * **Below `lg` the panel goes and the table stays.** #1754, from feedback
  * #2084 on Chrome/Android at 412x924: the landing page had no way to reach a
@@ -154,7 +155,7 @@ test.describe("Home (mobile chrome)", () => {
  * these two widths pin.
  */
 test.describe("Home (board)", () => {
-  test("lists projects, draws momentum, and narrows the panel on hover", async ({
+  test("lists projects, draws momentum, and narrows the panel to a picked project", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -200,7 +201,11 @@ test.describe("Home (board)", () => {
     const busyRow = table
       .getByRole("row")
       .filter({ hasText: `Busy${t}`.slice(0, 20) });
-    await expect(busyRow).toContainText("3 quests");
+    // The Open column is a link per feature, to that feature's page; the
+    // quest link names its count.
+    const openQuests = busyRow.getByRole("link", { name: "3 open quests" });
+    await expect(openQuests).toBeVisible();
+    await expect(openQuests).toHaveAttribute("href", /\/quests$/);
 
     // The bars come from `getHomeBoard`, so this is the aggregate's assertion:
     // the label names the window and the count the query returned.
@@ -213,17 +218,25 @@ test.describe("Home (board)", () => {
     // Every project's events, before any hover.
     await expect(panel).toContainText("create");
 
-    // Hovering the quiet project leaves its own lines only, and it has none:
-    // it was created through an app-layer event, which is not project-scoped.
-    const quietRow = table
-      .getByRole("row")
-      .filter({ hasText: `Quiet${t}`.slice(0, 20) });
-    await quietRow.hover();
-    await expect(panel).toContainText(/nothing recent/i);
+    // Picking the quiet project reads its own history, and it has none: it
+    // was created through an app-layer event, which is not project-scoped.
+    const picker = panel.getByTestId("home-activity-project");
+    // Base UI parks `pointer-events: none` on <body> for a beat after a
+    // popup closes, and a click in that window silently does nothing.
+    const popupClosed = () =>
+      page.waitForFunction(() => document.body.style.pointerEvents !== "none");
+    await picker.click();
+    await page.getByRole("option", { name: `Quiet${t}`.slice(0, 20) }).click();
+    await expect(panel).toContainText(/nothing has happened in this project/i);
 
-    // And back: the pointer leaving a row restores the whole feed.
-    await page.mouse.move(0, 0);
+    // And back: the picker has no "All projects" row and, at this size, no
+    // clear `x`, so clicking the picked project again is how it empties.
+    await popupClosed();
+    await picker.click();
+    await page.getByRole("option", { name: `Quiet${t}`.slice(0, 20) }).click();
+    await expect(picker).toContainText(/all projects/i);
     await expect(panel).toContainText("create");
+    await popupClosed();
 
     // A row is a link to its project, which is the page's primary job.
     await table

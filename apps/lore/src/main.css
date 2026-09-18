@@ -700,7 +700,8 @@ body::before {
  * Applied to the shell's scrolling <main> via AppShell's `mainClassName`,
  * so it covers the whole content area of every page rather than being
  * re-stamped per screen, and so no other app using the shared shell
- * inherits Lore's texture.
+ * inherits Lore's texture. Home, which has no shell, carries it on the box
+ * around its table and activity panel (`HomeBoard`), its main panel.
  *
  * Two literals rather than one token: the mockup's near-white dot is a
  * dark-mode value, and at 5% over a light page it is invisible. Light mode

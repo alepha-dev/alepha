@@ -66,23 +66,29 @@ export default {
   "home.table.col.lastActivity": "Last activity",
   "home.table.owner": "You own this project",
   "home.table.momentum.label": "$1 events over the last $2 days",
-  "home.table.open.quest": "1 quest",
-  "home.table.open.quests": "$1 quests",
-  "home.table.open.none": "nothing open",
-  "home.table.delete.action": "Delete project",
-  "home.table.delete.title": "Delete this project?",
-  "home.table.delete.description":
-    "$1, its quests, folios and members are deleted for everyone. This cannot be undone.",
-  "home.table.delete.confirm": "Delete project",
+  "home.table.momentum.event": "event",
+  "home.table.momentum.events": "events",
+  "home.table.momentum.delta": "$1%",
+  "home.table.momentum.delta.hint": "The last 7 days against the 7 before",
+  "home.table.momentum.flat": "flat",
+  "home.table.lastActivity.today": "today",
+  "home.table.lastActivity.daysAgo": "$1d ago",
+  "home.table.open.quests": "$1 open quests",
+  "home.table.open.epics": "$1 draft epics",
+  "home.table.open.blights": "$1 open blights",
+  "home.table.open.feedback": "$1 pending feedback",
   "home.activity.title": "Recent activity",
   "home.activity.you": "You",
   "home.activity.unknown": "Someone",
   "home.activity.empty": "Nothing has happened yet",
-  // ⚠️ "here", not "in this project": the panel holds the most recent events
-  // across every project, so a quiet project having none of them is not the
-  // same fact as that project having no history, and this line must not
-  // claim the second.
-  "home.activity.empty.project": "Nothing recent here",
+  // The panel narrowed to one project reads that project's own history
+  // (`getHomeActivity`), so an empty one really has none.
+  "home.activity.empty.project": "Nothing has happened in this project yet",
+  "home.activity.allProjects": "All projects",
+  "home.activity.actions": "Actions",
+  "home.activity.see": "See $1",
+  "home.activity.openProject": "Open project",
+  "home.activity.projectActivity": "Project activity",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
   "auth.register.intent.invitation":
