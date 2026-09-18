@@ -27,6 +27,7 @@ import { OrganizationInviteDialog } from "./OrganizationInviteDialog.tsx";
 import { OrganizationMemberIdentity } from "./OrganizationMemberIdentity.tsx";
 import { OrganizationMemberRankPicker } from "./OrganizationMemberRankPicker.tsx";
 import { OrganizationPendingInvitations } from "./OrganizationPendingInvitations.tsx";
+import { OrganizationTransferOwnershipDialog } from "./OrganizationTransferOwnershipDialog.tsx";
 
 export interface OrganizationMembersProps {
   organizationId: string;
@@ -45,6 +46,10 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
   const [rankBusy, setRankBusy] = useState(false);
   const [invitationBusy, setInvitationBusy] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<
+    { userId: string; name: string } | undefined
+  >();
   const canManage = props.can("member:manage");
   const canInvite = props.can("invitation:create");
 
@@ -161,7 +166,9 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
     remove.loading ||
     leave.loading ||
     rankBusy ||
-    invitationBusy;
+    invitationBusy ||
+    transferBusy;
+  const amOwner = mine?.rank === "owner";
 
   return (
     <section className="relative flex flex-col gap-3" aria-busy={busy}>
@@ -245,6 +252,23 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
                     <MoreHorizontal className="size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {amOwner && (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setTransferTarget({
+                            userId: member.userId,
+                            name:
+                              member.user.username ||
+                              member.user.email ||
+                              member.user.id.slice(0, 8),
+                          })
+                        }
+                      >
+                        {tr("organizations.transfer.action", {
+                          default: "Transfer ownership",
+                        })}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       variant="destructive"
                       data-testid="remove-member"
@@ -281,6 +305,19 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
         onBusyChange={setInvitationBusy}
         onInvited={async () => {
           if (canManage) await invitationsQuery.refetch();
+        }}
+      />
+      <OrganizationTransferOwnershipDialog
+        organizationId={props.organizationId}
+        target={transferTarget}
+        ranks={ranks}
+        onBusyChange={setTransferBusy}
+        onOpenChange={(open) => {
+          if (!open) setTransferTarget(undefined);
+        }}
+        onTransferred={async () => {
+          setTransferTarget(undefined);
+          await Promise.all([membersQuery.refetch(), ranksQuery.refetch()]);
         }}
       />
     </section>
