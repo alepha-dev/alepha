@@ -20,7 +20,10 @@ export const OrganizationMemberIdentity = (
   const initial = name.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div
+      className="flex min-w-0 flex-1 items-center gap-3"
+      data-testid="member-identity"
+    >
       <UserAvatar
         fileId={user.picture}
         alt={name}

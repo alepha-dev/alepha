@@ -59,7 +59,9 @@ test.describe("shell", () => {
     const input = palette.getByPlaceholder("Search blocks and pages…");
     await expect(input).toBeFocused();
 
-    await input.fill("settings");
+    // Keep this assertion about keyboard input and filtering, not about how
+    // many fuzzy subsequences a growing navigation tree happens to contain.
+    await input.fill("audit log");
     await expect(palette.getByRole("option")).toHaveCount(1);
   });
 

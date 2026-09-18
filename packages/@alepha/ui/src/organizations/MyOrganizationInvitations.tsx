@@ -9,7 +9,17 @@ import { useToast } from "../core/useToast.tsx";
 import { SettingsHeading } from "../settings/SettingsHeading.tsx";
 
 export interface MyOrganizationInvitationsProps {
+  load?: () => Promise<MyOrganizationInvitationItem[]>;
+  accept?: (invitationId: string) => Promise<string>;
+  decline?: (invitationId: string) => Promise<void>;
   onAccepted?: (organizationId: string) => void | Promise<void>;
+}
+
+export interface MyOrganizationInvitationItem {
+  id: string;
+  organizationId: string;
+  organizationName?: string;
+  email: string;
 }
 
 export const MyOrganizationInvitations = (
@@ -21,33 +31,41 @@ export const MyOrganizationInvitations = (
   const invitations = useQuery(
     {
       key: ["my-organization-invitations"],
-      handler: () => api.getMyOrganizationInvitations(),
+      handler: () => props.load?.() ?? api.getMyOrganizationInvitations(),
     },
-    [api],
+    [api, props.load],
   );
   const accept = useAction<[invitationId: string], void>(
     {
       handler: async (invitationId) => {
-        const accepted = await api.acceptOrganizationInvitation({
-          params: { invitationId },
-        });
+        const organizationId = props.accept
+          ? await props.accept(invitationId)
+          : (
+              await api.acceptOrganizationInvitation({
+                params: { invitationId },
+              })
+            ).organizationId;
         await invitations.refetch();
         toaster.success(
           tr("organizations.invitations.accepted", {
             default: "Invitation accepted",
           }),
         );
-        await props.onAccepted?.(accepted.organizationId);
+        await props.onAccepted?.(organizationId);
       },
     },
-    [api, invitations, props.onAccepted, toaster, tr],
+    [api, invitations, props.accept, props.onAccepted, toaster, tr],
   );
   const decline = useAction<[invitationId: string], void>(
     {
       handler: async (invitationId) => {
-        await api.declineOrganizationInvitation({
-          params: { invitationId },
-        });
+        if (props.decline) {
+          await props.decline(invitationId);
+        } else {
+          await api.declineOrganizationInvitation({
+            params: { invitationId },
+          });
+        }
         await invitations.refetch();
         toaster.show(
           tr("organizations.invitations.declined", {
@@ -57,7 +75,7 @@ export const MyOrganizationInvitations = (
         );
       },
     },
-    [api, invitations, toaster, tr],
+    [api, invitations, props.decline, toaster, tr],
   );
   const items = invitations.data ?? [];
   const busy = invitations.loading || accept.loading || decline.loading;

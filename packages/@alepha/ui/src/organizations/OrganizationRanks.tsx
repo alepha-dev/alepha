@@ -46,6 +46,10 @@ export interface OrganizationRanksProps {
     permission: CataloguePermission,
     group: CatalogueGroup,
   ) => boolean;
+  lockPermission?: (
+    permission: CataloguePermission,
+    group: CatalogueGroup,
+  ) => "on" | "off" | undefined;
   label?: (key: string | undefined, fallback: string) => string;
 }
 
@@ -215,6 +219,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
         name: permission.name,
         label: label(permission.label, permission.name),
         description: permission.description,
+        lock: props.lockPermission?.(permission, group),
       }));
     return permissions.length
       ? [

@@ -20,6 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui";
+import { useInviteOrganizationMember } from "@alepha/ui/organizations";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
@@ -48,7 +49,6 @@ import {
   capabilityOption,
   hasCapability,
 } from "../../services/projectCapabilities.ts";
-import { useInviteMember } from "../shared/useInviteMember.ts";
 import AppCreateDialog from "./apps/AppCreateDialog.tsx";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
 import QuestCreate from "./quest/QuestCreate.tsx";
@@ -63,7 +63,7 @@ const ProjectActionsCreateButton = () => {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const { can } = useRank();
-  const inviteMember = useInviteMember();
+  const inviteMember = useInviteOrganizationMember();
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
   const router = useRouter<AppRouter>();
@@ -327,17 +327,17 @@ const ProjectActionsCreateButton = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {tr("project.settings.members.invite.title")}
+              {tr("organizations.invitations.inviteTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
-              {tr("project.settings.members.invite.description", {
+              {tr("project.menu.invite-description", {
                 args: [project.title],
               })}
             </p>
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("project.settings.members.invite.email")}</Label>
+              <Label>{tr("organizations.invitations.email")}</Label>
               <div className="relative">
                 <Mail className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
                 <Input
@@ -354,10 +354,10 @@ const ProjectActionsCreateButton = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInvite(false)}>
-              {tr("project.settings.members.invite.cancel")}
+              {tr("organizations.members.cancel")}
             </Button>
             <Button onClick={handleInvite} disabled={inviteMember.loading}>
-              {tr("project.settings.members.invite.submit")}
+              {tr("organizations.invitations.send")}
             </Button>
           </DialogFooter>
         </DialogContent>

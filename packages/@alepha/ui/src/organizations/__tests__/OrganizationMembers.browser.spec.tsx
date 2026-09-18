@@ -145,8 +145,11 @@ describe("OrganizationMembers", () => {
   it("shows pending invitations and never offers owner in the invite form", async () => {
     const { view } = await mount(true);
 
+    expect(view.getAllByTestId("member-identity")).toHaveLength(2);
     expect(await view.findByText("pending@example.com")).toBeDefined();
     expect(view.getByText("Release manager")).toBeDefined();
+    fireEvent.click(view.getByTestId("invitation-actions"));
+    expect(await view.findByTestId("revoke-invitation")).toBeDefined();
     fireEvent.click(view.getByRole("button", { name: "Invite member" }));
     fireEvent.keyDown(await view.findByTestId("invite-rank"), {
       key: "ArrowDown",

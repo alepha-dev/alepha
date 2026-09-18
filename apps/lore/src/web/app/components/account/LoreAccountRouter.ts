@@ -75,10 +75,7 @@ export class LoreAccountRouter {
       group: "Lore",
       order: 101,
     },
-    loader: async () => ({
-      invitations: await this.invitationApi.listMyInvitations(),
-    }),
-    lazy: () => import("./MyInvitations.tsx"),
+    lazy: () => import("./AccountInvitations.tsx"),
   });
 
   /**

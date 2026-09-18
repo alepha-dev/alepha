@@ -56,7 +56,7 @@ class FakeLinkProvider extends LinkProvider {
           },
         ],
       },
-      getProjectMembers: [],
+      getOrganizationMembers: [],
       getRankPresets: { items: [] },
       listQuestTags: [],
       getProjectPrompts: [],
@@ -166,9 +166,7 @@ describe("project settings writes", () => {
       return editable!;
     });
     fireEvent.click(box);
-    fireEvent.click(
-      await screen.findByRole("button", { name: /save the ranks/i }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /save ranks/i }));
 
     await expectOneToast(
       "You cannot grant a permission you do not hold (spec)",

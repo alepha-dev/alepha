@@ -79,9 +79,9 @@ describe("OrganizationTransferOwnershipDialog", () => {
       </AlephaContext.Provider>,
     );
 
-    fireEvent.keyDown(view.getByTestId("transfer-rank"), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByTestId("transfer-keep"), { key: "ArrowDown" });
     fireEvent.click(await view.findByRole("option", { name: "Editor" }));
-    fireEvent.click(view.getByRole("button", { name: "Transfer ownership" }));
+    fireEvent.click(view.getByTestId("transfer-submit"));
     fireEvent.click(await view.findByRole("button", { name: "Transfer" }));
 
     await waitFor(() =>

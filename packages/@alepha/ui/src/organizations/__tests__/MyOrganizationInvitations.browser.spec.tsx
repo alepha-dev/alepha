@@ -103,4 +103,50 @@ describe("MyOrganizationInvitations", () => {
     await waitFor(() => expect(links.declined).toEqual([invitationId]));
     expect(view.queryByText("Acme")).toBeNull();
   });
+
+  it("uses caller-provided invitation actions when an app adapts a legacy API", async () => {
+    const accepted: string[] = [];
+    const declined: string[] = [];
+    const joined: string[] = [];
+    const load = async () => [
+      {
+        id: invitationId,
+        organizationId,
+        organizationName: "Legacy project",
+        email: "kim@example.com",
+      },
+    ];
+
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: Links })
+      .with(AlephaReact)
+      .with(AlephaReactI18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <MyOrganizationInvitations
+          load={load}
+          accept={async (id) => {
+            accepted.push(id);
+            return organizationId;
+          }}
+          decline={async (id) => {
+            declined.push(id);
+          }}
+          onAccepted={(id) => {
+            joined.push(id);
+          }}
+        />
+      </AlephaContext.Provider>,
+    );
+
+    await view.findByText("Legacy project");
+    fireEvent.click(view.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() => expect(accepted).toEqual([invitationId]));
+    expect(declined).toEqual([]);
+    expect(joined).toEqual([organizationId]);
+  });
 });

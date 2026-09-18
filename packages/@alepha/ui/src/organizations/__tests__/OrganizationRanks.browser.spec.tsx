@@ -107,6 +107,9 @@ describe("OrganizationRanks", () => {
               permission.name !== "document:secret"
             }
             label={(key, fallback) => key ?? fallback}
+            lockPermission={(permission) =>
+              permission.name === "document:edit" ? "off" : undefined
+            }
             presets={[
               {
                 key: "reviewer",
@@ -129,6 +132,9 @@ describe("OrganizationRanks", () => {
     expect(read[0].hasAttribute("data-disabled")).toBe(true);
     expect(read[0].hasAttribute("data-checked")).toBe(true);
     expect(read[1].hasAttribute("data-disabled")).toBe(false);
+    const edit = view.getAllByLabelText("document:edit");
+    expect(edit[1].hasAttribute("data-disabled")).toBe(true);
+    expect(edit[1].hasAttribute("data-checked")).toBe(false);
     expect(view.queryByText("Secret documents")).toBeNull();
     expect(view.getByText(/up to 30 seconds/i)).toBeDefined();
     expect(view.getByText(/demotions take effect immediately/i)).toBeDefined();

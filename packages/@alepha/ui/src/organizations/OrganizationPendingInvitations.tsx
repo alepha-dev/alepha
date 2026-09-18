@@ -95,6 +95,7 @@ export const OrganizationPendingInvitations = (
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       variant="destructive"
+                      data-testid="revoke-invitation"
                       onClick={() => void runRevoke(invitation)}
                     >
                       {tr("organizations.invitations.revoke", {

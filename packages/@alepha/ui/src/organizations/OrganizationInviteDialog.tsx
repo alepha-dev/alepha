@@ -77,6 +77,7 @@ export const OrganizationInviteDialog = (
                 id="organization-invite-email"
                 className="pl-8"
                 value={email}
+                placeholder="user@example.com"
                 onChange={(event) => setEmail(event.currentTarget.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void submit();

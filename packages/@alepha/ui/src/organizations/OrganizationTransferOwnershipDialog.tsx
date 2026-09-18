@@ -115,7 +115,7 @@ export const OrganizationTransferOwnershipDialog = (
               value: item.key,
               label: item.name,
             }))}
-            inputProps={{ "data-testid": "transfer-rank" }}
+            inputProps={{ "data-testid": "transfer-keep" }}
             placeholder={rankName}
           />
         </div>
@@ -129,6 +129,7 @@ export const OrganizationTransferOwnershipDialog = (
           </Button>
           <Button
             variant="destructive"
+            data-testid="transfer-submit"
             disabled={transfer.loading}
             onClick={() => void transfer.run()}
           >

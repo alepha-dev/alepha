@@ -602,35 +602,17 @@ export default {
 
   "quest.view.actions.accept": "Accept the quest",
 
-  "project.settings.members.title": "Members",
-  "project.settings.members.empty": "No members in this project yet.",
-  "project.settings.members.invite.action": "Invite",
-  "project.settings.members.invite.title": "Invite a user",
-  "project.settings.members.invite.description":
+  "organizations.invitations.invite": "Invite",
+  "organizations.invitations.inviteTitle": "Invite a user",
+  "organizations.invitations.email": "Email Address",
+  "organizations.invitations.send": "Send Invitation",
+  "organizations.members.cancel": "Cancel",
+  "organizations.ranks.save": "Save the ranks",
+  "project.menu.invite-description":
     'Enter the email address of the user you want to invite to "$1".',
-  "project.settings.members.invite.email": "Email Address",
-  "project.settings.members.invite.cancel": "Cancel",
-  "project.settings.members.invite.submit": "Send Invitation",
-  "project.settings.members.invite.emailRequired":
-    "Please enter an email address.",
-  "project.settings.members.invite.sent": "Invitation sent to $1.",
-
-  "project.settings.members.revoke.title": "Revoke this invitation?",
-  "project.settings.members.revoke.description":
-    "$1 will no longer be able to use the link they were sent. You can invite them again, which sends a new link.",
-  "project.settings.members.revoke.confirm": "Revoke",
-  "project.settings.members.revoke.cancel": "Keep it",
-  "project.settings.members.revoke.done": "The invitation to $1 was revoked.",
-  "project.settings.members.revoke.action.short": "Cancel invitation",
-
-  "project.settings.members.actions": "Actions for $1",
-  "project.settings.members.remove.action": "Remove",
-  "project.settings.members.remove.title": "Remove this member?",
-  "project.settings.members.remove.description":
-    "$1 loses access to this project. The quests they had accepted but not finished go back to the pool; the ones they finished stay theirs. You can invite them again.",
-  "project.settings.members.remove.confirm": "Remove",
-  "project.settings.members.remove.cancel": "Keep them",
-  "project.settings.members.remove.done": "$1 was removed from the project.",
+  "organizations.transfer.confirm": "Transfer it",
+  "organizations.transfer.confirmDescription":
+    "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
 
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",
@@ -2324,19 +2306,6 @@ export default {
   "dashboard.footer.visitors.noCompare": "no comparison yet",
   "dashboard.footer.noBeacon": "no app here reports page views",
 
-  // --- /account/invitations -------------------------------------------------
-  "invitations.title": "Pending invitations",
-  "invitations.description":
-    "Project invitations addressed to your email. Accepting adds you to the project as a member.",
-  "invitations.empty": "No pending invitations.",
-  "invitations.badge.pending": "Pending",
-  "invitations.invitedBy": "Invited by $1",
-  "invitations.invited": "Invited",
-  "invitations.accept": "Accept",
-  "invitations.decline": "Decline",
-  "invitations.accepted": "You have joined the project!",
-  "invitations.declined": "Invitation declined.",
-
   // --- /account/feedback ----------------------------------------------------
   "myFeedback.title": "Submitted feedback",
   "myFeedback.description":
@@ -2483,53 +2452,7 @@ export default {
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
-  "project.settings.members.rank.label": "Rank",
-  "project.settings.members.rank.assigned": "Rank updated",
-  "project.settings.members.invite.rank": "Rank they land on",
-  "project.settings.members.transfer.action": "Transfer ownership",
-  "project.settings.members.transfer.title": "Transfer this project to $1",
-  "project.settings.members.transfer.description":
-    "There is exactly one owner. Pick the rank you keep, then confirm.",
-  "project.settings.members.transfer.keep": "Your rank afterwards",
-  "project.settings.members.transfer.confirmTitle": "Give this project to $1?",
-  "project.settings.members.transfer.confirmDescription":
-    "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
-  "project.settings.members.transfer.confirm": "Transfer it",
-  "project.settings.members.transfer.done": "$1 owns this project now",
   "project.settings.nav.ranks": "Ranks",
-  "project.settings.ranks.title": "What each rank may do",
-  "project.settings.ranks.description":
-    "Permissions down the left, one column per rank. A permission belonging to a capability this project does not have is not listed at all.",
-  "project.settings.ranks.delay":
-    "A change to what a rank grants can take up to a minute to reach everybody. Removing somebody from the project, or moving them to another rank, takes effect at once.",
-  "project.settings.ranks.permission": "Permission",
-  "project.settings.ranks.empty":
-    "No permission to show for this project's capabilities.",
-  "project.settings.ranks.builtin": "Built-in",
-  "project.settings.ranks.holders": "$1 member(s)",
-  "project.settings.ranks.actions": "Actions for $1",
-  "project.settings.ranks.rename": "Rename",
-  "project.settings.ranks.rename.title": "Rename this rank",
-  "project.settings.ranks.rename.confirm": "Rename",
-  "project.settings.ranks.delete": "Delete",
-  "project.settings.ranks.delete.title": "Delete $1?",
-  "project.settings.ranks.delete.description":
-    "The rank disappears from this project. Nobody holds it, so nobody is affected.",
-  "project.settings.ranks.delete.confirm": "Delete the rank",
-  "project.settings.ranks.delete.held.title": "$1 is still held",
-  "project.settings.ranks.delete.held.description":
-    "Move these members to another rank first: $1. Ranks are changed on the Members page.",
-  "project.settings.ranks.deleted": "Rank deleted",
-  "project.settings.ranks.create": "New rank",
-  "project.settings.ranks.create.blank": "Empty rank",
-  "project.settings.ranks.create.preset": "From $1",
-  "project.settings.ranks.create.title": "Name the new rank",
-  "project.settings.ranks.create.description":
-    "The name is what members read. Nothing is stored until you confirm.",
-  "project.settings.ranks.create.confirm": "Create",
-  "project.settings.ranks.created": "Rank created",
-  "project.settings.ranks.save": "Save the ranks",
-  "project.settings.ranks.saved": "Ranks saved",
   "rank.preset.admin": "Admin",
   "rank.preset.contributor": "Contributor",
   "rank.preset.viewer": "Viewer",
