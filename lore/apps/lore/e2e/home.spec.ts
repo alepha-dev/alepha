@@ -23,6 +23,12 @@ import {
  * ⚠️ It used to assert the same thing about the dashboard header's "Refreshed
  * <time>" standfirst. That board is gone; the hazard it guarded is not, and it
  * now sits in a column on every row.
+ *
+ * The column is now "today" / "3d ago", counted from `getHomeBoard`'s last
+ * activity. That request is a `useQuery`, which fetches from an effect, so the
+ * cell is empty in the server HTML by construction and fills after
+ * hydration: the same guarantee, reached another way, and asserted the same
+ * way. A project made seconds ago reads "today".
  */
 test.describe("Home (SSR)", () => {
   test("relative times are client-only, not in the SSR HTML", async ({
@@ -43,15 +49,16 @@ test.describe("Home (SSR)", () => {
 
     // The table IS server-rendered (the project title is in the SSR HTML)...
     expect(html).toContain(projectTitle);
-    // ...but no relative time is. A project touched seconds ago reads as "a
-    // few seconds ago" / "a minute ago" once the client has it.
+    // ...but no relative time is: not the old `fromNow` wording, and not the
+    // Last activity cell, which reads "today" once the client has it.
     expect(html).not.toContain("seconds ago");
     expect(html).not.toContain("minute ago");
+    expect(html).not.toMatch(/>today</i);
 
     // After hydration it appears client-side.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/ago$/i).first()).toBeVisible({
+    await expect(page.getByText(/^today$/i).first()).toBeVisible({
       timeout: 15_000,
     });
   });
