@@ -105,6 +105,16 @@ describe("Control size and minimal on a select", () => {
     expect(trigger.className).toContain("hover:bg-muted");
     // Pulled left by its own padding, so its text aligns with plain rows.
     expect(trigger.className).toContain("-mx-1");
+    // What the hover-border rule in `styles.css` skips, so pointing at it
+    // does not draw the border `border-transparent` took away.
+    expect(trigger.hasAttribute("data-minimal")).toBe(true);
+  });
+
+  it("marks only a minimal trigger for the hover-border rule to skip", async () => {
+    const alepha = await start();
+    const trigger = triggerOf(mount(alepha, <Probe size="xs" />));
+
+    expect(trigger.hasAttribute("data-minimal")).toBe(false);
   });
 
   it("combines: the shape the quest rail asks for", async () => {
@@ -166,9 +176,15 @@ describe("Control size and minimal on a select", () => {
       expect(offsetAt(mount(alepha, <Probe size="sm" clearable />))).toContain(
         "-ml-7",
       );
-      expect(offsetAt(mount(alepha, <Probe size="xs" clearable />))).toContain(
-        "-ml-5",
-      );
+    });
+
+    it("draws no x at xs, where it is too small to hit", async () => {
+      // A `clearable` field is always deselectable, so clicking the selected
+      // option again is still the way back to empty at this size.
+      const alepha = await start();
+      const ui = mount(alepha, <Probe size="xs" clearable />);
+
+      expect(ui.queryByRole("button", { name: "Clear selection" })).toBeNull();
     });
 
     it("needs no correction under minimal, and carries none", async () => {
@@ -181,7 +197,7 @@ describe("Control size and minimal on a select", () => {
       // over-constrained block drops that margin and the edge falls 4px short.
       // The `x` ended up overlapping the chevron by 5px, measured.
       const shifted = clearOf(
-        mount(alepha, <Probe size="xs" minimal clearable />),
+        mount(alepha, <Probe size="sm" minimal clearable />),
       ).className;
       cleanup();
 
@@ -191,7 +207,7 @@ describe("Control size and minimal on a select", () => {
       // above describes its right one.
       expect(shifted).toContain("-translate-x-full");
       expect(
-        clearOf(mount(alepha, <Probe size="xs" clearable />)).className,
+        clearOf(mount(alepha, <Probe size="sm" clearable />)).className,
       ).toContain("-translate-x-full");
     });
 

@@ -608,6 +608,12 @@
  * because half these slots are wrappers carrying the state on a descendant.
  * ──────────────────────────────────────────────────────────────────────── */
 
+/*
+ * `[data-minimal]` is excluded too: a `minimal` select has no border at rest
+ * (`TRIGGER_MINIMAL_CLASSES` makes it transparent), and this rule, which
+ * outranks that class, drew one on hover, so the trigger grew a box the
+ * moment it was pointed at. Its hover is the `hover:bg-muted` tint alone.
+ */
 :is(
     [data-slot="input"],
     [data-slot="textarea"],
@@ -620,6 +626,7 @@
     :has(:focus-visible),
     [aria-invalid="true"],
     [data-disabled],
+    [data-minimal],
     :has(:disabled),
     :has([aria-invalid="true"])
   ) {

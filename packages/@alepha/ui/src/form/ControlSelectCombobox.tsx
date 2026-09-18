@@ -286,7 +286,15 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
    * Feedback #2113 proposed a `None` row for `minimal`/`xs`, and the owner
    * dropped it the same day: this control had already been changed twice in
    * opposite directions, and keeping the row out leaves that sweep intact.
-   * The `x` is the one answer everywhere it is drawn.
+   *
+   * ## And no `x` at `xs`
+   *
+   * At `xs` the trigger is 24px tall and the `x` a 12px glyph wedged between
+   * the value and the chevron: too small a target to hit, and it crowds the
+   * value it would clear. The owner took it out there. A `clearable` field is
+   * always `deselectable`, so clicking the selected option again still puts
+   * it back to empty, and the trigger still names the empty state with
+   * `clearLabel`.
    *
    * ## `clearable`, not `deselectable`
    *
@@ -302,7 +310,10 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
    * undocumented asymmetry reads as an oversight to whoever finds it next.
    */
   const showClear =
-    Boolean(props.clearable) && selected.length > 0 && !props.disabled;
+    Boolean(props.clearable) &&
+    selected.length > 0 &&
+    !props.disabled &&
+    props.size !== "xs";
 
   // The list (loading / empty / items) is identical for single and multi, and
   // so is the trigger now, so render it once.
@@ -402,6 +413,9 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
           id={props.id}
           disabled={props.disabled}
           {...props.triggerProps}
+          // Read by the hover-border rule in `styles.css`, which leaves a
+          // minimal trigger borderless on hover too: its hover is the tint.
+          data-minimal={props.minimal ? "" : undefined}
           className={cn(
             TRIGGER_CLASSES,
             sizeClasses.trigger,
