@@ -483,6 +483,13 @@ message as text) so the model can read it and self-correct. An `McpError`
 subclass is a **JSON-RPC protocol error** instead, carrying its code - use one
 when the caller cannot fix the problem by changing its arguments.
 
+The server logs every tool execution error, at a level set by the error's
+`status`. A refusal, anything with a status below 500 such as the
+`NotFoundError` above, is logged at `warn` as `MCP tool "<name>" refused the
+call`, with the status, the class name and the message. Anything else, a 5xx or
+an error with no status at all, is logged at `error` with its full chain. So an
+agent correcting itself does not bury the tool that actually broke.
+
 Available error classes:
 
 | Error                      | Code   | When to use                                                                                  |

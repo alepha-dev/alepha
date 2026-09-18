@@ -1007,7 +1007,30 @@ export class McpServerProvider {
       // that failed once and succeeded on retry left no trail at all to say
       // what broke. The log is operator-only, so it can hold the whole chain
       // at no disclosure cost.
-      this.log.error(`MCP tool "${name}" failed`, error as Error);
+      //
+      // A refusal is the exception. A handler that throws with a status below
+      // 500 (a 400 for a malformed request, a 404 for a missing row, a 409 for
+      // a stale write) is the API working and the agent correcting itself, and
+      // logging each one at error buried the real failures in the same stream.
+      // Same rule as a page loader and a rejected request: 5xx, and anything
+      // with no status at all, stays an error with its whole chain.
+      //
+      // `warn` rather than `debug`, because debug never leaves a production
+      // deployment, and which tool refuses agents most often, and why, is what
+      // tells its author the description or the schema misleads. The volume is
+      // bounded: a refusal needs a tool call, not a page view. The line keeps
+      // the status, the class name and the message, not the stack, which says
+      // nothing about an intended refusal.
+      const status = (error as { status?: unknown } | undefined)?.status;
+      if (typeof status === "number" && status < 500) {
+        this.log.warn(`MCP tool "${name}" refused the call`, {
+          status,
+          error: (error as Error).name,
+          message: (error as Error).message,
+        });
+      } else {
+        this.log.error(`MCP tool "${name}" failed`, error as Error);
+      }
 
       return {
         content: [
