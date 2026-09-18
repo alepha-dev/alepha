@@ -29,7 +29,7 @@ class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
     const answers: Record<string, unknown> = {
-      getRankCatalogue: {
+      getOrganizationRankCatalogue: {
         groups: [
           {
             name: "quest",
@@ -38,7 +38,7 @@ class FakeLinkProvider extends LinkProvider {
           },
         ],
       },
-      getRanks: {
+      getOrganizationRanks: {
         items: [
           {
             key: "owner",
@@ -154,7 +154,8 @@ describe("project settings writes", () => {
 
   it("toasts a refused rank save once", async () => {
     const fake = await mount(<ProjectSettingsRanksPage />, {
-      saveRank: "You cannot grant a permission you do not hold (spec)",
+      saveOrganizationRank:
+        "You cannot grant a permission you do not hold (spec)",
     });
 
     const box = await waitFor(() => {
@@ -172,6 +173,8 @@ describe("project settings writes", () => {
     await expectOneToast(
       "You cannot grant a permission you do not hold (spec)",
     );
-    expect(fake.calls.filter((it) => it === "saveRank")).toHaveLength(1);
+    expect(
+      fake.calls.filter((it) => it === "saveOrganizationRank"),
+    ).toHaveLength(1);
   });
 });

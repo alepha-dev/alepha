@@ -1,10 +1,10 @@
 import { $inject, z } from "alepha";
+import { organizationMembers } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
-import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { relations } from "../relations.ts";
 import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchema.ts";
@@ -43,7 +43,7 @@ export class AdminProjectController {
    * Relation-aware view of the same table, for the owner JOIN.
    */
   protected readonly projectsWith = $repository(relations, "projects");
-  protected readonly members = $repository(members);
+  protected readonly members = $repository(organizationMembers);
   protected readonly projectDeletion = $inject(ProjectDeletionService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -109,19 +109,21 @@ export class AdminProjectController {
       // Two extra queries for the whole page, not two per row. `content` is a
       // single page (20 by default), so both `inArray` lists stay small and
       // the cost does not grow with the size of the table.
-      const ids = result.content.map((project) => project.id);
-      const rows = ids.length
+      const organizationIds = result.content.flatMap((project) =>
+        project.organizationId ? [project.organizationId] : [],
+      );
+      const rows = organizationIds.length
         ? await this.members.findMany({
-            where: { projectId: { inArray: ids } },
-            columns: ["projectId"],
+            where: { organizationId: { inArray: organizationIds } },
+            columns: ["organizationId"],
           })
         : [];
 
-      const memberCounts = new Map<number, number>();
+      const memberCounts = new Map<string, number>();
       for (const row of rows) {
         memberCounts.set(
-          row.projectId,
-          (memberCounts.get(row.projectId) ?? 0) + 1,
+          row.organizationId,
+          (memberCounts.get(row.organizationId) ?? 0) + 1,
         );
       }
 
@@ -134,7 +136,9 @@ export class AdminProjectController {
           ownerUsername: project.owner?.username ?? project.owner?.email,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
-          memberCount: memberCounts.get(project.id) ?? 0,
+          memberCount: project.organizationId
+            ? (memberCounts.get(project.organizationId) ?? 0)
+            : 0,
         })),
       };
     },

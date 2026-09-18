@@ -15,6 +15,7 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * Lore turns the audits module on but declared no `$audit` type of its own,
@@ -188,11 +189,7 @@ describe("Lore domain audits", () => {
     const member = await aUser();
     const project = await aProject(owner);
 
-    const membersRepo = (ctx.projectController as any).members;
-    await membersRepo.create({
-      userId: member.id,
-      projectId: project.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, project.id, member.id);
 
     await ctx.projectController.leaveProject.fetch(
       { params: { id: project.id } },
@@ -211,11 +208,7 @@ describe("Lore domain audits", () => {
     const member = await aUser();
     const project = await aProject(owner);
 
-    const membersRepo = (ctx.projectController as any).members;
-    await membersRepo.create({
-      userId: member.id,
-      projectId: project.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, project.id, member.id);
 
     await ctx.projectController.removeMember.fetch(
       { params: { id: project.id, userId: member.id } },

@@ -5,6 +5,7 @@ import {
   NotificationInboxRecipientProvider,
   NotificationJobs,
 } from "alepha/api/notifications";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -16,9 +17,9 @@ import { describe, it } from "vitest";
 import { FeedbackCommentController } from "../src/api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 class Probe {
   members = $repository(members);
@@ -78,7 +79,7 @@ const setup = async () => {
       body: { title: "Feedback probe", capabilities: [{ key: "support" }] },
     } as any),
   );
-  await probe.members.create({ userId: member.id, projectId: project.id });
+  await createTestMemberByProjectId(alepha, project.id, member.id);
 
   const report = (title: string, reporterId: string) =>
     asUser(reporterId, () =>

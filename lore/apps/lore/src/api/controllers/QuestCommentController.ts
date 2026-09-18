@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
@@ -327,12 +327,7 @@ export class QuestCommentController {
       const mayModerate =
         comment.authorId === user.id
           ? false
-          : await this.ranks.can(
-              "project",
-              String(project.id),
-              "quest:delete",
-              user,
-            );
+          : await this.ranks.can(project.organizationId!, "quest:delete", user);
 
       if (comment.authorId !== user.id && !mayModerate) {
         throw new ForbiddenError(

@@ -1,5 +1,5 @@
 import { $inject, type Infer, z } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -26,6 +26,7 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { LentEstateResource, MintedLentEstate };
 
@@ -65,6 +66,7 @@ export class ProjectEstateController {
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly ranks = $inject(RankService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly service = $inject(EstateService);
   protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
@@ -174,8 +176,7 @@ export class ProjectEstateController {
       // rather than `project.createdBy === user.id` - `createdBy` records who
       // created a row and is never an authorization input again.
       const mayLend = await this.ranks.can(
-        "project",
-        String(params.projectId),
+        await this.projectSecurity.organizationIdOf(params.projectId),
         "estate:lend",
         user,
       );

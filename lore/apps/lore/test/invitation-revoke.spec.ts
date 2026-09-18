@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { InvitationService } from "alepha/api/invitations";
+import { InvitationService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";

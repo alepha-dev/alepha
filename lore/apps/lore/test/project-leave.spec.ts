@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -118,11 +119,7 @@ describe("ProjectController leaveProject", () => {
     // Direct repo insert — the standard membership path is through
     // invitations, which is more plumbing than this test needs. Reach into
     // the controller's repository to seed a non-owner character.
-    const membersRepo = (ctx.projectController as any).members;
-    await membersRepo.create({
-      userId: member.id,
-      projectId: created.data.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, created.data.id, member.id);
 
     // Sanity: project is visible to the member before leaving.
     const before = await ctx.projectController.getMyProjects.fetch(
@@ -172,11 +169,7 @@ describe("ProjectController removeMember", () => {
       { body: { title: `Removal ${Math.random().toString(36).slice(2, 8)}` } },
       { user: owner },
     );
-    const membersRepo = (ctx.projectController as any).members;
-    await membersRepo.create({
-      userId: member.id,
-      projectId: created.data.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, created.data.id, member.id);
     return { owner, member, projectId: created.data.id };
   };
 

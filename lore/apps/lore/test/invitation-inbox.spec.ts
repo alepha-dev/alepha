@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { InvitationService } from "alepha/api/invitations";
+import { InvitationService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -32,11 +32,10 @@ interface TestContext {
    * The inbox as the client sees it.
    *
    * Read through the CONTROLLER rather than the service since the extraction
-   * (#1663): `InvitationService` lives in `alepha/api/invitations` now and
-   * answers the generic `resourceTitle`, while `projectTitle` and its
-   * "Project" fallback are Lore's, applied here. The batched read itself
-   * moved to `ProjectInvitationResource.describeAll`, so the query counts
-   * below still measure the thing they were written for.
+   * `InvitationService` owns the generic organization invitation, while
+   * `projectTitle` and its "Project" fallback are Lore's, applied here. The
+   * controller enriches the inbox in batches, so the query counts below still
+   * measure the thing they were written for.
    */
   inbox: (user: {
     id: string;

@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { organizationMembers } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 import {
   ResourceGateMemoProvider,
@@ -6,7 +7,6 @@ import {
 } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
-import { type Member, members } from "../entities/members.ts";
 import {
   type ProjectCapability,
   projectCapabilities,
@@ -54,7 +54,7 @@ import { CapabilityRegistry } from "./CapabilityRegistry.ts";
  */
 export class ProjectSecurityService {
   projects = $repository(projects);
-  members = $repository(members);
+  members = $repository(organizationMembers);
   /**
    * The project's enabled capabilities, one row per enabled key.
    *
@@ -103,19 +103,31 @@ export class ProjectSecurityService {
       },
     });
 
-    const ids = owned.map((row) => row.projectId);
-    if (ids.length === 0) {
+    const organizationIds = owned.map((row) => row.organizationId);
+    if (organizationIds.length === 0) {
       // ⚠️ `inArray: []` THROWS rather than matching nothing, and a brand-new
       // account is exactly the caller that reaches this.
       return new Set();
     }
 
     const alive = await this.projects.findMany({
-      where: { id: { inArray: ids } },
+      where: { organizationId: { inArray: organizationIds } },
       columns: ["id"],
     });
 
     return new Set(alive.map((row) => row.id));
+  }
+
+  async ownedOrganizationIds(userId: string): Promise<string[]> {
+    const projectIds = await this.ownedProjectIds(userId);
+    if (projectIds.size === 0) return [];
+    const alive = await this.projects.findMany({
+      where: { id: { inArray: [...projectIds] } },
+      columns: ["organizationId"],
+    });
+    return alive.flatMap((project) =>
+      project.organizationId ? [project.organizationId] : [],
+    );
   }
   protected readonly memo = $inject(ResourceGateMemoProvider);
 
@@ -147,6 +159,14 @@ export class ProjectSecurityService {
    */
   public static readonly CAPABILITY_MEMO_PREFIX = "lore.projectCapabilities:";
 
+  async organizationIdOf(projectId: number): Promise<string> {
+    const project = await this.projects.getOne(
+      { where: { id: { eq: projectId } } },
+      { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
+    );
+    return project.organizationId!;
+  }
+
   /**
    * Non-throwing **literal** membership check — `true` when the caller created
    * the project or holds a membership in it.
@@ -166,7 +186,7 @@ export class ProjectSecurityService {
     }
     const member = await this.members.findOne({
       where: {
-        projectId: { eq: projectId },
+        organizationId: { eq: project.organizationId! },
         userId: { eq: user.id },
       },
     });
@@ -194,7 +214,7 @@ export class ProjectSecurityService {
     }
     const member = await this.members.findOne({
       where: {
-        projectId: { eq: projectId },
+        organizationId: { eq: project.organizationId! },
         userId: { eq: userId },
       },
     });
@@ -442,7 +462,6 @@ export class ProjectSecurityService {
 
 export interface ProjectGuard {
   project: Project;
-  member?: Member;
   /**
    * The project's enabled capabilities, when the gate read them.
    *

@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -12,8 +13,8 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { ProjectController } from "../controllers/ProjectController.ts";
-import { members } from "../entities/members.ts";
 import { LoreApi } from "../index.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { ProjectPermissions } from "./ProjectPermissions.ts";
 
 /**
@@ -43,6 +44,7 @@ const setup = async () => {
   const probe = alepha.inject(MembersProbe);
   const projectApi = alepha.inject(ProjectController);
   const permissions = alepha.inject(ProjectPermissions);
+  const projectSecurity = alepha.inject(ProjectSecurityService);
   const users = alepha.inject(UserService);
   await alepha.start();
 
@@ -52,7 +54,12 @@ const setup = async () => {
     return projectApi.createProject({ body: { title: "Scoped" } } as any);
   });
   const member = await probe.members.findOne({
-    where: { userId: { eq: owner.id }, projectId: { eq: project.id } },
+    where: {
+      userId: { eq: owner.id },
+      organizationId: {
+        eq: await projectSecurity.organizationIdOf(project.id),
+      },
+    },
   });
 
   const of = (user: Partial<UserAccountToken>) =>

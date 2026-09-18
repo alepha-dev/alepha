@@ -1,11 +1,9 @@
 import { $inject, z } from "alepha";
 import {
-  createInvitationSchema,
-  invitationResourceSchema,
   InvitationService,
   InvitationTokenService,
-} from "alepha/api/invitations";
-import { RankService } from "alepha/api/ranks";
+  organizationInvitations,
+} from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -15,7 +13,6 @@ import { projects } from "../entities/projects.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
 import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
-import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
 export class InvitationController {
@@ -25,7 +22,6 @@ export class InvitationController {
   protected readonly audits = $inject(LoreAudits);
   protected readonly invitationTokens = $inject(InvitationTokenService);
   protected readonly users = $repository(users);
-  protected readonly ranks = $inject(RankService);
   protected readonly projects = $repository(projects);
 
   /**
@@ -38,8 +34,14 @@ export class InvitationController {
     use: [$secure({ permissions: ["invitation:create"] })],
     description: "Create a new invitation",
     schema: {
-      body: createInvitationSchema,
-      response: invitationResourceSchema,
+      body: z.object({
+        email: z.string().meta({ format: "email" }),
+        resourceType: z.text({ minLength: 1, maxLength: 100 }),
+        resourceId: z.text({ minLength: 1, maxLength: 255 }),
+        roles: z.array(z.text()).optional(),
+        metadata: z.record(z.text(), z.any()).optional(),
+      }),
+      response: organizationInvitations.schema,
     },
     handler: async ({ body, user }) => {
       // ⚠️ `roles` is how an invitation names the RANK its invitee lands on.
@@ -50,23 +52,18 @@ export class InvitationController {
       // invitation can sit unanswered for days, and checking the subset rule
       // at accept would check it against whoever happens to be around then
       // rather than against the person who offered the rank.
-      const key = body.roles?.[0];
-
-      if (key) {
-        if (key === ProjectRankResource.OWNER_KEY) {
-          throw new BadRequestError(
-            "Ownership is transferred, not invited. Invite them, then transfer.",
-          );
-        }
-        await this.ranks.assertAssignable(
-          "project",
-          body.resourceId,
-          key,
-          user,
-        );
-      }
-
-      return await this.invitationService.create(body, user);
+      const project = await this.projects.getOne({
+        where: { id: { eq: Number(body.resourceId) } },
+      });
+      return await this.invitationService.create(
+        project.organizationId!,
+        {
+          email: body.email,
+          rank: body.roles?.[0],
+          metadata: body.metadata,
+        },
+        user,
+      );
     },
   });
 
@@ -86,14 +83,13 @@ export class InvitationController {
     description: "List pending invitations for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      response: z.array(invitationResourceSchema),
+      response: z.array(organizationInvitations.schema),
     },
     handler: async ({ params, user }) => {
-      return this.invitationService.findByResource(
-        "project",
-        String(params.projectId),
-        "pending",
-      );
+      const project = await this.projects.getOne({
+        where: { id: { eq: params.projectId } },
+      });
+      return this.invitationService.list(project.organizationId!);
     },
   });
 
@@ -155,10 +151,10 @@ export class InvitationController {
       // `resourceType` before `Number(resourceId)`, so a future non-project
       // invitation is never gated against a project that shares its numeric
       // id by coincidence.
-      if (
-        invitation.resourceType !== "project" ||
-        Number(invitation.resourceId) !== params.projectId
-      ) {
+      const project = await this.projects.getOne({
+        where: { id: { eq: params.projectId } },
+      });
+      if (invitation.organizationId !== project.organizationId) {
         throw new BadRequestError("This invitation is not for this project");
       }
       await this.invitationService.revoke(params.id, { id: user.id });
@@ -205,7 +201,7 @@ export class InvitationController {
       }
 
       const project = await this.projects.findOne({
-        where: { id: { eq: Number(found.invitation.resourceId) } },
+        where: { organizationId: { eq: found.invitation.organizationId } },
       });
       const existing = await this.users.findOne({
         where: { email: { eq: found.invitation.email } },
@@ -236,13 +232,46 @@ export class InvitationController {
     // still does: renaming a field the UI reads is not part of moving the
     // code that produces it.
     handler: async ({ user }) => {
-      const rows = await this.invitationService.listForUser(user);
+      const rows = await this.invitationService.listMine(user);
+      if (rows.length === 0) return [];
+      const [projects, inviters] = await Promise.all([
+        this.projects.findMany({
+          where: {
+            organizationId: {
+              inArray: [...new Set(rows.map((row) => row.organizationId))],
+            },
+          },
+          columns: ["id", "organizationId", "title"],
+        }),
+        this.users.findMany({
+          where: {
+            id: { inArray: [...new Set(rows.map((row) => row.invitedBy))] },
+          },
+        }),
+      ]);
+      const titleByOrganization = new Map(
+        projects.map((project) => [project.organizationId, project.title]),
+      );
+      const idByOrganization = new Map(
+        projects.map((project) => [project.organizationId, project.id]),
+      );
+      const inviterById = new Map(
+        inviters.map((inviter) => [inviter.id, inviter]),
+      );
       return rows.map((row) => ({
         ...row,
-        projectTitle: row.resourceTitle ?? "Project",
+        resourceId: String(idByOrganization.get(row.organizationId)),
+        projectTitle: titleByOrganization.get(row.organizationId) ?? "Project",
+        inviterName: this.formatInviterName(inviterById.get(row.invitedBy)),
       }));
     },
   });
+
+  protected formatInviterName(user?: { email?: string }): string | undefined {
+    if (!user?.email) return undefined;
+    const at = user.email.indexOf("@");
+    return at > 0 ? user.email.slice(0, at) : user.email;
+  }
 
   /**
    * Accept an invitation by id. The session's email must match the
@@ -263,18 +292,21 @@ export class InvitationController {
     },
     handler: async ({ params, user }) => {
       const result = await this.invitationService.accept(params.id, user);
+      const project = await this.projects.getOne({
+        where: { organizationId: { eq: result.organizationId } },
+      });
 
       // The other half of `member:leave`. Both sides of a membership are
       // recorded, because "when did they join" and "when did they go" are
       // the same question asked from either end.
       await this.audits.member.logSuccess("join", {
         ...this.audits.actor(user),
-        ...this.audits.scope(Number(result.resourceId)),
+        ...this.audits.scope(project.id),
         resourceType: "project",
-        resourceId: String(result.resourceId),
+        resourceId: String(project.id),
       });
 
-      return { ok: true, projectId: result.resourceId };
+      return { ok: true, projectId: String(project.id) };
     },
   });
 

@@ -13,6 +13,7 @@ import {
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
+  createTestMemberByProjectId,
   createTestProject,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
@@ -89,10 +90,7 @@ const createProject = async (
     createdBy: owner.id,
   });
   for (const member of members) {
-    await ctx.entities.members.create({
-      userId: member.id,
-      projectId: project.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, project.id, member.id);
   }
   return project;
 };

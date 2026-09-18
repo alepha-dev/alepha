@@ -1,8 +1,8 @@
 import { AccountRouter } from "@alepha/ui/account";
 import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { $hook, $inject, Alepha, z } from "alepha";
-import type { AdminInvitationController } from "alepha/api/invitations";
 import type { NotificationInboxController } from "alepha/api/notifications";
+import type { OrganizationInvitationController } from "alepha/api/organizations";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -94,8 +94,8 @@ export class AppRouter {
   projectApi = $client<ProjectController>();
   projectReportsApi = $client<ProjectReportsController>();
   qualityApi = $client<QualityController>();
-  invitationAdminApi = $client<AdminInvitationController>();
   invitationApi = $client<InvitationController>();
+  organizationInvitationApi = $client<OrganizationInvitationController>();
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
   projectDashboardApi = $client<ProjectDashboardController>();
@@ -1863,8 +1863,8 @@ export class AppRouter {
           params: { id: project.id },
         }),
         manages
-          ? this.invitationApi.listProjectInvitations({
-              params: { projectId: project.id },
+          ? this.organizationInvitationApi.getOrganizationInvitations({
+              params: { organizationId: project.organizationId },
             })
           : Promise.resolve([]),
       ]);

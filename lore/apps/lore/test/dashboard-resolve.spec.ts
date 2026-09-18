@@ -1447,7 +1447,7 @@ describe("dashboard resolve", () => {
 
       // The card was valid when written; access went away afterwards.
       await ctx.alepha.inject(TestEntityRepositories).members.deleteMany({
-        projectId: { eq: doomed.id },
+        organizationId: { eq: doomed.organizationId! },
       });
 
       const { values } = await ctx.controller.resolveCards(

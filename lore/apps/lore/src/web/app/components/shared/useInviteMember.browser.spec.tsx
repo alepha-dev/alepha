@@ -21,16 +21,20 @@ import { useInviteMember } from "./useInviteMember.ts";
  * (`CLAUDE.md`: never `vi.mock` / `vi.spyOn`).
  */
 class FakeLinkProvider extends LinkProvider {
-  calls: Array<{ email: string; resourceId: string }> = [];
+  calls: Array<{
+    params: { organizationId: string };
+    body: { email: string; rank?: string };
+  }> = [];
   refuse?: string;
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
-      createInvitation: async (config: {
-        body: { email: string; resourceId: string };
+      createOrganizationInvitation: async (config: {
+        params: { organizationId: string };
+        body: { email: string; rank?: string };
       }) => {
-        this.calls.push(config.body);
+        this.calls.push(config);
         if (this.refuse) throw new Error(this.refuse);
         return { id: "inv-1" };
       },
@@ -50,6 +54,8 @@ class FakeLinkProvider extends LinkProvider {
  * for it.
  */
 describe("useInviteMember", () => {
+  const ORGANIZATION_ID = "00000000-0000-4000-8000-000000000002";
+
   beforeAll(() => {
     setupJsdomMocks();
   });
@@ -82,18 +88,17 @@ describe("useInviteMember", () => {
     const { fake, result } = await mount();
 
     const sent = await result.current.invite(
-      7,
+      ORGANIZATION_ID,
       "  guest@example.com  ",
       undefined,
     );
 
     expect(sent).toBe(true);
-    // Trimmed, and the project id crosses as the string the API wants.
+    // Trimmed, with the organization identity in the route parameters.
     expect(fake.calls).toEqual([
       {
-        email: "guest@example.com",
-        resourceType: "project",
-        resourceId: "7",
+        params: { organizationId: ORGANIZATION_ID },
+        body: { email: "guest@example.com" },
       },
     ]);
   });
@@ -101,7 +106,9 @@ describe("useInviteMember", () => {
   it("refuses a blank email without asking the server", async ({ expect }) => {
     const { fake, result } = await mount();
 
-    expect(await result.current.invite(7, "   ", undefined)).toBe(false);
+    expect(await result.current.invite(ORGANIZATION_ID, "   ", undefined)).toBe(
+      false,
+    );
     expect(fake.calls).toEqual([]);
   });
 
@@ -116,7 +123,11 @@ describe("useInviteMember", () => {
     // the address still in it, not tear down the component tree. `undefined`,
     // not `false`: `false` is the blank email, a refusal the hook made itself.
     expect(
-      await result.current.invite(7, "guest@example.com", undefined),
+      await result.current.invite(
+        ORGANIZATION_ID,
+        "guest@example.com",
+        undefined,
+      ),
     ).toBeUndefined();
     expect(fake.calls.length).toBe(1);
   });
@@ -127,7 +138,11 @@ describe("useInviteMember", () => {
     const { fake, result } = await mount();
     fake.refuse = "Invitation already pending (hook spec)";
 
-    await result.current.invite(7, "pending@example.com", undefined);
+    await result.current.invite(
+      ORGANIZATION_ID,
+      "pending@example.com",
+      undefined,
+    );
 
     await waitFor(() =>
       expect(
@@ -145,24 +160,37 @@ describe("useInviteMember", () => {
   }) => {
     const { fake, result } = await mount();
 
-    await result.current.invite(7, "ranked@example.com", "contributor");
-    await result.current.invite(7, "plain@example.com", undefined);
+    await result.current.invite(
+      ORGANIZATION_ID,
+      "ranked@example.com",
+      "contributor",
+    );
+    await result.current.invite(
+      ORGANIZATION_ID,
+      "plain@example.com",
+      undefined,
+    );
 
     expect(fake.calls).toEqual([
       {
-        email: "ranked@example.com",
-        resourceType: "project",
-        resourceId: "7",
-        roles: ["contributor"],
+        params: { organizationId: ORGANIZATION_ID },
+        body: { email: "ranked@example.com", rank: "contributor" },
       },
-      { email: "plain@example.com", resourceType: "project", resourceId: "7" },
+      {
+        params: { organizationId: ORGANIZATION_ID },
+        body: { email: "plain@example.com" },
+      },
     ]);
   });
 
   it("clears `loading` once the call settles", async ({ expect }) => {
     const { result } = await mount();
 
-    await result.current.invite(7, "guest@example.com", undefined);
+    await result.current.invite(
+      ORGANIZATION_ID,
+      "guest@example.com",
+      undefined,
+    );
     await waitFor(() => expect(result.current.loading).toBe(false));
   });
 });

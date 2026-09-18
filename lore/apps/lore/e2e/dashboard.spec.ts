@@ -169,10 +169,11 @@ test.describe("Project dashboard", () => {
     const t = Date.now();
     await registerAndVerify(page, `pbowner${t}@example.com`, "GoodPassw0rd");
     const projectTitle = `PBR${t}`.slice(0, 20);
-    const { id: projectId, slug } = await createProjectViaWizard(
-      page,
-      projectTitle,
-    );
+    const {
+      id: projectId,
+      organizationId,
+      slug,
+    } = await createProjectViaWizard(page, projectTitle);
 
     const reader = await newUserContext(browser, baseURL!, "pbreader");
     try {
@@ -201,8 +202,7 @@ test.describe("Project dashboard", () => {
         await page.getByPlaceholder("user@example.com").fill(reader.email);
         const created = page.waitForResponse(
           (r) =>
-            r.request().method() === "POST" &&
-            r.url().endsWith("/api/invitations"),
+            r.request().method() === "POST" && r.url().endsWith("/invitations"),
           { timeout: 15_000 },
         );
         await page.getByRole("button", { name: /send invitation/i }).click();
@@ -233,9 +233,9 @@ test.describe("Project dashboard", () => {
           ":id",
           String(projectId),
         );
-        const assignUrl = (await apiPath(page, "assignRank"))
-          .replace(":type", "project")
-          .replace(":scopeId", String(projectId));
+        const assignUrl = (
+          await apiPath(page, "assignOrganizationRank")
+        ).replace(":organizationId", organizationId);
 
         const assigned = await page.evaluate(
           async ({ usersUrl, assignUrl, email }) => {

@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -24,6 +24,7 @@ import {
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { EstateCommandListItem, EstateCommandResource };
 
@@ -52,6 +53,7 @@ export class EstateCommandController {
   protected readonly estates = $inject(EstateService);
   protected readonly commands = $inject(EstateCommandService);
   protected readonly ranks = $inject(RankService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly artifacts = $repository(artifacts);
   protected readonly projects = $repository(projects);
   protected readonly grants = $repository(estateProjects);
@@ -230,8 +232,7 @@ export class EstateCommandController {
         );
       }
       await this.ranks.assert(
-        "project",
-        String(artifact.projectId),
+        await this.projectSecurity.organizationIdOf(artifact.projectId),
         "artifact:read",
         user,
       );

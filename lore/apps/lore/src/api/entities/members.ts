@@ -35,8 +35,8 @@ export const members = $entity({
      * the answer is {@link rank}, and there is exactly one `owner` per
      * project.
      *
-     * Nothing reads it. #Q1997 removed the last two writers - `createProject`
-     * wrote `true`, `ProjectInvitationResource.grant` wrote `false` - and it
+     * Nothing reads it. #Q1997 removed the last two writers. Project creation
+     * wrote `true`, and invitation acceptance wrote `false`. That cleanup
      * could only run once the readers were gone: dropping the `false` write
      * while the members list still read the column would have rendered every
      * newly accepted invitation as an owner, in production, with no human gate

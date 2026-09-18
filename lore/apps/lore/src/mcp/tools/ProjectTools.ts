@@ -1,5 +1,5 @@
 import { $inject, Alepha, z } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { organizationMembers, RankService } from "alepha/api/organizations";
 import { $tool } from "alepha/mcp";
 import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
@@ -10,7 +10,6 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
-import { members } from "../../api/entities/members.ts";
 import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
@@ -63,7 +62,7 @@ export class ProjectTools {
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly slugs = $inject(ProjectSlugService);
   protected readonly ranks = $inject(RankService);
-  protected readonly members = $repository(members);
+  protected readonly members = $repository(organizationMembers);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
@@ -108,7 +107,11 @@ export class ProjectTools {
         throw new NotFoundError(`Project with ID ${project} not found`);
       }
       try {
-        await this.ranks.assert("project", String(project), "project:read", me);
+        await this.ranks.assert(
+          await this.projectSecurity.organizationIdOf(project),
+          "project:read",
+          me,
+        );
       } catch (error) {
         if (error instanceof ForbiddenError || error instanceof NotFoundError) {
           throw new NotFoundError(`Project with ID ${project} not found`);
@@ -217,30 +220,40 @@ export class ProjectTools {
       // `project_info` and `project_context` carry the set, for the one
       // project they are about.
       const ids = projects.map((it) => it.id);
+      const projectRows = ids.length
+        ? await this.projectSecurity.projects.findMany({
+            where: { id: { inArray: ids } },
+            columns: ["id", "organizationId"],
+          })
+        : [];
+      const organizationByProject = new Map(
+        projectRows.flatMap((row) =>
+          row.organizationId ? [[row.id, row.organizationId] as const] : [],
+        ),
+      );
+      const organizationIds = [...organizationByProject.values()];
       const [rows, ranksByScope] = await Promise.all([
-        ids.length === 0 || !me
+        organizationIds.length === 0 || !me
           ? Promise.resolve([])
           : this.members.findMany({
               where: {
-                projectId: { inArray: ids },
+                organizationId: { inArray: organizationIds },
                 userId: { eq: me.id },
               },
             }),
-        this.ranks.ranksOfMany(
-          "project",
-          ids.map((it) => String(it)),
-        ),
+        this.ranks.ranksOfMany(organizationIds),
       ]);
 
       const rankOf = new Map(
-        rows.map((row) => [row.projectId, row.rank ?? "member"]),
+        rows.map((row) => [row.organizationId, row.rank ?? "member"]),
       );
 
       return {
         projects: projects.map((p) => {
-          const key = rankOf.get(p.id);
+          const organizationId = organizationByProject.get(p.id);
+          const key = organizationId ? rankOf.get(organizationId) : undefined;
           const named = key
-            ? ranksByScope.get(String(p.id))?.find((it) => it.key === key)
+            ? ranksByScope.get(organizationId!)?.find((it) => it.key === key)
             : undefined;
 
           return {

@@ -186,7 +186,10 @@ describe("UserDeletionHook", () => {
       } as never);
     }
 
-    await expectConflict(deleteAccount(ctx, user), "You still own 2 projects");
+    await expectConflict(
+      deleteAccount(ctx, user),
+      "Transfer or delete your 2 organization(s)",
+    );
   });
 
   it("counts the quests deletion would take with it", async ({ expect }) => {

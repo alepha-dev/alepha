@@ -20,7 +20,7 @@ import { useProjectRanks } from "./useProjectRanks.ts";
 import { useProjectUsers } from "./useProjectUsers.ts";
 
 /**
- * Answers `getRanks` and `getProjectUsers` with whatever the test sets.
+ * Answers `getOrganizationRanks` and `getProjectUsers` with whatever the test sets.
  */
 class FakeLinkProvider extends LinkProvider {
   ranksError?: Error;
@@ -29,7 +29,7 @@ class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
-      getRanks: async () => {
+      getOrganizationRanks: async () => {
         if (this.ranksError) throw this.ranksError;
         return { items: [{ key: "member" }] };
       },

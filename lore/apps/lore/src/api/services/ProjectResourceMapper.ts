@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 
 import type { ProjectCapability } from "../entities/projectCapabilities.ts";
 import type { Project } from "../entities/projects.ts";
@@ -37,10 +37,20 @@ export class ProjectResourceMapper {
   public toResource<T extends Project>(
     project: T,
     capabilities: ProjectCapability[],
-  ): T & { slug: string; capabilities: ProjectCapabilityResource[] } {
+  ): T & {
+    slug: string;
+    organizationId: string;
+    capabilities: ProjectCapabilityResource[];
+  } {
+    if (!project.organizationId) {
+      throw new AlephaError(
+        `Project ${project.id} has no organization. Reapply the E61 backfill.`,
+      );
+    }
     return {
       ...project,
       slug: project.slug ?? this.slugs.fallbackSlug(project.id),
+      organizationId: project.organizationId,
       capabilities: this.toCapabilityResources(capabilities),
     };
   }

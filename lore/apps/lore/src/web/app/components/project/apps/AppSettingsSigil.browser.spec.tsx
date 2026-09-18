@@ -92,15 +92,15 @@ describe("the sigil row's dropped-feedback notice", () => {
       currentProjectAtom,
       projectFixture({ capabilities: options.capabilities }) as never,
     );
-    // The full `members` row: the atom validates against the entity schema,
+    // The full organization membership row: the atom validates against the entity schema,
     // so a convenient subset is refused rather than tolerated.
     alepha.store.set(currentProjectMemberAtom, {
-      id: 1,
+      id: "00000000-0000-4000-8000-000000000003",
       createdAt: "2026-08-01T10:00:00.000Z",
       updatedAt: "2026-08-01T10:00:00.000Z",
-      projectId: 1,
+      organizationId: projectFixture().organizationId,
       userId: "00000000-0000-4000-8000-000000000001",
-      owner: true,
+      rank: "owner",
     } as never);
     alepha.store.set(currentInstanceAtom, anInstance(options.kinds) as never);
 

@@ -10,12 +10,14 @@ import {
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
-import type { RankResource } from "alepha/api/ranks";
+import type {
+  MemberController,
+  OrganizationRankResource,
+} from "alepha/api/organizations";
 import { useAction, useClient } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -26,7 +28,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 const keepFieldSchema = z.object({ keep: z.text() });
 
 export interface ProjectTransferOwnershipDialogProps {
-  projectId: number;
+  organizationId: string;
 
   /**
    * The member being promoted. `undefined` closes the dialog, which is what
@@ -34,7 +36,7 @@ export interface ProjectTransferOwnershipDialogProps {
    */
   target?: { userId: string; name: string };
 
-  ranks: RankResource[];
+  ranks: OrganizationRankResource[];
 
   onOpenChange: (open: boolean) => void;
 
@@ -62,7 +64,7 @@ const ProjectTransferOwnershipDialog = (
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const toaster = useToast();
-  const api = useClient<ProjectController>();
+  const api = useClient<MemberController>();
 
   // A one-field form rather than `useState`, so this is a `Control` like
   // every other picker in the app (feedback #P2121). Nothing saves on change
@@ -96,8 +98,8 @@ const ProjectTransferOwnershipDialog = (
         });
         if (!ok) return;
 
-        await api.transferOwnership({
-          params: { id: props.projectId },
+        await api.transferOrganizationOwnership({
+          params: { organizationId: props.organizationId },
           body: { userId: target.userId, rank: keep },
         });
         props.onOpenChange(false);

@@ -1,4 +1,5 @@
 import { Alepha, AlephaError } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -11,12 +12,12 @@ import { describe, it } from "vitest";
 import {
   createTestEpic,
   createTestFolio,
+  createTestMemberByProjectId,
   createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
-import { members } from "../../api/entities/members.ts";
 import { LoreApi } from "../../api/index.ts";
 import { LoreMcp } from "../index.ts";
 import { EpicTools } from "./EpicTools.ts";
@@ -102,7 +103,7 @@ const setup = async (options: { failEpicAttach?: boolean } = {}) => {
   alepha.with(LoreMcp);
 
   const repos = alepha.inject(TestEntityRepositories);
-  const membersProbe = alepha.inject(MembersProbe);
+  alepha.inject(MembersProbe);
   const epicTools = alepha.inject(EpicTools);
   const questTools = alepha.inject(QuestTools);
   const folioTools = alepha.inject(FolioTools);
@@ -152,10 +153,7 @@ const setup = async (options: { failEpicAttach?: boolean } = {}) => {
     const member = await users.createUser({
       username: `member-${crypto.randomUUID().slice(0, 8)}`,
     });
-    await membersProbe.members.create({
-      userId: member.id,
-      projectId: project.id,
-    });
+    await createTestMemberByProjectId(alepha, project.id, member.id);
     return member.id;
   };
 
