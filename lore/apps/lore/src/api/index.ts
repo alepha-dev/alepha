@@ -31,6 +31,7 @@ import { FeedbackCommentController } from "./controllers/FeedbackCommentControll
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
+import { HomeController } from "./controllers/HomeController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
@@ -375,6 +376,10 @@ export const LoreApi = $module({
     QuestCommentController,
     FeedbackCommentController,
     ProjectController,
+    // The landing page's own reads: the momentum bars and the activity panel.
+    // Off `ProjectController` because neither is about one project, and off
+    // `getHomeOverview` because that endpoint fills an atom every page holds.
+    HomeController,
     ProjectCapabilityController,
     ProjectRankController,
     ProjectPromptController,
