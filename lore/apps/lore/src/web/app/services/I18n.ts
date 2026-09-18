@@ -10,5 +10,13 @@ import { $dictionary } from "alepha/react/i18n";
  */
 export class I18n {
   en = $dictionary({ lazy: () => import("../../locales/en.ts") });
-  fr = $dictionary({ lazy: () => import("../../locales/fr.ts") });
+  fr = $dictionary({
+    lazy: async () => {
+      const [{ uiFr }, { default: loreFr }] = await Promise.all([
+        import("@alepha/ui/i18n/fr"),
+        import("../../locales/fr.ts"),
+      ]);
+      return { default: { ...uiFr, ...loreFr } };
+    },
+  });
 }

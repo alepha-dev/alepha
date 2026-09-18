@@ -10,8 +10,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
  * `authorId` are all bare uuids, and every surface that shows one needs the
  * same name and avatar. One hook, and one request between every consumer
  * mounted at once: the query is keyed `["project-users", projectId]`, which
- * is also what a write that changes the members invalidates
- * (`useRemoveMember`).
+ * is also what a write that changes the members invalidates.
  *
  * Failures read as `[]`, and quietly: a name is chrome, and a transient
  * failure must cost the avatar, not the feed it sits in. The `onError` marks

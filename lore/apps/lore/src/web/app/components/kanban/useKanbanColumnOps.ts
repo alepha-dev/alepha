@@ -126,8 +126,8 @@ export const useKanbanColumnOps = (
   const remove = useAction<[name: string], boolean>(
     {
       handler: async (name) => {
-        // Confirmed here rather than at the call site, for the reason
-        // `useRevokeInvitation` gives: the confirmation is part of the action.
+        // Confirmed here rather than at the call site because the confirmation
+        // is part of the action.
         //
         // ⚠️ The description says the column must be EMPTY rather than
         // telling the operator what will happen to its cards, because nothing

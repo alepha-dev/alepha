@@ -573,36 +573,17 @@ export default {
 
   "quest.view.actions.accept": "Accepter la quête",
 
-  "project.settings.members.title": "Membres",
-  "project.settings.members.empty":
-    "Aucun membre dans ce projet pour le moment.",
-  "project.settings.members.invite.action": "Inviter",
-  "project.settings.members.invite.title": "Inviter un utilisateur",
-  "project.settings.members.invite.description":
+  "organizations.invitations.invite": "Inviter",
+  "organizations.invitations.inviteTitle": "Inviter un utilisateur",
+  "organizations.invitations.email": "Adresse e-mail",
+  "organizations.invitations.send": "Envoyer l'invitation",
+  "organizations.members.cancel": "Annuler",
+  "organizations.ranks.save": "Enregistrer les rangs",
+  "project.menu.invite-description":
     "Entrez l'adresse e-mail de l'utilisateur que vous souhaitez inviter dans « $1 ».",
-  "project.settings.members.invite.email": "Adresse e-mail",
-  "project.settings.members.invite.cancel": "Annuler",
-  "project.settings.members.invite.submit": "Envoyer l'invitation",
-  "project.settings.members.invite.emailRequired":
-    "Veuillez saisir une adresse e-mail.",
-  "project.settings.members.invite.sent": "Invitation envoyée à $1.",
-
-  "project.settings.members.revoke.title": "Révoquer cette invitation ?",
-  "project.settings.members.revoke.description":
-    "$1 ne pourra plus utiliser le lien reçu. Vous pouvez l'inviter à nouveau, ce qui enverra un nouveau lien.",
-  "project.settings.members.revoke.confirm": "Révoquer",
-  "project.settings.members.revoke.cancel": "Conserver",
-  "project.settings.members.revoke.done": "L'invitation de $1 a été révoquée.",
-  "project.settings.members.revoke.action.short": "Annuler l'invitation",
-
-  "project.settings.members.actions": "Actions pour $1",
-  "project.settings.members.remove.action": "Retirer",
-  "project.settings.members.remove.title": "Retirer ce membre ?",
-  "project.settings.members.remove.description":
-    "$1 perd l'accès à ce projet. Les quêtes qu'il avait acceptées sans les terminer retournent au pot commun ; celles qu'il a terminées lui restent attribuées. Vous pouvez l'inviter à nouveau.",
-  "project.settings.members.remove.confirm": "Retirer",
-  "project.settings.members.remove.cancel": "Le garder",
-  "project.settings.members.remove.done": "$1 a été retiré du projet.",
+  "organizations.transfer.confirm": "Transférer",
+  "organizations.transfer.confirmDescription":
+    "$1 devient propriétaire et vous devenez $2. Vous ne pourrez pas revenir en arrière : seul le nouveau propriétaire peut vous le rendre.",
 
   "project.settings.danger.title": "Zone à risques",
   "project.settings.actions.delete": "Détruire ce projet",
@@ -2297,19 +2278,6 @@ export default {
   "dashboard.footer.visitors.noCompare": "pas encore de comparaison",
   "dashboard.footer.noBeacon": "aucune app ici ne remonte de pages vues",
 
-  // --- /account/invitations -------------------------------------------------
-  "invitations.title": "Invitations en attente",
-  "invitations.description":
-    "Invitations à des projets adressées à votre e-mail. En acceptant, vous rejoignez le projet en tant que membre.",
-  "invitations.empty": "Aucune invitation en attente.",
-  "invitations.badge.pending": "En attente",
-  "invitations.invitedBy": "Invité par $1",
-  "invitations.invited": "Invité",
-  "invitations.accept": "Accepter",
-  "invitations.decline": "Refuser",
-  "invitations.accepted": "Vous avez rejoint le projet !",
-  "invitations.declined": "Invitation refusée.",
-
   // --- /account/feedback ----------------------------------------------------
   "myFeedback.title": "Retours envoyés",
   "myFeedback.description":
@@ -2451,57 +2419,7 @@ export default {
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
-  "project.settings.members.rank.label": "Rang",
-  "project.settings.members.rank.assigned": "Rang mis \u00e0 jour",
-  "project.settings.members.invite.rank": "Rang \u00e0 l'arriv\u00e9e",
-  "project.settings.members.transfer.action":
-    "Transf\u00e9rer la propri\u00e9t\u00e9",
-  "project.settings.members.transfer.title":
-    "Transf\u00e9rer ce projet \u00e0 $1",
-  "project.settings.members.transfer.description":
-    "Il y a exactement un propri\u00e9taire. Choisissez le rang que vous gardez, puis confirmez.",
-  "project.settings.members.transfer.keep": "Votre rang ensuite",
-  "project.settings.members.transfer.confirmTitle":
-    "Donner ce projet \u00e0 $1 ?",
-  "project.settings.members.transfer.confirmDescription":
-    "$1 devient propri\u00e9taire et vous devenez $2. Vous ne pourrez pas revenir en arri\u00e8re : seul le nouveau propri\u00e9taire peut vous le rendre.",
-  "project.settings.members.transfer.confirm": "Transf\u00e9rer",
-  "project.settings.members.transfer.done":
-    "$1 est maintenant propri\u00e9taire de ce projet",
   "project.settings.nav.ranks": "Rangs",
-  "project.settings.ranks.title": "Ce que chaque rang peut faire",
-  "project.settings.ranks.description":
-    "Les permissions \u00e0 gauche, une colonne par rang. Une permission qui appartient \u00e0 une capacit\u00e9 que ce projet n'a pas n'est pas list\u00e9e du tout.",
-  "project.settings.ranks.delay":
-    "Une modification de ce qu'un rang accorde peut mettre jusqu'\u00e0 une minute \u00e0 atteindre tout le monde. Retirer quelqu'un du projet, ou le changer de rang, prend effet imm\u00e9diatement.",
-  "project.settings.ranks.permission": "Permission",
-  "project.settings.ranks.empty":
-    "Aucune permission à afficher pour les capacités de ce projet.",
-  "project.settings.ranks.builtin": "Intégré",
-  "project.settings.ranks.holders": "$1 membre(s)",
-  "project.settings.ranks.actions": "Actions pour $1",
-  "project.settings.ranks.rename": "Renommer",
-  "project.settings.ranks.rename.title": "Renommer ce rang",
-  "project.settings.ranks.rename.confirm": "Renommer",
-  "project.settings.ranks.delete": "Supprimer",
-  "project.settings.ranks.delete.title": "Supprimer $1 ?",
-  "project.settings.ranks.delete.description":
-    "Le rang dispara\u00eet de ce projet. Personne ne le d\u00e9tient, personne n'est affect\u00e9.",
-  "project.settings.ranks.delete.confirm": "Supprimer le rang",
-  "project.settings.ranks.delete.held.title": "$1 est encore détenu",
-  "project.settings.ranks.delete.held.description":
-    "D\u00e9placez d'abord ces membres vers un autre rang : $1. Les rangs se changent sur la page Membres.",
-  "project.settings.ranks.deleted": "Rang supprimé",
-  "project.settings.ranks.create": "Nouveau rang",
-  "project.settings.ranks.create.blank": "Rang vide",
-  "project.settings.ranks.create.preset": "À partir de $1",
-  "project.settings.ranks.create.title": "Nommer le nouveau rang",
-  "project.settings.ranks.create.description":
-    "Le nom est ce que les membres lisent. Rien n'est enregistr\u00e9 tant que vous n'avez pas confirm\u00e9.",
-  "project.settings.ranks.create.confirm": "Créer",
-  "project.settings.ranks.created": "Rang créé",
-  "project.settings.ranks.save": "Enregistrer les rangs",
-  "project.settings.ranks.saved": "Rangs enregistrés",
   "rank.preset.admin": "Administrateur",
   "rank.preset.contributor": "Contributeur",
   "rank.preset.viewer": "Lecteur",

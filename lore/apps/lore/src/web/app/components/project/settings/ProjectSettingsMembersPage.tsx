@@ -1,31 +1,24 @@
-import type {
-  OrganizationInvitation,
-  OrganizationMember,
-} from "alepha/api/organizations";
+import { OrganizationMembers } from "@alepha/ui/organizations";
 import { useStore } from "alepha/react";
+import { useRouter } from "alepha/react/router";
 
-import type { User } from "@/api/entities/users.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
-import ProjectSettingsMembersSection from "./ProjectSettingsMembersSection.tsx";
+import type { AppRouter } from "../../../AppRouter.ts";
 
-export interface ProjectSettingsMembersPageProps {
-  members: Array<OrganizationMember & { user: User }>;
-  pendingInvitations: Array<OrganizationInvitation>;
-}
-
-const ProjectSettingsMembersPage = (props: ProjectSettingsMembersPageProps) => {
+const ProjectSettingsMembersPage = () => {
   const [project] = useStore(currentProjectAtom);
+  const { can } = useRank();
+  const router = useRouter<AppRouter>();
 
-  if (!project) {
-    return null;
-  }
+  if (!project) return null;
 
   return (
-    <ProjectSettingsMembersSection
-      project={project}
-      members={props.members}
-      pendingInvitations={props.pendingInvitations}
+    <OrganizationMembers
+      organizationId={project.organizationId}
+      can={can}
+      onLeft={() => router.push("home")}
     />
   );
 };
