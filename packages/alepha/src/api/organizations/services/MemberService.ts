@@ -7,6 +7,8 @@ import {
   type OrganizationMember,
   organizationMembers,
 } from "../entities/organizationMembers.ts";
+import { organizationRelations } from "../relations/organizationRelations.ts";
+import type { OrganizationMemberResource } from "../schemas/organizationMemberResourceSchema.ts";
 
 export class MemberService {
   public static readonly OWNER = "owner";
@@ -14,11 +16,37 @@ export class MemberService {
 
   protected readonly alepha = $inject(Alepha);
   protected readonly members = $repository(organizationMembers);
+  protected readonly membersWith = $repository(
+    organizationRelations,
+    "organizationMembers",
+  );
 
   public list(organizationId: string): Promise<OrganizationMember[]> {
     return this.members.findMany({
       where: { organizationId: { eq: organizationId } },
       orderBy: { column: "createdAt", direction: "asc" },
+    });
+  }
+
+  public async listResources(
+    organizationId: string,
+  ): Promise<OrganizationMemberResource[]> {
+    const rows = await this.membersWith.findMany({
+      where: { organizationId: { eq: organizationId } },
+      include: { user: true },
+      orderBy: { column: "createdAt", direction: "asc" },
+    });
+
+    const resources: OrganizationMemberResource[] = [];
+    for (const row of rows) {
+      if (row.user) {
+        resources.push({ ...row, user: row.user });
+      }
+    }
+    return resources.sort((a, b) => {
+      if (a.rank === MemberService.OWNER) return -1;
+      if (b.rank === MemberService.OWNER) return 1;
+      return 0;
     });
   }
 

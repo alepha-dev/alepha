@@ -36,6 +36,7 @@
     "./auth": "./src/auth/index.ts",
     "./account": "./src/account/index.ts",
     "./admin": "./src/admin/index.ts",
+    "./organizations": "./src/organizations/index.ts",
     "./chart": "./src/chart/index.ts",
     "./command": "./src/command/index.ts",
     "./calendar": "./src/calendar/index.ts",
@@ -86,6 +87,10 @@
       "./admin": {
         "types": "./dist/admin/index.d.ts",
         "default": "./dist/admin/index.js"
+      },
+      "./organizations": {
+        "types": "./dist/organizations/index.d.ts",
+        "default": "./dist/organizations/index.js"
       },
       "./chart": {
         "types": "./dist/chart/index.d.ts",

@@ -1131,4 +1131,19 @@ export const uiFr: Record<string, string> = {
   "account.sessions.title": "Sessions actives",
   "account.sessions.unknownDevice": "Appareil inconnu",
   "account.sessions.unknownIp": "IP inconnue",
+  "organizations.members.actions": "Actions du membre",
+  "organizations.members.cancel": "Annuler",
+  "organizations.members.leave": "Quitter",
+  "organizations.members.leaveDescription":
+    "Vous perdrez immédiatement l'accès à cette organisation.",
+  "organizations.members.leaveTitle": "Quitter cette organisation ?",
+  "organizations.members.left": "Organisation quittée",
+  "organizations.members.rank": "Rang",
+  "organizations.members.rankAssigned": "Rang mis à jour",
+  "organizations.members.remove": "Retirer",
+  "organizations.members.removeDescription":
+    "Cette personne perdra immédiatement l'accès à l'organisation.",
+  "organizations.members.removed": "Membre retiré",
+  "organizations.members.removeTitle": "Retirer $1 ?",
+  "organizations.members.title": "Membres",
 };

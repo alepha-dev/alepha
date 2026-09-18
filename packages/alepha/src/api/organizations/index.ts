@@ -44,6 +44,7 @@ export * from "./schemas/createOrganizationSchema.ts";
 export * from "./schemas/updateOrganizationSchema.ts";
 export * from "./schemas/organizationRankResourceSchema.ts";
 export * from "./schemas/organizationInvitationStatusSchema.ts";
+export * from "./schemas/organizationMemberResourceSchema.ts";
 export * from "./security/$ownsOrganization.ts";
 export * from "./security/OrganizationPermissions.ts";
 export * from "./services/MemberService.ts";

@@ -96,6 +96,32 @@ describe("alepha/api/organizations - organization and member services", () => {
     ]);
   });
 
+  it("lists members with the account identity needed by organization UIs", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const organization = await ctx.organizations.create(
+      { name: "Acme" },
+      { id: ctx.owner.id },
+    );
+    await ctx.members.add(organization.id, ctx.other.id, "member", {
+      id: ctx.owner.id,
+    });
+
+    expect(await ctx.members.listResources(organization.id)).toMatchObject([
+      {
+        userId: ctx.owner.id,
+        rank: "owner",
+        user: { id: ctx.owner.id, username: "organization-owner" },
+      },
+      {
+        userId: ctx.other.id,
+        rank: "member",
+        user: { id: ctx.other.id, username: "organization-member" },
+      },
+    ]);
+  });
+
   it("deletes the organization when its owner row cannot be written", async ({
     expect,
   }) => {

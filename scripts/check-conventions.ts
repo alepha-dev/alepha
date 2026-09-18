@@ -246,7 +246,7 @@ if (versionViolations.length > 0) {
  * The exemptions below are the shapes that legitimately have no `@module`.
  *
  * `@alepha/ui` was one, with a blanket `"*"`: it exported one wildcard subpath
- * per component and had no file to hold a block. It is sixteen modules now,
+ * per component and had no file to hold a block. It is seventeen modules now,
  * each an `index.ts` with its own `@module`, and the rules that keep that map
  * honest are further down.
  */
@@ -1166,7 +1166,7 @@ if (jobNameViolations.length > 0) {
 /**
  * `@alepha/ui`'s module map keeps its shape.
  *
- * The package is sixteen modules, one subpath each, and every rule below is a
+ * The package is seventeen modules, one subpath each, and every rule below is a
  * way that shape used to break, or would break silently:
  *
  * 1. **Symmetry.** Every `src/**\/index.ts` is exported, every export points at
@@ -1187,7 +1187,8 @@ if (jobNameViolations.length > 0) {
  * 4. **Layering**, over non-spec sources. `core` imports no other module, so
  *    `import { Button } from "@alepha/ui"` never loads the form stack; `chart`,
  *    `command`, `calendar`, `otp`, `resizable` and `i18n/fr` import only
- *    `core`, so an opt-in wrapper cannot quietly grow a heavy dependency; and
+ *    `core`, so an opt-in wrapper cannot quietly grow a heavy dependency;
+ *    `organizations` imports only `core`, `form`, `table`, and `settings`; and
  *    the module graph has no cycle. Specs are outside it
  *    (`AccountRouter.spec.ts` imports the admin router, legitimately), and
  *    there is deliberately no allow-list of edges: an edge that is not a cycle
@@ -1209,6 +1210,9 @@ const UI_LEAF_MODULES = [
   "resizable",
   "i18n/fr",
 ];
+const UI_ALLOWED_IMPORTS: Record<string, ReadonlySet<string>> = {
+  organizations: new Set(["core", "form", "table", "settings"]),
+};
 const uiViolations: string[] = [];
 
 const uiManifest = JSON.parse(
@@ -1375,6 +1379,14 @@ for (const leaf of UI_LEAF_MODULES) {
     );
   }
 }
+for (const [from, allowed] of Object.entries(UI_ALLOWED_IMPORTS)) {
+  for (const [to, example] of uiEdges.get(from) ?? []) {
+    if (allowed.has(to)) continue;
+    uiViolations.push(
+      `  ${example}\n    → \`${from}\` imports \`${to}\`; ${from} imports only ${[...allowed].join(", ")}`,
+    );
+  }
+}
 const uiVisiting: string[] = [];
 const uiDone = new Set<string>();
 const uiCycles = new Set<string>();
@@ -1407,7 +1419,7 @@ if (uiViolations.length > 0) {
       "`@alepha/ui` is one subpath per module, each a `src/<module>/index.ts`\n" +
       "listed in both exports maps. Inside the package, imports are relative and\n" +
       "name a concrete file. `core` imports no other module, the opt-in wrappers\n" +
-      "and `i18n/fr` import only `core`, and the module graph has no cycle.\n",
+      "and `i18n/fr` import only `core`, `organizations` imports only `core`, `form`, `table`, and `settings`, and the module graph has no cycle.\n",
   );
   process.exit(1);
 }

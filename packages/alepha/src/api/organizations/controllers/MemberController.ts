@@ -2,6 +2,7 @@ import { $inject, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
 import { organizationMembers } from "../entities/organizationMembers.ts";
+import { organizationMemberResourceSchema } from "../schemas/organizationMemberResourceSchema.ts";
 import { $ownsOrganization } from "../security/$ownsOrganization.ts";
 import { MemberService } from "../services/MemberService.ts";
 
@@ -15,9 +16,9 @@ export class MemberController {
     ],
     schema: {
       params: z.object({ organizationId: z.uuid() }),
-      response: z.array(organizationMembers.schema),
+      response: z.array(organizationMemberResourceSchema),
     },
-    handler: ({ params }) => this.members.list(params.organizationId),
+    handler: ({ params }) => this.members.listResources(params.organizationId),
   });
 
   public readonly addOrganizationMember = $action({
