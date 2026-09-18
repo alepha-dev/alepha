@@ -1,7 +1,9 @@
+import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { displayName } from "../../web/app/services/displayName.ts";
 import { relations } from "../relations.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * One member of a project, in the shape everything that writes to people
@@ -25,7 +27,11 @@ export interface ProjectRosterEntry {
  * and "which members can actually be written to" is one question, not two.
  */
 export class ProjectRoster {
-  protected readonly membersWith = $repository(relations, "members");
+  protected readonly membersWith = $repository(
+    relations,
+    "organizationMembers",
+  );
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
    * Every member of the project whose account still exists.
@@ -36,7 +42,11 @@ export class ProjectRoster {
    */
   public async of(projectId: number): Promise<ProjectRosterEntry[]> {
     const rows = await this.membersWith.findMany({
-      where: { projectId: { eq: projectId } },
+      where: {
+        organizationId: {
+          eq: await this.security.organizationIdOf(projectId),
+        },
+      },
       include: { user: true },
     });
 

@@ -3,11 +3,11 @@ import fs from "node:fs";
 import { expect, test } from "./_fixtures.ts";
 import {
   createProjectViaWizard,
-  extractCode,
   extractInviteUrl,
   findLatestEmail,
   newUserContext,
   registerAndVerify,
+  signInAsAdmin,
 } from "./_helpers.ts";
 
 test.describe("Invitation flow (in-app inbox)", () => {
@@ -37,8 +37,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await page.getByPlaceholder("user@example.com").fill(b.email);
       const createResp = page.waitForResponse(
         (r) =>
-          r.request().method() === "POST" &&
-          r.url().endsWith("/api/invitations"),
+          r.request().method() === "POST" && r.url().endsWith("/invitations"),
         { timeout: 15_000 },
       );
       await page.getByRole("button", { name: /send invitation/i }).click();
@@ -82,13 +81,9 @@ test.describe("Invitation flow (in-app inbox)", () => {
    * reachable once you already have an account and the whole point of the
    * token is the case where you do not.
    *
-   * ⚠️ The realm is OPEN here, and has to be: the suite's other specs all
-   * register, and flipping `registrationAllowed` is a global that would race
-   * them. What the closed realm adds is `AuthRegister`'s `preAuthorized`
-   * overriding its own alert; everything below (the token resolving, the
-   * locked address, the redirect, the membership) is identical either way,
-   * and the server-side half is covered by the closed-realm specs in
-   * `RegistrationService.spec.ts`.
+   * Each Playwright worker owns its server and database, so this test can
+   * close registration on its worker without racing any other spec. The
+   * setting is restored in `finally` for later tests assigned to that worker.
    */
   test("a stranger with no account joins through the link in the invite mail", async ({
     page,
@@ -113,10 +108,15 @@ test.describe("Invitation flow (in-app inbox)", () => {
     await page.waitForLoadState("domcontentloaded");
     await page.getByRole("button", { name: /^invite$/i }).click();
     await page.getByPlaceholder("user@example.com").fill(guestEmail);
+    await page.getByTestId("invite-rank").click();
+    await page.getByRole("option", { name: /^contributor$/i }).click();
+    await expect(
+      page.getByRole("option", { name: /^contributor$/i }),
+    ).toBeHidden();
     const sentAfter = Date.now();
     const createResp = page.waitForResponse(
       (r) =>
-        r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+        r.request().method() === "POST" && r.url().endsWith("/invitations"),
       { timeout: 15_000 },
     );
     await page.getByRole("button", { name: /send invitation/i }).click();
@@ -129,93 +129,113 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const inviteUrl = extractInviteUrl(fs.readFileSync(invitePath!, "utf-8"));
     expect(inviteUrl).not.toBeNull();
 
-    const guest = await browser.newContext({ baseURL });
+    const admin = await browser.newContext({ baseURL });
+    const adminPage = await admin.newPage();
+    await signInAsAdmin(adminPage);
+
+    const parameterUrl = "/api/parameters/api.realms.users";
+    const currentResponse = await adminPage.request.get(parameterUrl);
+    expect(currentResponse.ok()).toBe(true);
+    const current = (await currentResponse.json()) as {
+      currentValue: Record<string, unknown>;
+    };
+    const originalSettings = current.currentValue;
+    const closeResponse = await adminPage.request.post(parameterUrl, {
+      data: {
+        content: { ...originalSettings, registrationAllowed: false },
+        changeDescription: "Close registration for invitation e2e",
+      },
+    });
+    expect(closeResponse.ok()).toBe(true);
+
     try {
-      const g = await guest.newPage();
-      await g.goto(inviteUrl!);
-      await g.waitForLoadState("domcontentloaded");
+      const guest = await browser.newContext({ baseURL });
+      try {
+        const g = await guest.newPage();
+        await g.goto(inviteUrl!);
+        await g.waitForLoadState("domcontentloaded");
 
-      // The address is pre-filled and not editable: the token is bound to
-      // exactly this one, and letting it be typed over only produces a
-      // server-side refusal the visitor cannot act on.
-      const emailField = g.getByRole("textbox", {
-        name: "Email",
-        exact: true,
-      });
-      await expect(emailField).toHaveValue(guestEmail, { timeout: 15_000 });
-      await expect(emailField).toBeDisabled();
-      await expect(g.getByText(projectTitle).first()).toBeVisible();
+        // The address is pre-filled and not editable: the token is bound to
+        // exactly this one, and letting it be typed over only produces a
+        // server-side refusal the visitor cannot act on.
+        const emailField = g.getByRole("textbox", {
+          name: "Email",
+          exact: true,
+        });
+        await expect(emailField).toHaveValue(guestEmail, { timeout: 15_000 });
+        await expect(emailField).toBeDisabled();
+        await expect(g.getByText(projectTitle).first()).toBeVisible();
 
-      const passwordField = g.getByRole("textbox", {
-        name: "Password",
-        exact: true,
-      });
-      await expect(async () => {
-        await passwordField.fill("GoodPassw0rd");
-        await expect(passwordField).toHaveValue("GoodPassw0rd");
-      }).toPass({ timeout: 15_000 });
+        const passwordField = g.getByRole("textbox", {
+          name: "Password",
+          exact: true,
+        });
+        await expect(async () => {
+          await passwordField.fill("GoodPassw0rd");
+          await expect(passwordField).toHaveValue("GoodPassw0rd");
+        }).toPass({ timeout: 15_000 });
 
-      const submit = g.getByRole("button", { name: /create account/i });
-      await expect(submit).toBeEnabled({ timeout: 30_000 });
-      const registeredAfter = Date.now();
-      await submit.click();
+        const submit = g.getByRole("button", { name: /create account/i });
+        await expect(submit).toBeEnabled({ timeout: 30_000 });
+        await submit.click();
 
-      // ⚠️ The verification step still runs HERE, and that is correct: the
-      // pre-authorization seam is consulted only when the realm is closed,
-      // and this suite's realm is open (see the note on this test). On a
-      // closed realm the token stands in for the code and no second mail is
-      // sent at all - proven in `RegistrationService.spec.ts`, "should skip
-      // the verification mail when the seam vouches for the address", which
-      // is the only place that can close a realm without racing the suite.
-      await expect(
-        g.getByRole("button", { name: /complete registration/i }),
-      ).toBeVisible({ timeout: 15_000 });
-      const codePath = await findLatestEmail(
-        guestEmail,
-        20_000,
-        registeredAfter,
-      );
-      expect(codePath).not.toBeNull();
-      const code = extractCode(fs.readFileSync(codePath!, "utf-8"));
-      expect(code).not.toBeNull();
-      await g.locator("#emailCode").fill(code!);
-      await g.getByRole("button", { name: /complete registration/i }).click();
+        // In a closed realm the invitation token pre-authorizes this exact
+        // address, so registration skips the verification-code screen.
+        await expect(
+          g.getByRole("button", { name: /complete registration/i }),
+        ).toHaveCount(0);
 
-      // The flow lands on the invitations inbox rather than joining silently.
-      // Joining a project is worth a click, and this is the one destination
-      // both the credentials and the OAuth paths can reach.
-      await g.waitForURL(/\/account\/invitations/, { timeout: 20_000 });
-      await expect(g.getByText(projectTitle).first()).toBeVisible({
-        timeout: 15_000,
-      });
+        // The flow lands on the invitations inbox rather than joining silently.
+        // Joining a project is worth a click, and this is the one destination
+        // both the credentials and the OAuth paths can reach.
+        await g.waitForURL(/\/account\/invitations/, { timeout: 20_000 });
+        await expect(g.getByText(projectTitle).first()).toBeVisible({
+          timeout: 15_000,
+        });
 
-      const acceptResp = g.waitForResponse(
-        (r) =>
-          r.request().method() === "POST" &&
-          /\/api\/invitations\/[^/]+\/accept$/.test(r.url()),
-        { timeout: 15_000 },
-      );
-      await g.getByRole("button", { name: /^accept$/i }).click();
-      expect((await acceptResp).ok()).toBe(true);
+        const acceptResp = g.waitForResponse(
+          (r) =>
+            r.request().method() === "POST" &&
+            /\/api\/invitations\/[^/]+\/accept$/.test(r.url()),
+          { timeout: 15_000 },
+        );
+        await g.getByRole("button", { name: /^accept$/i }).click();
+        expect((await acceptResp).ok()).toBe(true);
 
-      await g.waitForURL(new RegExp(`/${projectSlug}`), { timeout: 15_000 });
+        await g.waitForURL(new RegExp(`/${projectSlug}`), { timeout: 15_000 });
 
-      // A member now, and the owner's settings page agrees.
-      await g.goto("/");
-      await expect(g.getByText(projectTitle).first()).toBeVisible({
-        timeout: 15_000,
-      });
+        await g.goto(`/${projectSlug}/settings/members`);
+        await g.waitForLoadState("networkidle");
+        await expect(
+          g.getByText(/^contributor$/i, { exact: true }),
+        ).toBeVisible({ timeout: 15_000 });
 
-      // The link is spent: the invitation is no longer pending, so the same
-      // URL cannot mint a second account.
-      const g2 = await guest.newPage();
-      await g2.goto(inviteUrl!);
-      await g2.waitForLoadState("domcontentloaded");
-      await expect(g2.getByText(/already been accepted/i).first()).toBeVisible({
-        timeout: 15_000,
-      });
+        // A member now, and the owner's settings page agrees.
+        await g.goto("/");
+        await expect(g.getByText(projectTitle).first()).toBeVisible({
+          timeout: 15_000,
+        });
+
+        // The link is spent: the invitation is no longer pending, so the same
+        // URL cannot mint a second account.
+        const g2 = await guest.newPage();
+        await g2.goto(inviteUrl!);
+        await g2.waitForLoadState("domcontentloaded");
+        await expect(
+          g2.getByText(/already been accepted/i).first(),
+        ).toBeVisible({ timeout: 15_000 });
+      } finally {
+        await guest.close();
+      }
     } finally {
-      await guest.close();
+      const restoreResponse = await adminPage.request.post(parameterUrl, {
+        data: {
+          content: originalSettings,
+          changeDescription: "Restore registration after invitation e2e",
+        },
+      });
+      expect(restoreResponse.ok()).toBe(true);
+      await admin.close();
     }
   });
 
@@ -243,8 +263,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       const sentAfter = Date.now();
       const createResp = page.waitForResponse(
         (r) =>
-          r.request().method() === "POST" &&
-          r.url().endsWith("/api/invitations"),
+          r.request().method() === "POST" && r.url().endsWith("/invitations"),
         { timeout: 15_000 },
       );
       await page.getByRole("button", { name: /send invitation/i }).click();
@@ -308,8 +327,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await page.getByPlaceholder("user@example.com").fill(b.email);
       const createResp = page.waitForResponse(
         (r) =>
-          r.request().method() === "POST" &&
-          r.url().endsWith("/api/invitations"),
+          r.request().method() === "POST" && r.url().endsWith("/invitations"),
         { timeout: 15_000 },
       );
       await page.getByRole("button", { name: /send invitation/i }).click();
@@ -365,7 +383,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     await page.getByPlaceholder("user@example.com").fill(invitedEmail);
     const createResp = page.waitForResponse(
       (r) =>
-        r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+        r.request().method() === "POST" && r.url().endsWith("/invitations"),
       { timeout: 15_000 },
     );
     await page.getByRole("button", { name: /send invitation/i }).click();
@@ -402,7 +420,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     await page.getByPlaceholder("user@example.com").fill(target);
     const firstResp = page.waitForResponse(
       (r) =>
-        r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+        r.request().method() === "POST" && r.url().endsWith("/invitations"),
       { timeout: 15_000 },
     );
     await page.getByRole("button", { name: /send invitation/i }).click();
@@ -412,7 +430,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     await page.getByPlaceholder("user@example.com").fill(target);
     const secondResp = page.waitForResponse(
       (r) =>
-        r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+        r.request().method() === "POST" && r.url().endsWith("/invitations"),
       { timeout: 15_000 },
     );
     await page.getByRole("button", { name: /send invitation/i }).click();
@@ -437,7 +455,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     await page.getByPlaceholder("user@example.com").fill(aEmail);
     const resp = page.waitForResponse(
       (r) =>
-        r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+        r.request().method() === "POST" && r.url().endsWith("/invitations"),
       { timeout: 15_000 },
     );
     await page.getByRole("button", { name: /send invitation/i }).click();
@@ -469,12 +487,13 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await page.getByPlaceholder("user@example.com").fill(b.email);
       const createResp = page.waitForResponse(
         (r) =>
-          r.request().method() === "POST" &&
-          r.url().endsWith("/api/invitations"),
+          r.request().method() === "POST" && r.url().endsWith("/invitations"),
         { timeout: 15_000 },
       );
       await page.getByRole("button", { name: /send invitation/i }).click();
-      expect((await createResp).ok()).toBe(true);
+      const created = await createResp;
+      expect(created.ok()).toBe(true);
+      const invitation = (await created.json()) as { id: string };
       await expect(page.getByText(b.email).first()).toBeVisible({
         timeout: 10_000,
       });
@@ -491,7 +510,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       const revokeResp = page.waitForResponse(
         (r) =>
           r.request().method() === "POST" &&
-          /\/api\/invitations\/project\/\d+\/[^/]+\/revoke$/.test(r.url()),
+          /\/invitations\/[^/]+\/revoke$/.test(r.url()),
         { timeout: 15_000 },
       );
       // Two clicks to reach it since #1695: the inline × became an item in
@@ -514,6 +533,18 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await expect(b.page.getByText(projectTitle)).toHaveCount(0, {
         timeout: 10_000,
       });
+
+      const acceptStatus = await b.page.evaluate(async (id) => {
+        const response = await fetch(`/api/invitations/${id}/accept`, {
+          method: "POST",
+          credentials: "include",
+        });
+        return response.status;
+      }, invitation.id);
+      expect(acceptStatus).toBeGreaterThanOrEqual(400);
+
+      await b.page.goto("/");
+      await expect(b.page.getByText(projectTitle)).toHaveCount(0);
     } finally {
       await b.ctx.close();
     }

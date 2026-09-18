@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { OrganizationPermissions } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -46,12 +47,19 @@ const setup = async (): Promise<Ctx> => {
   alepha.with(LoreApi);
 
   const permissions = alepha.inject(LorePermissions);
+  const organizationPermissions = alepha.inject(OrganizationPermissions);
 
   await alepha.start();
 
-  const declared = Object.values(
-    permissions as unknown as Record<string, { toString(): string }>,
-  )
+  const declared = [
+    ...Object.values(
+      permissions as unknown as Record<string, { toString(): string }>,
+    ),
+    organizationPermissions.memberRead,
+    organizationPermissions.memberManage,
+    organizationPermissions.rankManage,
+    organizationPermissions.invitationCreate,
+  ]
     .filter((it) => typeof it?.toString === "function")
     .map((it) => it.toString())
     .filter((it) => it.includes(":"));

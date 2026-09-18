@@ -1,5 +1,5 @@
 import { Alepha, type FileLike, z } from "alepha";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { MemoryFileStorageProvider } from "alepha/bucket";
 import { AlephaEmail } from "alepha/email";
@@ -15,8 +15,10 @@ import { artifacts } from "../src/api/entities/artifacts.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ArtifactService } from "../src/api/services/ArtifactService.ts";
 import { DeployAssetCache } from "../src/api/services/DeployAssetCache.ts";
+import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
 
 /**
@@ -827,8 +829,9 @@ describe("artifacts", () => {
       });
       const reader = await createTestUser(ctx);
       await ctx.alepha.inject(RankService).save(
-        "project",
-        String(projectId),
+        await ctx.alepha
+          .inject(ProjectSecurityService)
+          .organizationIdOf(projectId),
         {
           key: "no-artifacts",
           name: "No artifacts",
@@ -836,9 +839,7 @@ describe("artifacts", () => {
         },
         owner,
       );
-      await (ctx.projectController as any).members.create({
-        userId: reader.id,
-        projectId,
+      await createTestMemberByProjectId(ctx.alepha, projectId, reader.id, {
         rank: "no-artifacts",
       });
       expect(
@@ -1027,9 +1028,7 @@ describe("artifacts", () => {
      */
     const joinAs = async (projectId: number, rank: string) => {
       const user = await createTestUser(ctx);
-      await (ctx.projectController as any).members.create({
-        userId: user.id,
-        projectId,
+      await createTestMemberByProjectId(ctx.alepha, projectId, user.id, {
         rank,
       });
       return user;

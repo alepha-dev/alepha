@@ -11,6 +11,7 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import type { RoadmapVisibility } from "../src/api/schemas/roadmapVisibilitySchema.ts";
 import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * The roadmap gate, which is the only rule in Lore that can answer "yes" to a
@@ -120,7 +121,7 @@ describe("roadmap visibility", () => {
 
   const member = async (projectId: number) => {
     const user = await createTestUser(ctx);
-    await ctx.security.members.create({ userId: user.id, projectId });
+    await createTestMemberByProjectId(ctx.alepha, projectId, user.id);
     return user;
   };
 

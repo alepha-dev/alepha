@@ -1,8 +1,7 @@
 import { $atom } from "alepha";
-
-import { members } from "@/api/entities/members.ts";
+import { organizationMembers } from "alepha/api/organizations";
 
 export const currentProjectMemberAtom = $atom({
   name: "lor.current.project_member",
-  schema: members.schema.optional(),
+  schema: organizationMembers.schema.optional(),
 });

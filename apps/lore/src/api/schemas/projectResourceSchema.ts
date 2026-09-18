@@ -23,6 +23,7 @@ import { projectCapabilityResourceSchema } from "./projectCapabilityResourceSche
  */
 export const projectResourceSchema = projects.schema.extend({
   slug: z.string(),
+  organizationId: z.uuid(),
   /**
    * The capabilities this project has turned on, each with its options.
    *

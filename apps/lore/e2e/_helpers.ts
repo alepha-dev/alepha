@@ -435,7 +435,7 @@ export const createProjectViaWizard = async (
   page: Page,
   title: string,
   setup: WizardSetup = {},
-): Promise<{ id: number; slug: string }> => {
+): Promise<{ id: number; organizationId: string; slug: string }> => {
   await page.goto("/new-project");
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="text"]').first().fill(title);
@@ -469,7 +469,7 @@ export const createProjectViaWizard = async (
     async (url) => {
       const r = await fetch(url, { credentials: "include" });
       if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
-      return r.json() as Promise<{ id: number }>;
+      return r.json() as Promise<{ id: number; organizationId: string }>;
     },
     path.replace(":slug", slug!),
   );
@@ -499,7 +499,11 @@ export const createProjectViaWizard = async (
     await page.waitForLoadState("networkidle");
   }
 
-  return { id: project.id, slug: slug! };
+  return {
+    id: project.id,
+    organizationId: project.organizationId,
+    slug: slug!,
+  };
 };
 
 /**

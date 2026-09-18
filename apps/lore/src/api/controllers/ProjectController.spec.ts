@@ -1,14 +1,15 @@
 import { Alepha, AlephaError } from "alepha";
+import { MemberService as OrganizationMemberService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, describe, it } from "vitest";
 
 import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
-import { members as membersEntity } from "../entities/members.ts";
+import { projects as projectsEntity } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { ProjectController } from "./ProjectController.ts";
 
@@ -23,45 +24,44 @@ import { ProjectController } from "./ProjectController.ts";
  * The refusal is one-shot, so the retry that the handler's rethrow is asking
  * the caller to make can be exercised in the same container.
  */
-class FailingMembersProjectController extends ProjectController {
+class FailingMemberService extends OrganizationMemberService {
   public failures = 0;
 
-  /**
-   * A second repository over the same table, not a capture of `this.members`:
-   * the override below shadows that property, and TypeScript rightly refuses
-   * to read it from an initializer. Two repositories over one entity is the
-   * normal shape here — `TestEntityRepositories` already holds another.
-   */
-  protected readonly realMembers = $repository(membersEntity);
+  public override async addOwner(organizationId: string, userId: string) {
+    this.failures += 1;
+    if (this.failures === 1) {
+      throw new AlephaError("members.create refused");
+    }
+    return super.addOwner(organizationId, userId);
+  }
+}
 
-  /**
-   * Only `create` refuses. Everything else falls through to the real
-   * repository - the handler also COUNTS owner rows now, for the project
-   * quota, and a fake that answered only `create` turned the compensating
-   * delete into a `TypeError` before the write it is about ever ran.
-   */
-  override members = new Proxy(
+class FailingProjectSaveController extends ProjectController {
+  protected readonly realProjects = $repository(projectsEntity);
+  public failures = 0;
+
+  override projects = new Proxy(
     {},
     {
       get: (_target, prop: string) => {
-        if (prop === "create") {
+        if (prop === "save") {
           return async (...args: unknown[]) => {
             this.failures += 1;
             if (this.failures === 1) {
-              throw new AlephaError("members.create refused");
+              throw new AlephaError("projects.save refused");
             }
-            return (this.realMembers.create as (...a: unknown[]) => unknown)(
+            return (this.realProjects.save as (...a: unknown[]) => unknown)(
               ...args,
             );
           };
         }
-        const real = (this.realMembers as unknown as Record<string, unknown>)[
+        const real = (this.realProjects as unknown as Record<string, unknown>)[
           prop
         ];
-        return typeof real === "function" ? real.bind(this.realMembers) : real;
+        return typeof real === "function" ? real.bind(this.realProjects) : real;
       },
     },
-  ) as unknown as ProjectController["members"];
+  ) as unknown as ProjectController["projects"];
 }
 
 interface TestContext {
@@ -77,7 +77,7 @@ interface TestContext {
  * `yarn w lore test` and fails under `yarn test`.
  */
 const setup = async (
-  options: { failMembership?: boolean } = {},
+  options: { failMembership?: boolean; failProjectSave?: boolean } = {},
 ): Promise<TestContext> => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
@@ -85,8 +85,13 @@ const setup = async (
 
   if (options.failMembership) {
     alepha.with({
+      provide: OrganizationMemberService,
+      use: FailingMemberService,
+    });
+  } else if (options.failProjectSave) {
+    alepha.with({
       provide: ProjectController,
-      use: FailingMembersProjectController,
+      use: FailingProjectSaveController,
     });
   }
 
@@ -129,10 +134,37 @@ describe("ProjectController.createProject", () => {
 
     expect(resource.slug).toBe("a-real-project");
 
-    const membership = await ctx.repos.members.findOne({
-      where: { projectId: { eq: resource.id }, userId: { eq: account.id } },
+    const project = await ctx.repos.projects.getById(resource.id);
+    expect(project.organizationId).toBeDefined();
+
+    const organization = await ctx.repos.organizations.getById(
+      project.organizationId!,
+    );
+    expect(organization.name).toBe("A Real Project");
+    expect(organization.slug).toBeUndefined();
+    expect(organization.logo).toBeUndefined();
+
+    const organizationOwners = await ctx.repos.organizationMembers.findMany({
+      where: {
+        organizationId: { eq: organization.id },
+        rank: { eq: "owner" },
+      },
     });
-    expect(membership).toBeDefined();
+    expect(organizationOwners).toHaveLength(1);
+    expect(organizationOwners[0].userId).toBe(account.id);
+
+    await ctx.alepha.context.run(async () => {
+      ctx.alepha.store.set(currentUserAtom, user);
+      await ctx.controller.updateProjectById({
+        params: { id: resource.id },
+        body: { title: "Renamed Project" },
+      } as any);
+    });
+
+    const renamed = await ctx.repos.organizations.getById(organization.id);
+    expect(renamed.name).toBe("Renamed Project");
+    expect(renamed.slug).toBeUndefined();
+    expect(renamed.logo).toBeUndefined();
   });
 
   it("leaves no project row behind when the membership write fails", async ({
@@ -156,6 +188,30 @@ describe("ProjectController.createProject", () => {
       where: { createdBy: { eq: account.id } },
     });
     expect(projects).toHaveLength(0);
+
+    const organizations = await ctx.repos.organizations.findMany({});
+    expect(organizations).toHaveLength(0);
+
+    const organizationMembers = await ctx.repos.organizationMembers.findMany(
+      {},
+    );
+    expect(organizationMembers).toHaveLength(0);
+  });
+
+  it("removes the organization when the fallback project write fails", async ({
+    expect,
+  }) => {
+    ctx = await setup({ failProjectSave: true });
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+
+    await expect(
+      ctx.controller.createProject({ body: { title: "日本語" } }, { user }),
+    ).rejects.toThrow(AlephaError);
+
+    expect(await ctx.repos.projects.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizations.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizationMembers.findMany({})).toHaveLength(0);
   });
 
   it("frees the slug, so the same title can be created again after a failure", async ({

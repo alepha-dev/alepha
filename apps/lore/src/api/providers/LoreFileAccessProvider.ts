@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { FileAccessProvider, type FileEntity } from "alepha/api/files";
-import { RankService } from "alepha/api/ranks";
+import { RankService } from "alepha/api/organizations";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
@@ -11,6 +11,7 @@ import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * Per-bucket file access policy for Lore.
@@ -23,6 +24,7 @@ import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
  */
 export class LoreFileAccessProvider extends FileAccessProvider {
   protected readonly ranks = $inject(RankService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly projects = $repository(projects);
   protected readonly feedback = $repository(feedback);
@@ -79,12 +81,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
         where: { icon: { eq: file.id } },
       });
       if (project) {
-        await this.ranks.assert(
-          "project",
-          String(project.id),
-          "project:read",
-          user,
-        );
+        await this.ranks.assert(project.organizationId!, "project:read", user);
         return;
       }
       // Orphan icon (uploaded but never assigned) stays creator-only.
@@ -97,8 +94,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       const feedback = await this.findFeedbackByAttachment(file.id);
       if (feedback) {
         await this.ranks.assert(
-          "project",
-          String(feedback.projectId),
+          await this.projectSecurity.organizationIdOf(feedback.projectId),
           "feedback:triage",
           user,
         );
@@ -116,8 +112,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       });
       if (attachment) {
         await this.ranks.assert(
-          "project",
-          String(attachment.projectId),
+          await this.projectSecurity.organizationIdOf(attachment.projectId),
           "folio:read",
           user,
         );
@@ -131,8 +126,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       const quest = await this.findQuestByAttachment(file.id);
       if (quest) {
         await this.ranks.assert(
-          "project",
-          String(quest.projectId),
+          await this.projectSecurity.organizationIdOf(quest.projectId),
           "quest:read",
           user,
         );

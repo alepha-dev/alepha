@@ -1,4 +1,5 @@
 import { $inject, z } from "alepha";
+import { organizationMembers } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -10,7 +11,6 @@ import {
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { QUEST_PRIORITY_ORDER } from "../schemas/questPriority.ts";
@@ -25,7 +25,7 @@ import { QuestTagTallyService } from "../services/QuestTagTallyService.ts";
 
 export class ProjectReportsController {
   quests = $repository(quests);
-  members = $repository(members);
+  members = $repository(organizationMembers);
   projects = $repository(projects);
   users = $repository(users);
   database = $inject(DatabaseProvider);
@@ -117,6 +117,9 @@ export class ProjectReportsController {
       response: reportsOverviewSchema,
     },
     handler: async ({ params, user }) => {
+      const organizationId = (
+        await this.projects.getOne({ where: { id: { eq: params.id } } })
+      ).organizationId!;
       const inScope = this.questInScope(
         await this.epicVisibility.draftEpicIds(params.id),
       );
@@ -165,7 +168,7 @@ export class ProjectReportsController {
         sql`
 					SELECT COUNT(*) as active_members
 					FROM ${this.members.table}
-					WHERE ${this.members.table.projectId} = ${params.id}
+					WHERE ${this.members.table.organizationId} = ${organizationId}
 				`,
         z.object({
           active_members: z.coerce.number(),
@@ -580,6 +583,9 @@ export class ProjectReportsController {
       response: reportsMembersSchema,
     },
     handler: async ({ params, user }) => {
+      const organizationId = (
+        await this.projects.getOne({ where: { id: { eq: params.id } } })
+      ).organizationId!;
       const inScope = this.questInScope(
         await this.epicVisibility.draftEpicIds(params.id),
       );
@@ -617,7 +623,7 @@ export class ProjectReportsController {
 							AND ${inScope}
 						GROUP BY ${this.quests.table.completedBy}
 					) q ON q.completed_by = ${this.members.table.userId}
-					WHERE ${this.members.table.projectId} = ${params.id}
+					WHERE ${this.members.table.organizationId} = ${organizationId}
 					ORDER BY quests_completed DESC
 				`,
         z.object({

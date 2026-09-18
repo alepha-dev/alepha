@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -8,8 +9,9 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * Regression guards for the reads that moved onto `$relations`.
@@ -31,6 +33,7 @@ interface TestContext {
   adminUserController: AdminUserController;
   projectController: ProjectController;
   fakeProvider: FakeProvider;
+  projectSecurity: ProjectSecurityService;
 }
 
 class MemberProbe {
@@ -62,6 +65,7 @@ const setup = async (): Promise<TestContext> => {
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
     fakeProvider: alepha.inject(FakeProvider),
+    projectSecurity: alepha.inject(ProjectSecurityService),
   };
 };
 
@@ -108,14 +112,20 @@ describe("ProjectController reads through relations", () => {
 
     // The owner already holds one from project creation.
     const existing = await repository.findMany({
-      where: { projectId: { eq: created.data.id } },
+      where: {
+        organizationId: {
+          eq: await ctx.projectSecurity.organizationIdOf(created.data.id),
+        },
+      },
     });
     expect(existing).toHaveLength(1);
 
     await expect(
       repository.create({
         userId: owner.id,
-        projectId: created.data.id,
+        organizationId: await ctx.projectSecurity.organizationIdOf(
+          created.data.id,
+        ),
       }),
     ).rejects.toThrow();
   });
@@ -131,11 +141,7 @@ describe("ProjectController reads through relations", () => {
       { user: owner },
     );
 
-    const repository = ctx.alepha.inject(MemberProbe).repository;
-    await repository.create({
-      userId: member.id,
-      projectId: created.data.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, created.data.id, member.id);
 
     const response = await ctx.projectController.getProjectUsers.fetch(
       { params: { id: created.data.id } },
@@ -164,7 +170,11 @@ describe("ProjectController reads through relations", () => {
     // is "nobody but the creator".
     const repository = ctx.alepha.inject(MemberProbe).repository;
     const existing = await repository.findMany({
-      where: { projectId: { eq: created.data.id } },
+      where: {
+        organizationId: {
+          eq: await ctx.projectSecurity.organizationIdOf(created.data.id),
+        },
+      },
     });
     for (const member of existing) {
       if (member.userId !== owner.id) {
@@ -244,10 +254,7 @@ describe("ProjectController reads through relations", () => {
       { user: owner },
     );
 
-    await ctx.alepha.inject(MemberProbe).repository.create({
-      userId: member.id,
-      projectId: joined.data.id,
-    });
+    await createTestMemberByProjectId(ctx.alepha, joined.data.id, member.id);
 
     const response = await ctx.projectController.getMyProjects.fetch(
       { query: {} },

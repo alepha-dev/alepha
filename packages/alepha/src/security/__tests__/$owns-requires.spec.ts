@@ -1,4 +1,4 @@
-import { $hook, Alepha, AlephaError, z } from "alepha";
+import { $hook, $inject, Alepha, AlephaError, z } from "alepha";
 import { $entity, $repository, db, type Repository } from "alepha/orm";
 import { $action, ForbiddenError, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
@@ -6,6 +6,7 @@ import { describe, it } from "vitest";
 import { AlephaSecurity } from "../index.ts";
 import { $owns } from "../primitives/$owns.ts";
 import { $role } from "../primitives/$role.ts";
+import { ResourceGateMemoProvider } from "../providers/ResourceGateMemoProvider.ts";
 import {
   type ResourceGrantsDecision,
   ResourceGrantsProvider,
@@ -18,6 +19,7 @@ const projects = $entity({
     id: db.primaryKey(z.text()),
     createdBy: z.text(),
     title: z.text(),
+    organizationId: z.text().optional(),
   }),
 });
 
@@ -36,8 +38,10 @@ const members = $entity({
  * the seam exists for: the rank is a column on a row the gate already read,
  * so this implementation issues no query of its own.
  */
-class RankGrantsProvider extends ResourceGrantsProvider {
+class TestGrantsProvider extends ResourceGrantsProvider {
   public seen: ResourceGrantsRequest[] = [];
+  public definitionReads = 0;
+  protected readonly memo = $inject(ResourceGateMemoProvider);
 
   static readonly SETS: Record<string, string[]> = {
     owner: ["project:read", "project:update", "quest:create"],
@@ -49,9 +53,17 @@ class RankGrantsProvider extends ResourceGrantsProvider {
     request: ResourceGrantsRequest,
   ): Promise<ResourceGrantsDecision> {
     this.seen.push(request);
+    const scope = request.membership?.projectId;
+    await this.memo.resolve(
+      `test:rank-definitions:${String(scope)}`,
+      async () => {
+        this.definitionReads += 1;
+        return true;
+      },
+    );
 
     const rank = (request.membership?.rank as string | undefined) ?? "viewer";
-    const held = RankGrantsProvider.SETS[rank] ?? [];
+    const held = TestGrantsProvider.SETS[rank] ?? [];
     const missing = request.requires.filter((it) => !held.includes(it));
 
     if (missing.length) {
@@ -130,7 +142,7 @@ const createApp = (options: AppOptions = {}) => {
   }).with(AlephaSecurity);
 
   if (options.ranks) {
-    alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });
+    alepha.with({ provide: ResourceGrantsProvider, use: TestGrantsProvider });
   }
 
   class App {
@@ -199,11 +211,26 @@ const createApp = (options: AppOptions = {}) => {
       });
     }
 
+    protected organizationGate() {
+      return $owns({
+        repository: () => this.countedProjects as unknown as Repository<any>,
+        param: "id",
+        requires: "quest:create",
+        via: {
+          repository: () => this.countedMembers as unknown as Repository<any>,
+          resource: "projectId",
+          user: "userId",
+          key: "organizationId",
+        },
+      });
+    }
+
     readProject = this.read(this.gate());
     createQuest = this.read(this.gate("quest:create"));
     updateProject = this.read(this.gate("project:update"));
     ownerCreateQuest = this.read(this.ownerGate("quest:create"));
     ownerRead = this.read(this.ownerGate());
+    readOrganizationContainer = this.read(this.organizationGate());
 
     protected read(gate: ReturnType<typeof $owns>) {
       return $action({
@@ -233,6 +260,21 @@ const createApp = (options: AppOptions = {}) => {
         Promise.all(
           [this.readProject, this.createQuest, this.updateProject].map((it) =>
             it.run({ params: { id: body.id } }),
+          ),
+        ),
+    });
+
+    organizationFanOut = $action({
+      method: "POST",
+      path: "/fan-out-organization-requires",
+      schema: {
+        body: z.object({ id: z.text() }),
+        response: z.array(z.text()),
+      },
+      handler: async ({ body }) =>
+        Promise.all(
+          Array.from({ length: 7 }, () =>
+            this.readOrganizationContainer.run({ params: { id: body.id } }),
           ),
         ),
     });
@@ -317,7 +359,7 @@ describe("$owns requires", () => {
 
     await app.createQuest.run({ params: { id: "p1" } }, { user: app.token() });
 
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect(grants.seen).toHaveLength(1);
     expect(grants.seen[0].authority).toMatchObject({
       id: "p1",
@@ -342,7 +384,7 @@ describe("$owns requires", () => {
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
     ).rejects.toThrow(ForbiddenError);
 
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect(grants.seen).toHaveLength(0);
   });
 
@@ -359,7 +401,7 @@ describe("$owns requires", () => {
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
     ).rejects.toThrow("Permission 'quest:create' required");
 
-    const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
     expect(grants.seen).toHaveLength(0);
   });
 
@@ -455,5 +497,110 @@ describe("$owns requires", () => {
         param: "id",
       } as never),
     ).toThrow(AlephaError);
+  });
+
+  it("matches membership through via.key and denies a null key", async ({
+    expect,
+  }) => {
+    const { alepha, app } = createApp({ ranks: true });
+    await alepha.start();
+    await app.projects.create({
+      id: "p1",
+      createdBy: "u1",
+      title: "Alpha",
+      organizationId: "o1",
+    });
+    await app.members.create({
+      id: "m1",
+      projectId: "o1",
+      userId: "u2",
+      rank: "contributor",
+    });
+    await app.projects.create({
+      id: "p2",
+      createdBy: "u1",
+      title: "No organization",
+    });
+
+    await expect(
+      app.readOrganizationContainer.run(
+        { params: { id: "p1" } },
+        { user: app.token() },
+      ),
+    ).resolves.toBe("p1");
+    await expect(
+      app.readOrganizationContainer.run(
+        { params: { id: "p2" } },
+        { user: app.token() },
+      ),
+    ).rejects.toThrow("Not a member of this resource");
+  });
+
+  it("reads a container, organization membership, and rank definitions once in a seven-action batch", async ({
+    expect,
+  }) => {
+    const { alepha, app } = createApp({ ranks: true });
+    await alepha.start();
+    await app.projects.create({
+      id: "p1",
+      createdBy: "u1",
+      title: "Alpha",
+      organizationId: "o1",
+    });
+    await app.members.create({
+      id: "m1",
+      projectId: "o1",
+      userId: "u2",
+      rank: "contributor",
+    });
+    app.reset();
+
+    const response = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/fan-out-organization-requires`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: "p1" }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(Array(7).fill("p1"));
+    const grants = alepha.inject(ResourceGrantsProvider) as TestGrantsProvider;
+    expect({ ...app.counts(), definitions: grants.definitionReads }).toEqual({
+      projects: 1,
+      members: 1,
+      definitions: 1,
+    });
+  });
+
+  it("refuses a removed organization member on the next request", async ({
+    expect,
+  }) => {
+    const { alepha, app } = createApp({ ranks: true });
+    await alepha.start();
+    await app.projects.create({
+      id: "p1",
+      createdBy: "u1",
+      title: "Alpha",
+      organizationId: "o1",
+    });
+    await app.members.create({
+      id: "m1",
+      projectId: "o1",
+      userId: "u2",
+      rank: "contributor",
+    });
+    const url = `${alepha.inject(ServerProvider).hostname}/api/fan-out-organization-requires`;
+    const request = () =>
+      fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: "p1" }),
+      });
+
+    await expect(request()).resolves.toMatchObject({ status: 200 });
+    await app.members.deleteById("m1");
+    await expect(request()).resolves.toMatchObject({ status: 403 });
   });
 });

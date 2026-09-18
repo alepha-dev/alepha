@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * `lore releases publish` against the real Lore app, over HTTP, with a
@@ -113,8 +114,9 @@ const addMember = async (
   userId: string,
   projectId: number,
 ): Promise<void> => {
-  const members = (ctx.projectController as any).members;
-  await members.create({ userId, projectId, rank: "member" });
+  await createTestMemberByProjectId(ctx.alepha, projectId, userId, {
+    rank: "member",
+  });
 };
 
 /**

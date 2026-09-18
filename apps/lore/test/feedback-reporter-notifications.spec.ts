@@ -6,6 +6,7 @@ import {
   NotificationJobs,
   NotificationPreferenceProvider,
 } from "alepha/api/notifications";
+import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -17,11 +18,11 @@ import { describe, it } from "vitest";
 import { FeedbackCommentController } from "../src/api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { notificationPreferences } from "../src/api/entities/notificationPreferences.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "../src/api/providers/LoreNotificationPreferences.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 class Probe {
   members = $repository(members);
@@ -264,10 +265,11 @@ describe("telling a reporter what happened to their report", () => {
     const ctx = await setup();
     // A MEMBER this time: `MentionNotifier` matches against the roster, so a
     // non-member cannot be mentioned at all and the collision needs one.
-    await ctx.probe.members.create({
-      userId: ctx.reporter.id,
-      projectId: ctx.project.id,
-    });
+    await createTestMemberByProjectId(
+      ctx.alepha,
+      ctx.project.id,
+      ctx.reporter.id,
+    );
     const item = await ctx.report("It crashes", ctx.reporter.id);
 
     await ctx.asUser(ctx.owner.id, () =>

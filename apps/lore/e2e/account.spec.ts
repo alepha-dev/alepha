@@ -350,7 +350,7 @@ test.describe("Account area", () => {
     ).toHaveCount(1);
   });
 
-  test("refuses to delete the account while a project is still owned", async ({
+  test("refuses to delete the account while an organization is still owned", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -371,12 +371,14 @@ test.describe("Account area", () => {
       .click();
 
     /*
-      Lore's `user:delete:before` hook refuses, and its message reaches the
+      The organizations module's `user:delete:before` hook refuses, and its message reaches the
       browser unwrapped — that is the whole reason `MyAccountController` emits
       without `{ log: true }`. A generic failure toast here would mean the
       framework had started wrapping it in `AlephaError`.
     */
-    await expect(page.getByText(/you still own 1 project/i)).toBeVisible();
+    await expect(
+      page.getByText(/transfer or delete your 1 organization/i),
+    ).toBeVisible();
 
     // And the refusal has to actually refuse.
     await page.goto("/account");

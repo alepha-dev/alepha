@@ -14,6 +14,7 @@ import { RoadmapController } from "../src/api/controllers/RoadmapController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import type { RoadmapVisibility } from "../src/api/schemas/roadmapVisibilitySchema.ts";
 import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * The members half of the roadmap: the `members` branch of the gate, and the
@@ -135,7 +136,7 @@ describe("RoadmapController.getMemberRoadmap", () => {
 
   const invite = async (projectId: number) => {
     const user = await createTestUser(ctx);
-    await ctx.security.members.create({ userId: user.id, projectId });
+    await createTestMemberByProjectId(ctx.alepha, projectId, user.id);
     return user;
   };
 

@@ -1,21 +1,23 @@
 import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
-import { rankDefinitions, RankService } from "alepha/api/ranks";
+import {
+  organizationMembers,
+  organizationRanks,
+  RankService,
+} from "alepha/api/organizations";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
-import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
-import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class ProjectRankJobs {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly projects = $repository(projects);
-  protected readonly members = $repository(members);
-  protected readonly definitions = $repository(rankDefinitions);
+  protected readonly members = $repository(organizationMembers);
+  protected readonly definitions = $repository(organizationRanks);
   protected readonly ranks = $inject(RankService);
   protected readonly presets = $inject(ProjectRankPresets);
   protected readonly security = $inject(ProjectSecurityService);
@@ -83,13 +85,16 @@ export class ProjectRankJobs {
       // projection - so this is one `SELECT DISTINCT scope_id` and never a
       // scan of every definition row in the instance.
       const configured = await this.definitions.findMany({
-        where: { type: { eq: "project" } },
-        distinct: ["scopeId"],
+        distinct: ["organizationId"],
       });
-      const hasRanks = new Set(configured.map((row) => row.scopeId));
+      const hasRanks = new Set(configured.map((row) => row.organizationId));
 
-      const all = await this.projects.findMany({ columns: ["id"] });
-      const pending = all.filter((row) => !hasRanks.has(String(row.id)));
+      const all = await this.projects.findMany({
+        columns: ["id", "organizationId"],
+      });
+      const pending = all.filter(
+        (row) => row.organizationId && !hasRanks.has(row.organizationId),
+      );
 
       if (!pending.length) return;
 
@@ -120,10 +125,11 @@ export class ProjectRankJobs {
    */
   protected async seedProject(projectId: number): Promise<void> {
     try {
+      const organizationId = await this.security.organizationIdOf(projectId);
       const owner = await this.members.findOne({
         where: {
-          projectId: { eq: projectId },
-          rank: { eq: ProjectRankResource.OWNER_KEY },
+          organizationId: { eq: organizationId },
+          rank: { eq: "owner" },
         },
       });
 
@@ -147,8 +153,7 @@ export class ProjectRankJobs {
       await this.alepha.context.run(async () => {
         for (const preset of this.presets.presetsFor(enabled)) {
           await this.ranks.save(
-            "project",
-            String(projectId),
+            organizationId,
             {
               key: preset.key,
               // No language argument: see the note on the job above. This is

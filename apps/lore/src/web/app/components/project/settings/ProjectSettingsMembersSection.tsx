@@ -20,7 +20,10 @@ import {
 import { Control } from "@alepha/ui/form";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import { z } from "alepha";
-import type { InvitationEntity } from "alepha/api/invitations";
+import type {
+  OrganizationInvitation,
+  OrganizationMember,
+} from "alepha/api/organizations";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -28,9 +31,8 @@ import { useRouter } from "alepha/react/router";
 import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
 import { useState } from "react";
 
-import type { Member } from "@/api/entities/members.ts";
-import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
+import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
@@ -52,9 +54,9 @@ import ProjectTransferOwnershipDialog from "./ProjectTransferOwnershipDialog.tsx
 const inviteRankFieldSchema = z.object({ rank: z.text() });
 
 export interface ProjectSettingsMembersSectionProps {
-  project: Project;
-  members: Array<Member & { user: User }>;
-  pendingInvitations: Array<InvitationEntity>;
+  project: ProjectResource;
+  members: Array<OrganizationMember & { user: User }>;
+  pendingInvitations: Array<OrganizationInvitation>;
 }
 
 const ProjectSettingsMembersSection = (
@@ -111,7 +113,13 @@ const ProjectSettingsMembersSection = (
     displayName(member.user);
 
   const handleInvite = async () => {
-    if (!(await inviteMember.invite(props.project.id, email, inviteRank))) {
+    if (
+      !(await inviteMember.invite(
+        props.project.organizationId,
+        email,
+        inviteRank,
+      ))
+    ) {
       return;
     }
     setEmail("");
@@ -123,7 +131,11 @@ const ProjectSettingsMembersSection = (
   };
 
   const handleRemove = async (userId: string, name: string) => {
-    if (!(await removeMember.remove(props.project.id, userId, name))) return;
+    if (
+      !(await removeMember.remove(props.project.organizationId, userId, name))
+    ) {
+      return;
+    }
     // Same reason as `handleInvite`: the member list comes from the route
     // loader, so re-running it is what removes the row.
     await router.push(router.pathname, { force: true });
@@ -131,7 +143,11 @@ const ProjectSettingsMembersSection = (
 
   const handleRevoke = async (invitationId: string, email: string) => {
     if (
-      !(await revokeInvitation.revoke(props.project.id, invitationId, email))
+      !(await revokeInvitation.revoke(
+        props.project.organizationId,
+        invitationId,
+        email,
+      ))
     ) {
       return;
     }
@@ -251,7 +267,7 @@ const ProjectSettingsMembersSection = (
                 />
 
                 <ProjectMemberRankPicker
-                  projectId={props.project.id}
+                  organizationId={props.project.organizationId}
                   userId={member.userId}
                   rank={member.rank}
                   ranks={projectRanks.ranks}
@@ -399,7 +415,7 @@ const ProjectSettingsMembersSection = (
       </div>
 
       <ProjectTransferOwnershipDialog
-        projectId={props.project.id}
+        organizationId={props.project.organizationId}
         target={transferTo}
         ranks={projectRanks.ranks}
         onOpenChange={(next) => !next && setTransferTo(undefined)}

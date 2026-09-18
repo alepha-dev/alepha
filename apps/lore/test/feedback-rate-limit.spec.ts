@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrm, RepositoryProvider } from "alepha/orm";
+import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
@@ -9,9 +9,9 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { FeedbackRateLimiter } from "../src/api/services/FeedbackRateLimiter.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -158,13 +158,7 @@ describe("feedback rate limit", () => {
     const projectId = await createProject(ctx, owner);
 
     // Make `member` a real project member (non-owner membership row).
-    const membersRepo = ctx.alepha
-      .inject(RepositoryProvider)
-      .getRepository(members);
-    await membersRepo.create({
-      userId: member.id,
-      projectId,
-    });
+    await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
 
     const limit = ctx.alepha
       .inject(FeedbackRateLimiter)

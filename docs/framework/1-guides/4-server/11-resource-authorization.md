@@ -114,10 +114,10 @@ $owns({
 
 **One string, checked twice.** It is folded into `secure.permissions`, so the application-scope check runs exactly as a separate `$secure({ permissions: ["release:manage"] })` beside the gate would have - and it lands in the middleware's options, which is what publishes it to the client's action registry and lets the UI hide a control nobody may use. It is then handed to `ResourceGrantsProvider` for the resource-scope check. No call site can name one permission at one layer and a different one at the other.
 
-`ResourceGrantsProvider`'s default answers allow, unconditionally. An application that never substitutes it behaves exactly as it did before `requires` existed, whether or not its call sites use the option. Substitute it like any other seam:
+`ResourceGrantsProvider`'s default answers allow, unconditionally. An application that never substitutes it behaves exactly as it did before `requires` existed, whether or not its call sites use the option. `alepha/api/organizations` substitutes its rank-aware implementation when the module is registered. A custom resource model can substitute the seam directly:
 
 ```typescript
-alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });
+alepha.with({ provide: ResourceGrantsProvider, use: AppGrantsProvider });
 ```
 
 An implementation receives the **rows** the gate already read - the authority row and the membership row - and never their ids. That is the whole performance contract: it cannot go and query for the assignment, because it was handed nothing to query with, so the assignment has to be a column on a row the request already pays for. It answers `{ allowed: true }`, or `{ allowed: false, message }` - the message being its own to write, since it is the only party that knows which conjunct failed.
@@ -152,6 +152,27 @@ $owns({
 | a row that _belongs_ to that row    | `via` **+ `through`** |
 
 `owner` and `via` keep their meaning; `through` only says which row they apply to. `via.resource` is matched against the resolved foreign key, so a membership in a _different_ campaign does not accidentally match.
+
+When the authority row is itself a container, `via.key` names the column on
+that row whose value identifies the membership scope. It defaults to the
+authority's primary key, preserving the direct-resource form above:
+
+```typescript
+$owns({
+  repository: () => this.projects,
+  param: "projectId",
+  via: {
+    repository: () => this.organizationMembers,
+    resource: "organizationId",
+    user: "userId",
+    key: "organizationId",
+  },
+});
+```
+
+Here the authority remains the project row, but the membership lookup uses
+`project.organizationId`. A null or absent `via.key` value denies with the
+same membership message. This makes an incomplete backfill fail closed.
 
 A **null or absent foreign key denies**. An orphan row must not become world-readable, and falling through would refuse it only by accident.
 

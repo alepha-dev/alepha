@@ -1,7 +1,7 @@
 import { $context, createMiddleware, type Middleware, OPTIONS } from "alepha";
+import { $ownsOrganization } from "alepha/api/organizations";
 import type { Repository } from "alepha/orm";
 import {
-  $owns,
   currentAuthorityAtom,
   type OwnsHop,
   type OwnsOptions,
@@ -92,19 +92,19 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
   const { alepha } = $context();
   const security = alepha.inject(ProjectSecurityService);
 
-  const gate = $owns({
+  const gate = $ownsOrganization({
     param: options.param,
     from: options.from,
     secure: options.secure,
     requires: options.requires,
+    cache: options.cache ?? {
+      ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS,
+    },
+    message: "Not a member of this project",
 
     // The same window `assertMember` used, kept so the port is not a latency
     // regression: that call read the project row through the ORM's keyed
     // cache, and `$owns` on its own does not.
-    cache: options.cache ?? {
-      ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS,
-    },
-
     repository: options.repository ?? (() => security.projects),
 
     ...(options.repository
@@ -119,13 +119,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
             },
           ],
         }
-      : {
-          // Only on the direct branch. Here the id is always a project's, and
-          // `projects.id` is an integer, while a path segment is text. On the
-          // hop branch the id belongs to the resource and may well be a uuid
-          // (folios, directories, attachments), where `Number` would produce NaN.
-          cast: Number,
-        }),
+      : {}),
 
     // ⚠️ No `owner:` column. `projects.createdBy` records who created the row
     // and is not an authorization input any more: after #Q1927's backfill
@@ -137,16 +131,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
     // no custom rank can be given one, so only the `owner` built-in's `*`
     // grants it, and the gate says which act it is rather than merely that the
     // caller must be somebody special.
-    via: {
-      repository: () => security.members,
-      resource: "projectId",
-      user: "userId",
-    },
-
-    // One message on both branches, deliberately: a different message per
-    // branch tells a caller whether the resource exists and who owns it. The
-    // rank layer supplies its own when the refusal is about a permission.
-    message: "Not a member of this project",
+    key: "organizationId",
   });
 
   if (!options.capability) {

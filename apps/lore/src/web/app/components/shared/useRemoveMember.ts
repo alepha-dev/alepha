@@ -1,8 +1,8 @@
 import { useDialog, useToast } from "@alepha/ui";
+import type { MemberController } from "alepha/api/organizations";
 import { useAction, useClient, useQueryClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -24,18 +24,18 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * resolves `undefined` for it.
  */
 export const useRemoveMember = (): RemoveMember => {
-  const projectApi = useClient<ProjectController>();
+  const memberApi = useClient<MemberController>();
   const toaster = useToast();
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
   const queries = useQueryClient();
 
   const action = useAction<
-    [projectId: number, userId: string, name: string],
+    [organizationId: string, userId: string, name: string],
     boolean
   >(
     {
-      handler: async (projectId, userId, name) => {
+      handler: async (organizationId, userId, name) => {
         const confirmed = await dialog.confirm({
           title: tr("project.settings.members.remove.title"),
           description: tr("project.settings.members.remove.description", {
@@ -47,17 +47,19 @@ export const useRemoveMember = (): RemoveMember => {
         });
         if (!confirmed) return false;
 
-        await projectApi.removeMember({ params: { id: projectId, userId } });
+        await memberApi.removeOrganizationMember({
+          params: { organizationId, userId },
+        });
         // By hand rather than through `invalidates`: the key carries the
         // project the member left, which only the arguments know.
-        queries.invalidate(["project-users", projectId]);
+        queries.invalidate(["organization-members", organizationId]);
         toaster.success(
           tr("project.settings.members.remove.done", { args: [name] }),
         );
         return true;
       },
     },
-    [projectApi, dialog, queries, toaster, tr],
+    [memberApi, dialog, queries, toaster, tr],
   );
 
   return { remove: action.run, loading: action.loading };
@@ -73,7 +75,7 @@ export interface RemoveMember {
    * needs to recognise the row they clicked.
    */
   remove: (
-    projectId: number,
+    organizationId: string,
     userId: string,
     name: string,
   ) => Promise<boolean | undefined>;

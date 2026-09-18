@@ -176,7 +176,7 @@ export class ProjectCapabilityController {
       // the request that just changed it.
       const membership = await this.security.members.findOne({
         where: {
-          projectId: { eq: params.projectId },
+          organizationId: { eq: row.organizationId! },
           userId: { eq: user.id },
         },
       });

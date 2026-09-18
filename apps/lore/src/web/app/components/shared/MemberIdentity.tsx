@@ -2,13 +2,16 @@ import { Badge } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Crown, User as UserIcon } from "lucide-react";
 
-import type { Member } from "@/api/entities/members.ts";
 import type { User } from "@/api/entities/users.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import { publicFileUrl } from "@/web/app/services/fileUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export type MemberWithUser = Member & { user: User };
+export type MemberWithUser = {
+  userId: string;
+  rank?: string;
+  user: User;
+};
 
 /**
  * Resolve a member's avatar URL from their user account. Callers should

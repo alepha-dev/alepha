@@ -194,39 +194,6 @@ export class LorePermissions {
     label: "permission.project.create",
   });
 
-  memberRead = $permission({
-    group: "member",
-    name: "read",
-    label: "permission.member.read",
-    groupLabel: "permission.group.member",
-    groupOrder: 2,
-  });
-
-  /**
-   * Invite, revoke an invitation, remove a member, and assign a rank **below
-   * owner**. Grantable, and the Admin preset carries it.
-   */
-  memberManage = $permission({
-    group: "member",
-    name: "manage",
-    label: "permission.member.manage",
-  });
-
-  /**
-   * Editing what the ranks of this project mean.
-   *
-   * Grantable under the subset rule - an editor only ever touches ranks whose
-   * set is within its own, re-checked on every write - and the Admin preset
-   * carries it.
-   */
-  rankManage = $permission({
-    group: "rank",
-    name: "manage",
-    label: "permission.rank.manage",
-    groupLabel: "permission.group.rank",
-    groupOrder: 3,
-  });
-
   /**
    * Turning a capability on or off.
    *
@@ -241,14 +208,6 @@ export class LorePermissions {
     label: "permission.capability.manage",
     groupLabel: "permission.group.capability",
     groupOrder: 4,
-  });
-
-  invitationCreate = $permission({
-    group: "invitation",
-    name: "create",
-    label: "permission.invitation.create",
-    groupLabel: "permission.group.invitation",
-    groupOrder: 5,
   });
 
   /**

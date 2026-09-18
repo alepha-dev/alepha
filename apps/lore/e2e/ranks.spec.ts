@@ -89,8 +89,7 @@ const inviteWithRank = async (
   await expect(page.getByRole("option", { name: rankName })).toBeHidden();
 
   const created = page.waitForResponse(
-    (r) =>
-      r.request().method() === "POST" && r.url().endsWith("/api/invitations"),
+    (r) => r.request().method() === "POST" && r.url().endsWith("/invitations"),
     { timeout: 15_000 },
   );
   await page.getByRole("button", { name: /send invitation/i }).click();

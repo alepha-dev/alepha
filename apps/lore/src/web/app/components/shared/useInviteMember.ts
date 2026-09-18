@@ -1,8 +1,8 @@
 import { useToast } from "@alepha/ui";
+import type { OrganizationInvitationController } from "alepha/api/organizations";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -25,29 +25,25 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * message, and `invite` resolves `undefined` for it.
  */
 export const useInviteMember = (): InviteMember => {
-  const invitationApi = useClient<InvitationController>();
+  const invitationApi = useClient<OrganizationInvitationController>();
   const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
   const action = useAction<
-    [projectId: number, email: string, rank: string | undefined],
+    [organizationId: string, email: string, rank: string | undefined],
     boolean
   >(
     {
-      handler: async (projectId, email, rank) => {
+      handler: async (organizationId, email, rank) => {
         const trimmed = email.trim();
         if (!trimmed) {
           toaster.error(tr("project.settings.members.invite.emailRequired"));
           return false;
         }
-        await invitationApi.createInvitation({
+        await invitationApi.createOrganizationInvitation({
+          params: { organizationId },
           body: {
             email: trimmed,
-            resourceType: "project",
-            resourceId: String(projectId),
-            // ⚠️ `roles` is the module's field and this is its one reader: it
-            // names the RANK the invitee lands on. Omitted when the caller does
-            // not care, which `grant` reads as `member`.
-            ...(rank ? { roles: [rank] } : {}),
+            ...(rank ? { rank } : {}),
           },
         });
         toaster.success(
@@ -62,7 +58,7 @@ export const useInviteMember = (): InviteMember => {
   return {
     invite: action.run,
     loading: action.loading,
-    can: invitationApi.createInvitation.can(),
+    can: invitationApi.createOrganizationInvitation.can(),
   };
 };
 
@@ -74,7 +70,7 @@ export interface InviteMember {
    * with its own form.
    */
   invite: (
-    projectId: number,
+    organizationId: string,
     email: string,
     /**
      * The rank they land on. `undefined` means `member`, which is what every

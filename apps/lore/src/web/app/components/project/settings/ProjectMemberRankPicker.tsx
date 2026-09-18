@@ -1,7 +1,10 @@
 import { Badge, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
-import type { RankController, RankResource } from "alepha/api/ranks";
+import type {
+  OrganizationRankController,
+  OrganizationRankResource,
+} from "alepha/api/organizations";
 import { useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -21,7 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 const rankFieldSchema = z.object({ rank: z.text() });
 
 export interface ProjectMemberRankPickerProps {
-  projectId: number;
+  organizationId: string;
 
   userId: string;
 
@@ -32,7 +35,7 @@ export interface ProjectMemberRankPickerProps {
    */
   rank?: string;
 
-  ranks: RankResource[];
+  ranks: OrganizationRankResource[];
 
   /**
    * True for the caller's own row. Rendered as a badge rather than a picker:
@@ -72,7 +75,7 @@ export interface ProjectMemberRankPickerProps {
 const ProjectMemberRankPicker = (props: ProjectMemberRankPickerProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const api = useClient<RankController>();
+  const api = useClient<OrganizationRankController>();
   const [saving, setSaving] = useState(false);
 
   const current = props.rank ?? "member";
@@ -117,10 +120,9 @@ const ProjectMemberRankPicker = (props: ProjectMemberRankPickerProps) => {
     if (key === current) return;
     setSaving(true);
     try {
-      await api.assignRank({
+      await api.assignOrganizationRank({
         params: {
-          type: "project",
-          scopeId: String(props.projectId),
+          organizationId: props.organizationId,
           userId: props.userId,
         },
         body: { key },

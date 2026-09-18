@@ -555,10 +555,10 @@ export interface RealmOptions {
    * ```ts
    * $realm({
    *   settings: { registrationAllowed: false },
-   *   isPreAuthorized: async ({ email, method, token }) =>
-   *     method === "oauth"
-   *       ? invitations.hasPendingFor(email)
-   *       : invitations.redeemToken(email, token),
+   *   isPreAuthorized: (context) =>
+   *     this.alepha
+   *       .inject(InvitationRegistrationService)
+   *       .preAuthorize(context),
    * });
    * ```
    *

@@ -48,7 +48,7 @@ interface RegistrationIntent {
    *
    * Set only when the realm's `isPreAuthorized` closure said the
    * pre-authorization itself proves the address, which is what lets an
-   * invitation link skip a second round-trip mail the person has no reason
+   * organization invitation link skip a second round-trip mail the person has no reason
    * to expect. Kept beside `requirements.email` rather than folded into it:
    * they answer different questions, and `completeRegistration` needs both
    * ("was a code checked" and "is the address verified").

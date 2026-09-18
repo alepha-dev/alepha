@@ -15,7 +15,10 @@ import {
   PermissionMatrix,
   type PermissionMatrixColumn,
 } from "@alepha/ui/table";
-import type { RankController, RankResource } from "alepha/api/ranks";
+import type {
+  OrganizationRankController,
+  OrganizationRankResource,
+} from "alepha/api/organizations";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus, Save } from "lucide-react";
@@ -23,7 +26,6 @@ import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectRankController } from "@/api/controllers/ProjectRankController.ts";
-import type { Member } from "@/api/entities/members.ts";
 import type { User } from "@/api/entities/users.ts";
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -58,20 +60,20 @@ import { ProjectRankMatrix } from "./projectRankMatrix.ts";
  *   does not hold - the never-widen invariant surfaced rather than only
  *   enforced, so a checkbox never ticks and then fails to save.
  *
- * Every one of those is re-checked by `alepha/api/ranks` on write. This is the
- * affordance; the module is the rule.
+ * Every one of those is re-checked by `alepha/api/organizations` on write.
+ * This is the affordance; the module is the rule.
  */
 const ProjectSettingsRanksPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
-  const rankApi = useClient<RankController>();
+  const rankApi = useClient<OrganizationRankController>();
   const presetApi = useClient<ProjectRankController>();
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
 
   const projectId = project?.id;
-  const scopeId = projectId === undefined ? "" : String(projectId);
+  const organizationId = project?.organizationId;
 
   // The ranks come from the shared keyed query, which every write below
   // invalidates instead of re-reading by hand. The other three reads are
@@ -80,9 +82,16 @@ const ProjectSettingsRanksPage = () => {
   // really four would save a set nobody chose.
   const projectRanks = useProjectRanks();
   const ranks = projectRanks.ranks;
-  const catalogue = useQuery({ handler: () => rankApi.getRankCatalogue({}) }, [
-    rankApi,
-  ]).data?.groups;
+  const catalogue = useQuery(
+    {
+      enabled: organizationId !== undefined,
+      handler: () =>
+        rankApi.getOrganizationRankCatalogue({
+          params: { organizationId: organizationId as string },
+        }),
+    },
+    [rankApi, organizationId],
+  ).data?.groups;
   const members = (useQuery(
     {
       enabled: projectId !== undefined,
@@ -107,14 +116,14 @@ const ProjectSettingsRanksPage = () => {
   // than from an effect, whenever a new response replaces it - on the first
   // load and after every write's invalidation lands.
   const [draft, setDraft] = useState<Record<string, string[]>>({});
-  const [seededFrom, setSeededFrom] = useState<RankResource[]>();
+  const [seededFrom, setSeededFrom] = useState<OrganizationRankResource[]>();
   if (!projectRanks.loading && ranks !== seededFrom) {
     setSeededFrom(ranks);
     setDraft(ProjectSettingsRanksPage.draftOf(ranks));
   }
   const loaded = catalogue !== undefined && seededFrom !== undefined;
 
-  const invalidates = [["project-ranks", projectId]];
+  const invalidates = [["organization-ranks", organizationId]];
 
   const saveAction = useAction<[], void>(
     {
@@ -128,8 +137,11 @@ const ProjectSettingsRanksPage = () => {
           ) {
             continue;
           }
-          await rankApi.saveRank({
-            params: { type: "project", scopeId, key: rank.key },
+          await rankApi.saveOrganizationRank({
+            params: {
+              organizationId: organizationId as string,
+              key: rank.key,
+            },
             body: { name: rank.name, permissions: next },
           });
         }
@@ -141,7 +153,7 @@ const ProjectSettingsRanksPage = () => {
       // exactly what to change.
       invalidates,
     },
-    [rankApi, scopeId, ranks, draft, toaster, tr],
+    [rankApi, organizationId, ranks, draft, toaster, tr],
   );
 
   const createAction = useAction<[preset: RankPreset | undefined], void>(
@@ -155,10 +167,9 @@ const ProjectSettingsRanksPage = () => {
         });
         if (!name?.trim()) return;
 
-        await rankApi.saveRank({
+        await rankApi.saveOrganizationRank({
           params: {
-            type: "project",
-            scopeId,
+            organizationId: organizationId as string,
             // A key nobody types: it is stored on every membership row, and a
             // rank people rename must not move anybody's assignment. Derived
             // from the clock rather than from the name for exactly that reason.
@@ -175,10 +186,10 @@ const ProjectSettingsRanksPage = () => {
       },
       invalidates,
     },
-    [rankApi, scopeId, dialog, toaster, tr],
+    [rankApi, organizationId, dialog, toaster, tr],
   );
 
-  const renameAction = useAction<[rank: RankResource], void>(
+  const renameAction = useAction<[rank: OrganizationRankResource], void>(
     {
       handler: async (rank) => {
         const name = await dialog.prompt({
@@ -188,17 +199,20 @@ const ProjectSettingsRanksPage = () => {
         });
         if (!name?.trim() || name.trim() === rank.name) return;
 
-        await rankApi.saveRank({
-          params: { type: "project", scopeId, key: rank.key },
+        await rankApi.saveOrganizationRank({
+          params: {
+            organizationId: organizationId as string,
+            key: rank.key,
+          },
           body: { name: name.trim(), permissions: draft[rank.key] ?? [] },
         });
       },
       invalidates,
     },
-    [rankApi, scopeId, dialog, draft, tr],
+    [rankApi, organizationId, dialog, draft, tr],
   );
 
-  const removeAction = useAction<[rank: RankResource], void>(
+  const removeAction = useAction<[rank: OrganizationRankResource], void>(
     {
       handler: async (rank) => {
         const holders = members.filter(
@@ -230,14 +244,17 @@ const ProjectSettingsRanksPage = () => {
         });
         if (!ok) return;
 
-        await rankApi.deleteRank({
-          params: { type: "project", scopeId, key: rank.key },
+        await rankApi.deleteOrganizationRank({
+          params: {
+            organizationId: organizationId as string,
+            key: rank.key,
+          },
         });
         toaster.success(tr("project.settings.ranks.deleted"));
       },
       invalidates,
     },
-    [rankApi, scopeId, dialog, members, toaster, tr],
+    [rankApi, organizationId, dialog, members, toaster, tr],
   );
 
   /**
@@ -392,7 +409,7 @@ const ProjectSettingsRanksPage = () => {
  * not a set of checkboxes, and the owner column is `readOnly` anyway.
  */
 ProjectSettingsRanksPage.draftOf = (
-  ranks: RankResource[],
+  ranks: OrganizationRankResource[],
 ): Record<string, string[]> =>
   Object.fromEntries(
     ranks
@@ -415,4 +432,7 @@ interface RankPreset {
  * `getProjectMembers` answers. Named here rather than inlined because the
  * delete refusal names the people, not the count.
  */
-type ProjectMember = Member & { user: User };
+type ProjectMember = {
+  rank?: string;
+  user: User;
+};

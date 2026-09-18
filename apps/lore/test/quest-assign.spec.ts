@@ -11,7 +11,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { TestEntityRepositories } from "./fixtures/entities.ts";
+import {
+  createTestMemberByProjectId,
+  TestEntityRepositories,
+} from "./fixtures/entities.ts";
 
 /**
  * `assignQuest` (quest #1213) is the other half of `acceptQuest`: work
@@ -113,7 +116,7 @@ describe("assignQuest", () => {
    */
   const addMember = async (projectId: number) => {
     const user = await makeUser();
-    await ctx.repos.members.create({ projectId, userId: user.id });
+    await createTestMemberByProjectId(ctx.alepha, projectId, user.id);
     return user;
   };
 

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -73,11 +74,7 @@ const addMember = async (
   userId: string,
   projectId: number,
 ): Promise<void> => {
-  const membersRepo = (ctx.projectController as any).members;
-  await membersRepo.create({
-    userId,
-    projectId,
-  });
+  await createTestMemberByProjectId(ctx.alepha, projectId, userId);
 };
 
 describe("FolioController per-project visibility (post #65 refactor)", () => {
