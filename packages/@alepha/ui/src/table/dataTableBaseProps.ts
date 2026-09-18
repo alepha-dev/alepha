@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { DataTableCellPadding } from "./dataTableCellPadding.ts";
+import type { DataTableSquareRight } from "./dataTableSquareRight.ts";
 import type {
   DataTableEmptyState,
   DataTableFilterFields,
@@ -93,7 +95,8 @@ export interface DataTableBaseProps<
    * Sizes offered in the footer picker. Defaults to {@link PAGE_SIZES}.
    *
    * Pass `[]` to hide the picker entirely, for a table whose page size is
-   * not the reader's business.
+   * not the reader's business. The size is then {@link defaultSize}, always:
+   * a size the reader stored before the picker went is not restored.
    */
   pageSizes?: number[];
   /**
@@ -115,10 +118,9 @@ export interface DataTableBaseProps<
    * Pointer handler invoked with the row under the pointer, and with
    * `undefined` when the pointer leaves the body.
    *
-   * For a surface BESIDE the table that narrows to the row being pointed at:
-   * Lore's landing page filters its activity panel this way. It is not a
-   * selection and it must not drive one - the pointer leaves on its own, and
-   * anything that survives that should be a click.
+   * For a surface BESIDE the table that narrows to the row being pointed at.
+   * It is not a selection and it must not drive one - the pointer leaves on
+   * its own, and anything that survives that should be a click.
    *
    * ⚠️ Pointer only, so whatever it drives has to be reachable another way:
    * a keyboard reader never fires it, and neither does a touch reader.
@@ -203,6 +205,36 @@ export interface DataTableBaseProps<
    * Extra classes applied to the outer wrapper.
    */
   className?: string;
+  /**
+   * Extra classes applied to the table's three chrome bands: the filter bar
+   * above, the sticky column header and the pagination footer below.
+   *
+   * Merged after their own classes, so a background here replaces their
+   * default `bg-muted`: `chromeClassName="bg-transparent"` lets the
+   * surface the table sits on show through.
+   *
+   * ⚠️ The column header is sticky, and a translucent one lets the rows
+   * scroll visibly through its labels. Prefer an opaque background on a
+   * table long enough to scroll.
+   */
+  chromeClassName?: string;
+  /**
+   * Square the table's right corners, for a table that another panel joins
+   * on its right so the two read as one block: the panel carries the
+   * rounded corners, and the table's right border is the line between them.
+   *
+   * `true` squares them always. A breakpoint (`"lg"`) squares them from that
+   * width up only, for a panel that is itself hidden below it: the table on
+   * its own keeps its rounded corners.
+   */
+  squareRight?: DataTableSquareRight;
+  /**
+   * How much room the cells give their content: `small`, `normal` (the
+   * default, the `Table` primitives' own padding) or `large`. Applies to the
+   * header, the rows and the loading skeleton alike. A column's own
+   * `className` still wins over it.
+   */
+  cellPadding?: DataTableCellPadding;
   /**
    * Title shown in both empty states, replacing their defaults.
    *

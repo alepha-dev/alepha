@@ -13,7 +13,8 @@ import { cn } from "../core/utils.ts";
 import type { DataTableBaseProps } from "./dataTableBaseProps.ts";
 import { DataTableBody } from "./DataTableBody.tsx";
 import { DataTableBulkBar } from "./DataTableBulkBar.tsx";
-import { DataTableFooter } from "./DataTableFooter.tsx";
+import { DATA_TABLE_CELL_PADDING } from "./dataTableCellPadding.ts";
+import { DataTableFooter, PAGE_SIZES } from "./DataTableFooter.tsx";
 import { DataTableHeaderRow } from "./DataTableHeaderRow.tsx";
 import {
   persistedColumns,
@@ -21,6 +22,7 @@ import {
   persistedSize,
   persistedSort,
 } from "./dataTablePersistence.ts";
+import { DATA_TABLE_SQUARE_RIGHT } from "./dataTableSquareRight.ts";
 import { DataTableToolbar } from "./DataTableToolbar.tsx";
 import type {
   DataTableFilterFields,
@@ -85,12 +87,18 @@ export const DataTable = <
     props.persist?.columns === false ? undefined : props.persistenceKey;
   const sortKey =
     props.persist?.sort === false ? undefined : props.persistenceKey;
+  // `pageSizes={[]}` hides the picker, and with it the reader's say in the
+  // size: a size stored while the picker was still there must not outlive
+  // it, or a reader who once chose 50 is stuck at 50 with no control left to
+  // change it. The call site's `defaultSize` is the size, full stop.
+  const sizeKey =
+    props.pageSizes?.length === 0 ? undefined : props.persistenceKey;
 
   // State, not a constant. It was `props.defaultSize ?? 20` read once, so a
   // reader had no way to see more rows than the call site had decided for
   // them. Already in `load`'s dependency array, so changing it refetches.
   const [size, setSize] = useState<number>(() =>
-    persistedSize(props.persistenceKey, props.defaultSize),
+    persistedSize(sizeKey, props.defaultSize),
   );
   const alepha = useAlepha();
   const { tr } = useI18n();
@@ -274,7 +282,7 @@ export const DataTable = <
   if (scopeRef.current !== props.persistenceKey) {
     scopeRef.current = props.persistenceKey;
     setPage(0);
-    setSize(persistedSize(props.persistenceKey, props.defaultSize));
+    setSize(persistedSize(sizeKey, props.defaultSize));
     setSort(persistedSort(sortKey, props.defaultSort));
     setVisibleColumns(persistedColumns(columnsKey, props.columns));
     // Same render pass as the rest, and for the identical reason: the effects
@@ -337,6 +345,17 @@ export const DataTable = <
     Boolean(props.actions?.length) ||
     !props.hideColumnPicker ||
     !props.hideActionsMenu;
+  const cellPadding = DATA_TABLE_CELL_PADDING[props.cellPadding ?? "normal"];
+  const squareRight = props.squareRight
+    ? DATA_TABLE_SQUARE_RIGHT[`${props.squareRight}`]
+    : undefined;
+  // The footer holds two controls, the size picker and the page links, and
+  // the count beside them. A table that hid the picker (`pageSizes={[]}`)
+  // and fits on one page has neither, and "Page 1 of 1" alone is a bar
+  // saying nothing, so it goes. The links' condition is the footer's own.
+  const showFooter =
+    (props.pageSizes ?? PAGE_SIZES).length > 0 ||
+    Boolean(meta?.totalPages && meta.totalPages > 1);
   const showColumnPicker = !props.hideColumnPicker && allColumnKeys.length > 0;
   const showActionsMenu = !props.hideActionsMenu;
 
@@ -373,6 +392,7 @@ export const DataTable = <
             reorderColumn={reorderColumn}
             isRefreshing={isRefreshing}
             handleRefreshClick={handleRefreshClick}
+            className={cn(squareRight?.top, props.chromeClassName)}
           />
         )}
 
@@ -389,17 +409,21 @@ export const DataTable = <
         {/*
           The toolbar, the rows and the footer are one panel: each facing edge
           is flattened and its border dropped so no double line appears, and
-          `-mt-2` cancels the wrapper's `gap-2`. The footer half is
-          unconditional because the page row below already renders
-          unconditionally — gating it on `meta` would pop the bar in and flip
-          this bottom border on every load, since `meta` starts null and only
-          fills after the fetch.
+          `-mt-2` cancels the wrapper's `gap-2`. The footer half follows
+          `showFooter`, which is true for every table that keeps its size
+          picker: gating the footer on `meta` alone would pop the bar in and
+          flip this bottom border on every load, since `meta` starts null and
+          only fills after the fetch. Only a table that hid the picker can
+          lose it, and then the rows close the panel themselves.
         */}
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
             showToolbar && "-mt-2 rounded-t-none border-t-0",
-            "rounded-b-none border-b-0",
+            showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
+            // With no toolbar the rows open the table, so their top-right
+            // corner is the one `squareRight` squares.
+            !showToolbar && squareRight?.top,
             // `<Table>` wraps the table in a container div whose classes it
             // hardcodes, and only this table needs that container to grow,
             // so the one class it needs is set from out here instead.
@@ -438,8 +462,14 @@ export const DataTable = <
                 sit INSIDE the header's own height: it is pinned at `top-0`
                 against a scrolling body, so anything painted outside it is
                 painted over. */}
-            <TableHeader className="bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]">
+            <TableHeader
+              className={cn(
+                "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]",
+                props.chromeClassName,
+              )}
+            >
               <DataTableHeaderRow<T>
+                headClassName={cellPadding.head}
                 visibleCols={visibleCols}
                 hasCheckbox={hasCheckbox}
                 hasRowActions={hasRowActions}
@@ -454,6 +484,7 @@ export const DataTable = <
               />
             </TableHeader>
             <DataTableBody<T>
+              cellClassName={cellPadding.cell}
               data={data}
               rowKeys={rowKeys}
               loading={loading}
@@ -482,13 +513,16 @@ export const DataTable = <
           {orderAnnouncement}
         </span>
 
-        <DataTableFooter
-          pageSizes={props.pageSizes}
-          sizeForm={sizeForm}
-          meta={meta}
-          isMobile={isMobile}
-          setPage={setPage}
-        />
+        {showFooter && (
+          <DataTableFooter
+            pageSizes={props.pageSizes}
+            sizeForm={sizeForm}
+            meta={meta}
+            isMobile={isMobile}
+            setPage={setPage}
+            className={cn(squareRight?.bottom, props.chromeClassName)}
+          />
+        )}
       </div>
     </ClientOnly>
   );

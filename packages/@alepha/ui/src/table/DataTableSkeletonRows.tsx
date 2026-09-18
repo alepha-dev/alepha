@@ -4,6 +4,11 @@ import { TableCell, TableRow } from "../core/Table.tsx";
 export interface DataTableSkeletonRowsProps {
   rows: number;
   cols: number;
+  /**
+   * The table's `cellPadding` classes, so a placeholder row is as tall as
+   * the row it stands in for.
+   */
+  cellClassName?: string;
 }
 
 /**
@@ -15,7 +20,7 @@ export const DataTableSkeletonRows = (props: DataTableSkeletonRowsProps) => {
       {Array.from({ length: props.rows }).map((_, i) => (
         <TableRow key={i}>
           {Array.from({ length: props.cols }).map((_, j) => (
-            <TableCell key={j}>
+            <TableCell key={j} className={props.cellClassName}>
               <Skeleton className="h-4 w-full" />
             </TableCell>
           ))}

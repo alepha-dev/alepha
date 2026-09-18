@@ -31,6 +31,10 @@ export interface DataTableFooterProps {
   meta: Page<unknown>["page"] | null;
   isMobile: boolean;
   setPage: Dispatch<SetStateAction<number>>;
+  /**
+   * The table's `chromeClassName`, merged after the bar's own classes.
+   */
+  className?: string;
 }
 
 /**
@@ -48,7 +52,12 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
         Carries the same `--bevel` fold under its top border: the three
         chrome bands (filter bar, header, footer) are lit from one side, so
         they read as the same material at three different heights. */
-    <div className="bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
+    <div
+      className={cn(
+        "bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        props.className,
+      )}
+    >
       {/* The size picker sits with the count, not in the toolbar above:
           this line already answers "how many, where am I", while the
           toolbar answers "which rows". Mixing the two turns the toolbar

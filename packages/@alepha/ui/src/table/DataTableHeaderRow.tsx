@@ -24,6 +24,11 @@ import type { ColumnDef, SortState } from "./dataTableTypes.ts";
 
 export interface DataTableHeaderRowProps<T> {
   /**
+   * The table's `cellPadding` classes for a header cell, merged before a
+   * column's own `className`.
+   */
+  headClassName?: string;
+  /**
    * The visible columns, in the reader's order.
    */
   visibleCols: Array<[string, ColumnDef<T>]>;
@@ -66,7 +71,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
   return (
     <TableRow>
       {hasCheckbox && (
-        <TableHead className="w-10">
+        <TableHead className={cn(props.headClassName, "w-10")}>
           <Checkbox
             checked={allSelected}
             indeterminate={!allSelected && someSelected}
@@ -96,6 +101,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                   tabIndex={0}
                   title={def.hint}
                   className={cn(
+                    props.headClassName,
                     def.className,
                     "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
                     def.align === "right" && "text-right",
@@ -236,7 +242,9 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
           </ContextMenu>
         );
       })}
-      {hasRowActions && <TableHead className="w-10" />}
+      {hasRowActions && (
+        <TableHead className={cn(props.headClassName, "w-10")} />
+      )}
     </TableRow>
   );
 };

@@ -112,6 +112,98 @@ describe("DataTable (static data)", () => {
     expect(screen.queryByText("Alpha")).toBeNull();
   });
 
+  it("drops the footer when the picker is hidden and one page holds every row", async () => {
+    // Neither of the footer's controls has anything to do: no size to pick,
+    // no page to go to. "Page 1 of 1" on its own is a bar saying nothing.
+    await mount(
+      <DataTable<Row>
+        data={[
+          { id: 1, title: "Alpha" },
+          { id: 2, title: "Beta" },
+        ]}
+        columns={columns}
+        defaultSize={20}
+        pageSizes={[]}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    expect(screen.queryByText(/Page 1 of 1/)).toBeNull();
+  });
+
+  it("keeps the footer when the picker is hidden but the rows span pages", async () => {
+    await mount(
+      <DataTable<Row>
+        data={[
+          { id: 1, title: "Alpha" },
+          { id: 2, title: "Beta" },
+          { id: 3, title: "Gamma" },
+        ]}
+        columns={columns}
+        defaultSize={2}
+        pageSizes={[]}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText(/Page 1 of 2/)).toBeTruthy());
+  });
+
+  it("ignores a stored page size once the picker is hidden", async () => {
+    // Stored while the picker was still there. With it gone the reader has
+    // no control left to change it, so the call site's size is the size.
+    window.localStorage.setItem("test.hidden-picker.size", "50");
+    await mount(
+      <DataTable<Row>
+        data={[
+          { id: 1, title: "Alpha" },
+          { id: 2, title: "Beta" },
+          { id: 3, title: "Gamma" },
+        ]}
+        columns={columns}
+        persistenceKey="test.hidden-picker"
+        defaultSize={2}
+        pageSizes={[]}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    expect(screen.queryByText("Gamma")).toBeNull();
+    window.localStorage.removeItem("test.hidden-picker.size");
+  });
+
+  it("pads header and body cells by `cellPadding`", async () => {
+    await mount(
+      <DataTable<Row>
+        data={[{ id: 1, title: "Alpha" }]}
+        columns={columns}
+        cellPadding="large"
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    const cell = screen.getByText("Alpha").closest("td")!;
+    const head = screen.getByText("Title").closest("th")!;
+    // Replaces the primitive's own `p-2` rather than sitting beside it.
+    expect(cell.className).toContain("p-3");
+    expect(cell.className).not.toContain("p-2");
+    expect(head.className).toContain("h-11");
+  });
+
+  it("lets a column's own padding win over `cellPadding`", async () => {
+    await mount(
+      <DataTable<Row>
+        data={[{ id: 1, title: "Alpha" }]}
+        columns={{ title: { ...columns.title, className: "py-0" } }}
+        cellPadding="large"
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    const cell = screen.getByText("Alpha").closest("td")!;
+    // Merged after the size, so the column's `py-0` is what paints.
+    expect(cell.className).toMatch(/p-3.*py-0/);
+  });
+
   it("sorts static data from the column header", async () => {
     await mount(
       <DataTable<Row>

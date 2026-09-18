@@ -70,6 +70,10 @@ export interface DataTableToolbarProps<T> {
   reorderColumn: (key: string, target: string) => void;
   isRefreshing: boolean;
   handleRefreshClick: () => void;
+  /**
+   * The table's `chromeClassName`, merged after the bar's own classes.
+   */
+  className?: string;
 }
 
 /**
@@ -166,7 +170,12 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
     // the same fold the header and the footer carry. This one is the
     // top edge of the whole table block, so it is the one that decides
     // whether the block sits ON the page or IN it.
-    <div className="bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
+    <div
+      className={cn(
+        "bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        props.className,
+      )}
+    >
       {props.filters && form && !isMobile ? (
         <form {...form.props} className="flex flex-1 flex-wrap items-end gap-2">
           {filterControls("bar")}

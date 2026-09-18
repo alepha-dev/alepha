@@ -15,6 +15,11 @@ import type {
 } from "./dataTableTypes.ts";
 
 export interface DataTableBodyProps<T> {
+  /**
+   * The table's `cellPadding` classes for a body cell, merged before a
+   * column's own `className`.
+   */
+  cellClassName?: string;
   data: T[];
   /**
    * One key per row of `data`, index for index.
@@ -101,6 +106,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
     <TableBody>
       {loading && data.length === 0 ? (
         <DataTableSkeletonRows
+          cellClassName={props.cellClassName}
           rows={5}
           cols={
             visibleCols.length + (hasCheckbox ? 1 : 0) + (hasRowActions ? 1 : 0)
@@ -170,7 +176,10 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
               )}
             >
               {hasCheckbox && (
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell
+                  className={props.cellClassName}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Checkbox
                     checked={isSelected}
                     onCheckedChange={() => toggleRow(item)}
@@ -184,6 +193,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                 <TableCell
                   key={key}
                   className={cn(
+                    props.cellClassName,
                     def.className,
                     def.align === "right" && "text-right",
                     def.align === "center" && "text-center",
@@ -194,7 +204,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
               ))}
               {hasRowActions && (
                 <TableCell
-                  className="text-right"
+                  className={cn(props.cellClassName, "text-right")}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <DataTableRowActionsMenu
