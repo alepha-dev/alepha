@@ -49,6 +49,28 @@ export default {
   "home.sign-in": "Se connecter",
   "home.registration-closed":
     "Les inscriptions se font uniquement sur invitation pour le moment. Si vous avez été invité, ouvrez le lien reçu par e-mail.",
+  "home.wordmark": "Alepha Lore",
+  "home.table.search": "Rechercher",
+  "home.table.empty": "Aucun projet pour le moment",
+  "home.table.col.project": "Projet",
+  "home.table.col.momentum": "Activité · 14 j",
+  "home.table.col.open": "En cours",
+  "home.table.col.lastActivity": "Dernière activité",
+  "home.table.owner": "Vous êtes propriétaire de ce projet",
+  "home.table.momentum.label": "$1 événements sur les $2 derniers jours",
+  "home.table.open.quest": "1 quête",
+  "home.table.open.quests": "$1 quêtes",
+  "home.table.open.none": "rien en cours",
+  "home.table.delete.action": "Supprimer le projet",
+  "home.table.delete.title": "Supprimer ce projet ?",
+  "home.table.delete.description":
+    "$1, ses quêtes, ses folios et ses membres sont supprimés pour tout le monde. Cette action est irréversible.",
+  "home.table.delete.confirm": "Supprimer le projet",
+  "home.activity.title": "Activité récente",
+  "home.activity.you": "Vous",
+  "home.activity.unknown": "Quelqu'un",
+  "home.activity.empty": "Il ne s'est encore rien passé",
+  "home.activity.empty.project": "Rien de récent ici",
   "auth.register.intent.createProject":
     "Avant de créer un projet, créez un compte.",
   "auth.register.intent.invitation":
@@ -2164,20 +2186,8 @@ export default {
   "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
-  "dashboard.greeting": "Bon retour, $1",
-  "dashboard.standfirst": "$1 cartes.",
-  "dashboard.standfirst.one": "1 carte.",
-  "dashboard.standfirst.empty":
-    "Tableau de bord vide. Ajoutez la premiere carte.",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
-  "dashboard.projects": "Projets",
-  "dashboard.search": "Rechercher",
-  "dashboard.newProject": "Nouveau projet",
-  "dashboard.seeAll": "Voir les $1 projets",
-  "dashboard.empty.title": "Rien sur votre tableau de bord",
-  "dashboard.empty.body":
-    "Ajoutez les chiffres que vous regardez en premier : les quetes ouvertes du projet en cours, les fleaux partout, les visiteurs d'hier sur un site de docs.",
 
   "dashboard.card.options": "Options de la carte",
   "dashboard.card.scope": "Changer la portee",

@@ -16,7 +16,6 @@ import { createElement } from "react";
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
-import type { DashboardController } from "../../api/controllers/DashboardController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
@@ -49,7 +48,6 @@ import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
-import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
@@ -114,7 +112,6 @@ export class AppRouter {
   estateApi = $client<EstateController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
-  dashboardApi = $client<DashboardController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   account = $inject(AccountRouter);
@@ -372,22 +369,17 @@ export class AppRouter {
     },
     lazy: () => import("./components/home/Home.tsx"),
     /**
-     * The dashboard's card list, for a signed-in visitor.
+     * What an ANONYMOUS visitor needs before the first paint, and nothing
+     * else.
      *
-     * The CONFIGURATION only: the grid lays out with the right tiles, titles
-     * and chips before a single number exists, and `Dashboard` resolves the
-     * values itself once on mount. Splitting the two is what makes "loading"
-     * a designed state rather than a blank page, and it keeps the metric
-     * queries off the server-render path.
+     * A signed-in visitor's landing page is `HomeBoard`, whose rows are
+     * `userProjectsAtom` (already filled by the bootstrap) and whose bars and
+     * activity lines are one `getHomeBoard` call it makes itself. So there is
+     * nothing left to load here for them.
      *
-     * This also seeds a brand-new account's default cards — see
-     * `dashboardSettings` for why that happens exactly once and why an
-     * emptied board stays empty.
-     *
-     * ⚠️ Fetched behind a `catch`: the cards are one section of the landing
-     * page, and a transient failure must cost the dashboard, not Home. And it
-     * runs on ENTRY only — a loader that revalidates on its own dependencies
-     * is the QuestGraph incident (folio #1057).
+     * ⚠️ It runs on ENTRY only, and whatever is added here must keep that
+     * shape: a loader that revalidates on its own dependencies is the
+     * QuestGraph incident (folio #1057).
      */
     loader: async ({ user }) => {
       if (!user) {
@@ -404,13 +396,6 @@ export class AppRouter {
           registrationAllowed:
             realmConfig?.settings.registrationAllowed !== false,
         });
-        return;
-      }
-      const dashboard = await this.dashboardApi
-        .listCards({})
-        .catch(() => undefined);
-      if (dashboard) {
-        this.alepha.store.set(dashboardAtom, { cards: dashboard.cards });
       }
     },
   });

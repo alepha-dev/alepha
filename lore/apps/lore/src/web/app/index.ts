@@ -15,7 +15,6 @@ import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
-import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeCollapsedAtom } from "./atoms/folioTreeCollapsedAtom.ts";
 import { kanbanFiltersAtom } from "./atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./atoms/kanbanReloadAtom.ts";
@@ -57,7 +56,6 @@ export const LoreWebApp = $module({
     // first read.
     questLogCollapsedAtom,
     userProjectsAtom,
-    dashboardAtom,
   ],
   register(alepha) {
     // Lore's `quests.createdBy` cascades, so deleting an account also deletes
