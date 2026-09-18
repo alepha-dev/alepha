@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `estimate_minutes` integer;

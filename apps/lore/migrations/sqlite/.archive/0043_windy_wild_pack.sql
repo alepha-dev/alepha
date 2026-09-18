@@ -1,1 +1,0 @@
-ALTER TABLE `oauth_clients` ADD `trusted` integer DEFAULT false NOT NULL;

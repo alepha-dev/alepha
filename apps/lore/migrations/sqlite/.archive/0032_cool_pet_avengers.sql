@@ -1,1 +1,0 @@
-ALTER TABLE `sigils` ADD `excluded_paths` text DEFAULT '[]' NOT NULL;
