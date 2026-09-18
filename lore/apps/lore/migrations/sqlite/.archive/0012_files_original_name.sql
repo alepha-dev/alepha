@@ -1,1 +1,0 @@
-ALTER TABLE `files` ADD `original_name` text;

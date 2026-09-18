@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `source` text;

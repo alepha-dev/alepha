@@ -1,1 +1,0 @@
-ALTER TABLE `verification` ADD `purpose` text DEFAULT 'default' NOT NULL;

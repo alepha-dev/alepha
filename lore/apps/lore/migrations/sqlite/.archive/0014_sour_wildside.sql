@@ -1,1 +1,0 @@
-ALTER TABLE `folios` ADD `pinned` integer DEFAULT false NOT NULL;
