@@ -61,4 +61,50 @@ describe("NestedView exit animation", () => {
       "C",
     );
   });
+
+  it("lays the leaving page out as a column while it animates", async () => {
+    // The wrapper that carries the animation used to be a flex ROW, which
+    // sizes a child's width to its content: a page root with a height but no
+    // width (Lore's Home, `flex h-svh flex-col`) shrank to about half the
+    // screen for as long as its exit ran. jsdom lays nothing out, so this
+    // pins the direction that makes the difference.
+    class App {
+      a = $page({
+        path: "/a",
+        animation: { exit: { name: "fade-out", duration: 200 } },
+        component: () => <div data-testid="view">A</div>,
+      });
+
+      b = $page({
+        path: "/b",
+        component: () => <div data-testid="view">B</div>,
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaReact).with(App);
+    await alepha.start();
+    const router = alepha.inject(ReactRouter);
+
+    await act(async () => {
+      await router.push("/a");
+    });
+
+    let wrapper: { animation: string; flexDirection: string } | undefined;
+    await act(async () => {
+      const leavingA = router.push("/b");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const style = document.querySelector<HTMLElement>('[data-testid="view"]')
+        ?.parentElement?.style;
+      wrapper = style && {
+        animation: style.animation,
+        flexDirection: style.flexDirection,
+      };
+      await leavingA;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+
+    // The element measured is the animated wrapper, not some other parent.
+    expect(wrapper?.animation).toContain("fade-out");
+    expect(wrapper?.flexDirection).toBe("column");
+  });
 });

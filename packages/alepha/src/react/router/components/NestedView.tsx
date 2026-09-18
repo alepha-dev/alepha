@@ -154,8 +154,21 @@ const NestedView = (props: NestedViewProps) => {
           overflow: "hidden",
         }}
       >
+        {/* A COLUMN, so the wrapper lays the page out the way a page's
+            usual parent does (a full-height column shell): full width,
+            and full height for a root with `h-full` or `flex-1`. It was a
+            row, and a row sizes a child's width to its content: a page
+            root with a height but no width (Lore's Home, `flex h-svh
+            flex-col`) shrank to about half the screen for the length of
+            its exit animation and snapped back when the wrapper went. */}
         <div
-          style={{ height: "100%", width: "100%", display: "flex", animation }}
+          style={{
+            height: "100%",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            animation,
+          }}
         >
           {element}
         </div>
