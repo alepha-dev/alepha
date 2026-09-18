@@ -6,7 +6,9 @@ import { cn } from "./utils.ts";
 
 export interface UserAvatarProps {
   /**
-   * The user's avatar file id (`user.picture`). Absent → the fallback.
+   * The user's picture (`user.picture`): a file id in the `avatars` bucket,
+   * or an absolute `http(s)` URL, which is drawn as-is (see
+   * {@link FileImage}). Absent → the fallback.
    */
   fileId?: string | null;
 
@@ -31,6 +33,7 @@ export interface UserAvatarProps {
    * list, an assignee picker): that is what an edge cache shares. The
    * viewer's own avatar gains nothing from it, since the authenticated
    * response is already `private, max-age=1y, immutable` in the browser.
+   * Ignored for a URL picture, which never goes through either route.
    *
    * @default false
    */
@@ -45,9 +48,9 @@ export interface UserAvatarProps {
 }
 
 /**
- * Round user avatar for a `user.picture` file id, drawn through
- * {@link FileImage}, with a fallback when the picture is missing or fails to
- * load.
+ * Round user avatar for a `user.picture` (a file id, or an absolute URL),
+ * drawn through {@link FileImage}, with a fallback when the picture is
+ * missing or fails to load.
  *
  * It lives in the kit rather than in an application because nothing about
  * it is an application's: `FileImage` is a kit component, both file routes

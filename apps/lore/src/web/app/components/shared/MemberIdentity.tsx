@@ -16,10 +16,19 @@ export type MemberWithUser = {
 /**
  * Resolve a member's avatar URL from their user account. Callers should
  * render an initials/icon placeholder when the result is null.
+ *
+ * `picture` is a file id in the `avatars` bucket, or an absolute URL for an
+ * account created before OAuth sign-up imported the provider's picture (a
+ * Google `lh3.googleusercontent.com` link, typically). The URL is used as-is:
+ * building `/api/public/files/https://…` from it is a request that can only
+ * 404, the same rule `@alepha/ui`'s `FileImage` applies.
  */
 export const memberPictureSrc = (member: MemberWithUser): string | null => {
-  const fileId = member.user.picture;
-  return fileId ? publicFileUrl(fileId) : null;
+  const picture = member.user.picture;
+  if (!picture) {
+    return null;
+  }
+  return /^https?:\/\//i.test(picture) ? picture : publicFileUrl(picture);
 };
 
 type Variant = "compact" | "name" | "card";
@@ -106,7 +115,12 @@ const Avatar = (props: AvatarProps) => {
   if (src) {
     return (
       <span className={className}>
-        <img alt={alt} src={src} className="size-full object-cover" />
+        <img
+          alt={alt}
+          src={src}
+          referrerPolicy="no-referrer"
+          className="size-full object-cover"
+        />
       </span>
     );
   }
