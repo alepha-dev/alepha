@@ -70,4 +70,36 @@ describe("MemberIdentity", () => {
     const identity = await screen.findByTestId("member-identity");
     expect(identity.textContent).toBe("");
   });
+
+  /**
+   * #Q2406: an account created before OAuth sign-up imported the provider's
+   * picture still holds Google's URL in `picture`, and the public file route
+   * built from it 404ed on every draw.
+   */
+  describe("picture", () => {
+    const withPicture = (picture: string): MemberWithUser => {
+      const member = memberOf(false);
+      return { ...member, user: { ...member.user, picture } };
+    };
+
+    it("serves a file id through the public file route", async () => {
+      const view = await mount(
+        withPicture("00000000-0000-4000-8000-00000000000a"),
+        "compact",
+      );
+
+      expect(view.container.querySelector("img")?.getAttribute("src")).toBe(
+        "/api/public/files/00000000-0000-4000-8000-00000000000a",
+      );
+    });
+
+    it("draws an absolute URL as-is", async () => {
+      const url = "https://lh3.googleusercontent.com/a/face=s96-c";
+      const view = await mount(withPicture(url), "compact");
+
+      const img = view.container.querySelector("img");
+      expect(img?.getAttribute("src")).toBe(url);
+      expect(img?.getAttribute("referrerpolicy")).toBe("no-referrer");
+    });
+  });
 });
