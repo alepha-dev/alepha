@@ -978,11 +978,30 @@ export abstract class Repository<T extends ZObject> {
    *
    * A row wider than the ceiling gets a batch of one and the driver's own
    * refusal, which is the honest answer: no batching can bind it.
+   *
+   * `reserved` is what the rest of the statement binds whatever the row
+   * count: an upsert's `DO UPDATE SET` clause, which {@link upsertMany}
+   * measures and passes here.
    */
   protected insertBatchSize(
     rows: ReadonlyArray<Record<string, unknown>>,
     requested?: number,
+    reserved = 0,
   ): number {
+    const columns = this.boundPerRow(rows, this.generatedColumns());
+
+    const perStatement = Math.max(
+      1,
+      Math.floor((this.provider.maxBoundParameters - reserved) / columns),
+    );
+    return Math.max(1, Math.min(requested ?? 1000, perStatement));
+  }
+
+  /**
+   * The columns that bind a value on every inserted row the caller leaves
+   * out: see the comment inside for which defaults do and which do not.
+   */
+  protected generatedColumns(): string[] {
     const tableColumns = getTableColumns(this.table as PgTable);
 
     // ⚠️ The caller's keys are NOT the whole statement. A column the caller
@@ -998,27 +1017,33 @@ export abstract class Repository<T extends ZObject> {
     // values against D1's ceiling of 100 and was refused (quest #Q343).
     // `createdAt` / `updatedAt` are inlined as `unixepoch(...)` and rightly
     // do not count.
-    const generated = Object.entries(tableColumns).filter(
-      ([, col]: [string, any]) =>
-        col.defaultFn !== undefined ||
-        (col.default !== undefined && !(col.default instanceof SQL)) ||
-        (col.default === undefined && col.onUpdateFn !== undefined),
-    );
+    return Object.entries(tableColumns)
+      .filter(
+        ([, col]: [string, any]) =>
+          col.defaultFn !== undefined ||
+          (col.default !== undefined && !(col.default instanceof SQL)) ||
+          (col.default === undefined && col.onUpdateFn !== undefined),
+      )
+      .map(([key]) => key);
+  }
 
-    const columns = rows.reduce((max, row) => {
+  /**
+   * Values the widest of `rows` binds in an INSERT: its provided keys plus
+   * every generated column it leaves out. The widest decides, since every row
+   * of a statement binds the union of the provided columns.
+   */
+  protected boundPerRow(
+    rows: ReadonlyArray<Record<string, unknown>>,
+    generated: string[],
+  ): number {
+    return rows.reduce((max, row) => {
       // `undefined` reads as absent to drizzle, so it takes the default path.
       let bound = Object.values(row).filter((v) => v !== undefined).length;
-      for (const [key] of generated) {
+      for (const key of generated) {
         if (row[key] === undefined) bound++;
       }
       return Math.max(max, bound);
     }, 1);
-
-    const perStatement = Math.max(
-      1,
-      Math.floor(this.provider.maxBoundParameters / columns),
-    );
-    return Math.max(1, Math.min(requested ?? 1000, perStatement));
   }
 
   /**
@@ -1158,11 +1183,20 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
-   * Insert or update many entities in ONE statement.
+   * Insert or update many entities in as few statements as the driver allows.
    *
    * The reason to reach for this over a loop of {@link upsert} is round-trips:
    * against a remote database (D1 in particular) a batch of twenty becomes one
    * network call instead of twenty, which is usually the whole cost.
+   *
+   * One statement when the rows fit, otherwise one per batch, sized like
+   * {@link createMany}'s from the driver's `maxBoundParameters` less what the
+   * `ON CONFLICT … DO UPDATE SET` clause binds itself. It used to be one
+   * statement whatever the count, so on D1 (a ceiling of 100) a fourteen-value
+   * row failed from its eighth: Lore's hourly analytics rollup failed on every
+   * run for a week with `too many SQL variables` (#Q2404). Like
+   * `createMany`, the batches are not one atomic unit unless the caller wraps
+   * the call in `$transactional`.
    *
    * ⚠️ **Two rules the single-row version does not have.**
    *
@@ -1260,15 +1294,37 @@ export abstract class Repository<T extends ZObject> {
       ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
       : undefined;
 
-    try {
-      const rows = await this.rawInsert(opts)
-        .values(values.map((value) => this.cast(value ?? {}, true)))
+    const statement = (batch: Array<Record<string, unknown>>) =>
+      this.rawInsert(opts)
+        .values(batch as never)
         .onConflictDoUpdate({
           target: targetColumns,
           set: setData,
           ...(setWhere ? { setWhere } : {}),
-        })
-        .returning(this.table);
+        });
+
+    try {
+      const casted = values.map((value) => this.cast(value ?? {}, true));
+
+      // What the SET and WHERE clauses bind on their own, read off the real
+      // statement for one row rather than guessed: an `excluded.<col>`
+      // reference binds nothing, a plain value or the `updatedAt` stamp binds
+      // one, and only drizzle knows which is which once `cast` has run.
+      const oneRow = (statement([casted[0]]) as any).toSQL().params.length;
+      const reserved = Math.max(
+        0,
+        oneRow - this.boundPerRow([casted[0]], this.generatedColumns()),
+      );
+      const batchSize = this.insertBatchSize(casted, undefined, reserved);
+
+      const rows: any[] = [];
+      for (let i = 0; i < casted.length; i += batchSize) {
+        rows.push(
+          ...(await statement(casted.slice(i, i + batchSize)).returning(
+            this.table,
+          )),
+        );
+      }
 
       const entities = rows.map((row: any) =>
         this.clean(row, this.entity.schema),

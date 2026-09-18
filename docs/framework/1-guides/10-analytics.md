@@ -370,6 +370,22 @@ check that never runs in CI.
 > later one along. Adding a `referrer` dimension to a live dataset in 2026-08 moved its index
 > dimension by three slots and made eight days of stored rows match no filter at all. They are
 > still there, unreadable, and there is no API to repair them with.
+>
+> The hourly sweep forwards Analytics Engine rows into the relational cold tier, which validates
+> every dimension against its declared type, so a row like those is skipped there rather than
+> refused: one `log.warn` per sweep names the dimension and what it held. Until that existed,
+> one such row failed the whole forward, and with it every rollup of its dataset.
+
+### The first sweeps catch up a few days at a time
+
+On Analytics Engine the sweep forwards at most 2,000 rows into the cold tier per dataset per
+run, cut at a day boundary, and folds only the days it forwarded; the next run resumes where it
+stopped. A dataset that has never been rolled up, or has fallen weeks behind, therefore catches
+up over several hourly runs rather than one. The bound exists because Cloudflare D1 binds at
+most 100 values per statement and caps the statements one Worker invocation may run: a row of a
+ten-dimension dataset binds fourteen values, so forwarding a month of hourly rows in one run
+would not fit. The fold itself is a single `INSERT … SELECT` in the database, whatever the
+backlog.
 
 ## Registering the module
 

@@ -306,6 +306,11 @@ resolve to the same conflict target, and a counter-style `set` must read from
 `excluded` (the incoming row) rather than the table, or every row after the first
 sees stale values.
 
+It sends one statement when the rows fit, and otherwise splits them the way
+`createMany` does, so no statement binds more values than the driver accepts
+(100 on Cloudflare D1). Like `createMany`'s, the batches are not one atomic unit
+unless the call runs inside `$transactional`.
+
 ## Update Methods
 
 ### updateOne

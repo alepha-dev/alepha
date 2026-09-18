@@ -226,6 +226,25 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     return { rows, estimated: false };
   }
 
+  /**
+   * Folds every raw hour row before `before` into the rolled table, then
+   * deletes them.
+   *
+   * **One `INSERT … SELECT … ON CONFLICT` statement, whatever the backlog.**
+   * The fold used to read every folded row back into JavaScript and write it
+   * again through `rolled.upsertMany`: a round trip per row out and in, and on
+   * D1 one statement per seven rows of a ten-dimension dataset once
+   * `upsertMany` learnt to respect the 100-parameter ceiling. D1 also caps
+   * the statements a Worker invocation may run, and Lore's hourly sweep folds
+   * four datasets in one (#Q2404). Folding in the database binds one
+   * parameter, the boundary, and moves no row over the wire.
+   *
+   * `AS target` names the existing row for the SET clause, the one spelling
+   * SQLite, D1 and Postgres all accept. The SELECT carries a WHERE, which is
+   * what SQLite needs to read `ON CONFLICT` as the upsert rather than as a
+   * join constraint. `GROUP BY` covers the whole conflict target, so no row
+   * of the SELECT conflicts with another, which Postgres would refuse.
+   */
   public async rollup(
     dataset: AnalyticsDataset,
     before: string,
@@ -236,52 +255,51 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     const boundary = AnalyticsBuckets.day(before);
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
-    const shape: Record<string, ZType> = { [timeColumn]: z.string() };
-    for (const name of dimensions) shape[name] = dataset.dimensions.shape[name];
-    for (const name of measures) shape[name] = z.coerce.number();
-
     const dayExpression = `substr(${timeColumn}, 1, 10)`;
     // Resolved through `columnName`, same as `readOne` — see its class doc.
-    // `folded`'s decoded rows are fed straight into `rolled.upsertMany`,
-    // keyed by these JS names (via `shape`), so every projection here has to
-    // come back aliased to the JS name whenever the real column differs, not
-    // merely be valid SQL.
+    // Both tables are built from the one column map, so a name resolves the
+    // same on either side; `rolled` is asked for the target's own columns
+    // anyway, so the statement reads as what it writes.
+    const targetColumns = [
+      timeColumn,
+      ...dimensions.map((name) => this.columnName(rolled, name)),
+    ];
+    const measureColumns = measures.map((name) =>
+      this.columnName(rolled, name),
+    );
     const selectList = [
-      `${dayExpression} AS ${timeColumn}`,
-      ...dimensions.map((name) => {
-        const column = this.columnName(raw, name);
-        return column === name ? column : `${column} AS "${name}"`;
-      }),
-      ...measures.map((name) => {
-        const column = this.columnName(raw, name);
-        return `SUM(${column}) AS "${name}"`;
-      }),
+      dayExpression,
+      ...dimensions.map((name) => this.columnName(raw, name)),
+      ...measures.map((name) => `SUM(${this.columnName(raw, name)})`),
     ].join(", ");
     const groupList = [
       dayExpression,
       ...dimensions.map((name) => this.columnName(raw, name)),
     ].join(", ");
+    const accumulate = measureColumns
+      .map((column) => `${column} = target.${column} + excluded.${column}`)
+      .join(", ");
 
-    const folded = await this.database.run(
+    await this.database.run(
       sql`
+        INSERT INTO ${rolled.table} AS target (${sql.raw(
+          [...targetColumns, ...measureColumns].join(", "),
+        )})
         SELECT ${sql.raw(selectList)}
         FROM ${raw.table}
         WHERE ${sql.raw(dayExpression)} < ${boundary}
         GROUP BY ${sql.raw(groupList)}
+        ON CONFLICT (${sql.raw(targetColumns.join(", "))})
+        DO ${sql.raw(measureColumns.length > 0 ? `UPDATE SET ${accumulate}` : "NOTHING")}
       `,
-      z.object(shape),
+      z.object({}),
     );
 
-    if (folded.length > 0) {
-      await rolled.upsertMany(folded as never, {
-        target: [timeColumn, ...dimensions] as never,
-        set: this.accumulateSet(rolled, measures) as never,
-      });
-    }
-
     // Deleting the raw rows AFTER the rolled rows land is what makes a crashed
-    // sweep safe: re-running re-folds the same rows onto the same unique key,
-    // which the upsert absorbs. Deleting first would lose them outright.
+    // sweep recoverable: the raw rows are still there to fold. Deleting first
+    // would lose them outright. A crash between the two statements does fold
+    // them twice on the next sweep, since the fold adds rather than replaces;
+    // D1 has no transaction to close that window.
     await this.database.run(
       sql`DELETE FROM ${raw.table} WHERE ${sql.raw(dayExpression)} < ${boundary}`,
       z.object({}),

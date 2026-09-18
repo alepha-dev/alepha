@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { MemoryDestinationProvider } from "alepha/logger";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
@@ -97,7 +98,10 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
  * say) register that dataset instead, but still get the same wired-up
  * container.
  */
-const build = async (ds: AnalyticsDataset = dataset) => {
+const build = async (
+  ds: AnalyticsDataset = dataset,
+  Provider: typeof TestWaeAnalyticsProvider = TestWaeAnalyticsProvider,
+) => {
   const alepha = Alepha.create({
     env: {
       CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
@@ -106,7 +110,7 @@ const build = async (ds: AnalyticsDataset = dataset) => {
     },
   }).with(AlephaOrmPostgres);
 
-  const provider = alepha.inject(TestWaeAnalyticsProvider);
+  const provider = alepha.inject(Provider);
   alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
   provider.register(ds);
   await alepha.start();
@@ -956,6 +960,136 @@ describe("WaeAnalyticsProvider — prune floor", () => {
 
       const floor = await provider.coldProvider.pruneFloor(dataset);
       expect(floor).toBe("2026-08-06");
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
+/**
+ * #Q2404. Lore's hourly rollup failed on every run for a week, for two
+ * reasons this block pins: a row whose slot layout predates the dataset's
+ * current one does not decode, and a first sweep can face weeks of backlog.
+ */
+describe("WaeAnalyticsProvider — forwarding what cold can take", () => {
+  /**
+   * Shaped like Lore's `sigil_views`: the index dimension is a uuid, and
+   * `cold` validates it on every row it is handed.
+   */
+  const sigilViews = {
+    name: "wae_sigil_views",
+    index: "sigilId",
+    dimensions: z.object({ sigilId: z.uuid(), path: z.string() }),
+    measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["sigilId", "path"], measures: ["count"] },
+  };
+  const SIGIL = "00000000-0000-4000-8000-000000000001";
+
+  it("skips a row that does not decode, warns once, and forwards the rest", async () => {
+    const { alepha, provider } = await build(sigilViews);
+    try {
+      // A row written under an older slot layout: its `sigilId` slot holds
+      // nothing, which is what nine days of Lore's `sigil_views` read back as.
+      // `record()` writes blobs without validating, like Analytics Engine.
+      await provider.record(sigilViews, [
+        { hour: "2026-08-01T09", sigilId: "", path: "/old", count: 7 },
+        { hour: "2026-08-01T10", sigilId: SIGIL, path: "/x", count: 3 },
+        { hour: "2026-08-01T11", sigilId: SIGIL, path: "/x", count: 2 },
+      ]);
+
+      await provider.rollup(sigilViews, "2026-08-02");
+
+      const result = await provider.coldProvider.query(sigilViews, {
+        since: "2026-08-01",
+        groupBy: ["day"],
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([{ day: "2026-08-01", count: 5 }]);
+
+      const warnings = alepha
+        .inject(MemoryDestinationProvider)
+        .logs.filter(
+          (entry) =>
+            entry.level === "WARN" &&
+            entry.message.includes("do not decode") &&
+            entry.message.includes("wae_sigil_views"),
+        );
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].data).toEqual({
+        dimensions: { sigilId: { rows: 1, values: ['""'] } },
+      });
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("forwards at most its budget a sweep, in whole days, and the next sweep resumes", async () => {
+    class SmallBudget extends TestWaeAnalyticsProvider {
+      protected override readonly maxForwardRows = 3;
+    }
+    const { alepha, provider } = await build(sigilViews, SmallBudget);
+    try {
+      // Two rows a day for three days: two days fit a budget of three only
+      // if a day could be split, and it must not be.
+      const rows = [];
+      for (const day of ["2026-08-01", "2026-08-02", "2026-08-03"]) {
+        for (const path of ["/a", "/b"]) {
+          rows.push({ hour: `${day}T10`, sigilId: SIGIL, path, count: 1 });
+        }
+      }
+      await provider.record(sigilViews, rows);
+
+      const rolledDays = async () =>
+        (
+          await provider.coldProvider.query(sigilViews, {
+            since: "2026-08-01",
+            groupBy: ["day"],
+            select: { count: "sum" },
+            orderBy: { key: "day", direction: "asc" },
+          })
+        ).rows;
+
+      await provider.rollup(sigilViews, "2026-08-04");
+      expect(await rolledDays()).toEqual([{ day: "2026-08-01", count: 2 }]);
+
+      await provider.rollup(sigilViews, "2026-08-04");
+      expect(await rolledDays()).toEqual([
+        { day: "2026-08-01", count: 2 },
+        { day: "2026-08-02", count: 2 },
+      ]);
+
+      await provider.rollup(sigilViews, "2026-08-04");
+      await provider.rollup(sigilViews, "2026-08-04");
+      // Caught up, and a sweep with nothing left adds nothing twice.
+      expect(await rolledDays()).toEqual([
+        { day: "2026-08-01", count: 2 },
+        { day: "2026-08-02", count: 2 },
+        { day: "2026-08-03", count: 2 },
+      ]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("forwards a day bigger than the whole budget on its own", async () => {
+    class SmallBudget extends TestWaeAnalyticsProvider {
+      protected override readonly maxForwardRows = 1;
+    }
+    const { alepha, provider } = await build(sigilViews, SmallBudget);
+    try {
+      await provider.record(sigilViews, [
+        { hour: "2026-08-01T10", sigilId: SIGIL, path: "/a", count: 1 },
+        { hour: "2026-08-01T11", sigilId: SIGIL, path: "/b", count: 1 },
+      ]);
+
+      // Refusing it would leave the dataset stuck behind that day forever.
+      await provider.rollup(sigilViews, "2026-08-02");
+
+      const result = await provider.coldProvider.query(sigilViews, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([{ count: 2 }]);
     } finally {
       await alepha.stop();
     }

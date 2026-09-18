@@ -31,11 +31,13 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  *
  * The per-sweep cap ({@link MAX_DAYS_PER_SWEEP}) is not tuning. Neither
  * shipped provider's `rollup()` self-limits by how far back `before` reaches
- * — `OrmAnalyticsProvider.rollup()` is one `SELECT … GROUP BY` over every row
- * older than the boundary it is given, and `MemoryAnalyticsProvider.rollup()`
- * is one pass over its whole array — so a table nobody has ever pruned could
- * otherwise hand either implementation an arbitrary backlog to fold in a
- * single call. This runs on a Worker with a wall-clock and a memory ceiling.
+ * — `OrmAnalyticsProvider.rollup()` is one `INSERT … SELECT … GROUP BY` over
+ * every row older than the boundary it is given, and
+ * `MemoryAnalyticsProvider.rollup()` is one pass over its whole array — so a
+ * table nobody has ever pruned could otherwise hand either implementation an
+ * arbitrary backlog to fold in a single call. This runs on a Worker with a
+ * wall-clock and a memory ceiling. (`WaeAnalyticsProvider` bounds its own
+ * forward on top of this, in rows: see its `maxForwardRows`.)
  * Chewing through history over several sweeps costs nothing because the fold
  * is idempotent: the next sweep simply resumes from whatever is still oldest.
  */

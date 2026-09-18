@@ -240,6 +240,24 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
+   * Most rows one {@link forwardToCold} call writes into `cold`, counted in
+   * whole days: it stops at the first day that would take it past this, and
+   * always forwards at least one.
+   *
+   * A budget, not tuning. On D1 a row of a ten-dimension dataset binds
+   * fourteen values, so seven go in one statement, and a Worker invocation
+   * may run only so many statements: 2,000 rows is under 300 of them, which
+   * leaves room for the other datasets the same hourly sweep folds. A first
+   * sweep can face weeks of backlog (Lore's did, #Q2404); it now takes it a
+   * few days at a time, one sweep an hour, instead of failing whole.
+   *
+   * Days rather than rows, because the fold that follows is by day and
+   * {@link isForwarded} treats a day-precision watermark as the whole day: a
+   * day forwarded in part and folded would lose the rest of it for good.
+   */
+  protected readonly maxForwardRows: number = 2000;
+
+  /**
    * The durable store for `rollup`/`prune`/`query`. The concrete class — see
    * the class doc for why the abstract `AnalyticsProvider` seam would be
    * circular here.
@@ -637,8 +655,10 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     before: string,
   ): Promise<void> {
-    await this.forwardToCold(dataset, before);
-    await this.cold.rollup(dataset, before);
+    // Folds only as far as the forward reached: a day left for the next sweep
+    // must not be folded in part (see `maxForwardRows`).
+    const forwarded = await this.forwardToCold(dataset, before);
+    await this.cold.rollup(dataset, forwarded);
   }
 
   /**
@@ -701,11 +721,36 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * is consulted the same way the watermark is — both narrow `since` and
    * both filter `result.rows` — so a pruned range is excluded going in
    * (cheaper) and would still be excluded even if it were not (correct).
+   *
+   * ## Never forwards a row `cold` would refuse
+   *
+   * Analytics Engine stores every dimension as a positional string blob, and
+   * nothing on the way in checks it against the declared type, so a row
+   * written under an older slot layout reads back with one dimension's value
+   * in another's slot. Lore's `sigil_views` holds nine days of them (written
+   * 2026-08-10 to 2026-08-18, before its layout gained `referrer`), and their
+   * `sigilId` slot reads back as `""`. `cold` validates every row it is handed,
+   * so one such row failed the whole forward, and with it every hourly rollup
+   * of that dataset for a week (#Q2404). A row that does not decode against
+   * the dataset's own dimensions is skipped and counted in one warning per
+   * call, naming the dimension and what it held. It is not lost: every read
+   * already treated it as absent, since it matches no filter a caller can
+   * write.
+   *
+   * ## Bounded, in whole days
+   *
+   * At most {@link maxForwardRows} rows per call, cut at a day boundary, in
+   * hour order. Returns the day the forward stopped at, which is `before`
+   * unless the budget cut it short; {@link rollup} folds up to that day and
+   * no further, and the next sweep resumes from the watermark. Hour order is
+   * what keeps a failure part way through a forward recoverable: every
+   * earlier hour has landed, so the watermark the next sweep resumes from
+   * leaves nothing behind but the tail of one hour.
    */
   protected async forwardToCold(
     dataset: AnalyticsDataset,
     before: string,
-  ): Promise<void> {
+  ): Promise<string> {
     const [watermark, floor] = await Promise.all([
       this.coldWatermark(dataset),
       this.cold.pruneFloor(dataset),
@@ -736,12 +781,29 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     });
 
     const boundary = AnalyticsBuckets.day(before);
-    const rows: AnalyticsRow[] = [];
+    const rows: Array<AnalyticsRow & { hour: string }> = [];
+    const skipped = new Map<string, { rows: number; values: Set<string> }>();
     for (const row of result.rows) {
       const hour = String(row.hour);
       if (watermark && this.isForwarded(hour, watermark)) continue;
       if (floor && AnalyticsBuckets.day(hour) < floor) continue;
       if (AnalyticsBuckets.day(hour) >= boundary) continue;
+
+      const undecodable = dimensions.find(
+        (name) => !dataset.dimensions.shape[name].safeParse(row[name]).success,
+      );
+      if (undecodable) {
+        const entry = skipped.get(undecodable) ?? {
+          rows: 0,
+          values: new Set<string>(),
+        };
+        entry.rows++;
+        if (entry.values.size < 5) {
+          entry.values.add(JSON.stringify(row[undecodable]));
+        }
+        skipped.set(undecodable, entry);
+        continue;
+      }
 
       const forwarded: Record<string, string | number> & { hour: string } = {
         hour,
@@ -753,8 +815,61 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       rows.push(forwarded);
     }
 
-    if (rows.length === 0) return;
-    await this.cold.record(dataset, rows);
+    if (skipped.size > 0) {
+      this.log.warn(
+        `Skipped Analytics Engine rows of '${dataset.name}' that do not decode against its dimensions`,
+        {
+          dimensions: Object.fromEntries(
+            [...skipped].map(([name, entry]) => [
+              name,
+              { rows: entry.rows, values: [...entry.values] },
+            ]),
+          ),
+        },
+      );
+    }
+
+    if (rows.length === 0) return before;
+
+    rows.sort((a, b) => (a.hour < b.hour ? -1 : a.hour > b.hour ? 1 : 0));
+    const until = this.forwardBudgetDay(rows) ?? before;
+    const batch =
+      until === before
+        ? rows
+        : rows.filter((row) => AnalyticsBuckets.day(row.hour) < until);
+
+    await this.cold.record(dataset, batch);
+    return until;
+  }
+
+  /**
+   * The first day of `rows` (sorted by hour) that would take one forward
+   * past {@link maxForwardRows}, or `undefined` when they all fit. Never
+   * the first day itself: a day bigger than the whole budget still goes, on
+   * its own, or the dataset could never get past it.
+   */
+  protected forwardBudgetDay(
+    rows: ReadonlyArray<{ hour: string }>,
+  ): string | undefined {
+    let taken = 0;
+    let index = 0;
+    while (index < rows.length) {
+      const day = AnalyticsBuckets.day(rows[index].hour);
+      let end = index;
+      while (
+        end < rows.length &&
+        AnalyticsBuckets.day(rows[end].hour) === day
+      ) {
+        end++;
+      }
+      const size = end - index;
+      if (taken > 0 && taken + size > this.maxForwardRows) {
+        return day;
+      }
+      taken += size;
+      index = end;
+    }
+    return undefined;
   }
 
   /**
