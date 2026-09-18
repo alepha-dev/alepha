@@ -39,8 +39,9 @@ resolves against `/api/_links`, which is built only from actions the server
 actually registered.
 
 ```tsx
-class LoreAccountRouter {
-  protected readonly invitationApi = $client<InvitationController>();
+class OrganizationAccountRouter {
+  protected readonly invitationApi =
+    $client<OrganizationInvitationController>();
 
   invitations = $pageAccount({
     path: "/invitations",
@@ -53,11 +54,11 @@ class LoreAccountRouter {
       // `React.createElement` and breaks migration generation for the
       // whole app - far from the icon that caused it.
       icon: createElement(Mail),
-      group: "Lore",
+      group: "Organizations",
       order: 100,
     },
-    can: () => this.invitationApi.listMyInvitations.can(),
-    lazy: () => import("./MyInvitations.tsx"),
+    can: () => this.invitationApi.getMyOrganizationInvitations.can(),
+    component: MyOrganizationInvitations,
   });
 }
 ```

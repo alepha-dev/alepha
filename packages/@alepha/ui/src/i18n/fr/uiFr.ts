@@ -1146,4 +1146,27 @@ export const uiFr: Record<string, string> = {
   "organizations.members.removed": "Membre retiré",
   "organizations.members.removeTitle": "Retirer $1 ?",
   "organizations.members.title": "Membres",
+  "organizations.invitations.accept": "Accepter",
+  "organizations.invitations.accepted": "Invitation acceptée",
+  "organizations.invitations.actions": "Actions de l'invitation",
+  "organizations.invitations.decline": "Refuser",
+  "organizations.invitations.declined": "Invitation refusée",
+  "organizations.invitations.email": "E-mail",
+  "organizations.invitations.emailRequired": "Saisissez une adresse e-mail",
+  "organizations.invitations.empty":
+    "Vous n'avez aucune invitation en attente.",
+  "organizations.invitations.expires": "Expire",
+  "organizations.invitations.invite": "Inviter un membre",
+  "organizations.invitations.inviteTitle": "Inviter un membre",
+  "organizations.invitations.myDescription":
+    "Organisations qui vous ont invité à les rejoindre.",
+  "organizations.invitations.myTitle": "Invitations",
+  "organizations.invitations.pending": "En attente",
+  "organizations.invitations.revoke": "Révoquer",
+  "organizations.invitations.revokeDescription":
+    "Le lien d'invitation cessera immédiatement de fonctionner.",
+  "organizations.invitations.revoked": "Invitation révoquée",
+  "organizations.invitations.revokeTitle": "Révoquer l'invitation de $1 ?",
+  "organizations.invitations.send": "Envoyer l'invitation",
+  "organizations.invitations.sent": "Invitation envoyée à $1",
 };

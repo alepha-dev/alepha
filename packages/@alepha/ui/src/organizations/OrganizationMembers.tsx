@@ -1,5 +1,6 @@
 import type {
   MemberController,
+  OrganizationInvitationController,
   OrganizationMemberResource,
   OrganizationRankController,
   OrganizationRankResource,
@@ -7,7 +8,7 @@ import type {
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { LogOut, MoreHorizontal, Trash2, Users } from "lucide-react";
+import { LogOut, MoreHorizontal, Plus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
@@ -22,8 +23,10 @@ import {
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { settingsCardEdge } from "../settings/settingsCardEdge.ts";
+import { OrganizationInviteDialog } from "./OrganizationInviteDialog.tsx";
 import { OrganizationMemberIdentity } from "./OrganizationMemberIdentity.tsx";
 import { OrganizationMemberRankPicker } from "./OrganizationMemberRankPicker.tsx";
+import { OrganizationPendingInvitations } from "./OrganizationPendingInvitations.tsx";
 
 export interface OrganizationMembersProps {
   organizationId: string;
@@ -34,12 +37,16 @@ export interface OrganizationMembersProps {
 export const OrganizationMembers = (props: OrganizationMembersProps) => {
   const membersApi = useClient<MemberController>();
   const ranksApi = useClient<OrganizationRankController>();
+  const invitationsApi = useClient<OrganizationInvitationController>();
   const auth = useAuth();
   const dialog = useDialog();
   const toaster = useToast();
   const { tr } = useI18n();
   const [rankBusy, setRankBusy] = useState(false);
+  const [invitationBusy, setInvitationBusy] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const canManage = props.can("member:manage");
+  const canInvite = props.can("invitation:create");
 
   const membersQuery = useQuery(
     {
@@ -62,6 +69,18 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
       onError: () => {},
     },
     [ranksApi, props.organizationId, canManage],
+  );
+  const invitationsQuery = useQuery(
+    {
+      key: ["organization-invitations", props.organizationId],
+      enabled: canManage,
+      handler: () =>
+        invitationsApi.getOrganizationInvitations({
+          params: { organizationId: props.organizationId },
+        }),
+      onError: () => {},
+    },
+    [invitationsApi, props.organizationId, canManage],
   );
 
   const remove = useAction<[OrganizationMemberResource], void>(
@@ -135,9 +154,14 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
 
   const members = membersQuery.data ?? [];
   const ranks = (ranksQuery.data?.items ?? []) as OrganizationRankResource[];
+  const invitations = invitationsQuery.data ?? [];
   const mine = members.find((member) => member.userId === auth.user?.id);
   const busy =
-    membersQuery.loading || remove.loading || leave.loading || rankBusy;
+    membersQuery.loading ||
+    remove.loading ||
+    leave.loading ||
+    rankBusy ||
+    invitationBusy;
 
   return (
     <section className="relative flex flex-col gap-3" aria-busy={busy}>
@@ -155,17 +179,32 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
           </span>
           <Badge variant="secondary">{members.length}</Badge>
         </div>
-        {mine && mine.rank !== "owner" && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={() => void leave.run()}
-          >
-            <LogOut className="size-3.5" />
-            {tr("organizations.members.leave", { default: "Leave" })}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canInvite && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => setInviteOpen(true)}
+            >
+              <Plus className="size-3.5" />
+              {tr("organizations.invitations.invite", {
+                default: "Invite member",
+              })}
+            </Button>
+          )}
+          {mine && mine.rank !== "owner" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void leave.run()}
+            >
+              <LogOut className="size-3.5" />
+              {tr("organizations.members.leave", { default: "Leave" })}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -222,7 +261,28 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
             </CardContent>
           </Card>
         ))}
+        {canManage && (
+          <OrganizationPendingInvitations
+            organizationId={props.organizationId}
+            invitations={invitations}
+            ranks={ranks}
+            onBusyChange={setInvitationBusy}
+            onRevoked={async () => {
+              await invitationsQuery.refetch();
+            }}
+          />
+        )}
       </div>
+      <OrganizationInviteDialog
+        organizationId={props.organizationId}
+        ranks={ranks}
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        onBusyChange={setInvitationBusy}
+        onInvited={async () => {
+          if (canManage) await invitationsQuery.refetch();
+        }}
+      />
     </section>
   );
 };
