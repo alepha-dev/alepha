@@ -9,6 +9,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { DashboardController } from "@/api/controllers/DashboardController.ts";
+import { appInstances } from "@/api/entities/appInstances.ts";
 import { blights } from "@/api/entities/blights.ts";
 import { dashboardCards } from "@/api/entities/dashboardCards.ts";
 import { dashboardSettings } from "@/api/entities/dashboardSettings.ts";
@@ -36,6 +37,7 @@ import {
 import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 class ResolveTestRepositories {
+  instances = $repository(appInstances);
   sigils = $repository(sigils);
   blights = $repository(blights);
   errorGroups = $repository(sigilErrorGroups);
@@ -1164,6 +1166,12 @@ describe("dashboard resolve", () => {
     it("reports yesterday against the day before", async ({ expect }) => {
       const { user, project } = await memberOf(ctx);
       const docs = await createSigil(ctx, project, "docs", ["beacon"]);
+      await ctx.repos.instances.create({
+        projectId: project.id,
+        app: "docs",
+        env: "production",
+        sigilId: docs.id,
+      });
 
       for (const visitorHash of ["a", "b", "c", "d", "e"]) {
         await ctx.repos.uniques.create({
@@ -1206,8 +1214,79 @@ describe("dashboard resolve", () => {
       });
       expect(values[0]?.link).toEqual({
         route: "appAnalytics",
-        params: { projectSlug: project.slug, appName: "docs" },
+        params: {
+          projectSlug: project.slug,
+          app: "docs",
+          env: "production",
+        },
       });
+    });
+
+    it("links the selected sigil to its exact environment", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const production = await createSigil(ctx, project, "docs/production", [
+        "beacon",
+      ]);
+      const staging = await createSigil(ctx, project, "docs/staging", [
+        "beacon",
+      ]);
+      await ctx.repos.instances.create({
+        projectId: project.id,
+        app: "docs",
+        env: "production",
+        sigilId: production.id,
+      });
+      await ctx.repos.instances.create({
+        projectId: project.id,
+        app: "docs",
+        env: "staging",
+        sigilId: staging.id,
+      });
+
+      await only(ctx, user, [
+        {
+          metric: "uniqueVisitors",
+          scope: { kind: "apps", sigilIds: [staging.id] },
+        },
+      ]);
+      const { values } = await ctx.controller.resolveCards(
+        { body: {} },
+        { user },
+      );
+
+      expect(values[0]?.link?.params).toEqual({
+        projectSlug: project.slug,
+        app: "docs",
+        env: "staging",
+      });
+    });
+
+    it("keeps the value but omits the link without an app instance", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const docs = await createSigil(ctx, project, "legacy-docs", ["beacon"]);
+      await ctx.repos.uniques.create({
+        sigilId: docs.id,
+        day: dayUtc(ctx, 1),
+        visitorHash: "visitor",
+      });
+
+      await only(ctx, user, [
+        {
+          metric: "uniqueVisitors",
+          scope: { kind: "apps", sigilIds: [docs.id] },
+        },
+      ]);
+      const { values } = await ctx.controller.resolveCards(
+        { body: {} },
+        { user },
+      );
+
+      expect(values[0]?.value).toBe(1);
+      expect(values[0]?.link).toBeUndefined();
     });
 
     it("says 'no beacon app' rather than zero when nothing reports", async ({

@@ -66,7 +66,8 @@ export interface DashboardCardLink {
  */
 export interface DashboardCardTarget {
   projectSlug?: string;
-  appName?: string;
+  app?: string;
+  env?: string;
   /**
    * The epic's per-project `number`, for an `epic` scope.
    *
@@ -477,12 +478,13 @@ export class DashboardMetricCatalog {
        * is not clickable, which is the honest answer.
        */
       link: (_scope, target) =>
-        target.projectSlug && target.appName
+        target.projectSlug && target.app && target.env
           ? {
               route: "appAnalytics",
               params: {
                 projectSlug: target.projectSlug,
-                appName: target.appName,
+                app: target.app,
+                env: target.env,
               },
             }
           : undefined,

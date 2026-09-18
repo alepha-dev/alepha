@@ -45,7 +45,8 @@ describe("dashboard drill-through links", () => {
    */
   const params = {
     projectSlug: "sds",
-    appName: "docs",
+    app: "docs",
+    env: "production",
     epicNumber: "46",
     releaseTag: "0.28.0",
     tag: "need-answer",
@@ -60,7 +61,8 @@ describe("dashboard drill-through links", () => {
         { kind: "all" },
         {
           projectSlug: params.projectSlug,
-          appName: params.appName,
+          app: params.app,
+          env: params.env,
           epicNumber: Number(params.epicNumber),
           releaseTag: params.releaseTag,
           tag: params.tag,
@@ -159,13 +161,34 @@ describe("dashboard drill-through links", () => {
     );
   });
 
+  it("opens analytics for the exact app environment", ({ expect }) => {
+    const link = catalog
+      .get("uniqueVisitors")
+      .link(
+        { kind: "apps", sigilIds: ["sigil"] },
+        { projectSlug: "alepha", app: "docs", env: "production" },
+      );
+
+    expect(link).toEqual({
+      route: "appAnalytics",
+      params: {
+        projectSlug: "alepha",
+        app: "docs",
+        env: "production",
+      },
+    });
+    expect(router.path(link!.route, { params: link!.params })).toBe(
+      "/alepha/apps/docs/production/analytics",
+    );
+  });
+
   it("gives no link at all when the target does not exist", ({ expect }) => {
-    // Better no link than a 404. The visitors tile needs an app name, and a
-    // project with no beacon-carrying app cannot supply one.
+    // Better no link than a 404. The visitors tile needs both halves of an
+    // app instance, and a missing environment cannot name a destination.
     expect(
       catalog
         .get("uniqueVisitors")
-        .link({ kind: "all" }, { projectSlug: "sds" }),
+        .link({ kind: "all" }, { projectSlug: "sds", app: "docs" }),
     ).toBeUndefined();
     expect(
       catalog.get("activeQuests").link({ kind: "all" }, {}),

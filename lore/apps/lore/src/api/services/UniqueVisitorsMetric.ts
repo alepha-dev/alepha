@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { appInstances } from "../entities/appInstances.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";
@@ -45,6 +46,7 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
   readonly metric = "uniqueVisitors";
 
   protected readonly sigils = $repository(sigils);
+  protected readonly instances = $repository(appInstances);
   protected readonly visitors = $inject(DailyVisitorsService);
   protected readonly catalog = $inject(DashboardMetricCatalog);
 
@@ -82,6 +84,12 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
     const project = entry.scope.projects.find(
       (it) => it.id === beacons[0]!.projectId,
     );
+    const instance = await this.instances.findOne({
+      where: {
+        projectId: { eq: beacons[0]!.projectId },
+        sigilId: { eq: beacons[0]!.id },
+      },
+    });
 
     return {
       value: daily.uniqueVisitors,
@@ -95,7 +103,8 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
       // cross-app analytics page, and "somewhere real" beats "not clickable".
       link: this.catalog.get(this.metric).link(entry.card.scope, {
         projectSlug: project?.slug,
-        appName: beacons[0]!.name,
+        app: instance?.app,
+        env: instance?.env,
       }),
     };
   }
