@@ -17,11 +17,17 @@ class TestJobProvider extends JobProvider {
   public testTrimRingBuffers = this.trimRingBuffers.bind(this);
 }
 
-const boot = () =>
-  Alepha.create()
+const boot = () => {
+  const alepha = Alepha.create()
     .with({ provide: JobProvider, use: TestJobProvider })
     .with(AlephaOrmPostgres)
     .with(AlephaApiJobs);
+
+  // Pause before start so cron jobs never arm timers against the wall clock.
+  alepha.inject(DateTimeProvider).pause();
+
+  return alepha;
+};
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
