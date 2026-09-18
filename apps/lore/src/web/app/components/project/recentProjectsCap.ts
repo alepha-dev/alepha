@@ -1,25 +1,25 @@
 /**
- * How many projects the summary surfaces show before deferring to the full
- * list at `/account/projects`.
+ * How many projects `ProjectSwitcher` lists before deferring to the full list
+ * at `/account/projects`.
  *
- * One constant because the dashboard's rail and `ProjectSwitcher` must agree:
- * they are two views of the same "your recent projects" idea, and a reader who
- * counts five in one and six in the other learns that one of them is lying
- * about what "recent" means.
- *
- * It used to be Home's project card that made the first of those two. Home
- * hands that job to the dashboard for anyone who has projects at all, and
- * shows the hero to everyone else.
+ * ⚠️ **It has one reader now.** It used to be shared with the landing page's
+ * rail and the inline list beside it, and the argument for a single constant
+ * was that the three had to agree: they were views of one "your recent
+ * projects" idea, and a reader who counted ten in one and eleven in another
+ * learned that one of them was lying about what "recent" means. The landing
+ * page is a table of every project, paged, so there is nothing left to
+ * disagree with. The constant stays because the switcher still truncates and
+ * the reasoning below still applies to it.
  *
  * ⚠️ This is a DISPLAY cap only. It must never be pushed down into
  * `getHomeOverview` or into `userProjectsAtom`, whose contract is the COMPLETE
  * membership list — `Spotlight` filters that array client-side to search
  * projects by name, so a truncated atom would quietly reduce ⌘K to finding
- * whichever five sorted highest. The atom's own docstring records that it was
+ * whichever ten sorted highest. The atom's own docstring records that it was
  * a top-N sample once and that the cap was removed for exactly this reason.
  *
  * Slicing here costs nothing: the array is already in memory, already ordered
- * most-recently-updated first by `getHomeOverview`, so neither surface pays a
- * request for its five.
+ * most-recently-updated first by `getHomeOverview`, so the menu pays no
+ * request for its ten.
  */
-export const RECENT_PROJECTS_CAP = 5;
+export const RECENT_PROJECTS_CAP = 10;

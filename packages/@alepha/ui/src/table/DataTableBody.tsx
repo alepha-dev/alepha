@@ -37,6 +37,7 @@ export interface DataTableBodyProps<T> {
   rowCtx: RowActionContext;
   rowActions?: (item: T) => RowActionEntry<T>[];
   onRowClick?: (item: T) => void;
+  onRowHover?: (item: T | undefined) => void;
   empty?: ReactNode;
   emptyMessage?: string;
   emptyState?: DataTableEmptyState;
@@ -154,6 +155,11 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
             <TableRow
               key={key}
               onClick={() => props.onRowClick?.(item)}
+              // Per row, both halves. Moving from one row to the next fires
+              // the old row's `mouseleave` BEFORE the new row's `mouseenter`,
+              // so the clear can never wipe the value the enter just set.
+              onMouseEnter={() => props.onRowHover?.(item)}
+              onMouseLeave={() => props.onRowHover?.(undefined)}
               className={cn(
                 // Stays: the global cursor rule in `styles.css` covers
                 // controls and menu items, and a `<tr>` is neither. It

@@ -33,10 +33,10 @@ const ProjectSwitcher = () => {
   const projects = overview?.projects ?? [];
   const canCreate = overview?.canCreate ?? true;
   const maxProjects = overview?.maxProjects;
-  // The five most recently updated, matching Home — NOT the first five
+  // The ten most recently updated — NOT the first ten
   // alphabetically. This list used to be sorted by title, which is right for a
   // complete list (you scan it for a name you know) and wrong for a truncated
-  // one: capping an alphabetical sort answers "which five come first in the
+  // one: capping an alphabetical sort answers "which ten come first in the
   // alphabet", a question nobody asked, and hides everything from S onwards
   // forever.
   const byRecency = [...projects].sort((a, b) =>
@@ -46,8 +46,8 @@ const ProjectSwitcher = () => {
   // The project you are LOOKING AT has to be in the menu, or the switcher
   // shows no checkmark and reads as though you are nowhere. `updatedAt` moves
   // when a project is edited, not when it is visited, so an old project you
-  // are actively browsing genuinely can sit outside the top five. Swap it in
-  // for the least-recent of them rather than appending, so the cap stays five.
+  // are actively browsing genuinely can sit outside the top ten. Swap it in
+  // for the least-recent of them rather than appending, so the cap stays ten.
   if (!recent.some((it) => it.id === project.id)) {
     const current = byRecency.find((it) => it.id === project.id);
     if (current) recent.splice(RECENT_PROJECTS_CAP - 1, 1, current);

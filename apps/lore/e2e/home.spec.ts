@@ -6,20 +6,26 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Home is the only SSR'd route, and a signed-in visitor with projects gets
- * the dashboard there. Its standfirst says "Refreshed <relative time>", which
- * `fromNow()` computes relative to now — so it mismatches between the server
- * render and client hydration (clock drift / unit boundary) → React #418. The
- * fix is the same one Home's project list used to carry: `<ClientOnly>`, so
- * the relative time never appears in the server HTML.
+ * Home is the only SSR'd route, and a signed-in visitor with projects gets the
+ * board there: the rows come from the bootstrap atom, so the table IS in the
+ * server HTML, and its Last activity column is a relative time.
+ *
+ * A relative time computed with `fromNow()` mismatches between the server
+ * render and client hydration (clock drift, or a unit boundary crossed between
+ * the two) → React #418. `TimeAgo` is what avoids it: the absolute form is
+ * what it renders on the server, and the relative one appears after hydration.
  *
  * The mismatch itself is timing-dependent (it only fires on a unit boundary),
  * so a "no console error" check would be a false green. This asserts the
  * deterministic mechanism instead: the relative time is NOT server-rendered
  * but DOES appear after hydration.
+ *
+ * ⚠️ It used to assert the same thing about the dashboard header's "Refreshed
+ * <time>" standfirst. That board is gone; the hazard it guarded is not, and it
+ * now sits in a column on every row.
  */
 test.describe("Home (SSR)", () => {
-  test("the relative 'refreshed' time is client-only, not in the SSR HTML", async ({
+  test("relative times are client-only, not in the SSR HTML", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -35,17 +41,17 @@ test.describe("Home (SSR)", () => {
     // shares the browser context's session cookie).
     const html = await (await page.request.get("/")).text();
 
-    // The rail IS server-rendered (the project title is in the SSR HTML)...
+    // The table IS server-rendered (the project title is in the SSR HTML)...
     expect(html).toContain(projectTitle);
-    // ...but no relative time is. A dashboard resolved seconds ago reads as
-    // "a few seconds ago" / "a minute ago".
+    // ...but no relative time is. A project touched seconds ago reads as "a
+    // few seconds ago" / "a minute ago" once the client has it.
     expect(html).not.toContain("seconds ago");
     expect(html).not.toContain("minute ago");
 
     // After hydration it appears client-side.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/refreshed .*ago/i).first()).toBeVisible({
+    await expect(page.getByText(/ago$/i).first()).toBeVisible({
       timeout: 15_000,
     });
   });
@@ -64,14 +70,6 @@ test.describe("Home (SSR)", () => {
  * Every register spec navigates straight to `/auth/register`, so none of them
  * exercised the transition. This one clicks the button a signed-out visitor
  * actually clicks.
- */
-/**
- * The dashboard's rail and the project switcher show five projects;
- * everything else lives at `/account/projects`.
- *
- * Six is the fixture on purpose — the smallest number that truncates. With
- * five the "see all" link must NOT appear, and a test built on five would pass
- * against a cap that had silently stopped working.
  */
 test.describe("Home (mobile chrome)", () => {
   test("a phone header keeps the work controls and drops the settings ones", async ({
@@ -136,61 +134,222 @@ test.describe("Home (mobile chrome)", () => {
   });
 });
 
-test.describe("Home (recent projects cap)", () => {
-  test("caps at five, and the rest are on the account page", async ({
+/**
+ * The landing page itself: the table of projects, the bars beside them, and
+ * the activity panel that narrows to the row under the pointer.
+ *
+ * Three things here cannot be covered anywhere else.
+ *
+ * **The bars are one request, the rows are another.** The rows come from the
+ * bootstrap atom and the bars from `getHomeBoard`, so a page that renders its
+ * rows proves nothing about the aggregate behind them.
+ *
+ * **Hovering filters.** It is pointer state feeding a sibling panel, which no
+ * unit spec can see.
+ *
+ * **Below `lg` the panel goes and the table stays.** #1754, from feedback
+ * #2084 on Chrome/Android at 412x924: the landing page had no way to reach a
+ * project at all, because the one surface carrying the list was `lg:flex`.
+ * The table is the list now and it is not breakpoint-gated, which is what
+ * these two widths pin.
+ */
+test.describe("Home (board)", () => {
+  test("lists projects, draws momentum, and narrows the panel on hover", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `board${t}@example.com`, "BoardTest123!");
+
+    // The first goes through the wizard because that is what creates the
+    // session's project context; the rest go through the API, which is far
+    // cheaper than three more wizard runs.
+    const { slug: firstSlug } = await createProjectViaWizard(
+      page,
+      `Board${t}`.slice(0, 20),
+    );
+    await apiPost(page, "createProject", {
+      title: `Quiet${t}`.slice(0, 20),
+    });
+    const busy = await apiPost<{ id: number }>(page, "createProject", {
+      title: `Busy${t}`.slice(0, 20),
+    });
+    // Three writes in one project and none in the other, so the momentum
+    // column has something to tell apart and the panel has rows to filter.
+    for (let i = 0; i < 3; i++) {
+      await apiPost(page, "createQuest", {
+        projectId: busy.id,
+        title: `Busy quest ${i + 1}`,
+        area: "general",
+        priority: "medium",
+      });
+    }
+
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const table = page.getByRole("table");
+    await expect(
+      table.getByRole("row").filter({ hasText: `Busy${t}`.slice(0, 20) }),
+    ).toBeVisible({ timeout: 15_000 });
+    // Three projects and the header row.
+    await expect(table.getByRole("row")).toHaveCount(4);
+
+    // The open-quest count is the project's own, not the account's.
+    const busyRow = table
+      .getByRole("row")
+      .filter({ hasText: `Busy${t}`.slice(0, 20) });
+    await expect(busyRow).toContainText("3 quests");
+
+    // The bars come from `getHomeBoard`, so this is the aggregate's assertion:
+    // the label names the window and the count the query returned.
+    await expect(
+      busyRow.getByRole("img", { name: /events over the last 14 days/i }),
+    ).toBeVisible();
+
+    const panel = page.getByTestId("home-activity");
+    await expect(panel).toBeVisible();
+    // Every project's events, before any hover.
+    await expect(panel).toContainText("create");
+
+    // Hovering the quiet project leaves its own lines only, and it has none:
+    // it was created through an app-layer event, which is not project-scoped.
+    const quietRow = table
+      .getByRole("row")
+      .filter({ hasText: `Quiet${t}`.slice(0, 20) });
+    await quietRow.hover();
+    await expect(panel).toContainText(/nothing recent/i);
+
+    // And back: the pointer leaving a row restores the whole feed.
+    await page.mouse.move(0, 0);
+    await expect(panel).toContainText("create");
+
+    // A row is a link to its project, which is the page's primary job.
+    await table
+      .getByRole("row")
+      .filter({ hasText: `Board${t}`.slice(0, 20) })
+      .click();
+    await page.waitForURL(`**/${firstSlug}**`, { timeout: 15_000 });
+  });
+
+  test("keeps the table below lg and drops the activity panel", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `land${t}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(page, `LD${t}`.slice(0, 20));
+
+    const panel = page.getByTestId("home-activity");
+
+    // ⚠️ 768 is asserted alongside 412 on purpose. The panel hides at `lg`
+    // (1024) while `useIsMobile` flips at 767, so anything hung off
+    // `useIsMobile` would leave 768-1023 in neither state - the same bug in a
+    // narrower band, found months later.
+    for (const width of [412, 768]) {
+      await page.setViewportSize({ width, height: 924 });
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+
+      await expect(
+        page.getByRole("row").filter({ hasText: `LD${t}` }),
+        `no project row at ${width}px`,
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(
+        panel,
+        `the panel should be hidden at ${width}px`,
+      ).toBeHidden();
+    }
+
+    // And the point of all of it: a project is one tap away.
+    await page
+      .getByRole("row")
+      .filter({ hasText: `LD${t}` })
+      .click();
+    await page.waitForURL(`**/${slug}**`, { timeout: 15_000 });
+
+    // At `lg` the panel is back.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+/**
+ * The switcher's own cap, which is the last one left: the landing page lists
+ * every project and pages them, so `RECENT_PROJECTS_CAP` narrows the switcher
+ * menu alone.
+ *
+ * Eleven is the fixture on purpose - the smallest number that truncates a cap
+ * of ten. A test built on ten would pass against a cap that had stopped
+ * working.
+ */
+test.describe("Home (switcher cap)", () => {
+  test("caps the switcher at ten and keeps the project you are looking at", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
 
     const t = Date.now();
     await registerAndVerify(page, `cap${t}@example.com`, "CapTest123!");
 
-    // The first goes through the wizard because that is what creates the
-    // session's project context; the rest go through the API, which is far
-    // cheaper than five more wizard runs and is what the count needs.
     const { slug: firstSlug } = await createProjectViaWizard(
       page,
       `Cap${t}`.slice(0, 20),
     );
-    for (const title of ["Atlas", "Beacon", "Cinder", "Drift", "Ember"]) {
+    for (const title of [
+      "Atlas",
+      "Beacon",
+      "Cinder",
+      "Drift",
+      "Ember",
+      "Forge",
+      "Gale",
+      "Harbor",
+      "Ingot",
+      "Jetty",
+    ]) {
       await apiPost(page, "createProject", {
         title: `${title}${t}`.slice(0, 20),
       });
     }
 
+    // The landing page lists every one of them: no cap, and the footer counts
+    // what the table holds.
     await page.goto("/");
-    await expect(page.getByTestId("dashboard-rail-see-all")).toBeVisible({
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("table").getByRole("row")).toHaveCount(12, {
       timeout: 15_000,
     });
-    // Five rows, not six — the assertion the whole feature exists for.
-    await expect(page.getByTestId("dashboard-rail-project")).toHaveCount(5);
 
-    await page.getByTestId("dashboard-rail-see-all").click();
-    await page.waitForURL("**/account/projects", { timeout: 15_000 });
-    await expect(page.getByTestId("account-project-row")).toHaveCount(6);
+    await page.goto("/account/projects");
+    await expect(page.getByTestId("account-project-row")).toHaveCount(11);
 
     // Every one of them was created by this account, so every row says Owner.
-    // The badge is derived from `createdBy`, so a page that rendered no badge
-    // at all would still pass a bare row count.
+    // The badge is derived from the member rank, so a page that rendered no
+    // badge at all would still pass a bare row count.
     await expect(page.getByText("Owner").first()).toBeVisible();
 
     /*
      * Feedback #P2146: the quota was only ever shown as a refusal, so a
      * reader met the number at the moment it stopped them.
      *
-     * ⚠️ Six OWNED, and this account owns all six - which is exactly why
-     * the assertion names the number rather than just the element: a
-     * counter reading `projects.length` would also say 6 here and would be
+     * ⚠️ Eleven OWNED, and this account owns all eleven - which is exactly
+     * why the assertion names the number rather than just the element: a
+     * counter reading `projects.length` would also say 11 here and would be
      * wrong the moment somebody is invited to a project they do not own.
      * The limit is 100 since #Q2013.
      */
     await expect(page.getByTestId("project-quota")).toHaveText(
-      "6 of 100 projects owned",
+      "11 of 100 projects owned",
     );
 
-    // The switcher caps too, and always keeps the project you are looking at.
-    // `firstSlug` is the LEAST recently updated of the six (it was created
-    // first), so it is exactly the case that falls outside the top five — open
+    // The switcher caps, and always keeps the project you are looking at.
+    // `firstSlug` is the LEAST recently updated of the eleven (it was created
+    // first), so it is exactly the case that falls outside the top ten - open
     // its switcher and it must still be listed, or the checkmark disappears
     // and the menu reads as though you are nowhere.
     await page.goto(`/${firstSlug}/`);
@@ -203,12 +362,12 @@ test.describe("Home (recent projects cap)", () => {
     ).toBeVisible();
 
     // Every project row is a real anchor pointing at that project's slug, not
-    // a button with an onClick — the difference is invisible on a plain click
+    // a button with an onClick - the difference is invisible on a plain click
     // and is the whole affordance on shift/⌘/middle-click (Lore feedback #61).
     // Asserted on a row that is NOT the active one, so a fix that special-cased
     // the current project would not pass.
     await expect(
-      page.getByRole("menuitem").filter({ hasText: `Ember${t}`.slice(0, 20) }),
+      page.getByRole("menuitem").filter({ hasText: `Jetty${t}`.slice(0, 20) }),
     ).toHaveAttribute("href", /^\/[a-z0-9-]+$/);
   });
 });

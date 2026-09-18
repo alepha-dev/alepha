@@ -112,6 +112,19 @@ export interface DataTableBaseProps<
    */
   onRowClick?: (item: T) => void;
   /**
+   * Pointer handler invoked with the row under the pointer, and with
+   * `undefined` when the pointer leaves the body.
+   *
+   * For a surface BESIDE the table that narrows to the row being pointed at:
+   * Lore's landing page filters its activity panel this way. It is not a
+   * selection and it must not drive one - the pointer leaves on its own, and
+   * anything that survives that should be a click.
+   *
+   * ⚠️ Pointer only, so whatever it drives has to be reachable another way:
+   * a keyboard reader never fires it, and neither does a touch reader.
+   */
+  onRowHover?: (item: T | undefined) => void;
+  /**
    * Auto-refresh interval in ms (only when document is visible).
    *
    * Meaningless in static-data mode — there is no request to repeat, and a

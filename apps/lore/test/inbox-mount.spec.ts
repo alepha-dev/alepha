@@ -7,11 +7,19 @@ import { describe, it } from "vitest";
  * Where the bell may be mounted, asserted against the source.
  *
  * ⚠️ **This is the only thing standing between the owner's ruling and a
- * later tidy-up.** The bell renders in the project shell only - no
- * `/account`, no `/admin` - and the natural refactor is to "unify" it into
- * `AppActions` with the other four icons. That component's whole argument is
- * that it holds the ambient controls EVERY signed-in surface carries and has
- * no `show` props; a bell there would be on two shells it was ruled off.
+ * later tidy-up.** The bell renders on the project shell and on the landing
+ * page - never on `/account`, never on `/admin` - and the natural refactor is
+ * to "unify" it into `AppActions` with the other four icons. That component's
+ * whole argument is that it holds the ambient controls EVERY signed-in surface
+ * carries and has no `show` props; a bell there would be on two shells it was
+ * ruled off.
+ *
+ * ⚠️ The landing page is the SECOND mount, and it is new: the rule was "the
+ * project shell only" until the owner specified a bell in the home header
+ * alongside the ambient controls. It is `ButtonInbox` directly rather than
+ * `ProjectInboxButton`, which needs a current project for its "see all" link;
+ * home sends that link to the account's notifications page instead. The count
+ * behind both is cross-project and always was.
  *
  * A source scan rather than a render test because the failure mode is a
  * moved import, and `app-routes.spec.ts` already sets the precedent for
@@ -51,7 +59,9 @@ const filesMentioning = (root: string, needle: string | RegExp): string[] =>
   });
 
 describe("where the inbox bell is mounted", () => {
-  it("is imported by exactly one Lore component", ({ expect }) => {
+  it("is imported by exactly the two components allowed to mount it", ({
+    expect,
+  }) => {
     // The bell is one name in a module every shell imports, so the needle is
     // the name inside an import of `@alepha/ui/shell`, not the specifier.
     const importers = filesMentioning(
@@ -59,9 +69,12 @@ describe("where the inbox bell is mounted", () => {
       /import\s*\{[^}]*\bButtonInbox\b[^}]*\}\s*from\s*"@alepha\/ui\/shell"/,
     ).map((path) => path.slice(SRC.length + 1));
 
-    expect(importers).toEqual([
-      join("web", "app", "components", "project", "ProjectInboxButton.tsx"),
-    ]);
+    expect(importers.sort()).toEqual(
+      [
+        join("web", "app", "components", "home", "HomeHeader.tsx"),
+        join("web", "app", "components", "project", "ProjectInboxButton.tsx"),
+      ].sort(),
+    );
   });
 
   it("is rendered by ProjectView and by nothing else", ({ expect }) => {
