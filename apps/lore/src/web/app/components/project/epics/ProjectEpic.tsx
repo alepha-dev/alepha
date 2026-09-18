@@ -9,7 +9,14 @@ import {
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  History,
+  Pencil,
+  Swords,
+  Workflow,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -23,6 +30,7 @@ import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import ProjectActivityPage from "../activity/ProjectActivityPage.tsx";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -37,7 +45,7 @@ export interface ProjectEpicProps {
   epic: EpicResource;
 }
 
-type TabKey = "overview" | "quests" | "flow" | "folios";
+type TabKey = "overview" | "quests" | "flow" | "folios" | "activity";
 
 /**
  * The Epic detail page (route `projectEpic`, `/epics/:epicNumber`), composed
@@ -339,6 +347,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       label: tr("epic.tab.folios"),
       count: folios?.length,
     },
+    {
+      value: "activity",
+      icon: History,
+      label: tr("epic.tab.activity"),
+    },
   ];
 
   return (
@@ -442,6 +455,13 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           busy={busy}
           onAttach={(folioId) => void attachFolioAction.run(folioId)}
           onDetach={(folio) => void detachFolioAction.run(folio)}
+        />
+      )}
+
+      {tab === "activity" && (
+        <ProjectActivityPage
+          resource={{ type: "epic", id: String(epic.number) }}
+          persistenceKey={`lor.activity.${project.id}.epic.${epic.number}`}
         />
       )}
 

@@ -657,6 +657,12 @@ export class ProjectController {
          */
         action: z.text().optional(),
         /**
+         * The resource identity inside the project scope. Epic pages use the
+         * per-project epic number, which is what their audit rows record.
+         */
+        resourceType: z.text().optional(),
+        resourceId: z.text().optional(),
+        /**
          * Exclusive lower bound on the stamp, for MCP's cursor. The page does
          * not use it - a table pages rather than windows.
          *

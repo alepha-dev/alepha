@@ -73,7 +73,7 @@ const setup = async () => {
       body: {
         title: "Test",
         capabilities: [
-          { key: "work" },
+          { key: "work", options: { epics: true, releases: true } },
           { key: "knowledge" },
           { key: "support" },
         ],
@@ -375,6 +375,53 @@ describe("Lore MCP: project_activity", () => {
 });
 
 describe("Project activity table", () => {
+  it("scopes an epic activity page to that epic number", async ({ expect }) => {
+    const { epicTools, projectApi, project, call, asUser, OWNER } =
+      await setup();
+
+    const first = await call(epicTools.epic_create, {
+      project: project.id,
+      title: "First epic",
+      description: "x",
+    });
+    await call(epicTools.epic_create, {
+      project: project.id,
+      title: "Second epic",
+      description: "x",
+    });
+
+    const all = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: {},
+      } as any),
+    );
+    expect(
+      all.content
+        .filter((row: any) => row.type === "epic")
+        .map((row: any) => row.resourceId),
+    ).toEqual(["2", "1"]);
+
+    const page = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: {
+          resourceType: "epic",
+          resourceId: String(first.number),
+        },
+      } as any),
+    );
+
+    expect(page.content).toHaveLength(1);
+    expect(page.content[0]).toMatchObject({
+      type: "epic",
+      action: "create",
+      resourceType: "epic",
+      resourceId: String(first.number),
+      description: "First epic",
+    });
+  });
+
   it("pages newest first and filters on the server", async ({ expect }) => {
     const { questTools, projectApi, project, call, asUser, OWNER, MATE } =
       await setup();

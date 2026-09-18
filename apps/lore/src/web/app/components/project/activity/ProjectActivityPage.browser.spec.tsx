@@ -19,7 +19,9 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
-import ProjectActivityPage from "./ProjectActivityPage.tsx";
+import ProjectActivityPage, {
+  type ProjectActivityPageProps,
+} from "./ProjectActivityPage.tsx";
 
 /**
  * Answers the three calls the page makes and records the activity query it
@@ -123,6 +125,7 @@ describe("ProjectActivityPage", () => {
   const show = async (
     rows: ProjectActivityRow[],
     people?: Array<{ id: string; username: string }>,
+    props: ProjectActivityPageProps = {},
   ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -149,7 +152,7 @@ describe("ProjectActivityPage", () => {
 
     return render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectActivityPage />
+        <ProjectActivityPage {...props} />
       </AlephaContext.Provider>,
     );
   };
@@ -163,6 +166,22 @@ describe("ProjectActivityPage", () => {
     // The whole reason this page stopped being a hand-rolled feed: sorting
     // is the server's job, so the default has to reach it.
     expect(alepha!.inject(FakeLinkProvider).lastQuery?.sort).toBe("-createdAt");
+  });
+
+  it("sends a fixed resource scope for an embedded activity table", async ({
+    expect,
+  }) => {
+    await show([], undefined, {
+      resource: { type: "epic", id: "7" },
+      persistenceKey: "lor.activity.1.epic.7",
+    });
+
+    await waitFor(() => {
+      expect(alepha!.inject(FakeLinkProvider).lastQuery).toMatchObject({
+        resourceType: "epic",
+        resourceId: "7",
+      });
+    });
   });
 
   it("sends a picked filter to the server rather than narrowing rows in the browser", async ({
