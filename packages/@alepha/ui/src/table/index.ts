@@ -33,6 +33,7 @@ export type {
   DataTableSource,
   DataTableStatCard,
   DataTableSummary,
+  DataTableSummaryContext,
   DataTableSummaryFetcher,
   BulkAction,
   BulkActionContext,

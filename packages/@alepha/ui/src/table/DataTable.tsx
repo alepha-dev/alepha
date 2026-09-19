@@ -381,10 +381,15 @@ export const DataTable = <
     !props.hideActionsMenu;
   // Drawn while a first fetch is out (its placeholders), and after that only
   // with something in it: a summary with no card and no content is no band.
+  // A function is called on every render, which only builds its element: the
+  // panel mounts it while open, and the counter is what tells it to reload.
+  const rawSummaryContent = props.summary?.content;
+  const summaryContent =
+    typeof rawSummaryContent === "function"
+      ? rawSummaryContent({ refreshKey })
+      : rawSummaryContent;
   const hasSummaryContent =
-    props.summary?.content != null &&
-    props.summary.content !== false &&
-    props.summary.content !== "";
+    summaryContent != null && summaryContent !== false && summaryContent !== "";
   const showSummary =
     Boolean(props.summary) &&
     (summary.cards === undefined ||
@@ -431,7 +436,7 @@ export const DataTable = <
             onOpenChange={summary.setOpen}
             cards={summary.cards}
             loading={summary.loading}
-            content={hasSummaryContent ? props.summary?.content : undefined}
+            content={hasSummaryContent ? summaryContent : undefined}
             className={cn(squareRight?.top, props.chromeClassName)}
           />
         )}

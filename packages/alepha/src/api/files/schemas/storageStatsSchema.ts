@@ -17,6 +17,11 @@ export const storageStatsSchema = z.object({
   totalFiles: z.number(),
   byBucket: z.array(bucketStatsSchema),
   byMimeType: z.array(mimeTypeStatsSchema),
+  /**
+   * The total quota in bytes (`filesOptions.maxTotalSize`), every storage
+   * together. `0` when there is none.
+   */
+  quota: z.number(),
 });
 
 export type BucketStats = Infer<typeof bucketStatsSchema>;

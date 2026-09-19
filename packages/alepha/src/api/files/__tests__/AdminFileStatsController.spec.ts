@@ -4,7 +4,12 @@ import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import { $storage, AdminFileStatsController, FileService } from "../index.ts";
+import {
+  $storage,
+  AdminFileStatsController,
+  FileService,
+  filesOptions,
+} from "../index.ts";
 
 const adminUser: UserAccountToken = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -52,6 +57,16 @@ describe("AdminFileStatsController", () => {
       expect(stats.totalFiles).toBe(0);
       expect(stats.byBucket).toEqual([]);
       expect(stats.byMimeType).toEqual([]);
+      expect(stats.quota).toBe(0);
+    });
+
+    it("returns the total quota in bytes", async () => {
+      const { alepha, ctrl } = await setup();
+      alepha.store.set(filesOptions, { maxTotalSize: 2048 });
+
+      const stats = await ctrl.getFileStats({}, { user: adminUser });
+
+      expect(stats.quota).toBe(2048 * 1024 * 1024);
     });
 
     it("should calculate total size and file count", async () => {

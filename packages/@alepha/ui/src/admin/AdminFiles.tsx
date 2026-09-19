@@ -12,15 +12,7 @@ import type {
 } from "alepha/api/files";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Container,
-  Download,
-  FileType,
-  Files,
-  HardDrive,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Container, Download, Trash2, Upload } from "lucide-react";
 import {
   type ChangeEvent,
   useCallback,
@@ -41,8 +33,8 @@ import { DataTable } from "../table/DataTable.tsx";
 import type {
   DataTableFilterFields,
   DataTableFilterValues,
-  DataTableSummaryFetcher,
 } from "../table/dataTableTypes.ts";
+import { AdminFilesUsage } from "./AdminFilesUsage.tsx";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
@@ -52,7 +44,7 @@ const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
 export const AdminFiles = () => {
   const client = useClient<FileController>();
   const statsClient = useClient<AdminFileStatsController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const toast = useToast();
   // Bumped after a successful upload to reload the bucket-stats query (which
   // lists it in its deps) and the table (via DataTable's `refreshSignal`
@@ -142,76 +134,6 @@ export const AdminFiles = () => {
     [client],
   );
 
-  /**
-   * The four figures above the table: how many files, how much storage, over
-   * how many buckets, in how many types.
-   *
-   * Storage-wide, not narrowed by the table's filters: the stats endpoint
-   * takes none. Fetched as the summary rather than read off the bucket query
-   * above so they reload with the table, after an upload (`refreshSignal`)
-   * and after a delete (the action's `refresh()`), which the bucket query
-   * never hears of. That is a second read of the same endpoint on mount, the
-   * price of the bucket filter not depending on whether the panel is open.
-   */
-  const fetchSummary = useCallback<
-    DataTableSummaryFetcher<typeof filterFields>
-  >(
-    async ({ signal }) => {
-      const s = await statsClient.getFileStats({} as never, {
-        request: { signal },
-      });
-      const largest = [...s.byBucket].sort(
-        (a, b) => b.totalSize - a.totalSize,
-      )[0];
-      const common = [...s.byMimeType].sort(
-        (a, b) => b.fileCount - a.fileCount,
-      )[0];
-      const average =
-        s.totalFiles > 0 ? formatBytes(s.totalSize / s.totalFiles) : undefined;
-      return [
-        {
-          label: tr("admin.files.statFiles", { default: "Files" }),
-          value: l(s.totalFiles),
-          icon: Files,
-        },
-        {
-          label: tr("admin.files.statStorage", { default: "Storage used" }),
-          value: formatBytes(s.totalSize),
-          icon: HardDrive,
-          hint: average
-            ? tr("admin.files.statStorageHint", {
-                default: `${average} per file on average`,
-                args: [average],
-              })
-            : undefined,
-        },
-        {
-          label: tr("admin.files.statBuckets", { default: "Buckets" }),
-          value: l(s.byBucket.length),
-          icon: Container,
-          hint: largest
-            ? tr("admin.files.statBucketsHint", {
-                default: `Largest: ${largest.bucket}`,
-                args: [largest.bucket],
-              })
-            : undefined,
-        },
-        {
-          label: tr("admin.files.statTypes", { default: "File types" }),
-          value: l(s.byMimeType.length),
-          icon: FileType,
-          hint: common
-            ? tr("admin.files.statTypesHint", {
-                default: `Mostly ${common.mimeType}`,
-                args: [common.mimeType],
-              })
-            : undefined,
-        },
-      ];
-    },
-    [statsClient, l, tr],
-  );
-
   const deleteFile = useConfirmedAction<[FileResource, () => void]>(
     {
       confirm: (file) => ({
@@ -289,11 +211,16 @@ export const AdminFiles = () => {
         ]}
         filters={{ fields: filterFields }}
         summary={{
-          fetch: fetchSummary,
-          // Quiet, like the bucket query above: the page works without its
-          // figures, and a store whose stats cannot be read is not news to
-          // toast on every visit. With no figures the panel is not drawn.
-          onError: () => {},
+          title: tr("admin.files.usageTitle", { default: "Storage" }),
+          // Storage-wide, not narrowed by the table's filters: the stats
+          // endpoint takes none. Its own read rather than the bucket query
+          // above, so it reloads with the table after a delete or a Refresh,
+          // which that query never hears of. That is a second read of the
+          // same endpoint on mount, the price of the bucket filter not
+          // depending on whether the panel is open.
+          content: ({ refreshKey: reloads }) => (
+            <AdminFilesUsage refreshKey={reloads} />
+          ),
         }}
         bulkActions={[
           {

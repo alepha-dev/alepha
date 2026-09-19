@@ -952,6 +952,7 @@ export class FileService {
       totalFiles: byBucket.reduce((sum, b) => sum + b.fileCount, 0),
       byBucket,
       byMimeType,
+      quota: this.options.maxTotalSize * 1024 * 1024,
     };
   }
 

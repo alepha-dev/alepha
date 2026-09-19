@@ -827,6 +827,23 @@ export interface DataTableSummary<
   onError?: (error: Error) => void;
   /**
    * Anything else, drawn under the cards, or alone: a chart, a note.
+   *
+   * A function receives the table's reload counter, for a node that loads
+   * its own data and must reload with the table the way fetched cards do:
+   * pass `refreshKey` to its query's dependencies. Like a fetch, it is not
+   * mounted while the panel is collapsed.
    */
-  content?: ReactNode;
+  content?: ReactNode | ((context: DataTableSummaryContext) => ReactNode);
+}
+
+/**
+ * What a function `content` of {@link DataTableSummary} is called with.
+ */
+export interface DataTableSummaryContext {
+  /**
+   * Bumped on every reload of the table's set (a filter change, Refresh,
+   * `refreshSignal`, `pollMs`, a row or bulk action's `refresh()`), and not on
+   * a page or a sort: the moments a fetched summary reloads.
+   */
+  refreshKey: number;
 }

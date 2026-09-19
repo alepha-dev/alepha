@@ -32,6 +32,9 @@ export class ShowcaseFiles {
         mimeType,
         fileCount,
       })),
+      // A quota, so the showcase draws the tile's "of … used" and its free
+      // space rather than only the split between buckets.
+      quota: 10 * 1024 ** 3,
     };
   }
 

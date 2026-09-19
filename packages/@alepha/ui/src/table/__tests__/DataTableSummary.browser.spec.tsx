@@ -296,6 +296,35 @@ describe("DataTable summary panel", () => {
     ).toBeTruthy();
   });
 
+  it("calls a function node with the reload counter, which Refresh bumps and a page does not", async () => {
+    const seen: number[] = [];
+    await mount(
+      <DataTable<Row>
+        fetch={async ({ page, size }) => pageOf(rows, page, size)}
+        defaultSize={10}
+        columns={columns}
+        summary={{
+          content: ({ refreshKey }) => {
+            seen.push(refreshKey);
+            return <p>Reload {refreshKey}</p>;
+          },
+        }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("Camille 1")).toBeTruthy());
+    const first = seen[seen.length - 1];
+    expect(within(panel()).getByText(`Reload ${first}`)).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Go to next page"));
+    await waitFor(() => expect(screen.getByText("Camille 11")).toBeTruthy());
+    expect(within(panel()).getByText(`Reload ${first}`)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() =>
+      expect(within(panel()).getByText(`Reload ${first + 1}`)).toBeTruthy(),
+    );
+  });
+
   it("is not drawn with nothing to show", async () => {
     await mount(
       <DataTable<Row>
