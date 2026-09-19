@@ -9,7 +9,9 @@
  * the page-tree variant with its `Spotlight` search. `PlateLayout` and
  * `DetailLayout` frame a page, `AppActions` a toolbar. `ButtonDark`,
  * `ButtonTheme`, `ButtonLanguage`, `ButtonInbox` and `ButtonUser` are the
- * header buttons, and `ActionErrorToaster` turns a failed action into a toast.
+ * header buttons, and `ButtonSettings` is the account button with language,
+ * theme and display mode folded into its menu once signed in.
+ * `ActionErrorToaster` turns a failed action into a toast.
  *
  * @module alepha.ui.shell
  */
@@ -29,6 +31,10 @@ export type { NavGroup, NavItem } from "./appShellNav.tsx";
 export { ButtonDark, type ButtonDarkProps } from "./ButtonDark.tsx";
 export { ButtonInbox, type ButtonInboxProps } from "./ButtonInbox.tsx";
 export { ButtonLanguage, type ButtonLanguageProps } from "./ButtonLanguage.tsx";
+export { ButtonSettings, type ButtonSettingsProps } from "./ButtonSettings.tsx";
+export type { ButtonSettingsColorModeMenuProps } from "./ButtonSettingsColorModeMenu.tsx";
+export type { ButtonSettingsLanguageMenuProps } from "./ButtonSettingsLanguageMenu.tsx";
+export type { ButtonSettingsThemeMenuProps } from "./ButtonSettingsThemeMenu.tsx";
 export { ButtonTheme, type ButtonThemeProps } from "./ButtonTheme.tsx";
 export { ButtonUser, type ButtonUserProps } from "./ButtonUser.tsx";
 export type { ButtonUserAccountMenuItemProps } from "./ButtonUserAccountMenuItem.tsx";

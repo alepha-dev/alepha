@@ -18,7 +18,9 @@ that hangs its pages off its OWN layout rather than the admin shell's
 the page-tree variant with its `Spotlight` search. `PlateLayout` and
 `DetailLayout` frame a page, `AppActions` a toolbar. `ButtonDark`,
 `ButtonTheme`, `ButtonLanguage`, `ButtonInbox` and `ButtonUser` are the
-header buttons, and `ActionErrorToaster` turns a failed action into a toast.
+header buttons, and `ButtonSettings` is the account button with language,
+theme and display mode folded into its menu once signed in.
+`ActionErrorToaster` turns a failed action into a toast.
 
 ## API Reference
 

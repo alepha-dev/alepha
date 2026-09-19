@@ -1,4 +1,4 @@
-import { AppActions } from "@alepha/ui/shell";
+import { ButtonSettings } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 
@@ -6,10 +6,10 @@ import type { I18n } from "../../../services/I18n.ts";
 
 export interface HeaderActionsProps {
   /**
-   * Rendered inside the cluster, immediately left of the language button.
+   * Rendered inside the cluster, immediately left of its first button.
    *
-   * A passthrough to `AppActions`'s own `before`, which puts the node in the
-   * same `flex gap-1` as the four icon buttons — so it inherits their spacing
+   * A passthrough to `ButtonSettings`'s own `before`, which puts the node in
+   * the same `flex gap-1` as the icon buttons — so it inherits their spacing
    * instead of approximating it from outside. `ProjectView` passes the search
    * trigger through here.
    */
@@ -19,9 +19,13 @@ export interface HeaderActionsProps {
 /**
  * Lore's ambient header controls — language, theme, dark mode, account.
  *
- * Thin on purpose: the cluster itself is `@alepha/ui`'s `AppActions`, shared
- * with the admin console and the `/account` area. What stays here is the only
- * Lore-specific part, the localised labels.
+ * Thin on purpose: the cluster itself is `@alepha/ui`'s `ButtonSettings`.
+ * What stays here is the only Lore-specific part, the localised labels.
+ *
+ * Signed in, the header carries ONE button, the avatar, and language, theme
+ * and display mode are submenus of its menu. Signed out, they are the icon
+ * buttons they always were, beside the sign-in one. The admin console and
+ * the `/account` area still draw all four as buttons through `AppActions`.
  *
  * This file used to build the cluster by hand, and that is how it came to
  * push a route called `me` — a name that stopped existing when the profile
@@ -36,11 +40,11 @@ export interface HeaderActionsProps {
  * console and `/account` show it too. It goes through the authenticated
  * file route, which the browser caches for a year; see `ButtonUser.avatar`.
  *
- * ⚠️ `compact` is what drops language, theme and dark mode below `sm`. It
- * is passed HERE and not inside `AppActions` itself, because the cluster is
- * also the account area's header, and those three live nowhere else in the
- * product: hiding them everywhere would leave a phone reader unable to
- * switch to their own language at all.
+ * ⚠️ `compact` is what drops the language, theme and dark mode BUTTONS
+ * below `sm`, which since the settings moved into the menu only ever applies
+ * to a signed-out visitor. It is passed HERE and not as a kit default because
+ * `AppActions` is also the account area's header, where a phone reader has
+ * to keep reaching all three.
  *
  * Search now arrives through `before` rather than as a sibling. It used to be
  * excluded on the grounds that a field-sized element reads as a different kind
@@ -54,19 +58,24 @@ const HeaderActions = (props: HeaderActionsProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <AppActions
+    <ButtonSettings
       // The header carried eight icon buttons on a phone, half of them
-      // settings a reader changes about once (feedback #P2144). Only Lore's
-      // app chrome passes this: `AccountHeader` does not, so `/account` is
-      // where a phone reader still changes language and theme.
+      // settings a reader changes about once (feedback #P2144). Signed in
+      // they now live in the account menu; this drops them for a signed-out
+      // visitor on a phone.
       compact
       before={props.before}
       labels={{
-        language: tr("header.actions.language"),
         signIn: tr("header.actions.login"),
-        admin: tr("header.actions.admin"),
         account: tr("header.actions.profile"),
+        admin: tr("header.actions.admin"),
         logout: tr("header.actions.logout"),
+        language: tr("header.actions.language"),
+        theme: tr("header.actions.theme"),
+        colorMode: tr("header.actions.colorMode"),
+        colorModeSystem: tr("header.actions.colorMode.system"),
+        colorModeDark: tr("header.actions.colorMode.dark"),
+        colorModeLight: tr("header.actions.colorMode.light"),
       }}
     />
   );

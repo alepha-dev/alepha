@@ -79,7 +79,7 @@ test.describe("Home (SSR)", () => {
  * actually clicks.
  */
 test.describe("Home (mobile chrome)", () => {
-  test("a phone header keeps the work controls and drops the settings ones", async ({
+  test("a signed-in header is one account button, with the settings in its menu", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -87,12 +87,13 @@ test.describe("Home (mobile chrome)", () => {
      * Feedback #P2144: the header carried eight icon buttons on a phone -
      * create, search, repository, bell, language, palette, dark, account -
      * all the same weight, and half of them settings a reader changes about
-     * once.
+     * once. Signed in, those three are now submenus of the account menu
+     * (`ButtonSettings`), at every width.
      *
      * ⚠️ Asserted at 411px, the width the earlier mobile reports came in
-     * at, and then again wide: the whole point is that they come BACK, and
-     * a test that only checked the narrow case would pass against a build
-     * that had simply deleted them.
+     * at, and then again wide: the menu is what keeps them reachable on a
+     * phone, so a test that only checked that the buttons left would pass
+     * against a build that had simply deleted them.
      */
     await registerAndVerify(
       page,
@@ -100,40 +101,45 @@ test.describe("Home (mobile chrome)", () => {
       "MobileTest123!",
     );
 
-    const settings = ["Language", "Pick theme", "Toggle color mode"];
+    // Lore's own labels: the submenus in the menu, and what the buttons
+    // would be called if they were still drawn.
+    const settings = ["Language", "Theme", "Display Mode"];
     // Only the account button: search, create and the bell are the PROJECT
     // shell's, passed through `before`, and home has none of them.
     const work = ["Account menu"];
 
-    await page.setViewportSize({ width: 411, height: 800 });
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    for (const width of [411, 1200]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
 
-    for (const name of work) {
-      await expect(page.getByLabel(name).first()).toBeVisible({
-        timeout: 15_000,
-      });
-    }
-    for (const name of settings) {
-      await expect(page.getByLabel(name).first()).toBeHidden();
-    }
+      for (const name of work) {
+        await expect(page.getByLabel(name).first()).toBeVisible({
+          timeout: 15_000,
+        });
+      }
+      for (const name of settings) {
+        await expect(page.getByLabel(name, { exact: true })).toHaveCount(0);
+      }
 
-    await page.setViewportSize({ width: 1200, height: 800 });
-    for (const name of settings) {
-      await expect(page.getByLabel(name).first()).toBeVisible();
+      await page.getByLabel("Account menu").click();
+      for (const name of settings) {
+        await expect(
+          page.getByRole("menuitem", { name, exact: true }),
+        ).toBeVisible();
+      }
+      await page.keyboard.press("Escape");
     }
 
     /*
-     * ⚠️ And hidden is not removed. `AccountHeader` renders the same
-     * cluster WITHOUT `compact`, deliberately: language and theme live
-     * nowhere else in the product, so the account area is where a phone
-     * reader still changes them. Drop that distinction and this case goes
-     * red rather than a reader finding out.
+     * ⚠️ The account area keeps them as buttons. `AccountHeader` renders
+     * `AppActions` WITHOUT `compact`, with the kit's own English labels, so
+     * a phone reader there still sees all three.
      */
     await page.setViewportSize({ width: 411, height: 800 });
     await page.goto("/account");
     await page.waitForLoadState("networkidle");
-    for (const name of settings) {
+    for (const name of ["Language", "Pick theme", "Toggle color mode"]) {
       await expect(page.getByLabel(name).first()).toBeVisible({
         timeout: 15_000,
       });

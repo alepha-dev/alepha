@@ -56,12 +56,12 @@ test.describe("Mobile topbar and sidebar", () => {
       };
     }, width);
 
-  const openProject = async (page: Page, tag: string) => {
+  const openProject = async (page: Page, tag: string, title?: string) => {
     const ts = Date.now();
     await registerAndVerify(page, `${tag}${ts}@example.com`, "GoodPassw0rd");
     const { slug } = await createProjectViaWizard(
       page,
-      `${tag}${ts}`.slice(0, 20),
+      title ?? `${tag}${ts}`.slice(0, 20),
       { options: { work: ["board", "releases"] } },
     );
     return slug;
@@ -97,7 +97,15 @@ test.describe("Mobile topbar and sidebar", () => {
 
   test("the breadcrumbs are the one thing that gives way", async ({ page }) => {
     test.setTimeout(120_000);
-    const slug = await openProject(page, "crm");
+    // The widest title the schema takes: 24 characters, mostly `W`. Since the
+    // three settings buttons moved into the account menu, an ordinary trail
+    // fits the 513px bar at 768 whole, and a trail that fits cannot show that
+    // it is the thing giving way.
+    const slug = await openProject(
+      page,
+      "crm",
+      `WWWWWWWWWWW${Date.now()}`.slice(0, 24),
+    );
 
     const breadcrumbWidth = async (width: number) => {
       await page.setViewportSize({ width, height: 812 });
