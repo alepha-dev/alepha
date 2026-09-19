@@ -118,9 +118,9 @@ test.describe("Activity", () => {
       );
 
       // Every filter here is optional, so it starts off the bar (#E58) and is
-      // added from the funnel-plus menu. Adding one opens its list, which is
+      // added from the "+" menu. Adding one opens its list, which is
       // why the option is the next click.
-      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("button", { name: "Add filters" }).click();
       await page.getByRole("menuitem", { name: /^Resource/ }).click();
       await page.getByRole("option", { name: "Folio", exact: true }).click();
       await request;

@@ -182,12 +182,12 @@ describe("ProjectEpics - the status filter", () => {
   const row = (name: string) => screen.queryByRole("link", { name });
 
   /**
-   * Put a filter on the bar from the funnel-plus menu. Every filter here is
+   * Put a filter on the bar from the "+" menu. Every filter here is
    * optional, so it starts off the bar (#E58), and adding one opens its list,
    * which is why the options are the next thing a case reaches for.
    */
   const addFilter = async (label: string) => {
-    fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+    fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
       key: "ArrowDown",
     });
     fireEvent.click(
@@ -264,7 +264,7 @@ describe("ProjectEpics - the status filter", () => {
       // One value that matches everything is a control with nothing to do:
       // not on the bar, and not offered by the menu either.
       expect(screen.queryByRole("combobox", { name: "Release" })).toBeNull();
-      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
         key: "ArrowDown",
       });
       await screen.findByRole("menuitem", { name: /^Status/ });

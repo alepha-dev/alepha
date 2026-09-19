@@ -288,7 +288,7 @@ describe("ProjectActivityPage", () => {
     const offered = async (
       screen: Awaited<ReturnType<typeof show>>,
     ): Promise<string[]> => {
-      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
         key: "ArrowDown",
       });
       const menu = await screen.findByRole("menu");

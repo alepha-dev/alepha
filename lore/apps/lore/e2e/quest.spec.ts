@@ -948,9 +948,9 @@ test.describe("Quest", () => {
 
     await test.step("Shelved filter brings it back", async () => {
       // The bar starts with the search box alone (#Q2310): Status is added
-      // from the funnel-plus menu, and adding a filter opens its list, so the
+      // from the "+" menu, and adding a filter opens its list, so the
       // option is the next click.
-      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("button", { name: "Add filters" }).click();
       await page.getByRole("menuitem", { name: "Status" }).click();
       await page.getByRole("option", { name: "Shelved" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
@@ -1951,9 +1951,9 @@ test.describe("Quest", () => {
     // without it there is no way to type a prefix and the row below never
     // appears.
     //
-    // The Area filter is added from the funnel-plus menu first (#Q2310), and
+    // The Area filter is added from the "+" menu first (#Q2310), and
     // adding it opens its popup - the search field is then already there.
-    const addFilter = page.getByRole("button", { name: "Add filter" });
+    const addFilter = page.getByRole("button", { name: "Add filters" });
     await expect(addFilter).toBeVisible({ timeout: 15_000 });
     await addFilter.click();
     await page.getByRole("menuitem", { name: "Area" }).click();
@@ -2122,7 +2122,7 @@ test.describe("Quest", () => {
     await test.step("the shelved row offers Unshelve, not Shelve", async () => {
       // See the note in "Shelved filter brings it back": Status is added
       // from the menu, which opens its list.
-      await page.getByRole("button", { name: "Add filter" }).click();
+      await page.getByRole("button", { name: "Add filters" }).click();
       await page.getByRole("menuitem", { name: "Status" }).click();
       await page.getByRole("option", { name: "Shelved" }).click();
       // A multi-select does NOT close on pick - the point is to take several
