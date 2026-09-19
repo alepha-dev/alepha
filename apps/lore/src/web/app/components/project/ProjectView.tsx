@@ -315,10 +315,11 @@ const ProjectView = () => {
         breadcrumbs={breadcrumbs}
         topbarActions={
           <>
-            <ProjectActionsCreateButton />
-            {/* Through `before`, not as a sibling: that puts the magnifier in
-              the cluster's own flex row, so it takes the same gap as the four
-              icons it now sits with rather than the topbar's spacing.
+            {/* Through `before`, not as a sibling: that puts the create
+              button and the magnifier in the cluster's own flex row, so they
+              take its `gap-1` rather than the `gap-2` `AppShell` puts between
+              topbar actions, which left a wider gap after the "+" than
+              between any other two icons.
 
               The repository link rides the same slot, which is what puts it
               "between search and lang" (feedback #2105) without any of the
@@ -336,11 +337,12 @@ const ProjectView = () => {
               the same question for search: whether a control belongs on a
               surface is the surface's to decide.
 
-              Last node, so the order reads search, repository, bell,
-              language. */}
+              Last node, so the order reads create, search, repository,
+              bell, account. */}
             <HeaderActions
               before={
                 <>
+                  <ProjectActionsCreateButton />
                   <HeaderSearchButton />
                   {/* ⚠️ Hidden below `sm`, like the three settings controls
                       inside the cluster (feedback #P2144). It is the one of
