@@ -1,6 +1,15 @@
 import { createHash } from "node:crypto";
 
-import { $inject, Alepha, type FileLike } from "alepha";
+import {
+  $env,
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  type FileLike,
+  type Infer,
+  z,
+} from "alepha";
 import {
   FileNotFoundError,
   FileTooLargeError,
@@ -17,6 +26,7 @@ import type { Ok } from "alepha/server";
 import { NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
+import { filesOptions } from "../atoms/filesOptions.ts";
 import { type FileEntity, files } from "../entities/files.ts";
 import {
   $storage,
@@ -26,6 +36,31 @@ import {
 import type { FileQuery } from "../schemas/fileQuerySchema.ts";
 import type { FileResource } from "../schemas/fileResourceSchema.ts";
 import type { StorageStats } from "../schemas/storageStatsSchema.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = z.object({
+  /**
+   * The most all stored files may add up to, in megabytes, every storage
+   * together. Seeds `filesOptions.maxTotalSize`, and wins over a value the
+   * application set in code: a quota belongs to where the app is deployed.
+   *
+   * @example
+   * FILES_MAX_TOTAL_SIZE=2048
+   */
+  FILES_MAX_TOTAL_SIZE: z
+    .number()
+    .min(0)
+    .meta({ secret: false })
+    .describe(
+      "Most megabytes all stored files may add up to, every storage together. 0 is unlimited.",
+    )
+    .optional(),
+});
+
+declare module "alepha" {
+  interface Env extends Partial<Infer<typeof envSchema>> {}
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -66,7 +101,30 @@ export class FileService {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly repositoryProvider = $inject(RepositoryProvider);
   protected readonly fileSystem = $inject(FileSystemProvider);
+  protected readonly env = $env(envSchema);
+  protected readonly options = $store(filesOptions);
   public readonly fileRepository = $repository(files);
+
+  /**
+   * Copies `FILES_MAX_TOTAL_SIZE` into the atom when the host sets it.
+   *
+   * At `configure`, after the application has had its say, so the variable
+   * wins over a value set in code. Written into the atom rather than read
+   * beside it, so the atom is the one place that says what the quota is.
+   */
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      const maxTotalSize = this.env.FILES_MAX_TOTAL_SIZE;
+      if (maxTotalSize === undefined) {
+        return;
+      }
+      this.alepha.store.mut(filesOptions, (current) => ({
+        ...current,
+        maxTotalSize,
+      }));
+    },
+  });
 
   /**
    * Best-effort left join embedding the uploader on every file row, so the
@@ -290,6 +348,10 @@ export class FileService {
       await this.alepha.events.emit("files:beforeUpload", ev);
       file = ev.file;
 
+      // After the subscribers, unlike the storage's own cap: a resize can make
+      // a file fit what is left, and the row will record the size it ends up.
+      this.assertWithinQuota(file.size, await this.remainingQuota());
+
       checksum = this.hashBuffer(await file.arrayBuffer());
       blobId = await storage.provider.upload(storage.name, file);
     } else {
@@ -298,6 +360,15 @@ export class FileService {
       // old check — that one trusted whatever `size` the caller reported.
       this.assertMimeAllowed(file, storage);
 
+      // What was already read is checked here, before the backend sees a
+      // byte, so a quota that is full leaves no partial object behind. The
+      // rest is counted against it on the way through.
+      const remaining = await this.remainingQuota();
+      this.assertWithinQuota(
+        peek.head.reduce((size, chunk) => size + chunk.length, 0),
+        remaining,
+      );
+
       const counter = { size: 0 };
       blobId = await storage.provider.upload(
         storage.name,
@@ -305,6 +376,7 @@ export class FileService {
           this.rejoined(file, peek.head, peek.rest),
           storage,
           counter,
+          remaining,
         ),
       );
       streamedSize = counter.size;
@@ -449,15 +521,21 @@ export class FileService {
    * alternative is holding the whole payload in memory to find out it was too
    * big. The transport layer has already applied its own ceiling before this
    * one is reached, so getting here at all means two limits disagreed.
+   *
+   * `remaining` is the total quota's share, in bytes, and is the one refusal
+   * here that is expected rather than a disagreement: the transport cannot know
+   * it, since it would need a database read before the first byte.
    */
   protected counting(
     file: FileLike,
     storage: StoragePrimitive,
     counter: { size: number },
+    remaining?: number,
   ): FileLike {
     const { maxSize } = storage;
     const ceiling = maxSize * 1024 * 1024;
     const source = file;
+    const overQuota = () => this.quotaExceeded(remaining ?? 0);
 
     return {
       ...file,
@@ -473,6 +551,9 @@ export class FileService {
                   throw new FileTooLargeError(
                     `File exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
                   );
+                }
+                if (remaining !== undefined && counter.size > remaining) {
+                  throw overQuota();
                 }
                 controller.enqueue(chunk);
               }
@@ -525,6 +606,49 @@ export class FileService {
         `File size ${file.size} exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
       );
     }
+  }
+
+  /**
+   * Bytes still free under `filesOptions.maxTotalSize`, or `undefined` when
+   * no quota is set.
+   *
+   * One `SUM` over every row, whatever its storage, and only when a quota is
+   * set: an app without one pays nothing for it. Negative once the quota has
+   * been lowered below what is already stored, which refuses everything.
+   *
+   * ⚠️ A reading, not a reservation. Two uploads running at once can each fit
+   * on their own and overshoot together; the next one after them is refused.
+   * Holding a lock across a transfer that may last minutes would cost more
+   * than the overshoot it prevents.
+   */
+  protected async remainingQuota(): Promise<number | undefined> {
+    const { maxTotalSize } = this.options;
+    if (!maxTotalSize) {
+      return undefined;
+    }
+    const [row] = await this.fileRepository.aggregate({
+      select: { size: { sum: true } },
+    });
+    return maxTotalSize * 1024 * 1024 - Number(row?.size.sum ?? 0);
+  }
+
+  /**
+   * Refuses `size` bytes when they do not fit in what the quota has left.
+   */
+  protected assertWithinQuota(
+    size: number,
+    remaining: number | undefined,
+  ): void {
+    if (remaining !== undefined && size > remaining) {
+      throw this.quotaExceeded(remaining);
+    }
+  }
+
+  protected quotaExceeded(remaining: number): FileTooLargeError {
+    const left = Math.max(0, remaining) / 1024 / 1024;
+    return new FileTooLargeError(
+      `Upload exceeds the total storage quota of ${this.options.maxTotalSize} MB (${left.toFixed(1)} MB left)`,
+    );
   }
 
   /**

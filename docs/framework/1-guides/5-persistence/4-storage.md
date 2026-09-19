@@ -43,6 +43,34 @@ class MediaService {
 > `maxSize` is in megabytes. `maxSize: 5 * 1024 * 1024` is not "5 MB" - it is
 > five million megabytes, i.e. no limit at all.
 
+## Total quota
+
+`maxSize` caps one file. To cap what every file adds up to, across all
+storages, set `maxTotalSize` on the `filesOptions` atom, also in **megabytes**.
+`0`, the default, is unlimited.
+
+```typescript
+import { filesOptions } from "alepha/api/files";
+
+alepha.store.set(filesOptions, { maxTotalSize: 2048 }); // 2 GB
+```
+
+Or from the environment, which wins over a value set in code:
+
+```bash
+FILES_MAX_TOTAL_SIZE=2048
+```
+
+An upload that would take the total past the quota throws `FileTooLargeError`,
+which `POST /api/files` answers with **413**. Every upload is checked, through
+the endpoint or through `upload()`. Deleting a file gives its space back, and a
+file past its `ttl` keeps counting until the purge job removes it, because its
+blob still takes the space.
+
+The check reads the current total, it does not reserve anything: two uploads
+running at the same time can each fit on their own and overshoot together, and
+the next upload after them is refused.
+
 ## A storage is a prefix, not a bucket
 
 Every backend keys objects as `{prefix}/{storage}/{fileId}` inside

@@ -48,3 +48,11 @@ Blobs _without_ a database are a `FileStorageProvider` concern - see
 - [`DefaultStorage`](/docs/reference-providers-defaultstorage) - The `default` storage.
 - [`FileAccessProvider`](/docs/reference-providers-fileaccessprovider) - Authorization policy for file reads served through `FileController.streamFile`.
 - [`StorageMultipartCapProvider`](/docs/reference-providers-storagemultipartcapprovider) - Lets the targeted `$storage` decide how many bytes a request may carry.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable               | Type   | Default | Description                                                                            |
+| ---------------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
+| `FILES_MAX_TOTAL_SIZE` | number | -       | Most megabytes all stored files may add up to, every storage together. 0 is unlimited. |

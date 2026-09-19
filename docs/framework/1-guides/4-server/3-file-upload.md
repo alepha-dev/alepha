@@ -163,6 +163,10 @@ transport before the bytes land, or the bucket while they stream past. A file
 refused for its MIME type answers **400** - it would not be accepted at any
 size.
 
+These limits apply to one file. A cap on every stored file added together is
+the [total quota](/docs/guides-persistence-storage#total-quota), which also
+answers **413**.
+
 ## Mixed Fields
 
 Combine file fields with regular form fields in the same schema. Non-file fields

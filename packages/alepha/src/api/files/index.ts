@@ -61,6 +61,7 @@ export interface FileUploadEvent {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/filesOptions.ts";
 export * from "./controllers/AdminFileStatsController.ts";
 export * from "./controllers/FileController.ts";
 export * from "./entities/files.ts";
