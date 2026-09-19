@@ -389,6 +389,18 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
                     // one only its value. A name the caller gave wins.
                     inputProps={{
                       "aria-label": label,
+                      // A text filter is as wide as its placeholder. The slot
+                      // grows from its content, and an input's content width
+                      // is its `size` in characters (20 by default), so a
+                      // long placeholder was cut at the slot's minimum.
+                      ...(kindOf(field) === "text"
+                        ? {
+                            size: Math.max(
+                              20,
+                              placeholderOf(field)?.length ?? 0,
+                            ),
+                          }
+                        : {}),
                       ...field.control?.inputProps,
                     }}
                     // The filter's name, and a non-default operator, muted in

@@ -722,9 +722,12 @@ export const Control = (props: ControlProps) => {
   // `clearable !== false`, not `clearable === true`: an optional text field
   // offers the button by default and a caller opts *out* of it. See the prop.
   const showClear = !showSave && isNullable && merged.clearable !== false;
-  // Reserve a fixed right gutter for any editable field so the tick/clear
-  // can swap in without nudging the input width.
-  const reserveGutter = !merged.disabled;
+  // The right gutter is reserved only while the tick or the cross is drawn.
+  // Kept on every editable field, it took 36px from the text of each one and
+  // cut placeholders short for a button that was not there ("Rechercher
+  // client, terr…"). The input is border-box, so the padding arriving with
+  // the button never changes its width.
+  const reserveGutter = showSave || showClear;
 
   return wrapWithSlots(
     merged,

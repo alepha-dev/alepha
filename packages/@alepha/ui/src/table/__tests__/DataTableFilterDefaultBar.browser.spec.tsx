@@ -163,6 +163,25 @@ describe("DataTable (the filter bar drawn from fields)", () => {
       expect(screen.getByPlaceholderText("Search a tag")).toBeTruthy();
     });
 
+    it("sizes a text filter to its placeholder, never under 20 characters (#Q2408)", async () => {
+      const placeholder = "Search a client, a court or an email";
+      await mount({
+        fields: { search: { preset: "search", placeholder } },
+      });
+
+      const input = screen.getByPlaceholderText(
+        placeholder,
+      ) as HTMLInputElement;
+      expect(input.size).toBe(placeholder.length);
+    });
+
+    it("keeps the default width for a short placeholder", async () => {
+      await mount();
+
+      const input = screen.getByPlaceholderText("Search") as HTMLInputElement;
+      expect(input.size).toBe(20);
+    });
+
     it("offers the optional filters in the add menu, each with its kind", async () => {
       await mount();
 
