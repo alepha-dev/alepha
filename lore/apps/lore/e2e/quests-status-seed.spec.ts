@@ -151,7 +151,7 @@ test.describe("Quests — the URL seeds the filters", () => {
     });
 
     await test.step("Share copies a link back to the same view", async () => {
-      await page.getByRole("button", { name: "Filters" }).click();
+      await page.getByRole("button", { name: "Filters", exact: true }).click();
       await page.getByRole("menuitem", { name: "Share filters" }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
