@@ -95,6 +95,42 @@ describe("AdminFilesUsageCard", () => {
     );
   });
 
+  it("opens a panel of that bucket's figures when a segment is clicked", async () => {
+    // Was a tooltip on both the segment and the legend entry: unreadable on a
+    // touch screen, and the same sentence twice.
+    const view = await mount(stats(10 * GB));
+
+    fireEvent.click(segment(view, "backups")!);
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.textContent).toContain("50.0 MB");
+    // 3 of the bucket's files, 0.5% of a 10 GB quota, 25% of 200 MB used.
+    expect(panel.textContent).toContain("Files");
+    expect(panel.textContent).toContain("3");
+    expect(panel.textContent).toContain("Share of quota");
+    expect(panel.textContent).toContain("0.5%");
+    expect(panel.textContent).toContain("Share of used");
+    expect(panel.textContent).toContain("25%");
+  });
+
+  it("names each segment for a reader who cannot see the bar", async () => {
+    const view = await mount(stats(10 * GB));
+
+    expect(segment(view, "artifacts")!.getAttribute("aria-label")).toBe(
+      "artifacts: 150.0 MB",
+    );
+  });
+
+  it("leaves the quota row out when there is no quota", async () => {
+    const view = await mount(stats(0));
+
+    fireEvent.click(segment(view, "backups")!);
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.textContent).toContain("Share of used");
+    expect(panel.textContent).not.toContain("Share of quota");
+  });
+
   it("picks one bucket out when its legend entry is hovered", async () => {
     const view = await mount(stats(10 * GB));
 

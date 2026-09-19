@@ -413,8 +413,9 @@ export const uiFr: Record<string, string> = {
   "admin.files.upload": "Envoyer",
   "admin.files.uploaded": "$1 envoyé",
   "admin.files.uploading": "Envoi…",
-  "admin.files.usageBucketDetail":
-    "$1 : $2, $3 fichier(s), $4 de l'espace utilisé",
+  "admin.files.usageBucketFiles": "Fichiers",
+  "admin.files.usageBucketShareQuota": "Part du quota",
+  "admin.files.usageBucketShareUsed": "Part de l'espace utilisé",
   "admin.files.usageFree": "$1 libres · $2 utilisés",
   "admin.files.usageNoQuota": "$1 fichier(s), sans quota",
   "admin.files.usageOfQuota": "utilisés sur $1",
