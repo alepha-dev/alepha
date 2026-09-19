@@ -57,7 +57,8 @@ describe("AdminFileStatsController", () => {
       expect(stats.totalFiles).toBe(0);
       expect(stats.byBucket).toEqual([]);
       expect(stats.byMimeType).toEqual([]);
-      expect(stats.quota).toBe(0);
+      // The default quota, in bytes: an app that sets nothing still has one.
+      expect(stats.quota).toBe(10 * 1024 * 1024 * 1024);
     });
 
     it("returns the total quota in bytes", async () => {

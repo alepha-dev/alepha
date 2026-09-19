@@ -65,10 +65,12 @@ describe("filesOptions.maxTotalSize", () => {
     return { alepha, media, files, controller, bytes, streamed };
   };
 
-  it("is unlimited by default", async ({ expect }) => {
+  it("is 10 GB by default, and an ordinary upload is nowhere near it", async ({
+    expect,
+  }) => {
     const { alepha, media, bytes } = await setup();
 
-    expect(alepha.store.get(filesOptions).maxTotalSize).toBe(0);
+    expect(alepha.store.get(filesOptions).maxTotalSize).toBe(10 * 1024);
     await media.docs.upload(bytes(2 * MB));
     await media.docs.upload(bytes(2 * MB));
     expect((await media.docs.list()).page.totalElements).toBe(2);

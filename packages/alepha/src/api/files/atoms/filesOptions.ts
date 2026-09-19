@@ -9,8 +9,14 @@ import { $atom, type Infer, z } from "alepha";
  * are about one file. What lives here is about all of them together.
  *
  * `maxTotalSize` is seeded from the `FILES_MAX_TOTAL_SIZE` environment
- * variable when the host sets it, see `FileService`.
+ * variable when the host sets it, see `FileService`. Absent both, it is
+ * {@link DEFAULT_MAX_TOTAL_SIZE}.
  */
+/**
+ * The default total quota, in megabytes: 10 GB.
+ */
+export const DEFAULT_MAX_TOTAL_SIZE = 10 * 1024;
+
 export const filesOptions = $atom({
   name: "alepha.api.files.options",
   schema: z.object({
@@ -21,6 +27,13 @@ export const filesOptions = $atom({
      * An upload that would take the total past it is refused with
      * `FileTooLargeError` (413). Rows past their expiry still count until the
      * purge job removes them, because their blobs still take the space.
+     *
+     * ⚠️ **10 GB by default, where it used to be unlimited.** An application
+     * that stores files has a bill for them, and a default of "as much as
+     * anyone uploads" is the one setting whose failure mode nobody sees until
+     * it is expensive. 10 GB is far above what an app reaches by accident and
+     * well under a surprise. Raise it, or set `0` to opt out, and the
+     * environment wins over both (see `FILES_MAX_TOTAL_SIZE`).
      */
     maxTotalSize: z
       .number()
@@ -28,10 +41,10 @@ export const filesOptions = $atom({
       .describe(
         "Most megabytes all stored files may add up to, every storage together. 0 is unlimited.",
       )
-      .default(0),
+      .default(DEFAULT_MAX_TOTAL_SIZE),
   }),
   default: {
-    maxTotalSize: 0,
+    maxTotalSize: DEFAULT_MAX_TOTAL_SIZE,
   },
   serverOnly: true,
 });

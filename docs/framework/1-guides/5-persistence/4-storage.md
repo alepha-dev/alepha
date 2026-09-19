@@ -47,7 +47,7 @@ class MediaService {
 
 `maxSize` caps one file. To cap what every file adds up to, across all
 storages, set `maxTotalSize` on the `filesOptions` atom, also in **megabytes**.
-`0`, the default, is unlimited.
+It is **10 GB** unless you say otherwise, and `0` is unlimited.
 
 ```typescript
 import { filesOptions } from "alepha/api/files";
