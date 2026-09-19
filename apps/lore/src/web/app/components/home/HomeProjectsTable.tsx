@@ -1,10 +1,10 @@
-import { Button } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Bug, Crown, Inbox, Layers, Sparkles, Swords } from "lucide-react";
+import { Activity, Bug, Crown, Inbox, Layers, Swords } from "lucide-react";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
@@ -22,6 +22,7 @@ import {
 import { HomeLastActivity } from "./HomeLastActivity.tsx";
 import { HomeMomentum } from "./HomeMomentum.tsx";
 import { type HomeOpenLink, HomeOpenLinks } from "./HomeOpenLinks.tsx";
+import { homeProjectMatches } from "./homeProjectsFilter.ts";
 
 export interface HomeProjectsTableProps {
   projects: ProjectOverviewResource[];
@@ -139,15 +140,53 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
   };
 
   /**
-   * One filter, and it is the search box: `preset: "search"` is the locked
-   * one, so it sits on the bar rather than behind the add-filter menu.
+   * The search box, then two scalar filters on the bar from the start.
    *
-   * It spans the title alone. A project has nothing else a reader would type:
-   * the description is not on the overview resource, and matching an id or a
-   * slug answers a question nobody asks of nine rows.
+   * Search is `preset: "search"`, the locked one. It spans the title alone. A
+   * project has nothing else a reader would type: the description is not on
+   * the overview resource, and matching an id or a slug answers a question
+   * nobody asks of nine rows.
+   *
+   * Ownership and Activity are two exhaustive values each, so they are
+   * scalars and clearing one is "all": selecting both values of an array
+   * would be the same query as selecting neither (see the Releases state
+   * filter). `mode: "default"` because Home has nothing else on its bar, and
+   * behind "Add filters" they would be found by nobody.
    */
   const filterFields = {
     search: { preset: "search", placeholder: tr("home.table.search") },
+    ownership: {
+      schema: z.enum(["owned", "notOwned"]),
+      label: tr("home.table.filter.ownership"),
+      icon: Crown,
+      mode: "default",
+      items: [
+        { value: "owned", label: tr("home.table.filter.owned") },
+        { value: "notOwned", label: tr("home.table.filter.notOwned") },
+      ],
+      control: { clearLabel: tr("home.table.filter.anyOwner") },
+    },
+    activity: {
+      schema: z.enum(["active", "dormant"]),
+      label: tr("home.table.filter.activity"),
+      icon: Activity,
+      mode: "default",
+      items: [
+        {
+          value: "active",
+          label: tr("home.table.filter.active", {
+            args: [String(HOME_INACTIVE_AFTER_DAYS)],
+          }),
+        },
+        {
+          value: "dormant",
+          label: tr("home.table.filter.dormant", {
+            args: [String(HOME_INACTIVE_AFTER_DAYS)],
+          }),
+        },
+      ],
+      control: { clearLabel: tr("home.table.filter.anyActivity") },
+    },
   } satisfies DataTableFilterFields;
 
   return (
@@ -170,28 +209,15 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
       rowKey={(project) => String(project.id)}
       filters={{ fields: filterFields }}
       filter={(project, filters) =>
-        !filters.search ||
-        project.title.toLowerCase().includes(filters.search.toLowerCase())
+        homeProjectMatches(
+          dt,
+          project,
+          filters,
+          props.lastActivity.get(project.id),
+        )
       }
       onRowClick={(project) =>
         router.push("project", { params: { projectSlug: project.slug } })
-      }
-      toolbar={
-        <Button
-          render={
-            <Link href={router.path("projectCreate")} />
-            // A link wearing a button's clothes: `nativeButton={false}` stops
-            // Base UI assuming a native <button> (it warns otherwise), and
-            // `role` puts back the link semantics its non-native branch would
-            // overwrite with `role="button"`.
-          }
-          nativeButton={false}
-          role="link"
-          data-testid="home-new-project"
-        >
-          <Sparkles className="size-4" />
-          {tr("home.create-project")}
-        </Button>
       }
       columns={{
         title: {
