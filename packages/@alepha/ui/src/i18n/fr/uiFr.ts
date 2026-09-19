@@ -566,6 +566,18 @@ export const uiFr: Record<string, string> = {
     "Copiez ce jeton maintenant : il n'est affiché qu'une seule fois et ne peut pas être récupéré.",
   "admin.keys.tokenDone": "Terminé",
   "admin.keys.tokenTitle": "Clé d'API créée",
+  // `ButtonSettings`: the account button, and the settings in its menu.
+  "shell.settings.account": "Mon compte",
+  "shell.settings.admin": "Administration",
+  "shell.settings.colorMode": "Mode d'affichage",
+  "shell.settings.colorModeDark": "Sombre",
+  "shell.settings.colorModeLight": "Clair",
+  "shell.settings.colorModeSystem": "Système",
+  "shell.settings.language": "Langue",
+  "shell.settings.logout": "Se déconnecter",
+  "shell.settings.menu": "Menu du compte",
+  "shell.settings.signIn": "Se connecter",
+  "shell.settings.theme": "Thème",
   // The shell's own chrome: sidebar entries, section headings and breadcrumbs.
   // `nav.*Key` on `AdminRouter` names these; the English `label` beside the key
   // is the default an application without this catalogue keeps seeing.

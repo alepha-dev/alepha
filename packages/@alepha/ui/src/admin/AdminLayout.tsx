@@ -5,7 +5,7 @@ import { LayoutDashboard, Search } from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "../core/utils.ts";
-import { AppActions } from "../shell/AppActions.tsx";
+import { ButtonSettings } from "../shell/ButtonSettings.tsx";
 import { NavShell } from "../shell/NavShell.tsx";
 import { Spotlight } from "../shell/Spotlight.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
@@ -32,6 +32,8 @@ import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
  *   Its trigger button renders outside the `topbarActions` slot: the open
  *   state is local to this component, so a replacement cluster could never
  *   rebuild the button — replacing the cluster must not cost the affordance.
+ * - The default cluster is `ButtonSettings`: signed in, one account button
+ *   with language, theme and display mode in its menu.
  * - `ButtonUser` is given custom `children` rather than its default
  *   `onAdminClick` menu: that default item is labelled "Admin Panel" and
  *   documented as `router.push("admin")` — the exact opposite of what it
@@ -80,7 +82,7 @@ export const AdminLayout = () => {
               className="bg-border mx-1 h-5 w-px shrink-0"
             />
             {options.topbarActions ?? (
-              <AppActions
+              <ButtonSettings
                 loginRouteName={options.loginRouteName}
                 /*
                   `adminRouteName` points back at the site, not at admin: the

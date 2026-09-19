@@ -63,14 +63,14 @@ describe("ButtonSettings", () => {
   it("draws the settings as buttons beside sign-in when signed out", async () => {
     await mount({ signedIn: false });
 
-    expect(screen.getByLabelText("Toggle color mode")).toBeTruthy();
+    expect(screen.getByLabelText("Display Mode")).toBeTruthy();
     expect(screen.getByLabelText("Sign in")).toBeTruthy();
   });
 
   it("draws one button and moves the settings into its menu when signed in", async () => {
     await mount({ signedIn: true });
 
-    expect(screen.queryByLabelText("Toggle color mode")).toBeNull();
+    expect(screen.queryByLabelText("Display Mode")).toBeNull();
 
     openMenu();
 
@@ -84,7 +84,7 @@ describe("ButtonSettings", () => {
   it("keeps the settings as buttons when placement is 'buttons'", async () => {
     await mount({ signedIn: true, props: { placement: "buttons" } });
 
-    expect(screen.getByLabelText("Toggle color mode")).toBeTruthy();
+    expect(screen.getByLabelText("Display Mode")).toBeTruthy();
 
     openMenu();
 

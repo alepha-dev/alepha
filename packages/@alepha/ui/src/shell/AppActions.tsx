@@ -62,10 +62,10 @@ export interface AppActionsProps {
    *
    * ⚠️ **Opt-in, and it has to be.** On a phone this cluster is most of the
    * header and half of it is settings a reader changes about once
-   * (feedback #P2144), but hidden must never mean unreachable: language and
-   * theme live nowhere else today. So a surface passes this only when
-   * another surface still offers them - which is why `AccountHeader` does
-   * NOT, and the account area stays the place a phone reader changes both.
+   * (feedback #P2144), but hidden must never mean unreachable. So a surface
+   * passes this only when another surface still offers them. `ButtonSettings`
+   * is the other answer: it moves them into the account menu instead of
+   * hiding them.
    *
    * A responsive class rather than a media-query hook, deliberately: a hook
    * re-renders after mount, and on a server-rendered header that means the
@@ -77,8 +77,12 @@ export interface AppActionsProps {
 }
 
 /**
- * The ambient controls every signed-in surface carries: language, theme,
- * dark mode, account.
+ * The ambient controls as four buttons: language, theme, dark mode, account.
+ *
+ * ⚠️ **The kit's own shells no longer use it.** `AdminLayout`,
+ * `AccountHeader` and Lore's header draw `ButtonSettings`, which folds
+ * the three settings into the account menu once signed in, and renders this
+ * same row with `placement="buttons"`.
  *
  * ### Why this is one component rather than four imports
  *

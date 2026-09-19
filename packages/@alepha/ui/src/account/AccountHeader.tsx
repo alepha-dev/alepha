@@ -3,7 +3,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "../core/Button.tsx";
-import { AppActions } from "../shell/AppActions.tsx";
+import { ButtonSettings } from "../shell/ButtonSettings.tsx";
 
 export interface AccountHeaderProps {
   /**
@@ -60,7 +60,7 @@ export const AccountHeader = (props: AccountHeaderProps) => {
         {props.backLabel ??
           tr("account.header.back", { default: "Back to site" })}
       </Button>
-      <AppActions />
+      <ButtonSettings />
     </div>
   );
 };

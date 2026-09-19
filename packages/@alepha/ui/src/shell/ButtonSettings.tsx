@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { useAuth } from "alepha/react/auth";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 
@@ -60,8 +61,10 @@ export interface ButtonSettingsProps {
   loginRouteName?: string;
 
   /**
-   * Labels, for an application that localises its chrome. Omitted entries
-   * fall back to each part's own English default. `language`, `theme` and
+   * Labels, for an application that names its chrome itself. An omitted
+   * entry is read from the catalogue under `shell.settings.*`, English by
+   * default and French through `uiFr`, so the admin console and the account
+   * area are localised without passing any. `language`, `theme` and
    * `colorMode` name the control in both placements: the submenu in the
    * menu, the tooltip and `aria-label` as a button.
    */
@@ -131,7 +134,35 @@ export interface ButtonSettingsProps {
 export const ButtonSettings = (props: ButtonSettingsProps) => {
   const auth = useAuth();
   const router = useRouter<any>();
-  const labels = props.labels ?? {};
+  const { tr } = useI18n();
+  const given = props.labels ?? {};
+  // Each key written out, not built from a list: the `uiFr` coverage spec
+  // finds a key by its literal `tr("...")` call.
+  const labels = {
+    signIn: given.signIn ?? tr("shell.settings.signIn", { default: "Sign in" }),
+    menu: given.menu ?? tr("shell.settings.menu", { default: "Account menu" }),
+    account:
+      given.account ??
+      tr("shell.settings.account", { default: "User Account" }),
+    admin:
+      given.admin ?? tr("shell.settings.admin", { default: "Admin Panel" }),
+    logout: given.logout ?? tr("shell.settings.logout", { default: "Logout" }),
+    language:
+      given.language ?? tr("shell.settings.language", { default: "Language" }),
+    theme: given.theme ?? tr("shell.settings.theme", { default: "Theme" }),
+    colorMode:
+      given.colorMode ??
+      tr("shell.settings.colorMode", { default: "Display Mode" }),
+    colorModeSystem:
+      given.colorModeSystem ??
+      tr("shell.settings.colorModeSystem", { default: "System" }),
+    colorModeDark:
+      given.colorModeDark ??
+      tr("shell.settings.colorModeDark", { default: "Dark" }),
+    colorModeLight:
+      given.colorModeLight ??
+      tr("shell.settings.colorModeLight", { default: "Light" }),
+  };
   const variant = props.variant ?? "ghost";
   const inMenu = !!auth.user && (props.placement ?? "menu") === "menu";
 
