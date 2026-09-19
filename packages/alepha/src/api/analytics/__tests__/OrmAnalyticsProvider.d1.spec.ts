@@ -1,7 +1,10 @@
 import { Alepha, z } from "alepha";
 import {
+  $entity,
   DatabaseProvider,
   NodeSqliteProvider,
+  Repository,
+  db,
   nodeSqliteOptions,
 } from "alepha/orm";
 import { describe, it } from "vitest";
@@ -141,6 +144,64 @@ describe("OrmAnalyticsProvider on D1", () => {
       expect(byDay.rows.map((row) => typeof row.bucket)).not.toContain(
         "string",
       );
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("tells rows of a deleted parent from the rest, past the ceiling", async ({
+    expect,
+  }) => {
+    const parents = $entity({
+      name: "d1_parents",
+      schema: z.object({ id: db.primaryKey(z.uuid()) }),
+    });
+    const referencing = {
+      ...vitals,
+      name: "d1_ref_vitals",
+      dimensions: z.object({
+        ...vitals.dimensions.shape,
+        sigilId: db.ref(z.uuid(), () => parents.cols.id, {
+          onDelete: "cascade",
+        }),
+      }),
+    };
+
+    const alepha = Alepha.create().with({
+      provide: DatabaseProvider,
+      use: D1CeilingProvider,
+    });
+    alepha.store.mut(nodeSqliteOptions, (old) => ({
+      ...old,
+      path: "sqlite://:memory:",
+    }));
+    const parentRows = alepha.inject(Repository.of(parents));
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(referencing);
+    await alepha.start();
+    try {
+      // 150 distinct parents named, one statement would bind 150 values: the
+      // lookup has to chunk. Every third one still exists.
+      const ids = Array.from(
+        { length: 150 },
+        (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      );
+      const alive = ids.filter((_, i) => i % 3 === 0);
+      await parentRows.createMany(alive.map((id) => ({ id })));
+      const rows = ids.map((sigilId) => ({
+        hour: "2026-08-10T10",
+        sigilId,
+        metric: "lcp",
+        path: "/",
+        bucket: 0,
+        samples: 1,
+      }));
+
+      const result = await provider.withoutOrphans(referencing, rows);
+
+      expect(result.rows.map((row) => row.sigilId)).toEqual(alive);
+      expect(result.orphans.get("sigilId")?.rows).toBe(100);
+      expect(result.orphans.get("sigilId")?.values.size).toBe(5);
     } finally {
       await alepha.stop();
     }

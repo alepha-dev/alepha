@@ -9,6 +9,8 @@ import {
 import {
   DatabaseProvider,
   type EntityPrimitive,
+  PG_REF,
+  type PgRefOptions,
   Repository,
   sql,
 } from "alepha/orm";
@@ -413,6 +415,76 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Splits `rows` by whether every foreign-key dimension still points at a
+   * row that exists.
+   *
+   * A dimension declared with `db.ref` (Lore's `sigilId`, cascading from
+   * `sigils`) is a real foreign key on both tables, so a row naming a parent
+   * that is gone is refused by the database, and the whole statement with
+   * it. Rows written here directly cannot hit that: the parent existed when
+   * they were recorded, and deleting it cascades them away. Rows replayed
+   * from a store with no delete API can, and `WaeAnalyticsProvider`'s forward
+   * is exactly that: Analytics Engine keeps what a deleted sigil reported,
+   * and forwarding it failed every hourly rollup on lore-production (#Q2404).
+   * Dropping those rows is what the cascade would have done.
+   *
+   * One query per foreign key, over the distinct values only (a handful of
+   * sigils, never one per row), chunked under the driver's parameter
+   * ceiling.
+   */
+  public async withoutOrphans(
+    dataset: AnalyticsDataset,
+    rows: AnalyticsRow[],
+  ): Promise<{
+    rows: AnalyticsRow[];
+    orphans: Map<string, { rows: number; values: Set<string> }>;
+  }> {
+    const orphans = new Map<string, { rows: number; values: Set<string> }>();
+    let kept = rows;
+
+    for (const [name, schema] of Object.entries(dataset.dimensions.shape)) {
+      const ref = (schema as { [PG_REF]?: PgRefOptions })[PG_REF];
+      if (!ref || kept.length === 0) continue;
+
+      const target = ref.ref();
+      const table = this.database.table(target.entity) as never as Record<
+        string,
+        unknown
+      >;
+      const column = table[target.name];
+      const values = [...new Set(kept.map((row) => row[name]))];
+      const existing = new Set<unknown>();
+      const size = Math.max(1, this.database.maxBoundParameters - 1);
+
+      for (let i = 0; i < values.length; i += size) {
+        const found = await this.database.run(
+          sql`
+            SELECT ${column} AS value
+            FROM ${table}
+            WHERE ${column} IN (${sql.join(
+              values.slice(i, i + size).map((value) => sql`${value}`),
+              sql`, `,
+            )})
+          `,
+          z.object({ value: schema }),
+        );
+        for (const row of found) existing.add(row.value);
+      }
+
+      kept = kept.filter((row) => {
+        if (existing.has(row[name])) return true;
+        const entry = orphans.get(name) ?? { rows: 0, values: new Set() };
+        entry.rows++;
+        if (entry.values.size < 5) entry.values.add(String(row[name]));
+        orphans.set(name, entry);
+        return false;
+      });
+    }
+
+    return { rows: kept, orphans };
+  }
 
   /**
    * Looks up the raw and rolled repositories for `dataset`.

@@ -737,6 +737,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * already treated it as absent, since it matches no filter a caller can
    * write.
    *
+   * The same goes for a row whose foreign-key dimension names a parent that
+   * no longer exists (a deleted sigil's views): `cold` holds that dimension
+   * as a real foreign key, and Analytics Engine, having no delete API, keeps
+   * what the parent reported. That was the third fault on the same path,
+   * hidden until the first two were fixed. Such rows are dropped, which is
+   * what the cascade would have done, with their own warning; see
+   * `OrmAnalyticsProvider.withoutOrphans`.
+   *
    * ## Bounded, in whole days
    *
    * At most {@link maxForwardRows} rows per call, cut at a day boundary, in
@@ -829,14 +837,36 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       );
     }
 
-    if (rows.length === 0) return before;
+    // Analytics Engine keeps what a since-deleted parent reported (a deleted
+    // sigil's views), and `cold` holds that dimension as a real foreign key.
+    const referenced = await this.cold.withoutOrphans(dataset, rows);
+    if (referenced.orphans.size > 0) {
+      this.log.warn(
+        `Skipped Analytics Engine rows of '${dataset.name}' that reference a deleted row`,
+        {
+          dimensions: Object.fromEntries(
+            [...referenced.orphans].map(([name, entry]) => [
+              name,
+              { rows: entry.rows, values: [...entry.values] },
+            ]),
+          ),
+        },
+      );
+    }
+    const forwardable = referenced.rows as Array<
+      AnalyticsRow & { hour: string }
+    >;
 
-    rows.sort((a, b) => (a.hour < b.hour ? -1 : a.hour > b.hour ? 1 : 0));
-    const until = this.forwardBudgetDay(rows) ?? before;
+    if (forwardable.length === 0) return before;
+
+    forwardable.sort((a, b) =>
+      a.hour < b.hour ? -1 : a.hour > b.hour ? 1 : 0,
+    );
+    const until = this.forwardBudgetDay(forwardable) ?? before;
     const batch =
       until === before
-        ? rows
-        : rows.filter((row) => AnalyticsBuckets.day(row.hour) < until);
+        ? forwardable
+        : forwardable.filter((row) => AnalyticsBuckets.day(row.hour) < until);
 
     await this.cold.record(dataset, batch);
     return until;

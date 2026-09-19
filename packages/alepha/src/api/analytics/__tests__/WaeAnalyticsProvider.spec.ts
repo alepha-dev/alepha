@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { MemoryDestinationProvider } from "alepha/logger";
+import { $entity, Repository, db } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
@@ -1090,6 +1091,76 @@ describe("WaeAnalyticsProvider — forwarding what cold can take", () => {
         select: { count: "sum" },
       });
       expect(result.rows).toEqual([{ count: 2 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  /**
+   * The third fault on lore-production, hidden behind the first two until
+   * they were fixed: `sigilId` is a real foreign key into `sigils`, cascading
+   * on delete, and Analytics Engine keeps what a deleted sigil reported
+   * (it has no delete API). Forwarding those rows was refused by the
+   * database, so every sweep failed again, now with a foreign key error.
+   */
+  it("drops rows whose referenced row was deleted, as the cascade would have", async () => {
+    const parents = $entity({
+      name: "wae_parents",
+      schema: z.object({ id: db.primaryKey(z.uuid()) }),
+    });
+    const referencing = {
+      ...sigilViews,
+      name: "wae_ref_views",
+      dimensions: z.object({
+        sigilId: db.ref(z.uuid(), () => parents.cols.id, {
+          onDelete: "cascade",
+        }),
+        path: z.string(),
+      }),
+    };
+    const DELETED = "00000000-0000-4000-8000-0000000000de";
+
+    const alepha = Alepha.create({
+      env: {
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
+      },
+    }).with(AlephaOrmPostgres);
+    const parentRows = alepha.inject(Repository.of(parents));
+    const provider = alepha.inject(TestWaeAnalyticsProvider);
+    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+    provider.register(referencing);
+    await alepha.start();
+    try {
+      await parentRows.create({ id: SIGIL });
+      await provider.record(referencing, [
+        { hour: "2026-08-01T10", sigilId: SIGIL, path: "/x", count: 3 },
+        { hour: "2026-08-01T11", sigilId: DELETED, path: "/x", count: 4 },
+        { hour: "2026-08-01T12", sigilId: DELETED, path: "/y", count: 1 },
+      ]);
+
+      await provider.rollup(referencing, "2026-08-02");
+
+      const result = await provider.coldProvider.query(referencing, {
+        since: "2026-08-01",
+        groupBy: ["sigilId"],
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([{ sigilId: SIGIL, count: 3 }]);
+
+      const warnings = alepha
+        .inject(MemoryDestinationProvider)
+        .logs.filter(
+          (entry) =>
+            entry.level === "WARN" &&
+            entry.message.includes("deleted") &&
+            entry.message.includes("wae_ref_views"),
+        );
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].data).toEqual({
+        dimensions: { sigilId: { rows: 2, values: [DELETED] } },
+      });
     } finally {
       await alepha.stop();
     }
