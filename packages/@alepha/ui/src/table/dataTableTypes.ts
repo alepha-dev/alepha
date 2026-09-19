@@ -9,6 +9,7 @@ import type {
 import type { FormModel } from "alepha/react/form";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
+import type { BadgeTone } from "../core/Badge.tsx";
 import type { ControlProps } from "../form/Control.tsx";
 import type { SelectOption } from "../form/ControlSelect.tsx";
 import type {
@@ -728,3 +729,104 @@ export type DataTableSource<
       filter?: (item: T, filters: DataTableFilterValues<F>) => boolean;
       fetch?: never;
     };
+
+/**
+ * One tile of a table's summary panel: a figure, what it counts, and an
+ * optional line under it.
+ *
+ * Preformatted rather than a node, so every tile on every table has the same
+ * shape: the label on top, the figure large, the hint under it. The table does
+ * no arithmetic and no formatting; hand it the figure as it should read
+ * (`formatBytes(size)`, a currency, a date). Anything that is not a figure, a
+ * chart or a note, belongs in {@link DataTableSummary.content}.
+ */
+export interface DataTableStatCard {
+  /**
+   * What the figure counts. Also the tile's identity, so keep it unique within
+   * one summary.
+   */
+  label: string;
+  /**
+   * The figure, already formatted.
+   */
+  value: ReactNode;
+  /**
+   * A line under the figure: a unit, a comparison, where the number comes
+   * from.
+   */
+  hint?: ReactNode;
+  /**
+   * An icon beside the label.
+   */
+  icon?: IconType;
+  /**
+   * The tile's hue, named like a `tint` badge's: a near-transparent fill and a
+   * matching border, with the figure left as body text. For the one tile that
+   * asks for attention (a count of failures, an overdue period); an ordinary
+   * figure goes without.
+   */
+  tone?: BadgeTone;
+}
+
+/**
+ * The fetcher of a table's summary cards.
+ *
+ * Called with the filters the table's rows answer, so the figures describe the
+ * whole filtered set rather than the page on screen, and with a `signal` that
+ * aborts when a newer load supersedes this one: hand it to the request
+ * (`client.getStats({}, { request: { signal } })`).
+ */
+export type DataTableSummaryFetcher<
+  F extends DataTableFilterFields = DataTableNoFilterFields,
+> = (params: {
+  filters?: DataTableFilterValues<F>;
+  signal: AbortSignal;
+}) => Promise<DataTableStatCard[]>;
+
+/**
+ * The collapsible panel at the top of a table, above its filter bar: a grid of
+ * {@link DataTableStatCard}s, a free node, or both.
+ *
+ * The cards are either given (`cards`) or fetched (`fetch`), never both: with
+ * `fetch` set, `cards` is ignored. A fetched summary reloads whenever the table
+ * does (a filter change, Refresh, `refreshSignal`, `pollMs`, a row or bulk
+ * action's `refresh()`), and not on a page or a sort, which change what is on
+ * screen and not the set the figures describe. It is not fetched while the
+ * panel is collapsed; opening it fetches.
+ *
+ * The panel is hidden when there is nothing to show: no card and no
+ * `content`.
+ */
+export interface DataTableSummary<
+  F extends DataTableFilterFields = DataTableNoFilterFields,
+> {
+  /**
+   * The panel's name, on the button that collapses it. Defaults to the kit's
+   * translated "Summary".
+   */
+  title?: string;
+  /**
+   * Cards the caller already holds. They do not follow the filters; a figure
+   * that should is a `fetch`.
+   */
+  cards?: DataTableStatCard[];
+  /**
+   * Fetches the cards with the table's current filters. See
+   * {@link DataTableSummaryFetcher}.
+   */
+  fetch?: DataTableSummaryFetcher<F>;
+  /**
+   * Called when `fetch` fails, as `onError` is on `useQuery`. Passing one says
+   * the failure is handled here: the `react:action:error` event still fires,
+   * flagged `handled`, and a mounted `ActionErrorToaster` does not toast it.
+   * An empty one keeps a summary the page can live without quiet.
+   *
+   * Either way the cards already on screen stay, and a summary that never
+   * loaded any is not drawn until a reload succeeds.
+   */
+  onError?: (error: Error) => void;
+  /**
+   * Anything else, drawn under the cards, or alone: a chart, a note.
+   */
+  content?: ReactNode;
+}

@@ -17,6 +17,7 @@ import { DataTableFilterBar } from "./DataTableFilterBar.tsx";
 import { DataTableFilterDialog } from "./DataTableFilterDialog.tsx";
 import { dataTableFilterBarFields } from "./dataTableFilterFields.ts";
 import { DataTableFilterMenu } from "./DataTableFilterMenu.tsx";
+import { DataTableHelpButton } from "./DataTableHelpButton.tsx";
 import type {
   DataTableFilterFields,
   DataTableFilters,
@@ -50,6 +51,11 @@ export interface DataTableToolbarProps<T> {
   canResetFilters: boolean;
   toolbar?: ReactNode;
   actions?: TableAction[];
+  /**
+   * The table's `help`, behind the `?` that closes the icon group. The
+   * table passes `undefined` for a node that draws nothing.
+   */
+  help?: ReactNode;
   isMobile: boolean;
   showColumnPicker: boolean;
   showActionsMenu: boolean;
@@ -79,7 +85,7 @@ export interface DataTableToolbarProps<T> {
 /**
  * The bar above the rows: the filter form (or its dialog on a phone), the
  * caller's `toolbar` slot and `actions`, then the column picker, the filter
- * menu and refresh.
+ * menu, refresh and help.
  */
 export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
   const {
@@ -99,6 +105,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
     handleRefreshClick,
   } = props;
   const { tr } = useI18n();
+  const hasHelp = props.help !== undefined;
 
   /**
    * The filter controls, in either place. With `render`, the caller draws
@@ -246,7 +253,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
                   </Tooltip>
                 );
               })}
-              {(showColumnPicker || showActionsMenu) && (
+              {(showColumnPicker || showActionsMenu || hasHelp) && (
                 <span
                   aria-hidden
                   className="bg-border mx-1 h-5 w-px self-center"
@@ -345,6 +352,12 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
               </TooltipContent>
             </Tooltip>
           )}
+          {/*
+            Last, after refresh: the explanation of the page is read once and
+            then left alone, so it takes the end of the row rather than a slot
+            between the controls a reader keeps reaching for.
+          */}
+          {hasHelp && <DataTableHelpButton>{props.help}</DataTableHelpButton>}
         </div>
       </TooltipProvider>
     </div>

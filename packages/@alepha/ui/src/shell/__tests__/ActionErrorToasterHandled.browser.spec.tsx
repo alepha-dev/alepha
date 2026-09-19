@@ -303,9 +303,10 @@ describe("ActionErrorToaster and handled errors", () => {
 
   /**
    * The real `AdminFiles`: its bucket stats query passes `onError: () => {}`,
-   * because the bucket filter degrades to empty without them.
-   * `ShowcaseFilesController` in `apps/ui` relies on that leaving "no error
-   * anywhere".
+   * because the bucket filter degrades to empty without them, and so does its
+   * summary, whose four figures read the same endpoint (#Q2409): the page
+   * works without either. `ShowcaseFilesController` in `apps/ui` relies on
+   * that leaving "no error anywhere".
    */
   it("keeps AdminFiles' failed bucket stats quiet", async () => {
     let statsCalls = 0;
@@ -344,8 +345,11 @@ describe("ActionErrorToaster and handled errors", () => {
       FailingStatsLinks,
     );
 
-    await waitFor(() => expect(statsCalls).toBe(1));
+    // Both reads: the bucket filter's and the summary's.
+    await waitFor(() => expect(statsCalls).toBe(2));
     await settle();
     expect(screen.queryByText("Bucket stats unavailable")).toBeNull();
+    // And no summary band stands in for figures that never came.
+    expect(screen.queryByRole("region", { name: "Summary" })).toBeNull();
   });
 });

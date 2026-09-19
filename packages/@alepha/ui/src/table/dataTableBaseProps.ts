@@ -8,6 +8,7 @@ import type {
   DataTableFilters,
   DataTableNoFilterFields,
   DataTablePersistedFacets,
+  DataTableSummary,
   BulkAction,
   BulkMenuAction,
   ColumnDef,
@@ -61,6 +62,12 @@ import type {
  * The exception is a control that LEAVES the page - a back link, a tab bar,
  * breadcrumbs. Those are navigation, not actions on this table, and belong
  * where the page's other navigation is.
+ *
+ * The same goes for what a page SAYS about its list. Totals go in `summary`,
+ * the collapsible band of stat cards at the top of the table, and an
+ * explanation goes in `help`, the `?` at the end of the icon group: not a row
+ * of tiles and an alert stacked above the table, outside its frame, where they
+ * cannot follow its filters and cannot be put away.
  */
 
 export interface DataTableBaseProps<
@@ -202,12 +209,82 @@ export interface DataTableBaseProps<
    */
   actions?: TableAction[];
   /**
+   * The collapsible summary panel at the top of the table, above the filter
+   * bar: a grid of stat cards, given or fetched with the table's filters, and
+   * any node under them. See {@link DataTableSummary}.
+   *
+   * Open by default. The reader's open or closed choice is stored under
+   * {@link persistenceKey}, like the page size.
+   *
+   * ```tsx
+   * <DataTable<Order, typeof filterFields>
+   *   fetch={fetchOrders}
+   *   filters={{ fields: filterFields }}
+   *   summary={{
+   *     // Called with the filters the rows answer, on every reload of the
+   *     // set: the totals describe the filtered list, not the page.
+   *     fetch: async ({ filters, signal }) => {
+   *       const stats = await client.getOrderStats(
+   *         { query: { status: filters?.status } },
+   *         { request: { signal } },
+   *       );
+   *       return [
+   *         { label: "Orders", value: l(stats.count), icon: ShoppingCart },
+   *         { label: "Revenue", value: money(stats.totalCents) },
+   *         {
+   *           label: "Refunded",
+   *           value: l(stats.refunded),
+   *           hint: money(stats.refundedCents),
+   *           tone: stats.refunded > 0 ? "warning" : undefined,
+   *         },
+   *       ];
+   *     },
+   *     // Anything that is not a figure, under the cards.
+   *     content: <OrdersChart />,
+   *   }}
+   *   columns={columns}
+   * />
+   * ```
+   *
+   * Static figures go in `cards` instead of `fetch`; a node alone goes in
+   * `content`. With nothing to show (no card and no content) the panel is not
+   * drawn at all.
+   */
+  summary?: DataTableSummary<F>;
+  /**
+   * The page's explanation, behind a `?` icon at the end of the toolbar's icon
+   * group, after refresh. It opens a hover card on hover, on keyboard focus
+   * and on a click or a tap, and the card stays open while the pointer moves
+   * into it, so a link inside it can be followed.
+   *
+   * For what a reader needs once and then not again: how the list is built,
+   * why a row cannot be edited, what a status means.
+   *
+   * ```tsx
+   * <DataTable<Sale>
+   *   fetch={fetchSales}
+   *   help={
+   *     <>
+   *       <p className="font-medium">A locked journal</p>
+   *       <p className="text-muted-foreground">
+   *         Every payment is written once. A mistake is corrected by a
+   *         reversing entry, and each entry is fingerprinted.
+   *       </p>
+   *     </>
+   *   }
+   *   columns={columns}
+   * />
+   * ```
+   */
+  help?: ReactNode;
+  /**
    * Extra classes applied to the outer wrapper.
    */
   className?: string;
   /**
-   * Extra classes applied to the table's three chrome bands: the filter bar
-   * above, the sticky column header and the pagination footer below.
+   * Extra classes applied to the table's chrome bands: the summary panel and
+   * the filter bar above, the sticky column header and the pagination footer
+   * below.
    *
    * Merged after their own classes, so a background here replaces their
    * default `bg-muted`: `chromeClassName="bg-transparent"` lets the

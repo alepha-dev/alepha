@@ -2,6 +2,7 @@ import type { Infer, Page } from "alepha";
 
 import type { showcaseMemberQuerySchema } from "./schemas/showcaseMemberQuerySchema.ts";
 import type { showcaseMemberSchema } from "./schemas/showcaseMemberSchema.ts";
+import type { showcaseMemberStatsSchema } from "./schemas/showcaseMemberStatsSchema.ts";
 
 /**
  * The showcase's dataset, paged and filtered in memory.
@@ -12,11 +13,17 @@ import type { showcaseMemberSchema } from "./schemas/showcaseMemberSchema.ts";
  * so it would prove nothing about the path underneath it.
  */
 export class ShowcaseMembers {
-  public stats(): { total: number; active: number; teams: number } {
-    const rows = this.rows();
+  /**
+   * Counts over the members the query's filters match, every page of them:
+   * what `DataTable`'s summary panel shows beside the rows. Paging and sort
+   * are ignored, since neither changes which members match.
+   */
+  public stats(query: ShowcaseMemberQuery = {}): ShowcaseMemberStats {
+    const rows = this.filter(query);
     return {
       total: rows.length,
       active: rows.filter((r) => r.status === "active").length,
+      invited: rows.filter((r) => r.status === "invited").length,
       teams: new Set(rows.map((r) => r.team)).size,
     };
   }
@@ -41,6 +48,56 @@ export class ShowcaseMembers {
     const size = Number(query.size ?? 20);
     const number = Number(query.page ?? 0);
 
+    let rows = this.filter(query);
+
+    // ⚠️ Alepha's pagination convention is `field` for ascending and `-field`
+    // for descending, NOT `field,direction`: a comma separates COLUMNS in a
+    // multi-column sort, so `name,desc` asks for a second column called
+    // "desc".
+    //
+    // This parsed the comma form, which made descending a silent no-op:
+    // `-name` was read as the whole field name, every row's value came back
+    // undefined, every comparison returned 0, and `Array.sort` being stable
+    // handed back the original order. The header arrow flipped and the rows
+    // did not move.
+    const sort = String(query.sort ?? "");
+    if (sort) {
+      const descending = sort.startsWith("-");
+      const key = (descending ? sort.slice(1) : sort) as keyof ShowcaseMember;
+      rows = [...rows].sort((a, b) => {
+        const left = String(a[key] ?? "");
+        const right = String(b[key] ?? "");
+        return descending
+          ? right.localeCompare(left)
+          : left.localeCompare(right);
+      });
+    }
+
+    const offset = number * size;
+    const content = rows.slice(offset, offset + size);
+    const totalPages = Math.max(1, Math.ceil(rows.length / size));
+
+    return {
+      content,
+      page: {
+        number,
+        size,
+        offset,
+        numberOfElements: content.length,
+        totalElements: rows.length,
+        totalPages,
+        isEmpty: content.length === 0,
+        isFirst: number === 0,
+        isLast: number >= totalPages - 1,
+      },
+    };
+  }
+
+  /**
+   * The members the query's filters match, in fixture order. Shared by the
+   * page and the stats, so the two cannot disagree about what a filter means.
+   */
+  public filter(query: ShowcaseMemberQuery): ShowcaseMember[] {
     let rows = this.rows();
 
     const search = String(query.search ?? "").toLowerCase();
@@ -95,47 +152,7 @@ export class ShowcaseMembers {
       rows = rows.filter((r) => r.email.toLowerCase().includes(email));
     }
 
-    // ⚠️ Alepha's pagination convention is `field` for ascending and `-field`
-    // for descending, NOT `field,direction`: a comma separates COLUMNS in a
-    // multi-column sort, so `name,desc` asks for a second column called
-    // "desc".
-    //
-    // This parsed the comma form, which made descending a silent no-op:
-    // `-name` was read as the whole field name, every row's value came back
-    // undefined, every comparison returned 0, and `Array.sort` being stable
-    // handed back the original order. The header arrow flipped and the rows
-    // did not move.
-    const sort = String(query.sort ?? "");
-    if (sort) {
-      const descending = sort.startsWith("-");
-      const key = (descending ? sort.slice(1) : sort) as keyof ShowcaseMember;
-      rows = [...rows].sort((a, b) => {
-        const left = String(a[key] ?? "");
-        const right = String(b[key] ?? "");
-        return descending
-          ? right.localeCompare(left)
-          : left.localeCompare(right);
-      });
-    }
-
-    const offset = number * size;
-    const content = rows.slice(offset, offset + size);
-    const totalPages = Math.max(1, Math.ceil(rows.length / size));
-
-    return {
-      content,
-      page: {
-        number,
-        size,
-        offset,
-        numberOfElements: content.length,
-        totalElements: rows.length,
-        totalPages,
-        isEmpty: content.length === 0,
-        isFirst: number === 0,
-        isLast: number >= totalPages - 1,
-      },
-    };
+    return rows;
   }
 
   /**
@@ -283,3 +300,5 @@ export class ShowcaseMembers {
 export type ShowcaseMember = Infer<typeof showcaseMemberSchema>;
 
 export type ShowcaseMemberQuery = Infer<typeof showcaseMemberQuerySchema>;
+
+export type ShowcaseMemberStats = Infer<typeof showcaseMemberStatsSchema>;

@@ -18,7 +18,14 @@ interface ShowcaseClient {
     content: ShowcaseMember[];
     page: { totalElements?: number; isFirst: boolean };
   }>;
-  findShowcaseMemberStats: () => Promise<{ total: number; active: number }>;
+  findShowcaseMemberStats: (args?: {
+    query: Record<string, unknown>;
+  }) => Promise<{
+    total: number;
+    active: number;
+    invited: number;
+    teams: number;
+  }>;
 }
 
 /**
@@ -152,5 +159,25 @@ describe("ShowcaseController", () => {
     });
 
     expect(stats.total).toBe(all.page.totalElements);
+  });
+
+  it("counts the members a query matches, every page of them", async ({
+    expect,
+  }) => {
+    // What the Addons page's summary asks for: the figures follow the table's
+    // filters, and describe the whole filtered set rather than one page.
+    const api = (await start()).client() as unknown as ShowcaseClient;
+    const query = { status: "invited", page: 0, size: 2 };
+    const stats = await api.findShowcaseMemberStats({ query });
+    const page = await api.findShowcaseMembers({ query });
+
+    expect(stats.total).toBe(page.page.totalElements);
+    expect(stats.total).toBeGreaterThan(2);
+    expect(stats.invited).toBe(stats.total);
+    expect(stats.active).toBe(0);
+
+    const all = await api.findShowcaseMemberStats();
+    expect(all.total).toBeGreaterThan(stats.total);
+    expect(all.active + all.invited).toBeLessThanOrEqual(all.total);
   });
 });

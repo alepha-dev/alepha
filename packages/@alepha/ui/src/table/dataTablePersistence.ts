@@ -123,6 +123,17 @@ export const persistedSize = (
   return stored ?? fallback ?? 20;
 };
 
+/**
+ * Whether the summary panel is open: the reader's last choice, or open.
+ *
+ * Stored with the key whatever `persist` says, like the page size: it is how
+ * the reader arranged the page, not a question they asked it.
+ */
+export const persistedSummaryOpen = (key: string | undefined): boolean => {
+  const stored = key ? readPersisted<unknown>(key, "summaryOpen") : undefined;
+  return typeof stored === "boolean" ? stored : true;
+};
+
 export const persistedColumns = <T>(
   key: string | undefined,
   columns: Record<string, ColumnDef<T>>,

@@ -301,6 +301,68 @@ test.describe("Showcase", () => {
 });
 
 test.describe("DataTable", () => {
+  test("the summary counts the filtered set, and stays collapsed once closed", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/data-table/addons");
+
+    const summary = page.getByRole("region", { name: "Summary" });
+    const figure = (label: string) =>
+      summary
+        .locator('[data-slot="data-table-stat"]')
+        .filter({ has: page.locator("dt", { hasText: label }) })
+        .locator("dd")
+        .first();
+
+    // Every member, across every page: more than the 20 rows on screen.
+    await expect(figure("Members")).toHaveText("75");
+    await expect(figure("Invited")).toHaveText("11");
+
+    // The same filter as the rows, so the figures recount the filtered set.
+    await page.getByRole("radio", { name: "Invited" }).click();
+    await expect(figure("Members")).toHaveText("11");
+    await expect(figure("Active")).toHaveText("0");
+
+    const toggle = summary.getByRole("button", { name: "Summary" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(summary.locator("dl")).toHaveCount(0);
+
+    // The reader's choice outlives the visit, like the page size.
+    await page.reload();
+    await expect(
+      page
+        .getByRole("region", { name: "Summary" })
+        .getByRole("button", { name: "Summary" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("the help card stays open while the pointer crosses into it", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/data-table/addons");
+    await expect(page.getByText("Ada Lovelace")).toBeVisible();
+
+    // A jsdom spec cannot prove this half: the card holds the pointer through
+    // the primitive's safe polygon, which is geometry, and needs a layout.
+    await page.getByRole("button", { name: "Help" }).hover();
+    const card = page.getByText("How this list is counted");
+    await expect(card).toBeVisible();
+
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2, {
+      steps: 12,
+    });
+    // Past the card's 300ms close delay, with the pointer on it.
+    await page.waitForTimeout(700);
+    await expect(card).toBeVisible();
+
+    await page.mouse.move(1, 1, { steps: 4 });
+    await expect(card).toBeHidden();
+  });
+
   test("renders rows fetched through the action registry", async ({ page }) => {
     await page.goto("/blocks/data-table/basic");
 

@@ -23,6 +23,7 @@ import {
   persistedSort,
 } from "./dataTablePersistence.ts";
 import { DATA_TABLE_SQUARE_RIGHT } from "./dataTableSquareRight.ts";
+import { DataTableSummaryPanel } from "./DataTableSummaryPanel.tsx";
 import { DataTableToolbar } from "./DataTableToolbar.tsx";
 import type {
   DataTableCellContext,
@@ -39,6 +40,7 @@ import { useDataTableData } from "./useDataTableData.ts";
 import { useDataTableFilterForm } from "./useDataTableFilterForm.ts";
 import { useDataTableFilterVisibility } from "./useDataTableFilterVisibility.ts";
 import { useDataTableRefresh } from "./useDataTableRefresh.ts";
+import { useDataTableSummary } from "./useDataTableSummary.ts";
 import { useTableSelection } from "./useTableSelection.ts";
 
 export type DataTableProps<
@@ -166,6 +168,14 @@ export const DataTable = <
       setRefreshKey,
       setIsRefreshing,
     });
+
+  const summary = useDataTableSummary({
+    summary: untyped.summary,
+    persistenceKey: props.persistenceKey,
+    refreshKey,
+    form,
+    alepha,
+  });
 
   // -- Row identity ----------------------------------------------------------
 
@@ -295,6 +305,9 @@ export const DataTable = <
     // same reason: the project just opened must not show the bar of the one
     // just left.
     filterVisibility.rereadShown(filtersKey);
+    // The panel's open state is the scope's like the size is, and its cards
+    // are the scope's figures: they go now, and the bump below refetches.
+    summary.resetScope(props.persistenceKey);
     setRefreshKey((k) => k + 1);
   }
 
@@ -354,12 +367,29 @@ export const DataTable = <
   // so the two cannot disagree.
   const isEmptyState = !loading && data.length === 0;
 
+  // A node that draws nothing is no help and no content: the `?` and the
+  // band would open on an empty card. Decided here, once, and handed down
+  // as `undefined` when it is empty.
+  const hasHelp =
+    props.help != null && props.help !== false && props.help !== "";
   const showToolbar =
     Boolean(props.filters) ||
     Boolean(props.toolbar) ||
     Boolean(props.actions?.length) ||
+    hasHelp ||
     !props.hideColumnPicker ||
     !props.hideActionsMenu;
+  // Drawn while a first fetch is out (its placeholders), and after that only
+  // with something in it: a summary with no card and no content is no band.
+  const hasSummaryContent =
+    props.summary?.content != null &&
+    props.summary.content !== false &&
+    props.summary.content !== "";
+  const showSummary =
+    Boolean(props.summary) &&
+    (summary.cards === undefined ||
+      summary.cards.length > 0 ||
+      hasSummaryContent);
   const cellPadding = DATA_TABLE_CELL_PADDING[props.cellPadding ?? "normal"];
   const squareRight = props.squareRight
     ? DATA_TABLE_SQUARE_RIGHT[`${props.squareRight}`]
@@ -383,6 +413,29 @@ export const DataTable = <
           </div>
         )}
 
+        {/*
+          The summary opens the frame when it is there, so it takes the top
+          corners `squareRight` squares, and whatever follows it (the filter
+          bar, or the rows when there is none) joins under it the way the rows
+          join the filter bar: flattened top, no top border, `-mt-2` against
+          the wrapper's gap. The panel's own bottom border is the line
+          between them.
+        */}
+        {showSummary && (
+          <DataTableSummaryPanel
+            title={
+              props.summary?.title ??
+              tr("dataTable.summary", { default: "Summary" })
+            }
+            open={summary.open}
+            onOpenChange={summary.setOpen}
+            cards={summary.cards}
+            loading={summary.loading}
+            content={hasSummaryContent ? props.summary?.content : undefined}
+            className={cn(squareRight?.top, props.chromeClassName)}
+          />
+        )}
+
         {showToolbar && (
           <DataTableToolbar<T>
             columns={props.columns}
@@ -394,6 +447,7 @@ export const DataTable = <
             canResetFilters={canResetFilters}
             toolbar={props.toolbar}
             actions={props.actions}
+            help={hasHelp ? props.help : undefined}
             isMobile={isMobile}
             showColumnPicker={showColumnPicker}
             showActionsMenu={showActionsMenu}
@@ -407,7 +461,12 @@ export const DataTable = <
             reorderColumn={reorderColumn}
             isRefreshing={isRefreshing}
             handleRefreshClick={handleRefreshClick}
-            className={cn(squareRight?.top, props.chromeClassName)}
+            className={cn(
+              showSummary
+                ? "-mt-2 rounded-t-none border-t-0"
+                : squareRight?.top,
+              props.chromeClassName,
+            )}
           />
         )}
 
@@ -434,11 +493,11 @@ export const DataTable = <
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
-            showToolbar && "-mt-2 rounded-t-none border-t-0",
+            (showToolbar || showSummary) && "-mt-2 rounded-t-none border-t-0",
             showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
-            // With no toolbar the rows open the table, so their top-right
-            // corner is the one `squareRight` squares.
-            !showToolbar && squareRight?.top,
+            // With no toolbar and no summary the rows open the table, so
+            // their top-right corner is the one `squareRight` squares.
+            !showToolbar && !showSummary && squareRight?.top,
             // `<Table>` wraps the table in a container div whose classes it
             // hardcodes, and only this table needs that container to grow,
             // so the one class it needs is set from out here instead.

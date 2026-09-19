@@ -44,12 +44,18 @@ export class ShowcaseController {
     handler: ({ query }) => this.members.paginate(query),
   });
 
+  /**
+   * Takes the same query as the page, so a summary beside the table counts
+   * the members its filters match rather than all of them. Paging and sort
+   * are accepted and ignored.
+   */
   public readonly findShowcaseMemberStats = $action({
     path: "/showcase/members/stats",
-    description: "Aggregate counts over the showcase members",
+    description: "Aggregate counts over the showcase members a query matches",
     schema: {
+      query: showcaseMemberQuerySchema,
       response: showcaseMemberStatsSchema,
     },
-    handler: () => this.members.stats(),
+    handler: ({ query }) => this.members.stats(query),
   });
 }
