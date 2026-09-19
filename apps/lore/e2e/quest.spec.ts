@@ -975,7 +975,7 @@ test.describe("Quest", () => {
       // Reset moved behind the toolbar's Filters menu when this table became
       // linkable (`fromQuery`): the bare icon button had nowhere to put the
       // Share item that shipped with it.
-      await page.getByRole("button", { name: "Filters" }).click();
+      await page.getByRole("button", { name: "Filters", exact: true }).click();
       await page.getByRole("menuitem", { name: "Reset filters" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
