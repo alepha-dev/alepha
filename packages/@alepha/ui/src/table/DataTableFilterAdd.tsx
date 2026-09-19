@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { FunnelPlus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { Button } from "../core/Button.tsx";
@@ -24,13 +24,14 @@ export interface DataTableFilterAddProps {
 }
 
 /**
- * The funnel-plus at the end of a filter bar: what a reader presses to bring
- * a filter they are not currently using into view.
+ * The small "+" at the end of a filter bar: what a reader presses to bring a
+ * filter they are not currently using into view. Its tooltip and accessible
+ * name say "Add filters".
  *
- * A funnel rather than a bare `+`, so it says WHAT it adds. A plus at the end
- * of a row of filters is the generic "add something" of every toolbar, and it
- * sat next to a remove button that had no icon of its own either; the two now
- * pair, funnel-plus against funnel-x.
+ * A bare `+` rather than the funnel-plus it replaced (2026-09-19): at the end
+ * of the row of filters, the row itself says what it adds, and the 36px
+ * funnel read as one more toolbar tool beside the column picker. New filters
+ * join the END of the bar, beside this button (see `DataTableFilterBar`).
  *
  * It exists because the bar now starts nearly empty. Showing every filter a
  * table supports spends the width of the bar on questions nobody has asked -
@@ -49,7 +50,7 @@ export interface DataTableFilterAddProps {
  */
 export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
   const { tr } = useI18n();
-  const label = tr("dataTable.addFilter", { default: "Add filter" });
+  const label = tr("dataTable.addFilter", { default: "Add filters" });
   const groupLabel = tr("dataTable.filterBy", { default: "Filter by" });
 
   // Spelled out case by case rather than built from the type: the i18n check
@@ -85,26 +86,23 @@ export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
               render={
                 <Button
                   type="button"
-                  size="sm"
+                  size="icon-sm"
                   variant="ghost"
-                  // Minimal, and the SAME SIZE as the bar's other icon
-                  // buttons - the column picker, the filter menu, the
-                  // refresh. Ghost rather than outlined because an outlined
-                  // 36px button beside a row of outlined 36px controls read
-                  // as an empty filter box, which is the one thing it is not;
-                  // but the footprint has to match the other chrome in the
-                  // bar or it reads as a different class of control again,
-                  // just in the other direction. `h-9 w-9` and a `size-4`
-                  // icon are exactly what `DataTable` gives its own toolbar
-                  // buttons.
-                  className="text-muted-foreground hover:text-foreground h-9 w-9 shrink-0 p-0"
+                  // A small, bare "+": it ends the row of filters it adds
+                  // to, so it reads as "one more of these" rather than as a
+                  // fourth toolbar tool beside the column picker, which is
+                  // what the 36px funnel-plus looked like. Ghost, because an
+                  // outlined box beside the outlined filters read as an
+                  // empty filter. `self-center` holds it on the row's
+                  // midline, since it is shorter than the controls.
+                  className="text-muted-foreground hover:text-foreground shrink-0 self-center"
                   aria-label={label}
                 />
               }
             />
           }
         >
-          <FunnelPlus className="size-4" />
+          <Plus className="size-4" />
         </DropdownMenuTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>

@@ -25,6 +25,7 @@ import {
 import { DATA_TABLE_SQUARE_RIGHT } from "./dataTableSquareRight.ts";
 import { DataTableToolbar } from "./DataTableToolbar.tsx";
 import type {
+  DataTableCellContext,
   DataTableFilterFields,
   DataTableNoFilterFields,
   DataTableSource,
@@ -134,6 +135,7 @@ export const DataTable = <
     setSort,
     data,
     meta,
+    rowFilters,
     loading,
     refreshKey,
     setRefreshKey,
@@ -326,6 +328,19 @@ export const DataTable = <
     return Object.keys(cleanFilterValues(form.currentValues ?? {})).length;
   }, [props.filters, form, refreshKey]);
   const hasActiveFilters = activeFilterCount > 0;
+
+  // What every cell is told beside its row: the search the rows on screen
+  // answer, from the first `preset: "search"` field holding one.
+  const searchKey = Object.entries(props.filters?.fields ?? {}).find(
+    ([, field]) => field.preset === "search",
+  )?.[0];
+  const rowSearch = searchKey ? rowFilters?.[searchKey] : undefined;
+  const cellContext: DataTableCellContext = {
+    search:
+      typeof rowSearch === "string" && rowSearch.trim() !== ""
+        ? rowSearch.trim()
+        : undefined,
+  };
   /**
    * Whether Reset filters would change anything: a value set, or a bar that
    * is not the one the table declares. Not the count alone, or a reader who
@@ -486,6 +501,7 @@ export const DataTable = <
             <DataTableBody<T>
               cellClassName={cellPadding.cell}
               data={data}
+              cellContext={cellContext}
               rowKeys={rowKeys}
               loading={loading}
               visibleCols={visibleCols}

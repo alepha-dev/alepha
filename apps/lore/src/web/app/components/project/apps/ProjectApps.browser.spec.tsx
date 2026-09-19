@@ -245,7 +245,7 @@ describe("the Apps list", () => {
      * the bar (#E58) and is reached through this menu.
      */
     const openAddMenu = async () => {
-      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
         key: "ArrowDown",
       });
       return screen.findByRole("menu");

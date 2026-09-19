@@ -6,7 +6,8 @@
  * family. Beside them, the small pieces every surface reaches for: `cn` for
  * class merging, `useToast` with its `Toaster`, `useDialog` with its
  * `DialogProvider`, `useIsMobile`, `TimeAgo`, `UserAvatar`, `BrandIcon`,
- * `FileImage`, `PaneRail` and `FilterSlot`.
+ * `FileImage`, `PaneRail`, `FilterSlot`, and `Highlight` to mark what a
+ * search matched in a text.
  *
  * Imports nothing from another `@alepha/ui` module, so
  * `import { Button } from "@alepha/ui"` never pulls in a form, a table or a
@@ -273,6 +274,8 @@ export {
 } from "./Empty.tsx";
 export { FileImage, type FileImageProps } from "./FileImage.tsx";
 export { FilterSlot, type FilterSlotProps } from "./FilterSlot.tsx";
+export { Highlight, type HighlightProps } from "./Highlight.tsx";
+export { highlightRanges } from "./highlightRanges.ts";
 export {
   HoverCard,
   type HoverCardProps,

@@ -1,5 +1,6 @@
 import { useI18n } from "alepha/react/i18n";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "../core/Button.tsx";
 import { DataTableBulkMenu } from "./DataTableBulkMenu.tsx";
@@ -27,6 +28,11 @@ export interface DataTableBulkBarProps<T> {
 
 /**
  * The floating pill of bulk actions, shown while rows are selected.
+ *
+ * An action whose `onClick` returns a promise holds the pill until it
+ * settles: every button is disabled and the running one spins, so a bulk
+ * write cannot be sent twice by a second click while the first is on the
+ * wire.
  */
 export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
   const {
@@ -37,6 +43,19 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
     clearSelection,
   } = props;
   const { tr } = useI18n();
+  // The label of the action whose promise is pending, if any.
+  const [running, setRunning] = useState<string>();
+
+  const run = async (action: BulkAction<T>) => {
+    const result = action.onClick(selectedItems, bulkCtx);
+    if (!(result instanceof Promise)) return;
+    setRunning(action.label);
+    try {
+      await result;
+    } finally {
+      setRunning(undefined);
+    }
+  };
 
   return (
     // Linear-style floating action pill: fixed at the bottom-center of
@@ -64,6 +83,7 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
             );
           }
           const ActionIcon = action.icon;
+          const count = action.count?.(selectedItems);
           return (
             <Button
               key={action.label}
@@ -73,10 +93,23 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
                   ? "h-8 bg-red-600 text-white hover:bg-red-500"
                   : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
               }
-              onClick={() => action.onClick(selectedItems, bulkCtx)}
+              disabled={running !== undefined}
+              onClick={() => void run(action)}
             >
-              {ActionIcon && <ActionIcon className="size-4" />}
+              {running === action.label ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                ActionIcon && <ActionIcon className="size-4" />
+              )}
               {action.label}
+              {count !== undefined && (
+                // The space keeps the accessible name "Shelve 3", not
+                // "Shelve3"; the flex gap does the visual spacing.
+                <>
+                  {" "}
+                  <span className="tabular-nums opacity-70">{count}</span>
+                </>
+              )}
             </Button>
           );
         })}

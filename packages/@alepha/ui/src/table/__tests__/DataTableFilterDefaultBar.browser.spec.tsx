@@ -116,7 +116,7 @@ describe("DataTable (the filter bar drawn from fields)", () => {
     document.querySelector(`[data-filter="${key}"]`);
 
   const openAddMenu = async () => {
-    const trigger = screen.getByRole("button", { name: "Add filter" });
+    const trigger = screen.getByRole("button", { name: "Add filters" });
     // Base UI opens a menu from its trigger on a key as well as a press; the
     // key path is the one jsdom drives reliably.
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
@@ -185,6 +185,21 @@ describe("DataTable (the filter bar drawn from fields)", () => {
         el.getAttribute("data-filter"),
       );
       expect(order).toEqual(["search", "status", "owner"]);
+    });
+
+    it("draws added filters in the order they were added, not declared", async () => {
+      await mount();
+
+      // Declared team then owner; added owner then team.
+      await addFilter("Owner");
+      await waitFor(() => expect(slot("owner")).toBeTruthy());
+      await addFilter("Team");
+      await waitFor(() => expect(slot("team")).toBeTruthy());
+
+      const order = [...document.querySelectorAll("[data-filter]")].map((el) =>
+        el.getAttribute("data-filter"),
+      );
+      expect(order).toEqual(["search", "status", "owner", "team"]);
     });
 
     it("removes a default filter with the staged cross, and offers it back", async () => {
@@ -433,7 +448,7 @@ describe("DataTable (the filter bar drawn from fields)", () => {
 
       expect(rendered).toBe(true);
       expect(screen.getByText("custom filters")).toBeTruthy();
-      expect(screen.queryByRole("button", { name: "Add filter" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Add filters" })).toBeNull();
       expect(slot("status")).toBeNull();
     });
   });
@@ -487,7 +502,7 @@ describe("DataTable (the filter bar drawn from fields)", () => {
         within(dialog).queryByRole("button", { name: /Remove filter/ }),
       ).toBeNull();
       expect(
-        within(dialog).queryByRole("button", { name: "Add filter" }),
+        within(dialog).queryByRole("button", { name: "Add filters" }),
       ).toBeNull();
     });
   });

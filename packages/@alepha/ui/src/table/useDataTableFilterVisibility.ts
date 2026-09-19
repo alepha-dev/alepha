@@ -85,8 +85,9 @@ export const useDataTableFilterVisibility = (
 
   /**
    * Whether the bar is somewhere Reset would move it from: an optional
-   * filter added, or a default one removed. Order is not a difference; the
-   * bar draws in declaration order whatever the state holds.
+   * filter added, or a default one removed. Order alone is not a difference:
+   * the bar draws the filters in the order they joined it, and the same set
+   * in another order is not worth a Reset.
    */
   const differsFromDeclaration =
     shown.length !== declared.length ||

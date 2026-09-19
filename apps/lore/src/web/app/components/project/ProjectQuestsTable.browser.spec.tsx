@@ -378,8 +378,8 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     const { view } = await mount();
 
     // The bar starts with the search box alone (#Q2310): Release is added
-    // from the funnel-plus menu, and adding it opens its list.
-    fireEvent.keyDown(view.getByRole("button", { name: "Add filter" }), {
+    // from the "+" menu, and adding it opens its list.
+    fireEvent.keyDown(view.getByRole("button", { name: "Add filters" }), {
       key: "ArrowDown",
     });
     fireEvent.click(await view.findByRole("menuitem", { name: /Release/ }));

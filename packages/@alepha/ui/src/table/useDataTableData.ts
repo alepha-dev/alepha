@@ -93,6 +93,12 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   );
   const [fetchedData, setData] = useState<T[]>([]);
   const [fetchedMeta, setMeta] = useState<Page<T>["page"] | null>(null);
+  // The filters the fetched rows answer, copied when their request left:
+  // `form.currentValues` is mutated in place and already holds what the
+  // reader is typing now. Read by the cells through `rowFilters`.
+  const [fetchedFilters, setFetchedFilters] = useState<
+    Record<string, unknown> | undefined
+  >(undefined);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -122,6 +128,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     const fetcher = fetchRef.current;
     if (!fetcher) return;
     setLoading(true);
+    const sent = form ? { ...form.currentValues } : undefined;
     try {
       const res = await fetcher({
         page,
@@ -131,6 +138,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
       });
       setData(res.content);
       setMeta(res.page);
+      setFetchedFilters(sent);
     } catch (error) {
       // Surface read failures through the same `react:action:error` channel
       // that useAction/useQuery use, so a mounted <ActionErrorToaster /> toasts
@@ -191,6 +199,9 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
 
   const data = staticPage ? staticPage.content : fetchedData;
   const meta = staticPage ? staticPage.page : fetchedMeta;
+  // Static rows are derived in this render from the current values, so those
+  // ARE the filters they answer.
+  const rowFilters = staticPage ? form?.currentValues : fetchedFilters;
 
   /**
    * Rows vanish under the reader in static mode: the caller detaches one and
@@ -258,6 +269,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     setSort,
     data,
     meta,
+    rowFilters,
     loading,
     refreshKey,
     setRefreshKey,

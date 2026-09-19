@@ -31,6 +31,7 @@ export type {
   BulkActionContext,
   BulkMenuAction,
   ColumnDef,
+  DataTableCellContext,
   RowAction,
   RowActionContext,
   RowActionEntry,

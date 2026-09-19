@@ -19,6 +19,27 @@ import type {
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
+/**
+ * What a cell may know about its table beyond its own row: the second
+ * argument of every {@link ColumnDef.cell}.
+ */
+export interface DataTableCellContext {
+  /**
+   * The search the rows on screen answer: the value of the table's search
+   * filter (the field with `preset: "search"`), trimmed, or `undefined` when
+   * there is none or it is empty. Hand it to `<Highlight>`:
+   *
+   * ```tsx
+   * cell: (row, ctx) => <Highlight text={row.name} query={ctx?.search} />
+   * ```
+   *
+   * It is the search the CURRENT rows were fetched with, not the one being
+   * typed: in fetch mode it changes when the next page lands, so the marks
+   * never run ahead of the rows they sit in.
+   */
+  search?: string;
+}
+
 export interface ColumnDef<T> {
   label: string;
   /**
@@ -27,7 +48,15 @@ export interface ColumnDef<T> {
    * only counts what is kept, a date in a zone that is not the reader's.
    */
   hint?: string;
-  cell: (item: T) => ReactNode;
+  /**
+   * Draws the column's cell for one row. The second argument says what the
+   * table knows beyond the row, such as the search the rows answer, for a
+   * cell that marks it with `<Highlight>`. See {@link DataTableCellContext}.
+   *
+   * Optional so a test, an export or any caller drawing a cell by hand can
+   * still call `cell(row)`; the table itself always passes it.
+   */
+  cell: (item: T, context?: DataTableCellContext) => ReactNode;
   sortable?: boolean;
   /**
    * Sort key sent to the API. Defaults to the column key.
@@ -140,6 +169,16 @@ export interface BulkAction<T> {
    * it fits, which is what its `onClick` receives the whole selection for.
    */
   visible?: (selected: T[]) => boolean;
+  /**
+   * How many of the selected rows the action applies to, drawn after its
+   * label ("Check-in 3" with five rows selected). The reader sees what a
+   * click will touch before making it, which matters for an action that acts
+   * on the rows it fits and skips the rest. Absent draws no number.
+   *
+   * Pair it with `visible: (rows) => count(rows) > 0` so an action that
+   * would touch nothing is not offered.
+   */
+  count?: (selected: T[]) => number;
 }
 
 /**
@@ -540,7 +579,7 @@ export type DataTableFilterSchema<F> = string extends keyof F
  * ```
  *
  * **Where a filter starts is its `mode`.** `"optional"`, the default, is off
- * the bar until the reader adds it from the funnel-plus menu. `"default"` is
+ * the bar until the reader adds it from the "+" menu. `"default"` is
  * on the bar from the start, empty, and removable. `"locked"` is always on the
  * bar and never removable; in the Alepha ecosystem only the search box is,
  * through `preset: "search"`. A filter holding a value is on the bar whatever

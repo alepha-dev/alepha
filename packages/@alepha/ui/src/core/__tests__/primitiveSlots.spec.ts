@@ -169,6 +169,7 @@ describe("primitive data-slots", () => {
       "empty-icon",
       "empty-title",
     ],
+    "core/Highlight.tsx": ["highlight"],
     "core/HoverCard.tsx": [
       "hover-card",
       "hover-card-content",

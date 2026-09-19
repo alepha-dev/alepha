@@ -8,6 +8,7 @@ import { cn } from "../core/utils.ts";
 import { DataTableRowActionsMenu } from "./DataTableRowActionsMenu.tsx";
 import { DataTableSkeletonRows } from "./DataTableSkeletonRows.tsx";
 import type {
+  DataTableCellContext,
   DataTableEmptyState,
   ColumnDef,
   RowActionContext,
@@ -30,6 +31,10 @@ export interface DataTableBodyProps<T> {
    * The visible columns, in the reader's order.
    */
   visibleCols: Array<[string, ColumnDef<T>]>;
+  /**
+   * Handed to every cell beside its row.
+   */
+  cellContext: DataTableCellContext;
   hasCheckbox: boolean;
   hasRowActions: boolean;
   /**
@@ -199,7 +204,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                     def.align === "center" && "text-center",
                   )}
                 >
-                  {def.cell(item)}
+                  {def.cell(item, props.cellContext)}
                 </TableCell>
               ))}
               {hasRowActions && (

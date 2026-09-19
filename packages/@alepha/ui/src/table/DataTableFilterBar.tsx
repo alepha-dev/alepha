@@ -74,7 +74,7 @@ export interface DataTableFilterBarProps {
  * bar**, whatever its mode and however it got the value: restored from
  * persistence, read from a shared link, carried across a remount. Keyed on
  * the shown state alone, the bar came back empty while the table stayed
- * filtered, and "Add filter" handed back a filter that was already set. The
+ * filtered, and "Add filters" handed back a filter that was already set. The
  * same holds for `hidden`: an empty hidden field is off the bar and out of the
  * menu, and a hidden field narrowing the list is still drawn, or the list
  * would be narrowed with nothing on screen saying why.
@@ -322,13 +322,22 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
     return shown.includes(field.key);
   };
 
-  // Locked first, then the shown ones, both in declaration order. The dialog
-  // keeps the declaration as it is: nothing there is added or removed.
+  // Locked first, in declaration order, then the shown ones in the order they
+  // joined the bar: an added filter goes to the END, beside the "+" that
+  // brought it, not back to its declared slot. Added D, C, B, A reads
+  // D C B A. The dialog keeps the declaration as it is: nothing there is
+  // added or removed.
+  const rank = (field: DataTableFilterBarField) => {
+    const index = shown.indexOf(field.key);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
   const ordered = dialog
     ? props.fields
     : [
         ...props.fields.filter((field) => isLocked(field)),
-        ...props.fields.filter((field) => !isLocked(field)),
+        ...props.fields
+          .filter((field) => !isLocked(field))
+          .sort((a, b) => rank(a) - rank(b)),
       ];
 
   return (

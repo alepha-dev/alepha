@@ -141,7 +141,7 @@ describe("DataTable (a date range on the filter bar)", () => {
     });
 
   const addCreated = async () => {
-    fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+    fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
       key: "ArrowDown",
     });
     const menu = await screen.findByRole("menu");

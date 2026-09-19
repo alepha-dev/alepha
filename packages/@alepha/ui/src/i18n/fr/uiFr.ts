@@ -71,7 +71,7 @@ export const uiFr: Record<string, string> = {
   "dataTable.emptyDescription": "Il n'y a rien ici pour le moment.",
   "dataTable.noMatchTitle": "Aucun résultat",
   "dataTable.noMatchDescription": "Essayez d'ajuster ou d'effacer les filtres.",
-  "dataTable.addFilter": "Ajouter un filtre",
+  "dataTable.addFilter": "Ajouter des filtres",
   "dataTable.filterBy": "Filtrer par",
   "dataTable.filterName": "$1 :",
   "dataTable.filterType.date": "date",

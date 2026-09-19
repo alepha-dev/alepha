@@ -257,7 +257,7 @@ describe("ProjectReleases - the row menu and the deletes", () => {
       await mount();
 
       // Optional, so off the bar until added (#E58); adding it opens its list.
-      fireEvent.keyDown(screen.getByRole("button", { name: "Add filter" }), {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
         key: "ArrowDown",
       });
       fireEvent.click(await screen.findByRole("menuitem", { name: /^State/ }));
