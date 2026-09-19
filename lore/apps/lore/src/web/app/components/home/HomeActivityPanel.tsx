@@ -100,13 +100,21 @@ export const HomeActivityPanel = (props: HomeActivityPanelProps) => {
         <span className="flex-1 truncate">{tr("home.activity.title")}</span>
         {/* `normal-case` and no tracking: the heading's small caps are for
             the heading, and a project name in them reads as a label rather
-            than as a value. */}
-        <div className="w-28 shrink-0 tracking-normal normal-case">
+            than as a value. Sized to its label, with no cap: a title is at
+            most 24 characters, and the heading beside it is the one that
+            truncates. */}
+        <div className="shrink-0 tracking-normal normal-case">
           <Control
             input={pick.input.projectId}
             label=""
             size="xs"
             minimal
+            // ⚠️ `w-auto`, or the label truncates in a box sized to fit it.
+            // The default `w-full` resolves against this content-sized
+            // wrapper, and `minimal`'s `-mx-1` takes 8px off the size the
+            // wrapper measures, so the trigger came out 8px short of its own
+            // text: "All proje...". `QuestReleaseControl` does the same.
+            triggerClassName="w-auto"
             clearable
             clearLabel={tr("home.activity.allProjects")}
             popupClassName="w-max min-w-48"

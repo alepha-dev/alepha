@@ -259,6 +259,49 @@ test.describe("Home (board)", () => {
     await page.waitForURL(`**/${firstSlug}**`, { timeout: 15_000 });
   });
 
+  test("narrows the table by ownership and by activity", async ({ page }) => {
+    test.setTimeout(120_000);
+    /*
+     * The wiring only: both filters are on the bar from the start, and each
+     * value reaches the table. What counts as dormant, and the fallback
+     * before the board arrives, are `homeProjectsFilter.spec.ts`'s: a fresh
+     * account owns every project it has, and nothing here is a week old.
+     */
+    const t = Date.now();
+    await registerAndVerify(page, `filt${t}@example.com`, "FilterTest123!");
+    const title = `Filt${t}`.slice(0, 20);
+    await createProjectViaWizard(page, title);
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const row = page.getByRole("table").getByRole("row").filter({
+      hasText: title,
+    });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+
+    const pick = async (filter: string, option: string) => {
+      await page.getByRole("combobox", { name: filter }).click();
+      await page.getByRole("option", { name: option }).click();
+      // Base UI parks `pointer-events: none` on <body> for a beat after a
+      // popup closes, and the next click in that window does nothing.
+      await page.waitForFunction(
+        () => document.body.style.pointerEvents !== "none",
+      );
+    };
+
+    await pick("Ownership", "Shared with me");
+    await expect(row).toHaveCount(0);
+    await pick("Ownership", "Owned by me");
+    await expect(row).toBeVisible();
+
+    await pick("Activity", "Dormant (7d+)");
+    await expect(row).toHaveCount(0);
+    await pick("Activity", "Active (7d)");
+    await expect(row).toBeVisible();
+  });
+
   test("keeps the table below lg and drops the activity panel", async ({
     page,
   }) => {
