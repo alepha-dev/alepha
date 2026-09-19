@@ -7,6 +7,11 @@ export default {
   "header.actions.logout": "Deconnexion",
   "header.actions.admin": "Panneau admin",
   "header.actions.language": "Langue",
+  "header.actions.theme": "Thème",
+  "header.actions.colorMode": "Mode d'affichage",
+  "header.actions.colorMode.system": "Système",
+  "header.actions.colorMode.dark": "Sombre",
+  "header.actions.colorMode.light": "Clair",
   "header.actions.search": "Rechercher",
   "header.actions.repository": "Dépôt",
 

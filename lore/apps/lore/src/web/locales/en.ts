@@ -10,6 +10,11 @@ export default {
   "header.actions.logout": "Logout",
   "header.actions.admin": "Admin Panel",
   "header.actions.language": "Language",
+  "header.actions.theme": "Theme",
+  "header.actions.colorMode": "Display Mode",
+  "header.actions.colorMode.system": "System",
+  "header.actions.colorMode.dark": "Dark",
+  "header.actions.colorMode.light": "Light",
   "header.actions.search": "Search",
   "header.actions.repository": "Repository",
 
