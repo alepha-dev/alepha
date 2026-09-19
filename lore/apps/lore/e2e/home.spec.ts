@@ -132,17 +132,20 @@ test.describe("Home (mobile chrome)", () => {
     }
 
     /*
-     * ⚠️ The account area keeps them as buttons. `AccountHeader` renders
-     * `AppActions` WITHOUT `compact`, with the kit's own English labels, so
-     * a phone reader there still sees all three.
+     * ⚠️ And the account area, which is `@alepha/ui`'s own `AccountHeader`:
+     * it draws `ButtonSettings` with the kit's catalogue labels, which in
+     * English are the same three. It is where a phone reader changed language
+     * and theme when the header still hid them as buttons, so it has to keep
+     * offering them.
      */
     await page.setViewportSize({ width: 411, height: 800 });
     await page.goto("/account");
     await page.waitForLoadState("networkidle");
-    for (const name of ["Language", "Pick theme", "Toggle color mode"]) {
-      await expect(page.getByLabel(name).first()).toBeVisible({
-        timeout: 15_000,
-      });
+    await page.getByLabel("Account menu").click({ timeout: 15_000 });
+    for (const name of settings) {
+      await expect(
+        page.getByRole("menuitem", { name, exact: true }),
+      ).toBeVisible();
     }
   });
 });
