@@ -82,13 +82,32 @@ export default defineConfig({
          *
          * It pulls against D1 read replicas, which move reads toward the
          * user: with both on, Cloudflare places by measured latency and one
-         * can cancel the other's gain. So they are switched on one at a time
-         * and measured in between; replicas (`DATABASE_D1_MODE=sessions` plus
-         * the database's own switch) come second, if the numbers after this
-         * one leave anything to win. It needs traffic before it takes
-         * effect: read the Worker's placement status before measuring.
+         * can cancel the other's gain. The plan was one at a time with a
+         * measurement in between; a Saturday gave too little non-European
+         * traffic to read, and the owner chose to turn both on (2026-09-19),
+         * so their effects are no longer separable. It needs traffic before
+         * it takes effect: read the Worker's placement status (Workers API,
+         * `placement_status`) before measuring.
          */
         placement: { mode: "smart" },
+        /**
+         * D1 read replicas (#Q2403): reads go through the Sessions API so a
+         * replica near the request can serve them, and the bookmark rides in
+         * the `alepha_d1_bookmark` cookie so a user reads their own writes.
+         * Needs the database's own switch as well, `read_replication.mode:
+         * "auto"` on `lore-production`, turned on 2026-09-19; either half
+         * alone changes nothing.
+         *
+         * ⚠️ A `var`, not an entry in the deploy job's `env:`. The deploy
+         * pushes only the keys in the build manifest's env list, and that
+         * list is the graph as instantiated under Node, where
+         * `CloudflareD1Provider`, the one that declares this key, is never
+         * built. Set there, it would be dropped from every push while the
+         * deploy reported success: the `CLOUDFLARE_ANALYTICS_TOKEN` outage of
+         * 2026-08-11 by the same route. A var is uploaded as a plain-text
+         * binding whatever the manifest says, and it is not a secret.
+         */
+        vars: { DATABASE_D1_MODE: "sessions" },
       },
     },
     docker: {
