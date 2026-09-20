@@ -69,10 +69,19 @@ runs:
     # Yarn, not our lockfile. A registry request that errors after its promise
     # already settled schedules a retry on a timer, the retry attaches a cancel
     # handler to the settled promise, and the throw from inside the timer kills
-    # the process. `enableHardenedMode` sends every job to the registry for the
-    # whole lockfile, so each Verify run gives the race seventeen chances; it
-    # cost five jobs in three days, two of them on main, and a red job on main
-    # skips the Lore deploy.
+    # the process.
+    #
+    # The backoff is the point, and it is what this step was missing. On main
+    # at 7c6277edf all three attempts crashed inside four seconds, each about
+    # 1.3s into the Resolution step: with no delay between them, three attempts
+    # are one attempt under the same conditions. Sleeping 5s then 15s gives the
+    # race three genuinely different moments, which is the only thing a retry
+    # can buy against a timing bug.
+    #
+    # `enableHardenedMode` used to be forced on in .yarnrc.yml, which sent
+    # every job to the registry for the whole lockfile and handed the race
+    # seventeen chances per Verify run. That flag is gone; see .yarnrc.yml for
+    # why Yarn's own default is the right setting.
     #
     # Any other failure still fails on the first attempt. A blanket retry would
     # turn a real resolution error into three slow identical ones.
@@ -87,6 +96,11 @@ runs:
             exit 1
           fi
           echo "::warning title=Yarn onCancel crash::yarn crashed in its HTTP retry path (attempt $attempt of 3)"
+          if [ "$attempt" -lt 3 ]; then
+            delay=$((5 * attempt * attempt))
+            echo "waiting ${delay}s before retrying"
+            sleep "$delay"
+          fi
         done
         exit 1
       shell: bash
