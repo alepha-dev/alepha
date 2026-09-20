@@ -15,9 +15,10 @@ import { EstateCloudflareService } from "../services/EstateCloudflareService.ts"
  * first person a deploy refuses, which is after the fact. This makes it a
  * day, at most, and tells the one person who can fix it.
  *
- * On `0 0 * * *`, an expression Lore already emits (`QuestJobs`): a Worker's
- * cron triggers are counted per account and shared across every Worker on
- * it, so a repeated expression adds no trigger and a new cadence would
+ * On `0 0 * * *`, which this job now holds alone: `QuestJobs` shared it
+ * until 2026-09-20, when its reminder sweep went hourly. A Worker's cron
+ * triggers are counted per account and shared across every Worker on it,
+ * so an expression with one tenant is a slot spent on one job
  * (`EstateCommandJobs` records the same reasoning; the crons reach the
  * Worker from `dist/manifest.json`).
  *
