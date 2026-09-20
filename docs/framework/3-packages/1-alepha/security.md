@@ -38,6 +38,7 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 
 ### Providers
 
+- [`EffectivePermissionsProvider`](/docs/reference-providers-effectivepermissionsprovider) - The caller's **effective** permission set, computed once, server-side.
 - [`JwtProvider`](/docs/reference-providers-jwtprovider) - Provides utilities for working with JSON Web Tokens (JWT).
 - [`OwnedResourceProvider`](/docs/reference-providers-ownedresourceprovider) - Reads the resource resolved by `$owns` for the current request.
 - [`PermissionRegistryProvider`](/docs/reference-providers-permissionregistryprovider) - Answers "does the caller hold this permission?" from the set the server sent

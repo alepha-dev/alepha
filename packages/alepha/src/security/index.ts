@@ -8,6 +8,7 @@ import type { UserAccountToken } from "./interfaces/UserAccountToken.ts";
 import { $issuer } from "./primitives/$issuer.ts";
 import { $permission } from "./primitives/$permission.ts";
 import { $role } from "./primitives/$role.ts";
+import { EffectivePermissionsProvider } from "./providers/EffectivePermissionsProvider.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { OwnedResourceProvider } from "./providers/OwnedResourceProvider.ts";
 import { ResourceGateMemoProvider } from "./providers/ResourceGateMemoProvider.ts";
@@ -33,6 +34,7 @@ export * from "./primitives/$permission.ts";
 export * from "./primitives/$role.ts";
 export * from "./primitives/$secure.ts";
 export * from "./primitives/$serviceAccount.ts";
+export * from "./providers/EffectivePermissionsProvider.ts";
 export * from "./providers/JwtProvider.ts";
 export * from "./providers/OwnedResourceProvider.ts";
 export * from "./providers/PermissionRegistryProvider.ts";
@@ -117,6 +119,7 @@ export const AlephaSecurity = $module({
   atoms: [currentUserAtom, currentResourceAtom, currentAuthorityAtom],
   services: [
     SecurityProvider,
+    EffectivePermissionsProvider,
     JwtProvider,
     ServerSecurityProvider,
     OwnedResourceProvider,
