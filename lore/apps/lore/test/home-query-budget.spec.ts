@@ -34,10 +34,11 @@ const BUDGET = {
   // Projects; areas; open quests (epic gate + quests); capabilities;
   // ownership (members + projects).
   getHomeOverview: 7,
-  // Projects; momentum; last activity; recent activity; open epics, blights
-  // and feedback in one statement. (Plus one for actor names when the
-  // activity has actors, which it does not here.)
-  getHomeBoard: 5,
+  // Projects; momentum; last activity; open epics, blights and feedback in
+  // one statement. It was 5 while the Recent activity panel existed - its own
+  // read, plus one more for actor names whenever that feed had any - and the
+  // panel was deleted in #E64.
+  getHomeBoard: 4,
 };
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };

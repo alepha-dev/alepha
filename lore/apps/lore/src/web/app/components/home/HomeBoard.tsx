@@ -3,21 +3,20 @@ import { useClient, useQuery, useStore } from "alepha/react";
 import type { HomeController } from "@/api/controllers/HomeController.ts";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
-import { HomeActivityPanel } from "./HomeActivityPanel.tsx";
 import HomeHeader from "./HomeHeader.tsx";
 import { HomeProjectsTable } from "./HomeProjectsTable.tsx";
 
 /**
- * The signed-in landing page: your projects, and what has been happening in
- * them.
+ * The signed-in landing page: your projects, and how each of them is moving.
  *
  * ## Two sources, one page
  *
  * The rows are `userProjectsAtom`, filled once at bootstrap by
  * `getHomeOverview` and shared with the switcher, Spotlight and the account
- * area. The bars and the activity lines come from `getHomeBoard`, which is
- * this page's alone - an aggregate over the audit log on every route change
- * is a cost the atom's other readers never asked for.
+ * area. The bars, the last-activity stamps and the open counts come from
+ * `getHomeBoard`, which is this page's alone - an aggregate over the audit
+ * log on every route change is a cost the atom's other readers never asked
+ * for.
  *
  * ## One resolve, no polling
  *
@@ -34,10 +33,10 @@ const HomeBoard = () => {
   const projects = overview?.projects ?? [];
 
   /**
-   * Quiet on purpose. A board that cannot be read costs the bars and the
-   * panel, and the table beside them still lists every project: the rows are
-   * already in memory. `onError` keeps the failure out of the toaster and in
-   * error reporting.
+   * Quiet on purpose. A board that cannot be read costs the bars, the
+   * last-activity stamps and the open counts, and the table still lists every
+   * project: the rows are already in memory. `onError` keeps the failure out
+   * of the toaster and in error reporting.
    */
   const board = useQuery(
     {
@@ -72,13 +71,13 @@ const HomeBoard = () => {
       above the footer. Header, main and footer are the three bands between
       them, and `S` is the page background left and right of the rails.
 
-      ⚠️ The blocks inside main draw NO frame of their own (`flat` on the
-      table, one left border on the panel): their edges are these rules, and
-      a border on them would be a second line one pixel away.
+      ⚠️ The table inside main draws NO frame of its own (`flat`): its edges
+      are these rules, and a border on it would be a second line one pixel
+      away.
     */
     <div className="relative flex h-svh flex-col">
       {/*
-        The rails, drawn OVER the blocks' own background: main is flush to
+        The rails, drawn OVER the table's own background: main is flush to
         `mx-4`, exactly where they sit, so a rail under it would be painted
         out. `pointer-events-none` and `aria-hidden`: they are rules on a
         page, not something to click or announce.
@@ -99,13 +98,14 @@ const HomeBoard = () => {
       />
       <HomeHeader />
       {/*
-        The two blocks side by side: the table on the left, the activity
-        panel on the right, drawn as one unit whose outer edges are the
-        rails. The panel's left border is the line between them.
+        The table, full width between the rails. It shared this band with a
+        Recent activity panel until #E64: that panel read 15,989 audit rows
+        per load to draw twenty lines, 59% of every row D1 read for Lore, and
+        no index fixes a nine-way merge over `scope_id`. The table is the
+        whole of main now.
 
-        `mx-4` puts those edges exactly on the rails. The page dots are
-        painted here, behind both blocks, so they run as one grid across the
-        line between them.
+        `mx-4` puts its edges exactly on the rails. The page dots are painted
+        here, behind it.
       */}
       <main className="lore-page-dots bg-background mx-4 flex min-h-0 flex-1 flex-row">
         <HomeProjectsTable
@@ -114,11 +114,6 @@ const HomeBoard = () => {
           days={days}
           lastActivity={lastActivity}
           openCounts={openCounts}
-        />
-        <HomeActivityPanel
-          rows={board.data?.activity ?? []}
-          projects={projects}
-          loading={board.loading}
         />
       </main>
       {/*

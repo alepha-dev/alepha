@@ -151,29 +151,22 @@ test.describe("Home (mobile chrome)", () => {
 });
 
 /**
- * The landing page itself: the table of projects, the bars beside them, and
- * the activity panel and its project picker.
+ * The landing page itself: the table of projects and the bars beside them.
  *
- * Three things here cannot be covered anywhere else.
+ * Two things here cannot be covered anywhere else.
  *
  * **The bars are one request, the rows are another.** The rows come from the
  * bootstrap atom and the bars from `getHomeBoard`, so a page that renders its
  * rows proves nothing about the aggregate behind them.
  *
- * **Picking a project reads that project.** The picker asks the server for
- * the project's own history (`getHomeActivity`) rather than filtering the
- * board's lines, which no unit spec can see.
- *
- * **Below `lg` the panel goes and the table stays.** #1754, from feedback
- * #2084 on Chrome/Android at 412x924: the landing page had no way to reach a
- * project at all, because the one surface carrying the list was `lg:flex`.
- * The table is the list now and it is not breakpoint-gated, which is what
- * these two widths pin.
+ * **The table is the list at every width.** #1754, from feedback #2084 on
+ * Chrome/Android at 412x924: the landing page had no way to reach a project
+ * at all, because the one surface carrying the list was `lg:flex`. The table
+ * is not breakpoint-gated, which is what those widths pin. The Recent
+ * activity panel that used to sit beside it was deleted in #E64.
  */
 test.describe("Home (board)", () => {
-  test("lists projects, draws momentum, and narrows the panel to a picked project", async ({
-    page,
-  }) => {
+  test("lists projects and draws momentum", async ({ page }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
@@ -193,7 +186,7 @@ test.describe("Home (board)", () => {
       title: `Busy${t}`.slice(0, 20),
     });
     // Three writes in one project and none in the other, so the momentum
-    // column has something to tell apart and the panel has rows to filter.
+    // column has something to tell apart.
     for (let i = 0; i < 3; i++) {
       await apiPost(page, "createQuest", {
         projectId: busy.id,
@@ -228,31 +221,6 @@ test.describe("Home (board)", () => {
     await expect(
       busyRow.getByRole("img", { name: /events over the last 14 days/i }),
     ).toBeVisible();
-
-    const panel = page.getByTestId("home-activity");
-    await expect(panel).toBeVisible();
-    // Every project's events, before any hover.
-    await expect(panel).toContainText("create");
-
-    // Picking the quiet project reads its own history, and it has none: it
-    // was created through an app-layer event, which is not project-scoped.
-    const picker = panel.getByTestId("home-activity-project");
-    // Base UI parks `pointer-events: none` on <body> for a beat after a
-    // popup closes, and a click in that window silently does nothing.
-    const popupClosed = () =>
-      page.waitForFunction(() => document.body.style.pointerEvents !== "none");
-    await picker.click();
-    await page.getByRole("option", { name: `Quiet${t}`.slice(0, 20) }).click();
-    await expect(panel).toContainText(/nothing has happened in this project/i);
-
-    // And back: the picker has no "All projects" row and, at this size, no
-    // clear `x`, so clicking the picked project again is how it empties.
-    await popupClosed();
-    await picker.click();
-    await page.getByRole("option", { name: `Quiet${t}`.slice(0, 20) }).click();
-    await expect(picker).toContainText(/all projects/i);
-    await expect(panel).toContainText("create");
-    await popupClosed();
 
     // A row is a link to its project, which is the page's primary job.
     await table
@@ -305,21 +273,16 @@ test.describe("Home (board)", () => {
     await expect(row).toBeVisible();
   });
 
-  test("keeps the table below lg and drops the activity panel", async ({
-    page,
-  }) => {
+  test("keeps the table at every width", async ({ page }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
     await registerAndVerify(page, `land${t}@example.com`, "GoodPassw0rd");
     const { slug } = await createProjectViaWizard(page, `LD${t}`.slice(0, 20));
 
-    const panel = page.getByTestId("home-activity");
-
-    // ⚠️ 768 is asserted alongside 412 on purpose. The panel hides at `lg`
-    // (1024) while `useIsMobile` flips at 767, so anything hung off
-    // `useIsMobile` would leave 768-1023 in neither state - the same bug in a
-    // narrower band, found months later.
+    // ⚠️ 768 is asserted alongside 412 on purpose. `useIsMobile` flips at
+    // 767, so anything hung off it would leave 768-1023 in neither state -
+    // the same bug in a narrower band, found months later.
     for (const width of [412, 768]) {
       await page.setViewportSize({ width, height: 924 });
       await page.goto("/");
@@ -329,10 +292,6 @@ test.describe("Home (board)", () => {
         page.getByRole("row").filter({ hasText: `LD${t}` }),
         `no project row at ${width}px`,
       ).toBeVisible({ timeout: 15_000 });
-      await expect(
-        panel,
-        `the panel should be hidden at ${width}px`,
-      ).toBeHidden();
     }
 
     // And the point of all of it: a project is one tap away.
@@ -342,11 +301,13 @@ test.describe("Home (board)", () => {
       .click();
     await page.waitForURL(`**/${slug}**`, { timeout: 15_000 });
 
-    // At `lg` the panel is back.
+    // And at desktop width, still the same list.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(panel).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("row").filter({ hasText: `LD${t}` }),
+    ).toBeVisible({ timeout: 15_000 });
   });
 });
 

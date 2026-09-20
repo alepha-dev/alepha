@@ -58,8 +58,8 @@ export default {
   "home.registration-closed":
     "New accounts are invitation-only right now. If you were invited, open the link in your email.",
   // ── Home board ────────────────────────────────────────────────────────
-  // The landing page for a signed-in reader with projects: the table, its
-  // columns and the activity panel beside it.
+  // The landing page for a signed-in reader with projects: the table and
+  // its columns.
   "home.wordmark": "Alepha Lore",
   "home.table.search": "Search",
   "home.table.filter.ownership": "Ownership",
@@ -90,18 +90,6 @@ export default {
   "home.table.open.epics": "$1 draft epics",
   "home.table.open.blights": "$1 open blights",
   "home.table.open.feedback": "$1 pending feedback",
-  "home.activity.title": "Recent activity",
-  "home.activity.you": "You",
-  "home.activity.unknown": "Someone",
-  "home.activity.empty": "Nothing has happened yet",
-  // The panel narrowed to one project reads that project's own history
-  // (`getHomeActivity`), so an empty one really has none.
-  "home.activity.empty.project": "Nothing has happened in this project yet",
-  "home.activity.allProjects": "All projects",
-  "home.activity.actions": "Actions",
-  "home.activity.see": "See $1",
-  "home.activity.openProject": "Open project",
-  "home.activity.projectActivity": "Project activity",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
   "auth.register.intent.invitation":

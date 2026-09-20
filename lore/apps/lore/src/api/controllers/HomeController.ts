@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { audits } from "alepha/api/audits";
-import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   $repository,
@@ -9,21 +8,16 @@ import {
   sql,
 } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, NotFoundError } from "alepha/server";
+import { $action } from "alepha/server";
 
-// The helper the UI labels a user with, so an actor reads identically here,
-// in a project's Activity table and on the quest page. Precedent for reaching
-// across: `ProjectController` imports the same function.
-import { displayName } from "../../web/app/services/displayName.ts";
 import { blights } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { relations } from "../relations.ts";
-import { homeActivityRowSchema } from "../schemas/homeActivityRowSchema.ts";
 
 /**
- * Home's own data: the momentum bars beside each project, and the activity
- * panel that runs down the side of the page.
+ * Home's own data: the momentum bars beside each project, when each project
+ * last moved, and what is open in it.
  *
  * ## Why it is not on `getHomeOverview`
  *
@@ -51,19 +45,10 @@ export class HomeController {
    */
   protected static readonly MOMENTUM_DAYS = 14;
 
-  /**
-   * How many lines the activity panel holds.
-   *
-   * The same number for every project and for one: picking a project in the
-   * panel reads that project's own last twenty (`getHomeActivity`).
-   */
-  protected static readonly ACTIVITY_LIMIT = 20;
-
   auditRows = $repository(audits);
   epicRows = $repository(epics);
   blightRows = $repository(blights);
   feedbackRows = $repository(feedback);
-  users = $repository(users);
   usersWith = $repository(relations, "users");
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
@@ -95,7 +80,6 @@ export class HomeController {
             counts: z.array(z.integer()),
           }),
         ),
-        activity: z.array(homeActivityRowSchema),
         /**
          * When each project last saw any activity, whatever its kind: the
          * table's Last activity column. One entry per project.
@@ -133,54 +117,21 @@ export class HomeController {
         return {
           days,
           momentum: [],
-          activity: [],
           lastActivity: [],
           openCounts: [],
         };
       }
 
-      const [momentum, activity, lastActivity, openCounts] = await Promise.all([
+      const [momentum, lastActivity, openCounts] = await Promise.all([
         this.momentum(
           projects.map((project) => String(project.id)),
           days,
         ),
-        this.recentActivity(user.id, projects),
         this.lastActivity(projects),
         this.openCounts(projects.map((project) => project.id)),
       ]);
 
-      return { days, momentum, activity, lastActivity, openCounts };
-    },
-  });
-
-  /**
-   * The activity panel narrowed to one project, read when the viewer picks it
-   * in the panel's own select.
-   *
-   * A request rather than a filter over the board's lines: those are the most
-   * recent events across ALL projects, so a quiet project would show few of
-   * them or none. This reads that project's own last
-   * {@link HomeController.ACTIVITY_LIMIT}.
-   */
-  getHomeActivity = $action({
-    use: [$secure({ permissions: ["project:read"] })],
-    schema: {
-      query: z.object({
-        projectId: z.integer(),
-      }),
-      response: z.array(homeActivityRowSchema),
-    },
-    handler: async ({ user, query }) => {
-      // The viewer's own memberships are the only scope this reads, so a
-      // project somebody else belongs to answers the same as one that does
-      // not exist.
-      const project = (await this.memberProjects(user.id)).find(
-        (it) => it.id === query.projectId,
-      );
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      return this.recentActivity(user.id, [project]);
+      return { days, momentum, lastActivity, openCounts };
     },
   });
 
@@ -198,69 +149,6 @@ export class HomeController {
       },
     });
     return me?.projects ?? [];
-  }
-
-  /**
-   * The last {@link HomeController.ACTIVITY_LIMIT} events across `projects`,
-   * newest first, with each actor's name and picture resolved.
-   *
-   * `projects` must not be empty: `inArray: []` throws.
-   */
-  protected async recentActivity(
-    viewerId: string,
-    projects: Array<{ id: number; title: string }>,
-  ) {
-    const titles = new Map(
-      projects.map((project) => [project.id, project.title]),
-    );
-    const rows = await this.auditRows.findMany({
-      where: {
-        scopeType: "project",
-        scopeId: { inArray: projects.map((project) => String(project.id)) },
-      },
-      orderBy: { column: "createdAt", direction: "desc" },
-      limit: HomeController.ACTIVITY_LIMIT,
-    });
-
-    // One lookup for the whole panel, and only when something needs a name.
-    // The actors span projects, so this cannot go through a project's member
-    // list the way `getProjectActivity` does.
-    const actorIds = [
-      ...new Set(rows.map((row) => row.userId).filter(Boolean)),
-    ] as string[];
-    const people = actorIds.length
-      ? await this.users.findMany({ where: { id: { inArray: actorIds } } })
-      : [];
-    const byId = new Map(people.map((person) => [person.id, person]));
-
-    return rows.map((row) => {
-      const person = row.userId ? byId.get(row.userId) : undefined;
-      return {
-        id: row.id,
-        createdAt: row.createdAt,
-        type: row.type,
-        action: row.action,
-        userId: row.userId,
-        resourceType: row.resourceType,
-        resourceId: row.resourceId,
-        description: row.description,
-        metadata: row.metadata,
-        // Defaulted rather than passed through: rows written before the
-        // column existed read as null, and every consumer would need the
-        // same guard.
-        eventCount: row.eventCount ?? 1,
-        updatedAt: row.updatedAt,
-        projectId: Number(row.scopeId),
-        projectTitle: titles.get(Number(row.scopeId)) ?? "",
-        actor: row.userId ? displayName(person, row.userId) : undefined,
-        // The same `/api/files/<id>` form Folio History serves its authors
-        // with.
-        actorAvatarUrl: person?.picture
-          ? `/api/files/${person.picture}`
-          : undefined,
-        isMe: row.userId === viewerId,
-      };
-    });
   }
 
   /**
