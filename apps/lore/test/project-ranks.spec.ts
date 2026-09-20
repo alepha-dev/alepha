@@ -465,12 +465,12 @@ describe("Lore's rank resource", () => {
     ).rejects.toThrow("cannot change your own rank");
   });
 
-  it("names a seeded rank in the creator's language", ({ expect }) => {
+  it("names a seeded rank in the creator's language", async ({ expect }) => {
     const [admin] = ctx.presets.presetsFor(["work"]);
-    expect(ctx.presets.nameFor(admin, "en")).toBe("Admin");
-    expect(ctx.presets.nameFor(admin, "fr-FR")).toBe("Administrateur");
+    expect(await ctx.presets.nameFor(admin, "en")).toBe("Admin");
+    expect(await ctx.presets.nameFor(admin, "fr-FR")).toBe("Administrateur");
     // Anything else falls back to English, like the rest of the app.
-    expect(ctx.presets.nameFor(admin, "de")).toBe("Admin");
+    expect(await ctx.presets.nameFor(admin, "de")).toBe("Admin");
   });
 
   it("names the capability, not the rank, when a capability is what is off", async ({

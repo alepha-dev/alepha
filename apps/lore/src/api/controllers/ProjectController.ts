@@ -177,7 +177,7 @@ export class ProjectController {
           await this.projectSecurity.organizationIdOf(projectId),
           {
             key: preset.key,
-            name: this.rankPresets.nameFor(preset, language),
+            name: await this.rankPresets.nameFor(preset, language),
             permissions: preset.permissions,
           },
           user,

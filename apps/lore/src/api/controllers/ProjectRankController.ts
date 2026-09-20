@@ -49,16 +49,19 @@ export class ProjectRankController {
       const language = this.alepha.store.get("alepha.http.request")?.language;
 
       return {
-        items: this.presets
-          .presetsFor(Object.keys(enabled) as never)
-          .map((preset) => ({
-            key: preset.key,
-            // Resolved server-side for the same reason seeding does it there:
-            // `nameFor` reads the locale catalogues, and the name it produces
-            // is stored once and then belongs to whoever renamed it.
-            name: this.presets.nameFor(preset, language),
-            permissions: preset.permissions,
-          })),
+        items: await Promise.all(
+          this.presets
+            .presetsFor(Object.keys(enabled) as never)
+            .map(async (preset) => ({
+              key: preset.key,
+              // Resolved server-side for the same reason seeding does it
+              // there: `nameFor` reads the locale catalogues, and the name it
+              // produces is stored once and then belongs to whoever renamed
+              // it. Awaited because the catalogue loads on demand.
+              name: await this.presets.nameFor(preset, language),
+              permissions: preset.permissions,
+            })),
+        ),
       };
     },
   });
