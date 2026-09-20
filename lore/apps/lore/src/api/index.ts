@@ -14,6 +14,7 @@ import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
+import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AppController } from "./controllers/AppController.ts";
 import { AppSecretController } from "./controllers/AppSecretController.ts";
@@ -402,6 +403,9 @@ export const LoreApi = $module({
     ProjectQuestPortabilityController,
     InvitationController,
     AdminProjectController,
+    // What the MCP surface is asked for, over time (#E65). Admin rather than
+    // a project page: a tool call is not scoped to a project.
+    AdminMcpController,
     KanbanController,
     FolioController,
     DirectoryController,

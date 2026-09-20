@@ -1,8 +1,9 @@
 import { $pageAdmin } from "@alepha/ui/admin";
 import { $client } from "alepha/server/links";
-import { FolderKanban, Server } from "lucide-react";
+import { FolderKanban, Plug, Server } from "lucide-react";
 
 import type { AdminEstateController } from "@/api/controllers/AdminEstateController.ts";
+import type { AdminMcpController } from "@/api/controllers/AdminMcpController.ts";
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
 
 /**
@@ -21,6 +22,7 @@ import type { AdminProjectController } from "@/api/controllers/AdminProjectContr
 export class LoreAdminRouter {
   protected readonly projectApi = $client<AdminProjectController>();
   protected readonly estateApi = $client<AdminEstateController>();
+  protected readonly mcpApi = $client<AdminMcpController>();
   /**
    * Gated on the action rather than on `admin:project:read` alone. The
    * permission is declared by this page's own `$secure`, so an admin holding
@@ -56,5 +58,26 @@ export class LoreAdminRouter {
     },
     can: () => this.estateApi.findEstates.can(),
     lazy: () => import("./AdminEstates.tsx"),
+  });
+
+  /**
+   * What the MCP surface is asked for, over time (#E65).
+   *
+   * Admin rather than a project page: a tool call is not scoped to a project
+   * - `project_list` has none - and the audience is whoever maintains the
+   * tool descriptions. Same gate shape as the two above: the action, so the
+   * entry never sits over a dead API.
+   */
+  adminMcp = $pageAdmin({
+    path: "/mcp",
+    head: { title: "MCP" },
+    nav: {
+      label: "MCP",
+      icon: <Plug />,
+      group: "Lore",
+      order: 104,
+    },
+    can: () => this.mcpApi.readMcpCalls.can(),
+    lazy: () => import("./AdminMcp.client.tsx"),
   });
 }
