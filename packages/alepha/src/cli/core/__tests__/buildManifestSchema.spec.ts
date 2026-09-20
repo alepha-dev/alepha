@@ -83,6 +83,89 @@ describe("the build manifest schema", () => {
     });
   });
 
+  /**
+   * The multi-slice contract (epic #E63). `runtimes` is additive on purpose:
+   * the scalar `runtime` keeps saying what it always said, so a deployer that
+   * never learns about slices still spawns the primary.
+   */
+  describe("the slices it declares", () => {
+    const twoSlices = () => ({
+      ...valid(),
+      runtime: "node",
+      entry: "index.node.js",
+      runtimes: [
+        { runtime: "node", entry: "index.node.js" },
+        { runtime: "workerd", entry: "index.workerd.js" },
+      ],
+    });
+
+    it("accepts a manifest carrying only the scalar pair", ({ expect }) => {
+      const parsed = buildManifestSchema.parse({
+        ...valid(),
+        runtime: "node",
+        entry: "index.node.js",
+      });
+      expect(parsed.runtimes).toBeUndefined();
+      expect(parsed.entry).toBe("index.node.js");
+    });
+
+    /**
+     * ⚠️ Declared order is the whole contract: the first slice is the primary,
+     * and a deployer takes the first one it can run. A parse that sorted or
+     * re-keyed this array would silently change which runtime an app deploys
+     * on, which is why the round trip is asserted rather than the membership.
+     */
+    it("round-trips the slices in declared order", ({ expect }) => {
+      const parsed = buildManifestSchema.parse(twoSlices());
+      expect(parsed.runtimes?.map((slice) => slice.runtime)).toEqual([
+        "node",
+        "workerd",
+      ]);
+      expect(parsed.runtimes?.[0]?.entry).toBe("index.node.js");
+    });
+
+    it("keeps bun-first order exactly as declared", ({ expect }) => {
+      const parsed = buildManifestSchema.parse({
+        ...valid(),
+        runtime: "bun",
+        entry: "index.bun.js",
+        runtimes: [
+          { runtime: "bun", entry: "index.bun.js" },
+          { runtime: "node", entry: "index.node.js" },
+        ],
+      });
+      expect(parsed.runtimes?.map((slice) => slice.runtime)).toEqual([
+        "bun",
+        "node",
+      ]);
+      // The scalar is runtimes[0], never a preference of the schema's own.
+      expect(parsed.runtime).toBe("bun");
+    });
+
+    it("refuses a slice naming a runtime it cannot name", ({ expect }) => {
+      const manifest = twoSlices();
+      manifest.runtimes[1] = { runtime: "deno", entry: "index.deno.js" } as any;
+      expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
+    });
+
+    it("refuses a slice with no entry", ({ expect }) => {
+      const manifest = twoSlices();
+      delete (manifest.runtimes[0] as Record<string, unknown>).entry;
+      expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
+    });
+
+    // Loose all the way down, for the same reason the top level is: a newer
+    // build may say more about a slice than this schema knows.
+    it("keeps an unknown key on a slice", ({ expect }) => {
+      const manifest = twoSlices();
+      (manifest.runtimes[0] as Record<string, unknown>).sizeBytes = 42;
+      const parsed = buildManifestSchema.parse(manifest);
+      expect((parsed.runtimes?.[0] as Record<string, unknown>).sizeBytes).toBe(
+        42,
+      );
+    });
+  });
+
   describe("what it carries through", () => {
     /**
      * ⚠️ The property the whole schema is shaped around, and the reason it is

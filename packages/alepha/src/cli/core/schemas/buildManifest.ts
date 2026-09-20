@@ -90,11 +90,71 @@ export const buildManifestSchema = z
      * Optional: artifacts built before this field existed don't carry it, and a
      * consumer should treat an absent value as `node`.
      *
-     * TODO: surface this in `alepha.config.ts`'s `platform({ ... })` so a
-     * workspace can declare its runtime rather than inheriting whatever
-     * `--runtime` the build happened to use.
+     * ## ⚠️ This is the PRIMARY slice, which is `runtimes[0]`
+     *
+     * An artifact may carry several server slices (`runtimes` below). This
+     * scalar names the first declared one, so a deployer that never learns
+     * about slices still spawns something the build meant it to spawn. The two
+     * fields cannot disagree: `runtime` is defined as `runtimes[0].runtime`,
+     * not chosen by a rule of its own.
+     *
+     * ## Why this stays a scalar
+     *
+     * Turning it into an array would break every deployed consumer quietly.
+     * Bay decodes it into a Go `string`; an array there is a decode error or an
+     * empty string, and empty falls back to `node`. So `runtimes` is a NEW
+     * field, which every consumer is free to ignore, and this one keeps saying
+     * exactly what it always said.
+     *
+     * Declaring the runtime in `platform({ ... })` was asked for once and is
+     * closed as won't-do: `platform()` is a deploy plugin, so an app that never
+     * deploys through it (the Lore-CLI case) could not declare its runtimes at
+     * all; `platform()` is keyed by environment while the slice set is
+     * per-artifact, so putting it there re-couples what slices exist to decouple;
+     * and `build.runtime` already exists in the right place and simply widened
+     * to a list.
      */
     runtime: z.enum(["node", "bun", "workerd", "static"]).optional(),
+    /**
+     * Every server slice this artifact carries, **in declared order**.
+     *
+     * One entry per runtime the build produced, each naming its runtime and the
+     * entry file to spawn. A multi-runtime artifact holds `server/<runtime>/`
+     * chunk directories and one `index.<runtime>.js` per slice at the archive
+     * root, and this array is the only discovery mechanism for them: there is
+     * no `index.js` that sniffs its host, because a second mechanism able to
+     * disagree with this one is worse than none.
+     *
+     * ## ⚠️ Order is meaningful and no consumer may sort it
+     *
+     * The first entry is the primary. It is what `runtime` and `entry` above
+     * name, what `dist/package.json`'s `main` points at, and what a deployer
+     * picks. A deployer takes the FIRST slice it can run, applying no
+     * preference of its own: `["node", "bun"]` spawns node and `["bun", "node"]`
+     * spawns bun, from the same two slices. Reordering this array here, or in
+     * any consumer, silently changes which runtime an app is deployed on.
+     *
+     * Optional: an artifact from a single-runtime build may carry only the
+     * scalar pair, and a consumer meeting no `runtimes` should read `runtime`
+     * and `entry` as the one slice.
+     */
+    runtimes: z
+      .array(
+        z
+          .object({
+            /**
+             * The runtime this slice was linked for.
+             */
+            runtime: z.enum(["node", "bun", "workerd", "static"]),
+            /**
+             * The file to spawn for this slice, relative to the archive root
+             * (e.g. `index.node.js`).
+             */
+            entry: z.string(),
+          })
+          .loose(),
+      )
+      .optional(),
     /**
      * Major version of the runtime, as a bare major (`"26"`), or absent when
      * unknown.
@@ -109,15 +169,22 @@ export const buildManifestSchema = z
      */
     runtimeVersion: z.string().optional(),
     /**
-     * Directory inside the artifact that the runtime should be pointed at,
-     * relative to the archive root — normally `dist`, or whatever
-     * `output.dist` was set to.
+     * The file the runtime should be pointed at for the PRIMARY slice,
+     * relative to the archive root — e.g. `index.node.js`. Always equal to
+     * `runtimes[0].entry`.
      *
-     * `node dist` resolves `dist/index.js` via its `main`, so a deployer can
-     * spawn `<runtime> <entry>` without knowing the bundle layout.
+     * ⚠️ **This is a file, and the archive root is the contents.** It used to
+     * be a directory, normally `dist`, because the archive wrapped everything
+     * in a `dist/` folder and `node dist` resolved `dist/index.js` through its
+     * `main`. The artifact now unpacks to `./public`, `./server`,
+     * `./index.<runtime>.js`, `./migrations` and `./manifest.json` at the top,
+     * so a consumer carrying the old `dist` default looks for a directory that
+     * is not there. There is no compatibility alias: the break is taken once.
      *
-     * Optional for the same reason as `runtime` — treat an absent value
-     * as `dist`.
+     * A deployer spawns `<runtime> <entry>` without knowing the bundle layout,
+     * exactly as before.
+     *
+     * Optional for the same reason as `runtime`.
      */
     entry: z.string().optional(),
     resources: z
