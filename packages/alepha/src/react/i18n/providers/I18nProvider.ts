@@ -150,11 +150,33 @@ export class I18nProvider<
     return this.localeProviderRef;
   }
 
-  public dateFormat: { format: (value: Date) => string } =
-    new Intl.DateTimeFormat(this.lang);
+  protected dateFormatRef?: Intl.DateTimeFormat;
+  protected numberFormatRef?: Intl.NumberFormat;
 
-  public numberFormat: { format: (value: number) => string } =
-    new Intl.NumberFormat(this.lang);
+  /**
+   * ⚠️ Built on first use, never at construction.
+   *
+   * The FIRST `Intl.DateTimeFormat` of a process loads ICU locale data and
+   * costs about 8 ms; the first `Intl.NumberFormat` about 1.5 ms. Every later
+   * one is ~0.02 ms, because the data is then cached by the runtime. As class
+   * field initializers the two of them were 9.5 ms of a 136 ms cold boot, or
+   * 19% of all service construction, paid by every request that lands on a
+   * cold isolate whether or not it ever formats anything. On a long-running
+   * process it is paid once and invisible; on a Worker an isolate serves a
+   * handful of requests, so it was being paid again and again.
+   *
+   * `refreshLocale` drops both so a language switch rebuilds them, which is
+   * what the two assignments it used to make were for.
+   */
+  public get dateFormat(): { format: (value: Date) => string } {
+    this.dateFormatRef ??= new Intl.DateTimeFormat(this.lang);
+    return this.dateFormatRef;
+  }
+
+  public get numberFormat(): { format: (value: number) => string } {
+    this.numberFormatRef ??= new Intl.NumberFormat(this.lang);
+    return this.numberFormatRef;
+  }
 
   public get languages() {
     const languages = new Set<string>();
@@ -316,8 +338,10 @@ export class I18nProvider<
   });
 
   protected refreshLocale() {
-    this.numberFormat = new Intl.NumberFormat(this.lang);
-    this.dateFormat = new Intl.DateTimeFormat(this.lang);
+    // Dropped rather than rebuilt: the next read of either getter builds it
+    // for the new language, and a boot that formats nothing builds neither.
+    this.numberFormatRef = undefined;
+    this.dateFormatRef = undefined;
     this.dateTimeProvider.setLocale(this.lang);
     TypeProvider.setLocale(this.lang);
 
