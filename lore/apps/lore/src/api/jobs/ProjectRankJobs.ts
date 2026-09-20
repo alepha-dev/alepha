@@ -76,10 +76,23 @@ export class ProjectRankJobs {
     name: "ranks.seed-missing-presets",
     description:
       "Seeds the Admin, Contributor and Viewer ranks into projects that have none.",
-    // Daily, an hour off `QuestJobs.sendDueReminders` so the two nightly
-    // sweeps do not start together. It fires once with work to do and is two
-    // queries every night after that.
+    // Daily. It used to sit an hour off `QuestJobs.sendDueReminders` so the
+    // two nightly sweeps did not start together; that sweep went hourly on
+    // 2026-09-20, so what this shares `0 3 * * *` with is the framework's own
+    // daily purges. It fires once with work to do and is two queries every
+    // night after that.
     cron: "0 3 * * *",
+    // Two minutes, against a bucket measured at 306 ms p99. It writes only
+    // for projects holding no rank rows at all, so the steady state is two
+    // queries; the headroom covers the one night that has work to do.
+    timeout: [2, "minutes"],
+    // A daily tick that fails has otherwise lost a day. With `retry` the
+    // tick writes an outbox row and the sweep picks it up within
+    // `sweepCron`, so a transient database error costs fifteen minutes
+    // rather than until tomorrow. Retention still follows the cron table:
+    // it is keyed on `cron` being declared, not on how the work is
+    // dispatched.
+    retry: { retries: 2 },
     handler: async () => {
       // `distinct` takes the COLUMN LIST, not a boolean, and it is also the
       // projection - so this is one `SELECT DISTINCT scope_id` and never a
