@@ -119,6 +119,23 @@ export default defineConfig({
          * "auto"` on `lore-production`, turned on 2026-09-19; either half
          * alone changes nothing.
          *
+         * Replicas DO serve reads, and the D1 dashboard's Total queries
+         * chart is where that is visible (broken down by the region that
+         * served each query; nothing in Lore logs `served_by_region` per
+         * query). Read 2026-09-20 over 24 hours: WEUR 12.35k, ENAM 1.24k,
+         * WNAM 596, APAC 9, EEUR 2, against 11,455 reads and 3,627 writes
+         * for the same window from `d1AnalyticsAdaptiveGroups`. A write can
+         * only ever be served by the primary, so the 1,847 queries outside
+         * WEUR are reads, and they are 16% of all reads.
+         *
+         * That split IS the tension between the two features, quantified. A
+         * read leaves WEUR only when the Worker issuing it ran outside WEUR,
+         * which today means the share Smart Placement leaves unplaced plus
+         * the locations it decides not to move. Placement takes the other
+         * 84% by pulling the work to the data, where the nearest replica is
+         * the primary. Neither number says a human was served: every one of
+         * those reads belongs to crawler and monitor traffic.
+         *
          * ⚠️ A `var`, not an entry in the deploy job's `env:`. The deploy
          * pushes only the keys in the build manifest's env list, and that
          * list is the graph as instantiated under Node, where
