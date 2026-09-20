@@ -82,6 +82,10 @@ export class ProjectRankJobs {
     // daily purges. It fires once with work to do and is two queries every
     // night after that.
     cron: "0 3 * * *",
+    // Two minutes, against a bucket measured at 306 ms p99. It writes only
+    // for projects holding no rank rows at all, so the steady state is two
+    // queries; the headroom covers the one night that has work to do.
+    timeout: [2, "minutes"],
     // A daily tick that fails has otherwise lost a day. With `retry` the
     // tick writes an outbox row and the sweep picks it up within
     // `sweepCron`, so a transient database error costs fifteen minutes

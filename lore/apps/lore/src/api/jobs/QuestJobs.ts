@@ -64,6 +64,10 @@ export class QuestJobs {
     description:
       "Sends the quest reminders that are due, hourly, 50 per run, and schedules each one's next occurrence.",
     cron: "0 * * * *",
+    // Two minutes for at most REMINDER_BATCH rows, each an outbox push and
+    // an update. A tick that cannot finish fifty of those in two minutes is
+    // not going to be rescued by four.
+    timeout: [2, "minutes"],
     handler: async () => {
       const now = this.dt.nowISOString();
       // The assignee and the project come back with the quest, so the batch
