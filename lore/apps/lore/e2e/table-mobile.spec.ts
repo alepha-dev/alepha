@@ -157,11 +157,16 @@ test.describe("DataTable on a phone", () => {
 
       // The filter chosen on the phone is still applied here - it is
       // persisted per table, and the dialog is only where the controls live,
-      // not a second set of values. Clearing it from the desktop bar's own
-      // Reset brings the row back, which is the round trip that proves the
-      // two layouts drive one form.
+      // not a second set of values. Clearing it from the desktop toolbar's
+      // own Reset brings the row back, which is the round trip that proves
+      // the two layouts drive one form.
+      //
+      // Reset lives in the toolbar's `Funnel` menu on every table now. This
+      // one is not linkable, so that menu holds Reset alone - it used to be
+      // a bare button on the bar.
       await expect(page.getByText(questTitle)).toHaveCount(0);
-      await page.getByRole("button", { name: /reset filters/i }).click();
+      await page.getByRole("button", { name: "Filters", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Reset filters" }).click();
       await expect(page.getByText(questTitle)).toBeVisible({ timeout: 15_000 });
 
       const footer = await page.evaluate(() => {
