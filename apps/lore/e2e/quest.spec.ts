@@ -947,11 +947,12 @@ test.describe("Quest", () => {
     });
 
     await test.step("Shelved filter brings it back", async () => {
-      // The bar starts with the search box alone (#Q2310): Status is added
-      // from the "+" menu, and adding a filter opens its list, so the
-      // option is the next click.
-      await page.getByRole("button", { name: "Add filters" }).click();
-      await page.getByRole("menuitem", { name: "Status" }).click();
+      // Status is `mode: "default"`, so it is on the bar already and the
+      // list opens from its own trigger. It used to be added from the "+"
+      // menu, which opened the list as a side effect of mounting it.
+      await page
+        .locator('[data-filter="status"] [data-slot="combobox-trigger"]')
+        .click();
       await page.getByRole("option", { name: "Shelved" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -1951,12 +1952,13 @@ test.describe("Quest", () => {
     // without it there is no way to type a prefix and the row below never
     // appears.
     //
-    // The Area filter is added from the "+" menu first (#Q2310), and
-    // adding it opens its popup - the search field is then already there.
-    const addFilter = page.getByRole("button", { name: "Add filters" });
-    await expect(addFilter).toBeVisible({ timeout: 15_000 });
-    await addFilter.click();
-    await page.getByRole("menuitem", { name: "Area" }).click();
+    // Area is `mode: "default"`, so the bar already holds it and the popup
+    // opens from its own trigger - with the search field inside it.
+    const areaFilter = page.locator(
+      '[data-filter="area"] [data-slot="combobox-trigger"]',
+    );
+    await expect(areaFilter).toBeVisible({ timeout: 15_000 });
+    await areaFilter.click();
     await page.getByPlaceholder("Search…").fill("lore/");
 
     // One row, standing for the three matches. It only appears when it would
@@ -2120,10 +2122,11 @@ test.describe("Quest", () => {
     });
 
     await test.step("the shelved row offers Unshelve, not Shelve", async () => {
-      // See the note in "Shelved filter brings it back": Status is added
-      // from the menu, which opens its list.
-      await page.getByRole("button", { name: "Add filters" }).click();
-      await page.getByRole("menuitem", { name: "Status" }).click();
+      // See the note in "Shelved filter brings it back": Status is on the
+      // bar by default, so its list opens from its own trigger.
+      await page
+        .locator('[data-filter="status"] [data-slot="combobox-trigger"]')
+        .click();
       await page.getByRole("option", { name: "Shelved" }).click();
       // A multi-select does NOT close on pick - the point is to take several
       // - so the popup would sit over the table for the row-action click

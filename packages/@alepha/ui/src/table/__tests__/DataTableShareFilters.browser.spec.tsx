@@ -270,10 +270,9 @@ describe("DataTable (share filters)", () => {
  * A table that never reads the query back.
  *
  * Sharing one would copy a link whose params do nothing on arrival, which is
- * worse than no Share at all: it looks like it worked. So the whole menu is
- * conditional on `fromQuery`, and a table without it keeps the bare Reset
- * button it has always had rather than paying a second click for a menu of
- * one item.
+ * worse than no Share at all: it looks like it worked. So the Share ITEM is
+ * conditional on `fromQuery`; the menu itself is not, and a table without it
+ * gets the same `Funnel` trigger holding Reset alone.
  */
 describe("DataTable (filters that are not linkable)", () => {
   let alepha: Alepha | undefined;
@@ -346,11 +345,21 @@ describe("DataTable (filters that are not linkable)", () => {
     }
   });
 
-  it("keeps the bare Reset button, and offers no menu", async () => {
+  it("still offers the menu, holding Reset alone", async () => {
     await mount(plainTable);
     await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
 
-    expect(screen.getByRole("button", { name: "Reset filters" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Filters" })).toBeNull();
+    // The trigger is the same `Funnel` a linkable table gets: one affordance
+    // for filters, and the menu underneath says what it can do here. Base UI
+    // opens a menu from its trigger on a key as well as a press; the key path
+    // is the one jsdom drives reliably.
+    fireEvent.keyDown(await screen.findByRole("button", { name: "Filters" }), {
+      key: "ArrowDown",
+    });
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Reset filters" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: /Share/ })).toBeNull();
   });
 });

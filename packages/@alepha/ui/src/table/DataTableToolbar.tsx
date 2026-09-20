@@ -1,7 +1,7 @@
 import type { ZObject } from "alepha";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { FunnelX, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "../core/Button.tsx";
@@ -282,49 +282,23 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
             />
           )}
           {/*
-            Desktop only. On a phone the same two actions live in the
-            filter dialog, beside the controls they act on, and a second
-            copy out here would spend a slot of the very row that dialog
-            exists to shorten.
+            Desktop only. On a phone the same actions live in the filter
+            dialog, beside the controls they act on, and a second copy out
+            here would spend a slot of the very row that dialog exists to
+            shorten.
+
+            A table that cannot be linked gets the menu too, holding Reset
+            alone: the bare icon button this replaced spends most of its
+            life disabled, and a greyed icon carries no words saying what it
+            would have done. See `DataTableFilterMenu`.
           */}
-          {showActionsMenu && props.filters && !isMobile && canShare && (
+          {showActionsMenu && props.filters && !isMobile && (
             <DataTableFilterMenu
               activeCount={activeFilterCount}
               canReset={props.canResetFilters}
-              onShare={shareFilters}
+              onShare={canShare ? shareFilters : undefined}
               onReset={resetFilters}
             />
-          )}
-          {/*
-            Not linkable: no Share, so no menu either. A menu of one
-            item would cost a click to reach the button that is already
-            here.
-          */}
-          {showActionsMenu && props.filters && !isMobile && !canShare && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-9 w-9 p-0"
-                    aria-label={tr("dataTable.resetFilters", {
-                      default: "Reset filters",
-                    })}
-                    disabled={!props.canResetFilters}
-                    onClick={resetFilters}
-                  />
-                }
-              >
-                <FunnelX className="size-4" />
-              </TooltipTrigger>
-              <TooltipContent>
-                {tr("dataTable.resetFilters", {
-                  default: "Reset filters",
-                })}
-              </TooltipContent>
-            </Tooltip>
           )}
           {showActionsMenu && (
             <Tooltip>

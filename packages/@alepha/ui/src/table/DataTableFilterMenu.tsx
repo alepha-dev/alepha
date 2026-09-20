@@ -27,7 +27,11 @@ export interface DataTableFilterMenuProps {
    * something to reset while no value is set.
    */
   canReset: boolean;
-  onShare: () => void;
+  /**
+   * Share the current filters as a link, when the table is linkable at all.
+   * `undefined` drops the item, leaving the menu with Reset alone.
+   */
+  onShare?: () => void;
   onReset: () => void;
 }
 
@@ -48,6 +52,17 @@ export interface DataTableFilterMenuProps {
  * The same `Funnel` icon as {@link DataTableFilterDialog}, on purpose: one
  * affordance for filters, whatever the width. Not its badge, though - see
  * `activeCount` for why the count stops at the phone.
+ *
+ * ## A table that cannot be linked gets the menu anyway
+ *
+ * Without `onShare` this is a menu of one item, which the toolbar used to
+ * refuse: it drew a bare `FunnelX` button instead, on the grounds that a
+ * menu costs a click to reach a button already on the bar. What that traded
+ * away is the reason for the click. The bare button spends most of its life
+ * disabled - Reset does nothing until a value is set or the bar is moved -
+ * and a greyed icon with no words on it does not say whether it resets
+ * filters, clears a search or empties the table. Behind the `Funnel` the
+ * same state reads as "Reset filters", greyed, which explains itself.
  */
 export const DataTableFilterMenu = (props: DataTableFilterMenuProps) => {
   const { tr } = useI18n();
@@ -70,10 +85,12 @@ export const DataTableFilterMenu = (props: DataTableFilterMenuProps) => {
         <Funnel className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={idle} onClick={props.onShare}>
-          <Share2 className="size-4" />
-          {tr("dataTable.shareFilters", { default: "Share filters" })}
-        </DropdownMenuItem>
+        {props.onShare && (
+          <DropdownMenuItem disabled={idle} onClick={props.onShare}>
+            <Share2 className="size-4" />
+            {tr("dataTable.shareFilters", { default: "Share filters" })}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem disabled={!props.canReset} onClick={props.onReset}>
           <FunnelX className="size-4" />
           {tr("dataTable.resetFilters", { default: "Reset filters" })}

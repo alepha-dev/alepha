@@ -130,6 +130,27 @@ describe("DataTable (the filter bar drawn from fields)", () => {
     );
   };
 
+  /**
+   * Reset lives in the toolbar's `Funnel` menu, on every table: this one is
+   * not linkable, so the menu holds that item alone.
+   */
+  const openFilterMenu = async () => {
+    const trigger = screen.getByRole("button", { name: "Filters" });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    return screen.findByRole("menuitem", { name: "Reset filters" });
+  };
+
+  const closeFilterMenu = async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("menuitem", { name: "Reset filters" }),
+      ).toBeNull(),
+    );
+  };
+
   describe("modes", () => {
     it("starts with the locked and default filters, and no optional one", async () => {
       await mount();
@@ -411,14 +432,17 @@ describe("DataTable (the filter bar drawn from fields)", () => {
   describe("reset", () => {
     it("is offered once the bar differs from its declaration, with no value set", async () => {
       await mount({ persistenceKey: "probe" });
-      const reset = screen.getByRole("button", { name: "Reset filters" });
-      expect(reset.hasAttribute("disabled")).toBe(true);
+      expect((await openFilterMenu()).hasAttribute("data-disabled")).toBe(true);
+      await closeFilterMenu();
 
       fireEvent.click(
         screen.getByRole("button", { name: "Remove filter: Status" }),
       );
+      await waitFor(() => expect(slot("status")).toBeNull());
 
-      await waitFor(() => expect(reset.hasAttribute("disabled")).toBe(false));
+      expect((await openFilterMenu()).hasAttribute("data-disabled")).toBe(
+        false,
+      );
     });
 
     it("empties the values, removes the optional filters and shows the default ones", async () => {
@@ -435,7 +459,7 @@ describe("DataTable (the filter bar drawn from fields)", () => {
         null,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+      fireEvent.click(await openFilterMenu());
 
       await waitFor(() => expect(slot("owner")).toBeNull());
       expect(slot("status")).toBeTruthy();
