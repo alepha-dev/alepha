@@ -5,6 +5,16 @@ import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
 
+/**
+ * Reads whether the lazily-built `Intl` formatters exist yet, which is the
+ * only way to assert from outside that construction built neither.
+ */
+class TestI18nProvider extends I18nProvider<object, never> {
+  public get builtFormatters() {
+    return { date: !!this.dateFormatRef, number: !!this.numberFormatRef };
+  }
+}
+
 describe("I18nProvider", () => {
   test("should register dictionaries on initialization", async ({ expect }) => {
     class App {
@@ -277,6 +287,59 @@ describe("I18nProvider", () => {
 
     expect(i18n.numberFormat).toBeDefined();
     expect(i18n.numberFormat.format).toBeTypeOf("function");
+  });
+
+  test("should not build an Intl formatter until one is read", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaReactI18n);
+    const i18n = alepha.inject(TestI18nProvider);
+
+    // The whole point: constructing the provider costs no ICU. The first
+    // `Intl.DateTimeFormat` of a process is ~8 ms and the first
+    // `Intl.NumberFormat` ~1.5 ms, which was 19% of all service construction
+    // on a cold Worker isolate, paid by requests that format nothing.
+    expect(i18n.builtFormatters).toEqual({ date: false, number: false });
+
+    i18n.dateFormat.format(new Date());
+
+    expect(i18n.builtFormatters).toEqual({ date: true, number: false });
+  });
+
+  test("should cache the formatters and rebuild them on a language switch", async ({
+    expect,
+  }) => {
+    class App {
+      en = $dictionary({ lazy: async () => ({ default: {} }) });
+      fr = $dictionary({ lang: "fr", lazy: async () => ({ default: {} }) });
+    }
+
+    const alepha = Alepha.create().with(AlephaReactI18n);
+    alepha.inject(App);
+    const i18n = alepha.inject(I18nProvider);
+
+    await alepha.start();
+    await i18n.setLang("en");
+
+    // Cached: the formatters are built on first read, and building an
+    // `Intl.DateTimeFormat` per call would put the ~8 ms ICU cost back on a
+    // path that reads it repeatedly.
+    expect(i18n.dateFormat).toBe(i18n.dateFormat);
+    expect(i18n.numberFormat).toBe(i18n.numberFormat);
+
+    const date = i18n.dateFormat;
+    const number = i18n.numberFormat;
+
+    // And dropped on a switch, which is what the two assignments in
+    // `refreshLocale` used to do. Without this the app keeps formatting in the
+    // language it booted in, silently.
+    await i18n.setLang("fr");
+
+    expect(i18n.dateFormat).not.toBe(date);
+    expect(i18n.numberFormat).not.toBe(number);
+    expect(i18n.dateFormat.format(new Date("2026-09-20T00:00:00Z"))).toBe(
+      new Intl.DateTimeFormat("fr").format(new Date("2026-09-20T00:00:00Z")),
+    );
   });
 
   test("should handle multiple translations with same key across dictionaries", async ({
