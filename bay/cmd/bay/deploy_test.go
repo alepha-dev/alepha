@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
+
 	"github.com/alepha/bay/internal/health"
 	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runner"
@@ -617,5 +619,71 @@ func TestAChunkedUploadDeploys(t *testing.T) {
 	// arrived whole — a truncated gzip is refused inside deployArtifact.
 	if _, ok := f.server.store.Get("demo/production"); !ok {
 		t.Fatal("demo/production should be registered after a chunked upload")
+	}
+}
+
+// zstdArtifact writes the same deployable artifact `alepha pack` writes today:
+// the flat root, compressed with zstd at the window the packer pins.
+func zstdArtifact(t *testing.T) string {
+	t.Helper()
+	gzPath := deployableArtifact(t)
+
+	raw, err := os.Open(gzPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	gz, err := gzip.NewReader(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gz.Close()
+
+	path := filepath.Join(t.TempDir(), "artifact.tar.zst")
+	out, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	zw, err := zstd.NewWriter(out, zstd.WithWindowSize(1<<25))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.Copy(zw, gz); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// The whole point of the format change, end to end through the real deploy
+// sequence rather than through `untar` alone: an app arrives as a `.tar.zst`
+// with its contents at the archive root, and comes out registered, linked and
+// started.
+func TestDeploysAZstdArtifact(t *testing.T) {
+	f := newDeployFixture(t)
+
+	out, derr := f.deploy(zstdArtifact(t))
+	if derr != nil {
+		t.Fatalf("deploy failed: %v", derr)
+	}
+	if out == nil {
+		t.Fatal("a successful deploy must report an outcome")
+	}
+	if !f.runner.Running("demo/production") {
+		t.Fatal("the app should be running after the deploy")
+	}
+	// The release on disk carries the flat layout, not a `dist/` wrapper.
+	release := filepath.Join(
+		f.root, "apps", naming.Instance("demo", "production"), "current")
+	for _, want := range []string{"manifest.json", "index.node.js"} {
+		if _, err := os.Stat(filepath.Join(release, want)); err != nil {
+			t.Fatalf("%s should be at the release root: %v", want, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(release, "dist")); err == nil {
+		t.Fatal("the artifact must not unpack into a dist/ wrapper")
 	}
 }
