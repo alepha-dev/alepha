@@ -141,14 +141,14 @@ func bucketDeployableArtifact(t *testing.T) string {
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
 	files := map[string]string{
-		"dist/manifest.json": `{
+		"manifest.json": `{
 			"project": "demo",
 			"entry": "index.js",
 			"runtime": "node",
 			"runtimeVersion": "24",
 			"resources": { "hasBucket": true, "hasDatabase": true }
 		}`,
-		"dist/index.js": "process.exit(0)",
+		"index.node.js": "process.exit(0)",
 	}
 	for name, body := range files {
 		hdr := &tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(body))}

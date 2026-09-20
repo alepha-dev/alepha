@@ -19,18 +19,18 @@ The full design lives in the **bay** directory of the Alepha project in Lore.
 
 ## The shape of it
 
-|                    |                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------- |
-| **Artifact**       | the `tar.gz` `alepha pack` already produces - no Bay-specific format, no manifest to hand-write |
-| **Deployment**     | untar under guard, provision, atomic `current` switch, health-gated rollback watch              |
-| **Supervision**    | a systemd unit per instance, each running as its own unix user, in its own sandbox              |
-| **Reverse proxy**  | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`        |
-| **Static headers** | the release's `dist/public/_headers` applied to every file served from disk, Cloudflare's way   |
-| **TLS**            | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)               |
-| **Provisioning**   | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`              |
-| **Backups**        | scheduled snapshot of the database, verified, compressed, uploaded, pruned                      |
-| **Control API**    | HTTP over a **unix socket**, authorized by the file mode. No port, no token                     |
-| **CLI**            | every command except `serve` is a thin client of that same API - one contract                   |
+|                    |                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| **Artifact**       | the `tar.zst` `alepha pack` already produces - no Bay-specific format, no manifest to hand-write |
+| **Deployment**     | untar under guard, provision, atomic `current` switch, health-gated rollback watch               |
+| **Supervision**    | a systemd unit per instance, each running as its own unix user, in its own sandbox               |
+| **Reverse proxy**  | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`         |
+| **Static headers** | the release's `dist/public/_headers` applied to every file served from disk, Cloudflare's way    |
+| **TLS**            | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)                |
+| **Provisioning**   | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`               |
+| **Backups**        | scheduled snapshot of the database, verified, compressed, uploaded, pruned                       |
+| **Control API**    | HTTP over a **unix socket**, authorized by the file mode. No port, no token                      |
+| **CLI**            | every command except `serve` is a thin client of that same API - one contract                    |
 
 `bay` with no arguments prints the full command list, and that usage text is
 the reference for flags - this table is the map, not the manual.
@@ -121,25 +121,44 @@ internal/
 Bay consumes the format the framework already produces:
 
 ```
-example-api-latest.tar.gz
-├── dist/
-│   ├── manifest.json     ← derived by `alepha build`
-│   ├── index.js
-│   └── server/
+example-api-latest.tar.zst
+├── manifest.json         ← derived by `alepha build`
+├── index.node.js         ← one entry per server slice
+├── index.workerd.js
+├── server/
+│   ├── node/             ← each slice's chunks, namespaced
+│   └── workerd/
+├── public/
 └── migrations/
 ```
 
-`dist/manifest.json` is the contract between the build and all of its
+The archive root is the contents: there is no `dist/` wrapper. An artifact may
+carry several **server slices**, one per runtime it was linked for, and
+`manifest.json` is the only thing that says which is which - there is no
+`index.js` sniffing its host, because a second discovery mechanism able to
+disagree with the manifest is worse than none.
+
+Bay takes the **first slice it can run, in declared order**, applying no
+preference of its own: `(node, bun)` spawns node and `(bun, node)` spawns bun,
+from the same two slices. The build's declared order is the decision.
+
+It arrives compressed with zstd. `.tar.gz` is read too, and is not going away:
+hosts hold artifacts pulled before the change, and the compression is detected
+from the stream's own first bytes rather than from the file name.
+
+`manifest.json` is the contract between the build and all of its
 consumers - `alepha platform up --prebuilt`, Alepha Rocket, and Bay. Declaring
 `$repository` is what puts `hasDatabase: true` in it, and that `true` is what
 provisions the database **and** grants write access in the sandbox. Nobody
 writes the same fact twice, so code ↔ infra drift is impossible by
 construction.
 
-⚠️ **`--target=bare` (the default), not `cloudflare`.** A workerd bundle is
-resolved against Cloudflare's export conditions and has no entry point node can
-execute. Bay refuses it at deploy time and names the fix - otherwise the app
-deploys, never boots, and the only message is "never became ready".
+⚠️ **An artifact needs a slice Bay can run.** A workerd bundle is resolved
+against Cloudflare's export conditions and has no entry point node can execute,
+so a workerd-only artifact is refused at deploy time and the message names what
+it is - otherwise the app deploys, never boots, and the only message is "never
+became ready". A `node` + `workerd` artifact is fine: Bay falls through to the
+node slice.
 
 A tar untarred as root earns its guards: absolute paths and `..` refused,
 symlinks / hardlinks / devices refused (the classic escape is planting a link

@@ -42,7 +42,7 @@ func staticSite(t *testing.T, files map[string]string) *Proxy {
 
 	// ⚠️ ONE segment. The instance directory is `apps/<name>-<env>/`, not
 	// `apps/<name>/<env>/` - see internal/naming for why the pair is folded.
-	base := filepath.Join(root, "apps", naming.Instance("docs", "production"), "releases", "r1", "dist", "public")
+	base := filepath.Join(root, "apps", naming.Instance("docs", "production"), "releases", "r1", "public")
 	for name, body := range files {
 		path := filepath.Join(base, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -14,11 +14,11 @@ import (
 func staticArtifact(t *testing.T, name string) string {
 	t.Helper()
 	return buildArchive(t,
-		entry{name: "dist/manifest.json", body: `{
+		entry{name: "manifest.json", body: `{
 			"project": "` + name + `",
 			"runtime": "static"
 		}`},
-		entry{name: "dist/public/index.html", body: "<html></html>"},
+		entry{name: "public/index.html", body: "<html></html>"},
 	)
 }
 

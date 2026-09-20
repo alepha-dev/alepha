@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/alepha/bay/internal/headers"
+	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
@@ -59,7 +60,7 @@ type headerCache struct {
 // than the deploy check: it is treated as absent, so the hashedAsset regex
 // applies as it did before, and logged once. It is still never served.
 func (p *Proxy) rulesFor(app state.App) ([]headers.Rule, bool) {
-	dir := filepath.Join(p.root, "apps", naming.Instance(app.Name, app.Env), "releases", app.Release, "dist", "public")
+	dir := filepath.Join(p.root, "apps", naming.Instance(app.Name, app.Env), "releases", app.Release, manifest.PublicDir)
 
 	p.headerCache.mu.Lock()
 	if p.headerCache.byRelease == nil {

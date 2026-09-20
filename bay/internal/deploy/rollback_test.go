@@ -11,7 +11,7 @@ import (
 func release(t *testing.T, instance, name string, migrations ...string) {
 	t.Helper()
 	dir := filepath.Join(instance, "releases", name)
-	if err := os.MkdirAll(filepath.Join(dir, "dist"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "server"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range migrations {
