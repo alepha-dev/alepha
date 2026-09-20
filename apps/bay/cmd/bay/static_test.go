@@ -25,9 +25,9 @@ func staticArtifact(t *testing.T) string {
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
 	files := map[string]string{
-		"dist/manifest.json":     `{"project": "demo", "runtime": "static"}`,
-		"dist/public/index.html": "<html>home</html>",
-		"dist/public/404.html":   "<html>missing</html>",
+		"manifest.json":     `{"project": "demo", "runtime": "static"}`,
+		"public/index.html": "<html>home</html>",
+		"public/404.html":   "<html>missing</html>",
 	}
 	for name, body := range files {
 		hdr := &tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(body))}

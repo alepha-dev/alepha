@@ -249,7 +249,7 @@ func TestDeployIsNotRefusedOnceMigrated(t *testing.T) {
 func TestCurrentSymlinkSurvivesTheInstanceMoving(t *testing.T) {
 	root := t.TempDir()
 	instance := filepath.Join(root, "apps", "demo-production")
-	release := filepath.Join(instance, "releases", "r1", "dist")
+	release := filepath.Join(instance, "releases", "r1")
 	if err := os.MkdirAll(release, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestCurrentSymlinkSurvivesTheInstanceMoving(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(filepath.Join(moved, "current", "dist", "manifest.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(moved, "current", "manifest.json")); err != nil {
 		t.Fatalf("current must still resolve after the move: %v", err)
 	}
 }

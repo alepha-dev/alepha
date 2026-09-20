@@ -14,9 +14,9 @@ import (
 func staticArtifactWithHeaders(t *testing.T, name, headersFile string) string {
 	t.Helper()
 	return buildArchive(t,
-		entry{name: "dist/manifest.json", body: `{"project": "` + name + `", "runtime": "static"}`},
-		entry{name: "dist/public/index.html", body: "<html></html>"},
-		entry{name: "dist/public/_headers", body: headersFile},
+		entry{name: "manifest.json", body: `{"project": "` + name + `", "runtime": "static"}`},
+		entry{name: "public/index.html", body: "<html></html>"},
+		entry{name: "public/_headers", body: headersFile},
 	)
 }
 
@@ -38,7 +38,7 @@ func TestDeployRefusesAHeadersFileThatDoesNotParse(t *testing.T) {
 	if err == nil {
 		t.Fatal("a _headers with a placeholder was deployed")
 	}
-	if !strings.Contains(err.Error(), "dist/public/_headers:3: ") {
+	if !strings.Contains(err.Error(), "public/_headers:3: ") {
 		t.Fatalf("the refusal does not name the line: %v", err)
 	}
 	app, _ := store.Get("docs/production")
