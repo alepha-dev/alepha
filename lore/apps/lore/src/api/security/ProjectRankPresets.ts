@@ -1,11 +1,5 @@
 import { $inject } from "alepha";
 
-// The two catalogues, imported for their VALUES: a seeded rank's name is
-// resolved once, at creation, in the creator's language. Precedent for
-// reaching across from the api tree: `ProjectController` imports
-// `displayName` from `web/app/services`.
-import en from "../../web/locales/en.ts";
-import fr from "../../web/locales/fr.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LorePermissions } from "./LorePermissions.ts";
@@ -35,6 +29,27 @@ import { LorePermissions } from "./LorePermissions.ts";
  */
 export class ProjectRankPresets {
   protected readonly capabilities = $inject(CapabilityRegistry);
+
+  /**
+   * The two catalogues, read for their VALUES: a seeded rank's name is
+   * resolved once, at creation, in the creator's language.
+   *
+   * ⚠️ **Loaded with `import()`, and that is not a style choice.** A STATIC
+   * import here defeats the `$dictionary({ lazy: ... })` in `I18n.ts`: a
+   * module that is both statically and dynamically imported is hoisted into
+   * the static graph, and the dynamic import then resolves to the
+   * already-loaded copy. The two catalogues are 264 kB of source, and they
+   * were in the Worker's EAGER boot graph with no lazy chunk emitted at all -
+   * evaluated on every cold isolate to answer three rank names. The browser
+   * bundle never showed it, because `api/security` is not in the client
+   * graph.
+   *
+   * Memoised per catalogue, so a sweep seeding two hundred projects loads
+   * each one once.
+   */
+  protected catalogues: Partial<
+    Record<"en" | "fr", Promise<Record<string, string>>>
+  > = {};
 
   /**
    * i18n keys for the three names, so a project is seeded in the creator's
@@ -140,17 +155,24 @@ export class ProjectRankPresets {
    *
    * ⚠️ Resolved ONCE, at creation, and then it is the owner's text: a rank is
    * a thing people rename, so a name that kept following the reader's locale
-   * would quietly overwrite that rename. `en.ts` and `fr.ts` are plain objects
-   * and the API imports them the way it already imports `displayName` from the
-   * web tree.
+   * would quietly overwrite that rename. `en.ts` and `fr.ts` are plain
+   * objects, read here for their values.
    *
    * Falls back to English for any other `Accept-Language`, which is what the
    * rest of the app does.
+   *
+   * ⚠️ Async because the catalogue is loaded on demand - see `catalogues`.
    */
-  public nameFor(preset: ProjectRankPreset, language?: string): string {
-    const catalogue: Record<string, string> = language?.startsWith("fr")
-      ? fr
-      : en;
+  public async nameFor(
+    preset: ProjectRankPreset,
+    language?: string,
+  ): Promise<string> {
+    const locale = language?.startsWith("fr") ? "fr" : "en";
+    this.catalogues[locale] ??=
+      locale === "fr"
+        ? import("../../web/locales/fr.ts").then((m) => m.default)
+        : import("../../web/locales/en.ts").then((m) => m.default);
+    const catalogue = await this.catalogues[locale];
     return catalogue[preset.labelKey] ?? preset.key;
   }
 
