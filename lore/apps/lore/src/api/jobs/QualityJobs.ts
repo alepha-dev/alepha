@@ -31,14 +31,28 @@ export class QualityJobs {
   protected readonly limits = $inject(ProjectLimits);
 
   /**
-   * Nightly, and off the hour: a cap is a steady-state target, so there is
-   * nothing to gain from sweeping often and something to lose from sweeping
-   * while a CI job is pushing.
+   * Nightly: a cap is a steady-state target, so there is nothing to gain
+   * from sweeping often and something to lose from sweeping while a CI job
+   * is pushing.
+   *
+   * It sat on `17 3 * * *` until 2026-09-20, off the hour so the nightly
+   * sweeps would not start together. Measured on lore-production, that
+   * concern was not real - this tick is 241 ms at p99, and the `0 3 * * *`
+   * bucket it now joins is 306 ms - while the cost was: Cloudflare counts
+   * cron triggers per account, across every Worker on it, so the odd
+   * minute was a slot spent on one job.
    */
   public readonly pruneQualityRuns = $job({
     name: "quality.prune-runs",
     description: "Prunes each project's quality runs down to its limit.",
-    cron: "17 3 * * *",
+    cron: "0 3 * * *",
+    // Two minutes, against a trigger measured at 241 ms p99. The loop is
+    // per project and unbounded, so the headroom is for growth; the prune
+    // is idempotent and the next night resumes.
+    timeout: [2, "minutes"],
+    // Daily, so a failed tick otherwise waits a day. See
+    // `ProjectRankJobs.seedMissingPresetRanks` for the same reasoning.
+    retry: { retries: 2 },
     handler: async () => {
       const cap = await this.limits.maxQualityRunsPerProject();
       const projects = await this.quality.projectsWithRuns();

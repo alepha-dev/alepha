@@ -28,13 +28,24 @@ export class QuestJobs {
   /**
    * Send due quest reminders.
    *
-   * Runs once a day at 00:00 UTC. The reminder cadence is measured in
-   * days (day/week/month presets), so a single nightly sweep catches
-   * every reminder that came due in the prior 24h — and because each
-   * send advances `reminderNextAt` by the interval, reminders
-   * self-anchor to this nightly slot after their first fire. Mail goes
-   * out at night (fixed UTC hour; no per-user timezone) rather than
-   * interrupting people mid-day.
+   * Runs hourly. It ran at 00:00 UTC until 2026-09-20, on the reasoning
+   * that the cadence is measured in days so one nightly sweep catches
+   * everything, and that mail should not interrupt people mid-day. That
+   * reasoning missed the batch below it: a 50-row limit is a frequent
+   * sweep's safety valve, and paired with a daily cron it was a hard
+   * ceiling of fifty reminders a day, with the fifty-first waiting until
+   * tomorrow.
+   *
+   * So the anchor is retired, knowingly, and the cost is stated rather
+   * than hidden: reminders no longer all land just after midnight UTC,
+   * they land within an hour of `reminderNextAt`, at whatever hour each
+   * one was armed. Some will arrive during someone's working day, which
+   * is what the nightly slot was avoiding. Honouring the interval is
+   * worth more than the slot, and 00:00 UTC was already 02:00 in Paris.
+   * Per-user timezones are still not a thing here.
+   *
+   * `0 * * * *` is already an emitted Cloudflare trigger, so this costs
+   * no account-level cron.
    *
    * Eligibility:
    * - `reminderNextAt <= now`
@@ -51,8 +62,12 @@ export class QuestJobs {
   public readonly sendDueReminders = $job({
     name: "quests.send-due-reminders",
     description:
-      "Sends the quest reminders that are due, 50 per run, and schedules each one's next occurrence.",
-    cron: "0 0 * * *",
+      "Sends the quest reminders that are due, hourly, 50 per run, and schedules each one's next occurrence.",
+    cron: "0 * * * *",
+    // Two minutes for at most REMINDER_BATCH rows, each an outbox push and
+    // an update. A tick that cannot finish fifty of those in two minutes is
+    // not going to be rescued by four.
+    timeout: [2, "minutes"],
     handler: async () => {
       const now = this.dt.nowISOString();
       // The assignee and the project come back with the quest, so the batch
