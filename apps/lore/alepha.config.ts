@@ -87,7 +87,16 @@ export default defineConfig({
          * traffic to read, and the owner chose to turn both on (2026-09-19),
          * so their effects are no longer separable. It needs traffic before
          * it takes effect: read the Worker's placement status (Workers API,
-         * `placement_status`) before measuring.
+         * `placement_status`, `SUCCESS` since 2026-09-19).
+         *
+         * ⚠️ The after measurement was waived on 2026-09-20, and reopening it
+         * would not answer anything. Lore's human traffic is a handful of
+         * people in France, all of whom arrive through CDG, which is where
+         * the primary already is. The only requests that reach it from IAD,
+         * DFW or SIN are crawlers and monitors hitting the sigil-instrumented
+         * apps, roughly one every ten minutes. So this line, and the replicas
+         * below, both keep their config because they cost nothing, not
+         * because a measurement justified them.
          */
         placement: { mode: "smart" },
         /**
