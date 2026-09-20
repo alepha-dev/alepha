@@ -72,6 +72,31 @@ export class SqlExpressionProvider {
   }
 
   /**
+   * A timestamp column truncated to its hour, as sortable `'YYYY-MM-DDTHH'`
+   * text.
+   *
+   * The same shape as {@link dateDay} and deliberately the same shape as the
+   * bucket key `alepha/api/analytics` stores, whose day is a prefix of its
+   * hour. That is what lets a query fold a relational table into analytics
+   * buckets without any date arithmetic on the caller's side - the case this
+   * was written for is backfilling a dataset from a table that already holds
+   * the events.
+   *
+   * `T` rather than a space, because the analytics bucket key is
+   * `YYYY-MM-DDTHH` and a label that differs by one character is a join that
+   * silently matches nothing.
+   *
+   * Timezone handling is {@link dateDay}'s, exactly: a query that buckets by
+   * both must not have the two disagree about which day an hour belongs to.
+   */
+  public dateHour(column: SqlLike): SQL {
+    if (this.isEpochMillis) {
+      return sql`STRFTIME('%Y-%m-%dT%H', ${this.toEpochSeconds(column)}, 'unixepoch')`;
+    }
+    return sql`TO_CHAR(${column}, 'YYYY-MM-DD"T"HH24')`;
+  }
+
+  /**
    * A timestamp column as a sortable ISO year-week label, e.g. `'2026-W11'`.
    *
    * SQLite has no ISO week function, so this uses the standard Thursday
