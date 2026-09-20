@@ -192,12 +192,16 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
   return (
     <DataTable<ProjectOverviewResource, typeof filterFields>
       className="h-full min-h-0 min-w-0 flex-1"
-      // One surface with the activity panel beside it: the filter bar, the
-      // column header and the footer take the page's own background rather
-      // than a band of their own, as the panel does.
-      chromeClassName="bg-transparent"
-      // The panel joins on the right from `lg`, where it appears.
-      squareRight="lg"
+      // ⚠️ No `chromeClassName="bg-transparent"` any more: the filter bar and
+      // the column header wear the kit's own `bg-muted` chrome here, as they
+      // do in every other table. They were stripped to the page background
+      // when the two blocks were one flat surface; the page's grid draws the
+      // edges now, and the bands are what separate the controls and the
+      // column names from the rows.
+      // No frame of its own: on Home the table is flush inside the page's
+      // grid, whose rails ARE its left and right edges. `squareRight` went
+      // with it - there are no corners left to square.
+      flat
       // Twenty and no picker: Home is a glance at your projects, not a list
       // to page through, and with one page the footer goes too.
       pageSizes={[]}

@@ -86,16 +86,27 @@ export const HomeActivityPanel = (props: HomeActivityPanelProps) => {
   return (
     <aside
       data-testid="home-activity"
-      // The right half of one block with the table: top, right and bottom
-      // borders, rounded on the right like the table is on its left. No left
-      // border, since the table's own right border is the line between them.
-      className="hidden w-88 shrink-0 flex-col overflow-hidden rounded-r-md border border-l-0 lg:flex"
+      // The right half of one block with the table, inside the page's grid:
+      // its top, right and bottom edges are the grid's own rules, so the one
+      // border it draws is the left one, the line between it and the table.
+      className="hidden w-88 shrink-0 flex-col overflow-hidden border-l lg:flex"
     >
-      {/* 49px, so its bottom rule lands on the same line as the table
-          toolbar's: the toolbar is 1px of border, 8px of padding, a 32px
-          control and 8px of padding above its own rule, and this sits under
-          the panel's 1px top border. */}
-      <div className="text-muted-foreground flex h-[49px] shrink-0 items-center gap-2 border-b pr-2 pl-4 text-[11px] tracking-[0.18em] uppercase">
+      {/* `bg-muted` AND the `--bevel` fold on its top edge, which is the
+          whole of the kit's chrome: this band is the panel's toolbar, and
+          the filter bar beside it carries both. With the fill alone it was
+          the same colour with none of the volume.
+
+          ⚠️ 53px, the filter bar's own height, so the two rules across the
+          page are one line: the bar is 8px of padding, a 36px control, 8px
+          of padding and its 1px rule, and this band is that figure with its
+          own rule inside it (`border-box`).
+
+          It was 49px while both halves drew a full border and the panel's
+          top one pushed this band down; on Home neither does since the grid
+          took over their edges, so the number is the bar's height flat. A
+          control of another size moves it, and the line is where anyone
+          would see it. */}
+      <div className="bg-muted text-muted-foreground flex h-[53px] shrink-0 items-center gap-2 border-b pr-4 pl-4 text-[11px] tracking-[0.18em] uppercase shadow-[inset_0_1px_0_0_var(--bevel)]">
         <History className="size-3.5 shrink-0" />
         <span className="flex-1 truncate">{tr("home.activity.title")}</span>
         {/* `normal-case` and no tracking: the heading's small caps are for

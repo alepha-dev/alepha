@@ -87,7 +87,12 @@ export const HomeActivityLine = (props: HomeActivityLineProps) => {
             props.onToggle();
           }
         }}
-        className="hover:bg-accent/50 flex cursor-pointer items-center gap-2 px-4 py-2.5 transition-colors select-none"
+        // The chrome band, the same one the panel's own header and a table's
+        // filter bar wear: `bg-muted` under the `--bevel` fold. It makes each
+        // event a head with its details under it, rather than a paragraph in
+        // a list. The hover wash sits on top of the band, which is what a
+        // translucent `--hover` is for.
+        className="bg-muted hover:bg-hover flex cursor-pointer items-center gap-2 px-4 py-2.5 shadow-[inset_0_1px_0_0_var(--bevel)] transition-colors select-none"
       >
         <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
           {homeActivityIcon(row.type)}

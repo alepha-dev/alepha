@@ -33,11 +33,43 @@ export const HomeActivityLineDetails = (
     .filter(Boolean)
     .join(" ");
 
+  /*
+   * A compact stamp: `lll` spelled out "Sep 19, 2026 5:12 PM → Sep 19, 2026
+   * 5:12 PM", two thirds of which was the same day written twice and a year
+   * every reader already knows.
+   *
+   * The year appears only when the event is not from this one, and the end
+   * of a coalesced burst drops the date when it landed on the day it
+   * started - which is nearly always, since a burst is minutes wide.
+   * Compared by the formatted day rather than by a `isSame` call, so the
+   * comparison reads in the reader's own timezone like everything else here.
+   */
+  const at = dt.of(row.createdAt);
+  const dayOf = (value: ReturnType<typeof dt.of>) => value.format("YYYY-MM-DD");
+  const full = (value: ReturnType<typeof dt.of>) =>
+    value.format(
+      dayOf(value).slice(0, 4) === dayOf(dt.now()).slice(0, 4)
+        ? "D MMM, HH:mm"
+        : "D MMM YYYY, HH:mm",
+    );
+  const stamp = full(at);
+  const end = row.updatedAt ? dt.of(row.updatedAt) : undefined;
+  const endStamp = end
+    ? dayOf(end) === dayOf(at)
+      ? end.format("HH:mm")
+      : full(end)
+    : undefined;
+
   return (
     <dl className="flex flex-col gap-2 text-xs">
-      <div className="flex items-center gap-2">
+      {/* Who on the left, WHERE on the right, one line: the project is the
+          fact that places every other one, and on a line of its own lower
+          down it read as another property of the event. `justify-between`
+          rather than a spacer, and the name truncates before the actor's
+          does. */}
+      <div className="flex items-center justify-between gap-3">
         <dt className="sr-only">{tr("activity.col.who")}</dt>
-        <dd className="flex min-w-0 items-center gap-2">
+        <dd className="flex min-w-0 flex-1 items-center gap-2">
           {row.actorAvatarUrl ? (
             <img
               src={row.actorAvatarUrl}
@@ -53,6 +85,10 @@ export const HomeActivityLineDetails = (
             {row.actor ?? tr("home.activity.unknown")}
           </span>
         </dd>
+        <dt className="sr-only">{tr("home.table.col.project")}</dt>
+        <dd className="text-muted-foreground max-w-[45%] truncate">
+          {row.projectTitle}
+        </dd>
       </div>
 
       <div className="flex min-w-0 items-start gap-2">
@@ -66,11 +102,6 @@ export const HomeActivityLineDetails = (
             <span className="text-foreground"> {row.description}</span>
           )}
         </dd>
-      </div>
-
-      <div className="flex min-w-0 items-center gap-2">
-        <dt className="sr-only">{tr("home.table.col.project")}</dt>
-        <dd className="text-muted-foreground truncate">{row.projectTitle}</dd>
       </div>
 
       {/* The two shapes `ActivityDetails` knows how to say. Anything else
@@ -90,9 +121,12 @@ export const HomeActivityLineDetails = (
         <dt className="sr-only">{tr("activity.col.when")}</dt>
         {/* A coalesced row names its span, and how many events it folded:
             the relative time on the line is only the first of them. */}
-        <dd className="text-muted-foreground/70 font-mono">
-          {dt.of(row.createdAt).format("lll")}
-          {row.updatedAt && ` → ${dt.of(row.updatedAt).format("lll")}`}
+        {/* Smaller than the rest: a timestamp is the last thing read and
+            the longest string here, and at the list's own size it competed
+            with what actually happened. */}
+        <dd className="text-muted-foreground/70 font-mono text-[11px]">
+          {stamp}
+          {endStamp && ` → ${endStamp}`}
           {(row.eventCount ?? 1) > 1 && ` · ×${row.eventCount}`}
         </dd>
       </div>

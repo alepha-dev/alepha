@@ -32,7 +32,13 @@ const HomeHeader = () => {
   const router = useRouter<AppRouter>();
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 px-4">
+    /*
+      `px-8` and `border-b`: the rails of the home grid run at `left-4` /
+      `right-4`, so the logo and the account button sit 16px INSIDE them -
+      the same gap the rails leave to the page edge. 16px of padding would
+      put both controls on the rails themselves.
+    */
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b px-8">
       <LoreLogo size={22} className="size-[22px]" />
       <span className="text-muted-foreground text-[11px] tracking-[0.18em] uppercase">
         {tr("home.wordmark")}
