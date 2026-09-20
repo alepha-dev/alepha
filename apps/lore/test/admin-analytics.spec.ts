@@ -28,9 +28,13 @@ describe("Lore admin analytics surface", () => {
     // total per fingerprint and never the occurrences. `estate_stats` joined on
     // 2026-09-05 (epic #20, quest #1627): the series behind the estate gauge,
     // keyed by estate rather than by sigil, and the first dataset here that
-    // no sigil page reads.
+    // no sigil page reads. `project_activity` joined on 2026-09-20 (epic
+    // #E65): the rate half of the audit log, keyed by project and read by
+    // Home's momentum bars, and the second dataset here that no sigil page
+    // reads.
     expect(names).toEqual([
       "estate_stats",
+      "project_activity",
       "sigil_errors",
       "sigil_views",
       "sigil_vitals",

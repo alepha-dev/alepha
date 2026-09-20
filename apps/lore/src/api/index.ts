@@ -3,6 +3,7 @@ import {
   AlephaApiAnalyticsAdmin,
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
+import { AuditService } from "alepha/api/audits";
 import { AlephaApiJobsQueue } from "alepha/api/jobs";
 import {
   AlephaApiOrganizations,
@@ -115,6 +116,7 @@ import { FrozenLegacyOrganizationTables } from "./services/FrozenLegacyOrganizat
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
+import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
@@ -423,6 +425,14 @@ export const LoreApi = $module({
       provide: OrganizationPolicyProvider,
       use: LoreOrganizationPolicyProvider,
     });
+    // Lore's audit log also writes a rate point (#E65). Here rather than in
+    // `services`, because a substitution has to be recorded before anything
+    // resolves the thing it replaces: this hook runs ahead of `imports[]`
+    // being wired and `services[]` being injected, so it wins over whatever
+    // `AlephaApiAudits` provides when a `$audit` type auto-wires it. See
+    // `LoreAuditService` for why the recording lives on the service rather
+    // than on `LoreAudits`.
+    alepha.with({ provide: AuditService, use: LoreAuditService });
     alepha.store.set(organizationConfigAtom, {
       ...alepha.store.get(organizationConfigAtom),
       memberPermissions: LorePermissions.MEMBER_DEFAULT,
