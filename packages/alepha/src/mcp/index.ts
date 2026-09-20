@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 
+import type { McpContext } from "./interfaces/McpTypes.ts";
 import { $prompt } from "./primitives/$prompt.ts";
 import { $resource } from "./primitives/$resource.ts";
 import { $resourceTemplate } from "./primitives/$resourceTemplate.ts";
@@ -142,6 +143,43 @@ export {
  *
  * @module alepha.mcp
  */
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * A `tools/call` finished, however it finished.
+     *
+     * Emitted once per call by {@link McpServerProvider}, after the result is
+     * in hand and before it reaches the caller, so an application can count
+     * what its MCP surface is actually asked for. A tool call leaves no trace
+     * anywhere else: a write may end up in an audit log, but a READ passes
+     * through and vanishes, and reads are most of the traffic on a server
+     * whose primary consumer is an agent.
+     *
+     * `outcome` keeps the two failure kinds apart, because they mean
+     * different things to whoever wrote the tool. `refused` is the server
+     * working - a schema the arguments did not satisfy, a row that is not
+     * there, a caller who may not - and points at a description or a schema
+     * that misleads the model. `error` is a fault. It is the same split
+     * `handleToolsCall` already makes when it decides between `log.warn` and
+     * `log.error`.
+     *
+     * `name` is what the client asked for, whether or not a tool by that
+     * name is registered: a client calling something that does not exist is
+     * worth seeing, and dropping it would hide exactly that.
+     *
+     * ⚠️ A subscriber must not throw and must not be slow. This is awaited
+     * inside the call, so it is in front of the caller's answer.
+     */
+    "mcp:tool:end": {
+      name: string;
+      outcome: "ok" | "refused" | "error";
+      context?: McpContext;
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export const AlephaMcp = $module({
   name: "alepha.mcp",
   primitives: [$tool, $resource, $resourceTemplate, $prompt],

@@ -6,12 +6,12 @@ import { estates } from "./estates.ts";
 import { sigils } from "./sigils.ts";
 
 /**
- * Lore's five portable analytics datasets.
+ * Lore's six portable analytics datasets.
  *
  * Views, vitals and errors, keyed by sigil, the estate stats series, keyed by
- * estate, and the project activity rates, keyed by project. Unique visitors
- * stay in `sigilUniquesDaily` because a distinct count cannot survive
- * sampling or a rollup.
+ * estate, the project activity rates, keyed by project, and the MCP tool
+ * calls, keyed by tool. Unique visitors stay in `sigilUniquesDaily` because a
+ * distinct count cannot survive sampling or a rollup.
  *
  * ⚠️ `errors` here does NOT replace `sigilErrorGroups`. That table keeps the
  * *first* stack sample, which needs a read before every write, and holds one
@@ -522,6 +522,81 @@ export class LoreAnalytics {
      * margin of hour-precision rows; past that a day bucket is all any chart
      * here asks for. 400d cold matches the other four datasets.
      */
+    retention: { hot: "30d", rollup: "day", cold: "400d" },
+  });
+
+  /**
+   * How often each MCP tool is called, and how those calls end (#E65).
+   *
+   * ## The one question in this app with no data behind it at all
+   *
+   * MCP is Lore's primary consumer, and a tool call leaves **no row in any
+   * entity table**. A write does produce an audit row, so `quest_update` is
+   * visible after the fact as `quest:update` - but a read does not, and reads
+   * are most of the traffic: `quest_get`, `project_context`, `folio_get`,
+   * `quest_list` pass through this app and vanish. "Which tools do agents
+   * actually call" was therefore unanswerable, in every surface, by
+   * construction. This dataset is what makes it a chart.
+   *
+   * It is also what this epic's premise rested on: the store is worth more
+   * than a daily counts table only if a FAMILY of event-rate charts exists.
+   * `project_activity` was one member and could have been a D1 table; this is
+   * the second, and it could not have been, because nothing was ever stored.
+   *
+   * ## Three dimensions
+   *
+   * `tool` is the index: Analytics Engine samples equitably per index value,
+   * so a hot tool cannot starve a rare one out of the sample, and per-tool is
+   * the granularity every read here groups by.
+   *
+   * `outcome` is `ok`, `refused` or `error`, which is what makes the chart
+   * diagnostic rather than decorative. A tool that is called constantly and
+   * refuses half those calls has a description or a schema that misleads, and
+   * that is invisible in a total. `refused` is a status under 500 or an
+   * `McpError` the caller cannot fix by retrying - the same split
+   * `McpServerProvider` already makes when it decides whether to log at
+   * `warn` or at `error`.
+   *
+   * `actor` is the calling user's id, or `anon`. Bounded by the instance's
+   * accounts.
+   *
+   * **No `project`.** A tool names its project in its own arguments, under a
+   * different key per tool and sometimes not at all (`project_list`), so the
+   * value would be a per-tool guess written into one dimension. What happens
+   * inside a project is `project_activity`'s question; this dataset's is what
+   * the MCP surface itself is asked for.
+   *
+   * ## ⚠️ Append only, from the first commit
+   *
+   * Pinned like every dataset above. A new dimension goes on the END of the
+   * list, whatever it is called. See `views` for what reordering cost twice.
+   */
+  public readonly mcpCalls = $analytics({
+    name: "mcp_calls",
+    index: "tool",
+    dimensions: z.object({
+      /**
+       * The tool name as the MCP client asked for it - `quest_get`,
+       * `project_context`. Unregistered names are recorded too, as
+       * `unknown`: a client calling a tool that does not exist is exactly the
+       * kind of thing worth seeing.
+       */
+      tool: z.string(),
+      /**
+       * `ok` | `refused` | `error`. Defaulted for the same SQLite reason
+       * every dimension on `views` carries one.
+       */
+      outcome: z.string().default("ok"),
+      /**
+       * The calling user's id, or `anon` when the call carried no identity.
+       */
+      actor: z.string().default("anon"),
+    }),
+    measures: z.object({ count: z.number() }),
+    slots: {
+      dimensions: ["tool", "outcome", "actor"],
+      measures: ["count"],
+    },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });
 }

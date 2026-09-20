@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { StreamableHttpMcpTransport } from "alepha/mcp";
 
+import { McpCallRates } from "../api/services/McpCallRates.ts";
 import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
@@ -22,6 +23,10 @@ export const LoreMcp = $module({
   name: "lore.mcp",
   services: [
     StreamableHttpMcpTransport,
+    // Counts every tool call into the `mcp_calls` dataset (#E65). Listed
+    // here because nothing injects it: it is a `$hook` subscriber and the
+    // event reaches it only if the class was constructed.
+    McpCallRates,
     QuestTools,
     BlightTools,
     ArtifactTools,

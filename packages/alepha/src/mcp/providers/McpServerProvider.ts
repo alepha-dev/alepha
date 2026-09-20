@@ -911,6 +911,12 @@ export class McpServerProvider {
       // McpToolNotFoundError is intentionally a JSON-RPC protocol error,
       // not a tool execution error — see SEP-1303 (only validation/runtime
       // failures of an existing tool are reported via isError: true).
+      //
+      // Announced before it is thrown: a client calling a tool that does not
+      // exist is exactly what an application counting its MCP surface wants
+      // to see, and it is the one outcome that never reaches the `catch`
+      // below.
+      await this.announceToolEnd(name, "refused", context);
       throw new McpToolNotFoundError(name);
     }
 
@@ -927,6 +933,7 @@ export class McpServerProvider {
       if (!tool.hasOutputSchema()) {
         const raw = this.asRawToolContent(result);
         if (raw) {
+          await this.announceToolEnd(name, "ok", context);
           return raw;
         }
       }
@@ -956,6 +963,7 @@ export class McpServerProvider {
         callResult.structuredContent = structured;
       }
 
+      await this.announceToolEnd(name, "ok", context);
       return callResult;
     } catch (error) {
       // Not everything that escapes a tool is the model's problem. An McpError
@@ -972,6 +980,15 @@ export class McpServerProvider {
             error,
           );
         }
+        // An `McpError` is the caller's problem rather than the server's: a
+        // caller who may not, a param the tool cannot read, an output
+        // contract the tool broke. The first two are refusals; the third is
+        // the tool being wrong, which is the one `error` case here.
+        await this.announceToolEnd(
+          name,
+          error instanceof McpToolOutputError ? "error" : "refused",
+          context,
+        );
         throw error;
       }
 
@@ -985,6 +1002,9 @@ export class McpServerProvider {
       if (error instanceof SchemaValidationError) {
         const path = error.value?.path || "/";
         const message = error.value?.message || error.message;
+        // A refusal: the model is expected to correct the argument and try
+        // again, which is why this is returned rather than thrown.
+        await this.announceToolEnd(name, "refused", context);
         return {
           content: [
             {
@@ -1032,6 +1052,14 @@ export class McpServerProvider {
         this.log.error(`MCP tool "${name}" failed`, error as Error);
       }
 
+      // The same split the two log lines above make, so a counter and the log
+      // never disagree about what happened.
+      await this.announceToolEnd(
+        name,
+        typeof status === "number" && status < 500 ? "refused" : "error",
+        context,
+      );
+
       return {
         content: [
           {
@@ -1041,6 +1069,36 @@ export class McpServerProvider {
         ],
         isError: true,
       };
+    }
+  }
+
+  /**
+   * Say that a `tools/call` finished, and how.
+   *
+   * Emitted exactly once per call, on every path out of
+   * {@link handleToolsCall} including the unregistered-name one. A tool call
+   * leaves no trace anywhere else - a write may reach an audit log, a read
+   * never does - so this is the only seam an application has for counting
+   * what its MCP surface is asked for.
+   *
+   * ⚠️ **A subscriber must never fail the call it is describing.** A throw
+   * here would turn a successful `quest_get` into an error for the agent that
+   * asked, so the emit is wrapped: a broken listener costs its own event and
+   * nothing else. It is still AWAITED, because a fire-and-forget promise after
+   * the response is returned is simply dropped on Cloudflare Workers - so a
+   * subscriber must also be quick.
+   */
+  protected async announceToolEnd(
+    name: string,
+    outcome: "ok" | "refused" | "error",
+    context?: McpContext,
+  ): Promise<void> {
+    try {
+      await this.alepha.events.emit("mcp:tool:end", { name, outcome, context });
+    } catch (error) {
+      this.log.warn(`MCP tool "${name}" end hook failed`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
