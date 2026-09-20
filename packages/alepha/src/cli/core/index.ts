@@ -14,6 +14,7 @@ import { devOptions } from "./atoms/devOptions.ts";
 import { metaOptions } from "./atoms/metaOptions.ts";
 import { BuildCommand } from "./commands/build.ts";
 import { CleanCommand } from "./commands/clean.ts";
+import { CompileCommand } from "./commands/compile.ts";
 import { DbCommand } from "./commands/db.ts";
 import { DevCommand } from "./commands/dev.ts";
 import { GenCommand } from "./commands/gen.ts";
@@ -35,9 +36,11 @@ import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
+import { BuildSlices } from "./services/BuildSlices.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
+import { WorkspaceCompiler } from "./services/WorkspaceCompiler.ts";
 import { WorkspacePacker } from "./services/WorkspacePacker.ts";
 import { BuildAssetsTask } from "./tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "./tasks/BuildClientTask.ts";
@@ -61,6 +64,7 @@ export * from "./atoms/devOptions.ts";
 export * from "./atoms/metaOptions.ts";
 export * from "./commands/build.ts";
 export * from "./commands/clean.ts";
+export * from "./commands/compile.ts";
 export * from "./commands/db.ts";
 export * from "./commands/dev.ts";
 export * from "./commands/gen/changelog.ts";
@@ -82,8 +86,10 @@ export * from "./services/AlephaCliUtils.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
-export * from "./services/ViteUtils.ts";
 export * from "./services/ArchiveCompressor.ts";
+export * from "./services/BuildSlices.ts";
+export * from "./services/ViteUtils.ts";
+export * from "./services/WorkspaceCompiler.ts";
 export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
 export * from "./tasks/BuildClientTask.ts";
@@ -141,6 +147,8 @@ export const AlephaCliServices = $module({
     ViteDevServerProvider,
     ViteBuildProvider,
     ArchiveCompressor,
+    BuildSlices,
+    WorkspaceCompiler,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.
@@ -181,6 +189,7 @@ export const AlephaCli = $module({
     DevCommand,
     InitCommand,
     LintCommand,
+    CompileCommand,
     PackCommand,
     RootCommand,
     TestCommand,

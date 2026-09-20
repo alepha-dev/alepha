@@ -1,21 +1,69 @@
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
-import { BuildSlices } from "../services/BuildSlices.ts";
-import { BuildDockerTask } from "./BuildDockerTask.ts";
-import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
+import { BuildSlices } from "./BuildSlices.ts";
 
 /**
- * Compile the build into one executable with `bun build --compile`, its
- * `public/` files embedded inside it.
- *
- * Runs last, after `BuildCompressTask`, so the precompressed `.br` and `.gz`
- * siblings are embedded too. It is the only compile path for every target:
- * the Docker task writes the Dockerfile for the binary, and when `--image`
- * asks for an image it is built here, once the binary exists.
+ * What `alepha compile` produces: one executable holding the app, its server
+ * bundle and every file under `public/`.
+ */
+export interface WorkspaceCompileOptions {
+  /**
+   * The workspace root. `dist/` is read from here and the binary lands in it.
+   */
+  root: string;
+
+  /**
+   * File name of the binary inside `dist/`.
+   */
+  name: string;
+
+  /**
+   * Bun target triple, e.g. `bun-linux-arm64-musl`.
+   *
+   * ⚠️ **Not inherited from a default when the caller knows better.** A Bun
+   * `--compile` binary is not fully static: the triple picks the libc, so an
+   * image built on a `scratch` or distroless base has to be handed the musl
+   * triple or it produces a container whose binary will not start, with an
+   * error that says nothing about why. `alepha image` drives this rather than
+   * taking whatever the host would default to.
+   */
+  target?: string;
+
+  /**
+   * Minify the compiled output.
+   */
+  minify?: boolean;
+
+  /**
+   * `dist` and `public` directory names, when they are not the defaults.
+   */
+  output?: { dist?: string; public?: string };
+
+  /**
+   * The slices the build produced, so the cleanup removes every entry wrapper
+   * rather than guessing at one.
+   */
+  runtimes?: BuildRuntime[];
+
+  /**
+   * The build time every embedded file takes as its modification time.
+   */
+  builtAt?: number;
+
+  /**
+   * Copy `migrations/` beside the binary. A bare binary needs them; an image
+   * copies them itself.
+   */
+  migrations?: boolean;
+}
+
+/**
+ * Compile a built workspace into one executable with `bun build --compile`,
+ * its `public/` files embedded inside it.
  *
  * ## ⚠️ It compiles the BUN slice, and only that one
  *
@@ -26,122 +74,81 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * build and quietly discard the reason the bun slice exists. A missing bun
  * slice is named instead.
  *
- * The embedding is a few lines appended to the bun slice's entry wrapper: one
- * `with { type: "file" }` import per public file, which is how Bun keeps a
- * file's bytes inside the binary, then an `__alepha.set` handing the app the
- * map from URL path to embedded path before it boots, the way the SSR
- * manifest already arrives. `ReactServerProvider` serves that map through
- * `EmbeddedStaticFileSource`.
+ * When Node gains the same capability this switches which slice it picks, and
+ * nothing else moves.
  *
- * Skipped with `--prebuilt`, which regenerates deploy config and bundles
- * nothing.
+ * ## Why this is a service and not just `CompileCommand`
+ *
+ * The same reason {@link WorkspacePacker} is one: `Alepha.inject` registers the
+ * module that DECLARES a service, so injecting a command from outside
+ * `alepha/cli` registers the whole CLI. `alepha image` needs to compile
+ * (#E63), and it must be able to without growing a `build`, a `dev` and a
+ * `verify` it never asked for.
  */
-export class BuildCompileTask extends BuildTask {
+export class WorkspaceCompiler {
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly shell = $inject(ShellProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly dockerTask = $inject(BuildDockerTask);
   protected readonly slices = $inject(BuildSlices);
   protected readonly log = $logger();
 
-  async run(ctx: BuildTaskContext): Promise<void> {
-    const compile = ctx.options.compile;
-    if (!compile || ctx.flags?.prebuilt) {
-      return;
-    }
-
-    // `BuildCommand.resolveCompile` leaves an object; a raw config value is
-    // tolerated for a caller that sets the atom directly.
-    const config =
-      typeof compile === "object"
-        ? compile
-        : typeof compile === "string"
-          ? { name: compile }
-          : {};
-
-    const distDir = ctx.options.output?.dist ?? "dist";
-    const publicDir = ctx.options.output?.public ?? "public";
-    const dist = this.fs.join(ctx.root, distDir);
-    const name = config.name ?? "app";
-    const target = config.target ?? this.defaultBunTarget(ctx.options.target);
+  /**
+   * Compile `dist/` into one binary and say where it landed.
+   *
+   * Reads `./dist` and nothing else: it never unpacks an archive. If you have
+   * one, unpack it first.
+   */
+  async compile(options: WorkspaceCompileOptions): Promise<string> {
+    const distDir = options.output?.dist ?? "dist";
+    const publicDir = options.output?.public ?? "public";
+    const dist = this.fs.join(options.root, distDir);
     const bunEntry = this.slices.entryFileName("bun");
 
-    await ctx.run({
-      name: "check the bun slice",
-      handler: async () => {
-        await this.assertBunSlice(dist, bunEntry);
-      },
-    });
-
-    await ctx.run({
-      name: "assert no externals (compile mode)",
-      handler: async () => {
-        await this.assertNoExternals(dist);
-      },
-    });
-
-    await ctx.run({
-      name: "embed public files",
-      handler: async () => {
-        await this.embedPublicFiles(
-          dist,
-          publicDir,
-          this.builtAt(ctx),
-          bunEntry,
-        );
-      },
-    });
-
-    await ctx.run(
-      this.buildCompileCommand(name, target, config.minify ?? true, bunEntry),
-      { alias: `bun build --compile (${target})`, root: dist },
+    await this.assertBunSlice(dist, bunEntry);
+    await this.assertNoExternals(dist);
+    await this.embedPublicFiles(
+      dist,
+      publicDir,
+      options.builtAt ?? this.dateTime.nowMillis(),
+      bunEntry,
     );
 
-    await ctx.run({
-      name: "cleanup pre-compile artifacts",
-      handler: async () => {
-        await this.cleanupPreCompileArtifacts(
-          dist,
-          publicDir,
-          this.slices.fromOptions(ctx.options),
-        );
-      },
-    });
+    const target = options.target ?? this.defaultBunTarget();
+    await this.shell.run(
+      this.buildCompileCommand(
+        options.name,
+        target,
+        options.minify ?? true,
+        bunEntry,
+      ),
+      { root: dist },
+    );
 
-    // The Docker task copies them for its image; a bare binary needs them
-    // beside it just the same.
-    if (ctx.options.target !== "docker") {
-      await ctx.run({
-        name: "copy migrations",
-        handler: async () => {
-          await this.copyMigrations(ctx.root, dist);
-        },
-      });
+    await this.cleanupPreCompileArtifacts(
+      dist,
+      publicDir,
+      options.runtimes ?? ["bun"],
+    );
+
+    if (options.migrations !== false) {
+      await this.copyMigrations(options.root, dist);
     }
 
-    await this.logBinary(this.fs.join(dist, name));
-
-    if (ctx.options.target === "docker" && ctx.flags?.image) {
-      await this.dockerTask.buildDockerImage(ctx, distDir);
-    }
+    const binary = this.fs.join(dist, options.name);
+    await this.logBinary(binary);
+    return binary;
   }
 
   /**
-   * The build time, in epoch milliseconds, that every embedded file takes as
-   * its modification time: the build's own date when it has one, so the
-   * binary and its `/version` agree, and now otherwise.
+   * The Bun target triple when the caller names none: this machine.
+   *
+   * ⚠️ **A caller that is not targeting this machine must name the triple.**
+   * `alepha image` does, because a Bun `--compile` binary is not fully static
+   * and the triple picks the libc: a glibc binary on a musl base produces a
+   * container that exits immediately with an error about nothing. `musl: true`
+   * is the shorthand for that case.
    */
-  protected builtAt(ctx: BuildTaskContext): number {
-    const date = ctx.meta?.build.date;
-    const parsed = date ? Date.parse(date) : Number.NaN;
-    return Number.isFinite(parsed) ? parsed : this.dateTime.nowMillis();
-  }
-
-  /**
-   * The Bun target triple when `build.compile.target` names none: this
-   * machine for `bare`, linux-musl on this machine's CPU for `docker`, since
-   * that is the container's OS whatever the build host.
-   */
-  protected defaultBunTarget(buildTarget: string | undefined): string {
+  public defaultBunTarget(options: { musl?: boolean } = {}): string {
     const arch =
       process.arch === "x64" || process.arch === "arm64"
         ? process.arch
@@ -155,15 +162,13 @@ export class BuildCompileTask extends BuildTask {
             ? "windows"
             : undefined;
 
-    if (!arch || (buildTarget !== "docker" && !platform)) {
+    if (!arch || (!options.musl && !platform)) {
       throw new AlephaError(
-        `No Bun target for '${process.platform}-${process.arch}'. Set \`build.compile.target\` explicitly.`,
+        `No Bun target for '${process.platform}-${process.arch}'. Pass --target with an explicit Bun triple.`,
       );
     }
 
-    return buildTarget === "docker"
-      ? `bun-linux-${arch}-musl`
-      : `bun-${platform}-${arch}`;
+    return options.musl ? `bun-linux-${arch}-musl` : `bun-${platform}-${arch}`;
   }
 
   /**
@@ -203,15 +208,15 @@ export class BuildCompileTask extends BuildTask {
       return;
     }
     throw new AlephaError(
-      `Compile mode needs the bun slice, and \`${entry}\` is not in the build. ` +
+      `\`alepha compile\` needs the bun slice, and \`${entry}\` is not in the build. ` +
         "Rebuild with `alepha build --runtime bun` (or add `bun` to `build.runtime`).",
     );
   }
 
   /**
-   * Compile mode requires fully-bundled output. If Vite left anything in
+   * Compiling requires fully-bundled output. If Vite left anything in
    * `dist/package.json`'s `dependencies`, fail loudly so the user can
-   * either bundle the dep or disable compile.
+   * either bundle the dep or not compile.
    */
   protected async assertNoExternals(dist: string): Promise<void> {
     const pkgPath = this.fs.join(dist, "package.json");
@@ -227,7 +232,7 @@ export class BuildCompileTask extends BuildTask {
     const names = Object.keys(pkg.dependencies ?? {});
     if (names.length > 0) {
       throw new AlephaError(
-        `Cannot use compile mode: the following dependencies were not bundled by Vite: ${names.join(", ")}. ` +
+        `Cannot compile: the following dependencies were not bundled by Vite: ${names.join(", ")}. ` +
           "All dependencies must be bundleable to produce a single-binary build.",
       );
     }

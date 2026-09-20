@@ -98,20 +98,12 @@ export class BuildDockerTask extends BuildTask {
    * command (runtime, target, binary name); this only reads the result.
    */
   protected resolveCompile(ctx: BuildTaskContext): ResolvedCompile | null {
-    const raw = ctx.options.compile;
-    if (!raw) {
+    const name = ctx.flags?.compile;
+    if (!name) {
       return null;
     }
-
-    const config =
-      typeof raw === "object"
-        ? raw
-        : typeof raw === "string"
-          ? { name: raw }
-          : {};
-
     return {
-      name: config.name ?? "app",
+      name,
       base: ctx.options.docker?.from ?? "gcr.io/distroless/static-debian12",
     };
   }

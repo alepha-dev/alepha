@@ -1,4 +1,4 @@
-import { Alepha, type AlephaMeta } from "alepha";
+import { Alepha } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -7,12 +7,20 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import type { BuildOptions } from "../atoms/buildOptions.ts";
-import type { AppEntry } from "../providers/AppEntryProvider.ts";
-import { BuildCompileTask } from "../tasks/BuildCompileTask.ts";
-import type { BuildTaskContext } from "../tasks/BuildTask.ts";
+import {
+  WorkspaceCompiler,
+  type WorkspaceCompileOptions,
+} from "../services/WorkspaceCompiler.ts";
 
-describe("BuildCompileTask", () => {
+/**
+ * `alepha compile`, as a service (epic #E63).
+ *
+ * It used to be `alepha build --compile`, a build option that reached back to
+ * constrain `target`. Standalone it is three sentences: take the bun slice,
+ * embed `public/`, emit a binary — and these cases are the same ones that
+ * covered the task, moved across.
+ */
+describe("WorkspaceCompiler", () => {
   const createTestEnv = async () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
@@ -20,7 +28,7 @@ describe("BuildCompileTask", () => {
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const shell = alepha.inject(MemoryShellProvider);
-    const task = alepha.inject(BuildCompileTask);
+    const task = alepha.inject(WorkspaceCompiler);
 
     // A built app: the bun slice's entry wrapper, one server chunk in that
     // slice's own directory, a client bundle with its brotli sibling, a nested
@@ -43,64 +51,21 @@ describe("BuildCompileTask", () => {
   };
 
   /**
-   * Minimal RunnerMethod stand-in. Strings are forwarded to the shell so
-   * MemoryShellProvider records them in order; task objects run their handler.
+   * The options `alepha compile --out loom` resolves to. `builtAt` is pinned
+   * so the embedded map's timestamp is assertable: 2026-01-02T03:04:05Z is
+   * 1767323045000 ms.
    */
-  const createRun = (shell: MemoryShellProvider): BuildTaskContext["run"] => {
-    const run = (async (cmd: any, options?: any) => {
-      if (typeof cmd === "string") {
-        await shell.run(cmd, { root: options?.root });
-        return "";
-      }
-      const result = await cmd.handler();
-      return String(result ?? "");
-    }) as BuildTaskContext["run"];
-    run.rm = async () => "";
-    run.cp = async () => "";
-    run.end = () => {};
-    return run;
-  };
-
-  const createCtx = (
-    shell: MemoryShellProvider,
-    options: BuildOptions,
-    overrides: Partial<BuildTaskContext> = {},
-  ): BuildTaskContext => ({
-    alepha: {} as any,
-    options,
-    run: createRun(shell),
+  const bare: WorkspaceCompileOptions = {
     root: "/project",
-    entry: { server: "/project/src/server.ts" } as AppEntry,
-    hasClient: true,
-    // 2026-01-02T03:04:05Z is 1767323045000 ms.
-    meta: {
-      build: { date: "2026-01-02T03:04:05.000Z", runtime: "bun", dev: false },
-    } as AlephaMeta,
-    manifest: null,
-    platformOptions: null,
-    flags: {},
-    ...overrides,
-  });
-
-  const bare: BuildOptions = {
-    target: "bare",
-    runtime: "bun",
-    compile: { name: "loom", minify: true },
+    name: "loom",
+    minify: true,
+    builtAt: 1767323045000,
   };
-
-  it("does nothing unless build.compile is set", async () => {
-    const { fs, shell, task } = await createTestEnv();
-
-    await task.run(createCtx(shell, { target: "bare", runtime: "bun" }));
-
-    expect(shell.calls).toHaveLength(0);
-    expect(await fs.exists("/project/dist/index.bun.js")).toBe(true);
-  });
 
   it("embeds every public file in the bun slice and publishes the map with the build time", async () => {
-    const { fs, shell, task } = await createTestEnv();
+    const { fs, task } = await createTestEnv();
 
-    await task.run(createCtx(shell, bare));
+    await task.compile(bare);
 
     const written = (pattern: RegExp) =>
       fs.wasWrittenMatching("/project/dist/index.bun.js", pattern);
@@ -147,8 +112,8 @@ describe("BuildCompileTask", () => {
     it("fails, naming the slice and the flag that produces it", async ({
       expect,
     }) => {
-      const { shell, task } = await withoutTheBunSlice();
-      await expect(task.run(createCtx(shell, bare))).rejects.toThrow(
+      const { task } = await withoutTheBunSlice();
+      await expect(task.compile(bare)).rejects.toThrow(
         /index\.bun\.js.*--runtime bun/s,
       );
     });
@@ -159,7 +124,7 @@ describe("BuildCompileTask", () => {
       const { fs, shell, task } = await withoutTheBunSlice();
       await fs.writeFile("/project/dist/index.node.js", "// the wrong slice");
 
-      await expect(task.run(createCtx(shell, bare))).rejects.toThrow();
+      await expect(task.compile(bare)).rejects.toThrow();
       // Nothing was compiled, and the node slice is untouched.
       expect(shell.wasCalledMatching(/^bun build/)).toBe(false);
       expect(await fs.exists("/project/dist/index.node.js")).toBe(true);
@@ -169,7 +134,7 @@ describe("BuildCompileTask", () => {
   it("compiles for this machine on bare, never for linux-musl", async () => {
     const { shell, task } = await createTestEnv();
 
-    await task.run(createCtx(shell, bare));
+    await task.compile(bare);
 
     const calls = shell.getCallsMatching(/^bun build/);
     expect(calls).toHaveLength(1);
@@ -180,10 +145,19 @@ describe("BuildCompileTask", () => {
     expect(calls[0].options.root).toBe("/project/dist");
   });
 
-  it("compiles for linux-musl on docker", async () => {
+  /**
+   * ⚠️ A Bun `--compile` binary is not fully static: the triple picks the
+   * libc. `alepha image` asks for the musl one so the binary it puts on a
+   * minimal base actually starts, rather than exiting immediately with an
+   * error about nothing.
+   */
+  it("compiles for linux-musl when asked for it", async () => {
     const { shell, task } = await createTestEnv();
 
-    await task.run(createCtx(shell, { ...bare, target: "docker" }));
+    await task.compile({
+      ...bare,
+      target: task.defaultBunTarget({ musl: true }),
+    });
 
     expect(
       shell.wasCalledMatching(
@@ -195,12 +169,7 @@ describe("BuildCompileTask", () => {
   it("honours an explicit target and minify=false", async () => {
     const { shell, task } = await createTestEnv();
 
-    await task.run(
-      createCtx(shell, {
-        ...bare,
-        compile: { name: "loom", target: "bun-linux-x64", minify: false },
-      }),
-    );
+    await task.compile({ ...bare, target: "bun-linux-x64", minify: false });
 
     expect(
       shell.wasCalled(
@@ -210,9 +179,9 @@ describe("BuildCompileTask", () => {
   });
 
   it("removes what the binary now carries, and keeps manifest.json", async () => {
-    const { fs, shell, task } = await createTestEnv();
+    const { fs, task } = await createTestEnv();
 
-    await task.run(createCtx(shell, bare));
+    await task.compile(bare);
 
     expect(await fs.exists("/project/dist/index.bun.js")).toBe(false);
     expect(await fs.exists("/project/dist/server")).toBe(false);
@@ -221,11 +190,11 @@ describe("BuildCompileTask", () => {
     expect(await fs.exists("/project/dist/manifest.json")).toBe(true);
   });
 
-  it("copies migrations beside the binary on bare", async () => {
-    const { fs, shell, task } = await createTestEnv();
+  it("copies migrations beside the binary", async () => {
+    const { fs, task } = await createTestEnv();
     await fs.writeFile("/project/migrations/001.sql", "CREATE TABLE x;");
 
-    await task.run(createCtx(shell, bare));
+    await task.compile(bare);
 
     expect(await fs.exists("/project/dist/migrations/001.sql")).toBe(true);
   });
@@ -237,31 +206,9 @@ describe("BuildCompileTask", () => {
       JSON.stringify({ dependencies: { sharp: "^0.33.0" } }),
     );
 
-    await expect(task.run(createCtx(shell, bare))).rejects.toThrow(
+    await expect(task.compile(bare)).rejects.toThrow(
       /not bundled by Vite.*sharp/,
     );
     expect(shell.wasCalledMatching(/^bun build/)).toBe(false);
-  });
-
-  it("builds the docker image only once the binary exists", async () => {
-    const { shell, task } = await createTestEnv();
-
-    await task.run(
-      createCtx(
-        shell,
-        {
-          ...bare,
-          target: "docker",
-          docker: { image: { tag: "ghcr.io/myorg/loom" } },
-        },
-        { flags: { image: true } },
-      ),
-    );
-
-    const commands = shell.calls.map((call) => call.command);
-    const compiled = commands.findIndex((it) => it.startsWith("bun build"));
-    const imaged = commands.findIndex((it) => it.startsWith("docker build"));
-    expect(compiled).toBeGreaterThanOrEqual(0);
-    expect(imaged).toBeGreaterThan(compiled);
   });
 });

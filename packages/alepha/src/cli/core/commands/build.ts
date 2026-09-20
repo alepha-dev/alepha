@@ -3,7 +3,6 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
 import {
-  type BuildCompile,
   type BuildRuntime,
   type BuildRuntimeDeclaration,
   type BuildTarget,
@@ -20,7 +19,6 @@ import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
-import { BuildCompileTask } from "../tasks/BuildCompileTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
@@ -47,11 +45,13 @@ export class BuildCommand {
   /**
    * Build pipeline: tasks run sequentially in this order.
    * Each task self-guards (checks target, hasClient, etc.).
-   * Order matters: compress runs after everything that writes public files,
-   * and compile runs last because it embeds what compress produced.
+   * Order matters: compress runs after everything that writes public files.
    * `_headers` is written after the static task, which copies an adopted
-   * site (and its own `_headers`) into `dist/public`, and before compile,
-   * which embeds `dist/public` and deletes it.
+   * site (and its own `_headers`) into `dist/public`.
+   *
+   * ⚠️ There is no compile step here any more. It was `alepha build
+   * --compile`, a build option that reached back to constrain `target`, and it
+   * is `alepha compile` now — its own command, reading `./dist`.
    */
   protected readonly pipeline = [
     $inject(BuildClientTask),
@@ -70,10 +70,8 @@ export class BuildCommand {
     // `--image` it builds the standard image right here, from `dist/` as it
     // stands. Before `_headers` and compress (where it used to run), that
     // image shipped without `_headers` and without a single `.br` sidecar,
-    // while the same build's `dist/` had both. Before compile, which needs
-    // the Dockerfile this writes and builds the compile image itself.
+    // while the same build's `dist/` had both.
     $inject(BuildDockerTask),
-    $inject(BuildCompileTask),
   ];
 
   /**
@@ -137,68 +135,6 @@ export class BuildCommand {
     return this.slices.resolve(declared);
   }
 
-  /**
-   * Merge the `--compile` flag with `build.compile`, and refuse what cannot
-   * produce a binary.
-   *
-   * The flag is explicit intent and wins: `--compile` alone keeps the
-   * config's settings, `--compile <name>` renames the binary and keeps the
-   * rest, and `--no-compile` turns compile off whatever the config says.
-   *
-   * @throws {AlephaError} On a binary name that is not a plain file name, a
-   * runtime other than bun, or a target that cannot hold a binary.
-   */
-  protected resolveCompile(
-    flag: boolean | string | undefined,
-    config:
-      | boolean
-      | string
-      | { name?: string; target?: string; minify?: boolean }
-      | undefined,
-    target: BuildTarget | undefined,
-    runtime: BuildRuntime | undefined,
-  ): BuildCompile | undefined {
-    // The parser hands a boolean-or-text flag its raw text, so
-    // `--compile=false` arrives as "false", itself a valid file name.
-    const requested = flag === "false" ? false : flag === "true" ? true : flag;
-
-    const enabled = requested !== undefined ? requested !== false : !!config;
-    if (!enabled) {
-      return undefined;
-    }
-
-    const base =
-      typeof config === "object"
-        ? config
-        : typeof config === "string"
-          ? { name: config }
-          : {};
-    const name =
-      typeof requested === "string" ? requested : (base.name ?? "app");
-
-    if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) {
-      throw new AlephaError(
-        `Invalid binary name '${name}': use lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit.`,
-      );
-    }
-    if (runtime !== "bun") {
-      throw new AlephaError(
-        `Compile mode needs the Bun runtime, got '${runtime ?? "node"}': add --runtime=bun (or build.runtime: "bun").`,
-      );
-    }
-    if (target && target !== "bare" && target !== "docker") {
-      throw new AlephaError(
-        `Compile mode produces a binary, and only 'bare' and 'docker' targets can hold one, got '${target}'.`,
-      );
-    }
-
-    return {
-      name,
-      ...(base.target && { target: base.target }),
-      minify: base.minify ?? true,
-    };
-  }
-
   public readonly build = $command({
     name: "build",
     mode: "production",
@@ -225,13 +161,6 @@ export class BuildCommand {
         .meta({ aliases: ["i"] })
         .describe(
           "Build Docker image. Use -i for latest, -i=<version> for specific version",
-        )
-        .optional(),
-      compile: z
-        .union([z.boolean(), z.text()])
-        .meta({ aliases: ["c"] })
-        .describe(
-          "Compile the app to one executable with its public/ files inside: --compile names it 'app', --compile <name> names it; --no-compile turns it off. Requires --runtime=bun, and the bare or docker target",
         )
         .optional(),
       prebuilt: z
@@ -289,14 +218,6 @@ export class BuildCommand {
           target,
           runtime,
           runtimes,
-          // Resolved once, so every task reads the same merged, validated
-          // options rather than re-merging flag and config itself.
-          compile: this.resolveCompile(
-            flags.compile,
-            current.compile,
-            target,
-            runtime,
-          ),
         };
       });
 

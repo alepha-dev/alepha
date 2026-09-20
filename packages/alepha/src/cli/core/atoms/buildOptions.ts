@@ -24,27 +24,6 @@ export type BuildRuntime = "node" | "bun" | "workerd";
 export type BuildRuntimeDeclaration = BuildRuntime | BuildRuntime[];
 
 /**
- * Compile options once the `--compile` flag and the config are merged and
- * validated: what the build tasks read.
- */
-export interface BuildCompile {
-  /**
-   * File name of the binary in `dist/`.
-   */
-  name: string;
-
-  /**
-   * Bun target triple; unset means the target's default.
-   */
-  target?: string;
-
-  /**
-   * Minify the compiled output.
-   */
-  minify: boolean;
-}
-
-/**
  * Build options atom for CLI build command.
  *
  * Defines the available build configuration options with their defaults.
@@ -116,49 +95,6 @@ export const buildOptions = $atom({
      * @internal
      */
     runtimes: z.array(z.enum(["node", "bun", "workerd"])).optional(),
-
-    /**
-     * Compile the app to one executable with `bun build --compile`, its
-     * `public/` files embedded inside it. Requires `runtime: "bun"`, and a
-     * `bare` (the default) or `docker` target.
-     *
-     * - `true` names the binary `app`
-     * - a string names it: `compile: "loom"` produces `dist/loom`
-     * - an object sets the name, the Bun target triple and minification
-     *
-     * `dist/` then holds the binary, `manifest.json` and, when the app has
-     * any, `migrations/` beside it. The `--compile [name]` flag beats this.
-     */
-    compile: z
-      .union([
-        z.boolean(),
-        z.string(),
-        z.object({
-          /**
-           * File name of the binary: lowercase letters, digits, `.`, `_`
-           * and `-`, starting with a letter or a digit.
-           *
-           * @default "app"
-           */
-          name: z.string().optional(),
-
-          /**
-           * Bun target triple, e.g. `bun-darwin-arm64`, `bun-linux-x64` or
-           * `bun-linux-arm64-musl`.
-           *
-           * @default the host for `bare`, linux-musl on the host's CPU for `docker`
-           */
-          target: z.string().optional(),
-
-          /**
-           * Minify the compiled output.
-           *
-           * @default true
-           */
-          minify: z.boolean().optional(),
-        }),
-      ])
-      .optional(),
 
     /**
      * Output directory configuration.
