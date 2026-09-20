@@ -57,12 +57,22 @@ const HomeBoard = () => {
   const openCounts = new Map(
     (board.data?.openCounts ?? []).map((entry) => [entry.projectId, entry]),
   );
-  const momentum = new Map(
-    (board.data?.momentum ?? []).map((entry) => [
-      entry.projectId,
-      entry.counts,
-    ]),
-  );
+  /**
+   * `undefined` when the bars could not be read, which is NOT the same as
+   * every project being quiet.
+   *
+   * Since #E65 the counts come from an `$analytics` dataset - on production an
+   * HTTP call into Analytics Engine, a dependency the rest of this response
+   * does not share - so the server answers without `momentum` rather than
+   * failing the whole board. An empty Map here would mute every row as
+   * inactive and draw fourteen zero bars, claiming a fortnight of silence
+   * that never happened.
+   */
+  const momentum = board.data?.momentum
+    ? new Map(
+        board.data.momentum.map((entry) => [entry.projectId, entry.counts]),
+      )
+    : undefined;
 
   return (
     /*

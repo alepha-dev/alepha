@@ -1,6 +1,7 @@
 import { $inject, z } from "alepha";
 import { audits } from "alepha/api/audits";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import {
   $repository,
   DatabaseProvider,
@@ -14,6 +15,7 @@ import { $etag } from "alepha/server/etag";
 import { blights } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
+import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import { relations } from "../relations.ts";
 
 /**
@@ -51,6 +53,8 @@ export class HomeController {
   blightRows = $repository(blights);
   feedbackRows = $repository(feedback);
   usersWith = $repository(relations, "users");
+  datasets = $inject(LoreAnalytics);
+  log = $logger();
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
   dt = $inject(DateTimeProvider);
@@ -93,15 +97,31 @@ export class HomeController {
          * would otherwise decide what "today" means, in two timezones.
          */
         days: z.array(z.text()),
-        momentum: z.array(
-          z.object({
-            projectId: z.integer(),
-            /**
-             * One number per entry of {@link days}, same order, zero-filled.
-             */
-            counts: z.array(z.integer()),
-          }),
-        ),
+        /**
+         * ⚠️ **Absent means the bars could not be read, not that nothing
+         * happened.** Since #E65 the counts come from the `project_activity`
+         * `$analytics` dataset, which on production is an HTTP call into
+         * Analytics Engine - a dependency the rest of this response does not
+         * have. Every Insights read 500'd for a day on 2026-08-11 and took
+         * the Apps pages with it; Home must not be able to go the same way,
+         * so the read catches to `undefined` and the strip renders empty.
+         *
+         * An empty ARRAY would have been indistinguishable from fourteen
+         * quiet days, which is a different and much worse answer: it would
+         * mute every row in the table as inactive.
+         */
+        momentum: z
+          .array(
+            z.object({
+              projectId: z.integer(),
+              /**
+               * One number per entry of {@link days}, same order,
+               * zero-filled.
+               */
+              counts: z.array(z.integer()),
+            }),
+          )
+          .optional(),
         /**
          * When each project last saw any activity, whatever its kind: the
          * table's Last activity column. One entry per project.
@@ -319,58 +339,74 @@ export class HomeController {
   }
 
   /**
-   * The bars, in one grouped statement for every project at once.
+   * The bars, as one question put to the `project_activity` dataset.
    *
-   * `SUM(eventCount)` rather than `COUNT(*)`: `$audit`'s `coalesce` folds a
+   * ## It used to be SQL over `audits`, and that is what #E65 was about
+   *
+   * The statement it replaces read **13,428 rows a load** on production with
+   * an already optimal plan: a range seek per project over exactly the
+   * fourteen-day slice, plus a temp B-tree for a `GROUP BY` on a computed
+   * `STRFTIME`. Fourteen days of activity simply IS 13,428 audit rows, so the
+   * cost was where the events were stored, not how they were queried. On
+   * production this now reads **zero D1 rows**: the hot tier of the dataset is
+   * Analytics Engine.
+   *
+   * `select: { count: "sum" }` is the same `SUM(eventCount)` the old
+   * statement did, and for the same reason: `$audit`'s `coalesce` folds a
    * burst of identical writes into one row carrying its count, so counting
    * rows would draw twenty minutes of quest edits as a single event and make
-   * the busiest projects read as the quietest.
+   * the busiest projects read as the quietest. `LoreAuditService` records one
+   * point per `create()` call, which is what makes the two sums equal.
+   *
+   * `"day"` is the dataset's pseudo-dimension folding hour buckets, so the
+   * keys come back as `YYYY-MM-DD` with no epoch arithmetic here - the same
+   * labels {@link momentumDays} produces, in the same UTC convention.
+   *
+   * ## ⚠️ This read leaves the process, and Home must survive it failing
+   *
+   * Answered by an HTTP call into Analytics Engine on production. Every
+   * Insights read 500'd for a day on 2026-08-11 and took the Apps pages down
+   * with it; the landing page is the worst place to repeat that, so a failure
+   * is caught to `undefined` and the strip renders empty. Logged rather than
+   * swallowed silently, because a dead strip with no trace is its own
+   * incident.
+   *
+   * Decided, and not surfaced: results carry `estimated: true`, but
+   * `sampleInterval` is 1 at this volume, so the numbers are exact and
+   * fourteen small bars are the wrong place for that disclosure.
    */
   protected async momentum(
     scopeIds: string[],
     days: string[],
-  ): Promise<Array<{ projectId: number; counts: number[] }>> {
-    const table = this.auditRows.table;
-    const day = this.sqlx.dateDay(table.createdAt);
-
-    const rows = await this.database.run(
-      sql`
-        SELECT
-          ${table.scopeId} AS scope_id,
-          ${day} AS day,
-          SUM(${table.eventCount}) AS n
-        FROM ${table}
-        WHERE ${table.scopeType} = 'project'
-          AND ${table.scopeId} IN (${sql.join(
-            scopeIds.map((id) => sql`${id}`),
-            sql`, `,
-          )})
-          AND ${table.createdAt} >= ${this.sqlx.ago(
-            HomeController.MOMENTUM_DAYS,
-            "days",
-          )}
-        GROUP BY ${table.scopeId}, ${day}
-      `,
-      z.object({
-        scope_id: z.text(),
-        day: z.string(),
-        n: z.coerce.number(),
-      }),
-    );
-
+  ): Promise<Array<{ projectId: number; counts: number[] }> | undefined> {
     const index = new Map(days.map((label, position) => [label, position]));
     const byProject = new Map<number, number[]>(
       scopeIds.map((id) => [Number(id), days.map(() => 0)]),
     );
-    for (const row of rows) {
-      const counts = byProject.get(Number(row.scope_id));
-      const position = index.get(row.day);
-      // A row outside the labels is a boundary case, not an error: `ago()` is
-      // instant-aligned while the labels are calendar days, so the oldest
-      // bucket of the query can be the day before the oldest label.
-      if (counts && position !== undefined) {
-        counts[position] = Number(row.n) || 0;
+
+    try {
+      const result = await this.datasets.activity.query({
+        since: days[0],
+        where: { project: { inArray: scopeIds } },
+        groupBy: ["day", "project"],
+        select: { count: "sum" },
+      });
+
+      for (const row of result.rows) {
+        const counts = byProject.get(Number(row.project));
+        const position = index.get(String(row.day));
+        // A bucket outside the labels is a boundary case, not an error: the
+        // window is asked for by day and the labels are generated from the
+        // clock, so the two can disagree by one at the edge.
+        if (counts && position !== undefined) {
+          counts[position] = Number(row.count) || 0;
+        }
       }
+    } catch (error) {
+      this.log.warn("Momentum unavailable, rendering Home without the bars", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
     }
 
     return [...byProject].map(([projectId, counts]) => ({

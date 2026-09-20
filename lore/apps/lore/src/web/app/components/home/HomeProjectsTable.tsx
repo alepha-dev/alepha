@@ -28,8 +28,13 @@ export interface HomeProjectsTableProps {
   projects: ProjectOverviewResource[];
   /**
    * Daily counts per project id, from `getHomeBoard`.
+   *
+   * `undefined` when the strip could not be read at all - the dataset behind
+   * it is an HTTP call on production and Home renders without the bars rather
+   * than erroring (#E65). Distinct from a project simply missing from the
+   * map, which means that project had no activity.
    */
-  momentum: Map<number, number[]>;
+  momentum: Map<number, number[]> | undefined;
   /**
    * The day labels those counts are indexed by.
    */
@@ -67,7 +72,7 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
    */
   const ceiling = Math.max(
     1,
-    ...[...props.momentum.values()].flatMap((counts) => counts),
+    ...[...(props.momentum?.values() ?? [])].flatMap((counts) => counts),
   );
 
   /**
@@ -269,13 +274,18 @@ export const HomeProjectsTable = (props: HomeProjectsTableProps) => {
           // asks. The bars themselves have no order to sort by.
           sortable: true,
           sortValue: (project) =>
-            (props.momentum.get(project.id) ?? []).reduce(
+            (props.momentum?.get(project.id) ?? []).reduce(
               (total, count) => total + count,
               0,
             ),
           cell: (project) => {
-            const counts =
-              props.momentum.get(project.id) ?? props.days.map(() => 0);
+            // No map at all means the strip is unavailable, and an empty
+            // series is what `HomeMomentum` draws as nothing. A project
+            // missing FROM the map is a different answer - it was quiet -
+            // and gets its fourteen zeroes.
+            const counts = props.momentum
+              ? (props.momentum.get(project.id) ?? props.days.map(() => 0))
+              : [];
             const total = counts.reduce((sum, count) => sum + count, 0);
             return (
               <HomeMomentum
