@@ -91,6 +91,15 @@ export const HomeMomentum = (props: HomeMomentumProps) => {
   const delta = momentumDelta(props.counts);
 
   /**
+   * No series at all: the strip could not be read (#E65 - the counts come
+   * from an `$analytics` dataset, and on production that is an HTTP call
+   * Home is allowed to lose). The cell keeps its width and says nothing,
+   * because "0 events, flat" would be a claim about a fortnight nobody
+   * measured.
+   */
+  const unavailable = props.counts.length === 0;
+
+  /**
    * One opacity per bar, as a single class rather than two that `cn` has to
    * resolve against each other: hovering one day recedes the other thirteen,
    * and a day with nothing on it stays a baseline tick rather than a value.
@@ -99,6 +108,10 @@ export const HomeMomentum = (props: HomeMomentumProps) => {
     if (hovered !== null && hovered !== index) return "opacity-30";
     return props.counts[index] ? "opacity-100" : "opacity-40";
   };
+
+  if (unavailable) {
+    return <div className="w-52" aria-hidden />;
+  }
 
   return (
     <div className="flex w-52 flex-col gap-1">

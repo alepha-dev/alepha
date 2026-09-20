@@ -34,11 +34,16 @@ const BUDGET = {
   // Projects; areas; open quests (epic gate + quests); capabilities;
   // ownership (members + projects).
   getHomeOverview: 7,
-  // Projects; momentum; last activity; open epics, blights and feedback in
-  // one statement. It was 5 while the Recent activity panel existed - its own
+  // Projects; last activity; open epics, blights and feedback in one
+  // statement. It was 5 while the Recent activity panel existed - its own
   // read, plus one more for actor names whenever that feed had any - and the
-  // panel was deleted in #E64.
-  getHomeBoard: 4,
+  // panel was deleted in #E64. It was 4 until #E65 moved momentum onto the
+  // `project_activity` `$analytics` dataset: that read issues no SQL here
+  // (the bound backend in test mode is `MemoryAnalyticsProvider`) and none on
+  // production either, where the hot tier is Analytics Engine. What it cost
+  // was never the statement anyway - it was the 13,428 audit rows that one
+  // statement had to read.
+  getHomeBoard: 3,
 };
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
