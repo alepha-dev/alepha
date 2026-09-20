@@ -699,7 +699,7 @@ describe("BuildCloudflareTask", () => {
         expect(
           fs.wasWrittenMatching(
             ENTRY,
-            /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.js"/,
+            /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.workerd\.js"/,
           ),
         ).toBe(true);
         expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(true);
@@ -887,6 +887,63 @@ describe("BuildCloudflareTask", () => {
       }) as any;
 
     /**
+     * ⚠️ The reason the slices are namespaced at all (epic #E63).
+     *
+     * Under `no_bundle` these globs are what decides the upload, and a
+     * `--runtime node,workerd` build leaves BOTH slices in one `dist/`. The
+     * old `["index.js", "server/*.js"]` against such a build sweeps every Node
+     * chunk into the Worker: best case a Worker twice the size it needs, and
+     * likely case a Node chunk importing a node builtin and a deploy refused
+     * at validation, with nothing in the message pointing at a glob.
+     *
+     * Asserted as an exact list rather than "contains workerd", because the
+     * failure mode is an EXTRA entry, which a containment check cannot see.
+     */
+    it("scopes the module rules to the workerd slice and nothing else", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.rules).toEqual([
+        {
+          type: "ESModule",
+          globs: ["index.workerd.js", "server/workerd/*.js"],
+        },
+      ]);
+    });
+
+    // The same check from the other side: no glob may match a sibling slice's
+    // entry wrapper or its chunk directory.
+    it("uploads no node slice from a multi-slice build", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      const globs: string[] = wrangler.rules[0].globs;
+      for (const glob of globs) {
+        expect(glob).not.toBe("index.js");
+        expect(glob).not.toBe("index.node.js");
+        expect(glob).not.toBe("index.bun.js");
+        // A bare `server/*.js` is the exact shape that swept the Node chunks
+        // in: it matches nothing under `server/node/` only by accident of the
+        // build having produced one slice.
+        expect(glob).not.toBe("server/*.js");
+      }
+    });
+
+    // The worker entry imports the workerd wrapper by name. There is no
+    // `index.js` that works out its host, and importing any other slice would
+    // upload a bundle the Worker cannot run.
+    it("imports the workerd entry wrapper from the generated worker", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const entry = fs.getFileContent(ENTRY) ?? "";
+      expect(entry).toContain('import "./index.workerd.js"');
+      expect(entry).not.toContain('import "./index.js"');
+    });
+
+    /**
      * The app declares `assets.run_worker_first` to keep the worker out of the
      * static path. Replacing the whole `assets` block would drop `binding`
      * with it, and `env.ASSETS` would vanish without a word.
@@ -977,7 +1034,7 @@ describe("BuildCloudflareTask", () => {
       expect(
         fs.wasWrittenMatching(
           ENTRY,
-          /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.js"/,
+          /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.workerd\.js"/,
         ),
       ).toBe(true);
       expect(
