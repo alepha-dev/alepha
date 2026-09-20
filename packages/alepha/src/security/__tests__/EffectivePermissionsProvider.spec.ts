@@ -5,7 +5,7 @@ import {
   AlephaSecurity,
   EffectivePermissionsProvider,
   type UserAccountToken,
-} from "alepha/security";
+} from "../index.ts";
 import { describe, expect, it } from "vitest";
 
 /**
