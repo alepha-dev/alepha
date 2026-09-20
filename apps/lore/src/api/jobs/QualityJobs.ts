@@ -39,6 +39,9 @@ export class QualityJobs {
     name: "quality.prune-runs",
     description: "Prunes each project's quality runs down to its limit.",
     cron: "17 3 * * *",
+    // Daily, so a failed tick otherwise waits a day. See
+    // `ProjectRankJobs.seedMissingPresetRanks` for the same reasoning.
+    retry: { retries: 2 },
     handler: async () => {
       const cap = await this.limits.maxQualityRunsPerProject();
       const projects = await this.quality.projectsWithRuns();
