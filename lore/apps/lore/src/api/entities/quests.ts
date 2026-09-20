@@ -1,6 +1,6 @@
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
-import { $entity, db } from "alepha/orm";
+import { $entity, db, sql } from "alepha/orm";
 
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
@@ -440,6 +440,51 @@ export const quests = $entity({
      */
     {
       columns: ["projectId", "updatedAt"],
+    },
+    /**
+     * What is still OPEN, and nothing else.
+     *
+     * `OpenQuestScope` asks every surface's version of "how many quests are
+     * open here": the sidebar badge, the dashboard's Active Quests tile, its
+     * rail, and Home's Open column. `(projectId, deletedAt)` above gets the
+     * planner to "not deleted, in this project" and stops, so
+     * `completed_at IS NULL`, `shelved_at IS NULL` and the backlog gate's
+     * `epic_id NOT IN (...)` are each evaluated against every non-deleted
+     * quest in the project: 2,685 rows read on production to produce a
+     * number about 354 of them.
+     *
+     * This index holds only the open rows, so the count seeks into something
+     * containing nothing else, and every column the statement names is in
+     * it, so the backlog gate and the count never reach the table at all.
+     *
+     * ⚠️ **The 7.6x today is not the point.** A partial index on the open
+     * predicate does not grow as work is completed, so the count stops
+     * tracking everything ever done and starts tracking what is still open,
+     * which is what the number means.
+     *
+     * ⚠️ **The three null columns are in the column list AND in the `where`,
+     * and the redundancy is what makes the planner pick this index.** They
+     * are constant in every entry it holds, so as columns they carry no
+     * information - but SQLite scores a candidate index by how many equality
+     * constraints it can bind, an `IS NULL` counts as one, and
+     * `(project_id, epic_id)` alone binds exactly one while
+     * `quests_project_id_deleted_at_idx` binds two. `EXPLAIN QUERY PLAN`
+     * chose that older index every time, and the partial index sat unused.
+     * Spelling the three out binds four, and the index becomes covering,
+     * which is what the plan now says. `epic_id` goes last because it is the
+     * one term that is not an equality (`IS NULL OR NOT IN (...)`).
+     *
+     * ⚠️ The three terms in `where` are spelled exactly as `OpenQuestScope`
+     * spells them, as top-level conjuncts. SQLite uses a partial index only
+     * when it can prove the query's `WHERE` implies the index's, and an
+     * identical conjunct is the case it supports. A fourth term added to
+     * that scope without being added here is harmless; changing one of these
+     * three without changing the scope silently retires the index.
+     */
+    {
+      columns: ["projectId", "deletedAt", "completedAt", "shelvedAt", "epicId"],
+      name: "quests_open_idx",
+      where: sql`deleted_at IS NULL AND completed_at IS NULL AND shelved_at IS NULL`,
     },
   ],
 });

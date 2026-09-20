@@ -45,21 +45,28 @@ export class OpenQuestScope {
    * One statement for the whole list rather than one per project: the
    * dashboard rail asks about every project the reader belongs to, and a
    * count-per-row loop on a Worker is a network round-trip per row.
+   *
+   * ## Counted in SQL, not in the isolate
+   *
+   * It used to fetch every open quest's `projectId` and tally them here.
+   * ⚠️ Be clear about the lever: this saves **no rows read**, because D1
+   * bills rows visited either way and `quests_open_idx` is what changed
+   * that number. What it saves is the wire and the allocation - 9 rows come
+   * back where 354 did on production, and neither figure is the count.
    */
   async countByProject(projectIds: number[]): Promise<Map<number, number>> {
     if (projectIds.length === 0) {
       return new Map();
     }
 
-    const rows = await this.quests.findMany({
+    const rows = await this.quests.aggregate({
+      select: { projectId: true, id: { count: true } },
       where: await this.where(projectIds),
-      columns: ["projectId"],
+      groupBy: ["projectId"],
     });
 
-    const tally = new Map<number, number>();
-    for (const row of rows) {
-      tally.set(row.projectId, (tally.get(row.projectId) ?? 0) + 1);
-    }
-    return tally;
+    // A project with nothing open produces no group, so it is absent rather
+    // than zero. Every caller already defaults a miss to 0.
+    return new Map(rows.map((row) => [row.projectId, Number(row.id.count)]));
   }
 }
