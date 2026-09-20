@@ -51,7 +51,13 @@ export class OAuthJobs {
     name: "system.oauth.purge-abandoned-clients",
     description:
       "Deletes dynamically registered OAuth clients older than a day that no session uses.",
-    cron: "20 3 * * *",
+    // `0 3 * * *`, shared with the other daily purges rather than given a
+    // minute of its own. Cloudflare counts cron triggers per account and
+    // shares them across every Worker on it, so a distinct expression for
+    // a purge that measures in the low hundreds of milliseconds spends a
+    // slot every app on the account pays for. It was `20 3 * * *` until
+    // 2026-09-20.
+    cron: "0 3 * * *",
     handler: async () => {
       const cutoff = this.dateTime
         .now()

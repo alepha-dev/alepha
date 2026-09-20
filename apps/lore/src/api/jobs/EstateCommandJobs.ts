@@ -29,6 +29,10 @@ export class EstateCommandJobs {
     description:
       "Fails estate commands that stopped reporting, then prunes each estate's command history to its limit.",
     cron: "*/15 * * * *",
+    // One minute, against a trigger that measures 1.3 s at p99. Two
+    // bounded service calls; if this ever approaches a minute, something
+    // is wrong that a longer timeout would only hide.
+    timeout: [60, "seconds"],
     handler: async () => {
       const failed = await this.commands.sweep();
       const pruned = await this.commands.prune(

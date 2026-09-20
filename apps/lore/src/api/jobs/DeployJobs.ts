@@ -226,6 +226,13 @@ export class DeployJobs {
     // job carrying both is refused at boot. There is nothing to say anyway -
     // the sweep reads the rows and takes no payload.
     cron: "*/5 * * * *",
+    // One minute. The sweep reads the stuck rows and writes a result each;
+    // its trigger measures 1.1 s at p99 in production, so this is sixty
+    // times the observed cost. The number matters for the LOCK, not the
+    // handler: the TTL is twice the timeout, and the five-minute default
+    // equals this job's own interval, so a crashed run would have held the
+    // lock right up to the next tick.
+    timeout: [60, "seconds"],
     handler: async () => {
       const nowMs = this.dateTime.nowMillis();
       const budgetMs =
