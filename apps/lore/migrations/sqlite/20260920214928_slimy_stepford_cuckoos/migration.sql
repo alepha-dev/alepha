@@ -1,0 +1,1 @@
+CREATE INDEX `quests_open_idx` ON `quests` (`project_id`,`deleted_at`,`completed_at`,`shelved_at`,`epic_id`) WHERE deleted_at IS NULL AND completed_at IS NULL AND shelved_at IS NULL;
