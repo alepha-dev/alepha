@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider } from "alepha/system";
 
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
@@ -31,6 +32,7 @@ interface ResolvedCompile {
  * - Builds Docker image when `--image` flag is provided (standard mode)
  */
 export class BuildDockerTask extends BuildTask {
+  protected readonly slices = $inject(BuildSlices);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
@@ -348,7 +350,11 @@ ${userLine}CMD ["${command}", "index.js"]
   protected runtimeLabel(ctx: BuildTaskContext): Record<string, string> {
     // Same resolution BuildManifestTask uses, so the label and the
     // manifest cannot disagree about one build.
-    return { "dev.alepha.runtime": ctx.options.runtime ?? "node" };
+    return {
+      "dev.alepha.runtime": this.slices.primary(
+        this.slices.fromOptions(ctx.options),
+      ),
+    };
   }
 
   /**

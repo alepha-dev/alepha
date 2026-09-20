@@ -18,6 +18,12 @@ export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
 export type BuildRuntime = "node" | "bun" | "workerd";
 
 /**
+ * What `build.runtime` accepts in `alepha.config.ts`: one runtime, or an
+ * ordered list of them.
+ */
+export type BuildRuntimeDeclaration = BuildRuntime | BuildRuntime[];
+
+/**
  * Compile options once the `--compile` flag and the config are merged and
  * validated: what the build tasks read.
  */
@@ -65,16 +71,51 @@ export const buildOptions = $atom({
     target: z.enum(["bare", "docker", "cloudflare", "static"]).optional(),
 
     /**
-     * JavaScript runtime for the build output.
+     * The runtime, or runtimes, the server is linked for.
      *
-     * - `node` - Node.js runtime (default)
-     * - `bun` - Bun runtime (uses bun export conditions)
-     * - `workerd` - Cloudflare Workers runtime (auto-set with cloudflare target)
+     * - `node` - Node.js (the default, and the universal floor: it runs under
+     *   Bun too)
+     * - `bun` - Bun export conditions; an optimization, never required
+     * - `workerd` - Cloudflare Workers; mandatory and unavoidable for Cloudflare
+     *
+     * A list produces one server slice per runtime in ONE `dist/`, with the
+     * client bundle, the prerender and the asset compression done exactly once:
+     * `runtime: ["node", "workerd"]` covers Node hosts, Bun hosts and
+     * Cloudflare from a single build.
+     *
+     * ## ⚠️ Order is meaningful
+     *
+     * The first declared runtime is the **primary**: it is `manifest.runtime`,
+     * it is what `dist/package.json`'s `main` points at, and it is what a
+     * deployer spawns. `["bun", "node"]` and `["node", "bun"]` produce the same
+     * two slices and different behaviour.
+     *
+     * `--runtime node,workerd` overrides this. The config declares what the app
+     * needs; the flag is for a caller that knows better.
      *
      * Note: Some targets force a specific runtime:
      * - `cloudflare` always uses `workerd`
      */
-    runtime: z.enum(["node", "bun", "workerd"]).optional(),
+    runtime: z
+      .union([
+        z.enum(["node", "bun", "workerd"]),
+        z.array(z.enum(["node", "bun", "workerd"])),
+      ])
+      .optional(),
+
+    /**
+     * The resolved, ordered slice set — written by `alepha build`, never by an
+     * app.
+     *
+     * `runtime` above is the declaration and accepts a scalar or a list;
+     * `BuildCommand` normalizes it here once, so no task has to re-merge the
+     * flag with the config and arrive at its own answer. After resolution
+     * `runtime` is the primary scalar and `runtimes[0]` is the same value, the
+     * same relationship the build manifest carries.
+     *
+     * @internal
+     */
+    runtimes: z.array(z.enum(["node", "bun", "workerd"])).optional(),
 
     /**
      * Compile the app to one executable with `bun build --compile`, its

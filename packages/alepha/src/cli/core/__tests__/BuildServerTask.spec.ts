@@ -46,6 +46,7 @@ describe("BuildServerTask", () => {
         root: "/project",
         entry: "src/main.server.ts",
         distDir: "dist",
+        runtime: "node",
         alepha: Alepha.create(),
       }),
     ).rejects.toThrow(/stop/);

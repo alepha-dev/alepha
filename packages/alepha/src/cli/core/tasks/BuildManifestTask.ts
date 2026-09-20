@@ -6,6 +6,7 @@ import {
   type BuildManifest,
   buildManifestSchema,
 } from "../schemas/buildManifest.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -36,6 +37,7 @@ export class BuildManifestTask extends BuildTask {
 
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly meta = $inject(MetaResolver);
+  protected readonly slices = $inject(BuildSlices);
 
   async run(ctx: BuildTaskContext): Promise<void> {
     // Prebuilt mode re-reads an existing manifest and would only rewrite the
@@ -334,7 +336,27 @@ export class BuildManifestTask extends BuildTask {
       process against a directory with no entry point.
     */
     const isStatic = ctx.options.target === "static";
-    const processRuntime = ctx.options.runtime ?? "node";
+    // Declared order, and never sorted: the first is the primary, which is
+    // what the scalar `runtime` below names and what a deployer spawns.
+    const runtimes = this.slices.fromOptions(ctx.options);
+    const processRuntime = this.slices.primary(runtimes);
+
+    /*
+      ⚠️ `entry` names a FILE, relative to the ARCHIVE ROOT — `index.node.js`,
+      not `dist`. It used to be the dist directory, because the archive wrapped
+      everything in one and `node dist` resolved the bundle through its `main`.
+      The archive root is now the contents, so a deployer carrying the old
+      reading looks for a directory that is not there.
+
+      `runtimes` beside it carries every slice in declared order. It is
+      additive: the two scalars keep saying exactly what they always said, so a
+      deployer that never learns about slices still spawns the primary, and the
+      two cannot disagree because the scalars ARE `runtimes[0]`.
+    */
+    const slices = runtimes.map((runtime) => ({
+      runtime,
+      entry: this.slices.entryFileName(runtime),
+    }));
 
     const manifest: BuildManifest = {
       version: 1,
@@ -342,12 +364,16 @@ export class BuildManifestTask extends BuildTask {
       defaultEnv,
       environments,
       runtime: isStatic ? "static" : processRuntime,
+      // A static site has no slice to declare: nothing is spawned, so an array
+      // of one entry pointing at a file that does not exist would be a claim
+      // rather than a fact.
+      runtimes: isStatic ? undefined : slices,
       // No interpreter is resolved for a static site, so a version here would
       // be a claim about a process that does not exist.
       runtimeVersion: isStatic
         ? undefined
         : await this.resolveRuntimeVersion(root, processRuntime),
-      entry: distDir,
+      entry: isStatic ? undefined : slices[0]?.entry,
       resources: {
         hasDatabase,
         hasBucket,

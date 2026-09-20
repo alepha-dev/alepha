@@ -160,9 +160,8 @@ describe("the build manifest schema", () => {
       const manifest = twoSlices();
       (manifest.runtimes[0] as Record<string, unknown>).sizeBytes = 42;
       const parsed = buildManifestSchema.parse(manifest);
-      expect((parsed.runtimes?.[0] as Record<string, unknown>).sizeBytes).toBe(
-        42,
-      );
+      const slice = parsed.runtimes?.[0] as Record<string, unknown> | undefined;
+      expect(slice?.sizeBytes).toBe(42);
     });
   });
 
@@ -230,6 +229,85 @@ describe("the build manifest schema", () => {
         throw new AlephaError("not available in this fake");
       },
     } as any;
+
+    /**
+     * What the multi-slice build actually writes (epic #E63). The schema cases
+     * above pin what the shape ALLOWS; this pins what the writer produces, and
+     * the two used to be able to drift without anything noticing.
+     */
+    const writtenFor = async (options: Record<string, unknown>) => {
+      const { task, fs } = createTask();
+      await task.testWriteManifest(
+        {
+          alepha: fakeAlepha,
+          root: "/root/my-app",
+          platformOptions: { environments: {} },
+          options,
+        } as any,
+        "dist",
+      );
+      return JSON.parse(
+        fs.getFileContent("/root/my-app/dist/manifest.json") ?? "{}",
+      ) as BuildManifest;
+    };
+
+    it("writes one slice for a single-runtime build", async ({ expect }) => {
+      const written = await writtenFor({ runtimes: ["node"] });
+      expect(written.runtimes).toEqual([
+        { runtime: "node", entry: "index.node.js" },
+      ]);
+      expect(written.runtime).toBe("node");
+      expect(written.entry).toBe("index.node.js");
+    });
+
+    it("writes node+workerd in declared order", async ({ expect }) => {
+      const written = await writtenFor({ runtimes: ["node", "workerd"] });
+      expect(written.runtimes).toEqual([
+        { runtime: "node", entry: "index.node.js" },
+        { runtime: "workerd", entry: "index.workerd.js" },
+      ]);
+      // The scalars name the primary, which is runtimes[0] and nothing else.
+      expect(written.runtime).toBe("node");
+      expect(written.entry).toBe("index.node.js");
+    });
+
+    /**
+     * ⚠️ The same two slices declared bun-first. Everything a deployer reads
+     * has to move with the order, or the build's intent and the deploy diverge
+     * with nothing to say which is right.
+     */
+    it("makes bun the primary when bun is declared first", async ({
+      expect,
+    }) => {
+      const written = await writtenFor({ runtimes: ["bun", "node"] });
+      expect(written.runtimes?.map((slice) => slice.runtime)).toEqual([
+        "bun",
+        "node",
+      ]);
+      expect(written.runtime).toBe("bun");
+      expect(written.entry).toBe("index.bun.js");
+    });
+
+    /**
+     * ⚠️ `entry` is a FILE now, not the `dist` directory. A deployer carrying
+     * the old reading looks for a directory the flat archive does not have.
+     */
+    it("never writes a directory as the entry", async ({ expect }) => {
+      const written = await writtenFor({ runtimes: ["node"] });
+      expect(written.entry).not.toBe("dist");
+      expect(written.entry).toMatch(/\.js$/);
+    });
+
+    // Nothing is spawned, so a slice array would be a claim rather than a fact:
+    // it would name an entry file that the build never wrote.
+    it("declares no slice and no entry for a static build", async ({
+      expect,
+    }) => {
+      const written = await writtenFor({ target: "static" });
+      expect(written.runtime).toBe("static");
+      expect(written.runtimes).toBeUndefined();
+      expect(written.entry).toBeUndefined();
+    });
 
     /**
      * ⚠️ The regression this exists for: `EnvironmentConfig` declares `host`,

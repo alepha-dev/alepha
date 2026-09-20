@@ -53,7 +53,7 @@ describe("BuildFreshness", () => {
     );
     await fs.writeFile("/repo/node_modules/lib/src/index.ts", "lib");
     await clock.travel(60_000);
-    await fs.writeFile("/repo/app/dist/index.js", "bundle");
+    await fs.writeFile("/repo/app/dist/manifest.json", "{}");
   };
 
   it("says a missing build is missing, rather than calling it fresh", async ({
@@ -64,7 +64,7 @@ describe("BuildFreshness", () => {
     await fs.writeFile("/repo/app/src/main.ts", "app");
 
     expect(await freshness.staleReason("/repo/app", "dist")).toBe(
-      "dist/index.js is missing",
+      "dist/manifest.json is missing",
     );
   });
 
@@ -115,7 +115,7 @@ describe("BuildFreshness", () => {
     expect,
   }) => {
     const { fs, freshness } = await setup();
-    await fs.writeFile("/repo/app/dist/index.js", "bundle");
+    await fs.writeFile("/repo/app/dist/manifest.json", "{}");
 
     expect(await freshness.staleReason("/repo/app", "dist")).toContain(
       "no readable sources",

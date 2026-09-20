@@ -183,14 +183,18 @@ describe("BuildManifestTask", () => {
       expect(readManifest(fs).project).toBe("my-app");
     });
 
-    it("records the entry directory so a deployer can spawn `<runtime> <entry>`", async () => {
+    it("records the entry FILE so a deployer can spawn `<runtime> <entry>`", async () => {
       const { task, fs } = createTask();
 
-      // A self-hosted deployer receives `dist/` + `migrations/` and no
-      // package.json, so the bundle location has to be in the manifest.
+      // A self-hosted deployer receives the build's contents and `migrations/`
+      // with no package.json, so the entry point has to be in the manifest.
+      //
+      // ⚠️ A file, not the `dist` directory it used to be. The archive root is
+      // the contents now, so `dist` would name a directory that is not there,
+      // and `node dist` against it fails as "never became ready".
       await task.testWriteManifest(contextFor(), "dist");
 
-      expect(readManifest(fs).entry).toBe("dist");
+      expect(readManifest(fs).entry).toBe("index.node.js");
     });
 
     it("defaults the runtime to node when the build did not specify one", async () => {

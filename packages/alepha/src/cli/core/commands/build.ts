@@ -5,6 +5,7 @@ import { $logger } from "alepha/logger";
 import {
   type BuildCompile,
   type BuildRuntime,
+  type BuildRuntimeDeclaration,
   type BuildTarget,
   buildOptions,
 } from "../atoms/buildOptions.ts";
@@ -12,6 +13,7 @@ import { metaOptions } from "../atoms/metaOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { BuildFreshness } from "../services/BuildFreshness.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -40,6 +42,7 @@ export class BuildCommand {
   protected readonly metaResolver = $inject(MetaResolver);
   protected readonly metaOverride = $store(metaOptions);
   protected readonly freshness = $inject(BuildFreshness);
+  protected readonly slices = $inject(BuildSlices);
 
   /**
    * Build pipeline: tasks run sequentially in this order.
@@ -97,28 +100,41 @@ export class BuildCommand {
   }
 
   /**
-   * Resolve the effective runtime based on target and explicit runtime flag.
+   * Resolve the ordered slice set from the target and the declared runtimes.
    *
    * Some targets force a specific runtime:
    * - `cloudflare` always uses `workerd`
-   * - `docker` and bare deployments respect the runtime flag
+   * - `docker` and bare deployments respect the declaration
    *
-   * @throws {AlephaError} If an incompatible runtime is specified for a target
+   * ⚠️ The order of the returned list is the build's decision and is preserved
+   * end to end: the first entry is the primary. Nothing downstream may sort it.
+   *
+   * @throws {AlephaError} If a target cannot hold the runtimes asked for
    */
-  protected resolveRuntime(
+  protected resolveRuntimes(
     target: BuildTarget | undefined,
-    runtime: BuildRuntime | undefined,
-  ): BuildRuntime {
+    declared: BuildRuntimeDeclaration | undefined,
+  ): BuildRuntime[] {
     if (target === "cloudflare") {
-      if (runtime && runtime !== "workerd") {
-        throw new AlephaError(
-          `Target 'cloudflare' requires 'workerd' runtime, got '${runtime}'`,
-        );
+      // `--target=cloudflare` is the old way of saying "link for workerd", and
+      // it can only mean one slice: the wrangler upload has exactly one entry
+      // point. Asking for anything else is a contradiction worth naming rather
+      // than silently narrowing.
+      //
+      // ⚠️ Read from what was DECLARED, not from the resolved list: resolving
+      // first turns "nothing was asked for" into the `node` default, and this
+      // target would then refuse a build that named no runtime at all.
+      if (declared) {
+        const asked = Array.isArray(declared) ? declared : [declared];
+        if (asked.some((runtime) => runtime !== "workerd")) {
+          throw new AlephaError(
+            `Target 'cloudflare' requires the 'workerd' runtime, got '${asked.join(",")}'`,
+          );
+        }
       }
-      return "workerd";
+      return ["workerd"];
     }
-
-    return runtime ?? "node";
+    return this.slices.resolve(declared);
   }
 
   /**
@@ -198,9 +214,11 @@ export class BuildCommand {
         .describe("Deployment target (cf = cloudflare)")
         .optional(),
       runtime: z
-        .enum(["node", "bun", "workerd"])
+        .text()
         .meta({ aliases: ["r"] })
-        .describe("JavaScript runtime")
+        .describe(
+          "Runtimes to link the server for, comma-separated and in order: node, bun, workerd. The first is the primary — what the manifest names, what dist/package.json points at, and what a deployer spawns. e.g. --runtime node,workerd",
+        )
         .optional(),
       image: z
         .union([z.boolean(), z.text()])
@@ -252,15 +270,25 @@ export class BuildCommand {
       // Resolve flags → mutate the atom (single source of truth)
       this.alepha.store.mut(buildOptions, (current) => {
         const target = this.resolveTarget(flags.target) ?? current.target;
-        const runtime = this.resolveRuntime(
+        // The flag is a comma-separated list so one flag carries the order.
+        // It replaces the declaration outright rather than merging with it:
+        // a caller that names a set means that set, and a union would make
+        // `--runtime workerd` silently also build whatever the config asked
+        // for.
+        const runtimes = this.resolveRuntimes(
           target,
-          flags.runtime ?? current.runtime,
+          this.slices.parseFlag(flags.runtime) ?? current.runtime,
         );
+        // Resolved into BOTH fields, the same relationship the manifest
+        // carries: the scalar is the primary and is always `runtimes[0]`, so a
+        // task reading one cannot disagree with a task reading the other.
+        const runtime = this.slices.primary(runtimes);
         return {
           ...current,
           stats: flags.stats ?? current.stats ?? false,
           target,
           runtime,
+          runtimes,
           // Resolved once, so every task reads the same merged, validated
           // options rather than re-merging flag and config itself.
           compile: this.resolveCompile(
@@ -309,7 +337,7 @@ export class BuildCommand {
 
       this.log.trace("Build configuration", {
         target,
-        runtime: options.runtime,
+        runtimes: options.runtimes,
       });
 
       // Prebuilt + manifest fast-path: skip `analyze app` (which boots
@@ -355,8 +383,14 @@ export class BuildCommand {
       // a static build names no interpreter.
       const meta = await this.metaResolver.resolve({
         root,
+        // The PRIMARY slice, which is what a deployer spawns. A multi-slice
+        // build bakes one `alepha.meta` into every slice, and naming a
+        // secondary there would have a Worker report the runtime of a bundle
+        // it is not.
         runtime:
-          options.target === "static" ? "static" : (options.runtime ?? "node"),
+          options.target === "static"
+            ? "static"
+            : this.slices.primary(this.slices.fromOptions(options)),
         dev: false,
         override: this.metaOverride,
       });
