@@ -448,6 +448,10 @@ const ProjectQuestsTable = () => {
       schema: z.array(questStatusSchema),
       label: tr("board.filter.status"),
       icon: CircleDot,
+      // On the bar from the start. "Which of these are still open" is the
+      // question this table is opened with, and a filter behind the "+" is
+      // one the reader has to know exists before they can ask it.
+      mode: "default",
       operators: "is",
       optionLabel: (status: QuestStatus) => tr(QUEST_STATUS_LABEL_KEYS[status]),
       control: {
@@ -459,6 +463,10 @@ const ProjectQuestsTable = () => {
       label: tr("board.filter.area"),
       icon: MapPin,
       items: areaOptions,
+      // Beside Status, for the same reason. `hidden` still wins over the
+      // mode: a project with no areas draws no empty Areas control, since
+      // the bar skips a hidden field that holds nothing.
+      mode: "default",
       hidden: areaOptions.length === 0,
       control: {
         clearLabel: tr("board.filter.allAreas"),

@@ -440,7 +440,8 @@ test.describe("Epics — the list", () => {
       });
       await expect(page.getByRole("link", { name: withQuest })).toBeVisible();
 
-      await page.getByRole("button", { name: "Reset filters" }).click();
+      await page.getByRole("button", { name: "Filters", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Reset filters" }).click();
       await expect(page.getByRole("link", { name: empty })).toBeVisible({
         timeout: 15_000,
       });
