@@ -1,9 +1,9 @@
 import { cn } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import type { I18n } from "../../services/I18n.ts";
-import { momentumDelta, momentumGeometry } from "./homeMomentumPath.ts";
+import { momentumBarHeights, momentumDelta } from "./homeMomentumBars.ts";
 
 export interface HomeMomentumProps {
   /**
@@ -22,132 +22,112 @@ export interface HomeMomentumProps {
   ceiling: number;
   /**
    * Accessible summary of the whole series, e.g. "312 events over 14 days".
-   * The curve itself is decoration and carries no text.
+   * The bars themselves are decoration and carry no text.
    */
   label: string;
   /**
    * Whether the project has gone quiet (`HOME_INACTIVE_AFTER_DAYS`): the
-   * curve and its text turn grey, so the table's eye goes to the live rows.
+   * bars and their text turn grey, so the table's eye goes to the live rows.
    */
   inactive?: boolean;
 }
 
 /**
- * The chart's height, in pixels and in viewBox units alike, so the vertical
- * axis is drawn 1:1 and only the horizontal one stretches with the cell.
+ * The chart's height, in pixels, which is also the height of a bar standing
+ * at the ceiling.
  */
 const HEIGHT = 32;
 
 /**
- * Fourteen days of a project's recorded writes, as a smooth line over a
- * fading area, with the total and the week-on-week change under it.
+ * Fourteen days of a project's recorded writes, one bar per day, with the
+ * total and the week-on-week change under them.
+ *
+ * ## Bars, because the axis is days and days are discrete
+ *
+ * A line interpolates: between a busy Tuesday and an empty Wednesday it
+ * draws values nothing was ever measured at, and its smoothing has to be
+ * held back from dipping under zero. Fourteen counted days are fourteen
+ * separate readings, and a bar each says exactly that and nothing more. It
+ * also makes an empty day legible, which a line through the baseline cannot
+ * distinguish from a quiet one.
+ *
+ * A bar takes three quarters of its day's column rather than all of it: the
+ * leftover is the air that separates it from its neighbours, so fourteen
+ * busy days read as fourteen bars and not as one filled block.
  *
  * ## The scale is shared, and that is the whole point
  *
- * Every row is drawn against the busiest day in the table, not its own. A
- * per-row scale would give a project with two events a week the same
- * silhouette as one with two hundred, which reads as "equally busy" at a
- * glance and is the opposite of what the column is for. The cost is that
- * quiet projects are nearly flat, which is the true answer.
+ * Every row is drawn against the busiest day in the table, not its own. See
+ * `momentumBarHeights`.
  *
  * ## One colour, from the theme
  *
- * The line, the fill and the dots are `--sidebar-primary`, the colour of the
- * sidebar's active-item bar: every theme gives it its own hue in both modes,
- * so light, dark and each theme need nothing of their own here. The SVG and
- * the dot read it through `currentColor`, which is also how an inactive row
- * turns the whole chart grey in one class. A rise wears the same colour as
- * the line; a fall and "flat" stay muted, since a quieter week is not a
- * fault.
+ * The bars are `--sidebar-primary`, the colour of the sidebar's active-item
+ * bar: every theme gives it its own hue in both modes, so light, dark and
+ * each theme need nothing of their own here. The bars read it through
+ * `currentColor`, which is also how an inactive row turns the whole chart
+ * grey in one class. A rise wears the same colour; a fall and "flat" stay
+ * muted, since a quieter week is not a fault.
  *
  * ## Hover reads a day in place
  *
- * The pointer snaps to the nearest day, a hairline and a dot mark it, and
- * the line under the chart shows that day's count and date instead of the
- * totals. In place rather than in a floating tooltip, which the table's own
- * scroll container would clip on the first rows.
+ * Each day owns a full-height column, its air included, so the hit target is
+ * larger than the bar and the pointer never falls between two of them. The
+ * hovered bar keeps its colour while the rest fade, and the line under the
+ * chart shows that day's count and date instead of the totals. In place
+ * rather than in a floating tooltip, which the table's own scroll container
+ * would clip on the first rows.
  *
- * The line is stretched to the cell with `preserveAspectRatio="none"`, so it
- * carries `vector-effect: non-scaling-stroke` to stay 2px, and the dots are
- * HTML placed by percentage rather than SVG circles, which the stretch would
- * turn into ellipses.
+ * Plain elements rather than an SVG: a `viewBox` stretched to the cell with
+ * `preserveAspectRatio="none"` would squash every bar's width with it, and
+ * undoing that per bar costs more than laying them out with flex.
  */
 export const HomeMomentum = (props: HomeMomentumProps) => {
   const { tr, l } = useI18n<I18n, "en">();
-  const gradientId = useId();
   const [hovered, setHovered] = useState<number | null>(null);
 
-  const { points, line, area } = momentumGeometry(
-    props.counts,
-    props.ceiling,
-    HEIGHT,
-  );
+  const bars = momentumBarHeights(props.counts, props.ceiling, HEIGHT);
   const total = props.counts.reduce((sum, count) => sum + count, 0);
   const delta = momentumDelta(props.counts);
-  const last = points[points.length - 1];
-  const marked = hovered === null ? undefined : points[hovered];
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    if (rect.width === 0 || points.length === 0) return;
-    const ratio = (event.clientX - rect.left) / rect.width;
-    const index = Math.round(ratio * (points.length - 1));
-    setHovered(Math.min(points.length - 1, Math.max(0, index)));
+  /**
+   * One opacity per bar, as a single class rather than two that `cn` has to
+   * resolve against each other: hovering one day recedes the other thirteen,
+   * and a day with nothing on it stays a baseline tick rather than a value.
+   */
+  const barOpacity = (index: number) => {
+    if (hovered !== null && hovered !== index) return "opacity-30";
+    return props.counts[index] ? "opacity-100" : "opacity-40";
   };
 
   return (
     <div className="flex w-52 flex-col gap-1">
       <div
         className={cn(
-          "relative",
+          "flex items-end",
           props.inactive ? "text-muted-foreground/50" : "text-sidebar-primary",
         )}
         style={{ height: HEIGHT }}
         role="img"
         aria-label={props.label}
-        onPointerMove={onPointerMove}
         onPointerLeave={() => setHovered(null)}
       >
-        <svg
-          viewBox={`0 0 100 ${HEIGHT}`}
-          preserveAspectRatio="none"
-          className="absolute inset-0 size-full overflow-visible"
-          aria-hidden
-        >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <path d={area} fill={`url(#${gradientId})`} />
-          <path
-            d={line}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        {marked && (
-          <span
-            aria-hidden
-            className="bg-border absolute inset-y-0 w-px"
-            style={{ left: `${marked[0]}%` }}
-          />
-        )}
-        {(marked ?? last) && (
-          <span
-            aria-hidden
-            className="ring-background absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current ring-2"
-            style={{
-              left: `${(marked ?? last)![0]}%`,
-              top: `${((marked ?? last)![1] / HEIGHT) * 100}%`,
-            }}
-          />
-        )}
+        {bars.map((bar, index) => (
+          <div
+            key={props.days[index] ?? index}
+            className="flex h-full flex-1 items-end justify-center"
+            onPointerEnter={() => setHovered(index)}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "w-3/4 rounded-t-xs bg-current transition-opacity",
+                barOpacity(index),
+              )}
+              style={{ height: bar }}
+            />
+          </div>
+        ))}
       </div>
       <div
         className={cn(
