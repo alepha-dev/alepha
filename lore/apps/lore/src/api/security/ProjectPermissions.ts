@@ -1,6 +1,9 @@
 import { $inject } from "alepha";
 import { type OrganizationMember, RankService } from "alepha/api/organizations";
-import { SecurityProvider, type UserAccountToken } from "alepha/security";
+import {
+  EffectivePermissionsProvider,
+  type UserAccountToken,
+} from "alepha/security";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
@@ -28,9 +31,17 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * The rank definitions and the capability rows are both memoised per request
  * and cached for thirty seconds, and the handlers that call this have already
  * read both.
+ *
+ * ## What moved upstream
+ *
+ * The application half - the catalogue, the role grant, the `ownership` bypass
+ * and the permission scope - is `EffectivePermissionsProvider`, because Club
+ * needs exactly that and a second implementation of one rule is the thing this
+ * class exists to argue against. What stays here is what is Lore's: the rank
+ * and the capability, expressed as two narrowing factors.
  */
 export class ProjectPermissions {
-  protected readonly security = $inject(SecurityProvider);
+  protected readonly effective = $inject(EffectivePermissionsProvider);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly capabilities = $inject(CapabilityRegistry);
   protected readonly ranks = $inject(RankService);
@@ -47,38 +58,19 @@ export class ProjectPermissions {
     user: UserAccountToken,
     member: OrganizationMember | undefined,
   ): Promise<ProjectPermissionSet> {
-    const registered = this.security
-      .getPermissions()
-      .filter((it) => it.group && it.name)
-      .map((it) => `${it.group}:${it.name}`)
-      .filter((it) => !it.startsWith("admin:"));
-
-    // A privileged identity is not narrowed by a rank, matching `$owns`'s own
-    // `ownership === false` bypass. Nor by a capability: an operator looking at
-    // a project with Work off is not being offered a quest button, because
-    // there is no page to put one on.
-    //
-    // A credential's permission scope still applies: the bypass is about
-    // ranks and capabilities, and a scoped admin key must not read the full
-    // set back through it.
+    /**
+     * A privileged identity is narrowed by neither factor, so reading the
+     * ranks and the capabilities for one would be two queries spent on an
+     * answer that ignores them. The bypass itself lives upstream; this is
+     * only about not paying for it.
+     */
     if (user.ownership === false) {
       return {
-        permissions: registered.filter((it) =>
-          this.security.isInPermissionScope(it, user.permissionScope),
-        ),
+        permissions: this.effective.resolve({ user, exclude: ["admin:"] }),
       };
     }
 
-    // 1. Application scope: what the caller's roles grant, whatever project
-    // they are in. For an ordinary Lore user this is everything but `admin:*`.
-    const app = new Set(
-      this.security
-        .getPermissions(user)
-        .filter((it) => it.group && it.name)
-        .map((it) => `${it.group}:${it.name}`),
-    );
-
-    // 2. The rank, from the membership row the gate already read.
+    // 1. The rank, from the membership row the gate already read.
     const key = member?.rank ?? "member";
     const organizationId =
       await this.projectSecurity.organizationIdOf(projectId);
@@ -87,24 +79,26 @@ export class ProjectPermissions {
       : undefined;
     const granted = (await this.ranks.permissionsOf(organizationId, key)) ?? [];
 
-    // 3. The capabilities that are on. A permission whose group belongs to a
+    // 2. The capabilities that are on. A permission whose group belongs to a
     // capability the project does not have is not offerable, whatever any rank
     // says - and the matrix hides those rows for the same reason.
     const enabled = Object.keys(
       await this.projectSecurity.capabilitiesOf(projectId),
     ) as CapabilityKey[];
 
-    const permissions = registered.filter((permission) => {
-      if (!app.has(permission)) {
-        return false;
-      }
-      if (!this.ranks.grants(granted, permission)) {
-        return false;
-      }
-      const owner = this.capabilities.ownerOfPermissionGroup(
-        permission.split(":")[0],
-      );
-      return this.capabilities.isOwnerEnabled(owner, enabled);
+    // The application half - catalogue, role grant, permission scope - is
+    // upstream; what stays here is the two factors that are Lore's.
+    const permissions = this.effective.resolve({
+      user,
+      exclude: ["admin:"],
+      narrow: [
+        (permission) => this.ranks.grants(granted, permission),
+        (permission) =>
+          this.capabilities.isOwnerEnabled(
+            this.capabilities.ownerOfPermissionGroup(permission.split(":")[0]),
+            enabled,
+          ),
+      ],
     });
 
     return {
