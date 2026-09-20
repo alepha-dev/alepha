@@ -45,7 +45,7 @@ export interface WorkspaceCompileOptions {
 
   /**
    * The slices the build produced, so the cleanup removes every entry wrapper
-   * rather than guessing at one.
+   * rather than guessing at one. Read from `manifest.json` when omitted.
    */
   runtimes?: BuildRuntime[];
 
@@ -127,7 +127,7 @@ export class WorkspaceCompiler {
     await this.cleanupPreCompileArtifacts(
       dist,
       publicDir,
-      options.runtimes ?? ["bun"],
+      options.runtimes ?? (await this.declaredRuntimes(dist)),
     );
 
     if (options.migrations !== false) {
@@ -191,6 +191,37 @@ export class WorkspaceCompiler {
     ]
       .filter(Boolean)
       .join(" ");
+  }
+
+  /**
+   * Every slice the build declared, from the manifest.
+   *
+   * ⚠️ **It has to be every one, not just the compiled slice.** Compiling
+   * consumes `dist/`: `server/` and `public/` both go, because the binary
+   * carries them. A sibling `index.node.js` left behind then imports a
+   * `server/node/` that is no longer there — a file that looks runnable,
+   * is not, and fails at `node index.node.js` with a resolution error rather
+   * than anything naming the compile that removed its chunks.
+   *
+   * The manifest is the discovery mechanism for slices, so it is what is read.
+   * An artifact without one falls back to the bun slice alone, which is the
+   * only slice this command is certain exists.
+   */
+  protected async declaredRuntimes(dist: string): Promise<BuildRuntime[]> {
+    try {
+      const manifest = await this.fs.readJsonFile<{
+        runtimes?: Array<{ runtime: BuildRuntime }>;
+        runtime?: BuildRuntime;
+      }>(this.fs.join(dist, "manifest.json"));
+      const declared = manifest.runtimes?.map((slice) => slice.runtime);
+      if (declared?.length) {
+        return declared;
+      }
+      if (manifest.runtime) {
+        return [manifest.runtime];
+      }
+    } catch {}
+    return ["bun"];
   }
 
   /**

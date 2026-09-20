@@ -190,6 +190,44 @@ describe("WorkspaceCompiler", () => {
     expect(await fs.exists("/project/dist/manifest.json")).toBe(true);
   });
 
+  /**
+   * ⚠️ Compiling CONSUMES `dist/`. `server/` and `public/` both go, because
+   * the binary carries them, so a sibling `index.node.js` left behind would
+   * import a `server/node/` that is no longer there: a file that looks
+   * runnable, is not, and fails with a resolution error naming nothing about
+   * the compile that removed its chunks.
+   *
+   * The slices come from the manifest, which is the discovery mechanism for
+   * them.
+   */
+  it("removes every slice's wrapper, not just the compiled one", async ({
+    expect,
+  }) => {
+    const { fs, task } = await createTestEnv();
+    await fs.writeFile(
+      "/project/dist/index.node.js",
+      "import './server/node/a.js';",
+    );
+    await fs.writeFile("/project/dist/server/node/a.js", "// chunk");
+    await fs.writeFile(
+      "/project/dist/manifest.json",
+      JSON.stringify({
+        runtime: "bun",
+        runtimes: [
+          { runtime: "bun", entry: "index.bun.js" },
+          { runtime: "node", entry: "index.node.js" },
+        ],
+      }),
+    );
+
+    await task.compile(bare);
+
+    expect(await fs.exists("/project/dist/index.bun.js")).toBe(false);
+    expect(await fs.exists("/project/dist/index.node.js")).toBe(false);
+    expect(await fs.exists("/project/dist/server")).toBe(false);
+    expect(await fs.exists("/project/dist/manifest.json")).toBe(true);
+  });
+
   it("copies migrations beside the binary", async () => {
     const { fs, task } = await createTestEnv();
     await fs.writeFile("/project/migrations/001.sql", "CREATE TABLE x;");
