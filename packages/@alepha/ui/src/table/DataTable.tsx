@@ -399,6 +399,14 @@ export const DataTable = <
   const squareRight = props.squareRight
     ? DATA_TABLE_SQUARE_RIGHT[`${props.squareRight}`]
     : undefined;
+  // `flat` drops the outer frame and keeps the lines between the bands: the
+  // toolbar keeps its bottom border, the footer its top one, and the rows
+  // lose the sides. Applied after `squareRight`, which has nothing left to
+  // square once the corners are gone.
+  const flatTop = props.flat && "rounded-none border-x-0 border-t-0";
+  const flatRows =
+    props.flat && "rounded-none border-x-0 border-t-0 border-b-0";
+  const flatBottom = props.flat && "rounded-none border-x-0 border-b-0";
   // The footer holds two controls, the size picker and the page links, and
   // the count beside them. A table that hid the picker (`pageSizes={[]}`)
   // and fits on one page has neither, and "Page 1 of 1" alone is a bar
@@ -437,7 +445,7 @@ export const DataTable = <
             cards={summary.cards}
             loading={summary.loading}
             content={hasSummaryContent ? summaryContent : undefined}
-            className={cn(squareRight?.top, props.chromeClassName)}
+            className={cn(squareRight?.top, flatTop, props.chromeClassName)}
           />
         )}
 
@@ -470,6 +478,7 @@ export const DataTable = <
               showSummary
                 ? "-mt-2 rounded-t-none border-t-0"
                 : squareRight?.top,
+              flatTop,
               props.chromeClassName,
             )}
           />
@@ -500,6 +509,7 @@ export const DataTable = <
             "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
             (showToolbar || showSummary) && "-mt-2 rounded-t-none border-t-0",
             showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
+            flatRows,
             // With no toolbar and no summary the rows open the table, so
             // their top-right corner is the one `squareRight` squares.
             !showToolbar && !showSummary && squareRight?.top,
@@ -543,7 +553,12 @@ export const DataTable = <
                 painted over. */}
             <TableHeader
               className={cn(
-                "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]",
+                // ⚠️ `[&_tr]:border-b-0` or the bottom rule is drawn TWICE: `TableHeader`
+                // gives its rows a `border-b`, and the inset shadow above draws
+                // the same line, so the band closed with 2px where it opens with
+                // 1px. The inset one wins because it is what survives the sticky
+                // header being painted over.
+                "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0",
                 props.chromeClassName,
               )}
             >
@@ -600,7 +615,11 @@ export const DataTable = <
             meta={meta}
             isMobile={isMobile}
             setPage={setPage}
-            className={cn(squareRight?.bottom, props.chromeClassName)}
+            className={cn(
+              squareRight?.bottom,
+              flatBottom,
+              props.chromeClassName,
+            )}
           />
         )}
       </div>

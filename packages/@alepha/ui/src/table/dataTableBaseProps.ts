@@ -306,6 +306,18 @@ export interface DataTableBaseProps<
    */
   squareRight?: DataTableSquareRight;
   /**
+   * Drop the table's own outer frame: no rounded corners, and no border on
+   * the left, right, top or bottom of the toolbar, the rows or the footer.
+   * The lines BETWEEN them stay, since those separate the table's own bands.
+   *
+   * For a table laid flush inside a frame something else draws - a page
+   * whose gutters are its rules, a pane with its own border - where the
+   * table's own edge would be a second line one pixel from the first.
+   *
+   * @default false
+   */
+  flat?: boolean;
+  /**
    * How much room the cells give their content: `small`, `normal` (the
    * default, the `Table` primitives' own padding) or `large`. Applies to the
    * header, the rows and the loading skeleton alike. A column's own
