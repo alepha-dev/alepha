@@ -33,12 +33,14 @@ import { EstateCloudflareService } from "../services/EstateCloudflareService.ts"
  * inconclusive` is gone, since the work no longer happens in one place.
  * Each execution row carries its own outcome, which is the better record.
  *
- * On `0 0 * * *`, which this job now holds alone: `QuestJobs` shared it
- * until 2026-09-20, when its reminder sweep went hourly. A Worker's cron
- * triggers are counted per account and shared across every Worker on it,
- * so an expression with one tenant is a slot spent on one job
- * (`EstateCommandJobs` records the same reasoning; the crons reach the
- * Worker from `dist/manifest.json`).
+ * On `0 3 * * *`, with the other daily purges. It ran at `0 0 * * *`
+ * alongside `QuestJobs` until 2026-09-20; that sweep went hourly, which
+ * would have left this job holding a whole expression by itself. A
+ * Worker's cron triggers are counted per account and shared across every
+ * Worker on it, so an expression with one tenant is a slot every app on
+ * the account pays for (`EstateCommandJobs` records the same reasoning;
+ * the crons reach the Worker from `dist/manifest.json`). Midnight carried
+ * no meaning here - the window this job promises is "within a day".
  *
  * ⚠️ `dateTime.travel()` releases every `$job` cron in the container, so
  * this runs in any spec in this module that travels. Its own spec therefore
@@ -73,7 +75,7 @@ export class EstateCredentialJobs {
     name: "estates.recheck-cloudflare",
     description:
       "Pushes one credential re-check per Cloudflare estate, nightly.",
-    cron: "0 0 * * *",
+    cron: "0 3 * * *",
     retry: { retries: 2 },
     handler: async () => {
       const rows = await this.estates.findMany({

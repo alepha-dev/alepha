@@ -99,7 +99,7 @@ const waitFor = async <T>(
  * The nightly sweep, asserted on END STATE.
  *
  * ⚠️ `dateTime.travel()` releases every `$job` cron in the container, so the
- * sweep runs here and so does everything else on `0 0 * * *`. Counting calls
+ * sweep runs here and so does everything else on `0 3 * * *`. Counting calls
  * would measure the harness; the rows and the mailbox are what the job is
  * for.
  *
