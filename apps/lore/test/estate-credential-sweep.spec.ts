@@ -70,12 +70,46 @@ const setup = async (): Promise<TestContext> => {
 };
 
 /**
+ * Poll until `predicate` holds, or throw.
+ *
+ * ⚠️ Required since the sweep became a fan-out (2026-09-20): the cron
+ * pushes and the per-estate job does the work, so nothing the cron tick
+ * touches has happened when `travel()` resolves. A fixed sleep races the
+ * queue under CI load; this is the same helper shape `$job.spec.ts` uses,
+ * and the reason both exist.
+ */
+const waitFor = async <T>(
+  read: () => Promise<T> | T,
+  predicate: (value: T) => boolean,
+  label: string,
+  timeout = 5000,
+): Promise<T> => {
+  const deadline = Date.now() + timeout;
+  let last = await read();
+  while (Date.now() < deadline) {
+    if (predicate(last)) return last;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    last = await read();
+  }
+  if (predicate(last)) return last;
+  throw new Error(`waitFor: ${label} did not hold within ${timeout}ms`);
+};
+
+/**
  * The nightly sweep, asserted on END STATE.
  *
  * ⚠️ `dateTime.travel()` releases every `$job` cron in the container, so the
  * sweep runs here and so does everything else on `0 0 * * *`. Counting calls
  * would measure the harness; the rows and the mailbox are what the job is
  * for.
+ *
+ * ⚠️ **Every assertion needs a positive signal to wait on first**, because
+ * the work is queued rather than inline. A negative ("no mail was sent")
+ * proves nothing on its own - it is also true before the job runs at all -
+ * so each case waits for something that can only be true once the per-estate
+ * handler reached the point in question: a `credentialCheckedAt` that
+ * advanced, or the probe path that decides the outcome appearing in
+ * `probes.calls`.
  */
 describe("The nightly cloudflare credential sweep", () => {
   let ctx: TestContext;
@@ -111,22 +145,34 @@ describe("The nightly cloudflare credential sweep", () => {
     expect,
   }) => {
     const estate = await seed("cf-flip");
+    const seededAt = (await rowOf(estate.id)).credentialCheckedAt;
 
-    // Night one: everything still passes.
+    // Night one: everything still passes. Waiting on the stamp is what
+    // makes the empty mailbox below mean anything.
     await ctx.dateTime.travel(1, "day");
-    expect(ctx.cloudflare.credentialStatus(await rowOf(estate.id))).toBe(
-      "valid",
+    const checked = await waitFor(
+      () => rowOf(estate.id),
+      (row) => row.credentialCheckedAt !== seededAt,
+      "night one re-checked the estate",
     );
+    expect(ctx.cloudflare.credentialStatus(checked)).toBe("valid");
     expect(ctx.mail.records).toHaveLength(0);
 
     // Night two: the token has been narrowed at Cloudflare.
     ctx.probes.refuse("/d1/database");
     await ctx.dateTime.travel(1, "day");
 
-    const flipped = await rowOf(estate.id);
-    expect(ctx.cloudflare.credentialStatus(flipped)).toBe("invalid");
+    const flipped = await waitFor(
+      () => rowOf(estate.id),
+      (row) => ctx.cloudflare.credentialStatus(row) === "invalid",
+      "night two flipped the estate to invalid",
+    );
     expect(flipped.credentialError).toContain("D1: Edit");
-    expect(ctx.mail.records).toHaveLength(1);
+    await waitFor(
+      () => ctx.mail.records,
+      (records) => records.length === 1,
+      "the owner was emailed once",
+    );
     expect(ctx.mail.records[0]!.to).toBe("cf-flip@example.com");
     expect(ctx.mail.records[0]!.body).toContain("cf-flip");
     // The token itself never reaches an email body.
@@ -134,7 +180,13 @@ describe("The nightly cloudflare credential sweep", () => {
 
     // Night three: still invalid, and silent. The email is edge-triggered,
     // not a nightly nag; one line in the job changes that if it should be.
+    const flippedAt = flipped.credentialCheckedAt;
     await ctx.dateTime.travel(1, "day");
+    await waitFor(
+      () => rowOf(estate.id),
+      (row) => row.credentialCheckedAt !== flippedAt,
+      "night three re-checked the estate",
+    );
     expect(ctx.mail.records).toHaveLength(1);
   });
 
@@ -143,17 +195,23 @@ describe("The nightly cloudflare credential sweep", () => {
   }) => {
     const broken = await seed("cf-broken");
     const healthy = await seed("cf-healthy");
-    // A row whose credential cannot be opened at all: the sweep has to walk
-    // past it rather than stop on the estates that come after it.
+    // A row whose credential cannot be opened at all. Isolation is
+    // structural since the split - the two estates are separate executions,
+    // so the broken one cannot reach the healthy one - and this pins that
+    // the fan-out still queues past a row it cannot process.
     await ctx.repos.estates.updateById(broken.id, {
       credential: "not:a:sealed-value",
     });
+    const seededAt = (await rowOf(healthy.id)).credentialCheckedAt;
 
     await ctx.dateTime.travel(1, "day");
 
-    expect(ctx.cloudflare.credentialStatus(await rowOf(healthy.id))).toBe(
-      "valid",
+    const row = await waitFor(
+      () => rowOf(healthy.id),
+      (it) => it.credentialCheckedAt !== seededAt,
+      "the healthy estate was re-checked",
     );
+    expect(ctx.cloudflare.credentialStatus(row)).toBe("valid");
   });
 
   it("changes nothing and tells nobody when Cloudflare is down", async ({
@@ -163,6 +221,15 @@ describe("The nightly cloudflare credential sweep", () => {
     ctx.probes.unreachable("/workers/scripts", 503);
 
     await ctx.dateTime.travel(1, "day");
+
+    // The probe that answers 503 is the one that decides the outcome, so
+    // its appearance in `calls` is the signal that the handler got far
+    // enough for the assertions below to mean anything.
+    await waitFor(
+      () => ctx.probes.calls,
+      (calls) => calls.some((path) => path.endsWith("/workers/scripts")),
+      "the estate was probed",
+    );
 
     const row = await rowOf(estate.id);
     // The whole reason the verdict has three values: an outage at midnight
