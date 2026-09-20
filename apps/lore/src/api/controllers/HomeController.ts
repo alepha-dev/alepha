@@ -9,6 +9,7 @@ import {
 } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
+import { $etag } from "alepha/server/etag";
 
 import { blights } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
@@ -61,7 +62,28 @@ export class HomeController {
    * worth looking at and both are answered from the same membership read.
    */
   getHomeBoard = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      /*
+        The same window all four Reports actions have carried since they
+        were written, and for the same reason: an aggregate a reader opens,
+        looks at, and reloads a moment later.
+
+        ⚠️ `private`, never `public`. The response is ONE viewer's project
+        list, and the edge cache in the Worker entry stores anything public
+        keyed by URL alone.
+
+        60 seconds is also the staleness a viewer sees after their own
+        write. On a projects overview that is fine; on a quest page it would
+        not be.
+
+        This removes repeat loads. It does not reduce what one load costs,
+        so it is not a substitute for the two quests beside it in #E64.
+      */
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+      $secure({ permissions: ["project:read"] }),
+    ],
     schema: {
       response: z.object({
         /**
