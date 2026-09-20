@@ -89,14 +89,26 @@ export default defineConfig({
          * it takes effect: read the Worker's placement status (Workers API,
          * `placement_status`, `SUCCESS` since 2026-09-19).
          *
-         * ⚠️ The after measurement was waived on 2026-09-20, and reopening it
-         * would not answer anything. Lore's human traffic is a handful of
-         * people in France, all of whom arrive through CDG, which is where
-         * the primary already is. The only requests that reach it from IAD,
-         * DFW or SIN are crawlers and monitors hitting the sigil-instrumented
-         * apps, roughly one every ten minutes. So this line, and the replicas
-         * below, both keep their config because they cost nothing, not
-         * because a measurement justified them.
+         * ⚠️ It works, and it helps nobody who matters.
+         *
+         * The honest measurement is the dashboard's Placement Performance
+         * table (Workers, lore-production, Metrics), NOT a before-and-after
+         * on the logs: it compares placed requests against the share
+         * Cloudflare keeps unplaced, at the same moment, while a time window
+         * conflates every other thing that moved in it. Read 2026-09-20 over
+         * 24 hours, p90 unplaced against placed: Dulles 1603 ms to 399,
+         * Los Angeles 2230 to 1235, Seattle 1891 to 1688, Chicago 1746 to
+         * 1857. Chicago is the break-even bet losing, which is what a low
+         * query count from a colo with no better backbone path looks like.
+         *
+         * Every row there is a US request location, which is to say a
+         * crawler or a monitor hitting the sigil-instrumented apps. Lore's
+         * human traffic is a handful of people in France arriving through
+         * CDG, where the primary already is, so their requests are placed
+         * local and never enter that table at all. So this line and the
+         * replicas below keep their config because they cost nothing and
+         * measurably help the bots, not because a page load anyone waits on
+         * got faster.
          */
         placement: { mode: "smart" },
         /**
