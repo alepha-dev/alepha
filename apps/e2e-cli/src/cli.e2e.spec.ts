@@ -541,7 +541,7 @@ describe("Alepha CLI E2E", () => {
       }
 
       expect(result.exitCode).toBe(0);
-      expect(existsSync(join(SAAS_DIR, "dist/index.js"))).toBe(true);
+      expect(existsSync(join(SAAS_DIR, "dist/index.node.js"))).toBe(true);
     });
 
     /**
@@ -777,14 +777,19 @@ describe("Alepha CLI E2E", () => {
       }
 
       expect(result.exitCode).toBe(0);
-      expect(existsSync(join(PROJECT_DIR, "dist/index.js"))).toBe(true);
+      // The node slice's entry wrapper. There is no `index.js` any more: a
+      // build produces one entry per runtime it was linked for, and the
+      // manifest is what says which is which.
+      expect(existsSync(join(PROJECT_DIR, "dist/index.node.js"))).toBe(true);
       expect(await readDepsCache()).toBe(depsCacheBefore);
 
       // A build that compiles but cannot serve a request is not a build. Sets
       // APP_SECRET as a deploy would: an app that signs anything refuses to
       // start in production without one, which `.env.example` documents.
       const port = await freePort();
-      const server = startProcess("node dist/index.js", PROJECT_DIR, {
+      // `node dist` rather than the slice by name, so this also proves
+      // `dist/package.json`'s generated `main` points at the primary slice.
+      const server = startProcess("node dist", PROJECT_DIR, {
         SERVER_PORT: String(port),
         NODE_ENV: "production",
         APP_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
@@ -828,7 +833,11 @@ describe("Alepha CLI E2E", () => {
       const binary = join(PROJECT_DIR, "dist/e2e");
       expect(existsSync(binary)).toBe(true);
       expect(existsSync(join(PROJECT_DIR, "dist/manifest.json"))).toBe(true);
-      expect(existsSync(join(PROJECT_DIR, "dist/index.js"))).toBe(false);
+      // Every slice's wrapper is gone, not just the compiled one: the binary
+      // carries the bundle, and an `index.node.js` left beside it is something
+      // an operator could plausibly run instead of the binary they were given.
+      expect(existsSync(join(PROJECT_DIR, "dist/index.bun.js"))).toBe(false);
+      expect(existsSync(join(PROJECT_DIR, "dist/index.node.js"))).toBe(false);
       expect(existsSync(join(PROJECT_DIR, "dist/public"))).toBe(false);
 
       const alone = join(WORK_DIR, "compiled");
