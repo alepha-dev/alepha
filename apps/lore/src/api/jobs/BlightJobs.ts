@@ -58,6 +58,11 @@ export class BlightJobs {
     description:
       "Deletes open blights with no new occurrence within their project's retention window (30 days by default).",
     cron: "0 * * * *",
+    // Two minutes. One DELETE per distinct retention window, so the cost
+    // grows with the number of windows rather than with the project count,
+    // and the hourly trigger it shares measures 39.4 s at p99 wall across
+    // all ten of its jobs, almost all of it D1 round-trip wait.
+    timeout: [2, "minutes"],
     handler: async () => {
       const nowMs = this.dt.nowMillis();
       const allProjects = await this.projects.findMany({
