@@ -161,6 +161,27 @@ describe("quality runs", () => {
    * which releases every cron in the container and would make each of Lore's
    * other jobs a participant in these tests.
    */
+  /**
+   * One project's runs, once the queued sweep has pruned them.
+   *
+   * Polls rather than sleeps: a fixed wait races the in-memory queue under
+   * CI load. See the note on "the nightly sweep" below for why the wait
+   * exists at all.
+   */
+  const waitForPruned = async (projectId: number, timeout = 5000) => {
+    const deadline = Date.now() + timeout;
+    let rows = await ctx.rows.runs.findMany({
+      where: { projectId: { eq: projectId } },
+    });
+    while (rows.length > 1 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      rows = await ctx.rows.runs.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+    }
+    return rows;
+  };
+
   const seed = async (
     projectId: number,
     day: string,
@@ -418,6 +439,13 @@ describe("quality runs", () => {
    * The `$job` on top of `prune`, exercised through its own handler rather
    * than through `travel()`: releasing the container's whole cron schedule to
    * test one sweep makes every other job in Lore a participant in this test.
+   *
+   * ⚠️ **`trigger()` no longer means "it ran".** Since the job declared
+   * `retry` (#Q2419), a cron tick writes an outbox row and hands it to the
+   * dispatcher instead of running the handler inline, so `trigger()`
+   * resolves once the work is ACCEPTED. The poll below is what waits for it
+   * to happen, and it is why a plain assertion after the await started
+   * failing.
    */
   describe("the nightly sweep", () => {
     it("prunes every project past the cap", async ({ expect }) => {
@@ -437,9 +465,7 @@ describe("quality runs", () => {
       await ctx.alepha.inject(QualityJobs).pruneQualityRuns.trigger();
 
       for (const projectId of [first.projectId, second.projectId]) {
-        const rows = await ctx.rows.runs.findMany({
-          where: { projectId: { eq: projectId } },
-        });
+        const rows = await waitForPruned(projectId);
         expect(rows).toHaveLength(1);
         expect(rows[0].day).toBe("2026-08-30");
       }
