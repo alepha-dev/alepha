@@ -858,9 +858,12 @@ describe("Bay connector against a real Lore", () => {
     );
     const settled = await commandSettles(queued.id);
     expect(settled.status, settled.reason).toBe("done");
+    // Bay names a pulled artifact after its digest and the CURRENT suffix.
+    // The suffix is only a file name — `untar` sniffs the compression from the
+    // stream — but the cache lookup composes it, so the two have to agree.
     expect(
       existsSync(
-        join(bay.root, "artifacts", `${pushed.artifact.sha256}.tar.gz`),
+        join(bay.root, "artifacts", `${pushed.artifact.sha256}.tar.zst`),
       ),
     ).toBe(true);
   });
