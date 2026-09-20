@@ -171,7 +171,7 @@ export class ProjectRankJobs {
               key: preset.key,
               // No language argument: see the note on the job above. This is
               // the decision, not a default reached by accident.
-              name: this.presets.nameFor(preset),
+              name: await this.presets.nameFor(preset),
               permissions: preset.permissions,
             },
             { id: owner.userId } as never,

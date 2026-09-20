@@ -1,4 +1,4 @@
-import { $inject } from "../../core/index.ts";
+import { $inject } from "alepha";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { SecurityProvider } from "./SecurityProvider.ts";
 
