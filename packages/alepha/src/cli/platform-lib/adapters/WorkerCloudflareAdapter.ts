@@ -423,7 +423,11 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       name: `deploy worker (${worker})`,
       handler: async () => {
         const modules = await this.modules(distDir, config);
-        const mainModule = this.moduleName(config.main ?? "index.js");
+        // The fallback is the workerd slice's entry wrapper. In practice
+        // `config.main` is always set (to `./main.cloudflare.js`), but a
+        // default naming a file no build produces would be a trap: the
+        // failure below is about a main_module nobody uploaded.
+        const mainModule = this.moduleName(config.main ?? "index.workerd.js");
 
         // ⚠️ A `main_module` naming no uploaded part is not a validation
         // error at Cloudflare. It answers `Uncaught SyntaxError: Invalid or
@@ -552,8 +556,13 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    *
    * ⚠️ No import-graph walk. With `no_bundle` wrangler globs files under the
    * module root against `rules` and excludes the entry, and the generated
-   * config sets `rules: [{ type: "ESModule", globs: ["index.js", "server/*.js"] }]`,
+   * config sets
+   * `rules: [{ type: "ESModule", globs: ["index.workerd.js", "server/workerd/*.js"] }]`,
    * so the upload set is a directory listing.
+   *
+   * ⚠️ Scoped to the workerd slice, which is why the slices are namespaced. A
+   * `--runtime node,workerd` build leaves both in one `dist/`, and a glob one
+   * level wider uploads every Node chunk with them.
    */
   /**
    * The app's own variables, plus the one the copy's address implies.

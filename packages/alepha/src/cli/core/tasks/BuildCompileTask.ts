@@ -3,6 +3,8 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
+import type { BuildRuntime } from "../atoms/buildOptions.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { BuildDockerTask } from "./BuildDockerTask.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -15,7 +17,16 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * the Docker task writes the Dockerfile for the binary, and when `--image`
  * asks for an image it is built here, once the binary exists.
  *
- * The embedding is a few lines appended to the generated `dist/index.js`: one
+ * ## ⚠️ It compiles the BUN slice, and only that one
+ *
+ * `bun build --compile` is what exists, so the binary is a Bun binary and the
+ * bundle it embeds has to be the one resolved against Bun's export conditions.
+ * A `dist/` may hold several slices and the node slice runs under Bun, which
+ * makes falling back to it plausible and wrong: it would compile the generic
+ * build and quietly discard the reason the bun slice exists. A missing bun
+ * slice is named instead.
+ *
+ * The embedding is a few lines appended to the bun slice's entry wrapper: one
  * `with { type: "file" }` import per public file, which is how Bun keeps a
  * file's bytes inside the binary, then an `__alepha.set` handing the app the
  * map from URL path to embedded path before it boots, the way the SSR
@@ -29,6 +40,7 @@ export class BuildCompileTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly dockerTask = $inject(BuildDockerTask);
+  protected readonly slices = $inject(BuildSlices);
   protected readonly log = $logger();
 
   async run(ctx: BuildTaskContext): Promise<void> {
@@ -51,6 +63,14 @@ export class BuildCompileTask extends BuildTask {
     const dist = this.fs.join(ctx.root, distDir);
     const name = config.name ?? "app";
     const target = config.target ?? this.defaultBunTarget(ctx.options.target);
+    const bunEntry = this.slices.entryFileName("bun");
+
+    await ctx.run({
+      name: "check the bun slice",
+      handler: async () => {
+        await this.assertBunSlice(dist, bunEntry);
+      },
+    });
 
     await ctx.run({
       name: "assert no externals (compile mode)",
@@ -62,19 +82,28 @@ export class BuildCompileTask extends BuildTask {
     await ctx.run({
       name: "embed public files",
       handler: async () => {
-        await this.embedPublicFiles(dist, publicDir, this.builtAt(ctx));
+        await this.embedPublicFiles(
+          dist,
+          publicDir,
+          this.builtAt(ctx),
+          bunEntry,
+        );
       },
     });
 
     await ctx.run(
-      this.buildCompileCommand(name, target, config.minify ?? true),
+      this.buildCompileCommand(name, target, config.minify ?? true, bunEntry),
       { alias: `bun build --compile (${target})`, root: dist },
     );
 
     await ctx.run({
       name: "cleanup pre-compile artifacts",
       handler: async () => {
-        await this.cleanupPreCompileArtifacts(dist, publicDir);
+        await this.cleanupPreCompileArtifacts(
+          dist,
+          publicDir,
+          this.slices.fromOptions(ctx.options),
+        );
       },
     });
 
@@ -145,6 +174,7 @@ export class BuildCompileTask extends BuildTask {
     name: string,
     target: string,
     minify: boolean,
+    entry: string,
   ): string {
     return [
       "bun build",
@@ -152,10 +182,30 @@ export class BuildCompileTask extends BuildTask {
       `--target=${target}`,
       minify ? "--minify" : "",
       `--outfile=${name}`,
-      "index.js",
+      entry,
     ]
       .filter(Boolean)
       .join(" ");
+  }
+
+  /**
+   * Refuse a `dist/` with no bun slice, by name.
+   *
+   * ⚠️ **Never a fallback to whatever slice is there.** The node slice runs
+   * under Bun, so compiling it would succeed and produce a working binary —
+   * built from the generic bundle, with every Bun-native API and every
+   * dependency the bun conditions exist to drop still in it. A binary that
+   * works is the worst possible failure here, because nothing ever says the
+   * slice was wrong.
+   */
+  protected async assertBunSlice(dist: string, entry: string): Promise<void> {
+    if (await this.fs.exists(this.fs.join(dist, entry))) {
+      return;
+    }
+    throw new AlephaError(
+      `Compile mode needs the bun slice, and \`${entry}\` is not in the build. ` +
+        "Rebuild with `alepha build --runtime bun` (or add `bun` to `build.runtime`).",
+    );
   }
 
   /**
@@ -184,7 +234,7 @@ export class BuildCompileTask extends BuildTask {
   }
 
   /**
-   * Append the embedding to `dist/index.js`: one file import per public
+   * Append the embedding to the bun slice's entry wrapper: one file import per public
    * file, in a stable order, and the map the app reads at boot. Dot files
    * are left out, as the disk source leaves them out. An app with no client
    * has nothing to embed.
@@ -193,6 +243,7 @@ export class BuildCompileTask extends BuildTask {
     dist: string,
     publicDir: string,
     builtAt: number,
+    entry: string,
   ): Promise<void> {
     const pub = this.fs.join(dist, publicDir);
     if (!(await this.fs.exists(pub))) {
@@ -221,7 +272,7 @@ export class BuildCompileTask extends BuildTask {
       .map((file, i) => `${JSON.stringify(`/${file}`)}: a${i}`)
       .join(", ");
 
-    const indexPath = this.fs.join(dist, "index.js");
+    const indexPath = this.fs.join(dist, entry);
     const index = (await this.fs.readFile(indexPath)).toString();
     await this.fs.writeFile(
       indexPath,
@@ -240,8 +291,17 @@ export class BuildCompileTask extends BuildTask {
   protected async cleanupPreCompileArtifacts(
     dist: string,
     publicDir: string,
+    runtimes: BuildRuntime[],
   ): Promise<void> {
-    for (const target of ["server", "index.js", "package.json", publicDir]) {
+    // `server/` whole, and EVERY slice's entry wrapper — not just the compiled
+    // one. A multi-slice build that also compiles leaves the other slices
+    // beside the binary otherwise: megabytes of bundle the binary already
+    // carries, and an `index.node.js` an operator could plausibly run instead
+    // of the binary they were given.
+    const entries = runtimes.map((runtime) =>
+      this.slices.entryFileName(runtime),
+    );
+    for (const target of ["server", ...entries, "package.json", publicDir]) {
       const path = this.fs.join(dist, target);
       if (await this.fs.exists(path)) {
         await this.fs.rm(path, { recursive: true });

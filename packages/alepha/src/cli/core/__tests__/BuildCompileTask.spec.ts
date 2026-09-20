@@ -22,13 +22,14 @@ describe("BuildCompileTask", () => {
     const shell = alepha.inject(MemoryShellProvider);
     const task = alepha.inject(BuildCompileTask);
 
-    // A built app: the generated entry, one server chunk, a client bundle
-    // with its brotli sibling, a nested public file, and the manifest.
+    // A built app: the bun slice's entry wrapper, one server chunk in that
+    // slice's own directory, a client bundle with its brotli sibling, a nested
+    // public file, and the manifest.
     await fs.writeFile(
-      "/project/dist/index.js",
-      `import './server/abc.js';\n__alepha.set("alepha.react.ssr.manifest", {});\n`,
+      "/project/dist/index.bun.js",
+      `import './server/bun/abc.js';\n__alepha.set("alepha.react.ssr.manifest", {});\n`,
     );
-    await fs.writeFile("/project/dist/server/abc.js", "// chunk");
+    await fs.writeFile("/project/dist/server/bun/abc.js", "// chunk");
     await fs.writeFile(
       "/project/dist/package.json",
       JSON.stringify({ dependencies: {} }),
@@ -93,16 +94,16 @@ describe("BuildCompileTask", () => {
     await task.run(createCtx(shell, { target: "bare", runtime: "bun" }));
 
     expect(shell.calls).toHaveLength(0);
-    expect(await fs.exists("/project/dist/index.js")).toBe(true);
+    expect(await fs.exists("/project/dist/index.bun.js")).toBe(true);
   });
 
-  it("embeds every public file in index.js and publishes the map with the build time", async () => {
+  it("embeds every public file in the bun slice and publishes the map with the build time", async () => {
     const { fs, shell, task } = await createTestEnv();
 
     await task.run(createCtx(shell, bare));
 
     const written = (pattern: RegExp) =>
-      fs.wasWrittenMatching("/project/dist/index.js", pattern);
+      fs.wasWrittenMatching("/project/dist/index.bun.js", pattern);
     expect(
       written(
         /import a0 from "\.\/public\/assets\/logo\.svg" with \{ type: "file" \};/,
@@ -123,8 +124,46 @@ describe("BuildCompileTask", () => {
         /__alepha\.set\("alepha\.server\.static\.embedded", \{ builtAt: 1767323045000, files: \{ "\/assets\/logo\.svg": a0, "\/entry\.X1\.js": a1, "\/entry\.X1\.js\.br": a2 \} \}\);/,
       ),
     ).toBe(true);
-    // The generated entry keeps what it had: the server chunk first.
-    expect(written(/^import '\.\/server\/abc\.js';/)).toBe(true);
+    // The generated entry keeps what it had: its own slice's chunk first.
+    expect(written(/^import '\.\/server\/bun\/abc\.js';/)).toBe(true);
+  });
+
+  /**
+   * ⚠️ The one failure this task must never handle gracefully.
+   *
+   * The node slice runs under Bun, so compiling it would succeed and produce a
+   * working binary — built from the generic bundle, with every Bun-native API
+   * and every dependency the bun conditions exist to drop still inside it. A
+   * binary that works is the worst outcome available, because nothing ever
+   * says the wrong slice was taken.
+   */
+  describe("when the build produced no bun slice", () => {
+    const withoutTheBunSlice = async () => {
+      const env = await createTestEnv();
+      await env.fs.rm("/project/dist/index.bun.js");
+      return env;
+    };
+
+    it("fails, naming the slice and the flag that produces it", async ({
+      expect,
+    }) => {
+      const { shell, task } = await withoutTheBunSlice();
+      await expect(task.run(createCtx(shell, bare))).rejects.toThrow(
+        /index\.bun\.js.*--runtime bun/s,
+      );
+    });
+
+    it("never falls back to a node slice that happens to be there", async ({
+      expect,
+    }) => {
+      const { fs, shell, task } = await withoutTheBunSlice();
+      await fs.writeFile("/project/dist/index.node.js", "// the wrong slice");
+
+      await expect(task.run(createCtx(shell, bare))).rejects.toThrow();
+      // Nothing was compiled, and the node slice is untouched.
+      expect(shell.wasCalledMatching(/^bun build/)).toBe(false);
+      expect(await fs.exists("/project/dist/index.node.js")).toBe(true);
+    });
   });
 
   it("compiles for this machine on bare, never for linux-musl", async () => {
@@ -135,7 +174,7 @@ describe("BuildCompileTask", () => {
     const calls = shell.getCallsMatching(/^bun build/);
     expect(calls).toHaveLength(1);
     expect(calls[0].command).toMatch(
-      /^bun build --compile --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=loom index\.js$/,
+      /^bun build --compile --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=loom index\.bun\.js$/,
     );
     expect(calls[0].command).not.toContain("musl");
     expect(calls[0].options.root).toBe("/project/dist");
@@ -148,7 +187,7 @@ describe("BuildCompileTask", () => {
 
     expect(
       shell.wasCalledMatching(
-        /^bun build --compile --target=bun-linux-(x64|arm64)-musl --minify --outfile=loom index\.js$/,
+        /^bun build --compile --target=bun-linux-(x64|arm64)-musl --minify --outfile=loom index\.bun\.js$/,
       ),
     ).toBe(true);
   });
@@ -165,7 +204,7 @@ describe("BuildCompileTask", () => {
 
     expect(
       shell.wasCalled(
-        "bun build --compile --target=bun-linux-x64 --outfile=loom index.js",
+        "bun build --compile --target=bun-linux-x64 --outfile=loom index.bun.js",
       ),
     ).toBe(true);
   });
@@ -175,7 +214,7 @@ describe("BuildCompileTask", () => {
 
     await task.run(createCtx(shell, bare));
 
-    expect(await fs.exists("/project/dist/index.js")).toBe(false);
+    expect(await fs.exists("/project/dist/index.bun.js")).toBe(false);
     expect(await fs.exists("/project/dist/server")).toBe(false);
     expect(await fs.exists("/project/dist/package.json")).toBe(false);
     expect(await fs.exists("/project/dist/public")).toBe(false);

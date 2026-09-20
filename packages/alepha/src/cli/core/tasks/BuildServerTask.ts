@@ -440,7 +440,8 @@ export class BuildServerTask extends BuildTask {
   }
 
   /**
-   * Re-export line appended to `dist/index.js` so the Durable Object class rides
+   * Re-export line appended to the workerd slice's entry wrapper so the
+   * Durable Object class rides
    * out through the app's own (`no_bundle`) server bundle and is reachable from
    * the generated Cloudflare worker entry (`main.cloudflare.js` does
    * `export { AlephaWebSocketDurableObject } from "./index.workerd.js"`).

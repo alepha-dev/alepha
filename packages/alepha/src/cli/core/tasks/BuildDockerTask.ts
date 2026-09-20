@@ -43,7 +43,11 @@ export class BuildDockerTask extends BuildTask {
     }
 
     const distDir = ctx.options.output?.dist ?? "dist";
-    const { runtime } = ctx.options;
+    // The PRIMARY slice. An image runs one process from one entry point, and
+    // the first declared runtime is what the manifest names and what a
+    // deployer spawns — so the image agrees with them by construction rather
+    // than picking for itself.
+    const runtime = this.slices.primary(this.slices.fromOptions(ctx.options));
     const compile = this.resolveCompile(ctx);
 
     const dockerFrom =
@@ -59,7 +63,11 @@ export class BuildDockerTask extends BuildTask {
         const hasDeps = await this.hasRuntimeDeps(ctx.root, distDir);
         await this.writeDockerfile(ctx.root, distDir, {
           compile,
-          standard: { image: dockerFrom, command: dockerCommand },
+          standard: {
+            image: dockerFrom,
+            command: dockerCommand,
+            entry: this.slices.entryFileName(runtime),
+          },
           hasMigrations: migrationsCopied,
           hasDeps,
           install: ctx.options.docker?.install ?? [],
@@ -238,7 +246,7 @@ export class BuildDockerTask extends BuildTask {
     distDir: string,
     opts: {
       compile: ResolvedCompile | null;
-      standard: { image: string; command: string };
+      standard: { image: string; command: string; entry: string };
       hasMigrations: boolean;
       hasDeps: boolean;
       install: string[];
@@ -281,7 +289,7 @@ ${envLines}${volumeLines ? `\n${volumeLines}` : ""}
 ${userLine}ENTRYPOINT ["/app/${opts.compile.name}"]
 `;
     } else {
-      const { image, command } = opts.standard;
+      const { image, command, entry } = opts.standard;
       // The default `DATA_DIR` sits inside `/app`, so a non-root process
       // needs to own what was copied there.
       const chownFlag = this.isRootUser(opts.user)
@@ -313,7 +321,7 @@ COPY${chownFlag} . .
 ${baseInstallLine}${extraInstallLine}${volumePrepLine}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumeLines}` : ""}
-${userLine}CMD ["${command}", "index.js"]
+${userLine}CMD ["${command}", "${entry}"]
 `;
     }
 

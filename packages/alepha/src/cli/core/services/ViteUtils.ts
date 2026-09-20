@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 
 import { $hook, $inject, type Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -366,9 +366,25 @@ export class ViteUtils {
       },
       writeBundle(options) {
         const outDir = options.dir || "";
-        // `dir` is the absolute outDir: test its last segment only, or any
-        // checkout whose path contains "server" silently skipped the manifest.
-        if (basename(outDir) === "server") return;
+        /*
+          Skip the SERVER bundle: the preload manifest belongs beside the
+          client build, which is the only one that can resolve its keys.
+
+          ⚠️ `dir` is the absolute outDir, so the check is on its last
+          segments and never a substring — any checkout whose path contains
+          "server" would otherwise silently skip the manifest.
+
+          Two segments, not one, because the server outDir is `server/<runtime>`
+          now: `basename` alone reads "node" and the guard stops firing, which
+          writes a `.vite/preload-manifest.json` into every slice. Nothing
+          fails; the junk just ships inside the artifact and the image.
+        */
+        if (
+          basename(outDir) === "server" ||
+          basename(dirname(outDir)) === "server"
+        ) {
+          return;
+        }
 
         if (preloadMap.size > 0) {
           const viteDir = join(outDir, ".vite");

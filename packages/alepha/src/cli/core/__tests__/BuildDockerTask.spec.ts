@@ -116,7 +116,7 @@ describe("BuildDockerTask", () => {
   describe("standard mode", () => {
     it("writes a node Dockerfile by default", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       await fs.writeFile(
         "/project/dist/package.json",
         JSON.stringify({ dependencies: {} }),
@@ -140,14 +140,17 @@ describe("BuildDockerTask", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/dist/Dockerfile",
-          /CMD \["node", "index\.js"\]/,
+          // The primary slice's entry wrapper: an image runs one process from
+          // one entry point, and the first declared runtime is what the
+          // manifest names, so the two agree by construction.
+          /CMD \["node", "index\.node\.js"\]/,
         ),
       ).toBe(true);
     });
 
     it("includes `RUN npm install` when dist/package.json has runtime deps", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       await fs.writeFile(
         "/project/dist/package.json",
         JSON.stringify({ dependencies: { lodash: "^4.0.0" } }),
@@ -164,7 +167,7 @@ describe("BuildDockerTask", () => {
 
     it("emits a local install line when build.docker.install is set", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       await fs.writeFile(
         "/project/dist/package.json",
         JSON.stringify({ dependencies: {} }),
@@ -215,7 +218,7 @@ describe("BuildDockerTask", () => {
 
     it("runs as uid 1000 and copies with a matching --chown", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, { target: "docker", runtime: "node" }),
@@ -239,7 +242,7 @@ describe("BuildDockerTask", () => {
 
     it("honors an explicit user, and drops --chown when it is root", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -259,7 +262,7 @@ describe("BuildDockerTask", () => {
 
     it("emits ENV lines after SERVER_HOST so an app override wins", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -280,7 +283,7 @@ describe("BuildDockerTask", () => {
 
     it("escapes ENV values so a space or quote cannot change the meaning", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -304,7 +307,7 @@ describe("BuildDockerTask", () => {
 
     it("creates and chowns a declared volume before its VOLUME line", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -328,7 +331,7 @@ describe("BuildDockerTask", () => {
 
     it("skips the volume chown when running as root", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -365,7 +368,7 @@ describe("BuildDockerTask", () => {
 
     it("names the COPY and the ENTRYPOINT after compile.name", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -381,17 +384,17 @@ describe("BuildDockerTask", () => {
 
     it("leaves compiling to BuildCompileTask, which runs after compression", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(createCtx(fs, shell, compileOptions));
 
       expect(shell.wasCalledMatching(/^bun build/)).toBe(false);
-      expect(await fs.exists("/project/dist/index.js")).toBe(true);
+      expect(await fs.exists("/project/dist/index.node.js")).toBe(true);
     });
 
     it("does not build the image before the binary exists", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(
@@ -407,7 +410,7 @@ describe("BuildDockerTask", () => {
 
     it("writes a distroless Dockerfile without bun install", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       await fs.writeFile(
         "/project/dist/package.json",
         JSON.stringify({ dependencies: {} }),
@@ -437,7 +440,7 @@ describe("BuildDockerTask", () => {
 
     it("takes a custom base image from docker.from", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -453,7 +456,7 @@ describe("BuildDockerTask", () => {
 
     it("omits the migrations COPY line when no migrations directory exists", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(createCtx(fs, shell, compileOptions));
 
@@ -464,7 +467,7 @@ describe("BuildDockerTask", () => {
 
     it("stays root, and says why in the generated file", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(createCtx(fs, shell, compileOptions));
 
@@ -475,7 +478,7 @@ describe("BuildDockerTask", () => {
 
     it("emits ENV and VOLUME, but no chown, when a volume is declared", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -496,7 +499,7 @@ describe("BuildDockerTask", () => {
 
     it("emits USER in compile mode when one is set explicitly", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -512,7 +515,7 @@ describe("BuildDockerTask", () => {
 
     it("includes the migrations COPY line when migrations exist", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       await fs.mkdir("/project/migrations");
       await fs.writeFile("/project/migrations/001.sql", "CREATE TABLE x;");
 
@@ -539,7 +542,7 @@ describe("BuildDockerTask", () => {
 
     const buildWith = async (image: unknown) => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, dockerOptions, { flags: { image } as any }),
@@ -574,7 +577,7 @@ describe("BuildDockerTask", () => {
   describe("OCI labels", () => {
     const buildWithImage = async (image: BuildOptions["docker"]) => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       shell.outputs.set("git rev-parse --short HEAD", "abc1234\n");
 
       await task.run(
@@ -679,7 +682,7 @@ describe("BuildDockerTask", () => {
 
     it("writes the labels into the compile variant too", async () => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
         createCtx(fs, shell, {
@@ -714,7 +717,7 @@ describe("BuildDockerTask", () => {
   describe("the dev.alepha.runtime label", () => {
     const writeDockerfileFor = async (options: BuildOptions) => {
       const { fs, shell, task } = createTestEnv();
-      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
       await task.run(createCtx(fs, shell, options));
       return readDockerfile(fs);
     };
