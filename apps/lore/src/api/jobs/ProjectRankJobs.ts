@@ -76,9 +76,11 @@ export class ProjectRankJobs {
     name: "ranks.seed-missing-presets",
     description:
       "Seeds the Admin, Contributor and Viewer ranks into projects that have none.",
-    // Daily, an hour off `QuestJobs.sendDueReminders` so the two nightly
-    // sweeps do not start together. It fires once with work to do and is two
-    // queries every night after that.
+    // Daily. It used to sit an hour off `QuestJobs.sendDueReminders` so the
+    // two nightly sweeps did not start together; that sweep went hourly on
+    // 2026-09-20, so what this shares `0 3 * * *` with is the framework's own
+    // daily purges. It fires once with work to do and is two queries every
+    // night after that.
     cron: "0 3 * * *",
     handler: async () => {
       // `distinct` takes the COLUMN LIST, not a boolean, and it is also the
