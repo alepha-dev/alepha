@@ -82,6 +82,13 @@ export class ProjectRankJobs {
     // daily purges. It fires once with work to do and is two queries every
     // night after that.
     cron: "0 3 * * *",
+    // A daily tick that fails has otherwise lost a day. With `retry` the
+    // tick writes an outbox row and the sweep picks it up within
+    // `sweepCron`, so a transient database error costs fifteen minutes
+    // rather than until tomorrow. Retention still follows the cron table:
+    // it is keyed on `cron` being declared, not on how the work is
+    // dispatched.
+    retry: { retries: 2 },
     handler: async () => {
       // `distinct` takes the COLUMN LIST, not a boolean, and it is also the
       // projection - so this is one `SELECT DISTINCT scope_id` and never a
