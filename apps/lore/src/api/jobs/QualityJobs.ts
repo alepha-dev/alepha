@@ -46,6 +46,10 @@ export class QualityJobs {
     name: "quality.prune-runs",
     description: "Prunes each project's quality runs down to its limit.",
     cron: "0 3 * * *",
+    // Two minutes, against a trigger measured at 241 ms p99. The loop is
+    // per project and unbounded, so the headroom is for growth; the prune
+    // is idempotent and the next night resumes.
+    timeout: [2, "minutes"],
     // Daily, so a failed tick otherwise waits a day. See
     // `ProjectRankJobs.seedMissingPresetRanks` for the same reasoning.
     retry: { retries: 2 },

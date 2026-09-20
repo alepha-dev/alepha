@@ -80,6 +80,9 @@ export class SigilJobs {
     description:
       "Folds daily unique-visitor hashes older than two days into one count per sigil and traffic kind.",
     cron: "0 * * * *",
+    // Two minutes, bounded further by MAX_DAYS_PER_SWEEP: the collapse is
+    // idempotent, so a sweep that runs out of time resumes next hour.
+    timeout: [2, "minutes"],
     handler: async () => {
       await this.collapseUniques();
     },

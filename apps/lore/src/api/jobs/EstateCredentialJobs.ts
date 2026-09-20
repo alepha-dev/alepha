@@ -76,6 +76,10 @@ export class EstateCredentialJobs {
     description:
       "Pushes one credential re-check per Cloudflare estate, nightly.",
     cron: "0 3 * * *",
+    // One minute: since the split this is one SELECT and one batched
+    // insert, and it contacts nothing. The Cloudflare round-trips live in
+    // estates.recheck-cloudflare-one, which carries its own 30 s.
+    timeout: [60, "seconds"],
     retry: { retries: 2 },
     handler: async () => {
       const rows = await this.estates.findMany({
