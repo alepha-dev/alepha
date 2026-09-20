@@ -74,7 +74,7 @@ describe("Control size and minimal on a select", () => {
     expect(trigger.className).toContain("h-8");
     expect(trigger.className).toContain("text-sm");
     // The bordered box is what `minimal` removes, so it has to be here.
-    expect(trigger.className).toContain("border-input");
+    expect(trigger.className).toContain("border-border");
     expect(trigger.className).not.toContain("border-transparent");
   });
 
@@ -102,7 +102,7 @@ describe("Control size and minimal on a select", () => {
     expect(trigger.className).toContain("bg-transparent");
     expect(trigger.className).toContain("shadow-none");
     // Without it the control is indistinguishable from static text.
-    expect(trigger.className).toContain("hover:bg-muted");
+    expect(trigger.className).toContain("hover:bg-hover");
     // Pulled left by its own padding, so its text aligns with plain rows.
     expect(trigger.className).toContain("-mx-1");
     // What the hover-border rule in `styles.css` skips, so pointing at it

@@ -27,7 +27,7 @@ export const NavPaletteField = (props: NavPaletteFieldProps) => {
       type="button"
       onClick={() => setOpen(true)}
       className={cn(
-        "border-input bg-background text-muted-foreground hover:border-ring/60 hover:text-foreground focus-visible:ring-ring/50 flex h-11 w-full items-center gap-2.5 rounded-lg border px-3.5 text-sm transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
+        "border-border bg-background text-muted-foreground hover:border-border-hover hover:text-foreground focus-visible:ring-ring/50 flex h-11 w-full items-center gap-2.5 rounded-lg border px-3.5 text-sm transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
         props.className,
       )}
     >

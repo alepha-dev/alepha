@@ -102,7 +102,7 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
         <PopoverTrigger
           id={props.id}
           // A FIELD trigger, not a button, and the distinction is load
-          // bearing: `styles.css` gives the `--input-hover` border to a
+          // bearing: `styles.css` gives the `--border-hover` border to a
           // list of `data-slot`s, and this one was not on it, so the date
           // control was the only field in the kit that did not darken its
           // border under the pointer.

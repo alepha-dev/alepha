@@ -785,7 +785,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                         return next;
                       })
                     }
-                    className="border-border hover:bg-muted flex w-full shrink-0 items-center gap-2 border-b px-3 py-1.5 text-left transition-colors"
+                    className="border-border hover:bg-hover flex w-full shrink-0 items-center gap-2 border-b px-3 py-1.5 text-left transition-colors"
                   >
                     <ChevronDown
                       className={`text-muted-foreground size-3.5 shrink-0 transition-transform ${
@@ -918,7 +918,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                               }),
                             )
                           }
-                          className="text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"
+                          className="text-muted-foreground hover:text-foreground hover:bg-hover border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"
                         >
                           <Plus className="size-4" />
                           <span

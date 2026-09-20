@@ -268,7 +268,7 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
                 href={router.path("projectQuest", {
                   params: { shortId: quest.shortId },
                 })}
-                className="hover:bg-muted/50 flex items-center gap-3 py-2 text-sm"
+                className="hover:bg-hover flex items-center gap-3 py-2 text-sm"
               >
                 <span className="text-muted-foreground tabular-nums">
                   {formatReference("quest", quest.shortId)}

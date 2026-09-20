@@ -189,7 +189,7 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
           <PopoverTrigger
             id={meta.id}
             // `date-trigger`, the same slot `ControlDate` claims: `styles.css`
-            // gives the `--input-hover` border to a list of `data-slot`s, and
+            // gives the `--border-hover` border to a list of `data-slot`s, and
             // this is how the two calendars are on it.
             data-slot="date-trigger"
             disabled={props.disabled}

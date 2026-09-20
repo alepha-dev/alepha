@@ -255,7 +255,7 @@ export const Segmented = (props: SegmentedProps) => {
       aria-disabled={disabled || undefined}
       data-slot="segmented"
       className={cn(
-        "border-input bg-muted/40 relative box-border inline-flex items-stretch rounded-md border p-0.5",
+        "border-border bg-muted/40 relative box-border inline-flex items-stretch rounded-md border p-0.5",
         sizeClass[size],
         fullWidth && "flex w-full",
         disabled && "opacity-50",

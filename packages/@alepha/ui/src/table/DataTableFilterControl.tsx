@@ -136,10 +136,10 @@ export const DataTableFilterControl = (props: DataTableFilterControlProps) => {
   return (
     <div
       className={cn(
-        "bg-background border-input flex items-stretch overflow-hidden rounded-md border",
+        "bg-background border-border flex items-stretch overflow-hidden rounded-md border",
         // The field's own two states, moved out to the container: it is the
         // thing with a border now, so it has to answer for them.
-        "hover:border-[var(--input-hover)]",
+        "hover:border-border-hover",
         "has-[:focus-visible]:border-ring has-[:focus-visible]:ring-ring/50 has-[:focus-visible]:ring-[3px]",
         // The control keeps its layout and loses only its frame. Every slot
         // is covered because a text filter draws `input`, a select draws
@@ -195,7 +195,7 @@ export const DataTableFilterControl = (props: DataTableFilterControlProps) => {
               render={
                 <button
                   type="button"
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground flex shrink-0 items-center justify-center px-2 focus-visible:outline-none"
+                  className="text-muted-foreground hover:bg-hover hover:text-foreground flex shrink-0 items-center justify-center px-2 focus-visible:outline-none"
                   aria-label={actionLabel}
                   onClick={action}
                 />

@@ -219,7 +219,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       // slot tracks this row's hover and selected background through it,
       // and a bare group here would also be captured by any `group-*`
       // utility inside the parts nested below.
-      "group/tree-row hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm outline-none select-none",
+      "group/tree-row hover:bg-hover relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm outline-none select-none",
       // ⚠️ Named properties, never `transition-all`. This element is
       // also an HTML5 drag SOURCE that animates `opacity` while dragging
       // and carries the drop markers; a blanket transition puts all

@@ -351,7 +351,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                     data-testid="feedback-show-more"
                     disabled={loadingMore}
                     onClick={() => void loadMoreAction.run()}
-                    className="text-muted-foreground hover:bg-muted hover:text-foreground border-border border-t px-3 py-3 text-sm font-medium transition-colors disabled:opacity-60"
+                    className="text-muted-foreground hover:bg-hover hover:text-foreground border-border border-t px-3 py-3 text-sm font-medium transition-colors disabled:opacity-60"
                   >
                     {loadingMore
                       ? tr("feedback.list.loadingMore")

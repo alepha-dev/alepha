@@ -253,9 +253,9 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             // `Input`'s own metrics, stroke included: h-8, rounded-lg,
-            // border-input, solid, and the same transparent/`input-30`
+            // border-border, solid, and the same transparent/`input-30`
             // surface. Nothing about it is bespoke any more.
-            className="border-input text-muted-foreground hover:border-foreground/40 hover:text-foreground dark:bg-input/30 flex h-8 shrink-0 items-center gap-2 rounded-lg border bg-transparent px-2.5 text-sm transition-colors disabled:opacity-60"
+            className="border-border text-muted-foreground hover:border-border-hover hover:text-foreground dark:bg-input/30 flex h-8 shrink-0 items-center gap-2 rounded-lg border bg-transparent px-2.5 text-sm transition-colors disabled:opacity-60"
           >
             {uploading ? (
               <Loader2 className="size-4 animate-spin" />

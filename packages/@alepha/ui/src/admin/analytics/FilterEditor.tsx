@@ -127,7 +127,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
                       key={dim}
                       type="button"
                       onClick={() => setEditing(dim)}
-                      className="hover:bg-muted/60 focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-md px-2 py-[7px] focus-visible:ring-[3px] focus-visible:outline-none"
+                      className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-md px-2 py-[7px] focus-visible:ring-[3px] focus-visible:outline-none"
                     >
                       <code className="min-w-0 flex-1 text-left text-[12px]">
                         {dim}

@@ -564,7 +564,7 @@ const ModuleToggle = (props: ModuleToggleProps) => {
           ? "border-border opacity-60"
           : props.checked
             ? "border-primary bg-primary/5 ring-primary/30 ring-1"
-            : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
+            : "border-border hover:border-border-hover hover:bg-hover"
       }`}
     >
       <div

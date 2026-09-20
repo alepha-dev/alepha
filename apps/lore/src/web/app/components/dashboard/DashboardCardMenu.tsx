@@ -45,7 +45,7 @@ const DashboardCardMenu = (props: DashboardCardMenuProps) => {
         // Size (Minimum) asks for 24x24 CSS px and this missed by two in each
         // direction - reachable with a mouse, awkward with a thumb. The glyph
         // stays `size-3.5`, so only the hover chip grows, by one pixel a side.
-        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
+        className="text-muted-foreground/70 hover:bg-hover hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
       >
         <MoreVertical className="size-3.5" />
       </DropdownMenuTrigger>

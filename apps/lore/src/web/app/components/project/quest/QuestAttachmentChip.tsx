@@ -35,7 +35,7 @@ const QuestAttachmentChip = (props: QuestAttachmentChipProps) => (
       type="button"
       onClick={() => props.onOpen?.(props.fileId)}
       title={props.name}
-      className="bg-muted/60 hover:bg-muted flex h-8 max-w-[220px] items-center gap-2 rounded-lg px-2.5 text-sm transition-colors"
+      className="bg-muted/60 hover:bg-hover flex h-8 max-w-[220px] items-center gap-2 rounded-lg px-2.5 text-sm transition-colors"
     >
       <span className="text-muted-foreground shrink-0">
         {props.isImage ? (

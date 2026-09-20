@@ -61,7 +61,7 @@ export const AdminParametersHistoryPane = (
           title={tr("admin.parameters.historyCollapse", {
             default: "Hide history",
           })}
-          className="text-muted-foreground hover:text-foreground hover:bg-accent ml-auto hidden size-6.5 items-center justify-center rounded-md transition-colors lg:flex"
+          className="text-muted-foreground hover:text-foreground hover:bg-hover ml-auto hidden size-6.5 items-center justify-center rounded-md transition-colors lg:flex"
         >
           <PanelRightClose className="size-3.5" />
         </button>

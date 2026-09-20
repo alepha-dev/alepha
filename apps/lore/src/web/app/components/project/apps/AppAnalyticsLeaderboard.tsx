@@ -93,7 +93,7 @@ const AppAnalyticsLeaderboard = (props: AppAnalyticsLeaderboardProps) => {
           <button
             key={row.value}
             type="button"
-            className="hover:bg-muted/50 -mx-2 flex flex-col gap-1 rounded px-2 py-1 text-left transition-colors"
+            className="hover:bg-hover -mx-2 flex flex-col gap-1 rounded px-2 py-1 text-left transition-colors"
             onClick={() => onPick(segment.dimension, row.value)}
           >
             <div className="flex items-center justify-between gap-2 text-sm">

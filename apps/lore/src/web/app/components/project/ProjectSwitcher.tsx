@@ -62,14 +62,14 @@ const ProjectSwitcher = () => {
             data-testid="project-switcher"
             render={
               // A Control field's border (feedback #P2179): `--input` at
-              // rest, `--input-hover` under the pointer, kept while the menu
+              // rest, `--border-hover` under the pointer, kept while the menu
               // is open. `border-color` joins the button's own
               // width/height/padding transition rather than replacing it, so
               // the collapse animation is untouched and the border eases on
               // the default curve a field's `transition-colors` uses.
               <SidebarMenuButton
                 size="lg"
-                className="border-input bg-background text-foreground hover:bg-background hover:text-foreground data-[state=open]:bg-background data-[state=open]:text-foreground border transition-[width,height,padding,border-color] hover:border-[color:var(--input-hover)]"
+                className="border-border bg-background text-foreground hover:bg-background hover:text-foreground data-[state=open]:bg-background data-[state=open]:text-foreground hover:border-border-hover border transition-[width,height,padding,border-color]"
               />
             }
           >

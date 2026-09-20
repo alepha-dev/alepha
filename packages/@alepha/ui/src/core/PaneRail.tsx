@@ -51,7 +51,7 @@ export const PaneRail = (props: PaneRailProps) => {
         onClick={props.onExpand}
         aria-label={props.label}
         title={props.label}
-        className="text-muted-foreground hover:text-foreground hover:bg-accent flex size-7 items-center justify-center rounded-md transition-colors"
+        className="text-muted-foreground hover:text-foreground hover:bg-hover flex size-7 items-center justify-center rounded-md transition-colors"
       >
         <Icon className="size-4" />
       </button>

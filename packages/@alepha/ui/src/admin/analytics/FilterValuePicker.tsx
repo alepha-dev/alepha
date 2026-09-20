@@ -89,7 +89,7 @@ export const FilterValuePicker = (props: FilterValuePickerProps) => {
               type="button"
               aria-pressed={on}
               onClick={() => toggle(entry.value)}
-              className="hover:bg-muted/60 focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-md px-2 py-1.5 focus-visible:ring-[3px] focus-visible:outline-none"
+              className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-md px-2 py-1.5 focus-visible:ring-[3px] focus-visible:outline-none"
             >
               <span
                 className={cn(
@@ -115,7 +115,7 @@ export const FilterValuePicker = (props: FilterValuePickerProps) => {
               toggle(typed);
               setSearch("");
             }}
-            className="bg-muted/40 hover:bg-muted text-muted-foreground focus-visible:ring-ring/50 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 focus-visible:ring-[3px] focus-visible:outline-none"
+            className="bg-muted/40 hover:bg-hover text-muted-foreground focus-visible:ring-ring/50 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 focus-visible:ring-[3px] focus-visible:outline-none"
           >
             <Plus className="size-[11px]" />
             <code className="text-[12px]">use "{typed}"</code>

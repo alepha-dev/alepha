@@ -180,7 +180,7 @@ export const CommandInput = (props: CommandInputProps) => {
   const { className, ...inputProps } = props;
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="border-input/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
+      <InputGroup className="border-border/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
         <AutocompletePrimitive.Input
           data-slot="command-input"
           className={cn(

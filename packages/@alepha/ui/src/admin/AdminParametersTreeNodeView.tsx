@@ -38,7 +38,7 @@ export const AdminParametersTreeNodeView = (
           onClick={() => props.onSelect(node.path)}
           style={{ paddingLeft: 8 + indent }}
           className={cn(
-            "hover:bg-accent flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors",
+            "hover:bg-hover flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors",
             isActive && "bg-accent text-accent-foreground font-medium",
             orphan && "text-muted-foreground",
           )}
@@ -78,7 +78,7 @@ export const AdminParametersTreeNodeView = (
         type="button"
         onClick={() => setOpen((v) => !v)}
         style={{ paddingLeft: 4 + indent }}
-        className="hover:bg-accent text-muted-foreground flex items-center gap-1 rounded-md py-1.5 pr-2 text-left text-xs font-medium transition-colors"
+        className="hover:bg-hover text-muted-foreground flex items-center gap-1 rounded-md py-1.5 pr-2 text-left text-xs font-medium transition-colors"
       >
         <ChevronRight
           className={cn("size-3.5 transition-transform", open && "rotate-90")}

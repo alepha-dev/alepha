@@ -170,7 +170,7 @@ export const SettingsNav = (props: SettingsNavProps) => {
                       // that CSS keys off `[data-slot="sidebar-menu-button"]`,
                       // which this rail deliberately is not (see above).
                       "bg-sidebar-accent text-sidebar-accent-foreground after:bg-sidebar-primary relative font-medium after:absolute after:top-1 after:bottom-1 after:left-0 after:w-[3px] after:rounded-full"
-                    : "text-muted-foreground hover:bg-muted/60",
+                    : "text-muted-foreground hover:bg-hover",
                 )}
               >
                 {item.icon}

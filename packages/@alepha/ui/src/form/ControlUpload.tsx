@@ -286,7 +286,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
     return (
       <div
         key={id}
-        className={`border-input dark:bg-input/30 relative flex h-9 cursor-zoom-in items-center rounded-md border bg-transparent pl-1 ${canClear ? "pr-9" : "pr-2"}`}
+        className={`border-border dark:bg-input/30 relative flex h-9 cursor-zoom-in items-center rounded-md border bg-transparent pl-1 ${canClear ? "pr-9" : "pr-2"}`}
         onClick={() => setPreviewId(id)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {

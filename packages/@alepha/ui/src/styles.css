@@ -105,6 +105,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-hover: var(--hover);
+  --color-hover-weak: var(--hover-weak);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -169,12 +172,41 @@
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
+  /*
+   * ⚠️ **The one border colour of the whole kit.** Every border, rule,
+   * divider and hairline resolves to this, through `border-border` /
+   * `bg-border` or through the two aliases below. A component that needs a
+   * line and reaches for anything else is the bug this note exists to stop.
+   *
+   * Two values and no more: this one and the `.dark` one. A theme may retint
+   * both, and nothing else may define a border colour of its own.
+   *
+   * It was `#e6e6e6` and went one step darker: at 9% off white a rule read
+   * as a smudge on a white page, and the grid this palette now draws wants
+   * its lines to be lines.
+   */
+  --border: #d9d9d9;
+  /*
+   * ⚠️ NOT a border. This is the FILL a field takes (`bg-input/30` in dark,
+   * where a transparent input would disappear into the page). It kept its
+   * name because 33 call sites paint with it; a field's BORDER is
+   * `--border`, like everything else.
+   */
   --input: oklch(0.922 0 0);
   /*
-   * The border a field takes on hover.
+   * The border ANY bordered surface takes on hover.
    *
-   * Defined ONCE, and only here, because it is relative: the field's own
+   * ⚠️ **Derived, never a value of its own**: `--border` pulled 20% toward
+   * the text colour. So it darkens in light and brightens in dark, it
+   * follows every theme's own `--border` for free, and a component that
+   * wants the hover line writes `hover:border-border-hover` instead of
+   * inventing `hover:border-muted-foreground/40`, which is what five of them
+   * used to do, each a different guess.
+   *
+   * One declaration serves both modes: `.dark` sits on the same element as
+   * `:root`, so the substitution reads whichever `--border` won there.
+   *
+   * Defined ONCE, and only here, because it is relative: the surface's own
    * border pulled 20% toward the text colour. `--foreground` is near-black in
    * light and near-white in dark, so the same expression darkens the border in
    * one mode and lightens it in the other, with no `.dark` counterpart to keep
@@ -187,7 +219,51 @@
    * mode ships `oklch(1 0 0 / 15%)`) the mix raises the alpha too, which is
    * the same direction: a hovered field reads as more present, not less.
    */
-  --input-hover: color-mix(in oklab, var(--input), var(--foreground) 20%);
+  --border-hover: color-mix(in oklab, var(--border), var(--foreground) 20%);
+  /*
+   * ⚠️ **The one hover fill of the whole kit**, for anything a pointer can
+   * act on: a row, a ghost button, a menu item, a segmented option, a
+   * sidebar entry. `hover:bg-hover`, and nothing else. Components used to
+   * pick between `bg-muted`, `bg-accent`, `bg-sidebar-accent` and five
+   * opacities of each, and the interaction layer below then redirected most
+   * of them to `--state-layer` by selector - so the fill was already one
+   * colour in practice, reached by a dozen spellings that each looked like a
+   * choice.
+   *
+   * It IS `--state-layer`, named for what a component wants. The wash and
+   * the reasoning behind it are documented there; the short version is that
+   * a translucent fill composites over whatever is under it, so a hover is
+   * the same weight on the page, on a `bg-muted` toolbar and in every theme,
+   * and can never vanish by matching its own surface.
+   *
+   * One declaration for both modes: `--state-layer` has its own light and
+   * dark values, and `.dark` sits on the same element as `:root`.
+   *
+   * ⚠️ Base UI moves focus on hover, so a menu's `focus:bg-hover` is this
+   * same affordance and reads from here too. An INVERTED surface (the bulk
+   * bar, dark in both modes) keeps its own `white/10`: a wash of the page's
+   * foreground would be a dark smudge on it.
+   *
+   * ⚠️ **An element with a `dark:bg-*` fill needs `dark:hover:bg-hover` as
+   * well**, and this cost a round: a `dark:` utility outranks a bare
+   * `hover:` one, so the outline button's `dark:bg-input/30` and the minimal
+   * trigger's `dark:bg-transparent` painted straight over the hover and the
+   * control looked dead in dark - exactly what the `dark:hover:bg-input/50`
+   * those classes used to carry was for. Same token either way; the variant
+   * is only there to win the cascade.
+   */
+  --hover: var(--state-layer);
+  /*
+   * The same wash at half weight, for a surface where the full one is too
+   * loud: a table ROW, which is wide, striped by its own borders and hovered
+   * constantly as the pointer crosses a list. A control is a small target
+   * and wants the strong step; a row spanning the page does not.
+   *
+   * `hover:bg-hover-weak`, and it is the ONLY exception to `--hover`. A new
+   * one is a decision, not a preference - two weights are a system, five are
+   * the dozen spellings this replaced.
+   */
+  --hover-weak: var(--state-layer-weak);
   --ring: oklch(0.708 0 0);
   /*
    * The bevel: a 1px inset line laid along the TOP edge of a chrome surface,
@@ -220,7 +296,8 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
+  /* The same line as everywhere else; see `--border`. */
+  --sidebar-border: var(--border);
   --sidebar-ring: oklch(0.708 0 0);
 }
 
@@ -241,7 +318,19 @@
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
+  /*
+   * The dark half of the kit's one border colour; see `:root`.
+   *
+   * ⚠️ 15%, not the 10% the stock palette carries, and the difference is a
+   * control's edge. A rule on the page is 10% of white over near-black and
+   * reads easily; a FIELD's edge sits on the field's own `dark:bg-input/30`
+   * wash, which is already lighter than the panel around it, so the same
+   * 10% is a 5% step and vanishes. 15% is what `--input` used to carry for
+   * exactly this reason, and folding the two tokens into one took it away
+   * until this line put it back.
+   */
+  --border: oklch(1 0 0 / 15%);
+  /* The field FILL in dark, not a border; see `:root`. */
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --bevel: oklch(0 0 0 / 30%);
@@ -256,7 +345,7 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.308 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: var(--border);
   --sidebar-ring: oklch(0.556 0 0);
 }
 
@@ -437,20 +526,17 @@
  * tokens cannot do that. The cost is that the fractional list below is
  * enumerated rather than wildcarded — a fraction nobody listed keeps today's
  * behaviour, which is a no-op, not a wrong result. */
-:is(
-  [class~="hover:bg-muted"]:hover,
-  [class~="focus:bg-muted"]:focus,
-  [class~="aria-expanded:bg-muted"][aria-expanded="true"]
-) {
+/* ⚠️ The `hover:` and `focus:` entries this list used to carry are GONE, and
+ * nothing replaced them: every hover and every menu highlight writes
+ * `bg-hover` now, which is `--state-layer` by name instead of by redirect.
+ * What is left is the states a pointer does not produce - a trigger held
+ * open, a segmented option that is the current one - which still spell
+ * themselves `bg-muted/50` and still need the wash. */
+:is([class~="aria-expanded:bg-muted"][aria-expanded="true"]) {
   background-color: var(--state-layer);
 }
 
 :is(
-  [class~="hover:bg-muted/30"]:hover,
-  [class~="hover:bg-muted/40"]:hover,
-  [class~="hover:bg-muted/50"]:hover,
-  [class~="hover:bg-muted/60"]:hover,
-  [class~="hover:bg-muted/70"]:hover,
   [class~="data-open:bg-muted/50"][data-open],
   [class~="data-active:bg-muted/50"][data-active],
   [class~="data-popup-open:bg-muted/50"][data-popup-open],
@@ -579,7 +665,7 @@
  * rather than patched into each primitive: one rule instead of a class per
  * primitive. Same reasoning as the cursor rules above.
  *
- * Unlayered, because `border-input` is a utility and `@layer base` loses to
+ * Unlayered, because `border-border` is a utility and `@layer base` loses to
  * it. All six slots carry `transition-colors` already, so the change eases in
  * and out on its own; `combobox-trigger` and `date-trigger` get both the
  * border and the transition from `control-base/field-trigger`, which is the
@@ -630,7 +716,7 @@
     :has(:disabled),
     :has([aria-invalid="true"])
   ) {
-  border-color: var(--input-hover);
+  border-color: var(--border-hover);
 }
 
 /* The one that genuinely takes `focus-within:border-ring`. */
@@ -641,7 +727,7 @@
     :has(:disabled),
     :has([aria-invalid="true"])
   ) {
-  border-color: var(--input-hover);
+  border-color: var(--border-hover);
 }
 
 /*
@@ -665,5 +751,5 @@
     [data-disabled],
     [aria-invalid="true"]
   ) {
-  border-color: var(--input-hover);
+  border-color: var(--border-hover);
 }

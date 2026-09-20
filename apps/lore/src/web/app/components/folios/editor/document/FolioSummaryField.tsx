@@ -34,7 +34,7 @@ const MAX_LENGTH = 500;
 const FolioSummaryField = (props: FolioSummaryFieldProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   return (
-    <div className="border-border hover:border-muted-foreground/40 mt-4 flex items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors">
+    <div className="border-border hover:border-border-hover mt-4 flex items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors">
       <Sparkles className="text-muted-foreground mt-0.5 size-3.5 flex-none" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -58,7 +58,7 @@ const FolioSummaryField = (props: FolioSummaryFieldProps): ReactElement => {
           placeholder={tr("folios.editor.summary.placeholder")}
           aria-label={tr("folios.editor.summary.label")}
           className={cn(
-            "focus:bg-muted mt-0.5 w-full resize-none border-0 bg-transparent px-1 py-0.5 text-sm leading-relaxed outline-none",
+            "focus:bg-hover mt-0.5 w-full resize-none border-0 bg-transparent px-1 py-0.5 text-sm leading-relaxed outline-none",
             props.unavailable && "text-muted-foreground",
           )}
         />

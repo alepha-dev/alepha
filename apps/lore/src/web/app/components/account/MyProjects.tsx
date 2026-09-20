@@ -100,7 +100,7 @@ const MyProjects = () => {
                     params: { projectSlug: project.slug },
                   })}
                   data-testid="account-project-row"
-                  className="hover:bg-accent/50 flex items-center gap-3 px-4 py-3 transition-colors"
+                  className="hover:bg-hover flex items-center gap-3 px-4 py-3 transition-colors"
                 >
                   <ProjectIcon
                     fileId={project.icon}

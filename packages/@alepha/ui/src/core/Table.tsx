@@ -73,7 +73,11 @@ const TableRow = (props: TableRowProps) => {
     <tr
       data-slot="table-row"
       className={cn(
-        "hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+        // ⚠️ `bg-hover-weak`, not `bg-hover`: a row is the width of the table and
+        // passes under the pointer on the way to anything else, so the full
+        // state layer reads as a flash across the page. Every other clickable
+        // surface uses `bg-hover`; this is the documented exception.
+        "hover:bg-hover-weak has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
         className,
       )}
       {...rest}

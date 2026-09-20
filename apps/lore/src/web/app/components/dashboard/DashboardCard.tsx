@@ -152,15 +152,15 @@ const DashboardCard = (props: DashboardCardProps) => {
       onDrop={props.onDrop}
       onDragEnd={props.onDragEnd}
       style={{ gridColumn: `span ${props.card.size}` }}
-      // The edge is a Control field's (feedback #P2179): `--input` at rest,
-      // `--input-hover` under the pointer, eased on the same default duration
-      // and curve as a field's `transition-colors`. Read from the tokens, never
-      // restated, and drawn as an inset shadow because drag-over swaps it for
-      // the 2px primary ring - which is why hover is off while `over`, so the
-      // ring always wins.
+      // The edge is the kit's one border (feedback #P2179): `--border` at
+      // rest, `--border-hover` under the pointer, eased on the same default
+      // duration and curve as a field's `transition-colors`. Read from the
+      // tokens, never restated, and drawn as an inset shadow because
+      // drag-over swaps it for the 2px primary ring - which is why hover is
+      // off while `over`, so the ring always wins.
       className={cn(
-        "bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--input)] transition-shadow",
-        !props.over && "hover:shadow-[inset_0_0_0_1px_var(--input-hover)]",
+        "bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow",
+        !props.over && "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
         props.dragging && "opacity-45",
         props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
       )}

@@ -72,7 +72,7 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
               {props.folios.map((folio) => (
                 <li
                   key={folio.id}
-                  className="hover:bg-muted/40 flex items-center justify-between gap-2 rounded px-2 py-1"
+                  className="hover:bg-hover flex items-center justify-between gap-2 rounded px-2 py-1"
                 >
                   <Link
                     href={router.path("projectFoliosFolio", {

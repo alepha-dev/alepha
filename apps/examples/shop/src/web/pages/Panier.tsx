@@ -73,7 +73,7 @@ const Panier = () => {
                         if (!Number.isInteger(quantity) || quantity < 1) return;
                         void definirQuantite(line.productId, quantity);
                       }}
-                      className="border-input bg-background w-14 border px-2 py-1 text-center"
+                      className="border-border bg-background w-14 border px-2 py-1 text-center"
                       aria-label={tr("cart.quantityFor", { args: [line.name] })}
                     />
                   </label>

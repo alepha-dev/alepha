@@ -38,7 +38,7 @@ const ReleaseQuestRow = (props: ReleaseQuestRowProps) => {
       href={router.path("projectQuest", {
         params: { shortId: String(quest.shortId) },
       })}
-      className="hover:bg-accent/40 flex items-center gap-3 rounded-md px-2 py-1.5 text-[13px] transition-colors"
+      className="hover:bg-hover flex items-center gap-3 rounded-md px-2 py-1.5 text-[13px] transition-colors"
     >
       <Icon
         className={cn("size-[14px] shrink-0", BUCKET_ICON_CLASS[bucket])}

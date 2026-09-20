@@ -34,7 +34,7 @@ const Home = () => {
           href="https://alepha.dev/changelog?scope=ui"
           target="_blank"
           rel="noreferrer"
-          className="text-muted-foreground hover:border-ring/60 hover:text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-2.5 rounded-full border px-3 py-1 text-xs transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
+          className="text-muted-foreground hover:border-border-hover hover:text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-2.5 rounded-full border px-3 py-1 text-xs transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
         >
           {/*
             The build stamp, not an announcement: it names the version every

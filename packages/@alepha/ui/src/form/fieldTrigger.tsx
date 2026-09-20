@@ -92,7 +92,7 @@ export const TRIGGER_SIZES: Record<
  * empty, and whatever width the surface wants.
  */
 export const TRIGGER_CLASSES =
-  "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between rounded-lg border bg-transparent whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50";
+  "border-border focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-hover flex w-full items-center justify-between rounded-lg border bg-transparent whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * The bordered box, or nothing at all.
@@ -102,7 +102,7 @@ export const TRIGGER_CLASSES =
  * it. The hover tint is what keeps it discoverable as a control.
  */
 export const TRIGGER_MINIMAL_CLASSES =
-  "-mx-1 border-transparent bg-transparent shadow-none hover:bg-muted dark:bg-transparent dark:hover:bg-input/50";
+  "-mx-1 border-transparent bg-transparent shadow-none hover:bg-hover dark:bg-transparent dark:hover:bg-hover";
 
 /**
  * The box a control draws its trigger and its clear `x` in.

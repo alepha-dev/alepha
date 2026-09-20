@@ -190,7 +190,7 @@ const KanbanCard = (props: KanbanCardProps) => {
         // badge row, and a vertically centred priority badge floats in the
         // middle of a tall card instead of reading as its header.
         data-aging={props.aging ?? "fresh"}
-        className={`group border-border bg-card hover:bg-muted flex w-full items-start gap-2 overflow-hidden rounded-md border px-2 py-1.5 text-left shadow-sm transition-colors ${cursorClass} ${AGING_EDGE[props.aging ?? "fresh"]}`}
+        className={`group border-border bg-card hover:bg-hover flex w-full items-start gap-2 overflow-hidden rounded-md border px-2 py-1.5 text-left shadow-sm transition-colors ${cursorClass} ${AGING_EDGE[props.aging ?? "fresh"]}`}
       >
         <div className="flex flex-1 flex-col overflow-hidden">
           <span

@@ -19,7 +19,7 @@ export const AdminBrand = () => {
         type="button"
         onClick={() => router.push("home")}
         aria-label="Back to home"
-        className="text-muted-foreground hover:bg-accent hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+        className="text-muted-foreground hover:bg-hover hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>

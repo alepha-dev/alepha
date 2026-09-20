@@ -146,7 +146,7 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   // with.
   const frame = bare
     ? ""
-    : "border-input dark:bg-input/30 rounded-lg border bg-transparent p-3";
+    : "border-border dark:bg-input/30 rounded-lg border bg-transparent p-3";
 
   if (props.mode === "edit") {
     return (

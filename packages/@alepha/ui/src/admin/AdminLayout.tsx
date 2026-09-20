@@ -69,7 +69,7 @@ export const AdminLayout = () => {
             <button
               type="button"
               onClick={() => setSpotlightOpen(true)}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground hidden h-8 items-center gap-2 rounded-md border px-2 text-sm transition-colors sm:flex"
+              className="text-muted-foreground hover:bg-hover hover:text-foreground hidden h-8 items-center gap-2 rounded-md border px-2 text-sm transition-colors sm:flex"
             >
               <Search className="size-4 shrink-0" />
               <span>{tr("nav.spotlight.search", { default: "Search…" })}</span>

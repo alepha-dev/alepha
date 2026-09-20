@@ -85,7 +85,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
       <DropdownMenuTrigger
         disabled={pending || users.length === 0 || !questApi.assignQuest.can()}
         data-testid="quest-assignee-picker"
-        className="hover:bg-muted -mx-1 inline-flex items-center gap-1.5 rounded px-1 py-0.5 disabled:opacity-60"
+        className="hover:bg-hover -mx-1 inline-flex items-center gap-1.5 rounded px-1 py-0.5 disabled:opacity-60"
       >
         {quest.acceptedBy ? (
           <UserAvatar

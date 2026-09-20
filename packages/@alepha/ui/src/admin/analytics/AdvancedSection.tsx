@@ -74,7 +74,7 @@ export const AdvancedSection = (props: AdvancedSectionProps) => {
         type="button"
         aria-expanded={expanded}
         onClick={() => setOpen((current) => !current)}
-        className="hover:bg-muted/40 focus-visible:ring-ring/50 -mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-md px-2 py-[7px] text-left focus-visible:ring-[3px] focus-visible:outline-none"
+        className="hover:bg-hover focus-visible:ring-ring/50 -mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-md px-2 py-[7px] text-left focus-visible:ring-[3px] focus-visible:outline-none"
       >
         <Caret className="text-muted-foreground size-3.5 flex-none" />
         <span className="min-w-0 flex-1">

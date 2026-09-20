@@ -55,7 +55,7 @@ const KanbanColumnMenu = (props: KanbanColumnMenuProps) => {
             // note there. The audit that found this (#1743) measured a board
             // with no editable column, so it only reported the sibling; this
             // trigger carried the identical 14x14 target in the same row.
-            className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50"
+            className="text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50"
           />
         }
       >
@@ -91,7 +91,7 @@ const KanbanColumnMenu = (props: KanbanColumnMenuProps) => {
                 // separate "default" entry in the list.
                 props.onColor(props.color === color ? undefined : color)
               }
-              className="hover:bg-muted flex size-7 items-center justify-center rounded"
+              className="hover:bg-hover flex size-7 items-center justify-center rounded"
             >
               <span
                 className={`flex size-4 items-center justify-center rounded-full ${AREA_DOT_CLASS[color]}`}

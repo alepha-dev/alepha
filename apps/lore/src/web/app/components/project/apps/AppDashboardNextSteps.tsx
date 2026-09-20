@@ -86,7 +86,7 @@ const AppDashboardNextSteps = () => {
           <Link
             key={step.key}
             href={settingsHref}
-            className="hover:bg-muted/60 -mx-2 flex items-start gap-3 rounded-md px-2 py-2 transition-colors"
+            className="hover:bg-hover -mx-2 flex items-start gap-3 rounded-md px-2 py-2 transition-colors"
           >
             <step.icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
             <span className="flex flex-col gap-0.5">

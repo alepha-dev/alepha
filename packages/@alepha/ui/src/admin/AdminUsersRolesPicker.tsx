@@ -95,7 +95,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
                 className={
                   disabled
                     ? "flex cursor-not-allowed items-center gap-2 rounded-sm px-2 py-1.5 text-sm opacity-60"
-                    : "hover:bg-accent hover:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
+                    : "hover:bg-hover hover:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
                 }
               >
                 <Checkbox

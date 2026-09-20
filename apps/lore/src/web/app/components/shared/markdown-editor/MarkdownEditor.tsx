@@ -59,7 +59,7 @@ const MarkdownEditor = (props: MarkdownEditorProps) => {
         className={
           props.variant === "bare"
             ? "lore-md-view min-h-64"
-            : "lore-md-view border-input dark:bg-input/30 min-h-64 rounded-lg border bg-transparent p-3"
+            : "lore-md-view border-border dark:bg-input/30 min-h-64 rounded-lg border bg-transparent p-3"
         }
         style={props.minHeight ? { minHeight: props.minHeight } : undefined}
       />

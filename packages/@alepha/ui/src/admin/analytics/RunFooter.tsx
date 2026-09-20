@@ -66,7 +66,7 @@ export const RunFooter = (props: RunFooterProps) => {
               close();
               props.onRequest();
             }}
-            className="hover:bg-muted focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
+            className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
           >
             <Braces className="text-muted-foreground size-3.5" />
             {tr("admin.analytics.requestItem", { default: "Request…" })}
@@ -78,7 +78,7 @@ export const RunFooter = (props: RunFooterProps) => {
               close();
               props.onReset();
             }}
-            className="hover:bg-muted focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
+            className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
           >
             <RotateCcw className="text-muted-foreground size-3.5" />
             {tr("admin.analytics.resetItem", { default: "Reset query" })}

@@ -56,7 +56,7 @@ export const AutoFormErrorPopover = (props: AutoFormErrorPopoverProps) => {
               <button
                 type="button"
                 onClick={() => focusError(it.path, props.form.id)}
-                className="hover:bg-accent w-full rounded px-2 py-1 text-left text-xs"
+                className="hover:bg-hover w-full rounded px-2 py-1 text-left text-xs"
               >
                 <span className="font-medium">
                   {it.path || tr("autoForm.formLabel", { default: "Form" })}
