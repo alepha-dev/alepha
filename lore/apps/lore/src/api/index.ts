@@ -57,6 +57,7 @@ import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+import { ActivityBackfillJob } from "./jobs/ActivityBackfillJob.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
@@ -254,6 +255,12 @@ export const LoreApi = $module({
     SigilJobs,
     ProjectRankJobs,
     QualityJobs,
+    // The one-shot fill of `project_activity` from the audit log (#E65). A
+    // cron rather than an endpoint because both ends of it - D1 and Analytics
+    // Engine - exist only inside the deployed Worker; a row in
+    // `analytics_backfills` is what makes "once" true. Deletable, with its
+    // row, once it has run on production.
+    ActivityBackfillJob,
     EstateCommandJobs,
     EstateCredentialJobs,
     UserDeletionHook,
