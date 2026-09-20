@@ -316,7 +316,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                           shortId: String(q.shortId),
                         },
                       })}
-                      className="bg-muted/30 hover:bg-muted/60 border-border flex items-center gap-2 rounded border px-3 py-2 text-sm"
+                      className="bg-muted/30 hover:bg-hover border-border flex items-center gap-2 rounded border px-3 py-2 text-sm"
                       data-testid={`linked-quest-${q.id}`}
                     >
                       {/* The quest's typed reference, not the

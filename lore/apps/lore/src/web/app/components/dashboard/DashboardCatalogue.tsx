@@ -251,7 +251,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
               type="button"
               aria-label={tr("dashboard.catalogue.back")}
               onClick={() => setPicked(undefined)}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 items-center justify-center rounded-md transition-colors"
+              className="text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-6 items-center justify-center rounded-md transition-colors"
             >
               <ArrowLeft className="size-3.5" />
             </button>
@@ -265,7 +265,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
           <DrawerClose
             aria-label={tr("dashboard.catalogue.close")}
             data-testid="dashboard-catalogue-close"
-            className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 items-center justify-center rounded-[7px] transition-colors"
+            className="text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-6 items-center justify-center rounded-[7px] transition-colors"
           >
             <X className="size-3.5" />
           </DrawerClose>

@@ -264,7 +264,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
           {attachments.map((attachment) => (
             <li
               key={attachment.id}
-              className="hover:bg-accent/50 group flex items-center gap-2 px-3 py-1.5"
+              className="hover:bg-hover group flex items-center gap-2 px-3 py-1.5"
             >
               {attachment.mimeType.startsWith("image/") ? (
                 <img

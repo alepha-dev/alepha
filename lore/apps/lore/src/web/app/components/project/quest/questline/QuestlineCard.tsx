@@ -172,12 +172,11 @@ const STATE_ICON: Record<
 };
 
 const STATE_CARD: Record<QuestlineState, string> = {
-  done: "bg-card border-border hover:bg-accent/40",
-  running: "bg-card border-amber-500/30 hover:bg-accent/40",
-  ready: "bg-card border-border ring-1 ring-primary/45 hover:bg-accent/40",
-  waiting: "bg-card/40 border-border border-dashed hover:bg-accent/30",
-  shelved:
-    "bg-card/30 border-border border-dashed opacity-70 hover:bg-accent/20",
+  done: "bg-card border-border hover:bg-hover",
+  running: "bg-card border-amber-500/30 hover:bg-hover",
+  ready: "bg-card border-border ring-1 ring-primary/45 hover:bg-hover",
+  waiting: "bg-card/40 border-border border-dashed hover:bg-hover",
+  shelved: "bg-card/30 border-border border-dashed opacity-70 hover:bg-hover",
 };
 
 const STATE_BAND: Record<QuestlineState, string> = {

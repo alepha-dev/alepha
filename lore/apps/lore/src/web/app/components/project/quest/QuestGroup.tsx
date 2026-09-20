@@ -50,7 +50,7 @@ const QuestGroup = (props: QuestGroupProps) => {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="group/group hover:bg-muted/40 focus-visible:ring-ring/50 -mx-1 flex items-center gap-2 rounded px-2 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        className="group/group hover:bg-hover focus-visible:ring-ring/50 -mx-1 flex items-center gap-2 rounded px-2 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
         aria-expanded={isExpanded}
       >
         <span className="truncate text-sm font-bold">{props.name}</span>

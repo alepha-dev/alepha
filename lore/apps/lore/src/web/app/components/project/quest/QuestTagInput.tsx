@@ -129,7 +129,7 @@ const QuestTagInput = (props: QuestTagInputProps) => {
               type="button"
               disabled={props.disabled}
               onClick={() => commit(tag)}
-              className="bg-muted hover:bg-muted/70 rounded-sm border px-1.5 py-0.5 font-mono text-xs"
+              className="bg-muted hover:bg-hover rounded-sm border px-1.5 py-0.5 font-mono text-xs"
             >
               {tag}
             </button>

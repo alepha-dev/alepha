@@ -189,7 +189,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
                         target="_blank"
                         rel="noreferrer"
                         title={`${file.name} (${Math.round(file.size / 1024)} KB)`}
-                        className="border-border hover:bg-accent flex items-center gap-2 rounded-md border p-1.5 text-sm"
+                        className="border-border hover:bg-hover flex items-center gap-2 rounded-md border p-1.5 text-sm"
                       >
                         {file.mimeType?.startsWith("image/") ? (
                           // The thumbnail IS the identifying detail for a

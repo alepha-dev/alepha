@@ -229,7 +229,7 @@ const ProjectSettingsEstatesAddDialog = (
                 key={item.id}
                 data-testid="estate-pick"
                 className={cn(
-                  "hover:bg-muted/60 flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                  "hover:bg-hover flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors",
                   selected === item.id && "border-primary bg-muted",
                 )}
                 onClick={() => setSelected(item.id)}

@@ -154,7 +154,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
         data-collapsed="true"
         aria-label={descriptor.label}
         onClick={props.onToggleCollapsed}
-        className={`hover:bg-muted flex w-10 shrink-0 flex-col items-center gap-2 py-2 transition-colors ${
+        className={`hover:bg-hover flex w-10 shrink-0 flex-col items-center gap-2 py-2 transition-colors ${
           last ? "" : "border-border border-r"
         }`}
       >
@@ -200,7 +200,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             aria-label={tr("kanban.column.rename")}
             defaultValue={descriptor.label}
             maxLength={24}
-            className="border-input focus-visible:border-ring min-w-0 flex-1 rounded border bg-transparent px-1 text-sm font-semibold outline-none"
+            className="border-border focus-visible:border-ring min-w-0 flex-1 rounded border bg-transparent px-1 text-sm font-semibold outline-none"
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 props.onRename?.(event.currentTarget.value);
@@ -263,7 +263,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
               // last would swallow the other's edge. Two real 24px boxes with
               // the row's 6px gap between them do not. It costs the header
               // 4px of height and the title 20px it truncates anyway.
-              className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
+              className="text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
               onClick={props.onToggleCollapsed}
             >
               <ChevronsLeftRight className="size-3.5" />

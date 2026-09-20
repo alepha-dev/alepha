@@ -35,7 +35,7 @@ const MyEstateRow = (props: MyEstateRowProps) => {
       type="button"
       onClick={props.onOpen}
       data-testid="my-estate-row"
-      className="hover:bg-muted/60 flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
+      className="hover:bg-hover flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
     >
       <span className="flex min-w-0 grow flex-col gap-0.5">
         <span className="flex items-center gap-2 text-sm font-medium">

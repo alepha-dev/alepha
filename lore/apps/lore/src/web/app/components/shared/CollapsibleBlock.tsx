@@ -44,7 +44,7 @@ const CollapsibleBlock = (props: CollapsibleBlockProps) => {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="group hover:bg-muted/40 focus-visible:ring-ring/50 -mx-1 flex items-center gap-2 rounded px-1 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        className="group hover:bg-hover focus-visible:ring-ring/50 -mx-1 flex items-center gap-2 rounded px-1 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
         aria-expanded={open}
         data-testid={`collapsible-${props.label.toLowerCase()}`}
       >

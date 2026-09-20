@@ -75,18 +75,20 @@ describe("DashboardCard", () => {
     return screen.getByTestId("dashboard-card").className;
   };
 
-  it("rests on --input and hovers to --input-hover, the way a Control field does", async ({
+  it("rests on --border and hovers to --border-hover, like every other edge", async ({
     expect,
   }) => {
     const classes = await mount(false);
 
-    expect(classes).toContain("shadow-[inset_0_0_0_1px_var(--input)]");
+    expect(classes).toContain("shadow-[inset_0_0_0_1px_var(--border)]");
     expect(classes).toContain(
-      "hover:shadow-[inset_0_0_0_1px_var(--input-hover)]",
+      "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
     );
-    // `--border` is decoration (a table rule, a divider); the edge a pointer
-    // can act on is a field's.
-    expect(classes).not.toContain("var(--border)");
+    // ⚠️ This used to assert the opposite: `--input` at rest, and NOT
+    // `--border`, on the reading that a field's edge and a rule were two
+    // different colours. They are one now - `--input` is the field FILL and
+    // nothing else - so an edge drawn from it is the bug.
+    expect(classes).not.toContain("var(--input)");
   });
 
   it("lets the drag-over ring win: no hover edge while a card is dragged over", async ({

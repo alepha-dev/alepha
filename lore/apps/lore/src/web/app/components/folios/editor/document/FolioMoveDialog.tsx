@@ -76,7 +76,7 @@ const FolioMoveDialog = (props: FolioMoveDialogProps): ReactElement => {
           <button
             type="button"
             onClick={() => setPicked("__root__")}
-            className={`hover:bg-muted/60 flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+            className={`hover:bg-hover flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
               selectedId === "__root__" ? "bg-muted" : ""
             }`}
           >
@@ -93,7 +93,7 @@ const FolioMoveDialog = (props: FolioMoveDialogProps): ReactElement => {
               key={d.id}
               type="button"
               onClick={() => setPicked(d.id)}
-              className={`hover:bg-muted/60 flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+              className={`hover:bg-hover flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
                 selectedId === d.id ? "bg-muted" : ""
               }`}
             >

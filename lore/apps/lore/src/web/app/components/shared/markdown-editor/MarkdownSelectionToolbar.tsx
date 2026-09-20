@@ -188,8 +188,8 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
                       // `.lore-md-toolbar-button` — two properties, two
                       // easings, which `duration-*` cannot express.
                       //
-                      // `hover:bg-accent`, deliberately stronger than the
-                      // ghost variant's `hover:bg-muted`. This bar floats
+                      // `hover:bg-hover`, deliberately stronger than the
+                      // ghost variant's `hover:bg-hover`. This bar floats
                       // over the document on `bg-popover`, which in the dark
                       // themes sits at L 0.21-0.23; muted lands 0.04-0.05
                       // above it, accent 0.09-0.11. A toolbar that appears
@@ -200,7 +200,7 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
                       // override on the variant. There is none today (one
                       // was removed for quest #1643), but the repeat costs
                       // nothing and keeps this bar's choice explicit.
-                      className="lore-md-toolbar-button hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent"
+                      className="lore-md-toolbar-button hover:bg-hover hover:text-accent-foreground dark:hover:bg-hover"
                       // `mousedown`, not `click`, and prevented: a click
                       // would blur the editor first, collapsing the very
                       // selection the command is about to act on.
