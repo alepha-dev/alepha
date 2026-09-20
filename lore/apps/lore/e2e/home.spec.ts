@@ -294,9 +294,9 @@ test.describe("Home (board)", () => {
       );
     };
 
-    await pick("Ownership", "Shared with me");
+    await pick("Ownership", "Shared");
     await expect(row).toHaveCount(0);
-    await pick("Ownership", "Owned by me");
+    await pick("Ownership", "Mine");
     await expect(row).toBeVisible();
 
     await pick("Activity", "Dormant (7d+)");

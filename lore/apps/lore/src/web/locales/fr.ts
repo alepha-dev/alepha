@@ -58,7 +58,7 @@ export default {
   "home.table.search": "Rechercher",
   "home.table.filter.ownership": "Propriété",
   "home.table.filter.owned": "Les miens",
-  "home.table.filter.notOwned": "Partagés avec moi",
+  "home.table.filter.notOwned": "Partagés",
   "home.table.filter.anyOwner": "Tous les projets",
   "home.table.filter.activity": "Activité",
   "home.table.filter.active": "Actifs ($1 j)",
