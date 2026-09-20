@@ -5,7 +5,7 @@ import { $logger } from "alepha/logger";
 import { WorkspacePacker } from "../services/WorkspacePacker.ts";
 
 /**
- * Pack the workspace into a deployable `tar.gz`.
+ * Pack the workspace into a deployable `tar.zst`.
  *
  * The tar contains everything a remote runner (Alepha Rocket, or any
  * `alepha platform <op> --prebuilt` consumer) needs to deploy the app:
@@ -19,7 +19,7 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
  * (`._*`), `.alepha` build cache, `e2e`, `playwright-report`,
  * `coverage`.
  *
- * Output name: `<project-name>-<tag>.tar.gz` (default tag
+ * Output name: `<project-name>-<tag>.tar.zst` (default tag
  * "latest"). Project name comes from `--name` when the caller passes
  * one, otherwise from `package.json.name`. Naming mirrors Docker tags:
  * same artifact, different tag = different file.
@@ -39,20 +39,20 @@ export class PackCommand {
   public readonly pack = $command({
     name: "pack",
     description:
-      "Pack the workspace into a deployable tar.gz (for `alepha platform --prebuilt` consumers like Alepha Rocket).",
+      "Pack the workspace into a deployable tar.zst (for `alepha platform --prebuilt` consumers like Alepha Bay and Alepha Rocket).",
     flags: z.object({
       tag: z
         .text({
           aliases: ["t"],
           description:
-            "Tag suffix for the artifact name (Docker-style). Defaults to `latest` → `<project>-latest.tar.gz`. Pass a real version like `0.0.2` for a pinned artifact.",
+            "Tag suffix for the artifact name (Docker-style). Defaults to `latest` → `<project>-latest.tar.zst`. Pass a real version like `0.0.2` for a pinned artifact.",
         })
         .optional(),
       output: z
         .text({
           aliases: ["o"],
           description:
-            "Output directory for the tar.gz (default: current dir).",
+            "Output directory for the archive (default: current dir).",
         })
         .optional(),
       name: z

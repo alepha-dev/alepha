@@ -5077,6 +5077,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fzstd@npm:0.1.1":
+  version: 0.1.1
+  resolution: "fzstd@npm:0.1.1"
+  checksum: 10c0/c4ae25a4b9e7ac58e9716fcb0c4ec19f3e678d90a67a59e97ce361beb27e4aa4b8666b58b4dc2d715e92db4b65b189c978186a5fedba6fccb5ec9765717dd1cd
+  languageName: node
+  linkType: hard
+
 "get-caller-file@npm:^2.0.5":
   version: 2.0.5
   resolution: "get-caller-file@npm:2.0.5"
@@ -5887,6 +5894,7 @@ __metadata:
     "@types/ws": "npm:^8.18.1"
     alepha: "workspace:*"
     drizzle-kit: "npm:1.0.0-rc.4"
+    fzstd: "npm:0.1.1"
     lucide-react: "npm:^1.43.0"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"

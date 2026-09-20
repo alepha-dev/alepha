@@ -256,7 +256,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * elsewhere and this step only ever emits config.
    */
   async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
-    const manifestPath = this.fs.join(ctx.root, "dist", "manifest.json");
+    const manifestPath = this.fs.join(ctx.root, "manifest.json");
     let raw: unknown;
     try {
       raw = JSON.parse(await this.fs.readTextFile(manifestPath));
@@ -301,7 +301,9 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
         // regenerating `wrangler.jsonc` is a workerd build by definition.
         runtime: ["workerd"],
         runtimes: ["workerd"],
-        output: { dist: "dist", public: "public" },
+        // `.` because the artifact unpacked to the contents: there is no
+        // `dist/` under the root to write `wrangler.jsonc` into.
+        output: { dist: ".", public: "public" },
       },
       run,
       root: ctx.root,
@@ -401,7 +403,11 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const worker = ctx.naming.worker();
-    const distDir = this.fs.join(ctx.root, "dist");
+    // ⚠️ `ctx.root` IS the build's contents. This adapter runs against an
+    // UNPACKED artifact, and the archive root stopped being a `dist/` wrapper:
+    // `public/`, `server/<runtime>/`, `index.<runtime>.js` and `manifest.json`
+    // are all at the top.
+    const distDir = ctx.root;
     const config = JSON.parse(
       await this.fs.readTextFile(this.fs.join(distDir, "wrangler.jsonc")),
     ) as WranglerConfig;
@@ -743,16 +749,90 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
   protected injectedAssets?: CloudflareDeployAssets;
 
+  /**
+   * Whether this entry is the Worker's own entry point.
+   */
+  protected isMainModule(entry: string, config: WranglerConfig): boolean {
+    return this.moduleName(config.main ?? "index.workerd.js") === entry;
+  }
+
+  /**
+   * The `rules` globs the build wrote, or the legacy behaviour when it wrote
+   * none.
+   *
+   * An artifact from a build that predates scoped rules carries no `rules` at
+   * all. Uploading everything is what that build meant, and it was correct for
+   * a single-slice artifact, so an absent list is answered with `undefined`
+   * rather than an empty one that would upload nothing.
+   */
+  protected moduleGlobs(config: WranglerConfig): string[] | undefined {
+    const globs = config.rules?.flatMap((rule) => rule.globs ?? []);
+    return globs?.length ? globs : undefined;
+  }
+
+  /**
+   * Whether one entry path is covered by the config's module globs.
+   *
+   * Only the two shapes `BuildCloudflareTask` emits are understood: an exact
+   * file name, and `<dir>/*.js`. A glob it cannot read is treated as a miss
+   * rather than a match, so an unreadable rule under-uploads and fails loudly
+   * at validation instead of quietly shipping a slice it was meant to exclude.
+   */
+  protected matchesModuleGlobs(
+    entry: string,
+    globs: string[] | undefined,
+  ): boolean {
+    if (!globs) {
+      return true;
+    }
+    return globs.some((glob) => {
+      if (!glob.includes("*")) {
+        return entry === glob;
+      }
+      const [prefix, suffix] = glob.split("*", 2);
+      return (
+        entry.startsWith(prefix) &&
+        entry.endsWith(suffix ?? "") &&
+        // A `*` names files in ONE directory, never a subtree.
+        !entry.slice(prefix.length).includes("/")
+      );
+    });
+  }
+
   protected async modules(
     distDir: string,
     config: WranglerConfig,
   ): Promise<Array<{ name: string; bytes: Uint8Array }>> {
     const modules: Array<{ name: string; bytes: Uint8Array }> = [];
     const entries = await this.fs.ls(distDir, { recursive: true });
+    const globs = this.moduleGlobs(config);
     for (const entry of entries) {
       if (!entry.endsWith(".js") && !entry.endsWith(".mjs")) continue;
       // `public/` is served as assets, not uploaded as modules.
       if (entry.startsWith("public/")) continue;
+      /*
+        ⚠️ **Scoped to the slice the config names**, not "every .js under the
+        root". A `--runtime node,workerd` artifact carries `server/node/` and
+        `index.node.js` beside the workerd ones, and this walk would upload all
+        of them: a Worker twice the size it needs, or a Node chunk importing a
+        node builtin and a deploy refused at validation.
+
+        `BuildCloudflareTask` already writes globs naming the workerd slice; on
+        the CLI path wrangler applies them itself. Here nothing does, so this
+        is where the same rule has to be enforced, or the two deploy paths
+        disagree about what an artifact contains.
+      */
+      // ⚠️ The entry module is always uploaded, whatever the globs say.
+      // wrangler EXCLUDES `main` from `rules` by design — it is the main
+      // module, not a matched one — so a glob set that happens not to cover it
+      // is correct config and would still make the upload reject itself with
+      // "the entry must be one of the modules".
+      if (
+        !this.isMainModule(entry, config) &&
+        !this.matchesModuleGlobs(entry, globs)
+      ) {
+        continue;
+      }
       modules.push({
         name: entry,
         bytes: new Uint8Array(await this.fs.readFile(`${distDir}/${entry}`)),
@@ -1053,6 +1133,15 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
  */
 interface WranglerConfig {
   main?: string;
+  /**
+   * Module rules, as `BuildCloudflareTask` writes them.
+   *
+   * ⚠️ Under `no_bundle` these globs ARE the upload set, scoped to the workerd
+   * slice. {@link WorkerCloudflareAdapter.modules} applies them by hand,
+   * because on this path nothing else does: the CLI hands the directory to
+   * wrangler, while here the modules are read and posted directly.
+   */
+  rules?: Array<{ type?: string; globs?: string[] }>;
   compatibility_date?: string;
   compatibility_flags?: string[];
   workers_dev?: boolean;

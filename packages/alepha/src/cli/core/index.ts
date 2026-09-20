@@ -34,6 +34,7 @@ import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
+import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
@@ -82,6 +83,7 @@ export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ViteUtils.ts";
+export * from "./services/ArchiveCompressor.ts";
 export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
 export * from "./tasks/BuildClientTask.ts";
@@ -138,6 +140,7 @@ export const AlephaCliServices = $module({
     GitProvider,
     ViteDevServerProvider,
     ViteBuildProvider,
+    ArchiveCompressor,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.

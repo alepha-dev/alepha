@@ -570,7 +570,7 @@ export class BayAdapter extends PlatformAdapter {
           await this.cli(ctx, `pack --name ${ctx.project}`),
           { root: ctx.root },
         );
-        artifact = join(ctx.root, `${ctx.project}-latest.tar.gz`);
+        artifact = join(ctx.root, `${ctx.project}-latest.tar.zst`);
         if (!(await this.fs.exists(artifact))) {
           throw new AlephaError(`\`alepha pack\` produced no ${artifact}.`);
         }

@@ -57,16 +57,23 @@ export class ArtifactController {
    * can make a Worker isolate hold. That isolate has around 128 MB in total,
    * which is the reason this is 20 and not 200.
    *
-   * The MIME list is the gzip family plus the catch-all every `curl -F` sends.
-   * It is a usability guard rather than a security control - the type is
-   * client-supplied - and the real check on the content is that the bytes have
-   * to gunzip into a tar carrying a readable `dist/manifest.json`.
+   * The MIME list is the zstd and gzip families plus the catch-all every
+   * `curl -F` sends. It is a usability guard rather than a security control -
+   * the type is client-supplied - and the real check on the content is that
+   * the bytes have to decompress into a tar carrying a readable
+   * `manifest.json`.
+   *
+   * ⚠️ **gzip stays listed.** `alepha pack` produces zstd now, but artifacts
+   * pushed before the move are still in the registry and a re-push of one must
+   * not be refused on its type.
    */
   artifactBucket = $storage({
     name: ArtifactService.BUCKET,
     description: "Build artifacts pushed by CI",
     maxSize: 20,
     mimeTypes: [
+      "application/zstd",
+      "application/x-zstd",
       "application/gzip",
       "application/x-gzip",
       "application/x-compressed-tar",
@@ -78,7 +85,7 @@ export class ArtifactController {
    * Store a build under `(app, tag, runtime)`.
    *
    * ⚠️ **There is no `runtime` field, and there must never be one.** The
-   * runtime is read from the artifact's own `dist/manifest.json`, because a
+   * runtime is read from the artifact's own `manifest.json`, because a
    * flag and a manifest eventually disagree and the manifest is the artifact's
    * own claim about itself. Two builds of `1.2.3` for different runtimes are
    * one release with two variants, not two releases.

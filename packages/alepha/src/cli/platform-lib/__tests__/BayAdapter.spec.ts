@@ -11,6 +11,10 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import {
+  ArchiveCompressor,
+  MemoryArchiveCompressor,
+} from "../../core/services/ArchiveCompressor.ts";
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
 import { BAY_OWNED_SECRET_KEYS } from "../secretKeys.ts";
@@ -35,13 +39,16 @@ const context = (overrides: Partial<PlatformContext> = {}): PlatformContext =>
 
 const setup = async () => {
   const alepha = Alepha.create()
+    // The one pack step that touches real files: the shell here is a fake, so
+    // no tar was ever written for it to read.
+    .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
     .with({ provide: ShellProvider, use: MemoryShellProvider });
   const fs = alepha.inject(MemoryFileSystemProvider);
   await fs.writeFile("/project/yarn.lock", "");
   // `alepha pack` is a recorded no-op under MemoryShellProvider, so the
   // artifact it "produced" has to exist for the deploy step to find it.
-  await fs.writeFile("/project/demo-latest.tar.gz", "TARBALL");
+  await fs.writeFile("/project/demo-latest.tar.zst", "TARBALL");
   return {
     alepha,
     adapter: alepha.inject(BayAdapter),
@@ -251,7 +258,7 @@ describe("BayAdapter — the deploy it composes", () => {
 
   it("packs before it deploys, and refuses if nothing was produced", async () => {
     const { adapter, fs } = await setup();
-    await fs.rm("/project/demo-latest.tar.gz");
+    await fs.rm("/project/demo-latest.tar.zst");
 
     await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /alepha pack. produced no/,
@@ -270,7 +277,7 @@ describe("BayAdapter — the deploy it composes", () => {
       "/project/package.json",
       JSON.stringify({ name: "app" }),
     );
-    await fs.writeFile("/project/capacity-latest.tar.gz", "TARBALL");
+    await fs.writeFile("/project/capacity-latest.tar.zst", "TARBALL");
 
     await adapter.deploy(context({ project: "capacity" }), run);
 
@@ -782,6 +789,9 @@ describe("BayAdapter — the target it builds for", () => {
     // injected — the order the previous version of this suite used, because
     // `$store` is resolved at injection.
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const fs = alepha.inject(MemoryFileSystemProvider);
@@ -824,6 +834,9 @@ describe("BayAdapter — the package manager it shells out to", () => {
   */
   const withLockfile = async (lockfile: string) => {
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const fs = alepha.inject(MemoryFileSystemProvider);
@@ -864,6 +877,9 @@ describe("BayAdapter — the package manager it shells out to", () => {
 describe("BayAdapter — quoting", () => {
   it("round-trips a value containing a single quote", async () => {
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const adapter = alepha.inject(QuotingBayAdapter);
@@ -1517,7 +1533,7 @@ describe("BayAdapter — inspect reports the secrets that are set", () => {
           "bay — Alepha application server (PoC)\n\n" +
           "  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]\n" +
           "              [--base-domain bay.example.com]\n" +
-          "  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
+          "  bay deploy  (<app.tar.zst>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
           "Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on\n" +
           "the Bay host.",
       },

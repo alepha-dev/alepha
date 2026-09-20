@@ -86,7 +86,7 @@ export class ArtifactCommand {
    *
    * Under `node_modules/.alepha`, beside the dev database and the mail spool,
    * rather than in the workspace root: `push` produces the file as a means and
-   * not as an output, and leaving `my-app-latest.tar.gz` in a checkout would
+   * not as an output, and leaving `my-app-latest.tar.zst` in a checkout would
    * be indistinguishable from one somebody packed on purpose. Removed again
    * whichever way the push ends.
    */
@@ -145,7 +145,7 @@ export class ArtifactCommand {
 
       const workDir = this.fs.join(root, ArtifactCommand.WORK_DIR);
       await this.fs.mkdir(workDir, { recursive: true });
-      const filename = `${app}-${tag}.tar.gz`;
+      const filename = `${app}-${tag}.tar.zst`;
       const archivePath = this.fs.join(workDir, filename);
 
       try {
@@ -194,7 +194,7 @@ export class ArtifactCommand {
         // maps archive is removed by name rather than from `packed`, which is
         // out of scope in a `finally` that also runs when `pack` threw.
         await this.fs.rm(archivePath, { force: true });
-        await this.fs.rm(this.fs.join(workDir, `${app}-${tag}.maps.tar.gz`), {
+        await this.fs.rm(this.fs.join(workDir, `${app}-${tag}.maps.tar.zst`), {
           force: true,
         });
       }

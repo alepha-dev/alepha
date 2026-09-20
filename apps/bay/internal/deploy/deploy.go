@@ -910,12 +910,15 @@ func decompress(f *os.File) (io.Reader, func(), error) {
 		return gz, func() { _ = gz.Close() }, nil
 	case len(head) >= 4 && head[0] == 0x28 && head[1] == 0xb5 && head[2] == 0x2f && head[3] == 0xfd:
 		// Decoding a long-window archive needs a window as large as the one it
-		// was written with. `alepha pack` pins windowLog 27 (128 MiB) so two
+		// was written with. `alepha pack` pins windowLog 25 (32 MiB) so two
 		// server slices megabytes apart still dedup, and the decoder's own
-		// default ceiling is lower than that, so it is raised here to match.
-		// Without this the archive is refused outright, which at least says so;
-		// the point of naming the number is that the two ends are pinned
-		// together rather than one drifting past the other.
+		// default ceiling is lower than that, so it is raised here.
+		//
+		// A CEILING, not a match: this is the largest window Bay is willing to
+		// allocate, so it must be at least the packer's pin and may be more.
+		// Headroom is deliberate — an app whose slices outgrow 32 MiB gets a
+		// larger pin on the produce side, and a Bay already in the field must
+		// not refuse the first artifact that uses it.
 		zr, err := zstd.NewReader(f, zstd.WithDecoderMaxWindow(maxZstdWindow))
 		if err != nil {
 			return nil, nil, fmt.Errorf("not a zstd archive: %w", err)
@@ -928,9 +931,13 @@ func decompress(f *os.File) (io.Reader, func(), error) {
 	)
 }
 
-// maxZstdWindow is the decompression window Bay is willing to allocate, and it
+// maxZstdWindow is the largest decompression window Bay will allocate, and it
 // must be at least the `windowLog` the packer compresses with.
-const maxZstdWindow = 1 << 27 // 128 MiB, matching `alepha pack`
+//
+// `alepha pack` pins 25 (32 MiB). This is 27 (128 MiB) on purpose: four times
+// the headroom, so raising the produce-side pin does not strand every Bay
+// already deployed in the field.
+const maxZstdWindow = 1 << 27 // 128 MiB; the packer pins 32 MiB
 
 // writeEntry copies one file, refusing to read past its declared size.
 //
