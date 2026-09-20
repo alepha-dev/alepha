@@ -83,16 +83,6 @@ export default {
   "home.table.open.epics": "$1 épopées en brouillon",
   "home.table.open.blights": "$1 fléaux ouverts",
   "home.table.open.feedback": "$1 retours en attente",
-  "home.activity.title": "Activité récente",
-  "home.activity.you": "Vous",
-  "home.activity.unknown": "Quelqu'un",
-  "home.activity.empty": "Il ne s'est encore rien passé",
-  "home.activity.empty.project": "Il ne s'est encore rien passé dans ce projet",
-  "home.activity.allProjects": "Tous les projets",
-  "home.activity.actions": "Actions",
-  "home.activity.see": "Voir $1",
-  "home.activity.openProject": "Ouvrir le projet",
-  "home.activity.projectActivity": "Activité du projet",
   "auth.register.intent.createProject":
     "Avant de créer un projet, créez un compte.",
   "auth.register.intent.invitation":
