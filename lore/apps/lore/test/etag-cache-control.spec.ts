@@ -8,6 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { HomeController } from "../src/api/controllers/HomeController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectReportsController } from "../src/api/controllers/ProjectReportsController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
@@ -39,6 +40,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
+  homeController: HomeController;
   projectController: ProjectController;
   releaseController: ReleaseController;
   reportsController: ProjectReportsController;
@@ -68,6 +70,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
+    homeController: alepha.inject(HomeController),
     projectController: alepha.inject(ProjectController),
     releaseController: alepha.inject(ReleaseController),
     reportsController: alepha.inject(ProjectReportsController),
@@ -194,6 +197,37 @@ describe("$etag cache-control on viewer-mutable lists", () => {
       { user },
     );
 
+    expect(res.headers.get("etag")).toMatch(/\S/);
+  });
+
+  /**
+   * Home's board is the other side of the same line, and it is a decision
+   * rather than an oversight: nothing on Home writes to what the board
+   * carries. The rows come from `userProjectsAtom`, the board is the bars,
+   * the last-activity stamps and the open counts, and the page's one write
+   * (New Project) navigates away to the wizard. A viewer who comes back a
+   * minute later sees a fresh board; one who reloads thirty seconds later
+   * does not pay for the aggregate twice.
+   *
+   * ⚠️ `private`, and the assertion is explicit about it. The response is
+   * one viewer's project list, and the edge cache in the Worker entry
+   * stores anything `public` keyed by URL alone.
+   */
+  it("keeps the freshness window on Home's board, privately", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    await createTestProject(ctx, user);
+
+    const res = await ctx.homeController.getHomeBoard.fetch({}, { user });
+
+    const control = res.headers.get("cache-control") ?? "";
+    expect(control).toContain("private");
+    expect(control).not.toContain("public");
+    expect(control).toContain("max-age=60");
+    expect(control).toContain("stale-while-revalidate=300");
+    // The window is expiration; the ETag is still what makes the request
+    // after it a header round trip rather than a second full aggregate.
     expect(res.headers.get("etag")).toMatch(/\S/);
   });
 
