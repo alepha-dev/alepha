@@ -87,6 +87,41 @@ export class DockerImageBuilder {
   protected readonly log = $logger();
 
   /**
+   * The base for a compiled image: no shell, no package manager, and exactly
+   * the three libraries a Bun binary actually needs.
+   *
+   * ## ⚠️ It was `distroless/static-debian12`, and that never worked
+   *
+   * Measured, because the failure is invisible from the build side. A Bun
+   * `--compile` binary is **not static at all** — not with the musl triple
+   * either:
+   *
+   * ```
+   * $ file dist/app
+   * ELF 64-bit LSB executable, ARM aarch64, dynamically linked,
+   * interpreter /lib/ld-musl-aarch64.so.1
+   * $ ldd dist/app          # on alpine
+   * Error loading shared library libstdc++.so.6: No such file or directory
+   * Error loading shared library libgcc_s.so.1: No such file or directory
+   * ```
+   *
+   * `distroless/static` carries no libc, so the binary could never start
+   * there. What that looks like is `exec /app/app: no such file or directory`
+   * — an error naming a file that plainly exists, from a container that just
+   * stops. Nothing about it points at a base image.
+   *
+   * `cc-debian12` is the same distroless family plus glibc, `libstdc++` and
+   * `libgcc`, which is exactly the set above. Verified by running a real
+   * compiled binary on it: it boots and reaches the app's own configuration
+   * checks.
+   *
+   * ⚠️ **Public, and read by `alepha image` to pick the Bun triple.** Two
+   * copies of this string would eventually disagree, and the symptom would be
+   * the unreadable error above.
+   */
+  public static readonly DEFAULT_COMPILE_BASE = "gcr.io/distroless/cc-debian12";
+
+  /**
    * Write the Dockerfile when the app owns none, then build the image.
    */
   async run(ctx: ImageContext): Promise<void> {
@@ -205,7 +240,7 @@ export class DockerImageBuilder {
     }
     return {
       name,
-      base: ctx.image.from ?? "gcr.io/distroless/static-debian12",
+      base: ctx.image.from ?? DockerImageBuilder.DEFAULT_COMPILE_BASE,
     };
   }
 
@@ -387,7 +422,7 @@ export class DockerImageBuilder {
         : "# Runs as root: the distroless base has no shell, so a declared volume\n" +
           "# cannot be created and chowned at build time. Set `build.docker.user`\n" +
           "# to run as someone else.\n";
-      // `install` is ignored in compile mode — distroless has no npm.
+      // `install` is ignored in compile mode: distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
 WORKDIR /app
 ${labelLines ? `\n${labelLines}` : ""}

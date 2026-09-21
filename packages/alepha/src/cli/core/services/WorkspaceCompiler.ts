@@ -142,13 +142,17 @@ export class WorkspaceCompiler {
   /**
    * The Bun target triple when the caller names none: this machine.
    *
-   * ⚠️ **A caller that is not targeting this machine must name the triple.**
-   * `alepha image` does, because a Bun `--compile` binary is not fully static
-   * and the triple picks the libc: a glibc binary on a musl base produces a
-   * container that exits immediately with an error about nothing. `musl: true`
-   * is the shorthand for that case.
+   * ⚠️ **A caller that is not targeting this machine must say so.** `alepha
+   * image` always passes `linux: true`, because an image runs Linux whatever
+   * the machine that built it, and the libc, because a Bun `--compile` binary
+   * is dynamically linked and the triple picks its interpreter. Getting either
+   * wrong produces a container that exits immediately with
+   * `exec /app/app: no such file or directory`, which names a file that is
+   * right there.
    */
-  public defaultBunTarget(options: { musl?: boolean } = {}): string {
+  public defaultBunTarget(
+    options: { linux?: boolean; musl?: boolean } = {},
+  ): string {
     const arch =
       process.arch === "x64" || process.arch === "arm64"
         ? process.arch
@@ -162,13 +166,19 @@ export class WorkspaceCompiler {
             ? "windows"
             : undefined;
 
-    if (!arch || (!options.musl && !platform)) {
+    // musl is a SUFFIX on the linux triple, never a platform of its own, so
+    // asking for it is also asking for linux.
+    const linux = options.linux || options.musl;
+    if (!arch || (!linux && !platform)) {
       throw new AlephaError(
         `No Bun target for '${process.platform}-${process.arch}'. Pass --target with an explicit Bun triple.`,
       );
     }
 
-    return options.musl ? `bun-linux-${arch}-musl` : `bun-${platform}-${arch}`;
+    if (!linux) {
+      return `bun-${platform}-${arch}`;
+    }
+    return options.musl ? `bun-linux-${arch}-musl` : `bun-linux-${arch}`;
   }
 
   /**

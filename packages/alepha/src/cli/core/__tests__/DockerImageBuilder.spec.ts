@@ -382,7 +382,12 @@ describe("DockerImageBuilder", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/Dockerfile",
-          /FROM gcr\.io\/distroless\/static-debian12/,
+          // ⚠️ `cc-debian12`, not `static-debian12`. Measured: a Bun
+          // `--compile` binary is dynamically linked under every triple and
+          // needs an interpreter, `libstdc++` and `libgcc`. On a base with no
+          // libc it produced `exec /app/app: no such file or directory` — an
+          // error naming a file that is right there.
+          new RegExp(`FROM ${DockerImageBuilder.DEFAULT_COMPILE_BASE}`),
         ),
       ).toBe(true);
       expect(fs.wasWrittenMatching("/project/Dockerfile", /bun install/)).toBe(
@@ -705,7 +710,9 @@ describe("DockerImageBuilder", () => {
         { runtime: "bun", compile: "app" },
       );
 
-      expect(dockerfile).toContain("FROM gcr.io/distroless/static-debian12");
+      expect(dockerfile).toContain(
+        `FROM ${DockerImageBuilder.DEFAULT_COMPILE_BASE}`,
+      );
       expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="bun"');
     });
 
