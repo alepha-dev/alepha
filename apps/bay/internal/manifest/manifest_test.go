@@ -32,13 +32,11 @@ func TestReadsTheFrameworkBuildManifest(t *testing.T) {
 	// `$repository` in app code is what provisions the database — nobody has to
 	// say it a second time by hand.
 	m, err := read(t, `{
-		"version": 1,
 		"project": "lore",
-		"defaultEnv": "production",
-		"environments": {},
-		"runtime": "node",
-		"runtimeVersion": "26",
-		"entry": "index.node.js",
+		"runtimes": [
+			{"runtime": "node", "entry": "index.node.js", "runtimeVersion": "26"},
+			{"runtime": "workerd", "entry": "index.workerd.js"}
+		],
 		"resources": {
 			"hasDatabase": true,
 			"hasBucket": true,
@@ -48,8 +46,9 @@ func TestReadsTheFrameworkBuildManifest(t *testing.T) {
 			"hasWebSocket": false
 		},
 		"crons": ["0 3 * * *"],
-		"websocketPaths": [],
-		"env": ["APP_SECRET"]
+		"secrets": [{"name": "APP_SECRET", "description": "Signs sessions"}],
+		"variables": [{"name": "TZ"}],
+		"cloudflare": {"websocketPaths": []}
 	}`)
 	if err != nil {
 		t.Fatal(err)
@@ -66,18 +65,18 @@ func TestReadsTheFrameworkBuildManifest(t *testing.T) {
 	if len(m.Cron) != 1 {
 		t.Fatalf("crons should map to Cron, got %v", m.Cron)
 	}
+	if m.Runtime != "node" || m.RuntimeVersion != "26" {
+		t.Fatalf("the node slice and its major should be picked, got %q %q", m.Runtime, m.RuntimeVersion)
+	}
 }
 
 func TestIgnoresFieldsMeantForOtherConsumers(t *testing.T) {
-	// `environments`, `tenancy`, `websocketPaths`, `email` and `env` belong to
-	// the Cloudflare/Rocket deploy paths. A newer build adding more of them must
-	// not break an older Bay.
+	// `secrets`, `variables` and `cloudflare` belong to other deploy paths. A
+	// newer build adding more fields must not break an older Bay.
 	if _, err := read(t, `{
 		"project": "lore",
-		"entry": "index.node.js",
-		"tenancy": "optional",
-		"environments": {"production": {"adapter": "cloudflare"}},
-		"email": {"binding": "SEND_EMAIL"},
+		"runtimes": [{"runtime": "node", "entry": "index.node.js"}],
+		"cloudflare": {"email": {"binding": "SEND_EMAIL"}, "websocketPaths": []},
 		"somethingAddedLater": {"deeply": ["nested"]}
 	}`); err != nil {
 		t.Fatalf("unknown fields should be ignored, got: %v", err)
@@ -87,7 +86,7 @@ func TestIgnoresFieldsMeantForOtherConsumers(t *testing.T) {
 func TestRejectsExactVersionPin(t *testing.T) {
 	// An exact pin recreates the very problem Bay owning the runtime solves:
 	// patching a CVE would need a rebuild and a redeploy per app.
-	_, err := read(t, `{"project":"a","runtime":"node","entry":"index.node.js","runtimeVersion":"26.5.0"}`)
+	_, err := read(t, `{"project":"a","runtimes":[{"runtime":"node","entry":"index.node.js","runtimeVersion":"26.5.0"}]}`)
 	if err == nil {
 		t.Fatal("expected an exact version pin to be rejected")
 	}
@@ -97,7 +96,7 @@ func TestRejectsExactVersionPin(t *testing.T) {
 }
 
 func TestAcceptsMajorPin(t *testing.T) {
-	m, err := read(t, `{"project":"a","runtime":"node","entry":"index.node.js","runtimeVersion":"26"}`)
+	m, err := read(t, `{"project":"a","runtimes":[{"runtime":"node","entry":"index.node.js","runtimeVersion":"26"}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,15 +105,21 @@ func TestAcceptsMajorPin(t *testing.T) {
 	}
 }
 
-func TestDefaultsRuntimeToNode(t *testing.T) {
-	// Artifacts built before `runtime` existed carry none. Node is what the
-	// framework's build defaults to, so that is the honest reading.
-	m, err := read(t, `{"project":"a","entry":"index.node.js"}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if m.Runtime != "node" {
-		t.Fatalf("runtime default should be node, got %q", m.Runtime)
+// No scalar fallback (#Q2461): a manifest that declares no slice is refused by
+// name, pointing at the rebuild, rather than read as node.
+func TestRefusesAManifestWithNoRuntimes(t *testing.T) {
+	for _, body := range []string{
+		// The old scalar pair, which v2 no longer reads.
+		`{"project":"a","runtime":"node","entry":"index.node.js"}`,
+		`{"project":"a","runtimes":[]}`,
+	} {
+		_, err := read(t, body)
+		if err == nil {
+			t.Fatalf("expected %s to be refused", body)
+		}
+		if !strings.Contains(err.Error(), "declares no runtimes") {
+			t.Fatalf("error should name the missing runtimes, got: %v", err)
+		}
 	}
 }
 
@@ -123,7 +128,7 @@ func TestDefaultsRuntimeToNode(t *testing.T) {
 // contents, so that default names a directory that is not there and `node dist`
 // fails as "never became ready" — a message about nothing.
 func TestRefusesAnArtifactThatNamesNoEntry(t *testing.T) {
-	_, err := read(t, `{"project":"a","runtime":"node"}`)
+	_, err := read(t, `{"project":"a","runtimes":[{"runtime":"node"}]}`)
 	if err == nil {
 		t.Fatal("expected an artifact with no entry to be refused")
 	}
@@ -137,8 +142,6 @@ func TestRefusesAnArtifactThatNamesNoEntry(t *testing.T) {
 func TestTakesTheFirstRunnableSliceInDeclaredOrder(t *testing.T) {
 	m, err := read(t, `{
 		"project": "lore",
-		"runtime": "node",
-		"entry": "index.node.js",
 		"runtimes": [
 			{"runtime": "node", "entry": "index.node.js"},
 			{"runtime": "bun", "entry": "index.bun.js"}
@@ -158,8 +161,6 @@ func TestNeverReordersTheSlices(t *testing.T) {
 	// from the one above.
 	m, err := read(t, `{
 		"project": "lore",
-		"runtime": "bun",
-		"entry": "index.bun.js",
 		"runtimes": [
 			{"runtime": "bun", "entry": "index.bun.js"},
 			{"runtime": "node", "entry": "index.node.js"}
@@ -178,8 +179,6 @@ func TestSkipsASliceItCannotRun(t *testing.T) {
 	// because Cloudflare is the primary target, and Bay still has a slice.
 	m, err := read(t, `{
 		"project": "lore",
-		"runtime": "workerd",
-		"entry": "index.workerd.js",
 		"runtimes": [
 			{"runtime": "workerd", "entry": "index.workerd.js"},
 			{"runtime": "node", "entry": "index.node.js"}
@@ -198,8 +197,6 @@ func TestRefusesAWorkerdOnlyArtifactByName(t *testing.T) {
 	// artifact IS rather than say "no runnable slice".
 	_, err := read(t, `{
 		"project": "lore",
-		"runtime": "workerd",
-		"entry": "index.workerd.js",
 		"runtimes": [{"runtime": "workerd", "entry": "index.workerd.js"}]
 	}`)
 	if err == nil {
@@ -214,17 +211,17 @@ func TestRejectsWorkerdArtifact(t *testing.T) {
 	// A Cloudflare-targeted bundle is resolved against workerd export
 	// conditions and has no node-runnable entry point. Caught here it names the
 	// fix; caught three steps later it only says "never became ready".
-	_, err := read(t, `{"project":"a","runtime":"workerd"}`)
+	_, err := read(t, `{"project":"a","runtimes":[{"runtime":"workerd"}]}`)
 	if err == nil {
 		t.Fatal("expected a workerd artifact to be rejected")
 	}
-	if !strings.Contains(err.Error(), "--target=bare") {
+	if !strings.Contains(err.Error(), "--runtime=node") {
 		t.Fatalf("error should name the rebuild flag, got: %v", err)
 	}
 }
 
 func TestRejectsUnknownRuntime(t *testing.T) {
-	if _, err := read(t, `{"project":"a","runtime":"deno"}`); err == nil {
+	if _, err := read(t, `{"project":"a","runtimes":[{"runtime":"deno"}]}`); err == nil {
 		t.Fatal("expected unknown runtime to be rejected")
 	}
 }
@@ -233,7 +230,7 @@ func TestAcceptsStaticArtifact(t *testing.T) {
 	// A site built with `--target=static` has no entry point to spawn. Bay
 	// serves it from disk and starts nothing, so `static` is a legitimate answer
 	// to "what must a deployer do to run this artifact".
-	m, err := read(t, `{"project":"docs","runtime":"static"}`)
+	m, err := read(t, `{"project":"docs","runtimes":[{"runtime":"static"}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +241,7 @@ func TestAcceptsStaticArtifact(t *testing.T) {
 
 func TestServerRuntimesAreNotStatic(t *testing.T) {
 	for _, runtime := range []string{"node", "bun"} {
-		m, err := read(t, `{"project":"a","runtime":"`+runtime+`","entry":"index.`+runtime+`.js"}`)
+		m, err := read(t, `{"project":"a","runtimes":[{"runtime":"`+runtime+`","entry":"index.`+runtime+`.js"}]}`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -257,7 +254,7 @@ func TestServerRuntimesAreNotStatic(t *testing.T) {
 func TestStaticArtifactNeedsNoRuntimeVersion(t *testing.T) {
 	// Nothing is spawned, so there is no interpreter to resolve a major against.
 	// A static artifact omitting the field must not trip the pin validator.
-	if _, err := read(t, `{"project":"docs","runtime":"static"}`); err != nil {
+	if _, err := read(t, `{"project":"docs","runtimes":[{"runtime":"static"}]}`); err != nil {
 		t.Fatalf("a static artifact without runtimeVersion should load, got: %v", err)
 	}
 }
@@ -267,7 +264,7 @@ func TestRejectsStaticArtifactDeclaringResources(t *testing.T) {
 	// names the contradiction at deploy time; accepting it would provision a
 	// database no process will ever connect to.
 	for _, resource := range []string{"hasDatabase", "hasBucket", "hasKV", "hasQueue"} {
-		body := `{"project":"docs","runtime":"static","resources":{"` + resource + `":true}}`
+		body := `{"project":"docs","runtimes":[{"runtime":"static"}],"resources":{"` + resource + `":true}}`
 		_, err := read(t, body)
 		if err == nil {
 			t.Fatalf("expected a static artifact declaring %s to be rejected", resource)
@@ -305,7 +302,7 @@ func TestLegacyReleaseNamesTheMigration(t *testing.T) {
 	}
 	if err := os.WriteFile(
 		filepath.Join(release, "dist", "manifest.json"),
-		[]byte(`{"project":"lore","runtime":"node","entry":"dist"}`), 0o600,
+		[]byte(`{"project":"lore","runtimes":[{"runtime":"node","entry":"dist"}]}`), 0o600,
 	); err != nil {
 		t.Fatal(err)
 	}

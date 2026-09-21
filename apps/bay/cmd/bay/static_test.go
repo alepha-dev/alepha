@@ -25,7 +25,7 @@ func staticArtifact(t *testing.T) string {
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
 	files := map[string]string{
-		"manifest.json":     `{"project": "demo", "runtime": "static"}`,
+		"manifest.json":     `{"project": "demo", "runtimes": [{"runtime": "static"}]}`,
 		"public/index.html": "<html>home</html>",
 		"public/404.html":   "<html>missing</html>",
 	}

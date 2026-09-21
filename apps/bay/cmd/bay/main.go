@@ -1595,7 +1595,7 @@ func writeJSON(w http.ResponseWriter, code int, body any) {
 // where Alepha's `HttpClient` looks for the *name*: any Alepha app calling the
 // control API got an `HttpError` with an empty message, and
 // the operator lost the one sentence that said what to do — "rebuild with
-// `alepha build --target=bare`", "redeploy the app to migrate it".
+// `alepha build --runtime=node`", "redeploy the app to migrate it".
 //
 // One error shape across the whole system, so every Alepha client understands
 // Bay for free.

@@ -4,7 +4,7 @@
 // app needs, so Bay never has to execute app code to find out.
 //
 // It is deliberately the SAME file the framework already emits for every other
-// deploy consumer (`alepha platform up --prebuilt`, Alepha Rocket) — not a
+// deploy consumer (`alepha platform up --prebuilt`, Lore Deploy), not a
 // Bay-specific one. A second, hand-written manifest would reintroduce exactly
 // the code↔infra drift that deriving it is supposed to make impossible:
 // declaring `$repository` is what sets `hasDatabase`, and nobody has to
@@ -21,12 +21,9 @@ import (
 
 // RuntimeStatic marks an artifact with no entry point to spawn.
 //
-// It sits in the same `runtime` field as node and bun because that field is
-// what an older Bay switches on: meeting an unknown value it refuses the deploy
-// by name. A separate `kind` field would be IGNORED by an older Bay — unknown
-// fields are dropped on purpose so a newer build never breaks it — which would
-// leave it reading `runtime: node`, spawning node against a directory with no
-// index.js, and reporting only "never became ready".
+// A static build declares one slice, `{ "runtime": "static" }`, with no entry:
+// the same `runtimes` list every other build uses, so there is one path through
+// `pick` rather than a special case (#Q2461).
 const RuntimeStatic = "static"
 
 // Path is where the manifest lives inside an unpacked artifact.
@@ -65,28 +62,29 @@ type resources struct {
 }
 
 // buildManifest is the on-disk shape, mirroring the framework's `BuildManifest`
-// interface. Only the fields Bay acts on are declared; the rest (environments,
-// tenancy, websocketPaths, email, env) belongs to other consumers and is
-// ignored rather than rejected, so a newer build never breaks an older Bay.
+// interface. Only the fields Bay acts on are declared; the rest (`secrets`,
+// `variables`, `cloudflare`) belongs to other consumers and is ignored rather
+// than rejected, so a newer build never breaks an older Bay.
+//
+// `runtimes` is the only runtime declaration (#Q2460): there is no scalar
+// `runtime` / `entry` pair to fall back on, and a manifest without slices is
+// refused by name in `load`.
 type buildManifest struct {
-	Version        int       `json:"version"`
-	Project        string    `json:"project"`
-	Runtime        string    `json:"runtime"`
-	RuntimeVersion string    `json:"runtimeVersion"`
-	Entry          string    `json:"entry"`
-	Runtimes       []slice   `json:"runtimes"`
-	Resources      resources `json:"resources"`
-	Crons          []string  `json:"crons"`
+	Project   string    `json:"project"`
+	Runtimes  []slice   `json:"runtimes"`
+	Resources resources `json:"resources"`
+	Crons     []string  `json:"crons"`
 }
 
 // slice is one server slice of a multi-runtime artifact.
 //
 // An artifact may carry several: one linked for node, one for workerd, one for
-// bun. Each names its runtime and the file to spawn, relative to the archive
-// root.
+// bun, or one `static` slice with no entry. Each names its runtime, the file to
+// spawn relative to the archive root, and the runtime's major.
 type slice struct {
-	Runtime string `json:"runtime"`
-	Entry   string `json:"entry"`
+	Runtime        string `json:"runtime"`
+	Entry          string `json:"entry"`
+	RuntimeVersion string `json:"runtimeVersion"`
 }
 
 // runnable reports whether Bay can spawn this runtime at all.
@@ -105,24 +103,19 @@ func runnable(runtime string) bool {
 // `["node", "bun"]` runs node and `["bun", "node"]` runs bun, from the same two
 // slices: the build's declared order is the decision, and reordering here
 // would silently change which runtime an app is deployed on. It is the same
-// rule the build uses to pick the primary, which is what makes the scalar
-// `runtime` (always `runtimes[0]`) and this choice incapable of disagreeing.
+// rule the build uses to pick the primary.
 //
-// When nothing declared is runnable, the FIRST slice is returned anyway so
-// `validate` can refuse it by name — a workerd-only artifact should say
-// "built for Cloudflare Workers", not "no runnable slice".
-func (b *buildManifest) pick() (runtime, entry string) {
-	// Nothing to spawn: the slice search would be answering a question a static
-	// site does not ask.
-	if b.Runtime == RuntimeStatic || len(b.Runtimes) == 0 {
-		return b.Runtime, b.Entry
-	}
+// When nothing declared is runnable, the FIRST slice is returned anyway, so a
+// static site gets its `static` slice and `validate` can refuse a workerd-only
+// artifact by name ("built for Cloudflare Workers", not "no runnable slice").
+// Callers guarantee at least one slice.
+func (b *buildManifest) pick() slice {
 	for _, s := range b.Runtimes {
 		if runnable(s.Runtime) {
-			return s.Runtime, s.Entry
+			return s
 		}
 	}
-	return b.Runtimes[0].Runtime, b.Runtimes[0].Entry
+	return b.Runtimes[0]
 }
 
 // Resources is what Bay acts on: each true value becomes a directory the app is
@@ -183,12 +176,20 @@ func load(path string) (*Manifest, error) {
 	if err := json.Unmarshal(raw, &b); err != nil {
 		return nil, fmt.Errorf("parse manifest: %w", err)
 	}
-	runtime, entry := b.pick()
+	// No fallback to the old scalar `runtime` / `entry` pair: compatibility is
+	// broken on purpose, and a guess here is a workerd bundle started under
+	// node. Say what to do instead.
+	if len(b.Runtimes) == 0 {
+		return nil, fmt.Errorf(
+			"manifest declares no runtimes; this artifact predates manifest v2, rebuild it with a current `alepha build`",
+		)
+	}
+	picked := b.pick()
 	m := &Manifest{
 		Name:           b.Project,
-		Runtime:        runtime,
-		RuntimeVersion: b.RuntimeVersion,
-		Entry:          entry,
+		Runtime:        picked.Runtime,
+		RuntimeVersion: picked.RuntimeVersion,
+		Entry:          picked.Entry,
 		Resources: Resources{
 			Database: b.Resources.HasDatabase,
 			Bucket:   b.Resources.HasBucket,
@@ -197,22 +198,7 @@ func load(path string) (*Manifest, error) {
 		},
 		Cron: b.Crons,
 	}
-	m.applyDefaults()
 	return m, m.validate()
-}
-
-func (m *Manifest) applyDefaults() {
-	// Absent in artifacts built before the field existed. Node is what the
-	// framework's own build defaults to.
-	if m.Runtime == "" {
-		m.Runtime = "node"
-	}
-	// No `Entry` default. `dist` used to be one, because the archive wrapped the
-	// build in a `dist/` directory whose `main` resolved the bundle. The archive
-	// root is now the contents, so that default would name a directory that does
-	// not exist — and spawning `node dist` against it fails as "never became
-	// ready", which says nothing about why. `validate` refuses an empty entry
-	// instead.
 }
 
 func (m *Manifest) validate() error {
@@ -237,7 +223,7 @@ func (m *Manifest) validate() error {
 		// and then back it up nightly forever.
 		if m.Resources.Database || m.Resources.Bucket || m.Resources.KV || m.Resources.Queue {
 			return fmt.Errorf(
-				"artifact declares runtime %q but also declares resources; a static site runs no process and cannot use a database, bucket, KV or queue — rebuild with `alepha build --target=bare` if the app needs them",
+				"artifact declares runtime %q but also declares resources; a static site runs no process and cannot use a database, bucket, KV or queue — rebuild with `alepha build --runtime=node` if the app needs them",
 				m.Runtime,
 			)
 		}
@@ -247,7 +233,7 @@ func (m *Manifest) validate() error {
 		// conditions and has no node-runnable entry point, so the app would
 		// deploy, fail to boot, and report only "never became ready".
 		return fmt.Errorf(
-			"artifact was built for Cloudflare Workers (runtime %q) and cannot run under a self-hosted runtime; rebuild with `alepha build --target=bare`",
+			"artifact was built for Cloudflare Workers (runtime %q) and cannot run under a self-hosted runtime; rebuild with `alepha build --runtime=node,workerd`",
 			m.Runtime,
 		)
 	default:

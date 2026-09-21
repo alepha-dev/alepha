@@ -16,8 +16,7 @@ func artifact(t *testing.T, name string) string {
 	return buildArchive(t,
 		entry{name: "manifest.json", body: `{
 			"project": "` + name + `",
-			"entry": "index.js",
-			"runtime": "node"
+			"runtimes": [{"runtime": "node", "entry": "index.js"}]
 		}`},
 		entry{name: "index.node.js", body: "process.exit(0)"},
 	)

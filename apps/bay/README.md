@@ -142,12 +142,17 @@ Bay takes the **first slice it can run, in declared order**, applying no
 preference of its own: `(node, bun)` spawns node and `(bun, node)` spawns bun,
 from the same two slices. The build's declared order is the decision.
 
+The slices are the manifest's `runtimes` list, and it is the only runtime
+declaration: each entry names its runtime, its entry file and the runtime's
+major, and a static site is one `static` slice with no entry. A manifest
+without `runtimes` is refused by name and asks for a rebuild.
+
 It arrives compressed with zstd. `.tar.gz` is read too, and is not going away:
 hosts hold artifacts pulled before the change, and the compression is detected
 from the stream's own first bytes rather than from the file name.
 
 `manifest.json` is the contract between the build and all of its
-consumers - `alepha platform up --prebuilt`, Alepha Rocket, and Bay. Declaring
+consumers - `alepha platform up --prebuilt`, Lore Deploy, and Bay. Declaring
 `$repository` is what puts `hasDatabase: true` in it, and that `true` is what
 provisions the database **and** grants write access in the sandbox. Nobody
 writes the same fact twice, so code ↔ infra drift is impossible by
