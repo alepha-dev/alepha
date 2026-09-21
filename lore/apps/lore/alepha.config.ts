@@ -75,6 +75,15 @@ export default defineConfig({
   // so the Cloudflare deploy and the self-hosted image read the same output
   // instead of one of them steering the build.
   build: {
+    // ⚠️ Both slices, from one build. Lore ships to two places: a Cloudflare
+    // Worker (lore.alepha.dev) and a self-hosted image (ghcr.io). They differ
+    // only in the server link, so the client bundle, the prerender and the
+    // asset compression are done once and the artifact carries both.
+    //
+    // Order decides the primary, and node is first on purpose: it is what
+    // `dist/package.json` points at, what `alepha image` packages, and what a
+    // self-hosted deployer spawns. The Worker takes its slice by name.
+    runtime: ["node", "workerd"],
     cloudflare: {
       config: {
         /**

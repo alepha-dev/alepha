@@ -197,13 +197,11 @@ describe("lore apps build", () => {
       argv: "--target cloudflare,bare --tag 0.28.0",
     });
 
-    expect(commandsOf(shell)).toContain("npx alepha build -t cloudflare");
+    expect(commandsOf(shell)).toContain("npx alepha build --runtime workerd");
     // ⚠️ `bare` says its runtime out loud: the target alone leaves it at the
     // default, and a manifest naming the wrong runtime lands the push under
     // the wrong identity.
-    expect(commandsOf(shell)).toContain(
-      "npx alepha build -t bare --runtime node",
-    );
+    expect(commandsOf(shell)).toContain("npx alepha build --runtime node");
   });
 
   it("leaves the build in dist/ and puts nothing else there", async () => {
@@ -251,9 +249,7 @@ describe("lore apps build", () => {
 
       await cli.run(command.build, { root: "/project", argv: "--env yyy" });
 
-      expect(commandsOf(shell)).toContain(
-        "npx alepha build -t bare --runtime node",
-      );
+      expect(commandsOf(shell)).toContain("npx alepha build --runtime node");
     });
 
     /**
@@ -282,7 +278,9 @@ describe("lore apps build", () => {
       const build = (shell: MemoryShellProvider) =>
         commandsOf(shell).filter((it) => it.startsWith("npx alepha build"));
       expect(build(staging.shell)).toEqual(build(production.shell));
-      expect(build(staging.shell)).toEqual(["npx alepha build -t cloudflare"]);
+      expect(build(staging.shell)).toEqual([
+        "npx alepha build --runtime workerd",
+      ]);
     });
 
     it("refuses an --env that contradicts --target", async () => {
@@ -346,7 +344,7 @@ describe("lore apps deploy", () => {
     });
 
     // The build is the env's implied target, and nothing else.
-    expect(commandsOf(shell)).toEqual(["npx alepha build -t cloudflare"]);
+    expect(commandsOf(shell)).toEqual(["npx alepha build --runtime workerd"]);
     // ⚠️ Ordering, not merely occurrence: the push saw the build's shell call
     // already made, and the deploy saw the push already run.
     expect(ran[0].shellCalls).toBe(1);

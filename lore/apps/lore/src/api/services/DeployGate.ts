@@ -145,7 +145,7 @@ export class DeployGate {
    *
    * ⚠️ The command in that message names `lore apps build`, which is #1812's
    * surface. It has drifted once already: the pre-#27 spelling was
-   * `alepha build -t cloudflare && alepha lore artifacts push`, and both halves
+   * `alepha build --runtime=workerd && alepha lore artifacts push`, and both halves
    * changed. The spec pins the string, so #1812 and this cannot silently
    * disagree.
    *

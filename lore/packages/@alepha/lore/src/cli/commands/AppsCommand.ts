@@ -171,19 +171,35 @@ export class AppsCommand {
   protected static readonly FOLLOW_TIMEOUT_MS = 15 * 60 * 1_000;
 
   /**
-   * Which `alepha build -t` produces which runtime.
+   * Which of THIS command's `--target` values an artifact's runtime implies.
    *
    * ⚠️ **The `node` row is an inference, not a lookup.** A manifest carries a
-   * RUNTIME and never a target, and `runtime: node` is producible by
-   * `--target bare` and by `--target docker` alike. `bare` is chosen because
-   * epic #1 removed the container and `buildManifest`'s own doc describes the
-   * node case as "spawn a process against a directory with no entry point".
+   * RUNTIME and never a target, and `runtime: node` is producible by `bare`
+   * and by `docker` alike. `bare` is chosen because epic #1 removed the
+   * container and `buildManifest`'s own doc describes the node case as "spawn
+   * a process against a directory with no entry point".
    * **If Bay ever consumes a docker image, this table is where that changes.**
    */
   protected static readonly TARGET_FOR_RUNTIME: Record<string, string> = {
     workerd: "cloudflare",
     node: "bare",
     bun: "bare",
+    static: "static",
+  };
+
+  /**
+   * Which runtime each `--target` asks `alepha build` for.
+   *
+   * ⚠️ **`alepha build` has no `--target` any more**: the build is described
+   * by what it produces, so this command translates its own vocabulary into a
+   * runtime on the way out. The flag here stays a TARGET because it names a
+   * deploy destination - an estate type - which is a different question from
+   * which slice to link, and the two only happen to line up one-to-one today.
+   */
+  protected static readonly RUNTIME_FOR_TARGET: Record<string, string> = {
+    cloudflare: "workerd",
+    bare: "node",
+    docker: "node",
     static: "static",
   };
 
@@ -815,15 +831,24 @@ export class AppsCommand {
    * One `alepha build`, as a subprocess.
    *
    * ⚠️ **No env-specific value is passed, ever.** The command line carries a
-   * target and nothing else: that is what keeps two envs on one estate type
+   * runtime and nothing else: that is what keeps two envs on one estate type
    * byte-identical, which is the property promotion depends on.
+   *
+   * ⚠️ **No target means a bare `alepha build`**, so the workspace's own
+   * `build.runtime` decides. Passing a runtime there would override the config
+   * with a guess, which is the opposite of the offline path's whole point.
+   *
+   * When a target IS named, its runtime is said out loud even where it matches
+   * the default: a manifest naming the wrong one lands the push under the
+   * wrong identity, and the artifact's `(app, tag, runtime)` key makes that a
+   * silent overwrite rather than an error.
    */
   protected async buildOnce(root: string, target: string): Promise<void> {
-    const flags = target ? ` -t ${target}` : "";
-    // `bare` needs its runtime said out loud: the target alone leaves it at the
-    // default, and a manifest that names the wrong runtime lands the push under
-    // the wrong identity.
-    const runtime = target === "bare" ? " --runtime node" : "";
-    await this.shell.run(`npx alepha build${flags}${runtime}`, { root });
+    if (!target) {
+      await this.shell.run("npx alepha build", { root });
+      return;
+    }
+    const runtime = AppsCommand.RUNTIME_FOR_TARGET[target] ?? "node";
+    await this.shell.run(`npx alepha build --runtime ${runtime}`, { root });
   }
 }
