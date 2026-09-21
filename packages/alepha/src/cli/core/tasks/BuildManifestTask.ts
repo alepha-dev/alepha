@@ -237,52 +237,22 @@ export class BuildManifestTask extends BuildTask {
       ];
     } catch {}
 
-    // Declared job timeouts, so the prebuilt deploy path can still warn
-    // about the ones direct mode on Workers cannot honour. Looked up by
-    // class-name string for the same reason `CronProvider` is: the CLI and
-    // the workspace are two module graphs.
-    let jobs: BuildManifest["jobs"];
-    try {
-      const jobProvider = ctx.alepha.inject("JobProvider") as {
-        getRegisteredJobs?: () => Map<string, { options: { timeout?: any } }>;
-      };
-      const dt = ctx.alepha.inject("DateTimeProvider") as {
-        duration: (value: any) => { as: (unit: string) => number };
-      };
-      const registry = jobProvider.getRegisteredJobs?.();
-      if (registry) {
-        jobs = [...registry.entries()].map(([name, registration]) => ({
-          name,
-          timeoutMs: registration.options.timeout
-            ? dt.duration(registration.options.timeout).as("milliseconds")
-            : undefined,
-        }));
-      }
-    } catch {}
-
-    // platformOptions come from the CLI's Alepha instance (where
-    // alepha.config.ts ran during the configure hook). BuildCommand
-    // reads them up there and threads them via ctx — ctx.alepha here
-    // is the WORKSPACE's Vite-booted Alepha, which never saw the
-    // platform options.
-    const defaultEnv = ctx.platformOptions?.default ?? "production";
-    const environments = (ctx.platformOptions?.environments ??
-      {}) as BuildManifest["environments"];
-
-    // Every declared `$env` key. dump() force-instantiates the graph (no
-    // start/ready hooks), so this is the full env surface — used by the
-    // deploy `secrets` step as the worker-secret allowlist.
-    let env: string[] = [];
-    let publicVars: string[] | undefined;
+    // Every declared `$env` key, split into what is a secret and what the
+    // author declared `secret: false` (#Q2465). dump() force-instantiates the
+    // graph (no start/ready hooks), so this is the full env surface. The two
+    // lists are disjoint: each key lands in exactly one, and "nobody said"
+    // means secret.
+    type EnvEntry = BuildManifest["secrets"][number];
+    const envEntries = new Map<string, EnvEntry & { secret: boolean }>();
     try {
       const dumped = ctx.alepha.dump().env;
-      env = Object.keys(dumped).sort();
-      // Only the declassified keys are recorded: everything else on `env` is a
-      // secret, so a companion `secrets` list would just be the complement, and
-      // two lists obliged to agree eventually don't. Left undefined rather than
-      // `[]` so "never annotated" stays legible in the artifact.
-      const declassified = env.filter((key) => dumped[key]?.secret === false);
-      publicVars = declassified.length ? declassified : undefined;
+      for (const [key, variable] of Object.entries(dumped)) {
+        envEntries.set(key, {
+          name: key,
+          description: variable.description,
+          secret: variable.secret !== false,
+        });
+      }
     } catch {}
 
     /*
@@ -311,69 +281,53 @@ export class BuildManifestTask extends BuildTask {
     */
     if (hasAnalytics) {
       for (const key of ["CLOUDFLARE_ANALYTICS_TOKEN", "CLOUDFLARE_ACCOUNT_ID"])
-        if (!env.includes(key)) env.push(key);
-      env.sort();
+        if (!envEntries.has(key))
+          envEntries.set(key, { name: key, secret: true });
     }
+    const envOf = (secret: boolean): EnvEntry[] =>
+      [...envEntries.values()]
+        .filter((entry) => entry.secret === secret)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((entry) =>
+          entry.description
+            ? { name: entry.name, description: entry.description }
+            : { name: entry.name },
+        );
 
-    // Capture the CF email binding so manifest-mode deploys (Rocket) can
-    // re-emit `send_email` — `enhanceEmail` can't introspect there.
-    let email: BuildManifest["email"];
+    // Capture the CF email binding so a prebuilt deploy (Lore Deploy) can
+    // re-emit `send_email`: `enhanceEmail` cannot introspect there.
+    let email: { binding: string } | undefined;
     try {
       ctx.alepha.inject(this.cloudflareEmailProviderName);
       email = { binding: SEND_EMAIL_DEFAULT_BINDING };
     } catch {}
 
     /*
-      A static build has no entry point to spawn, and this field is what every
-      deploy consumer switches on to decide what to do with the artifact —
-      "nothing, serve the files" is a legitimate answer to that question.
+      `runtimes` is the only runtime declaration (#Q2460). Declared order, never
+      sorted: the first is the primary, which is what a deployer spawns.
 
-      Recorded in `runtime` rather than as a new field precisely because a
-      deployer that predates static hosting switches on THIS one: meeting an
-      unknown value it refuses the deploy and names it. A separate field would
-      be ignored — unknown fields are dropped on purpose so a newer build never
-      breaks an older deployer — leaving it to read `runtime: node` and spawn a
-      process against a directory with no entry point.
+      A static build is one `static` slice with no entry: "nothing, serve the
+      files" is a legitimate answer to what a deployer must do, and stating it
+      as a slice keeps every consumer on one path instead of a special case.
+
+      ⚠️ `entry` names a FILE relative to the ARCHIVE ROOT (`index.node.js`),
+      because the archive root is the contents of `dist/`.
     */
-    const isStatic = this.slices.isStaticBuild(ctx.options);
-    // Declared order, and never sorted: the first is the primary, which is
-    // what the scalar `runtime` below names and what a deployer spawns.
-    const runtimes = this.slices.fromOptions(ctx.options);
-    const processRuntime = this.slices.primary(runtimes);
-
-    /*
-      ⚠️ `entry` names a FILE, relative to the ARCHIVE ROOT — `index.node.js`,
-      not `dist`. It used to be the dist directory, because the archive wrapped
-      everything in one and `node dist` resolved the bundle through its `main`.
-      The archive root is now the contents, so a deployer carrying the old
-      reading looks for a directory that is not there.
-
-      `runtimes` beside it carries every slice in declared order. It is
-      additive: the two scalars keep saying exactly what they always said, so a
-      deployer that never learns about slices still spawns the primary, and the
-      two cannot disagree because the scalars ARE `runtimes[0]`.
-    */
-    const slices = runtimes.map((runtime) => ({
-      runtime,
-      entry: this.slices.entryFileName(runtime),
-    }));
+    const runtimes: BuildManifest["runtimes"] = this.slices.isStaticBuild(
+      ctx.options,
+    )
+      ? [{ runtime: "static" }]
+      : await Promise.all(
+          this.slices.fromOptions(ctx.options).map(async (runtime) => ({
+            runtime,
+            entry: this.slices.entryFileName(runtime),
+            runtimeVersion: await this.resolveRuntimeVersion(root, runtime),
+          })),
+        );
 
     const manifest: BuildManifest = {
-      version: 1,
       project: name,
-      defaultEnv,
-      environments,
-      runtime: isStatic ? "static" : processRuntime,
-      // A static site has no slice to declare: nothing is spawned, so an array
-      // of one entry pointing at a file that does not exist would be a claim
-      // rather than a fact.
-      runtimes: isStatic ? undefined : slices,
-      // No interpreter is resolved for a static site, so a version here would
-      // be a claim about a process that does not exist.
-      runtimeVersion: isStatic
-        ? undefined
-        : await this.resolveRuntimeVersion(root, processRuntime),
-      entry: isStatic ? undefined : slices[0]?.entry,
+      runtimes,
       resources: {
         hasDatabase,
         hasBucket,
@@ -384,30 +338,26 @@ export class BuildManifestTask extends BuildTask {
         hasWebSocket,
       },
       crons,
-      jobs,
-      websocketPaths,
-      email,
-      env,
-      publicVars,
-      cloudflareConfig: ctx.options.cloudflare?.config as
-        | Record<string, unknown>
-        | undefined,
+      secrets: envOf(true),
+      variables: envOf(false),
+      // Only what a Worker deploy reads, and only when there is a Worker slice
+      // to deploy: a node-only artifact carries no Cloudflare noise.
+      cloudflare: runtimes.some((slice) => slice.runtime === "workerd")
+        ? {
+            config: ctx.options.cloudflare?.config as
+              | Record<string, unknown>
+              | undefined,
+            websocketPaths,
+            email,
+          }
+        : undefined,
     };
 
-    /*
-      Validated on the way out, not merely typed on the way in. `environments`
-      reaches this object through a cast (`as BuildManifest["environments"]`),
-      and every field here is read by a deployer that has no access to this
-      build: a wrong value is discovered in production, hours later, by
-      something that cannot say where it came from.
-
-      ⚠️ Parsing before a WRITE is only safe because the schema is `.loose()`.
-      A plain `z.object` strips unknown keys, so this line would silently
-      DELETE whatever the schema had not caught up with -- starting with
-      `EnvironmentConfig`'s own `host` / `socket` / `vars` / `services`, which
-      the cast above narrows away in the types and `JSON.stringify` writes
-      anyway. Validation that quietly edits the artifact is worse than none.
-    */
+    // Validated on the way out, not merely typed on the way in: every field
+    // here is read by a deployer that has no access to this build, so a wrong
+    // value is discovered in production by something that cannot say where it
+    // came from. Parsing before a WRITE is safe only because the schema is
+    // `.loose()`: a plain `z.object` would strip unknown keys silently.
     const validated = buildManifestSchema.parse(manifest);
 
     // `writeFile` does not create parent directories. This used to be safe by

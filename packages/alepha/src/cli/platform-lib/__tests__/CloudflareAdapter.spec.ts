@@ -823,7 +823,7 @@ describe("CloudflareAdapter", () => {
       expect(byName.GOOGLE_CLIENT_ID).toBe("env-google");
     });
 
-    test("uses dist/manifest.json `env` as the default allowlist, resolved from process.env", async ({
+    test("uses dist/manifest.json `secrets` and `variables` as the default allowlist, resolved from process.env", async ({
       expect,
     }) => {
       const { adapter, fs, naming, shell } = createTestEnv();
@@ -844,12 +844,13 @@ describe("CloudflareAdapter", () => {
       await fs.writeFile(
         "/project/dist/manifest.json",
         JSON.stringify({
-          env: [
-            "APP_SECRET",
-            "GOOGLE_CLIENT_ID",
-            "CLOUDFLARE_ZONE",
-            "LOG_LEVEL",
+          secrets: [
+            { name: "APP_SECRET" },
+            { name: "GOOGLE_CLIENT_ID" },
+            { name: "CLOUDFLARE_ZONE" },
+            { name: "LOG_LEVEL" },
           ],
+          variables: [],
         }),
       );
 
@@ -892,7 +893,7 @@ describe("CloudflareAdapter", () => {
       // Manifest declares only APP_SECRET…
       await fs.writeFile(
         "/project/dist/manifest.json",
-        JSON.stringify({ env: ["APP_SECRET"] }),
+        JSON.stringify({ secrets: [{ name: "APP_SECRET" }], variables: [] }),
       );
       // …but an orchestrator (Rocket) injected CLUB_CONFIG_JSON into the
       // per-deploy override file. It must still be pushed.
@@ -935,7 +936,10 @@ describe("CloudflareAdapter", () => {
       // Manifest lists more keys, but the explicit override wins.
       await fs.writeFile(
         "/project/dist/manifest.json",
-        JSON.stringify({ env: ["APP_SECRET", "GOOGLE_CLIENT_ID"] }),
+        JSON.stringify({
+          secrets: [{ name: "APP_SECRET" }, { name: "GOOGLE_CLIENT_ID" }],
+          variables: [],
+        }),
       );
 
       process.env.APP_SECRET = "s1";
@@ -1041,7 +1045,7 @@ describe("CloudflareAdapter", () => {
       expect(pushed.map((s) => s.name)).toEqual(["ONLY_SECRET"]);
     });
 
-    test("pushes manifest `publicVars` as plain_text, everything else encrypted", async ({
+    test("pushes manifest `variables` as plain_text, everything else encrypted", async ({
       expect,
     }) => {
       const { adapter, fs, naming, shell } = createTestEnv();
@@ -1060,8 +1064,8 @@ describe("CloudflareAdapter", () => {
       await fs.writeFile(
         "/project/dist/manifest.json",
         JSON.stringify({
-          env: ["APP_SECRET", "SIGIL_CONFIG", "SIGIL_KEY"],
-          publicVars: ["SIGIL_CONFIG"],
+          secrets: [{ name: "APP_SECRET" }, { name: "SIGIL_KEY" }],
+          variables: [{ name: "SIGIL_CONFIG" }],
         }),
       );
       await fs.writeFile(
@@ -1104,12 +1108,13 @@ describe("CloudflareAdapter", () => {
         },
       });
 
-      // No `publicVars` at all: the shape of every artifact built before the
-      // field existed. It must encrypt everything rather than read the absent
-      // list as "nothing is secret".
+      // An app that declassified nothing: every key must be encrypted.
       await fs.writeFile(
         "/project/dist/manifest.json",
-        JSON.stringify({ env: ["APP_SECRET", "SIGIL_CONFIG"] }),
+        JSON.stringify({
+          secrets: [{ name: "APP_SECRET" }, { name: "SIGIL_CONFIG" }],
+          variables: [],
+        }),
       );
       await fs.writeFile(
         "/project/.env.production",
@@ -1131,7 +1136,7 @@ describe("CloudflareAdapter", () => {
       });
 
       // No manifest at all: PUBLIC_URL is invented by the adapter from the
-      // configured domain, so it can never appear on `publicVars`. It is
+      // configured domain, so it can never appear on `variables`. It is
       // plaintext regardless — it is the address the app answers on.
       await fs.writeFile("/project/.env.production", "APP_SECRET=my-secret");
 
@@ -1208,7 +1213,10 @@ describe("CloudflareAdapter", () => {
         const ctx = makeCtx(naming);
         await fs.writeFile(
           "/project/dist/manifest.json",
-          JSON.stringify({ env: ["APP_SECRET", "SIGIL_CONFIG"] }),
+          JSON.stringify({
+            secrets: [{ name: "APP_SECRET" }, { name: "SIGIL_CONFIG" }],
+            variables: [],
+          }),
         );
         await fs.writeFile(
           "/project/.env.production",
@@ -1222,8 +1230,8 @@ describe("CloudflareAdapter", () => {
         await fs.writeFile(
           "/project/dist/manifest.json",
           JSON.stringify({
-            env: ["APP_SECRET", "SIGIL_CONFIG"],
-            publicVars: ["SIGIL_CONFIG"],
+            secrets: [{ name: "APP_SECRET" }],
+            variables: [{ name: "SIGIL_CONFIG" }],
           }),
         );
         await deployed(adapter, fs, ctx, createMockRun());

@@ -23,7 +23,7 @@ import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import {
   readManifestEnvKeys,
-  readManifestPublicVars,
+  readManifestVariables,
   EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS,
   selectSecrets,
 } from "../secretKeys.ts";
@@ -436,7 +436,6 @@ export class CloudflareAdapter extends PlatformAdapter {
       entry: { root, server: "" },
       hasClient: false,
       manifest,
-      platformOptions: null,
       flags: { prebuilt: true },
       // ⚠️ On the context, not on `process.env`. This used to SET each value
       // globally for the duration of the call and restore it after, which is
@@ -471,7 +470,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    * booted with no secret at all. `wrangler deploy --secrets-file` sends them
    * as `secret_text` bindings of the upload itself, first deploy included.
    *
-   * The declassified values (`publicVars`, `PUBLIC_URL`) are written into the
+   * The declassified values (`variables`, `PUBLIC_URL`) are written into the
    * deploy config's `vars`, so they are `plain_text` bindings of the same
    * upload. They had to be: `wrangler deploy` without `keep_vars` drops every
    * `plain_text` binding its config does not name, which is also why the old
@@ -587,15 +586,14 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   /**
-   * Read the build manifest's `publicVars` list — the keys the app declassified
-   * with `secret: false`. Everything else on the allowlist is a secret, so an
-   * absent list (older artifact, or an app that annotated nothing) encrypts
-   * everything, which is the pre-existing behaviour.
+   * Read the build manifest's `variables`: the keys the app declared
+   * `secret: false`. Everything else on the allowlist is a secret, so an
+   * unreadable manifest encrypts everything.
    */
-  protected async readManifestPublicVars(
+  protected async readManifestVariables(
     root: string,
   ): Promise<string[] | undefined> {
-    return await readManifestPublicVars(this.fs, root);
+    return await readManifestVariables(this.fs, root);
   }
 
   /**
@@ -671,13 +669,13 @@ export class CloudflareAdapter extends PlatformAdapter {
     // the field (older artifact, or an app that annotated nothing) behaves
     // exactly as before.
     //
-    // The allowlist is intersected rather than trusted wholesale: `publicVars`
-    // is a subset of the manifest's `env`, but `keys` may come from
+    // The allowlist is intersected rather than trusted wholesale: `variables`
+    // is part of the manifest's allowlist, but `keys` may come from
     // `platform.secrets.keys` or `.env.<env>.local` instead, and a key an
     // orchestrator injected is not something the app vouched for.
     const publicKeys = new Set([
       ...CloudflareAdapter.ALWAYS_PUBLIC_KEYS,
-      ...((await this.readManifestPublicVars(ctx.root)) ?? []),
+      ...((await this.readManifestVariables(ctx.root)) ?? []),
     ]);
     const vars: Record<string, string> = {};
     for (const key of Object.keys(secrets)) {

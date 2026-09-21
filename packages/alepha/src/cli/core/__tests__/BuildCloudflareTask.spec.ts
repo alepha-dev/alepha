@@ -824,12 +824,9 @@ describe("BuildCloudflareTask", () => {
       const ctx = {
         root: "/root",
         options: {},
-        platformOptions: null,
         manifest: {
-          version: 1,
           project: "my-app",
-          defaultEnv: "production",
-          environments: {},
+          runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
           resources: {
             hasDatabase: false,
             hasBucket: false,
@@ -840,8 +837,9 @@ describe("BuildCloudflareTask", () => {
             hasWebSocket: true,
           },
           crons: [],
-          websocketPaths: ["/ws/chat"],
-          env: [],
+          secrets: [],
+          variables: [],
+          cloudflare: { websocketPaths: ["/ws/chat"] },
         },
       } as any;
 
@@ -881,7 +879,6 @@ describe("BuildCloudflareTask", () => {
       ({
         root: "/root",
         options: {},
-        platformOptions: null,
         manifest: undefined,
         alepha: fakeAlephaWith(byName),
       }) as any;
@@ -991,9 +988,9 @@ describe("BuildCloudflareTask", () => {
       ctx.manifest = {
         resources: { hasWebSocket: false },
         crons: [],
-        websocketPaths: [],
-        cloudflareConfig: {
-          assets: { run_worker_first: ["/api/*"] },
+        cloudflare: {
+          websocketPaths: [],
+          config: { assets: { run_worker_first: ["/api/*"] } },
         },
       };
 
@@ -1068,10 +1065,8 @@ describe("BuildCloudflareTask", () => {
   describe("Cloudflare job budgets", () => {
     const manifest = (over: Partial<Record<string, unknown>> = {}) =>
       ({
-        version: 1,
         project: "my-app",
-        defaultEnv: "production",
-        environments: {},
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
         resources: {
           hasDatabase: false,
           hasBucket: false,
@@ -1082,9 +1077,39 @@ describe("BuildCloudflareTask", () => {
           hasWebSocket: false,
         },
         crons: [],
-        websocketPaths: [],
-        env: [],
+        secrets: [],
+        variables: [],
+        cloudflare: { websocketPaths: [] },
         ...over,
+      }) as any;
+
+    /**
+     * A build context whose live app registered these jobs. The budget
+     * warning reads the live app only: a prebuilt deploy has none, and the
+     * build that produced its artifact already warned (#Q2465).
+     */
+    const liveJobs = (jobs: Array<{ name: string; timeoutMs?: number }>) =>
+      ({
+        manifest: null,
+        alepha: {
+          inject: (name: string) => {
+            if (name === "JobProvider") {
+              return {
+                getRegisteredJobs: () =>
+                  new Map(
+                    jobs.map((job) => [
+                      job.name,
+                      { options: { timeout: job.timeoutMs } },
+                    ]),
+                  ),
+              };
+            }
+            if (name === "DateTimeProvider") {
+              return { duration: (value: number) => ({ as: () => value }) };
+            }
+            throw new AlephaError(`${name} is not in this fake`);
+          },
+        },
       }) as any;
 
     it("emits every cron expression and warns at no count", () => {
@@ -1117,15 +1142,13 @@ describe("BuildCloudflareTask", () => {
 
     it("warns about a timeout direct mode on Workers cannot honour", () => {
       const task = createTask();
-      task.testWarnUnreachableTimeouts({
-        manifest: manifest({
-          jobs: [
-            { name: "reports:render", timeoutMs: 600_000 },
-            { name: "quick", timeoutMs: 5_000 },
-            { name: "untimed" },
-          ],
-        }),
-      } as any);
+      task.testWarnUnreachableTimeouts(
+        liveJobs([
+          { name: "reports:render", timeoutMs: 600_000 },
+          { name: "quick", timeoutMs: 5_000 },
+          { name: "untimed" },
+        ]),
+      );
 
       expect(task.warnings).toHaveLength(1);
       expect(task.warnings[0]).toMatch(/reports:render \(600s\)/);
@@ -1147,11 +1170,7 @@ describe("BuildCloudflareTask", () => {
      */
     it("warns about a job that declares no timeout at all", () => {
       const task = createTask();
-      task.testWarnUnreachableTimeouts({
-        manifest: manifest({
-          jobs: [{ name: "deploys.run" }],
-        }),
-      } as any);
+      task.testWarnUnreachableTimeouts(liveJobs([{ name: "deploys.run" }]));
 
       expect(task.warnings).toHaveLength(1);
       expect(task.warnings[0]).toMatch(/deploys\.run/);
@@ -1169,11 +1188,9 @@ describe("BuildCloudflareTask", () => {
       // Restored by the suite's own afterEach, alongside every other env var
       // these enhancers read.
       process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
-      task.testWarnUnreachableTimeouts({
-        manifest: manifest({
-          jobs: [{ name: "slow", timeoutMs: 600_000 }],
-        }),
-      } as any);
+      task.testWarnUnreachableTimeouts(
+        liveJobs([{ name: "slow", timeoutMs: 600_000 }]),
+      );
       // A queue consumer gets 15 minutes of wall clock, so the declared
       // timeout is reachable and there is nothing to say.
       expect(task.warnings).toHaveLength(0);
@@ -1182,16 +1199,12 @@ describe("BuildCloudflareTask", () => {
     it("says nothing about an untimed job once a queue is bound", () => {
       const task = createTask();
       process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
-      task.testWarnUnreachableTimeouts({
-        manifest: manifest({
-          jobs: [{ name: "deploys.run" }],
-        }),
-      } as any);
+      task.testWarnUnreachableTimeouts(liveJobs([{ name: "deploys.run" }]));
       // Same reason: off `waitUntil`, an undeclared timeout is not a cap.
       expect(task.warnings).toHaveLength(0);
     });
 
-    it("says nothing when a manifest predates the jobs field", () => {
+    it("says nothing in a prebuilt deploy, which has no live app to read", () => {
       const task = createTask();
       task.testWarnUnreachableTimeouts({ manifest: manifest() } as any);
       expect(task.warnings).toHaveLength(0);

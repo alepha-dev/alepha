@@ -221,14 +221,10 @@ export class WorkspaceCompiler {
     try {
       const manifest = await this.fs.readJsonFile<{
         runtimes?: Array<{ runtime: BuildRuntime }>;
-        runtime?: BuildRuntime;
       }>(this.fs.join(dist, "manifest.json"));
       const declared = manifest.runtimes?.map((slice) => slice.runtime);
       if (declared?.length) {
         return declared;
-      }
-      if (manifest.runtime) {
-        return [manifest.runtime];
       }
     } catch {}
     return ["bun"];

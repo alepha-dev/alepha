@@ -25,7 +25,6 @@ describe("--prebuilt guards", () => {
       entry: { server: "/project/src/server.ts" } as AppEntry,
       hasClient: false,
       manifest: null,
-      platformOptions: null,
       flags: { prebuilt: true },
     }) as unknown as BuildTaskContext;
 

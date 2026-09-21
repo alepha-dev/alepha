@@ -5,7 +5,6 @@ import { FileSystemProvider } from "alepha/system";
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { imageOptions } from "../atoms/imageOptions.ts";
 import type { BuildManifest } from "../schemas/buildManifest.ts";
-import { BuildSlices } from "../services/BuildSlices.ts";
 import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
 import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 
@@ -46,7 +45,6 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 export class ImageCommand {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly builder = $inject(DockerImageBuilder);
-  protected readonly slices = $inject(BuildSlices);
   protected readonly compiler = $inject(WorkspaceCompiler);
   protected readonly options = $store(imageOptions);
 
@@ -235,10 +233,6 @@ export class ImageCommand {
    * The first declared runtime, which is what the image runs.
    */
   protected primaryRuntime(manifest: BuildManifest): BuildRuntime | "static" {
-    return (
-      manifest.runtimes?.[0]?.runtime ??
-      manifest.runtime ??
-      this.slices.primary([])
-    );
+    return manifest.runtimes[0].runtime;
   }
 }

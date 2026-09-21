@@ -45,7 +45,6 @@ describe('a static build, declared as runtime: ["static"]', () => {
     ({
       alepha: fakeAlepha,
       root: "/root/my-app",
-      platformOptions: null,
       options,
     }) as any;
 
@@ -53,16 +52,14 @@ describe('a static build, declared as runtime: ["static"]', () => {
     JSON.parse(fs.getFileContent("/root/my-app/dist/manifest.json") ?? "{}");
 
   describe("the manifest", () => {
-    it("records the static runtime so a deployer knows to spawn nothing", async () => {
-      // Bay switches on this field. An older Bay meeting an unknown value
-      // refuses the deploy by name; a new field it did not know about would be
-      // ignored, leaving it to spawn `node dist` against a directory with no
-      // entry point.
+    it("records one static slice so a deployer knows to spawn nothing", async () => {
+      // Bay picks its slice from `runtimes`. A static site is a `static` slice
+      // with no entry, so every consumer reads it on the same path (#Q2460).
       const { task, fs } = createManifestTask();
 
       await task.testWriteManifest(contextFor({ runtime: "static" }), "dist");
 
-      expect(readManifest(fs).runtime).toBe("static");
+      expect(readManifest(fs).runtimes).toEqual([{ runtime: "static" }]);
     });
 
     it("records no runtime version for a static site", async () => {
@@ -73,7 +70,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
 
       await task.testWriteManifest(contextFor({ runtime: "static" }), "dist");
 
-      expect(readManifest(fs).runtimeVersion).toBeUndefined();
+      expect(readManifest(fs).runtimes[0].runtimeVersion).toBeUndefined();
     });
 
     it("still records node for a bare build", async () => {
@@ -81,7 +78,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
 
       await task.testWriteManifest(contextFor({ runtime: "node" }), "dist");
 
-      expect(readManifest(fs).runtime).toBe("node");
+      expect(readManifest(fs).runtimes[0].runtime).toBe("node");
     });
   });
 

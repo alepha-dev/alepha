@@ -147,9 +147,9 @@ Three things read it:
   #STRIPE_SECRET_KEY=
   ```
 
-- **`alepha build`** records them as `publicVars` in `dist/manifest.json`,
-  alongside the full `env` key list. Everything on `env` and not on
-  `publicVars` is a secret.
+- **`alepha build`** records them under `variables` in `dist/manifest.json`,
+  and every other declared key under `secrets`. The two lists are disjoint:
+  each key lands in exactly one, with the description its schema declared.
 
 - **`alepha platform up`** pushes a declassified key to Cloudflare as a
   `plain_text` binding instead of an encrypted `secret_text` one. That makes it
@@ -159,7 +159,7 @@ Three things read it:
 
   Only keys the artifact itself vouched for are eligible: a key injected by an
   orchestrator through `.env.<env>.local`, or listed in `platform.secrets.keys`,
-  is not on `publicVars` and stays a secret.
+  is not on `variables` and stays a secret.
 
 ## State Management with $atom
 

@@ -74,14 +74,12 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
    */
   const artifact: Record<string, string> = {
     "manifest.json": JSON.stringify({
-      version: 1,
-      runtime: "workerd",
       project: "notes",
-      defaultEnv: "production",
-      environments: { production: { adapter: "cloudflare" } },
+      runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
       crons: ["0 3 * * *"],
-      websocketPaths: [],
-      env: [],
+      secrets: [],
+      variables: [],
+      cloudflare: { websocketPaths: [] },
       resources,
     }),
     "index.workerd.js": "export default { fetch: () => new Response('ok') };",

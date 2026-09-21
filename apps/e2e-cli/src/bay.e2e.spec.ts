@@ -371,20 +371,18 @@ const packApp = async (
   marker: string,
 ): Promise<{ path: string; bytes: Buffer }> => {
   const src = join(dir, `app-${marker}`);
-  // ⚠️ The archive root is the CONTENTS, not a `dist/` wrapper, and `entry`
-  // names a file rather than a directory. Bay refuses the old shape by name
+  // ⚠️ The archive root is the CONTENTS, not a `dist/` wrapper, and a slice's
+  // `entry` names a file rather than a directory. Bay refuses the old shape by name
   // and tells the operator to redeploy, so an artifact built the old way here
   // tests nothing but that refusal.
   await mkdir(src, { recursive: true });
   await writeFile(
     join(src, "manifest.json"),
     JSON.stringify({
-      version: 1,
       project: "demo",
-      runtime: "node",
-      runtimeVersion: "24",
-      entry: "index.node.js",
-      runtimes: [{ runtime: "node", entry: "index.node.js" }],
+      runtimes: [
+        { runtime: "node", entry: "index.node.js", runtimeVersion: "24" },
+      ],
     }),
   );
   await writeFile(

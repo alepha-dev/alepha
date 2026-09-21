@@ -11,7 +11,7 @@ import type { FileSystemProvider } from "alepha/system";
  *   from whatever allocated it. Pushing the local value would point a
  *   deployed app at a development machine.
  * - **Framework infra knobs.** `LOG_LEVEL`, `DEBUG` and friends all have
- *   defaults, and a build manifest's `env` auto-list surfaces every declared
+ *   defaults, and a build manifest's `secrets` list surfaces every declared
  *   `$env` key — so they have to be excluded here to keep a CI runner's own
  *   environment out of the push.
  *
@@ -32,7 +32,7 @@ export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
   "POSTGRES_SCHEMA",
   "NODE_ENV",
   // Framework infra knobs (have defaults, never worker secrets). The
-  // manifest's `env` auto-list surfaces every declared `$env` key, so
+  // manifest's `secrets` list surfaces every declared `$env` key, so
   // exclude these here to keep them out of the secret push even when a CI
   // runner happens to set them (LOG_LEVEL, DEBUG, etc.).
   "LOG_LEVEL",
@@ -77,54 +77,70 @@ export const BAY_OWNED_SECRET_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Every key the app declares via `$env`, read from `dist/manifest.json`.
+ * Every key the app declares via `$env`, read from `dist/manifest.json`: its
+ * `secrets` and its `variables` together.
  *
  * This is the **allowlist**, and it is what makes reading `process.env` safe at
  * all: the key set comes from what the app declared at build time, never from
  * enumerating the deploying shell. A CI runner can therefore deliver secrets
  * through the job environment with no `.env` file on disk, and `PATH`,
- * `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way in — they are not
+ * `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way in: they are not
  * on the list, so they are never looked up.
  *
- * Returns `undefined` when the manifest is absent or predates the `env` field,
- * so the caller falls back to the `.env` file's own keys.
+ * Returns `undefined` when the manifest is absent or unreadable, so the caller
+ * falls back to the `.env` file's own keys.
  */
 export async function readManifestEnvKeys(
   fs: FileSystemProvider,
   root: string,
 ): Promise<string[] | undefined> {
-  try {
-    const manifest = await fs.readJsonFile<Partial<BuildManifest>>(
-      fs.join(root, "dist", "manifest.json"),
-    );
-    return Array.isArray(manifest.env) ? manifest.env : undefined;
-  } catch {
+  const manifest = await readManifestEnv(fs, root);
+  if (!manifest) {
     return undefined;
   }
+  return [...manifest.secrets, ...manifest.variables]
+    .map((entry) => entry.name)
+    .sort();
 }
 
 /**
- * The keys the app declassified with `secret: false`, read from
- * `dist/manifest.json`.
+ * The keys the app declared `secret: false`, read from the manifest's
+ * `variables`.
  *
- * The complement is not stored anywhere and must not be reconstructed: a key on
- * the {@link readManifestEnvKeys} allowlist and NOT on this list is a secret.
- * That is the direction that fails safe — an artifact built before this field
- * existed, or by an app that annotated nothing, returns `undefined` and every
- * key stays encrypted.
+ * A key on the {@link readManifestEnvKeys} allowlist and NOT on this list is a
+ * secret. That is the direction that fails safe: an unreadable manifest
+ * returns `undefined`, and every key stays encrypted.
  *
  * Only a target with a real distinction between the two has any use for it;
  * `BayAdapter` writes one env file either way, so this has one caller.
  */
-export async function readManifestPublicVars(
+export async function readManifestVariables(
   fs: FileSystemProvider,
   root: string,
 ): Promise<string[] | undefined> {
+  const manifest = await readManifestEnv(fs, root);
+  return manifest?.variables.map((entry) => entry.name);
+}
+
+/**
+ * The manifest's two env lists, or `undefined` when it cannot be read or does
+ * not carry them.
+ */
+async function readManifestEnv(
+  fs: FileSystemProvider,
+  root: string,
+): Promise<Pick<BuildManifest, "secrets" | "variables"> | undefined> {
   try {
     const manifest = await fs.readJsonFile<Partial<BuildManifest>>(
       fs.join(root, "dist", "manifest.json"),
     );
-    return Array.isArray(manifest.publicVars) ? manifest.publicVars : undefined;
+    if (
+      !Array.isArray(manifest.secrets) ||
+      !Array.isArray(manifest.variables)
+    ) {
+      return undefined;
+    }
+    return { secrets: manifest.secrets, variables: manifest.variables };
   } catch {
     return undefined;
   }

@@ -84,7 +84,7 @@ export interface WorkspacePackResult {
  *
  * `tar xf` yields `./public`, `./server`, `./index.node.js`, `./manifest.json`
  * and `./migrations` at the top. It used to yield `dist/` and `migrations/`,
- * and `manifest.entry` named the `dist` directory rather than a file.
+ * and the manifest named the `dist` directory as its entry rather than a file.
  *
  * No compatibility alias is carried: Bay shipped its reader first, and every
  * artifact produced from here on has this shape. A consumer meeting the old

@@ -29,10 +29,8 @@ describe("the build manifest schema", () => {
    * say what it is about by overriding one key.
    */
   const valid = (): Record<string, unknown> => ({
-    version: 1,
     project: "my-app",
-    defaultEnv: "production",
-    environments: { production: { adapter: "cloudflare" } },
+    runtimes: [{ runtime: "node", entry: "index.node.js" }],
     resources: {
       hasDatabase: true,
       hasBucket: false,
@@ -43,8 +41,8 @@ describe("the build manifest schema", () => {
       hasWebSocket: false,
     },
     crons: [],
-    websocketPaths: [],
-    env: ["APP_SECRET"],
+    secrets: [{ name: "APP_SECRET" }],
+    variables: [],
   });
 
   describe("what it refuses", () => {
@@ -74,39 +72,58 @@ describe("the build manifest schema", () => {
       expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
     });
 
-    // `runtime` is the one field a deployer switches on to decide what to
-    // spawn, which is why it holds `static` instead of a `kind` of its own.
+    // `runtimes` is the one field a deployer switches on to decide what to
+    // spawn, which is why a static build is a `static` slice.
     it("refuses a runtime it cannot name", ({ expect }) => {
       expect(
-        buildManifestSchema.safeParse({ ...valid(), runtime: "deno" }).success,
+        buildManifestSchema.safeParse({
+          ...valid(),
+          runtimes: [{ runtime: "deno", entry: "index.deno.js" }],
+        }).success,
       ).toBe(false);
+    });
+
+    // No scalar fallback any more (#Q2460): a manifest that declares no slice
+    // tells a deployer nothing, so it is refused rather than read as `node`.
+    it("refuses a manifest with no runtimes", ({ expect }) => {
+      const manifest = valid();
+      delete manifest.runtimes;
+      expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
+      expect(
+        buildManifestSchema.safeParse({ ...valid(), runtimes: [] }).success,
+      ).toBe(false);
+    });
+
+    it("refuses a manifest with no secrets or variables list", ({ expect }) => {
+      const manifest = valid();
+      delete manifest.variables;
+      expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
     });
   });
 
   /**
-   * The multi-slice contract (epic #E63). `runtimes` is additive on purpose:
-   * the scalar `runtime` keeps saying what it always said, so a deployer that
-   * never learns about slices still spawns the primary.
+   * The multi-slice contract (epic #E63), with `runtimes` as the only runtime
+   * declaration since #Q2460.
    */
   describe("the slices it declares", () => {
     const twoSlices = () => ({
       ...valid(),
-      runtime: "node",
-      entry: "index.node.js",
       runtimes: [
         { runtime: "node", entry: "index.node.js" },
         { runtime: "workerd", entry: "index.workerd.js" },
       ],
     });
 
-    it("accepts a manifest carrying only the scalar pair", ({ expect }) => {
-      const parsed = buildManifestSchema.parse({
-        ...valid(),
-        runtime: "node",
-        entry: "index.node.js",
-      });
-      expect(parsed.runtimes).toBeUndefined();
-      expect(parsed.entry).toBe("index.node.js");
+    it("refuses a manifest carrying only the old scalar pair", ({ expect }) => {
+      const manifest = valid();
+      delete manifest.runtimes;
+      expect(
+        buildManifestSchema.safeParse({
+          ...manifest,
+          runtime: "node",
+          entry: "index.node.js",
+        }).success,
+      ).toBe(false);
     });
 
     /**
@@ -127,19 +144,15 @@ describe("the build manifest schema", () => {
     it("keeps bun-first order exactly as declared", ({ expect }) => {
       const parsed = buildManifestSchema.parse({
         ...valid(),
-        runtime: "bun",
-        entry: "index.bun.js",
         runtimes: [
           { runtime: "bun", entry: "index.bun.js" },
           { runtime: "node", entry: "index.node.js" },
         ],
       });
-      expect(parsed.runtimes?.map((slice) => slice.runtime)).toEqual([
+      expect(parsed.runtimes.map((slice) => slice.runtime)).toEqual([
         "bun",
         "node",
       ]);
-      // The scalar is runtimes[0], never a preference of the schema's own.
-      expect(parsed.runtime).toBe("bun");
     });
 
     it("refuses a slice naming a runtime it cannot name", ({ expect }) => {
@@ -148,10 +161,13 @@ describe("the build manifest schema", () => {
       expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
     });
 
-    it("refuses a slice with no entry", ({ expect }) => {
-      const manifest = twoSlices();
-      delete (manifest.runtimes[0] as Record<string, unknown>).entry;
-      expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
+    // A static build spawns nothing, so its one slice names no entry.
+    it("accepts a static slice with no entry", ({ expect }) => {
+      const parsed = buildManifestSchema.parse({
+        ...valid(),
+        runtimes: [{ runtime: "static" }],
+      });
+      expect(parsed.runtimes).toEqual([{ runtime: "static" }]);
     });
 
     // Loose all the way down, for the same reason the top level is: a newer
@@ -184,25 +200,22 @@ describe("the build manifest schema", () => {
       });
     });
 
-    it("keeps unknown keys inside an environment, too", ({ expect }) => {
+    it("keeps unknown keys inside an env entry, too", ({ expect }) => {
       const parsed = buildManifestSchema.parse({
         ...valid(),
-        environments: {
-          production: { adapter: "bay", host: "vps", socket: "/run/bay.sock" },
-        },
+        variables: [{ name: "TZ", description: "Zone", example: "UTC" }],
       });
-      expect(parsed.environments.production).toMatchObject({
-        adapter: "bay",
-        host: "vps",
-        socket: "/run/bay.sock",
+      expect(parsed.variables[0]).toMatchObject({
+        name: "TZ",
+        description: "Zone",
+        example: "UTC",
       });
     });
   });
 
   /**
-   * The writer's `parse()` runs against a real `writeManifest`, not a literal:
-   * `environments` reaches the manifest through a cast there, so the object
-   * that is actually validated carries fields the schema has never declared.
+   * The writer's `parse()` runs against a real `writeManifest`, not a literal,
+   * so what the build produces and what the schema allows cannot drift.
    */
   describe("the writer", () => {
     class TestBuildManifestTask extends BuildManifestTask {
@@ -235,13 +248,15 @@ describe("the build manifest schema", () => {
      * above pin what the shape ALLOWS; this pins what the writer produces, and
      * the two used to be able to drift without anything noticing.
      */
-    const writtenFor = async (options: Record<string, unknown>) => {
+    const writtenFor = async (
+      options: Record<string, unknown>,
+      alepha: unknown = fakeAlepha,
+    ) => {
       const { task, fs } = createTask();
       await task.testWriteManifest(
         {
-          alepha: fakeAlepha,
+          alepha,
           root: "/root/my-app",
-          platformOptions: { environments: {} },
           options,
         } as any,
         "dist",
@@ -254,21 +269,24 @@ describe("the build manifest schema", () => {
     it("writes one slice for a single-runtime build", async ({ expect }) => {
       const written = await writtenFor({ runtimes: ["node"] });
       expect(written.runtimes).toEqual([
-        { runtime: "node", entry: "index.node.js" },
+        {
+          runtime: "node",
+          entry: "index.node.js",
+          runtimeVersion: process.versions.node.split(".")[0],
+        },
       ]);
-      expect(written.runtime).toBe("node");
-      expect(written.entry).toBe("index.node.js");
     });
 
     it("writes node+workerd in declared order", async ({ expect }) => {
       const written = await writtenFor({ runtimes: ["node", "workerd"] });
-      expect(written.runtimes).toEqual([
+      expect(
+        written.runtimes.map(({ runtime, entry }) => ({ runtime, entry })),
+      ).toEqual([
         { runtime: "node", entry: "index.node.js" },
         { runtime: "workerd", entry: "index.workerd.js" },
       ]);
-      // The scalars name the primary, which is runtimes[0] and nothing else.
-      expect(written.runtime).toBe("node");
-      expect(written.entry).toBe("index.node.js");
+      // workerd has no version to pin: Cloudflare picks it by date.
+      expect(written.runtimes[1]?.runtimeVersion).toBeUndefined();
     });
 
     /**
@@ -280,12 +298,11 @@ describe("the build manifest schema", () => {
       expect,
     }) => {
       const written = await writtenFor({ runtimes: ["bun", "node"] });
-      expect(written.runtimes?.map((slice) => slice.runtime)).toEqual([
+      expect(written.runtimes.map((slice) => slice.runtime)).toEqual([
         "bun",
         "node",
       ]);
-      expect(written.runtime).toBe("bun");
-      expect(written.entry).toBe("index.bun.js");
+      expect(written.runtimes[0]?.entry).toBe("index.bun.js");
     });
 
     /**
@@ -294,62 +311,62 @@ describe("the build manifest schema", () => {
      */
     it("never writes a directory as the entry", async ({ expect }) => {
       const written = await writtenFor({ runtimes: ["node"] });
-      expect(written.entry).not.toBe("dist");
-      expect(written.entry).toMatch(/\.js$/);
+      expect(written.runtimes[0]?.entry).not.toBe("dist");
+      expect(written.runtimes[0]?.entry).toMatch(/\.js$/);
     });
 
-    // Nothing is spawned, so a slice array would be a claim rather than a fact:
-    // it would name an entry file that the build never wrote.
-    it("declares no slice and no entry for a static build", async ({
-      expect,
-    }) => {
+    // Nothing is spawned, so the one slice names no entry and no version:
+    // either would be a claim about a process that does not exist.
+    it("declares one static slice for a static build", async ({ expect }) => {
       const written = await writtenFor({ runtime: "static" });
-      expect(written.runtime).toBe("static");
-      expect(written.runtimes).toBeUndefined();
-      expect(written.entry).toBeUndefined();
+      expect(written.runtimes).toEqual([{ runtime: "static" }]);
     });
+
+    const withEnv = {
+      ...fakeAlepha,
+      dump: () => ({
+        env: {
+          APP_SECRET: { secret: true, description: "Signs sessions" },
+          STRIPE_KEY: { secret: true },
+          TZ: { secret: false, description: "Server time zone" },
+        },
+      }),
+    };
 
     /**
-     * ⚠️ The regression this exists for: `EnvironmentConfig` declares `host`,
-     * `socket`, `vars` and `services`, the manifest's own type declares none of
-     * them, and the cast in `writeManifest` hides the difference. They are
-     * written today, a Bay deploy reads them, and a plain `z.object().parse()`
-     * on the way out would have removed them with nothing going red.
+     * ⚠️ Disjoint on purpose (#Q2465): each declared key lands in exactly one
+     * list, so a deploy target never sees a variable listed as a secret too.
      */
-    it("does not strip the environment fields the manifest type never declared", async ({
+    it("splits the declared env into disjoint secrets and variables", async ({
       expect,
     }) => {
-      const { task, fs } = createTask();
-      await task.testWriteManifest(
-        {
-          alepha: fakeAlepha,
-          root: "/root/my-app",
-          platformOptions: {
-            environments: {
-              production: {
-                adapter: "bay",
-                host: "vps.example.com",
-                socket: "/run/bay.sock",
-                vars: { TZ: "UTC" },
-                services: [{ binding: "AUTH", service: "auth-worker" }],
-              },
-            },
-          },
-          options: {},
-        } as any,
-        "dist",
-      );
+      const written = await writtenFor({ runtimes: ["node"] }, withEnv);
+      expect(written.secrets).toEqual([
+        { name: "APP_SECRET", description: "Signs sessions" },
+        { name: "STRIPE_KEY" },
+      ]);
+      expect(written.variables).toEqual([
+        { name: "TZ", description: "Server time zone" },
+      ]);
+    });
 
-      const written = JSON.parse(
-        fs.getFileContent("/root/my-app/dist/manifest.json") ?? "{}",
-      ) as BuildManifest;
+    it("writes no cloudflare block without a workerd slice", async ({
+      expect,
+    }) => {
+      const written = await writtenFor({ runtimes: ["node"] });
+      expect(written.cloudflare).toBeUndefined();
+    });
 
-      expect(written.environments.production).toMatchObject({
-        adapter: "bay",
-        host: "vps.example.com",
-        socket: "/run/bay.sock",
-        vars: { TZ: "UTC" },
-        services: [{ binding: "AUTH", service: "auth-worker" }],
+    it("groups what a Worker deploy reads under cloudflare", async ({
+      expect,
+    }) => {
+      const written = await writtenFor({
+        runtimes: ["node", "workerd"],
+        cloudflare: { config: { limits: { cpu_ms: 300_000 } } },
+      });
+      expect(written.cloudflare).toEqual({
+        config: { limits: { cpu_ms: 300_000 } },
+        websocketPaths: [],
       });
     });
   });

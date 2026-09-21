@@ -79,7 +79,6 @@ describe("BuildManifestTask", () => {
     ({
       alepha: fakeAlepha,
       root: "/root/my-app",
-      platformOptions: null,
       options,
     }) as any;
 
@@ -87,10 +86,9 @@ describe("BuildManifestTask", () => {
     JSON.parse(fs.getFileContent("/root/my-app/dist/manifest.json") ?? "{}");
 
   describe("writeManifest", () => {
-    // The one list a `vars` vs `secrets` split needs: everything NOT on it is a
-    // secret. There is deliberately no companion `secrets` field — it would be
-    // `env` minus this one, and two lists that must agree eventually don't.
-    it("records declassified keys, leaving every other declared key secret", async () => {
+    // Two DISJOINT lists (#Q2465): each declared key lands in exactly one, and
+    // a key nobody annotated is a secret, which is the direction that fails safe.
+    it("records declassified keys as variables, every other declared key as a secret", async () => {
       const { task, fs } = createTask();
       const ctx = contextFor();
       ctx.alepha = fakeAlephaWithEnv({
@@ -102,19 +100,14 @@ describe("BuildManifestTask", () => {
       await task.testWriteManifest(ctx, "dist");
 
       const manifest = readManifest(fs);
-      expect(manifest.env).toEqual([
-        "PUBLIC_URL",
-        "STRIPE_SECRET_KEY",
-        "UNANNOTATED",
+      expect(manifest.secrets).toEqual([
+        { name: "STRIPE_SECRET_KEY" },
+        { name: "UNANNOTATED" },
       ]);
-      expect(manifest.publicVars).toEqual(["PUBLIC_URL"]);
-      expect(manifest.secrets).toBeUndefined();
+      expect(manifest.variables).toEqual([{ name: "PUBLIC_URL" }]);
     });
 
-    // `[]` would be a claim that the app declassified nothing on purpose, which
-    // is true but useless — and it invites a reader to treat the field as
-    // present-and-complete. Absent keeps "this app never annotated" legible.
-    it("omits `publicVars` entirely when nothing is declassified", async () => {
+    it("writes an empty variables list when nothing is declassified", async () => {
       const { task, fs } = createTask();
       const ctx = contextFor();
       ctx.alepha = fakeAlephaWithEnv({ PUBLIC_URL: {}, LOG_LEVEL: {} });
@@ -122,17 +115,20 @@ describe("BuildManifestTask", () => {
       await task.testWriteManifest(ctx, "dist");
 
       const manifest = readManifest(fs);
-      expect(manifest.env).toEqual(["LOG_LEVEL", "PUBLIC_URL"]);
-      expect(manifest.publicVars).toBeUndefined();
+      expect(manifest.secrets).toEqual([
+        { name: "LOG_LEVEL" },
+        { name: "PUBLIC_URL" },
+      ]);
+      expect(manifest.variables).toEqual([]);
     });
 
     it("captures registered $websocket channel paths into the manifest", async () => {
       const { task, fs } = createTask();
 
-      await task.testWriteManifest(contextFor(), "dist");
+      await task.testWriteManifest(contextFor({ runtime: "workerd" }), "dist");
 
       const manifest = readManifest(fs);
-      expect(manifest.websocketPaths).toEqual(["/ws/chat"]);
+      expect(manifest.cloudflare.websocketPaths).toEqual(["/ws/chat"]);
       expect(manifest.resources.hasWebSocket).toBe(true);
     });
 
@@ -144,7 +140,7 @@ describe("BuildManifestTask", () => {
      */
     it("unions $room channel paths into websocketPaths", async () => {
       const { task, fs } = createTask();
-      const ctx = contextFor();
+      const ctx = contextFor({ runtime: "workerd" });
       ctx.alepha = fakeAlephaWithPrimitives({
         $room: ["/ws/world", "/ws/party", "/ws/presence"],
       });
@@ -152,7 +148,7 @@ describe("BuildManifestTask", () => {
       await task.testWriteManifest(ctx, "dist");
 
       const manifest = readManifest(fs);
-      expect(manifest.websocketPaths).toEqual([
+      expect(manifest.cloudflare.websocketPaths).toEqual([
         "/ws/world",
         "/ws/party",
         "/ws/presence",
@@ -162,7 +158,7 @@ describe("BuildManifestTask", () => {
 
     it("dedups a channel path shared by a $websocket and a $room", async () => {
       const { task, fs } = createTask();
-      const ctx = contextFor();
+      const ctx = contextFor({ runtime: "workerd" });
       ctx.alepha = fakeAlephaWithPrimitives({
         $websocket: ["/ws/chat"],
         $room: ["/ws/chat"],
@@ -170,7 +166,7 @@ describe("BuildManifestTask", () => {
 
       await task.testWriteManifest(ctx, "dist");
 
-      expect(readManifest(fs).websocketPaths).toEqual(["/ws/chat"]);
+      expect(readManifest(fs).cloudflare.websocketPaths).toEqual(["/ws/chat"]);
     });
 
     it("derives `project` from the workspace directory name, slugified", async () => {
@@ -194,7 +190,7 @@ describe("BuildManifestTask", () => {
       // and `node dist` against it fails as "never became ready".
       await task.testWriteManifest(contextFor(), "dist");
 
-      expect(readManifest(fs).entry).toBe("index.node.js");
+      expect(readManifest(fs).runtimes[0].entry).toBe("index.node.js");
     });
 
     it("defaults the runtime to node when the build did not specify one", async () => {
@@ -202,7 +198,7 @@ describe("BuildManifestTask", () => {
 
       await task.testWriteManifest(contextFor(), "dist");
 
-      expect(readManifest(fs).runtime).toBe("node");
+      expect(readManifest(fs).runtimes[0].runtime).toBe("node");
     });
 
     it("records the runtime the build targeted", async () => {
@@ -210,7 +206,7 @@ describe("BuildManifestTask", () => {
 
       await task.testWriteManifest(contextFor({ runtime: "bun" }), "dist");
 
-      expect(readManifest(fs).runtime).toBe("bun");
+      expect(readManifest(fs).runtimes[0].runtime).toBe("bun");
     });
 
     it("creates the dist directory rather than failing when it does not exist", async () => {

@@ -99,7 +99,6 @@ describe("alepha image, choosing a Bun triple for a base", () => {
     it("takes the first declared runtime", ({ expect }) => {
       expect(
         command().testPrimaryRuntime({
-          runtime: "node",
           runtimes: [
             { runtime: "node", entry: "index.node.js" },
             { runtime: "workerd", entry: "index.workerd.js" },
@@ -108,18 +107,11 @@ describe("alepha image, choosing a Bun triple for a base", () => {
       ).toBe("node");
     });
 
-    it("reads the scalar when the artifact declares no slices", ({
-      expect,
-    }) => {
-      expect(command().testPrimaryRuntime({ runtime: "bun" })).toBe("bun");
-    });
-
     // Never a preference of its own: the same two slices the other way round
     // give the other answer.
     it("never reorders", ({ expect }) => {
       expect(
         command().testPrimaryRuntime({
-          runtime: "bun",
           runtimes: [
             { runtime: "bun", entry: "index.bun.js" },
             { runtime: "node", entry: "index.node.js" },

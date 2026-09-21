@@ -233,14 +233,12 @@ describe("the worker-side Cloudflare adapter", () => {
     await fs.writeFile(
       "/deploy/manifest.json",
       JSON.stringify({
-        version: 1,
-        runtime: "workerd",
         project: "my-app",
-        defaultEnv: "production",
-        environments: { production: { adapter: "cloudflare" } },
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
         crons: [],
-        websocketPaths: [],
-        env: [],
+        secrets: [],
+        variables: [],
+        cloudflare: { websocketPaths: [] },
         resources: {
           hasDatabase: true,
           hasBucket: true,
@@ -763,14 +761,12 @@ describe("the worker-side Cloudflare adapter", () => {
       await fs.writeFile(
         "/deploy/manifest.json",
         JSON.stringify({
-          version: 1,
-          runtime: "workerd",
           project: "my-app",
-          defaultEnv: "production",
-          environments: { production: { adapter: "cloudflare" } },
+          runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
           crons: [],
-          websocketPaths: [],
-          env: [],
+          secrets: [],
+          variables: [],
+          cloudflare: { websocketPaths: [] },
           resources: {
             hasDatabase: false,
             hasBucket: false,

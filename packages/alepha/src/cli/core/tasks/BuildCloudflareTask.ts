@@ -174,7 +174,7 @@ export class BuildCloudflareTask extends BuildTask {
     // deploy quietly regenerates `wrangler.jsonc` with the defaults and
     // overwrites a correct file with a worse one.
     const appConfig =
-      ctx.options.cloudflare?.config ?? ctx.manifest?.cloudflareConfig ?? {};
+      ctx.options.cloudflare?.config ?? ctx.manifest?.cloudflare?.config ?? {};
 
     const workerdEntry = this.slices.entryFileName("workerd");
     const workerdServerDir = this.slices.serverDir("workerd");
@@ -228,7 +228,7 @@ export class BuildCloudflareTask extends BuildTask {
     // probing a live instance.
     if (ctx.manifest) {
       this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
-      this.websocketPaths = ctx.manifest.websocketPaths ?? [];
+      this.websocketPaths = ctx.manifest.cloudflare?.websocketPaths ?? [];
     } else {
       try {
         // Union of both realtime primitives: a `$room` registers on its
@@ -415,9 +415,12 @@ export class BuildCloudflareTask extends BuildTask {
     if (this.envOf(ctx, "CLOUDFLARE_QUEUE_NAME")) {
       return;
     }
-    const jobs = ctx.manifest
-      ? (ctx.manifest.jobs ?? [])
-      : this.discoverJobs(ctx);
+    // Only from the live app. A prebuilt deploy has none to read, and the
+    // build that produced the artifact already warned (#Q2465).
+    if (ctx.manifest) {
+      return;
+    }
+    const jobs = this.discoverJobs(ctx);
     const unreachable = jobs.filter(
       (job) =>
         typeof job.timeoutMs === "number" &&
@@ -790,7 +793,7 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler: WranglerConfig,
   ): void {
     // Resolve the CF email binding from whichever source this build path has:
-    // - manifest/prebuilt mode (Alepha Rocket `--prebuilt`): no app boot, so
+    // - manifest/prebuilt mode (Lore Deploy, `--prebuilt`): no app boot, so
     //   read the binding captured into the manifest at artifact-build time.
     //   Without this the deploy silently drops `send_email` and the worker
     //   boots with email inert (binding not found).
@@ -798,7 +801,7 @@ export class BuildCloudflareTask extends BuildTask {
     //   registered CloudflareEmailProvider.
     let binding: string | undefined;
     if (ctx.manifest) {
-      binding = ctx.manifest.email?.binding;
+      binding = ctx.manifest.cloudflare?.email?.binding;
     } else if (ctx.alepha) {
       try {
         ctx.alepha.inject(this.cloudflareEmailProviderName);

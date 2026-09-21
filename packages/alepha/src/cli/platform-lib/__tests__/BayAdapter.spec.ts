@@ -928,7 +928,11 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
     const it = await setup();
     await it.fs.writeFile(
       "/project/dist/manifest.json",
-      JSON.stringify({ project: "demo", env: envKeys }),
+      JSON.stringify({
+        project: "demo",
+        secrets: envKeys.map((name) => ({ name })),
+        variables: [],
+      }),
     );
     if (file !== undefined) {
       await it.fs.writeFile("/project/.env.production", file);
@@ -1287,8 +1291,9 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
       allowlist would be the file's keys — of which there are none — and the
       value fallback could never fire.
 
-      The manifest is that source: `dist/manifest.json`'s `env` array is every
-      key the app declares via `$env`, captured at build time.
+      The manifest is that source: `dist/manifest.json`'s `secrets` and
+      `variables` are every key the app declares via `$env`, captured at build
+      time.
     */
     const { adapter, shell } = await withManifest(["STRIPE_KEY", "MAILER_DSN"]);
 

@@ -102,8 +102,8 @@ describe("analytics resource detection", () => {
     expect,
   }) => {
     /*
-      ⚠️ Regression guard for a production outage (2026-08-11). `manifest.env`
-      is the allowlist `alepha platform up` pushes worker secrets from, and it
+      ⚠️ Regression guard for a production outage (2026-08-11). The manifest's
+      `secrets` is the allowlist `alepha platform up` pushes worker secrets from, and it
       comes from `alepha.dump().env` — the env keys of the graph as
       instantiated HERE, under node. `CLOUDFLARE_ANALYTICS_TOKEN` is declared
       by `WaeAnalyticsProvider`, which only ever exists under workerd, so it
@@ -118,21 +118,24 @@ describe("analytics resource detection", () => {
       fix, because detection is the one thing that does work from node.
     */
     const manifest = (await detect({ analyticsPrimitives: 1 })) as unknown as {
-      env: string[];
+      secrets: Array<{ name: string }>;
     };
+    const secrets = manifest.secrets.map((entry) => entry.name);
 
-    expect(manifest.env).toContain("CLOUDFLARE_ANALYTICS_TOKEN");
+    expect(secrets).toContain("CLOUDFLARE_ANALYTICS_TOKEN");
     // The read is account-scoped, so the id is as load-bearing as the token.
-    expect(manifest.env).toContain("CLOUDFLARE_ACCOUNT_ID");
+    expect(secrets).toContain("CLOUDFLARE_ACCOUNT_ID");
   });
 
   it("does not add the credential when the app has no analytics", async ({
     expect,
   }) => {
     const manifest = (await detect({ analyticsPrimitives: 0 })) as unknown as {
-      env: string[];
+      secrets: Array<{ name: string }>;
     };
 
-    expect(manifest.env ?? []).not.toContain("CLOUDFLARE_ANALYTICS_TOKEN");
+    expect(manifest.secrets.map((entry) => entry.name)).not.toContain(
+      "CLOUDFLARE_ANALYTICS_TOKEN",
+    );
   });
 });

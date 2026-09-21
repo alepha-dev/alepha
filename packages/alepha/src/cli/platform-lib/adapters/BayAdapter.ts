@@ -824,8 +824,8 @@ export class BayAdapter extends PlatformAdapter {
    * deploying environment in scope, and is the one change that would turn this
    * into a leak.
    *
-   * With no manifest (or one predating the `env` field) the `.env.<env>` file's
-   * own keys are the allowlist, which is the legacy shape and equally bounded.
+   * With no readable manifest the `.env.<env>` file's own keys are the
+   * allowlist, which is equally bounded.
    */
   protected async selectAppSecrets(ctx: PlatformContext): Promise<{
     secrets: Record<string, string>;

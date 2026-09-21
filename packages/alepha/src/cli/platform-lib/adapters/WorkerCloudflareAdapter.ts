@@ -321,7 +321,6 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       entry: { root: ctx.root, server: "" },
       hasClient: false,
       manifest,
-      platformOptions: null,
       flags: { prebuilt: true },
       // ⚠️ The ids from `provision`, and ONLY those. `ctx.env` present means it
       // is the whole environment, so this build cannot inherit Lore's own
