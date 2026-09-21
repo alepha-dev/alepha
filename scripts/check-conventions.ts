@@ -1089,6 +1089,7 @@ if (projectAtomViolations.length > 0) {
  */
 const JOB_NAME = /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
 const jobNameViolations: string[] = [];
+const jobTimeoutViolations: string[] = [];
 
 const jobSources = execFileSync("git", ["ls-files", "packages", "apps"], {
   encoding: "utf8",
@@ -1148,6 +1149,17 @@ for (const file of jobSources) {
         `  ${file}:${line}\n    → '${name}' is an application job; system. is reserved for packages/`,
       );
     }
+    // A top-level key only: `top` has every nested object blanked, so a
+    // `timeout` passed to a call inside the handler is not the job's.
+    if (
+      fromPackages &&
+      name.startsWith("system.") &&
+      !/(?:^|[\n,])\s*timeout\s*:/.test(top)
+    ) {
+      jobTimeoutViolations.push(
+        `  ${file}:${line}\n    → '${name}' declares no timeout`,
+      );
+    }
   }
 }
 
@@ -1159,6 +1171,30 @@ if (jobNameViolations.length > 0) {
       "system. for everything shipped from packages/ and never in an app. The\n" +
       "name is the job's identity in job_executions: renaming it later loses\n" +
       "its history, so get it right at declaration.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * Every job the framework ships declares a `timeout` (#Q2452).
+ *
+ * A `system.*` job lands in every app that mounts its module. With no
+ * `timeout`, two numbers nobody chose do the work: the cron lock falls back to
+ * five minutes and crash recovery to the jobs `runTimeout` (30 minutes), and
+ * on Cloudflare's direct mode, where a job gets about 30s of wall clock,
+ * `BuildCloudflareTask` warned about each of them on every build of every app.
+ * Sixteen did. Read by the naming rule's loop above, so the two cannot
+ * disagree about what a job declaration is. Only `system.*`: an application's
+ * own jobs are its author's call, and the Cloudflare build already tells them.
+ */
+if (jobTimeoutViolations.length > 0) {
+  console.error(
+    `\n${jobTimeoutViolations.length} system job(s) without a timeout:\n\n` +
+      `${jobTimeoutViolations.join("\n")}\n\n` +
+      "A job shipped from packages/ lands in every app that mounts its module,\n" +
+      "and with no timeout its cron lock and crash recovery fall back to\n" +
+      "defaults nobody chose. Declare one, at most 30 seconds unless the job\n" +
+      "needs a queue: that is Cloudflare's direct-mode budget.\n",
   );
   process.exit(1);
 }

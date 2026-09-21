@@ -79,6 +79,7 @@ export class NotificationJobs {
     description:
       "Hourly sweep that deletes delivery receipts and read inbox messages older than their retention windows.",
     cron: "0 * * * *",
+    timeout: [30, "seconds"],
     handler: async ({ now }) => {
       const { receiptRetentionDays, inboxRetentionDays } =
         this.settings.current;

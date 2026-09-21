@@ -22,6 +22,7 @@ export class AuditJobs {
     name: "system.audits.clean-expired",
     cron: "0 3 * * *", // Daily at 03:00
     description: "Deletes audit entries older than the audit retention period.",
+    timeout: [30, "seconds"],
     handler: async ({ now }) => {
       const defaultRetentionDays = this.auditParameters.get("retentionDays");
       await this.auditService.deleteExpired(now.toDate(), defaultRetentionDays);

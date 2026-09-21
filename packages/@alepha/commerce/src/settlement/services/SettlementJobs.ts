@@ -46,6 +46,7 @@ export class SettlementJobs {
       retries: 4,
       backoff: { initial: [1, "second"], factor: 4, max: [10, "minute"] },
     },
+    timeout: [30, "seconds"],
     handler: async ({ payload }) => {
       if (this.alepha.has(InvoiceService)) {
         await this.alepha.inject(InvoiceService).issueForOrder(payload.orderId);
@@ -90,6 +91,7 @@ export class SettlementJobs {
       retries: 3,
       backoff: { initial: [1, "minute"], factor: 4 },
     },
+    timeout: [30, "seconds"],
     handler: async ({ payload }) => {
       const before = await this.checkout.getById(payload.sessionId);
       if (before.status !== "paying") {

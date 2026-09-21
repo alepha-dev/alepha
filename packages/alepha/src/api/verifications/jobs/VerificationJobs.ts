@@ -16,6 +16,7 @@ export class VerificationJobs {
     cron: "0 * * * *", // Hourly at minute 0
     description:
       "Deletes expired verification codes once past the purge window.",
+    timeout: [30, "seconds"],
     handler: async () => {
       const purgeDays = this.verificationParameters.get("purgeDays");
       if (purgeDays <= 0) {

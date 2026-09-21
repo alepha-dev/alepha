@@ -25,6 +25,7 @@ export class StockReservationSweeper {
     name: "system.commerce.release-expired-reservations",
     description: "Releases stock held by checkouts whose reservation expired.",
     cron: this.config.stockSweepCron,
+    timeout: [30, "seconds"],
     handler: async () => {
       await this.stock.releaseExpiredReservations();
     },

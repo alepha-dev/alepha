@@ -10,6 +10,7 @@ export class OrganizationInvitationJobs {
     name: "system.organization-invitations.expire",
     description: "Marks pending organization invitations as expired",
     cron: "0 * * * *",
+    timeout: [30, "seconds"],
     handler: async () => {
       await this.invitations.expirePending();
     },
@@ -19,6 +20,7 @@ export class OrganizationInvitationJobs {
     name: "system.organization-invitations.purge-resolved",
     description: "Purges old resolved organization invitations",
     cron: "0 * * * *",
+    timeout: [30, "seconds"],
     handler: async () => {
       await this.invitations.purgeResolved();
     },

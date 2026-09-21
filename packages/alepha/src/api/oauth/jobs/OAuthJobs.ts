@@ -58,6 +58,7 @@ export class OAuthJobs {
     // slot every app on the account pays for. It was `20 3 * * *` until
     // 2026-09-20.
     cron: "0 3 * * *",
+    timeout: [30, "seconds"],
     handler: async () => {
       const cutoff = this.dateTime
         .now()

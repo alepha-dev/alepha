@@ -40,6 +40,7 @@ export class CartRecoveryJobs {
       retries: 3,
       backoff: { initial: [1, "minute"], factor: 4 },
     },
+    timeout: [30, "seconds"],
     handler: async ({ payload, reschedule }) => {
       if (!(await this.recovery.isRecoverable(payload.cartId))) {
         return;

@@ -47,6 +47,7 @@ export class PaymentService {
     description:
       "Asks the payment provider about intents processing for over 30 minutes, and expires those still stuck.",
     cron: this.config.expireStaleIntentsCron,
+    timeout: [30, "seconds"],
     handler: async () => {
       const cutoff = this.dateTime.now().subtract(30, "minutes").toISOString();
 

@@ -10,6 +10,7 @@ export class FileJobs {
     name: "system.files.purge-deleted",
     description: "Deletes stored files marked for deletion, ten at a time.",
     cron: "0 * * * *", // Hourly at minute 0
+    timeout: [30, "seconds"],
     handler: async () => {
       const files = await this.fileService.findExpiredFiles();
 

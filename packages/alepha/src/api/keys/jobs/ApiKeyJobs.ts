@@ -24,6 +24,7 @@ export class ApiKeyJobs {
     name: "system.keys.purge-expired",
     cron: "0 3 * * *", // Daily at 03:00
     description: "Deletes API keys past their retention window.",
+    timeout: [30, "seconds"],
     handler: async () => {
       await this.apiKeyService.purgeDeadKeys();
     },
@@ -39,6 +40,7 @@ export class ApiKeyJobs {
     name: "system.keys.notify-expiring",
     cron: "0 9 * * *", // Daily at 09:00
     description: "Warns the owners of API keys about to expire, once per key.",
+    timeout: [30, "seconds"],
     handler: async () => {
       await this.apiKeyService.notifyExpiring();
     },

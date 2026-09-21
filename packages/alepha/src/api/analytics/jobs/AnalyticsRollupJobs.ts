@@ -93,6 +93,7 @@ export class AnalyticsRollupJobs {
     cron: "0 * * * *",
     description:
       "Folds hourly analytics buckets past the hot window into daily ones, then deletes rolled rows past the cold window.",
+    timeout: [30, "seconds"],
     handler: () => this.sweepNow(),
   });
 

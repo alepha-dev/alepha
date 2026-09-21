@@ -52,6 +52,7 @@ export class UserJobs {
     description:
       "Deletes sessions past their expiry date, and sessions idle for longer than the realm allows.",
     cron: "0 * * * *", // Hourly at minute 0
+    timeout: [30, "seconds"],
     handler: async () => {
       const now = this.dateTimeProvider.nowISOString();
 
