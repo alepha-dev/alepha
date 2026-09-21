@@ -4,12 +4,15 @@ import {
   EXCLUDED_SECRET_KEYS,
 } from "alepha/cli/platform-lib";
 import { CryptoProvider } from "alepha/crypto";
-import { $repository } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { type AppSecret, appSecrets } from "../entities/appSecrets.ts";
+import { artifacts } from "../entities/artifacts.ts";
+import { deployments } from "../entities/deployments.ts";
 import { estates } from "../entities/estates.ts";
+import type { DeclaredEnvKey } from "../schemas/declaredEnvKeySchema.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 
 /**
@@ -38,6 +41,8 @@ export class AppSecretService {
   protected readonly rows = $repository(appSecrets);
   protected readonly instances = $repository(appInstances);
   protected readonly estates = $repository(estates);
+  protected readonly artifacts = $repository(artifacts);
+  protected readonly deployments = $repository(deployments);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly crypto = $inject(CryptoProvider);
 
@@ -161,6 +166,24 @@ export class AppSecretService {
   }
 
   /**
+   * Every name this copy refuses, for a client to flag before it sends: the
+   * names the deploy derives, plus Bay's own when the copy deploys to a Bay
+   * estate. The server still refuses them itself; this is the preview.
+   */
+  public async reservedKeys(instanceId: string): Promise<string[]> {
+    const instance = await this.instances.findById(instanceId);
+    const estate = instance?.estateId
+      ? await this.estates.findById(instance.estateId)
+      : undefined;
+    return [
+      ...new Set([
+        ...EXCLUDED_SECRET_KEYS,
+        ...(estate?.type === "bay" ? BAY_OWNED_SECRET_KEYS : []),
+      ]),
+    ].sort();
+  }
+
+  /**
    * What this copy runs with, masked.
    *
    * Ordered by key so the screen is stable between saves rather than ordered by
@@ -186,20 +209,15 @@ export class AppSecretService {
     key: string;
     value: string;
     updatedBy?: string;
+    /**
+     * The declared variable names, when the caller already read them: a bulk
+     * import reads the manifest once rather than once per key.
+     */
+    variables?: ReadonlySet<string>;
   }): Promise<AppSecret> {
     const key = this.assertKey(input.key);
     await this.assertDeliverable(input.instanceId, key);
-
-    if (!input.value) {
-      throw new BadRequestError(
-        `${key} has no value. Delete it instead of setting it to nothing: an empty variable and an absent one are different things to an app, and only one of them is what you meant.`,
-      );
-    }
-    if (input.value.length > AppSecretService.MAX_VALUE_LENGTH) {
-      throw new BadRequestError(
-        `${key} is longer than ${AppSecretService.MAX_VALUE_LENGTH} characters. The whole set goes up as bindings in one script upload, so an unbounded value fails the deploy rather than this request.`,
-      );
-    }
+    this.assertValue(key, input.value);
 
     const existing = await this.find(input.instanceId, key);
     if (!existing) {
@@ -213,21 +231,159 @@ export class AppSecretService {
       }
     }
 
+    // A variable follows the app's declaration, never the caller (#Q2467):
+    // a key the manifest lists under `variables` keeps a readable copy, and
+    // anything else - undeclared included - is sealed only.
+    const variables =
+      input.variables ??
+      new Set(
+        (await this.declared(input.instanceId))
+          .filter((declared) => declared.kind === "variable")
+          .map((declared) => declared.name),
+      );
+    const variable = variables.has(key);
+
     const values = {
       valueSealed: this.seal.seal(input.value, AppSecretService.PURPOSE),
-      valuePrefix: this.mask(input.value),
+      // Sealed only, and the readable copy cleared, when it is a secret: a key
+      // that stopped being a variable must not keep its plaintext.
+      value: variable ? input.value : sql`NULL`,
+      valuePrefix: variable ? "" : this.mask(input.value),
       keyVersion: CredentialSealService.KEY_VERSION,
       updatedBy: input.updatedBy,
     };
 
     if (existing) {
-      return await this.rows.updateById(existing.id, values);
+      return await this.rows.updateById(existing.id, values as never);
     }
     return await this.rows.create({
       instanceId: input.instanceId,
       key,
       ...values,
+      value: variable ? input.value : undefined,
     });
+  }
+
+  /**
+   * Set several variables in one request, all or nothing (#Q2468).
+   *
+   * Every name and value is checked before anything is written, so a refused
+   * line leaves the set as it was rather than half-imported. D1 has no
+   * transactions, so "all or nothing" is enforced by validating first; a
+   * storage failure midway is the one case that can still leave part of it.
+   */
+  public async setMany(input: {
+    instanceId: string;
+    entries: Array<{ key: string; value: string }>;
+    updatedBy?: string;
+  }): Promise<AppSecret[]> {
+    const entries = new Map<string, string>();
+    for (const entry of input.entries) {
+      const key = this.assertKey(entry.key);
+      await this.assertDeliverable(input.instanceId, key);
+      this.assertValue(key, entry.value);
+      entries.set(key, entry.value);
+    }
+
+    const existing = new Set(
+      (await this.list(input.instanceId)).map((row) => row.key),
+    );
+    const added = [...entries.keys()].filter((key) => !existing.has(key));
+    if (existing.size + added.length > AppSecretService.MAX_KEYS) {
+      throw new BadRequestError(
+        `This import would bring the copy to ${existing.size + added.length} variables, and one deploy carries at most ${AppSecretService.MAX_KEYS}.`,
+      );
+    }
+
+    const variables = new Set(
+      (await this.declared(input.instanceId))
+        .filter((declared) => declared.kind === "variable")
+        .map((declared) => declared.name),
+    );
+    const rows: AppSecret[] = [];
+    for (const [key, value] of entries) {
+      rows.push(
+        await this.set({
+          instanceId: input.instanceId,
+          key,
+          value,
+          updatedBy: input.updatedBy,
+          variables,
+        }),
+      );
+    }
+    return rows;
+  }
+
+  /**
+   * Every environment variable this copy's app declares, from the manifest of
+   * the build it last deployed, else of the app's newest archive (#Q2467).
+   *
+   * Empty when neither exists or the stored manifest cannot be read: absence
+   * is "unknown", and an unknown key is a secret, which is the direction that
+   * fails safe.
+   */
+  public async declared(instanceId: string): Promise<DeclaredEnvKey[]> {
+    const instance = await this.instances.findById(instanceId);
+    if (!instance) {
+      return [];
+    }
+
+    const [lastDeploy] = await this.deployments.findMany({
+      where: {
+        instanceId: { eq: instanceId },
+        status: { eq: "succeeded" },
+      },
+      orderBy: [{ column: "createdAt", direction: "desc" }],
+      limit: 1,
+    });
+    let manifest = lastDeploy?.artifactId
+      ? (await this.artifacts.findById(lastDeploy.artifactId))?.manifest
+      : undefined;
+    if (!manifest) {
+      const [newest] = await this.artifacts.findMany({
+        where: {
+          projectId: { eq: instance.projectId },
+          app: { eq: instance.app },
+          format: { eq: "archive" },
+        },
+        orderBy: [{ column: "updatedAt", direction: "desc" }],
+        limit: 1,
+      });
+      manifest = newest?.manifest;
+    }
+    if (!manifest) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(manifest) as {
+        secrets?: Array<{ name?: unknown; description?: unknown }>;
+        variables?: Array<{ name?: unknown; description?: unknown }>;
+      };
+      const of = (
+        list: typeof parsed.secrets,
+        kind: DeclaredEnvKey["kind"],
+      ): DeclaredEnvKey[] =>
+        (Array.isArray(list) ? list : [])
+          .filter((entry) => typeof entry?.name === "string")
+          .map((entry) => ({
+            name: String(entry.name),
+            description:
+              typeof entry.description === "string"
+                ? entry.description
+                : undefined,
+            kind,
+          }));
+      return [
+        ...of(parsed.secrets, "secret"),
+        ...of(parsed.variables, "variable"),
+      ]
+        .filter((entry) => !AppSecretService.reserved(entry.name))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -361,6 +517,22 @@ export class AppSecretService {
     if (estate?.type === "bay") {
       throw new BadRequestError(
         `${key} is set by Bay, not here. This copy deploys to the Bay estate '${estate.slug}', which writes ${key} into every instance itself, so a value stored here would never reach the app.`,
+      );
+    }
+  }
+
+  /**
+   * That a value can be stored, or a refusal saying why not.
+   */
+  protected assertValue(key: string, value: string): void {
+    if (!value) {
+      throw new BadRequestError(
+        `${key} has no value. Delete it instead of setting it to nothing: an empty variable and an absent one are different things to an app, and only one of them is what you meant.`,
+      );
+    }
+    if (value.length > AppSecretService.MAX_VALUE_LENGTH) {
+      throw new BadRequestError(
+        `${key} is longer than ${AppSecretService.MAX_VALUE_LENGTH} characters. The whole set goes up as bindings in one script upload, so an unbounded value fails the deploy rather than this request.`,
       );
     }
   }
