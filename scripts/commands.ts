@@ -64,7 +64,7 @@ export class AlephaCommands {
   protected static readonly services = [
     { name: "postgres", port: 15432 },
     { name: "redis", port: 16379 },
-    { name: "s3mock", port: 19090 },
+    { name: "s3", port: 19090 },
   ];
 
   /**

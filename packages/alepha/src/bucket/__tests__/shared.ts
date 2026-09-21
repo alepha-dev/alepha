@@ -1,5 +1,6 @@
 import { Alepha, AlephaError, type FileLike } from "alepha";
 import { FileSystemProvider } from "alepha/system";
+import { S3mini } from "s3mini";
 import { expect } from "vitest";
 
 import {
@@ -9,14 +10,35 @@ import {
 } from "../index.ts";
 
 /**
+ * Creates the bucket the vitest env names, if it does not exist yet.
+ *
+ * The provider never creates buckets (containers are key prefixes inside one
+ * bucket you provision), so a suite that talks to the `s3` service from
+ * `compose.yml` provisions it here. The request is signed: versitygw is a real
+ * S3 server and refuses an anonymous `PUT /<bucket>` with a 403, which S3Mock
+ * used to accept.
+ */
+export const ensureTestBucket = async (): Promise<void> => {
+  const client = new S3mini({
+    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+    region: process.env.S3_REGION!,
+    endpoint: `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}`,
+  });
+  if (!(await client.bucketExists())) {
+    await client.createBucket();
+  }
+};
+
+/**
  * Drains every object under the given containers.
  *
- * The s3mock store from `compose.yml` is shared across runs and bounded (a
+ * The `s3` store from `compose.yml` is shared across runs and bounded (a
  * 4 GB tmpfs): the streamed-upload suite alone leaves ~70 MB of UUID-named
  * objects per run, so without teardown the tmpfs fills after a few dozen runs
  * and every bucket test fails until the container restarts. Suites that write
- * to s3mock call this from `afterAll` — draining by container prefix also
- * removes whatever earlier, less tidy runs left behind.
+ * to it call this from `afterAll`: draining by container prefix also removes
+ * whatever earlier, less tidy runs left behind.
  */
 export const emptyBuckets = async (
   provider: FileStorageProvider,

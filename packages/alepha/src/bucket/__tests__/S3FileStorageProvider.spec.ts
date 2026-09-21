@@ -9,6 +9,7 @@ import {
 } from "../index.ts";
 import {
   emptyBuckets,
+  ensureTestBucket,
   TEST_DOCUMENTS_BUCKET,
   TEST_IMAGES_BUCKET,
   testCustomFileId,
@@ -34,13 +35,8 @@ const provider = alepha.inject(S3FileStorageProvider);
 describe("S3FileStorageProvider", () => {
   // The provider no longer creates buckets: containers are key prefixes
   // inside one bucket that you provision. Create it here so the suite is
-  // self-contained (s3mock's `initialBuckets` env is not honoured by the
-  // image we pin).
-  beforeAll(async () => {
-    await fetch(`${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}`, {
-      method: "PUT",
-    });
-  });
+  // self-contained.
+  beforeAll(ensureTestBucket);
 
   // The store is a shared tmpfs that outlives the run — leave it the way a
   // fresh container starts. Containers are disjoint per spec file, so this

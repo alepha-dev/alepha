@@ -2,7 +2,11 @@ import { Alepha, type FileLike } from "alepha";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { S3FileStorageProvider } from "../providers/S3FileStorageProvider.ts";
-import { emptyBuckets, testKeepsTheStatusOfAStreamRefusal } from "./shared.ts";
+import {
+  emptyBuckets,
+  ensureTestBucket,
+  testKeepsTheStatusOfAStreamRefusal,
+} from "./shared.ts";
 
 /**
  * A file whose size is not known until it has been read.
@@ -53,10 +57,11 @@ const setup = async () => {
 };
 
 /**
- * Runs against the `s3mock` container from `compose.yml`, on the endpoint the
- * vitest env already points at. A mock rather than a mock *object*: multipart
- * upload is a three-request protocol with a minimum part size and an ordering
- * rule, and a stub that accepts anything would prove none of it.
+ * Runs against the `s3` service (versitygw) from `compose.yml`, on the
+ * endpoint the vitest env already points at. A real S3 server rather than a
+ * mock *object*: multipart upload is a three-request protocol with a minimum
+ * part size and an ordering rule, and a stub that accepts anything would prove
+ * none of it.
  */
 describe("S3 streamed upload", () => {
   // From the env, not a literal, so this can never drift from the bucket
@@ -67,11 +72,7 @@ describe("S3 streamed upload", () => {
   // another spec had already seeded, and failed on CI where the container is
   // new — a test that depends on what someone else left behind is a test that
   // reports the order specs happened to run in.
-  beforeAll(async () => {
-    await fetch(`${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}`, {
-      method: "PUT",
-    });
-  });
+  beforeAll(ensureTestBucket);
 
   // These uploads are the store's whole disk budget: ~70 MB of UUID-named
   // objects per run, into a 4 GB tmpfs that only empties on container
