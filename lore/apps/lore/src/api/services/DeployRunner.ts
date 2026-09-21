@@ -80,13 +80,11 @@ export interface DeployRequest {
   /**
    * The copy's environment, opened.
    *
-   * ⚠️ **Uploaded WITH the script, not after it.** `PlatformOrchestrator.up()`
-   * runs `deploy` then `secrets`, and its own comment records the cost: about
-   * six seconds in which the new build runs against the previous secret set,
-   * and a deploy introducing a newly required variable boots without it. It is
-   * that way round only because `wrangler secret put` needs the worker to
-   * exist. Lore does the upload itself, so the constraint is gone and the
-   * window never exists - first deploy included.
+   * ⚠️ **Uploaded WITH the script, not after it**, as `secret_text` bindings
+   * of the same version, so a deploy is one Worker version and the new build
+   * never runs against the previous secret set - first deploy included. A
+   * secret changed on a copy therefore reaches the Worker with its next
+   * deploy, not before.
    *
    * ⚠️ Never logged. Every line this runner writes goes onto a row every member
    * of the project can read.
@@ -428,10 +426,24 @@ export class DeployRunner {
    */
   protected runner(deployment: string | undefined) {
     const registry = this.registry;
-    const run = async (task: {
-      name: string;
-      handler: () => Promise<unknown>;
-    }) => {
+    type Task = { name: string; handler: () => Promise<unknown> };
+    /*
+      ⚠️ An ARRAY is a set of steps to run concurrently, which is what the
+      CLI's `Runner` does with one, and what an adapter passes to provision a
+      database and a bucket at once. Treated as one task here, it would crash
+      on `task.handler`.
+
+      The lines go first and in order, the handlers after, together:
+      `registry.line` is a read-modify-write of one row with no lock, so two
+      lines written at the same moment would lose one of them.
+    */
+    const run = async (task: Task | Task[]) => {
+      if (Array.isArray(task)) {
+        for (const it of task) {
+          await registry.line(deployment, it.name);
+        }
+        return await Promise.all(task.map((it) => it.handler()));
+      }
       await registry.line(deployment, task.name);
       return await task.handler();
     };

@@ -53,11 +53,36 @@ export class DeployRegistry {
    */
   public static readonly MAX_LOG_LINES = 200;
 
+  /**
+   * The run is picked up: status `running`, and a first line saying how long
+   * it waited in the queue.
+   *
+   * ⚠️ The wait is the one cost no step line can show, because every line
+   * after this one is timed from `startedAt`. A first deploy of a club copy
+   * spent 5.6 s there before its first line, which is time a user waits
+   * through all the same.
+   */
   public async started(deploymentId?: string): Promise<void> {
+    const now = this.dateTime.nowMillis();
     await this.patch(deploymentId, {
       status: "running",
-      startedAt: new Date(this.dateTime.nowMillis()).toISOString(),
+      startedAt: new Date(now).toISOString(),
     });
+    if (!deploymentId) {
+      return;
+    }
+    try {
+      const row = await this.rows.findById(deploymentId);
+      const queuedAt = row?.createdAt ? Date.parse(row.createdAt) : Number.NaN;
+      if (Number.isFinite(queuedAt)) {
+        await this.line(
+          deploymentId,
+          `Started after ${this.seconds(now - queuedAt)} queued`,
+        );
+      }
+    } catch (error) {
+      this.log.warn("Could not record the queue wait", { error });
+    }
   }
 
   public async succeeded(
@@ -119,11 +144,41 @@ export class DeployRegistry {
         return;
       }
       await this.rows.updateById(deploymentId, {
-        log: this.appended(row.log ?? [], text),
+        log: this.appended(row.log ?? [], this.timed(row.startedAt, text)),
       });
     } catch (error) {
       this.log.warn("Could not record a deploy log line", { error });
     }
+  }
+
+  /**
+   * The line as the reader sees it: `+12.3s ` in front, the time since the run
+   * started.
+   *
+   * ## ⚠️ In the TEXT, although every line already carries `at`
+   *
+   * Nothing a person reads shows `at`: the Deploy tab joins the texts, and the
+   * MCP `deploy_status` tool answers texts only. A step is logged when it
+   * STARTS, so the gap between two prefixes is what the first one cost, and
+   * the costs are readable straight off the log a user already has open.
+   *
+   * Left bare for a row that never started, which is only ever a line written
+   * outside a run.
+   */
+  protected timed(startedAt: string | undefined, text: string): string {
+    const started = startedAt ? Date.parse(startedAt) : Number.NaN;
+    if (!Number.isFinite(started)) {
+      return text;
+    }
+    return `+${this.seconds(this.dateTime.nowMillis() - started)} ${text}`;
+  }
+
+  /**
+   * Milliseconds as seconds with one decimal, never negative: two clocks that
+   * disagree by a few milliseconds must not print `+-0.0s`.
+   */
+  protected seconds(millis: number): string {
+    return `${(Math.max(0, millis) / 1000).toFixed(1)}s`;
   }
 
   /**
