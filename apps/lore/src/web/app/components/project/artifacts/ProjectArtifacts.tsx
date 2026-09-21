@@ -12,7 +12,6 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
   AppWindow,
-  Cloud,
   Container,
   Download,
   GitCommitHorizontal,
@@ -30,7 +29,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
+import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 import CommitLink from "../../shared/CommitLink.tsx";
 import { useDeleteArtifact } from "./useDeleteArtifact.ts";
@@ -53,7 +52,14 @@ interface ArtifactRow {
   projectId: number;
   app: string;
   tag: string;
+  /**
+   * The primary runtime, `runtimes[0]`: what the key and the sort use.
+   */
   runtime: string;
+  /**
+   * Every runtime slice the variant carries, in declared order (#Q2462).
+   */
+  runtimes: string[];
   /**
    * `archive` or `image`. The second half of what identifies a variant.
    */
@@ -151,6 +157,7 @@ const ProjectArtifacts = () => {
         app: group.app,
         tag: group.tag,
         runtime: variant.runtime,
+        runtimes: variant.runtimes,
         format: variant.format,
         reference: variant.reference,
         size: variant.size,
@@ -172,12 +179,9 @@ const ProjectArtifacts = () => {
   );
   const runtimeItems = useMemo(
     () =>
-      [...new Set(rows.map((row) => row.runtime))]
+      [...new Set(rows.flatMap((row) => row.runtimes))]
         .sort((a, b) => a.localeCompare(b))
-        .map((runtime) => ({
-          label: artifactRuntimeLabel(runtime),
-          value: runtime,
-        })),
+        .map((runtime) => ({ label: runtime, value: runtime })),
     [rows],
   );
   // Derived like the other two rather than hardcoded to the two known
@@ -370,7 +374,11 @@ const ProjectArtifacts = () => {
               const apps = values.app;
               if (apps?.length && !apps.includes(row.app)) return false;
               const runtimes = values.runtime;
-              if (runtimes?.length && !runtimes.includes(row.runtime)) {
+              // Any slice: a `node,workerd` archive is a workerd build too.
+              if (
+                runtimes?.length &&
+                !row.runtimes.some((runtime) => runtimes.includes(runtime))
+              ) {
                 return false;
               }
               const formats = values.format;
@@ -467,14 +475,7 @@ const ProjectArtifacts = () => {
                 label: tr("artifacts.table.runtime"),
                 sortable: true,
                 cell: (row) => (
-                  <Badge variant="tint" className="gap-1">
-                    {row.runtime === "workerd" ? (
-                      <Cloud className="size-3 shrink-0" aria-hidden />
-                    ) : (
-                      <Server className="size-3 shrink-0" aria-hidden />
-                    )}
-                    {artifactRuntimeLabel(row.runtime)}
-                  </Badge>
+                  <ArtifactRuntimeBadges runtimes={row.runtimes} />
                 ),
               },
               format: {

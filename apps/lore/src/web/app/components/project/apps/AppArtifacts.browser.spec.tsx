@@ -166,6 +166,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "1.2.3",
               runtime: "node",
+              runtimes: ["node"],
               format: "archive",
               sha256: "a".repeat(64),
               size: 4_400_000,
@@ -178,6 +179,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "1.2.3",
               runtime: "workerd",
+              runtimes: ["workerd"],
               format: "archive",
               sha256: "b".repeat(64),
               size: 8_800_000,
@@ -192,9 +194,9 @@ describe("AppArtifacts", () => {
     expect(await findByText("1.2.3")).toBeTruthy();
     const card = getByTestId("app-artifacts").textContent ?? "";
     expect(card).toContain("node");
-    // The stored runtime is `workerd`; a person reads the infrastructure.
-    expect(card).toContain("cloudflare");
-    expect(card).not.toContain("workerd");
+    // A runtime is named by its runtime (#Q2463), never by the host.
+    expect(card).toContain("workerd");
+    expect(card).not.toContain("cloudflare");
     // The digest is short on the row; the whole value lives on the title.
     expect(card).toContain("a".repeat(12));
     expect(card).not.toContain("a".repeat(64));
@@ -232,6 +234,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "0.30.0",
               runtime: "node",
+              runtimes: ["node"],
               format: "archive",
               sha256: "a".repeat(64),
               size: 4_400_000,
@@ -244,6 +247,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "0.30.0",
               runtime: "node",
+              runtimes: ["node"],
               format: "image",
               reference: "ghcr.io/acme/docs:0.30.0",
               sha256: "b".repeat(64),
@@ -293,6 +297,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "0.32.0",
               runtime: "node",
+              runtimes: ["node"],
               format: "image",
               reference: "ghcr.io/alepha-dev/lore:0.32.0",
               sha256: "d".repeat(64),
@@ -331,6 +336,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "0.33.0",
               runtime: "node",
+              runtimes: ["node"],
               format: "archive",
               sha256: "e".repeat(64),
               size: 1_000_000,
@@ -363,6 +369,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "0.31.0",
               runtime: "node",
+              runtimes: ["node"],
               format: "image",
               reference: "ghcr.io/acme/docs:0.31.0",
               sha256: "c".repeat(64),
@@ -403,6 +410,7 @@ describe("AppArtifacts", () => {
                 app: "docs-production",
                 tag: "1.2.4",
                 runtime: "node",
+                runtimes: ["node"],
                 format: "archive",
                 sha256: "d".repeat(64),
                 size: 1_000_000,
@@ -439,6 +447,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "latest",
               runtime: "workerd",
+              runtimes: ["workerd"],
               format: "archive",
               sha256: "c".repeat(64),
               size: 1_000_000,

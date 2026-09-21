@@ -6,7 +6,6 @@ import type { ArtifactController } from "@/api/controllers/ArtifactController.ts
 import { currentInstancesAtom } from "@/web/app/atoms/currentInstancesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
 import { settleBulk } from "../../shared/bulkOutcome.ts";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 
@@ -50,7 +49,7 @@ export const useDeleteArtifact = (): DeleteArtifact => {
   const [instances] = useStore(currentInstancesAtom);
 
   const name = (artifact: DeletableArtifact): string =>
-    `${artifact.app} ${artifact.tag} (${artifactRuntimeLabel(artifact.runtime)}, ${artifact.format})`;
+    `${artifact.app} ${artifact.tag} (${artifact.runtimes.join(" + ")}, ${artifact.format})`;
 
   /**
    * The copies whose newest successful deploy is this app at this tag, as
@@ -166,6 +165,10 @@ export interface DeletableArtifact {
   app: string;
   tag: string;
   runtime: string;
+  /**
+   * Every slice the variant carries, which is how the confirm names it.
+   */
+  runtimes: string[];
   format: string;
 }
 

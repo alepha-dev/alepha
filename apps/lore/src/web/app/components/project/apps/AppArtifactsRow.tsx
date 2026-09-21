@@ -1,7 +1,7 @@
-import { TimeAgo, Badge } from "@alepha/ui";
+import { TimeAgo } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Cloud, Container, GitCommitHorizontal, Server } from "lucide-react";
+import { GitCommitHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
@@ -9,7 +9,7 @@ import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
-import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
+import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
 import CommitLink from "../../shared/CommitLink.tsx";
 
 export interface AppArtifactsRowProps {
@@ -101,22 +101,11 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
           // image of one tag collided into one key AND read as two identical
           // "node" badges. The format is what tells them apart, on the key and
           // on the face of the badge.
-          <Badge
+          <ArtifactRuntimeBadges
             key={`${variant.runtime}:${variant.format}`}
-            variant="tint"
-            className="gap-1"
-          >
-            {variant.format === "image" ? (
-              <Container className="size-3 shrink-0" aria-hidden />
-            ) : variant.runtime === "workerd" ? (
-              <Cloud className="size-3 shrink-0" aria-hidden />
-            ) : (
-              <Server className="size-3 shrink-0" aria-hidden />
-            )}
-            {variant.format === "image"
-              ? `${artifactRuntimeLabel(variant.runtime)} image`
-              : artifactRuntimeLabel(variant.runtime)}
-          </Badge>
+            runtimes={variant.runtimes}
+            format={variant.format}
+          />
         ))}
       </span>
 
