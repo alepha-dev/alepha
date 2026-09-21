@@ -805,19 +805,14 @@ test.describe("Apps", () => {
       }
     });
 
-    await test.step("the breadcrumb mirrors the route, with the app half inert", async () => {
+    await test.step("the breadcrumb names the instance as one crumb", async () => {
       const crumbs = page.getByLabel("breadcrumb");
-      // ⚠️ Four segments, and `${appName}` is a plain LABEL: `/apps/:app`
-      // redirects to a sibling copy, so a link there would move the reader
-      // sideways rather than up.
-      //
-      // Asserted on the HREF, not on the role: shadcn's `BreadcrumbPage` marks
-      // an inert crumb `role="link" aria-disabled`, so "is it a link" is true of
-      // both halves and says nothing. What separates them is where they go.
-      const appCrumb = crumbs.getByText(appName, { exact: true });
-      await expect(appCrumb).toBeVisible({ timeout: 15_000 });
-      await expect(appCrumb).not.toHaveAttribute("href", /./);
-      await expect(crumbs.getByText(envName, { exact: true })).toBeVisible();
+      // One crumb for the pair (#Q2466): an instance is `(app, env)`, and the
+      // app alone has no page to link to.
+      await expect(
+        crumbs.getByText(`${appName} / ${envName}`, { exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(crumbs.getByText(appName, { exact: true })).toHaveCount(0);
 
       await crumbs.getByRole("link", { name: "Apps", exact: true }).click();
 

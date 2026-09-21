@@ -215,19 +215,17 @@ const ProjectView = () => {
       href: sectionHref,
     });
   }
-  // The app pages contribute BOTH halves of the instance, so the header reads
-  // "Project › Apps › club › b14-production" and mirrors the two-segment route.
+  // The app pages contribute the instance as ONE crumb, so the header reads
+  // "Project › Apps › club / b14-production": an instance is the pair
+  // `(app, env)`, and one crumb says so (#Q2466).
   //
-  // ⚠️ The app half is a plain label with no `href`, decided 2026-09-05.
-  // There is no app page: `/apps/club` redirects to a sibling instance, so a
-  // link there would move the reader SIDEWAYS rather than up, which is worse
-  // than a label. The one honest target was the Apps list filtered to that
-  // name, and that filter is local state rather than a URL, so there is
-  // nothing to link to.
+  // It replaced two crumbs, an inert app label and a linked env. The app half
+  // had no `href` because there is no app page: `/apps/club` redirects to a
+  // sibling instance, so a link there moved the reader sideways. One crumb
+  // leaves nothing to keep inert.
   if (ROUTES_APP.has(name) && instance) {
-    breadcrumbs.push({ label: instance.app });
     breadcrumbs.push({
-      label: instance.env,
+      label: `${instance.app} / ${instance.env}`,
       href: router.path("app", {
         params: { projectSlug, app: instance.app, env: instance.env },
       }),
