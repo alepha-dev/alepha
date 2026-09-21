@@ -24,7 +24,7 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 ### Verifying
 
 - `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn copy` (generators, then lint), then typecheck and the five `check:*` audits in parallel, then `test` and `test:bun`. About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
-  - Needs Docker running (postgres, redis, s3mock).
+  - Needs Docker running (postgres, redis, versitygw).
   - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
   - One run per machine across every worktree: a second `yarn v` queues, since both test lanes drive the one postgres on 15432. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
   - Skip it when it has nothing to read: nothing for a `.gitignore` line, `yarn oxfmt <file>` for markdown prose, plus `yarn check:docs` when the file is a guide or a README with code samples.
@@ -112,7 +112,7 @@ Every workspace holding specs owns a `vitest.config.ts` calling `workspaceProjec
 | `3300-3399`                 | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, lore 3303, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312 |
 | `5173+`                     | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                            |
 | `4300-4999`                 | **e2e, and nothing else**                                                                                                                                        |
-| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / s3mock)                                                                                                          |
+| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / versitygw)                                                                                                       |
 
 ⚠️ `check:conventions` reads this table: every dev port must appear in the `3300-3399` row.
 

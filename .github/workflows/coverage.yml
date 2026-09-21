@@ -65,10 +65,18 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
 
-      s3mock:
-        image: adobe/s3mock
+      s3:
+        image: versity/versitygw:v1.8.0
         ports:
-          - 19090:9090
+          - 19090:7070
+        env:
+          VGW_BACKEND: posix
+          VGW_BACKEND_ARG: /data
+          VGW_REGION: eu-west-1
+          VGW_QUIET: "true"
+          ROOT_ACCESS_KEY: mock
+          ROOT_SECRET_KEY: mock
+        options: --tmpfs /data:size=4g
 
     steps:
       - name: Git Checkout

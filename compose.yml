@@ -15,40 +15,39 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
-  s3mock:
+  # Versity Gateway serving a directory over S3 (posix backend): a bucket is a
+  # folder, an object is a file. Chosen over adobe/s3mock in #Q2455: ~12 MiB
+  # idle against ~226 MiB, the bucket suite in half the time, and a server we
+  # could run in production rather than a test double. Pinned to an exact
+  # version (the image publishes no floating major tag): S3Mock's `latest`
+  # once renamed its store-root setting silently and filled the disk.
+  #
+  # It is a real S3 server, so every request must be signed with the root key
+  # below (the specs create their bucket through `ensureTestBucket`), and
+  # VGW_REGION must match S3_REGION in scripts/vitest.projects.ts. The CI
+  # workflows declare the same service; keep the three in step.
+  #
+  # RAM-backed and hard-capped: leftover objects cost bounded memory, never
+  # disk, and are wiped by a container restart. The bucket suite drains its
+  # containers in afterAll (`emptyBuckets` in
+  # packages/alepha/src/bucket/__tests__/shared.ts), so the cap is a backstop.
+  # If it ever fills anyway, bucket tests alone fail (postgres is untouched):
+  # `docker compose -p alepha up -d --force-recreate s3` empties the store.
+  s3:
     restart: always
-    image: adobe/s3mock:latest
+    image: versity/versitygw:v1.8.0
     ports:
-      - "19090:9090"
-    # S3Mock has no in-memory mode: every object lands on its filesystem store.
-    # Left in the container's writable layer it reached ~40 GB in two weeks,
-    # filled Docker's virtual disk, and put postgres into a "No space left on
-    # device" crash loop — every DB-backed test failed. The image still ships a
-    # `root=/s3mockroot` env from 2.x, but the property has since been renamed,
-    # so without the variable below the store silently falls back to a temp dir
-    # inside the layer.
-    #
-    # The heap cap is disk hygiene too, not tuning: S3Mock serves objects
-    # through streams it only closes on GC, and a deleted-but-open file keeps
-    # its tmpfs pages. At the default heap, GC is rare enough that each
-    # bucket-suite run pinned ~13-26 MB of deleted objects (measured 34→61 held
-    # fds over five runs); at 64 MB the constant GC closes them and five runs
-    # leave ~44 KB. The whole suite, 48 MB multipart upload included, passes
-    # against this heap.
+      - "19090:7070"
     environment:
-      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
-      JAVA_TOOL_OPTIONS: -Xmx64m
-    # RAM-backed and hard-capped: leftover objects cost bounded memory, never
-    # disk, and are wiped by a container restart (a restart:always container
-    # outlives its writable layer's cleanup forever; a tmpfs does not survive a
-    # Docker restart). The bucket suite drains its containers in afterAll
-    # (`emptyBuckets` in packages/alepha/src/bucket/__tests__/shared.ts), so a
-    # run leaves the store roughly empty and the cap is a backstop, not a
-    # countdown. If it ever fills anyway, bucket tests alone fail (postgres is
-    # untouched) — `docker compose -p alepha up -d s3mock` recreates the store.
+      VGW_BACKEND: posix
+      VGW_BACKEND_ARG: /data
+      VGW_REGION: eu-west-1
+      VGW_QUIET: "true"
+      ROOT_ACCESS_KEY: mock
+      ROOT_SECRET_KEY: mock
     volumes:
       - type: tmpfs
-        target: /s3mockroot
+        target: /data
         tmpfs:
           size: 4gb
 

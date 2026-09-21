@@ -146,10 +146,13 @@ const sharedTestOptions = () => ({
     TZ: "Europe/Paris",
     DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
     S3_ENDPOINT: "http://127.0.0.1:19090",
-    S3_REGION: "us-east-1",
+    // Not us-east-1: s3mini's createBucket always sends a LocationConstraint,
+    // and a real S3 server refuses one naming the default region. It must
+    // match VGW_REGION on the `s3` service in compose.yml and the CI workflows.
+    S3_REGION: "eu-west-1",
     S3_ACCESS_KEY_ID: "mock",
     S3_SECRET_ACCESS_KEY: "mock",
-    // The bucket the S3 specs create on the s3mock service before they run.
+    // The bucket the S3 specs create on the `s3` service before they run.
     S3_BUCKET_NAME: "alepha-test",
     REDIS_URL: "redis://localhost:16379",
   },
