@@ -85,7 +85,7 @@ export class ArtifactUploader {
     // the artifact in the first place.
     const maps = input.mapsPath
       ? {
-          filename: input.mapsFilename ?? "maps.tar.gz",
+          filename: input.mapsFilename ?? "maps.tar.zst",
           stream: await this.fs.readFileStream(input.mapsPath),
         }
       : undefined;
@@ -233,7 +233,7 @@ export interface ArtifactUploadInput {
   commitSha?: string;
   force?: boolean;
   /**
-   * Absolute path to the `tar.gz` produced by `alepha pack`.
+   * Absolute path to the archive produced by `alepha pack`.
    */
   archivePath: string;
   /**
@@ -244,7 +244,7 @@ export interface ArtifactUploadInput {
   filename: string;
 
   /**
-   * The sibling `.maps.tar.gz`, when the build produced one (#1515).
+   * The sibling `.maps.tar.zst`, when the build produced one (#1515).
    *
    * Absent for a build with no source maps, which is a normal state and not an
    * error. Lore stores it beside the artifact and deletes it with the row.

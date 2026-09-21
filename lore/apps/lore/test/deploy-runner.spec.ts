@@ -72,7 +72,7 @@ describe("deploying an artifact from inside the Worker", () => {
         // `b14-preview` anyway, which is the epic's founding difference:
         // `alepha platform` reads the environment out of this file, Lore reads
         // it out of a ROW.
-        "dist/manifest.json": JSON.stringify({
+        "manifest.json": JSON.stringify({
           version: 1,
           runtime: "workerd",
           project: "my-app",
@@ -92,7 +92,12 @@ describe("deploying an artifact from inside the Worker", () => {
             ...resources,
           },
         }),
-        "dist/index.js": "export default { fetch: () => new Response('ok') };",
+        // ⚠️ The WORKERD slice. A Cloudflare deploy uploads the slice the
+        // generated `wrangler.jsonc` globs name, and a node slice is
+        // deliberately not one of them: it is the other half of the same
+        // artifact and the Worker cannot run it.
+        "index.workerd.js":
+          "export default { fetch: () => new Response('ok') };",
         "migrations/sqlite/0001_init/migration.sql":
           "CREATE TABLE t (id integer);",
         ...extra,
@@ -264,11 +269,11 @@ describe("deploying an artifact from inside the Worker", () => {
         {
           // A directory entry, as `alepha pack` writes one: it is what makes
           // the build see a `public/` and emit an `assets` block at all.
-          "dist/public/": { typeflag: "5" },
-          "dist/public/index.html": "<!doctype html>",
-          "dist/public/_headers": headers,
-          "dist/public/_redirects": redirects,
-          "dist/public/.assetsignore": "*.map\n",
+          "public/": { typeflag: "5" },
+          "public/index.html": "<!doctype html>",
+          "public/_headers": headers,
+          "public/_redirects": redirects,
+          "public/.assetsignore": "*.map\n",
         },
       ),
     );

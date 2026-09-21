@@ -153,7 +153,7 @@ export class DeployRunner {
    * Where an artifact's static assets live, and the one directory this runner
    * refuses to put in a filesystem.
    */
-  protected static readonly ASSETS = "/deploy/dist/public/";
+  protected static readonly ASSETS = "/deploy/public/";
 
   /**
    * How often the asset upload says where it has got to.
@@ -295,13 +295,17 @@ export class DeployRunner {
   protected async resourcesOf(
     fs: MemoryFileSystemProvider,
   ): Promise<Record<string, boolean>> {
-    const path = `${DeployRunner.ROOT}/dist/manifest.json`;
+    // ⚠️ At the archive root. The artifact used to unpack into a `dist/`
+    // wrapper; `alepha pack` puts the build's contents at the top now, so a
+    // reader still looking under `dist/` finds nothing and reports an
+    // artifact that binds nothing at all.
+    const path = `${DeployRunner.ROOT}/${ArtifactTarReader.MANIFEST_PATH}`;
     let manifest: { resources?: Record<string, boolean> };
     try {
       manifest = JSON.parse(await fs.readTextFile(path));
     } catch {
       throw new BadRequestError(
-        "This artifact carries no readable dist/manifest.json, so there is nothing to say what it binds.",
+        `This artifact carries no readable ${ArtifactTarReader.MANIFEST_PATH}, so there is nothing to say what it binds.`,
       );
     }
     return {

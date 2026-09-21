@@ -306,6 +306,54 @@ describe("artifacts", () => {
       expect(result.data.artifact.runtime).toBe("workerd");
     });
 
+    /**
+     * ⚠️ Both compressions, and gzip is not a legacy path to be dropped.
+     * `alepha pack` produces zstd, but every artifact pushed before the move
+     * is still in this registry and still has to be re-pushable and
+     * deployable. Which one it is comes from the bytes' own magic, never from
+     * the filename - which the case above proves is untrusted anyway.
+     */
+    it("reads a zstd artifact and a gzip one alike", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      const zstd = await push(projectId, owner, {
+        file: await packedArtifact({
+          manifest: { version: 1, runtime: "node" },
+        }),
+      });
+      const gzip = await push(projectId, owner, {
+        file: await packedArtifact({
+          compression: "gzip",
+          // Different bytes, so this is a distinct artifact rather than a
+          // re-push that would be refused under the same tag.
+          filler: "gzip",
+          manifest: { version: 1, runtime: "bun" },
+        }),
+      });
+
+      expect(zstd.data.artifact.runtime).toBe("node");
+      expect(gzip.data.artifact.runtime).toBe("bun");
+    });
+
+    // A zstd frame decoded in JavaScript fails differently from a gzip one, so
+    // the refusal has to name both rather than say "not a gzip archive" at
+    // somebody holding a zstd file.
+    it("names both compressions when the bytes are neither", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const result = await push(projectId, owner, {
+        file: new File([new Uint8Array([1, 2, 3, 4, 5])], "broken.tar.zst", {
+          type: "application/zstd",
+        }),
+      }).catch((error: unknown) => error as { message?: string });
+
+      expect(String((result as { message?: string }).message)).toMatch(
+        /zstd.*gzip/,
+      );
+    });
+
     it("refuses an artifact that declares none", async ({ expect }) => {
       const { owner, projectId } = await aProject();
 
@@ -349,7 +397,7 @@ describe("artifacts", () => {
     it("refuses bytes that are not a gzip archive", async ({ expect }) => {
       const { owner, projectId } = await aProject();
       const notGzip = new File(
-        [tar({ "dist/manifest.json": "{}" }) as BlobPart],
+        [tar({ "manifest.json": "{}" }) as BlobPart],
         "my-app.tar.gz",
         { type: "application/gzip" },
       );

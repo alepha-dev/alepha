@@ -34,8 +34,8 @@ describe("unpacking an artifact", () => {
 
     const result = await reader.extract(
       await archive({
-        "dist/index.js": "console.log(1);",
-        "dist/manifest.json": '{"version":1}',
+        "index.node.js": "console.log(1);",
+        "manifest.json": '{"version":1}',
         "migrations/sqlite/0001.sql": "SELECT 1;",
       }),
       fs,
@@ -43,7 +43,7 @@ describe("unpacking an artifact", () => {
     );
 
     expect(result.files).toBe(3);
-    expect(await fs.readTextFile("/deploy/dist/index.js")).toBe(
+    expect(await fs.readTextFile("/deploy/index.node.js")).toBe(
       "console.log(1);",
     );
     expect(await fs.readTextFile("/deploy/migrations/sqlite/0001.sql")).toBe(
@@ -67,14 +67,14 @@ describe("unpacking an artifact", () => {
 
       const result = await reader.extract(
         await archive({
-          "dist/index.js": "console.log(1);",
-          "dist/public/app.css": "body{color:red}",
-          "dist/public/nested/logo.svg": "<svg/>",
+          "index.node.js": "console.log(1);",
+          "public/app.css": "body{color:red}",
+          "public/nested/logo.svg": "<svg/>",
         }),
         fs,
         "/deploy",
         {
-          skip: (path) => path.startsWith("/deploy/dist/public/"),
+          skip: (path) => path.startsWith("/deploy/public/"),
           onSkipped: (path, body) => {
             seen.push({ path, text: new TextDecoder().decode(body) });
           },
@@ -82,15 +82,15 @@ describe("unpacking an artifact", () => {
       );
 
       expect(seen).toEqual([
-        { path: "/deploy/dist/public/app.css", text: "body{color:red}" },
-        { path: "/deploy/dist/public/nested/logo.svg", text: "<svg/>" },
+        { path: "/deploy/public/app.css", text: "body{color:red}" },
+        { path: "/deploy/public/nested/logo.svg", text: "<svg/>" },
       ]);
       expect(result.skipped).toBe(2);
       // Still counted as walked, so a caller reading `files` sees the archive.
       expect(result.files).toBe(3);
       // And the one entry that was wanted is the only one on disk.
-      expect(await fs.exists("/deploy/dist/index.js")).toBe(true);
-      expect(await fs.exists("/deploy/dist/public/app.css")).toBe(false);
+      expect(await fs.exists("/deploy/index.node.js")).toBe(true);
+      expect(await fs.exists("/deploy/public/app.css")).toBe(false);
     });
 
     it("does not spend the extraction budget on what it never keeps", async ({
@@ -103,12 +103,12 @@ describe("unpacking an artifact", () => {
 
       const result = await reader.extract(
         await archive({
-          "dist/index.js": "abc",
-          "dist/public/big.txt": "x".repeat(5000),
+          "index.node.js": "abc",
+          "public/big.txt": "x".repeat(5000),
         }),
         fs,
         "/deploy",
-        { skip: (path) => path.includes("/dist/public/") },
+        { skip: (path) => path.includes("/public/") },
       );
 
       expect(result.bytes).toBe(3);
@@ -121,12 +121,12 @@ describe("unpacking an artifact", () => {
     const { fs, reader } = setup();
 
     await reader.extract(
-      await archive({ "dist/empty.txt": "", "dist/manifest.json": "{}" }),
+      await archive({ "empty.txt": "", "manifest.json": "{}" }),
       fs,
       "/deploy",
     );
 
-    expect(await fs.exists("/deploy/dist/empty.txt")).toBe(true);
+    expect(await fs.exists("/deploy/empty.txt")).toBe(true);
   });
 
   it("refuses a path that climbs out of the archive", async ({ expect }) => {
@@ -164,7 +164,7 @@ describe("unpacking an artifact", () => {
     await expect(
       reader.extract(
         await archive({
-          "dist/index.js": "1",
+          "index.node.js": "1",
           "dist/evil": { content: "", typeflag: "2" },
         }),
         fs,
@@ -228,8 +228,8 @@ describe("unpacking an artifact", () => {
 
     const manifest = await reader.readManifest(
       await archive({
-        "dist/index.js": "1",
-        "dist/manifest.json": JSON.stringify({
+        "index.node.js": "1",
+        "manifest.json": JSON.stringify({
           version: 1,
           runtime: "workerd",
         }),

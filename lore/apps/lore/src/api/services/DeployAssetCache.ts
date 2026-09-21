@@ -47,7 +47,11 @@ export class DeployAssetCache {
     const manifest: Record<string, CloudflareAssetEntry> =
       cached?.manifest ?? {};
     const configTexts: Record<string, string> = cached?.configTexts ?? {};
-    const assets = `${root}/dist/public/`;
+    // ⚠️ At the archive root. The artifact unpacks to its contents now, so
+    // `dist/public/` names a directory that is not there — and the failure is
+    // not an error: every asset simply stops being skipped, gets extracted
+    // into the isolate, and a 49 MB site kills the deploy on memory.
+    const assets = `${root}/public/`;
     let count = 0;
     let yieldedAt = this.clock.nowMillis();
     const unpacked = await this.reader.extract(bytes, fs, root, {

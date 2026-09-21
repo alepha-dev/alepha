@@ -1,4 +1,5 @@
 import { BadRequestError, HttpError } from "alepha/server";
+import { Decompress as ZstdDecompress } from "fzstd";
 
 import {
   type ArtifactManifest,
@@ -8,9 +9,18 @@ import {
 /**
  * Reads an artifact's own claim about itself out of the tarball.
  *
- * `alepha pack` produces `dist/` (with `manifest.json`) plus `migrations/`,
- * gzipped. This walks that archive far enough to find `dist/manifest.json`,
- * and refuses everything else.
+ * `alepha pack` produces the build's contents at the archive ROOT (`public/`,
+ * `server/<runtime>/`, one `index.<runtime>.js` per slice, `manifest.json`)
+ * plus `migrations/`, compressed with zstd. This walks that archive far enough
+ * to find `manifest.json`, and refuses everything else.
+ *
+ * ## ⚠️ Two compressions, and gzip is not legacy
+ *
+ * New artifacts are zstd. `.tar.gz` stays readable because artifacts pushed
+ * before the move are still in the registry and still have to be deployable —
+ * the same reason Bay reads both. Which one it is comes from the bytes' own
+ * magic, never from the filename, because the filename is chosen by whoever
+ * pushes.
  *
  * ## ⚠️ Why the server does this rather than trusting a field
  *
@@ -37,11 +47,13 @@ export class ArtifactTarReader {
   /**
    * Where `alepha pack` puts the manifest, and the only path accepted.
    *
-   * `pack` hardcodes `dist` in its include list and refuses to run without
-   * `dist/manifest.json`, so an artifact carrying it anywhere else did not come
-   * from `alepha pack`.
+   * ⚠️ **At the archive ROOT.** It was `dist/manifest.json` until the archive
+   * root became the contents rather than a `dist/` wrapper. An artifact
+   * carrying it anywhere else did not come from a current `alepha pack`, and
+   * saying so by name is better than a registry row describing a shape nothing
+   * can deploy.
    */
-  public static readonly MANIFEST_PATH = "dist/manifest.json";
+  public static readonly MANIFEST_PATH = "manifest.json";
 
   /**
    * One tar block. Headers are one block; a body is padded up to a multiple.
@@ -62,6 +74,14 @@ export class ArtifactTarReader {
    * either not a manifest or is trying to make this buffer grow.
    */
   protected static readonly MAX_MANIFEST_BYTES = 1024 * 1024;
+
+  /**
+   * How much compressed input is handed to the zstd decoder per `pull`.
+   *
+   * Small enough that its output is consumed as it is produced rather than
+   * accumulating, large enough that the scan is not one call per tar block.
+   */
+  protected static readonly ZSTD_SOURCE_CHUNK = 256 * 1024;
 
   /**
    * How much an {@link extract} will WRITE, which is a different bound from
@@ -282,18 +302,81 @@ export class ArtifactTarReader {
    * chunk plus a partial header. Without it every body is collected, which is
    * what an extraction needs and why the budget it applies is its own.
    */
+  /**
+   * The archive's bytes, decompressed, whichever compression it carries.
+   *
+   * ⚠️ **Chosen by magic bytes, never by the filename.** The filename is
+   * whatever the pusher called the file, and `ArtifactController` deliberately
+   * lets it disagree with the manifest; deciding a decoder on it would let a
+   * rename change how the bytes are read.
+   *
+   * ⚠️ **zstd is decoded in JavaScript, and it has to be.** workerd's
+   * `DecompressionStream` takes `gzip`, `deflate` and `deflate-raw` only —
+   * there is no native zstd in a Worker — so `fzstd` (MIT, no dependencies,
+   * decompression only) does it. `alepha pack` pins its `windowLog` at 32 MiB
+   * for exactly this reason: the dedup a larger window would buy is already
+   * fully realised at 32, and a frame declaring 128 MiB would ask this isolate
+   * for a buffer the size of its whole memory budget.
+   *
+   * Fed in slices rather than all at once so the decoder's output is consumed
+   * as it is produced. The caller discards every body it does not want, and
+   * pushing the whole source in one call would materialise the entire
+   * decompressed archive — tens of megabytes — defeating the point.
+   */
+  protected decompressed(bytes: Uint8Array): ReadableStream<Uint8Array> {
+    if (!this.isZstd(bytes)) {
+      return new Blob([bytes as BlobPart])
+        .stream()
+        .pipeThrough(new DecompressionStream("gzip"));
+    }
+
+    const { ZSTD_SOURCE_CHUNK } = ArtifactTarReader;
+    let offset = 0;
+    let decoder: ZstdDecompress;
+
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        decoder = new ZstdDecompress((chunk) => controller.enqueue(chunk));
+      },
+      pull(controller) {
+        const end = Math.min(offset + ZSTD_SOURCE_CHUNK, bytes.length);
+        const last = end >= bytes.length;
+        // Enqueues happen synchronously from inside this call, through the
+        // callback handed to the decoder above.
+        decoder.push(bytes.subarray(offset, end), last);
+        offset = end;
+        if (last) {
+          controller.close();
+        }
+      },
+    });
+  }
+
+  /**
+   * Whether these bytes open a zstd frame.
+   *
+   * The little-endian magic `0xFD2FB528`, which cannot collide with gzip's
+   * `0x1F 0x8B`.
+   */
+  protected isZstd(bytes: Uint8Array): boolean {
+    return (
+      bytes.length >= 4 &&
+      bytes[0] === 0x28 &&
+      bytes[1] === 0xb5 &&
+      bytes[2] === 0x2f &&
+      bytes[3] === 0xfd
+    );
+  }
+
   protected async *entries(
     bytes: Uint8Array,
     options: { only?: string; maxBody?: number } = {},
   ): AsyncGenerator<ArtifactTarEntry & { body: Uint8Array }> {
     const { BLOCK, MAX_INFLATED_BYTES } = ArtifactTarReader;
-    // ⚠️ Bad gzip does NOT fail here. `pipeThrough` only wires the streams up;
-    // the inflate error surfaces on the first `read()`, which is why the guard
-    // below is around the loop and not around this line.
-    const reader = new Blob([bytes as BlobPart])
-      .stream()
-      .pipeThrough(new DecompressionStream("gzip"))
-      .getReader();
+    // ⚠️ A bad archive does NOT fail here. Wiring the streams up is all this
+    // line does; the decode error surfaces on the first `read()`, which is why
+    // the guard below is around the loop and not around this.
+    const reader = this.decompressed(bytes).getReader();
     // Only ever holds a partial header, so it stays under one block.
     let carry = new Uint8Array(0);
     let skip = 0;
@@ -398,10 +481,11 @@ export class ArtifactTarReader {
       if (HttpError.is(error)) {
         throw error;
       }
-      // Everything else here is the inflate failing, which means the upload is
-      // not a gzip archive at all. A 500 would blame Lore for a bad request.
+      // Everything else here is the decode failing, which means the upload is
+      // not an archive this registry reads. A 500 would blame Lore for a bad
+      // request.
       throw new BadRequestError(
-        "This artifact could not be decompressed: it is not a gzip archive.",
+        "This artifact could not be decompressed: it is neither a zstd nor a gzip archive.",
       );
     } finally {
       // Cancelling a stream that has ERRORED rejects with that same error, so
