@@ -8,6 +8,7 @@ import {
   AlephaError,
   type AlephaMeta,
 } from "alepha";
+import { EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { Plugin, ViteDevServer } from "vite";
@@ -63,6 +64,7 @@ export type OnAlephaLoadedHook = (
 export class ViteDevServerProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly envUtils = $inject(EnvUtils);
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
@@ -749,6 +751,11 @@ if (import.meta.hot) {
 
     process.env.VITE_ALEPHA_DEV = "true";
     process.env.NODE_ENV ??= "development";
+
+    // Before `loadEnv` reads the directory: a fresh clone has an example and
+    // no `.env`, and this is the first thing it runs. A no-op once the file
+    // exists, so it costs one `exists` per reload.
+    await this.envUtils.ensureEnvFile(this.options.root);
 
     const mode = process.env.NODE_ENV;
     const env = loadEnv(mode, this.options.root, "");

@@ -32,6 +32,46 @@ export class EnvUtils {
   }
 
   /**
+   * Create `.env` from `.env.example` when a project has the second and not
+   * the first. Returns whether it created the file.
+   *
+   * `alepha init` writes a `.env` when it scaffolds a project, because some
+   * variables have no usable default (`ADMIN_EMAIL`, whose absence makes the
+   * admin area unreachable). But init runs once, at creation: a fresh clone
+   * of an existing project never runs it, and `.env` is gitignored, so it
+   * cannot travel with the repository. `alepha dev` calls this before it
+   * loads the environment, so a clone's first run gets the project's own
+   * local defaults instead of a manual copy step people miss.
+   *
+   * The project's example, not init's template: the example is each
+   * project's contract, and a project may need more than the template writes.
+   *
+   * - An existing `.env` is never touched, whatever it holds.
+   * - No other file is: `.env.local` and `.env.<mode>` stay the author's.
+   * - Written 0600, like `APP_SECRET_FILE`: the example is public, but `.env`
+   *   is where the real secrets get typed next.
+   */
+  public async ensureEnvFile(root: string): Promise<boolean> {
+    const target = this.fs.join(root, ".env");
+    const example = this.fs.join(root, ".env.example");
+
+    if (await this.fs.exists(target)) {
+      return false;
+    }
+    if (!(await this.fs.exists(example))) {
+      return false;
+    }
+
+    await this.fs.writeFile(target, await this.fs.readTextFile(example), {
+      mode: 0o600,
+    });
+    this.log.info(
+      "Created .env from .env.example. It is gitignored: put your local values there.",
+    );
+    return true;
+  }
+
+  /**
    * Parse environment variables from .env files without mutating process.env.
    *
    * Returns a merged record from all files (later files override earlier ones).

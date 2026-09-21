@@ -96,8 +96,9 @@ the build and the tests.
 
 ## Environment
 
-\`.env.example\` is the committed list of variables; \`.env\` is gitignored. Copy
-one to the other and fill it in.
+\`.env.example\` is the committed list of variables; \`.env\` is gitignored.
+\`alepha dev\` creates \`.env\` from the example on its first run when there is
+none, as on a fresh clone, and never overwrites one: put your local values there.
 
 \`APP_SECRET\` is not optional in production once the app signs anything
 (sessions, tokens, signed cookies): it refuses to start without it, because the

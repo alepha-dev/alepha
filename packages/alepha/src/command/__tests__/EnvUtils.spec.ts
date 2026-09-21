@@ -15,6 +15,74 @@ class TestCliProvider extends CliProvider {
 }
 
 describe("EnvUtils", () => {
+  describe("ensureEnvFile", () => {
+    /*
+     * `alepha init` writes a `.env`, but a fresh clone of an existing project
+     * never runs init, and `.env` is gitignored, so it cannot travel with the
+     * repository. `alepha dev` calls this before loading the environment, so
+     * a clone's first run gets the project's own local defaults.
+     */
+    const setup = () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      return {
+        fs: alepha.inject(MemoryFileSystemProvider),
+        envUtils: alepha.inject(EnvUtils),
+      };
+    };
+
+    it("creates .env from .env.example when .env is missing", async () => {
+      const { fs, envUtils } = setup();
+      await fs.writeFile("/project/.env.example", "ADMIN_EMAIL=a@b.test\n");
+
+      await expect(envUtils.ensureEnvFile("/project")).resolves.toBe(true);
+
+      expect(await fs.readTextFile("/project/.env")).toBe(
+        "ADMIN_EMAIL=a@b.test\n",
+      );
+    });
+
+    it("writes it readable by its owner only, since it is where secrets go", async () => {
+      const { fs, envUtils } = setup();
+      await fs.writeFile("/project/.env.example", "A=1\n");
+
+      await envUtils.ensureEnvFile("/project");
+
+      expect((await fs.stat("/project/.env")).mode).toBe(0o600);
+    });
+
+    it("never overwrites an existing .env", async () => {
+      const { fs, envUtils } = setup();
+      await fs.writeFile("/project/.env.example", "A=example\n");
+      await fs.writeFile("/project/.env", "A=mine\n");
+
+      await expect(envUtils.ensureEnvFile("/project")).resolves.toBe(false);
+
+      expect(await fs.readTextFile("/project/.env")).toBe("A=mine\n");
+    });
+
+    it("does nothing when there is no .env.example", async () => {
+      const { fs, envUtils } = setup();
+
+      await expect(envUtils.ensureEnvFile("/project")).resolves.toBe(false);
+
+      expect(await fs.exists("/project/.env")).toBe(false);
+    });
+
+    it("leaves every other env file alone", async () => {
+      const { fs, envUtils } = setup();
+      await fs.writeFile("/project/.env.example", "A=1\n");
+      await fs.writeFile("/project/.env.local", "B=2\n");
+
+      await envUtils.ensureEnvFile("/project");
+
+      expect(await fs.readTextFile("/project/.env.local")).toBe("B=2\n");
+      expect(await fs.exists("/project/.env.development")).toBe(false);
+    });
+  });
+
   describe("parseEnv", () => {
     it("should strip double quotes from values", async () => {
       const alepha = Alepha.create().with({

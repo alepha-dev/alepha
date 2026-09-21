@@ -90,6 +90,8 @@ export default defineConfig({
 > **Automatic .env Loading**
 >
 > The `dev` command automatically loads `.env` files - no extra setup required.
+>
+> On a fresh clone there is no `.env`, since it is gitignored. When the project has a `.env.example`, `dev` first copies it to `.env` (readable by its owner only) and says so. It never overwrites an existing `.env`, and leaves `.env.local` and `.env.<mode>` alone.
 
 Environment variables from `.env` are available immediately:
 
