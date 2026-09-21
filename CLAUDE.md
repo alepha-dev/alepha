@@ -1,522 +1,206 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Alepha is a convention-driven TypeScript framework for end-to-end type-safe applications. Yarn workspaces monorepo: `packages/*` is the framework, `apps/*` the applications. Docs: https://alepha.dev/llms.txt
 
-## Project Overview
-
-Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe applications.
-This is a monorepo workspace using Yarn workspaces with the following structure:
-
-- `apps/*` - Example applications
-- `packages/*` - Framework workspace
-
-## Environment Variables for Commands
-
-When running Alepha CLI commands (build, dev, etc.), use these environment variables for verbose output:
-
-- `LOG_FORMAT=pretty` - Human-readable colored log output
-- `LOG_LEVEL=trace` - Maximum verbosity (trace, debug, info, warn, error)
-
-Example:
-
-```bash
-LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
-```
+For verbose CLI output: `LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build`.
 
 ## The workflow
 
-⚠️ **CI is the gate. A green terminal is not.** This is the shape of every
-change but a small one (see "Small edits skip the ceremony" below), and the
-steps are not optional garnish - each one exists because the alternative cost
-something.
+⚠️ **CI is the gate. A green terminal is not.**
 
-1. **Work in a worktree.** One epic, one worktree, one branch. Never
-   edit the primary checkout: parallel sessions share it, and a `git add` there
-   sweeps up somebody else's work.
-2. **Commit as you go, and name the quest.** Small commits, staged by explicit
-   path (never `git add -A`). Every commit belongs to a Lore quest and names it
-   as `#Q<n>` in its message, so Lore can link the commit to it. That holds
-   whether or not anyone named a quest: see "Every commit belongs to a quest"
-   below.
-3. **Push the branch to verify.** Every branch triggers the full graph, and
-   that graph is the source of truth. It takes about five minutes. Wait for it
-   or carry on with something else - it costs your machine nothing either way.
-4. **When it is green, finish the branch.** Merge to main, push, then delete
-   the branch locally and on the remote, and remove the worktree.
+1. **Work in a worktree.** One epic, one worktree, one branch. Never edit the primary checkout: parallel sessions share it.
+2. **Commit as you go, and name the quest.** Small commits, staged by explicit path (never `git add -A`), each naming its Lore quest as `#Q<n>` (see "Every commit belongs to a quest").
+3. **Push the branch to verify.** Every branch triggers the full CI graph, about five minutes.
+4. **When it is green, finish the branch.** Merge to main, push, delete the branch locally and on the remote, remove the worktree.
 
 ### Small edits skip the ceremony
 
-A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`, no
-branch to finish. Small means a few lines in one or two files, carrying no
-decision a later session would look for in Lore: a `.gitignore` entry, a typo,
-a comment, a sentence of this file, a one-line config tweak. A fix to a bug
-somebody reported, or anything you would want to explain, gets its quest
-however short it is. If you cannot tell, ask.
+A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small means a few lines in one or two files, carrying no decision a later session would look for in Lore: a `.gitignore` entry, a typo, a comment, a sentence of this file. A reported bug fix, or anything you would want to explain, gets its quest however short. If you cannot tell, ask.
 
-1. Read `git status` on the primary checkout first. If the file already
-   carries somebody else's uncommitted edit, use a worktree after all.
-2. Run only the check that can see the change (see "Verifying"): nothing for a
-   `.gitignore` line, `yarn oxfmt <file>` for prose, `yarn v` for code. There
-   is no branch in front of `main` here, so a red CI run lands on `main` itself.
-3. Stage the path by name, commit, `git fetch`, check that
-   `git log origin/main..main` lists only your commit, and push.
+1. Read `git status` on the primary checkout first. If the file carries somebody else's uncommitted edit, use a worktree after all.
+2. Run only the check that can see the change (see "Verifying"). A red CI run here lands on `main` itself.
+3. Stage the path by name, commit, `git fetch`, check that `git log origin/main..main` lists only your commit, and push.
 
 ### Verifying
 
-- `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, `yarn copy` (every workspace's generators, then lint), then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s, and the generators ~20s. It catches a typo, a bad import, a broken unit test, a missing i18n key, a JSDoc that breaks a docs rule. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
-  - **Needs Docker running** for the service checks (postgres, redis, s3mock).
-  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any of them that differs from the index. A JSDoc change is therefore a two-part commit: the source and the pages it regenerates. Review the pages `yarn v` wrote, stage them, and run it again. Until #Q2358 this lane ran a bare `lint` and scanned whatever the checkout last generated, while CI scanned pages generated from the commit, which is how #Q2357 was green here and red on main for four commits.
-  - `--fast` is accepted and does nothing. There is one lane now.
-  - **One run per machine, across every worktree.** The command takes a machine-wide slot keyed on the package name, so a second `yarn v` queues instead of interleaving: `test` and `test:bun` both drive the one postgres on 15432, and two concurrent lanes are two suites sharing a database. It prints who holds the slot while it waits. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
-  - **Skip it when it has nothing to read.** It checks code, the generated docs, the i18n catalogs and the migrations, and an edit that touches none of them gets three minutes of a machine-wide slot for no answer. A `.gitignore` entry needs no check at all. A prose edit to a markdown file needs only `yarn oxfmt <file>`, since the formatter is the one step that reads it, plus `yarn check:docs` when the file is a guide or a README with code samples.
-- **Pushing the branch** - the real gate. `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel on GitHub's runners, ~5 minutes. Four epics verify at once without touching each other, which is the whole point: this used to be four concurrent local pipelines on one machine, about thirty minutes of contended wall clock.
-  - ⚠️ **The full local pipeline is deleted, not hidden behind a flag.** Measured over 30 days before the change: 1,325 full runs across 243 sessions, 84 machine-hours a month, and **82% of them were re-runs inside a single session** because the lane opened and closed with `yarn clean` and so was cold by construction. A flag would have been reached for; the lane is gone.
-- `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** - `yarn v` will not, and a green `yarn v` says nothing about Go. The `bay` CI job also runs on every push, so the branch push covers it too; this is for the tighter loop.
-  - Separate rather than gated on a `git diff` because a heuristic that misfires skips silently. This one cannot be silently wrong.
-  - Not `yarn w bay test`: the native pass is GREEN while skipping every test of `Systemd.render()`, whose files are `//go:build linux` and never compile on macOS.
-- `yarn clean` or `yarn alepha clean` - Remove generated files and the **per-package** `node_modules` (`packages/*/node_modules`); the root `node_modules` and every `apps/*/node_modules` are left alone. No longer run by `yarn v`, so reach for it deliberately.
-- `yarn build` - Build all workspace packages using `tsdown`
+- `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn copy` (generators, then lint), then typecheck and the five `check:*` audits in parallel, then `test` and `test:bun`. About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
+  - Needs Docker running (postgres, redis, s3mock).
+  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
+  - One run per machine across every worktree: a second `yarn v` queues, since both test lanes drive the one postgres on 15432. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
+  - Skip it when it has nothing to read: nothing for a `.gitignore` line, `yarn oxfmt <file>` for markdown prose, plus `yarn check:docs` when the file is a guide or a README with code samples.
+- **Pushing the branch** is the real gate: `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel. There is no full local pipeline. A re-push cancels the previous run.
+- `yarn v:go` runs `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile). **Run it when you touch `apps/bay`**: `yarn v` says nothing about Go, and `yarn w bay test` skips every `//go:build linux` file on macOS.
+- `yarn clean` removes generated files and `packages/*/node_modules`, including the `dist` a following command may need. `yarn v` never runs it.
+- Also: `yarn w <workspace> <command>` (one workspace), `yarn build` (tsdown), `yarn test` (Vitest), `yarn lint` (oxlint `--fix`, then oxfmt), `yarn typecheck`.
+
+**After a code change: `yarn v`, then push and read the CI run.** Fix a `yarn v` failure before pushing. A green `yarn v` is never reported as "verified". Inside one package, `yarn w <workspace> typecheck` and `yarn w <workspace> test` are cheaper.
+
+### Workspace checks
+
+`yarn check:deps` (depcheck), `check:i18n`, `check:migrations`, `check:docs` (`apps/docs/scripts/check-docs.ts`: doc code samples against the source, generated pages against the index, meaningful only after `yarn copy`) and `check:conventions` (`scripts/check-conventions.ts`). The first four fan out to every workspace exposing the script. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
 
 ### One artifact, N runtimes
 
-`alepha build` produces ONE `dist/` carrying a server slice per runtime, and the three packaging formats are three commands beside it:
-
-```bash
-alepha build --runtime node,workerd   # one dist/, two slices
-alepha compile --out my-app           # a binary, from the bun slice
-alepha pack                           # <project>-<tag>.tar.zst
-alepha image --tag                    # a container image
-```
-
+- Four commands: `alepha build --runtime node,workerd` (one `dist/`, two slices), `alepha compile --out my-app` (a binary, from the bun slice), `alepha pack` (`<project>-<tag>.tar.zst`), `alepha image --tag` (a container image).
 - `dist/` holds `index.<runtime>.js` per slice over `server/<runtime>/`, plus `public/` and `manifest.json`. There is no `index.js`: the manifest is the discovery mechanism.
-- ⚠️ **Declared order is the decision.** The first runtime is the primary: `manifest.runtime`, `dist/package.json`'s `main`, and what a deployer spawns. Nothing sorts it.
-- ⚠️ **`--target` is gone.** Declaring a `workerd` slice writes the Cloudflare config; `runtime: ["static"]` makes a static site; Docker is `alepha image`; `bare` was the absence of the other three.
-- The archive root is the CONTENTS, not a `dist/` wrapper, and it is zstd with a pinned `windowLog` (32 MiB). At the default window two slices do not dedup and the archive is silently twice the size.
-- `alepha image` writes its Dockerfile into the APP directory, to be committed and edited, and builds with `dist/` as the context. It needs the docker CLI, so it cannot run in an in-process deploy.
-- `image:` is a top-level config key, not `build.docker`. `build.cloudflare` stays under `build`, because the build really does write `wrangler.jsonc`.
-- `yarn test` - Run all tests using Vitest
-- `yarn lint` - Lint with oxlint (`--fix`), then format with oxfmt
-- `yarn typecheck` - TypeScript type checking (`tsc --noEmit`)
-
-### Workspace-aggregated Checks
-
-These fan out via `yarn workspaces foreach -Apt run …`, so every workspace that exposes the matching script participates. Workspaces without the script are silently skipped — opt in by adding the named script to your `package.json`.
-
-- `yarn check:deps` - depcheck across every workspace (unused/missing deps)
-- `yarn check:i18n` - i18n catalog audit (each app's `alepha i18n check`)
-- `yarn check:migrations` - DB migration drift check (each app's `alepha db migrations check`)
-- `yarn check:docs` - the code samples of the guides and READMEs against the source, and the generated pages against the index (`apps/docs/scripts/check-docs.ts`). That second half is only meaningful after `yarn copy`, which `yarn v` and CI both run first
-- `yarn check:conventions` - the conventions below, mechanically (`scripts/check-conventions.mjs`)
-
-The convention is `check:<thing>` at the app level → `yarn check:<thing>` at the root that fans out. To add a new check that spans apps, follow the same shape (workspace script + root aggregator + add it to the `verify` pipeline in `alepha.config.ts`).
-
-### Workspace Commands
-
-- `yarn w <workspace> <command>` - Run commands in specific workspace
-  - Examples:
-    - `yarn w alepha test` - Run tests for alepha package
-    - `yarn w @alepha/ui typecheck` - Type check @alepha/ui package
-    - `yarn w @alepha/devtools build` - Build @alepha/devtools package
+- ⚠️ **Declared order is the decision.** The first runtime is the primary: `manifest.runtime`, `dist/package.json`'s `main`, and what a deployer spawns.
+- ⚠️ **`--target` is gone.** A `workerd` slice writes the Cloudflare config, `runtime: ["static"]` makes a static site, Docker is `alepha image`.
+- The archive root is the contents, not a `dist/` wrapper, and it is zstd with a pinned `windowLog` (25, so 32 MiB). At the default window two slices do not dedup.
+- `alepha image` writes its Dockerfile into the app directory, to be committed, and builds with `dist/` as the context. It needs the docker CLI.
+- `image:` is a top-level config key, not `build.docker`. `build.cloudflare` stays under `build`.
 
 ## Architecture
 
-### Framework Core
-
-- Uses primitive-based architecture with `$` prefixed primitives (`$action`, `$entity`, `$repository`, etc.)
-- Dependency injection container in `alepha`
-- Convention-driven with minimal configuration
-- Documentation: https://alepha.dev/llms.txt
-
-### Package Organization
-
-Alepha uses a hybrid monorepo structure:
-
-**Unified Package (`alepha`)**
-
-- The `alepha` package exports 50+ framework sub-modules
-- Sub-modules can be imported as `alepha/module-name/submodule-name` (e.g., `alepha/server`, `alepha/security`, `alepha/api/users`)
-- Provides unified dependency management and consistent versioning
-- Located in `packages/alepha/src/` with each sub-module as a directory
-
-**Specialized Packages**
-
-- `@alepha/ui` - Shared Base UI + Tailwind components, as seventeen modules: `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core` (the primitives, `cn`, toast, dialog), and the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. The package owns every file in it and is edited in place; there is no registry and no sync, and a new primitive is written by hand. The map is guarded by `check:conventions`: `core` imports no other module, `organizations` imports only `core`, `form`, `table`, and `settings`, the wrappers and `i18n/fr` import only `core`, and there is no cycle.
-- `@alepha/devtools` - Development tools and inspection UI
-- `@alepha/lore` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
-- `@alepha/payments-stripe` - Stripe payments backend
+- Primitives carry a `$` prefix (`$action`, `$entity`, `$repository`), services are wired by the DI container (`$inject()`), event names follow `namespace:action:status`, React hooks are `use` + noun.
+- **`alepha`** (`packages/alepha/src/`) exports 50+ sub-modules, imported as `alepha/<module>` (`alepha/server`, `alepha/api/users`).
+- **`@alepha/ui`**: Base UI + Tailwind components in seventeen modules, `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core`; the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. Edited in place, no registry. `check:conventions` guards the map: `core` imports no other module, `organizations` only `core`, `form`, `table`, `settings`, the wrappers and `i18n/fr` only `core`, and there is no cycle.
+- **`@alepha/lore`**: the reporting half of a sigil. An app sends page views, Web Vitals and errors to `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`, shaped `sg_<project>_<secret>`: the only required variable and the only secret. `SIGIL_CONFIG` is optional switches.
+- Others: `@alepha/devtools`, `@alepha/commerce`, `@alepha/payments-stripe`, `@alepha/discord`, `@alepha/protobuf`, `create-alepha`.
 
 ### Lore (`apps/lore`)
 
-The only public Alepha application — a project management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v` from the root, ship both sides in one commit.
+The only public Alepha application, at `lore.alepha.dev`, kept here to **dogfood the framework**: when working on it, `packages/alepha` and `packages/@alepha/ui` are fair game, edited in place and shipped in the same commit.
 
-CI auto-deploys Lore to Cloudflare from `main` via the `deploy-lore-production` job in `.github/workflows/deploy-latest.yml` (workflow **Deploy latest**), a `workflow_run` that fires once **Verify** (`.github/workflows/verify.yml`) succeeds on a push to `main`. A Verify cancelled by a newer push leaves that commit's deploy skipped, and the next green push ships it. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
+`main` auto-deploys to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. A Verify cancelled by a newer push leaves that commit undeployed until the next green push. Lore migrations (`apps/lore/migrations/sqlite/`) target D1, which has a cascade-on-DROP-TABLE quirk: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing anything that touches them.
 
-### Lore MCP — framework planning memory
+### Lore MCP: the planning memory
 
-The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for framework work in this repo. Framework decisions, deferred plans, and bug reports live in the **Alepha project — id `1`**, which since 2026-08-18 holds the whole ecosystem: the former `Lore` (project `2`) and `shop` (project `64`) projects were merged into it. Those two ids still exist but are empty shells — never file anything there.
+Decisions, plans and bug reports live in the **Alepha project, id `1`**. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
 
-Everything that came from Lore carries a **shortId offset of +1000** (quest `#208` → `#1208`, folio `#12` → `#1012`), and shop's feedback carries +2000. So a reference above 1000 in an older note means "this was a Lore number" — read it as `n - 1000` when comparing against anything written before the merge.
-
-- Before non-trivial framework changes, orient via `project_context` (project `1`) — returns project metadata, active quests, and the folio index in one shot.
-- Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
-- **Folios record decisions, quests record work.** Folios capture decisions, plans, and gotchas: write one (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note. A quest is the log of one piece of work, and every session that commits has one: see below.
+- Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
+- **Folios record decisions, quests record work.** Write a folio (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note.
 
 #### Every commit belongs to a quest
 
-Lore is the log of what was done, and a quest is the unit of that log. So a session that commits in this repo works under a quest, whether or not the user named one, and a session started from a suggested background task is no exception. The one exception is a small edit, which goes straight to `main` without one: see "Small edits skip the ceremony".
+A session that commits works under a quest, named or not, a session started from a suggested task included. The one exception is a small edit.
 
-1. **Find the quest or file it.** Look for the one this work belongs to with `quest_list` / `quest_get` in project `1`. Failing that, `quest_create` with `accept: true`: a title saying what changes, a description saying why, and an existing `area` (`project_context` lists them).
-2. **Accept it before the first commit** with `quest_accept`, unless `quest_create` already did.
-3. **Name it in every commit** as `#Q<n>`, in the subject or the body, and record each sha with `quest_commit_add`.
-4. **Complete it when the work lands** with `quest_complete`, and a note on what shipped and what was left out.
+1. **Find the quest or file it**: `quest_list` / `quest_get`, else `quest_create` with `accept: true`, a title saying what changes, a description saying why, and an existing `area`.
+2. **Accept it before the first commit** (`quest_accept`).
+3. **Name it in every commit** as `#Q<n>` and record each sha with `quest_commit_add`.
+4. **Complete it when the work lands** (`quest_complete`), noting what shipped and what was left out.
 
-One piece of work is one quest, however many commits it takes: never a quest per commit.
+One piece of work is one quest, never a quest per commit. **Before raising a background task** (`spawn_task`), file its quest and put its `#Q<n>` in the task's prompt, so the session that takes it accepts that quest instead of filing a second one.
 
-**Suggesting a task for another session.** Before raising a background task (the desktop app's `spawn_task`), file its quest with the context you have and put its `#Q<n>` in the task's prompt, so the session that takes it accepts that quest instead of filing a second one. A dismissed task leaves its quest in the backlog, which is where an issue nobody took on belongs.
+#### Filing folios
 
-#### The folio tree is organised — file folios, don't dump them at the root
+⚠️ **Run `directory_list` before filing** and pass `directory_shortId` to `folio_create`: the tree has been reorganised twice. **Top-level directories are subjects, not document types**: `alepha` (`packages/alepha` and `@alepha/ui`), `alepha-lore`, `alepha-bay`, `alepha-platform` (the deploy chain), `alepha-commerce` (with `apps/examples/shop`), plus `reviews` (dated audits) and `trash`. The kind of document goes in the `summary`. A subject may group inside itself (`alepha-lore/ideas`, `alepha-commerce/specs`), but there is never a top-level `specs/` or `plans/`. Older notes naming `framework`, `lore`, `bay`, `platform`, `commerce` or `archive` as a directory predate the 2026-09-06 rename.
 
-**⚠️ Run `directory_list` before filing. The table below is a snapshot, not the tree.** It has now been reorganised twice, and a frozen table in a file nobody re-reads is exactly what put folios in directories that no longer existed. Pass `directory_shortId` to `folio_create`.
+**Lifecycle.** When work ships, the outcome folio survives and the spec moves to `trash`. `folio_delete` is permanent, so nothing is deleted outright, and `trash` is never emptied without being asked.
 
-**At the top level, directories are subjects, not document types.** Put a new folio under the subject it is about and say which kind of document it is in its `summary`. (Folio tags are gone — the summary is the only taxonomy left.) A subject may group **inside itself** — `alepha-lore/ideas`, `alepha-commerce/specs` — and that does not break the rule: the reason for it is that a spec filed away from its subject is unfindable, and a subdirectory of that subject is not away from it. What must never appear is a top-level `specs/` or `plans/`.
+⚠️ **superpowers plans and specs are also persisted as folios.** `docs/superpowers/` is gitignored, so a plan there dies with its worktree. File it under its subject with a `summary` naming it a plan or a spec: what is being built, the constraints, the decisions taken with their reasons. Update it when the plan changes materially, and mark it done or superseded when the work ships.
 
-Snapshot read 2026-09-07:
+## Testing
 
-| Directory         | What goes in it                                                                  |
-| ----------------- | -------------------------------------------------------------------------------- |
-| `alepha`          | `packages/alepha` — core, ORM, react, security, build, `@alepha/ui`              |
-| `alepha-lore`     | `apps/lore` — the app, its data model, its UI, sigils, MCP. Has `ideas/`         |
-| `alepha-bay`      | `apps/bay` — the Go supervisor, its deployment, the VPS                          |
-| `alepha-platform` | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release |
-| `alepha-commerce` | `@alepha/commerce` and `apps/examples/shop`. Has `ideas/` and `specs/`           |
-| `reviews`         | dated audits and security reviews that span everything                           |
-| `trash`           | superseded folios awaiting real deletion — see below                             |
+Vitest with globals. Specs live in `__tests__/` or co-located as `*.spec.ts`. `*.browser.spec.ts(x)` runs under jsdom, everything else under node.
 
-⚠️ **The five subjects gained an `alepha-` prefix on 2026-09-06**, and `archive` is **gone** — the retired-experiment folios it held (pulse, bay-admin, outposts) are no longer behind a directory of their own. `reviews` and `trash` kept their names, which is consistent: they are the two that are not subjects. Anything you read in an older folio or memory file naming `framework`, `lore`, `bay`, `platform`, `commerce` or `archive` as a directory predates this; those were not swept, because the words are also the ordinary names of the things themselves and a blind rename would have rewritten prose that was never about a directory.
+- All: `yarn test`. One workspace: `yarn w alepha test`. One project from the root: `yarn alepha test --project alepha` (comma-separated, globs). Filtered: `yarn w alepha vitest run <pattern>`. Coverage: `yarn vitest run --coverage`.
 
-**Lifecycle.** When work ships, the _outcome_ folio survives and the spec folio moves to `trash`. `trash` is a manual soft-delete: `folio_delete` is immediate and permanent, so nothing is ever deleted outright — it is moved there and left for the user to purge. Do not empty `trash` without being asked.
+### One Vitest project per workspace
 
-#### ⚠️ superpowers writes its plans and specs HERE, not to disk
+Every workspace holding specs owns a `vitest.config.ts` calling `workspaceProjects` from `scripts/vitest.projects.ts`; the root config imports and spreads them, so `yarn test` is the union and `yarn w <workspace> test` exactly one. The helper holds the shared settings (service env, Paris timezone, timeout, `globals`, jsdom via `jsdomProject` from `alepha/testing/vitest`) and turns the workspace's tsconfig `paths` into aliases, skipping a path prefixed by the workspace's own package name. Enforced by `check:conventions`:
 
-`docs/superpowers/` is in `.gitignore`. A plan written there lives only in the worktree that produced it and **dies when that worktree is removed** — which is exactly what the finishing step does. That has already cost one 1100-line plan, recovered by hand into `assets/`.
+- A workspace with spec files owns a `vitest.config.ts`, and the root config imports it.
+- `jsdom: true` is passed if and only if the workspace has `*.browser.spec.*` files. It yields two projects, `<name>` and `<name>:jsdom`, selected together with `--project '<name>*'`.
+- `apps/e2e-cli` is the single exemption: own config, out of the root run, driven by `yarn e2e-cli`.
 
-So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in project `1`, under its **subject** directory, with a `summary` naming it as a plan or a spec. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
+⚠️ Project entries stay FLAT. A project config declaring `projects` of its own is silently collapsed into one project under the parent's settings.
 
-A plan folio needs: what is being built, the constraints that bind it, and the decisions already taken with their reasons. A future session that reads only the folio should not need the disk copy to understand why.
+### Ports
 
-### Testing
+- `3300-3399`: dev servers, `dev.port` in `alepha.config.ts`: docs 3302, lore 3303, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312.
+- `5173+`: dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**).
+- `4300-4999`: **e2e, and nothing else.**
+- `15432` / `16379` / `19090`: `compose.yml` test services (postgres / redis / s3mock).
 
-#### Test Configuration
+Every Playwright config takes its port from `e2ePort("<app>")` in `scripts/playwright.port.ts`, which binds this repository's registry (`E2E_SLOTS`) to `createE2ePortAllocator` from `alepha/testing/playwright`. The argument is the app name, never a port. Port logic goes in the package, suite names in `E2E_SLOTS`, and a new suite needs a slot or it will not typecheck. The slot derives from the checkout path, so two worktrees never collide, and is bind-tested. `reuseExistingServer` is `false` everywhere: an e2e run must never adopt a dev server. `E2E_PORT` overrides it all.
 
-- Uses **Vitest** with global test environment
-- Coverage tracking for `packages/*/src/**/*.ts(x)`
-- Test databases and Azure storage emulator configuration included via `vitest.config.ts`
-- Tests located in `__tests__/` directories within each package / module or as co-located `*.spec.ts` files
+### Patterns
 
-#### Test Environments
-
-Two test environments are configured:
-
-1. **Node.js tests** - `*.spec.{ts,tsx}` (excludes `*.browser.spec.*`)
-2. **Browser tests (jsdom)** - `*.browser.spec.{ts,tsx}`
-   - Use `.browser.spec.ts` or `.browser.spec.tsx` extension for browser tests
-   - Automatically uses jsdom environment
-
-#### Running Tests
-
-- **All packages**: `yarn test`
-- **Single package**: `yarn w alepha test` (its own specs only, see below)
-- **One project from the root**: `yarn alepha test --project alepha`, comma-separated and glob-friendly
-- **Filtered tests**: `yarn w alepha vitest run <pattern>` (e.g., `yarn w alepha vitest run init.spec`)
-- **With coverage**: `yarn vitest run --coverage`
-
-#### One Vitest project per workspace
-
-Every workspace holding spec files owns a `vitest.config.ts` that calls
-`workspaceProjects` from the `scripts/vitest.projects.ts`, exports the result
-as `projects`, and default-exports it wrapped. The root `vitest.config.ts`
-imports each of those and spreads them, so `yarn test` is the union of the
-workspaces and `yarn w <workspace> test` is exactly one of them. Both read the
-same array; they cannot disagree.
-
-The helper is where the shared settings live: the service env block, the Paris
-timezone, the timeout, `globals`, and the jsdom settings, which it takes from
-`jsdomProject` in `alepha/testing/vitest` (the published half, with the jsdom
-polyfill setup file) rather than restating them. It also turns the
-workspace's own tsconfig `paths` into aliases, which is what makes `@/` resolve
-in tests the way it already does in the dev server and both builds. A path whose
-prefix is the workspace's own package name is skipped on purpose, because the
-`exports` map resolves the same specifier with conditions an alias would flatten.
-
-Three rules, enforced by `check:conventions`, not by review:
-
-- A workspace with spec files owns a `vitest.config.ts`. Without one, its
-  `test` script runs the specs without any of the shared settings above: no
-  service env, no Paris timezone, no `@/` alias, browser specs under node.
-  (Before Vitest 5 it was worse: Vitest walked up to the root config and the
-  script silently ran the entire monorepo.)
-- The root `vitest.config.ts` imports it. A config nobody imports contributes
-  nothing to `yarn test`, and a suite that quietly shrinks looks like one that
-  passes.
-- `jsdom: true` is passed if and only if the workspace has `*.browser.spec.*`
-  files.
-
-A workspace with browser specs gets two projects, `<name>` and `<name>:jsdom`,
-so selecting one whole is `--project '<name>*'`. `apps/e2e-cli` is the single
-exemption from all of this: it owns a config, stays out of the root run, and is
-driven by `yarn e2e-cli`.
-
-⚠️ Project entries must stay FLAT. A project config that declares `projects` of
-its own is not nested, it is silently ignored: the parent collapses it into one
-project and runs every spec under the parent's own settings, which is what a
-browser spec running in the node environment looks like.
-
-#### Ports — dev vs e2e
-
-Two disjoint bands, and they must stay disjoint:
-
-| band                        | owner                                                                                                                                                                                                                                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `3300-3399`                 | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/shop 3305, examples/totp 3307, ui 3308, examples/ssr 3311; 3312 stays taken by `~/git/loom`, which left the monorepo), plus `@alepha/devtools`'s own Vite config (3310), which is not an Alepha app and has no `alepha.config.ts` |
-| `5173+`                     | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`**                                                                                                                                                     |
-| `4300-4999`                 | **e2e, and nothing else**                                                                                                                                                                                                                                                                                                       |
-| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / s3mock)                                                                                                                                                                                                                                                                         |
-
-All six Playwright configs (`apps/docs`, `apps/lore`, `apps/ui`, and `apps/examples/{shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the `scripts/playwright.port.ts`, the same way every vitest config takes its projects from `vitest.projects.ts`. That file is only this repository's registry (`E2E_SLOTS`) bound to `createE2ePortAllocator` from `alepha/testing/playwright`, which holds the mechanism and ships to consumers. Add port logic to the package, never to a caller, and never a suite name to the package; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
-
-The argument is the **app name, not a port**, because it used to be the port — and it was the app's own _dev_ port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
-
-`e2ePort` derives a slot from the **checkout path**, so two worktrees never collide (the probe cannot do this: `yarn start` builds for a minute before binding, so concurrent runs both see the port free), then **bind-tests it and steps a full stride if anything answers**. `reuseExistingServer` is therefore `false` everywhere: a port verified free has no server to reuse, and anything answering on it raced in and is not this run's build. `E2E_PORT` overrides the whole thing.
-
-#### Testing Patterns
-
-- **Automatic Lifecycle**: `Alepha.create()` automatically handles start/stop in test environments
-- **Service Substitution**: Use `Alepha.with()` for mocking dependencies (preferred over traditional mocking)
-- **Standard Structure**: Follow Arrange-Act-Assert pattern with descriptive test names
-- **`describe` + `it`, never a bare `test()` at the top level**: a case outside a `describe` has no subject in the reporter and no handle for `vitest run -t`. `check:conventions` refuses a `test(` or `it(` at column zero in any `*.spec.ts(x)`; inside a block both spellings are the same function and are left alone. `e2e/` is exempt, since Playwright's API is `test` and has no `it`.
-- **Error Testing**: Use `expect().toThrow()` for sync errors, `expect().rejects.toThrow()` for async. Never `toThrowError`: Vitest 5 deprecates the alias, and `check:conventions` refuses it (`vitest/no-alias-methods` is on too, but cannot see an `expect` taken from the test fixture)
-- **Shared Functions**: Create reusable test functions for testing multiple implementations
-
-#### Important: Avoid vi.mock
-
-**NEVER use `vi.mock()` or `vi.spyOn()`** - Alepha's DI system makes traditional mocking unnecessary and often problematic. Instead:
-
-1. **Service Substitution** - Replace real services with test implementations:
+- `Alepha.create()` handles start/stop in tests. Arrange-Act-Assert, descriptive names, `expect` taken from the test fixture.
+- **`describe` + `it`, never a bare `test()` or `it()` at the top level** (`check:conventions`; `e2e/` is exempt, Playwright has no `it`).
+- Errors: `expect().toThrow()` and `expect().rejects.toThrow()`. Never `toThrowError` (`check:conventions`).
+- **NEVER `vi.mock()` or `vi.spyOn()`.** Substitute services instead:
 
 ```typescript
 const alepha = Alepha.create()
   .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
   .with({ provide: ShellProvider, use: MemoryShellProvider });
-```
-
-2. **Memory Providers** - Use built-in memory implementations for I/O-bound services:
-   - `MemoryFileSystemProvider` - In-memory file system with test assertions
-   - `MemoryShellProvider` - In-memory shell command tracking
-   - `MemoryQueueProvider` - In-memory job queue
-   - `MemoryTopicProvider` - In-memory pub/sub
-   - `MemoryLockProvider` - In-memory distributed locks
-   - `MemorySmsProvider` - In-memory SMS tracking
-   - `MemoryFileStorageProvider` - In-memory file storage (buckets)
-
-3. **Test Assertion Helpers** - Memory providers include DX helpers:
-
-```typescript
 const fs = alepha.inject(MemoryFileSystemProvider);
-expect(fs.wasWritten("/path/file.ts")).toBe(true);
-expect(fs.wasWrittenMatching("/path/file.ts", /pattern/)).toBe(true);
-expect(fs.wasDeleted("/path/file.ts")).toBe(true);
-
-const shell = alepha.inject(MemoryShellProvider);
-expect(shell.wasCalled("yarn install")).toBe(true);
+expect(fs.wasWritten("/path/file.ts")).toBe(true); // also wasWrittenMatching, wasDeleted
+expect(alepha.inject(MemoryShellProvider).wasCalled("yarn install")).toBe(true);
 ```
 
-4. **TestProvider Pattern** - For unit testing protected methods, create a test subclass:
+- Memory providers exist for file system, shell, queue, topic, lock, SMS, file storage and cache.
+- To reach a protected method, subclass it in the spec: `class TestCliProvider extends CliProvider { public testParseFlags = this.parseFlags.bind(this); }`.
+- CLI commands: `await alepha.inject(CliProvider).run(cmd.init, { argv: "--react", root: "/project" })`.
 
-```typescript
-class TestCliProvider extends CliProvider {
-  public testParseFlags = this.parseFlags.bind(this);
-  public testResolveCommand = this.resolveCommand.bind(this);
-}
-const cli = alepha.inject(TestCliProvider);
-const result = cli.testParseFlags(["--verbose"], flagDefs);
-```
+## Code conventions
 
-5. **CLI Testing** - Use `CliProvider.run()` for lightweight command testing:
-
-```typescript
-const cli = alepha.inject(CliProvider);
-const cmd = alepha.inject(InitCommand);
-await cli.run(cmd.init, { argv: "--react", root: "/project" });
-```
-
-#### Common Test Patterns
-
-```typescript
-// Basic test structure
-describe("Subject", () => {
-  it("should do the thing", async ({ expect }) => {
-    const alepha = Alepha.create();
-    class TestApp {
-      /* ... */
-    }
-    const app = alepha.inject(TestApp);
-    await alepha.start();
-
-    const result = await app.method();
-    expect(result).toBe(expected);
-  });
-});
-
-// Service substitution (preferred over vi.mock)
-const alepha = Alepha.create().with({
-  provide: BaseService,
-  use: MockService,
-});
-
-// Testing with memory providers
-const alepha = Alepha.create().with({
-  provide: FileSystemProvider,
-  use: MemoryFileSystemProvider,
-});
-const fs = alepha.inject(MemoryFileSystemProvider);
-await fs.writeFile("/test/file.txt", "content");
-// ... run code that uses FileSystemProvider ...
-expect(fs.wasWritten("/test/output.txt")).toBe(true);
-
-// Browser tests
-describe("MyComponent", () => {
-  it("should work in browser", async ({ expect }) => {
-    // This test will run in jsdom environment
-    const element = document.createElement("div");
-    expect(element).toBeDefined();
-  });
-});
-```
-
-## Mandatory Requirements After Code Changes
-
-**⚠️ REQUIRED - two steps, and the second one is the one that counts:**
-
-```bash
-yarn v
-```
-
-Then **push the branch** and read the CI run. `yarn v` is the inner loop and is
-allowed to be wrong about the whole; the CI graph is what says the change is
-sound. Neither is optional for a code change, and a green `yarn v` is not a
-result you may report as "verified".
-
-- An edit `yarn v` cannot read (a `.gitignore` entry, prose in a markdown file)
-  skips it: see "Verifying" for what to run instead.
-- If `yarn v` fails, fix it before pushing - do not spend a CI run on something
-  a local lint would have caught.
-- If CI fails, fix it and push again. The previous run cancels itself
-  (`cancel-in-progress` on the per-branch concurrency group), so a re-push costs
-  nothing.
-- If you touched `apps/bay`, `yarn v:go` gives the same answer sooner than CI's
-  `bay` job will.
-
-For a tighter loop inside one package, `yarn w @package-name typecheck` and
-`yarn w @package-name test` are both cheaper than the full `yarn v`.
-
-## Code Conventions
-
-Conventions enforced by review, not by lint. They are not obvious from the code, so read them before writing any.
+Not obvious from the code, so read them before writing any.
 
 ### Core rules
 
-- **Never use `Date.now()`** — inject `DateTimeProvider` and call `this.dateTime.nowMillis()`. This is what makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime` themselves. Note `travel()` also resolves `CronProvider` waits, so every `$job` cron in the container fires — assert end state, not call counts.
-- **Never throw `Error`** — always `AlephaError` (import from `"alepha"`); it extends `Error` with `name = "AlephaError"`.
-- **Never write code outside classes** — no standalone functions or constants in service files. Everything is a class method so it stays substitutable via DI for testing.
-- **No `_` prefix on class members** — use descriptive names.
-- **One schema per file** — never declare multiple schemas in one file.
-  - **The one exemption is a table filter's `schema`**, written inline in the `filters.fields` record a `DataTable` declares in its component body (`status: { schema: z.array(questStatusSchema), ... }`). Two conditions hold it in place. A schema that names a domain type is imported from its own file rather than redeclared (`questStatusSchema`, never a hand-written copy of its values). And only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel. `alepha/api/keys` exports controllers and entities, and `@alepha/commerce`'s `entities/orders.ts` imports `alepha/orm` at runtime, which is why `orderStatusEnum` lives in `src/schemas/orderStatusSchema.ts`. Enforced by review; `check:conventions` does not check it.
+- **Never `Date.now()`**: inject `DateTimeProvider` and call `this.dateTime.nowMillis()`, which makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime`. `travel()` also fires every `$job` cron in the container: assert end state, not call counts.
+- **Never throw `Error`**: always `AlephaError` (from `"alepha"`).
+- **No code outside classes**: no standalone functions or constants in service files, so everything stays substitutable.
+- **Never `private`**, always `protected`. No `_` prefix on class members.
+- **Never a single-line JSDoc** (`/** text */`): always the multi-line form.
+- **One schema per file.** The one exemption is a table filter's `schema`, inline in a `DataTable`'s `filters.fields` record. A schema naming a domain type is imported, never redeclared, and only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel (hence `orderStatusSchema.ts` in `@alepha/commerce`).
+- Rename files with `git mv`.
+- A public API or behavior change updates `docs/framework/1-guides/`. `2-reference` and `3-packages` are generated: fix the JSDoc, never those files.
 
 ### Typing traps
 
-- **Schemas are Zod, imported as `z` from `"alepha"`.** There is no `t` export — TypeBox was purged before v1. Anything you read that says `t.text()` / `t.object()` / `import { t } from "alepha"` is pre-migration and wrong.
-- **`z.any()` is not valid** for `TResponseBody` / `TRequestBody` in `$route` schemas. Use `z.record(z.text(), z.any())`, with `as any` on the return value.
-- **`schema.response` is what serializes.** A field added to the entity, the type and the component still will not appear in the payload unless it is declared on the response schema — and it fails silently.
-- **`this.alepha.env.*` returns `string | number | boolean`** — coerce with `String()` / `Number()` when assigning to a typed field.
-- **`HttpClient.fetch()` without a `schema` option returns `{ data: {} }`** — cast `res.data as any` for untyped endpoints.
-- **Never augment zod's `GlobalMeta`** — it poisons every `.meta()` call site and explodes the type graph. Use `satisfies SchemaControlFn` locally instead.
+- **Schemas are Zod, imported as `z` from `"alepha"`.** There is no `t` export: anything saying `t.text()` is pre-migration and wrong.
+- **`z.any()` is not valid** for a `$route` request or response body. Use `z.record(z.text(), z.any())`, with `as any` on the return value.
+- **`schema.response` is what serializes.** A field missing from the response schema is dropped silently.
+- **`this.alepha.env.*` returns `string | number | boolean`**: coerce with `String()` / `Number()`.
+- **`HttpClient.fetch()` without a `schema` returns `{ data: {} }`**: cast `res.data as any` for untyped endpoints.
+- **Never augment zod's `GlobalMeta`**: it explodes the type graph. Use `satisfies SchemaControlFn` locally.
 
 ### React components
 
-⚠️ **In `packages/@alepha/ui/src`, `check:conventions` enforces five of these** on every `.tsx` file (specs and fixtures excluded): no `function` component, no props destructured in the parameter list, props typed `props: <Name>Props` with that type exported from the same file, one component per file (the compound primitive families named in the script's `UI_COMPOUND_FILES` excepted), and a `createContext` only under a `Context exemption:` comment. **Everywhere else, apps included, they are still enforced by review.**
+⚠️ In `packages/@alepha/ui/src`, `check:conventions` enforces the component shape, one component per file and the context rule. Everywhere else, apps included, they are enforced by review.
 
-- **One component per file.** If a file has two, extract the second. The one exemption is a compound primitive, which keeps its family in one file: `@alepha/ui`'s `src/core/DropdownMenu.tsx` holds the menu and all its parts.
-- **File order:** PROPS interface → COMPONENT → the rest (other interfaces, helpers).
-- **Extracted component naming:** `ParentComponent.tsx` with an inner `Header` becomes `ParentComponentHeader.tsx`.
-- **Always arrow functions:** `const MyComponent = (props: MyComponentProps) => {}` — never `function`.
-- **Never destructure props in the parameter list:** use `(props: MyComponentProps)`, not `({ foo }: MyComponentProps)`. Destructure inside the body if you want.
-- **Props interfaces are named `MyComponentProps`** — always a named exported interface, never inline.
-- **No React Context**: use `$atom` + `useStore`, never `createContext` / `useContext`, for anything app-wide. **The one exemption is state scoped to a subtree**: the parts of one compound component sharing its instance (`Sidebar`, `Drawer`, `Chart`), or what a provider gives its own descendants (`FormField`'s layout, auto-save, required-marker and a11y contexts, `DialogProvider`, whose `useHasDialogProvider()` asks about tree position). An `$atom` holds one value per Alepha container, so two sidebars or two forms on a page cannot each have their own. Each such `createContext` carries, in the comment directly above it, the marker `Context exemption:` followed by its reason.
-- **Inside `@alepha/ui`, imports are relative and name a concrete file, never `@alepha/ui` or a module's `index.ts`.** `src/admin/AdminKeysTokenDialog.tsx` imports `../core/Button.tsx`, not `@alepha/ui`: a specifier would go through the package's own barrel, which is how a module ends up importing itself in a cycle. Outside the package it is the reverse: import from the module subpath (`@alepha/ui/admin`), never from a file inside it. `check:conventions` refuses both a self-import and a barrel import.
-- **Always a `Control*`, never a raw `ui/` primitive** — reach for `<Control select …>` / `<ControlSelect>` rather than `<Select>`, and the same for every other field. The raw primitive renders the raw VALUE on its trigger (an opaque id, not the label), and carries no label, no description, no error slot and no form binding, so every surface that used one grew the same three workarounds by hand. `<Select>` is `@deprecated` and going. **It is not a drop-in swap**: `Control` binds to a form field, so a picker with local state becomes a one-field `useForm` — `initialValues` for what the server says, `onChange` for a control that saves on change, and `useFormValues` where a `useState` was read.
+- **One component per file.** An extracted inner `Header` of `ParentComponent.tsx` becomes `ParentComponentHeader.tsx`. The exemption is a compound primitive family (`UI_COMPOUND_FILES` in the script, such as `src/core/DropdownMenu.tsx`).
+- **File order:** props interface, component, the rest.
+- **Arrow functions, never `function`**, and **props never destructured in the parameter list**: `const MyComponent = (props: MyComponentProps) => {}`, with `MyComponentProps` a named exported interface in the same file.
+- **No React Context for anything app-wide**: use `$atom` + `useStore`. The exemption is state scoped to a subtree (the parts of one compound component, or what a provider gives its descendants), since an `$atom` holds one value per container. Each such `createContext` carries the marker `Context exemption:` and its reason in the comment directly above it.
+- **Inside `@alepha/ui`, imports are relative and name a concrete file** (`../core/Button.tsx`), never `@alepha/ui` or a module's `index.ts`. Outside it, import from the module subpath (`@alepha/ui/admin`), never a file inside. `check:conventions` refuses both.
+- **Always a `Control*` for a field** (`<Control select>` / `<ControlSelect>`), never a hand-built picker. `Control` binds to a form field, so a picker with local state becomes a one-field `useForm`: `initialValues` for what the server says, `onChange` for a control that saves on change, `useFormValues` where a `useState` was read.
+- **Never `window.confirm()` / `alert()` / `prompt()`**: `const dialog = useDialog()`, then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (a `Promise<boolean>`), `dialog.alert(...)` or `dialog.prompt(...)`. Lore's `Layout.tsx` mounts `<DialogProvider>`.
 
 ### Calling the API from React
 
-⚠️ **No `check:conventions` rule enforces this, and none is coming** (#E59, #Q2322 shelved): this section is the guard. Epic #E59 measured four in five of the apps' API calls hand-rolled, with 62 places in Lore that caught nothing and 17 effects with no race guard.
+⚠️ No `check:conventions` rule enforces this and none is coming (#E59): this section is the guard. A change that moves one of these rules updates it in the same commit.
 
-- **Every call on a `useClient()` result goes through `useQuery` (a read), `useAction` (a write), a `useForm` handler, or a `DataTable`'s `fetch` or `summary.fetch`.** Never a `useEffect` with an `alive` flag, never an async function with its own `try/catch` and toast: the hooks already hold `loading` and `error`, supersede a stale read, and report a failure.
-- **One `ActionErrorToaster` is mounted at the app root** (Lore's `Layout.tsx`, the shop's `Layout.tsx`; an `AppShell` that is not `embedded` mounts its own), so a request failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself (an inline error state, a form alert), passes `onError`: that marks the error `handled`, the toaster skips it, and error reporting still sees it. A `FormValidationError` with a field `path` is handled already, since it renders under its field.
-- ⚠️ **`run()` drops a call made while one is in flight, and resolves `undefined` on failure** (and on success of a handler that returns nothing). Disable every control of the action on `loading`, busy page-wide rather than per row, and put follow-ups inside the handler: `await save.run(); close()` closes the dialog on a failure.
-- ⚠️ **`useAction` appends `{ signal }` as the handler's last argument.** No optional or defaulted trailing parameter: a `quantity = 1` the caller leaves out receives `{ signal }` and sends it, and TypeScript does not catch it. Make it required (`rank: string | undefined`) or take one object. Give the hook its types explicitly (`useAction<[id: string], boolean>`): inference from a handler with fewer parameters than `[...Args, ActionContext]` fails.
-- **An optimistic update restores its snapshot in the handler's `catch` and rethrows.** `onError` receives the error and nothing else, so it cannot restore what it never saw; the rethrow is what reports the failure.
-- **A read that a write refreshes has a key**, since a keyless `useQuery` cannot be invalidated: kebab-case resource, then project id, then anything narrower (`["project-users", projectId]`). The write declares `invalidates`, or calls `useQueryClient().invalidate` when the key needs an argument only the handler has.
-- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteMember`, `usePanier`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed, so callers keep `if (await verb(...))`. **A hook whose functions other handlers compose keeps rejecting** (`useQuestMutations`: the board accepts, then moves, and the move must not follow a failed accept); its callers run it inside their own `useAction`.
-- **A callback whose promise an awaiting consumer needs stays a plain function** (the markdown upload hooks, an analytics transport), with its reason in a comment beside it.
-- **Never `catch (x: any)`.** The variable is `unknown`; read `.message` through `instanceof Error`. The toast says `error.message`, the server's own sentence, never a translated "something went wrong" in front of it.
-
-If a later change moves one of these rules, it updates this section in the same commit.
+- **Every call on a `useClient()` result goes through `useQuery` (a read), `useAction` (a write), a `useForm` handler, or a `DataTable`'s `fetch` / `summary.fetch`.** Never a `useEffect` with an `alive` flag, never an async function with its own `try/catch` and toast.
+- **One `ActionErrorToaster` sits at the app root** (Lore's and the shop's `Layout.tsx`; a non-`embedded` `AppShell` mounts its own), so a failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself, passes `onError`, which marks it `handled`. A `FormValidationError` with a field `path` is handled already.
+- ⚠️ **`run()` drops a call made while one is in flight, and resolves `undefined` on failure.** Disable every control of the action on `loading`, page-wide rather than per row, and put follow-ups inside the handler: `await save.run(); close()` closes the dialog on a failure.
+- ⚠️ **`useAction` appends `{ signal }` as the handler's last argument.** No optional or defaulted trailing parameter: it would receive `{ signal }`, and TypeScript does not catch it. Make it required or take one object, and type the hook explicitly (`useAction<[id: string], boolean>`).
+- **An optimistic update restores its snapshot in the handler's `catch` and rethrows.** `onError` never saw the snapshot, and the rethrow is what reports the failure.
+- **A read that a write refreshes has a key**: kebab-case resource, then project id, then anything narrower (`["project-users", projectId]`). The write declares `invalidates`, or calls `useQueryClient().invalidate` when the key needs a handler-only argument.
+- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteOrganizationMember`, `usePanier`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed. **A hook whose functions other handlers compose keeps rejecting** (`useQuestMutations`); its callers run it inside their own `useAction`.
+- **A callback whose promise an awaiting consumer needs stays a plain function** (markdown upload hooks, an analytics transport), with its reason in a comment.
+- **Never `catch (x: any)`.** Read `.message` through `instanceof Error`. The toast says `error.message`, never a translated "something went wrong" in front of it.
 
 ### Router and i18n
 
-- **`useRouter<T>()` navigates with `router.push("pageName", { params })`** — there is no `router.navigate()`.
-- **`useI18n().tr()` and `l()` both return `string`, so never wrap either in `String()`.** `l()` used to be inferred `string | number` (a compound `typeof` check that did not narrow), and the advice to wrap it spread to `tr()`, which had always returned a string: 721 no-op wrappers were removed in #Q2312. Both now declare `: string`, so a branch returning anything else is a type error rather than a reason to wrap. A helper that takes `tr` as a parameter types it `(key: …) => string`, or `I18nProvider<any, any>["tr"]`.
-- **`I18nLocalizeOptions` has `date` and `number` only, no `time`** — for date+time pass a dayjs format string such as `"lll"` to `date`.
-- **`$route` never lives under `/api`** — it is the raw level below `$action`, does not prefix `/api`, and the `$action` dispatcher shadows anything under `/api/*` (404s). Root paths only.
+- **`router.push("pageName", { params })`** on `useRouter<T>()`. There is no `router.navigate()`.
+- **`tr()` and `l()` both return `string`: never wrap either in `String()`.** A helper taking `tr` types it `(key: …) => string` or `I18nProvider<any, any>["tr"]`.
+- **`I18nLocalizeOptions` has `date` and `number` only, no `time`**: for date+time pass a dayjs format such as `"lll"` to `date`.
+- **`$route` never lives under `/api`**: the `$action` dispatcher shadows `/api/*` (404s). Root paths only.
 
 ### Repository / query API
 
-- **`{ inArray: [...] }` for SQL `IN`**, not `{ in: [...] }`. See `FilterOperators.ts`.
-- **`findMany()` accepts** `{ where, limit, offset, orderBy, groupBy, columns, distinct }` — there is no `sort` and no `size`.
-- **For pagination use `paginate(query, { where }, { count: true })`**, which does accept `sort` / `size` on the query object.
-- **Never pass `undefined` into a where-filter.** `where: { col: undefined }` throws `AlephaError`. It used to be dropped silently, producing a query with no `WHERE` at all — that was a real P0. Omit the key entirely for optional filters.
-- **`.optional()` must go INSIDE `db.ref(...)`** — outside it, no foreign key is generated at all, silently, and the migration snapshot check cannot catch it.
+- **`{ inArray: [...] }` for SQL `IN`**, not `{ in: [...] }` (`FilterOperators.ts`).
+- **`findMany()` accepts** `{ where, limit, offset, orderBy, groupBy, columns, distinct }`: no `sort`, no `size`. **Pagination is `paginate(query, { where }, { count: true })`**, whose query object does take `sort` / `size`.
+- **Never pass `undefined` into a where-filter**: `where: { col: undefined }` throws `AlephaError`. Omit the key for an optional filter.
+- **`.optional()` goes INSIDE `db.ref(...)`**: outside it no foreign key is generated, silently, and the migration check cannot catch it.
 
 ### CLI internals (`packages/alepha/src/cli`)
 
-- **Two Alepha instances.** `this.alepha` is the CLI's own container; `alepha` (passed as an argument) is the user's app container. Never confuse them — this is the most common CLI bug.
-- **Build tasks live in `cli/tasks/`**, not `cli/build/`, named `BuildXxxTask` (e.g. `BuildCompressTask`).
-- **No `index.ts` in `cli/tasks/`** — `index.ts` is reserved for module-level exports.
-- **`run` (RunnerMethod) is passed to tasks as an argument**, not injected via DI. Tasks decide when or whether to call `run()` (e.g. skipping pre-render when there is nothing to prerender).
-- **Use `FileSystemProvider` via `$inject`**, never raw `fs/promises`, so tasks stay testable with `MemoryFileSystemProvider`.
-
-## Notes for AI Assistants
-
-- Update docs/framework/1-guides/ if you change any public API or behavior (docs/framework/2-reference and docs/framework/3-packages are regenerated from source JSDoc by `yarn copy`: fix the JSDoc, never those files, and commit the pages it regenerates, which `check:docs` enforces)
-- The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
-- All async operations should use `Alepha.create()` and proper lifecycle management
-- HTTP client (`HttpClient`) has built-in request deduplication and caching
-- Browser tests must use `.browser.spec.ts` extension to run in jsdom
-- React hooks follow the pattern: `use` + noun (useAction, useClient, etc.)
-- Services use dependency injection via `$inject()` decorator
-- Event names follow pattern: `namespace:action:status`
-- **IMPORTANT**: NEVER use the `private` keyword in class members. Use `protected` instead for all access control
-- **IMPORTANT**: NEVER use `vi.mock()` or `vi.spyOn()` - use Alepha's service substitution with `.with()` and Memory providers instead
-- **IMPORTANT**: NEVER use `window.confirm()` / `window.alert()` / `window.prompt()` in UI code. Use the imperative dialog API from `@alepha/ui`: `const dialog = useDialog();` then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (returns `Promise<boolean>`), `dialog.alert(...)`, or `dialog.prompt(...)`. `<DialogProvider>` is already mounted in `apps/lore`'s `Layout.tsx`.
-- **IMPORTANT**: NEVER use single-line JSDoc comments. Always use multi-line format:
-  ```typescript
-  // Bad
-  /** This is a single-line comment */
-
-  // Good
-  /**
-   * This is a multi-line comment.
-   */
-  ```
-- **Package imports**: All 50+ core modules can be imported from the `alepha` package (e.g., `import { } from "alepha/security"`)
-- Always use "git mv" for renaming files to preserve git history
-- Tests can be co-located with source code as `*.spec.ts` files (not just in `__tests__` directories)
+- **Two Alepha instances.** `this.alepha` is the CLI's own container; the `alepha` passed as an argument is the user's app. Confusing them is the most common CLI bug.
+- **Build tasks live in `cli/core/tasks/`**, named `BuildXxxTask`, with no `index.ts` there.
+- **`run` (RunnerMethod) is passed to tasks as an argument**, not injected: a task decides whether to call it.
+- **`FileSystemProvider` via `$inject`**, never raw `fs/promises`, so tasks stay testable with `MemoryFileSystemProvider`.
