@@ -29,7 +29,7 @@ const fakeAlepha = {
   },
 } as any;
 
-describe("build --target=static", () => {
+describe('a static build, declared as runtime: ["static"]', () => {
   const createManifestTask = () => {
     const alepha = Alepha.create().with({
       provide: FileSystemProvider,
