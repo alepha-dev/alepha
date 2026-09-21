@@ -458,8 +458,7 @@ export class ImageRegistryClient {
    * ⚠️ Absent is a REFUSAL, never a default of `node`. `runtime` is part of
    * this registry's unique key, so guessing it would file a bun image under
    * `node` and let the next push overwrite it - the same reason
-   * `artifactManifestSchema` makes `runtime` required where the framework's
-   * own manifest makes it optional.
+   * `artifactManifestSchema` refuses an archive that declares no `runtimes`.
    */
   protected runtimeOf(
     config: ImageConfig,

@@ -116,9 +116,16 @@ export class DeployService {
     // `acceptedRuntimes("bay")` being `["node"]` would happily select Lore's
     // own `node` IMAGE for a Bay deploy, which then fails downstream with no
     // useful message.
+    //
+    // ⚠️ Against every slice the archive carries, not its primary (#Q2462): a
+    // `node,workerd` archive is ONE row whose `runtime` is `node`, and a
+    // Cloudflare estate deploys its workerd slice.
     const accepted = this.estateService.acceptedRuntimes(estate.type);
-    const artifact =
-      deployable.find((it) => accepted.includes(it.runtime)) ?? deployable[0];
+    const runs = (it: Artifact) =>
+      ArtifactService.runtimesOf(it).some((runtime) =>
+        accepted.includes(runtime),
+      );
+    const artifact = deployable.find(runs) ?? deployable[0];
 
     if (artifact) {
       // Last clause of the gate, and the only one that needed the artifact row.
@@ -126,10 +133,14 @@ export class DeployService {
         estate,
         app: instance.app,
         tag: input.tag,
-        runtime: artifact.runtime,
+        runtimes: ArtifactService.runtimesOf(artifact),
         // Archive runtimes only, so this never reads "It has: node, node" and
         // never claims a `node` build for a tag whose only one is an image.
-        available: deployable.map((it) => it.runtime),
+        available: [
+          ...new Set(
+            deployable.flatMap((it) => ArtifactService.runtimesOf(it)),
+          ),
+        ],
       });
     }
 
@@ -251,8 +262,8 @@ export class DeployService {
           estate,
           app: row.app,
           tag: row.tag,
-          runtime: artifact.runtime,
-          available: [artifact.runtime],
+          runtimes: ArtifactService.runtimesOf(artifact),
+          available: ArtifactService.runtimesOf(artifact),
         });
       }
       if (!artifact) {
@@ -538,9 +549,18 @@ export class DeployService {
       return false;
     }
     try {
-      const parsed = JSON.parse(artifact.manifest) as { env?: unknown };
-      return (
-        Array.isArray(parsed.env) && parsed.env.includes(AppService.SIGIL_KEY)
+      // `secrets` since manifest v2 (#Q2465): `SIGIL_KEY` is a secret, and a
+      // build that declassified it lists it under `variables` instead.
+      const parsed = JSON.parse(artifact.manifest) as {
+        secrets?: unknown;
+        variables?: unknown;
+      };
+      return [parsed.secrets, parsed.variables].some(
+        (list) =>
+          Array.isArray(list) &&
+          list.some(
+            (entry: { name?: unknown }) => entry?.name === AppService.SIGIL_KEY,
+          ),
       );
     } catch {
       return false;

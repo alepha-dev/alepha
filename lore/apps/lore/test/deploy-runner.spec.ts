@@ -68,19 +68,18 @@ describe("deploying an artifact from inside the Worker", () => {
         // tool must be refused by name rather than emit a Worker with no
         // bindings and report success.
         //
-        // ⚠️ It declares `production` and nothing else. The runner deploys to
-        // `b14-preview` anyway, which is the epic's founding difference:
-        // `alepha platform` reads the environment out of this file, Lore reads
-        // it out of a ROW.
+        // ⚠️ It names no environment at all: Lore reads the environment out
+        // of a ROW, never out of the artifact.
         "manifest.json": JSON.stringify({
-          version: 1,
-          runtime: "workerd",
           project: "my-app",
-          defaultEnv: "production",
-          environments: { production: { adapter: "cloudflare" } },
+          runtimes: [
+            { runtime: "node", entry: "index.node.js" },
+            { runtime: "workerd", entry: "index.workerd.js" },
+          ],
           crons: [],
-          websocketPaths: [],
-          env: [],
+          secrets: [],
+          variables: [],
+          cloudflare: { websocketPaths: [] },
           resources: {
             hasDatabase: true,
             hasBucket: false,

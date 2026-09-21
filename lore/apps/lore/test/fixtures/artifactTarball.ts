@@ -160,10 +160,8 @@ export const packedArtifact = async (
   const manifest =
     options.manifest === undefined
       ? {
-          version: 1,
-          runtime: "node",
           project: "my-app",
-          entry: "index.node.js",
+          runtimes: [{ runtime: "node", entry: "index.node.js" }],
         }
       : options.manifest;
 

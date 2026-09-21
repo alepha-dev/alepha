@@ -13,22 +13,19 @@ import { type Infer, z } from "alepha";
 export const ARTIFACT_RUNTIMES = ["node", "bun", "workerd", "static"] as const;
 
 /**
- * What Lore reads out of an artifact's `dist/manifest.json`.
+ * What Lore reads out of an artifact's `manifest.json`.
  *
- * ## ⚠️ `version` is a literal, and refusing it is the point
+ * ## ⚠️ `runtimes` is REQUIRED, and it is the whole runtime declaration
  *
- * `buildManifestSchema` pins `version: 1`. An artifact whose manifest is
- * missing, unparseable, or from a future contract is refused at push time
- * rather than stored and discovered broken by whatever tries to deploy it.
- * The registry's one job is that a row in it describes real, legible bytes.
+ * Every runtime slice the archive carries, in declared order (#Q2462). The
+ * first is the primary, which is the row's `runtime` and a quarter of the
+ * `artifacts` unique key; the list is what a deploy matches an estate against,
+ * so a `node,workerd` archive deploys to a Bay and to a Cloudflare account
+ * alike. An artifact that declares none is refused by name rather than
+ * guessed at: guessing would silently file a workerd build under `node`.
  *
- * ## ⚠️ `runtime` is REQUIRED here and optional there
- *
- * The framework's manifest makes it optional so that an artifact built before
- * the field existed still reads, with an absent value meaning `node`. Lore
- * cannot take that default: `runtime` is a quarter of this table's unique key,
- * so guessing it would silently file a workerd build under `node` and let the
- * next push overwrite it. An artifact that declares none is refused by name.
+ * There is no version field and no scalar `runtime`: the framework dropped
+ * both in manifest v2 (#Q2460, #Q2465), and no older archive remains.
  *
  * ## Loose, in both directions
  *
@@ -38,12 +35,13 @@ export const ARTIFACT_RUNTIMES = ["node", "bun", "workerd", "static"] as const;
  */
 export const artifactManifestSchema = z
   .object({
-    version: z.literal(1),
-    runtime: z.enum(ARTIFACT_RUNTIMES),
+    runtimes: z
+      .array(z.object({ runtime: z.enum(ARTIFACT_RUNTIMES) }).loose())
+      .min(1),
   })
   .loose();
 
 /**
- * The subset of `dist/manifest.json` this registry reads.
+ * The subset of `manifest.json` this registry reads.
  */
 export type ArtifactManifest = Infer<typeof artifactManifestSchema>;

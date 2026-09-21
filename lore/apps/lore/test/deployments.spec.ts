@@ -451,7 +451,14 @@ describe("a deployment", () => {
         sha256: "a".repeat(64),
         size: 10,
         fileId: crypto.randomUUID(),
-        ...(env === undefined ? {} : { manifest: JSON.stringify({ env }) }),
+        ...(env === undefined
+          ? {}
+          : {
+              manifest: JSON.stringify({
+                secrets: env.map((name) => ({ name })),
+                variables: [],
+              }),
+            }),
       } as never);
       return w;
     };
@@ -481,6 +488,32 @@ describe("a deployment", () => {
         .remove(w.instance.id, AppService.SIGIL_KEY);
       return w;
     };
+
+    /**
+     * One archive, two slices (#Q2462): the row's primary is `node`, and a
+     * Cloudflare estate queues its workerd slice rather than refusing a
+     * "`node` build".
+     */
+    it("queues a node-primary archive carrying a workerd slice on Cloudflare", async ({
+      expect,
+    }) => {
+      const w = await deployable(undefined);
+      const rows = alepha.inject(TestRows);
+      const [row] = await rows.artifacts.findMany({});
+      await rows.artifacts.updateById(row!.id, {
+        runtime: "node",
+        runtimes: ["node", "workerd"],
+      } as never);
+
+      const deployment = await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+        createdBy: w.user.id,
+      });
+
+      expect(deployment.sha256).toBe("a".repeat(64));
+    });
 
     /**
      * ⚠️ The build's own declaration is the trigger. An app bundling the
@@ -540,9 +573,9 @@ describe("a deployment", () => {
     /**
      * ⚠️ **`manifest` holds two shapes now, told apart only by `format`.**
      * For an archive it is `dist/manifest.json`; for an image it is the OCI
-     * index, which has a `manifests` array and no `env` at all.
+     * index, which has a `manifests` array and no `secrets` at all.
      *
-     * `declaresSigil` does a bare `JSON.parse` and looks for an `env` array,
+     * `declaresSigil` does a bare `JSON.parse` and looks for a `secrets` array,
      * so it answers false for an index. That is the RIGHT answer and it was
      * right by accident: nothing in the code said an index could land in that
      * column. This spec is what turns the accident into a decision, so a
@@ -1138,8 +1171,37 @@ describe("the runtime gate", () => {
         estate: cloudflareEstate,
         app: "panda",
         tag: "1.2.3",
-        runtime: "workerd",
+        runtimes: ["workerd"],
         available: ["workerd"],
+      }),
+    ).not.toThrow();
+  });
+
+  /**
+   * One archive, two slices (#Q2462): the row's primary is `node`, and a
+   * Cloudflare estate deploys the workerd slice it carries.
+   */
+  it("accepts a node-primary archive that carries a workerd slice", ({
+    expect,
+  }) => {
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertRuntime({
+        estate: cloudflareEstate,
+        app: "panda",
+        tag: "1.2.3",
+        runtimes: ["node", "workerd"],
+        available: ["node", "workerd"],
+      }),
+    ).not.toThrow();
+    expect(() =>
+      gate.assertRuntime({
+        estate: bayEstate,
+        app: "panda",
+        tag: "1.2.3",
+        runtimes: ["node", "workerd"],
+        available: ["node", "workerd"],
       }),
     ).not.toThrow();
   });
@@ -1153,11 +1215,11 @@ describe("the runtime gate", () => {
         estate: cloudflareEstate,
         app: "panda",
         tag: "1.2.3",
-        runtime: "node",
+        runtimes: ["node"],
         available: ["node", "workerd"],
       }),
     ).toThrow(
-      "Artifact panda@1.2.3 is a `node` build; estate 'zug' (cloudflare) runs `workerd`.",
+      "Artifact panda@1.2.3 carries `node`; estate 'zug' (cloudflare) runs `workerd`.",
     );
   });
 
@@ -1172,7 +1234,7 @@ describe("the runtime gate", () => {
         estate: cloudflareEstate,
         app: "panda",
         tag: "1.2.3",
-        runtime: "node",
+        runtimes: ["node"],
         available: ["node"],
       }),
     ).toThrow(
@@ -1193,7 +1255,7 @@ describe("the runtime gate", () => {
         estate: bayEstate,
         app: "panda",
         tag: "1.2.3",
-        runtime: "workerd",
+        runtimes: ["workerd"],
         available: ["workerd"],
       }),
     ).toThrow(/has no `node` build/);

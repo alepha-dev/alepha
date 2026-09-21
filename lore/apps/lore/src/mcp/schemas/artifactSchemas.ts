@@ -68,7 +68,7 @@ export const artifactGetParamsSchema = projectParamsSchema.extend({
     .min(1)
     .max(32)
     .describe(
-      "Narrow to one build: `node`, `bun`, `workerd` or `static`. Omit to get every runtime under this tag, which is usually what you want - a tag names one release, and its variants are the same release built twice.",
+      "Narrow to the builds that carry this runtime: `node`, `bun`, `workerd` or `static`, matched against every slice of an archive. Omit to get every runtime under this tag, which is usually what you want - a tag names one release, and its variants are the same release built twice.",
     )
     .optional(),
   format: z
