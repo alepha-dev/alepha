@@ -567,7 +567,7 @@ describe("CloudflareAdapter", () => {
    * "provisioning" it is entirely this env-wiring in `build()`.
    */
   describe("build — analytics env wiring", () => {
-    const buildCommand = "alepha build -t cloudflare";
+    const buildCommand = "alepha build --runtime=workerd";
 
     const withAnalytics = (naming: NamingService) =>
       makeCtx(naming, {

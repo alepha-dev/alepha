@@ -1241,7 +1241,7 @@ describe("BuildCloudflareTask", () => {
     });
 
     it("still reads the ambient one when no bag is given", ({ expect }) => {
-      // `alepha build -t cloudflare` on a laptop, which is the other caller.
+      // `alepha build --runtime=workerd` on a laptop, which is the other caller.
       process.env.R2_BUCKET_NAME = "laptop-bucket";
 
       const wrangler: Record<string, any> = {};

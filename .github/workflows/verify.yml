@@ -466,7 +466,7 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      # `alepha build --target=docker --image`: the bundle, the generated
+      # `alepha build` + `alepha image --tag`: the bundle, the generated
       # Dockerfile and `docker build` in one step, with the tag and the OCI
       # labels coming from `apps/lore/alepha.config.ts`.
       - name: Build the image

@@ -359,7 +359,7 @@ jobs:
       # places it runs.
       #
       # ⚠️ The rebuilds sit HERE, at the very end, and cannot move earlier.
-      # `alepha build -t cloudflare` cleans `dist/` and replaces it, and
+      # `alepha build --runtime=workerd` cleans `dist/` and replaces it, and
       # `apps/lore/dist` was the docker build context of the ghcr push above.
       # Rebuilding before that step would hand it a workerd bundle, or nothing
       # at all.
@@ -419,7 +419,7 @@ jobs:
       # looking at them.
       - name: Rebuild docs for workerd
         working-directory: apps/docs
-        run: yarn alepha build -t cloudflare
+        run: yarn alepha build --runtime=workerd
 
       - name: Push docs artifact to Lore (workerd)
         working-directory: apps/docs
@@ -432,7 +432,7 @@ jobs:
 
       - name: Rebuild lore for workerd
         working-directory: apps/lore
-        run: yarn alepha build -t cloudflare
+        run: yarn alepha build --runtime=workerd
 
       - name: Push lore artifact to Lore (workerd)
         working-directory: apps/lore

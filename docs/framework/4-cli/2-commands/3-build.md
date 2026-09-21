@@ -1,14 +1,33 @@
 # Build Command
 
-Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment - whether that's a Node.js server, Docker, Cloudflare Workers, or a static site.
+Build your project for production. `alepha build` produces **one** `dist/`, carrying one server slice per runtime you asked for.
 
 ## Quick Start
 
 ```bash
-alepha build
+alepha build                          # one node slice
+alepha build --runtime node,workerd   # both, from one build
 ```
 
 Your production-ready app is now in the `dist/` folder.
+
+## One artifact, N runtimes
+
+Releasing an app that runs on both Node and Cloudflare used to mean building twice. Both runs rebuilt the client bundle, re-prerendered and re-compressed the assets, and those are the slow steps: only the server link genuinely differs, and it differs by a handful of export conditions.
+
+So the client bundle, the prerender, the compression, the headers, the PWA manifest and the build manifest all run **once**, and only the server link repeats. Measured on Lore: 15.2s for a workerd-only build against 15.4s for `node,workerd`, of which `build client` is 3.9s.
+
+⚠️ **Declared order is meaningful.** The first runtime is the **primary**: it is `manifest.runtime`, it is what `dist/package.json`'s `main` points at, and it is what a deployer spawns. `["bun", "node"]` and `["node", "bun"]` produce the same two slices and different behaviour.
+
+Then three commands turn that one `dist/` into the format you need:
+
+| format  | command                                        | runtimes                                             |
+| ------- | ---------------------------------------------- | ---------------------------------------------------- |
+| binary  | [`alepha compile`](/docs/cli-commands-compile) | bun                                                  |
+| archive | [`alepha pack`](/docs/cli-commands-pack)       | node, bun, workerd                                   |
+| image   | [`alepha image`](/docs/cli-commands-image)     | node, bun, and bun via `--compile` for a small image |
+
+⚠️ **There is no `--target`.** The build is described by what it produces: declaring a `workerd` slice is what writes the Cloudflare config, `runtime: ["static"]` is what makes a static site, and Docker is its own command.
 
 ## What It Does
 
@@ -16,11 +35,11 @@ The build runs a fixed pipeline of tasks:
 
 1. **Cleans the dist folder**: Fresh start, no stale files
 2. **Builds the client**: Compiles React, bundles assets, optimizes for browsers
-3. **Builds the server**: Compiles your backend code for the target runtime
+3. **Builds the server**: one slice per declared runtime, and only this step repeats
 4. **Copies assets**: Moves static files to the right places
 5. **Generates the PWA manifest**: If `pwa` is configured
 6. **Prerenders pages**: Sitemap and static pages, when applicable
-7. **Generates deployment configs**: Cloudflare, Docker, static (if requested)
+7. **Generates deployment configs**: `wrangler.jsonc` when a workerd slice was built
 8. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets
 
 ## Output Structure
@@ -29,20 +48,28 @@ After building, your `dist/` folder looks like this:
 
 ```txt
 dist/
-├── index.js          # Server entry point
-├── public/           # Static assets (CSS, JS, images)
+├── index.node.js       # one entry wrapper per slice
+├── index.workerd.js
+├── server/
+│   ├── node/           # each slice's chunks, namespaced
+│   └── workerd/
+├── public/             # static assets (CSS, JS, images)
 │   ├── entry.abc123.js
 │   ├── chunk.def456.js
-│   ├── asset.0123ab.css
 │   └── favicon.svg
-├── manifest.json     # Build manifest (every target; `alepha pack` requires it)
-└── package.json      # Production dependencies
+├── manifest.json       # what the build declared; `alepha pack` requires it
+└── package.json        # `main` points at the primary slice
 ```
+
+⚠️ **The slices are namespaced, and that is load-bearing.** Two runtimes built into one `server/` do not collide - their content hashes differ - so both sets would simply sit there, and the wrangler `server/*.js` glob would sweep the Node chunks into the Worker upload: a Worker twice the size it needs, or a Node chunk importing a node builtin and a refused deploy.
+
+⚠️ **There is no `index.js` that works out its host.** The manifest is the discovery mechanism, because a second one able to disagree with it is worse than none.
 
 Run your server with:
 
 ```bash
-node dist/index.js
+node dist                 # resolves the primary slice through `main`
+node dist/index.node.js   # or name the slice
 ```
 
 ## Options

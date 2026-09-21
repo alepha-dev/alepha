@@ -145,7 +145,7 @@ export class BuildCloudflareTask extends BuildTask {
     const root = ctx.root;
     // Slugify the dir basename — wrangler rejects names that aren't
     // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
-    // Without this, running `alepha build -t cloudflare` in a dir like
+    // Without this, running `alepha build --runtime=workerd` in a dir like
     // `My App` or `club-0.0.2` produces an unusable `wrangler.jsonc`.
     //
     // This is a build-time PLACEHOLDER, not the deployed worker name. A

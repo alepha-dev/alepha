@@ -284,7 +284,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           )
           .join(
             "; ",
-          )}. Rebuild the artifact with \`alepha build -t cloudflare\`.`,
+          )}. Rebuild the artifact with \`alepha build --runtime=workerd\`.`,
       );
     }
     const manifest = validated.data as BuildManifest;

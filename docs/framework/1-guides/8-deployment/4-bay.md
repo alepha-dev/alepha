@@ -134,12 +134,12 @@ alepha platform up --env production
 ```
 
 Under the hood: `alepha build --runtime=node`, then `alepha pack` - which produces
-`<project>-latest.tar.gz` containing the bundle and its `migrations/` directory - then one `ssh`
+`<project>-latest.tar.zst` containing the bundle and its `migrations/` directory - then one `ssh`
 invocation that pipes the artifact straight into the Bay's own CLI:
 
 ```bash
 ssh -o BatchMode=yes deploy@bay.example.com \
-  'bay deploy - --name myapp --env production --domain myapp.com' < myapp-latest.tar.gz
+  'bay deploy - --name myapp --env production --domain myapp.com' < myapp-latest.tar.zst
 ```
 
 Nothing is staged on the host first, so a deploy that dies mid-way leaves no half-uploaded artifact
@@ -173,7 +173,7 @@ that file's path is handed to `bay deploy`:
 ssh -o BatchMode=yes deploy@bay.example.com 'umask 077; cat > /tmp/.bay-secrets-<random>' \
   < the-filtered-assignments
 ssh -o BatchMode=yes deploy@bay.example.com \
-  'bay deploy - --name myapp --secrets-file /tmp/.bay-secrets-<random>' < myapp-latest.tar.gz
+  'bay deploy - --name myapp --secrets-file /tmp/.bay-secrets-<random>' < myapp-latest.tar.zst
 ```
 
 Bay merges that file into the instance's `.env` **during provision - before the release is swapped
