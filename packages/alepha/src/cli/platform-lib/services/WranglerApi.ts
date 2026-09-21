@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { AlephaCliUtils, PackageManagerUtils } from "alepha/cli";
 import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
@@ -7,8 +7,8 @@ import { ShellProvider } from "alepha/system";
  * Wraps wrangler CLI commands that are kept as shell-outs.
  *
  * Only used for operations where wrangler provides value
- * beyond a raw API call: OAuth login, worker deploy (bundling/upload),
- * and secret bulk push.
+ * beyond a raw API call: OAuth login, and worker deploy (bundling/upload,
+ * secrets included).
  *
  * ⚠️ **Every method here spawns a process**, so nothing on this class can run
  * inside a Worker. That is why D1 migrations left (#1514) and why the
@@ -89,16 +89,38 @@ export class WranglerApi {
    * Deploy a worker via wrangler (handles bundling and upload).
    *
    * Returns the workers.dev URL if found in the output.
+   *
+   * `secretsFile` is a JSON file of secrets uploaded WITH the script, as
+   * `secret_text` bindings of the same version (`--secrets-file`). It needs a
+   * wrangler that knows the flag, which every wrangler 4 this repository pins
+   * does; an older one refuses it, and the refusal is named rather than left
+   * as a yargs error.
    */
   public async deploy(
     workerName: string,
     configPath: string,
     root?: string,
+    options: { secretsFile?: string } = {},
   ): Promise<string | undefined> {
-    const output = await this.runShell(
-      `wrangler deploy --name=${workerName} --no-bundle --config=${configPath}`,
-      { resolve: true, capture: true, root },
-    );
+    const secretsFlag = options.secretsFile
+      ? ` --secrets-file=${options.secretsFile}`
+      : "";
+    let output: string;
+    try {
+      output = await this.runShell(
+        `wrangler deploy --name=${workerName} --no-bundle --config=${configPath}${secretsFlag}`,
+        { resolve: true, capture: true, root },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (secretsFlag && /unknown argument.*secrets-file/i.test(message)) {
+        throw new AlephaError(
+          "This project's wrangler does not know `wrangler deploy --secrets-file`, which is how a deploy uploads its secrets with the code. Upgrade wrangler to a current 4.x.",
+          { cause: error },
+        );
+      }
+      throw error;
+    }
 
     const match = output.match(/https:\/\/[^\s]*\.workers\.dev/);
     return match?.[0];

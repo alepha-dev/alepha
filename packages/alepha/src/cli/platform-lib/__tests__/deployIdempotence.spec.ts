@@ -101,7 +101,10 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
    * execution, a new isolate for all it knows, and nothing carried over but
    * what Cloudflare holds.
    */
-  const deploy = async (account: FakeCloudflareAccount) => {
+  const deploy = async (
+    account: FakeCloudflareAccount,
+    secrets: Record<string, string> = { APP_SECRET: "s3cret" },
+  ) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       // The one pack step that touches real files: the shell here is a fake,
@@ -125,7 +128,7 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
     const adapter = alepha
       .inject(WorkerCloudflareAdapter)
       .use(credential)
-      .withSecrets({ APP_SECRET: "s3cret" });
+      .withSecrets(secrets);
 
     const restore = account.listen();
     try {
@@ -136,8 +139,14 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
         entry: { root: "/deploy", server: "" } as never,
         resources: resources as never,
         run: Object.assign(
-          async (task: { handler: () => Promise<unknown> }) =>
-            await task.handler(),
+          async (
+            task:
+              | { handler: () => Promise<unknown> }
+              | Array<{ handler: () => Promise<unknown> }>,
+          ) =>
+            Array.isArray(task)
+              ? await Promise.all(task.map((it) => it.handler()))
+              : await task.handler(),
           { end: () => {} },
         ) as never,
       });
@@ -201,15 +210,19 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
   }) => {
     const { account, afterFirst } = await twice();
 
-    expect(afterFirst.imports).toBe(2);
+    // An empty database takes every pending file in ONE import, each followed
+    // by its bookkeeping row (#Q2459), and a real SQLite ran it end to end.
+    expect(afterFirst.imports).toBe(1);
     expect(account.imports).toEqual([
       {
         database: "acme-notes-production",
-        sql: "CREATE TABLE notes (id integer PRIMARY KEY, body text NOT NULL);",
-      },
-      {
-        database: "acme-notes-production",
-        sql: "ALTER TABLE notes ADD COLUMN title text;",
+        sql: [
+          "CREATE TABLE notes (id integer PRIMARY KEY, body text NOT NULL);",
+          "INSERT INTO d1_migrations (name) VALUES ('0001_notes');",
+          "ALTER TABLE notes ADD COLUMN title text;",
+          "INSERT INTO d1_migrations (name) VALUES ('0002_title');",
+          "",
+        ].join("\n"),
       },
     ]);
     expect(
@@ -293,6 +306,46 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
     expect(versions[1]?.metadata.bindings).toEqual(
       versions[0]?.metadata.bindings,
     );
+  });
+
+  /**
+   * The secrets are bindings of the script upload itself (#Q2459): a first
+   * deploy boots with them, and a rotation is the redeploy's one version
+   * rather than a second one published after it. The fake account answers no
+   * settings or secrets endpoint, so a second step would fail the run.
+   */
+  it("publishes one version per run, carrying its secrets, first deploy and rotation alike", async ({
+    expect,
+  }) => {
+    const account = new FakeCloudflareAccount(credential);
+    await deploy(account, { APP_SECRET: "first" });
+    expect(account.versions("acme-notes-production")).toHaveLength(1);
+
+    await deploy(account, { APP_SECRET: "rotated" });
+    const versions = account.versions("acme-notes-production");
+    expect(versions).toHaveLength(2);
+
+    const secretsOf = (index: number) =>
+      (versions[index]?.metadata.bindings ?? []).filter(
+        (it: { type: string }) => it.type === "secret_text",
+      );
+    expect(secretsOf(0)).toEqual([
+      { type: "secret_text", name: "APP_SECRET", text: "first" },
+      {
+        type: "secret_text",
+        name: "PUBLIC_URL",
+        text: "https://notes.example.com",
+      },
+    ]);
+    // The whole set is sent every time, the rotated value in place of the old.
+    expect(secretsOf(1)).toEqual([
+      { type: "secret_text", name: "APP_SECRET", text: "rotated" },
+      {
+        type: "secret_text",
+        name: "PUBLIC_URL",
+        text: "https://notes.example.com",
+      },
+    ]);
   });
 
   it("leaves one schedule, one domain and workers.dev as it was", async ({

@@ -56,8 +56,18 @@ describe("the worker-side Cloudflare adapter", () => {
       },
     }) as PlatformContext;
 
+  type Task = { name: string; handler: () => Promise<void> };
+
+  /**
+   * An array is steps run together, as the CLI's `Runner` and Lore's
+   * `DeployRunner.runner` both treat it.
+   */
   const run = Object.assign(
-    (task: { handler: () => Promise<void> }) => task.handler(),
+    async (task: Task | Task[]) => {
+      await Promise.all(
+        (Array.isArray(task) ? task : [task]).map((it) => it.handler()),
+      );
+    },
     { end: () => {} },
   ) as never;
 
@@ -70,9 +80,10 @@ describe("the worker-side Cloudflare adapter", () => {
   const namingRun = () => {
     const steps: string[] = [];
     const method = Object.assign(
-      (task: { name: string; handler: () => Promise<void> }) => {
-        steps.push(task.name);
-        return task.handler();
+      async (task: Task | Task[]) => {
+        const tasks = Array.isArray(task) ? task : [task];
+        steps.push(...tasks.map((it) => it.name));
+        await Promise.all(tasks.map((it) => it.handler()));
       },
       { end: () => {} },
     ) as never;
@@ -154,6 +165,52 @@ describe("the worker-side Cloudflare adapter", () => {
       // Cloudflare does not have is refused at bind time.
       "queue:my-app-staging-dlq",
     ]);
+  });
+
+  it("provisions every resource in one step, so the waits overlap", async ({
+    expect,
+  }) => {
+    const { adapter, naming } = setup();
+    let inFlight = 0;
+    let peak = 0;
+    const slow = async <T>(value: T): Promise<T> => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight--;
+      return value;
+    };
+    Object.assign(adapter as unknown as Record<string, unknown>, {
+      credential,
+      provisioner: () => ({
+        ensureD1: (name: string) => slow({ uuid: "db-uuid", name }),
+        ensureR2: () => slow(undefined),
+        ensureKV: (title: string) => slow({ id: "kv-id", title }),
+        ensureQueue: (name: string) =>
+          slow({ queue_id: "q", queue_name: name }),
+      }),
+    });
+    const { run, steps } = namingRun();
+
+    await adapter.provision(
+      context(naming, {
+        hasDatabase: true,
+        hasBucket: true,
+        hasKV: true,
+        hasQueue: true,
+      }),
+      run,
+    );
+
+    // One line per resource, as before, and all of them waiting at once:
+    // the database, the bucket, the namespace, the queue and its DLQ.
+    expect(steps).toEqual([
+      "provision d1 (my-app-staging)",
+      "provision r2 (my-app-staging)",
+      "provision kv (my-app-staging)",
+      "provision queue (my-app-staging)",
+    ]);
+    expect(peak).toBe(5);
   });
 
   it("hands the build the ids it just provisioned, and only those", async ({

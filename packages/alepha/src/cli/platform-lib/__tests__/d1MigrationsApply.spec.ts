@@ -161,9 +161,9 @@ class FakeCloudflareApi {
  * The migration files that were applied, named by path.
  */
 const appliedFiles = (sql: string[]): string[] =>
-  sql
-    .map((it) => /^-- FILE (.+)$/m.exec(it)?.[1])
-    .filter((it): it is string => Boolean(it));
+  sql.flatMap((it) =>
+    [...it.matchAll(/^-- FILE (.+)$/gm)].map((match) => match[1] as string),
+  );
 
 describe("d1MigrationsApply", () => {
   const capture = (relativePaths: string[], appliedNames: string[] = []) => {
@@ -261,6 +261,88 @@ describe("d1MigrationsApply", () => {
     expect(applied).toHaveLength(2);
     expect(applied[0]).toContain("0001_first.sql");
     expect(applied[1]).toContain("0002_second.sql");
+  });
+
+  /**
+   * A first deploy of a club copy carried 26 migrations and spent 31.7 s of a
+   * 45 s run importing them one by one, about five round trips each.
+   */
+  describe("an empty database", () => {
+    it("takes every pending migration in one import, each followed by its row", async ({
+      expect,
+    }) => {
+      const { sql, bookkeeping, call } = capture([
+        "0002_rebuild.sql",
+        "0001_init.sql",
+      ]);
+      await call();
+
+      expect(sql).toHaveLength(1);
+      const batch = sql[0] as string;
+      expect(appliedFiles(sql)).toEqual([
+        "dist/migrations/0001_init.sql",
+        "dist/migrations/0002_rebuild.sql",
+      ]);
+      // Each file keeps its pragma before the DROP it protects, and its row
+      // lands right after it, in the same import.
+      const order = [
+        batch.indexOf("-- FILE dist/migrations/0001_init.sql"),
+        batch.indexOf("VALUES ('0001_init.sql')"),
+        batch.indexOf("-- FILE dist/migrations/0002_rebuild.sql"),
+        batch.lastIndexOf("PRAGMA foreign_keys=OFF;"),
+        batch.lastIndexOf("DROP TABLE `parent`;"),
+        batch.indexOf("VALUES ('0002_rebuild.sql')"),
+      ];
+      expect(order.every((at) => at >= 0)).toBe(true);
+      expect([...order].sort((a, b) => a - b)).toEqual(order);
+      // No row is written a second time through the query endpoint.
+      expect(
+        bookkeeping.some((it) => it.includes("INSERT INTO d1_migrations")),
+      ).toBe(false);
+    });
+
+    it("keeps one import per file once anything is applied", async ({
+      expect,
+    }) => {
+      const { sql, call } = capture(
+        ["0001_init.sql", "0002_second.sql", "0003_third.sql"],
+        ["0001_init.sql"],
+      );
+      await call();
+
+      expect(sql).toHaveLength(2);
+      expect(appliedFiles(sql)).toEqual([
+        "dist/migrations/0002_second.sql",
+        "dist/migrations/0003_third.sql",
+      ]);
+    });
+
+    it("goes file by file when a file does not end on a terminated statement", async ({
+      expect,
+    }) => {
+      // Joined as it is, the unterminated last statement would swallow the
+      // first statement of the next file.
+      class UnterminatedFs extends FakeFs {
+        override async readTextFile(path: string) {
+          return `-- FILE ${path}\nCREATE TABLE \`t\` (\`id\` integer)\n-- trailing note\n`;
+        }
+      }
+      const alepha = Alepha.create();
+      const service = alepha.inject(D1MigrationsService);
+      const api = new FakeCloudflareApi();
+      Object.assign(service as unknown as Record<string, unknown>, {
+        fs: new UnterminatedFs(
+          new Set([`${ROOT}/0001_a.sql`, `${ROOT}/0002_b.sql`]),
+        ),
+      });
+
+      await service.apply(api, "mydb", ".", ROOT);
+
+      expect(api.imported).toHaveLength(2);
+      expect(
+        api.sql.filter((it) => it.includes("INSERT INTO d1_migrations")),
+      ).toHaveLength(2);
+    });
   });
 
   /**

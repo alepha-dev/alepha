@@ -177,6 +177,18 @@ export class D1MigrationsService {
       return;
     }
 
+    if (applied.size === 0 && pending.length > 1) {
+      const batch = await this.freshBatch(pending);
+      if (batch) {
+        this.log.info(
+          `Applying ${pending.length} D1 migration(s) to an empty database in one import ...`,
+        );
+        await api.d1Import(databaseId, batch);
+        this.log.info(`Applied ${pending.length} D1 migration(s)`);
+        return;
+      }
+    }
+
     for (const migration of pending) {
       this.log.info(`Applying ${migration.name} ...`);
       // ⚠️ The whole file, as one request. Splitting on statement boundaries
@@ -191,6 +203,70 @@ export class D1MigrationsService {
     }
 
     this.log.info(`Applied ${pending.length} D1 migration(s)`);
+  }
+
+  /**
+   * Every pending migration of a database that has none applied, as ONE
+   * import: each file verbatim, in order, each followed by its own bookkeeping
+   * row.
+   *
+   * ## Why, and why only here
+   *
+   * An import is five round trips (init, upload, ingest, poll, and the
+   * bookkeeping query), about 1.2 s. A first deploy of a club copy carried 26
+   * migrations and spent 31.7 s of its 45 s run in this loop, so a new copy
+   * paid most of its deploy time for round trips rather than for SQL.
+   *
+   * ⚠️ **Only for a database with nothing applied**, which is a first deploy.
+   * Concatenation keeps every statement in its file's order and every file in
+   * sorted order, so a rebuild's `PRAGMA foreign_keys=OFF` still runs before
+   * the `DROP TABLE` it protects, inside the same import flow the class doc
+   * says is the safe one. That is the argument, and it has not been measured
+   * against a live database holding rows. A database with no migration
+   * applied holds no application rows, so the incident this file is shaped
+   * around cannot happen there, and every later deploy keeps the per-file path
+   * it was measured on.
+   *
+   * The bookkeeping rows travel inside the same import, so the files and the
+   * record of them land together or, since D1 rolls a failed import back, not
+   * at all.
+   *
+   * `undefined` when a file does not end on a terminated statement: joined to
+   * the next one it would merge two statements into one, so that set goes
+   * the per-file way instead.
+   */
+  protected async freshBatch(
+    pending: D1Migration[],
+  ): Promise<string | undefined> {
+    const parts: string[] = [];
+    for (const migration of pending) {
+      const sql = await this.fs.readTextFile(migration.sqlPath);
+      if (!this.endsTerminated(sql)) {
+        return undefined;
+      }
+      parts.push(
+        sql.endsWith("\n") ? sql : `${sql}\n`,
+        `INSERT INTO d1_migrations (name) VALUES ('${this.escape(migration.name)}');\n`,
+      );
+    }
+    return parts.join("");
+  }
+
+  /**
+   * Whether the last statement of a file ends with `;`, trailing blank lines
+   * and `--` comment lines aside. A file ending on a block comment reads as
+   * unterminated, which costs it the batch and nothing else.
+   */
+  protected endsTerminated(sql: string): boolean {
+    const lines = sql.split("\n");
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = (lines[i] as string).trim();
+      if (line === "" || line.startsWith("--")) {
+        continue;
+      }
+      return line.endsWith(";");
+    }
+    return false;
   }
 
   /**

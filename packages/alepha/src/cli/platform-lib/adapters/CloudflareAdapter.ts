@@ -1,4 +1,5 @@
-import { randomBytes, scryptSync } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import { tmpdir } from "node:os";
 
 import {
   $inject,
@@ -42,8 +43,8 @@ import {
  * Cloudflare Workers adapter.
  *
  * Uses the Cloudflare REST API (via CloudflareApi) for resource provisioning
- * and teardown, and wrangler CLI (via WranglerApi) for login, deploy,
- * D1 migrations, and secret bulk push.
+ * and teardown, and wrangler CLI (via WranglerApi) for login and deploy.
+ * The deploy carries the secrets, see `deploy`.
  */
 export class CloudflareAdapter extends PlatformAdapter {
   protected readonly log = $logger();
@@ -457,6 +458,30 @@ export class CloudflareAdapter extends PlatformAdapter {
   // deploy (wrangler — handles bundling/upload)
   // -------------------------------------------------------------------------
 
+  /**
+   * Upload the Worker, with its secrets and variables in the same upload.
+   *
+   * ## ⚠️ One upload, one version, no window
+   *
+   * The secrets used to follow in a second step, a bulk `PATCH` of the
+   * settings after `wrangler deploy`, because `secret put` needs the Worker to
+   * exist. That cost a second Worker version on every `up`, and a window in
+   * which the new build ran against the previous secret set: a deploy
+   * introducing a newly required secret booted without it, and a first deploy
+   * booted with no secret at all. `wrangler deploy --secrets-file` sends them
+   * as `secret_text` bindings of the upload itself, first deploy included.
+   *
+   * The declassified values (`publicVars`, `PUBLIC_URL`) are written into the
+   * deploy config's `vars`, so they are `plain_text` bindings of the same
+   * upload. They had to be: `wrangler deploy` without `keep_vars` drops every
+   * `plain_text` binding its config does not name, which is also why the old
+   * `ALEPHA_SECRETS_HASH` fingerprint never survived to the next deploy and
+   * the PATCH it was meant to skip ran every time.
+   *
+   * ⚠️ `--secrets-file` is additive, like the PATCH was: a secret dropped from
+   * the set stays on the Worker until it is deleted there. A rotation is a
+   * new value in the file, and wins.
+   */
   async deploy(
     ctx: PlatformContext,
     run: RunnerMethod,
@@ -464,16 +489,21 @@ export class CloudflareAdapter extends PlatformAdapter {
     this.configureApi(ctx);
     const workerName = ctx.naming.worker();
     const distDir = this.fs.join(ctx.root, "dist");
+    const configPath = `${distDir}/wrangler.jsonc`;
+    const { secrets, vars } = await this.resolveSecrets(ctx);
 
     let url: string | undefined;
 
     await run({
       name: `deploy worker ${ctx.project}`,
       handler: async () => {
-        url = await this.wrangler.deploy(
-          workerName,
-          `${distDir}/wrangler.jsonc`,
-          ctx.root,
+        if (Object.keys(vars).length > 0) {
+          await this.writeDeployVars(configPath, vars);
+        }
+        url = await this.withSecretsFile(secrets, (secretsFile) =>
+          this.wrangler.deploy(workerName, configPath, ctx.root, {
+            secretsFile,
+          }),
         );
       },
     });
@@ -481,8 +511,53 @@ export class CloudflareAdapter extends PlatformAdapter {
     return url;
   }
 
+  /**
+   * Merge the declassified values into the generated config's `vars`.
+   *
+   * ⚠️ The file is `build`'s output, regenerated on every `up`, so writing it
+   * here changes nothing a later build reads. An explicit value wins over one
+   * the build wrote, which is the precedence the post-deploy PATCH had.
+   */
+  protected async writeDeployVars(
+    configPath: string,
+    vars: Record<string, string>,
+  ): Promise<void> {
+    const config = JSON.parse(await this.fs.readTextFile(configPath)) as {
+      vars?: Record<string, unknown>;
+    };
+    config.vars = { ...config.vars, ...vars };
+    await this.fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  }
+
+  /**
+   * Hand `wrangler deploy` the secrets as a file, and remove it whatever
+   * happens.
+   *
+   * ⚠️ A fresh name under the OS temp directory, created `0600`: the mode only
+   * applies to a file that is new, and the values are the Worker's secrets.
+   * Nothing at all is written when there is nothing to send.
+   */
+  protected async withSecretsFile<T>(
+    secrets: Record<string, string>,
+    upload: (secretsFile: string | undefined) => Promise<T>,
+  ): Promise<T> {
+    if (Object.keys(secrets).length === 0) {
+      return await upload(undefined);
+    }
+    const path = this.fs.join(
+      tmpdir(),
+      `alepha-secrets-${randomBytes(16).toString("hex")}.json`,
+    );
+    await this.fs.writeFile(path, JSON.stringify(secrets), { mode: 0o600 });
+    try {
+      return await upload(path);
+    } finally {
+      await this.fs.rm(path, { force: true });
+    }
+  }
+
   // -------------------------------------------------------------------------
-  // secrets (wrangler — bulk push)
+  // secrets (resolved here, sent with the upload by `deploy`)
   // -------------------------------------------------------------------------
 
   /**
@@ -523,11 +598,17 @@ export class CloudflareAdapter extends PlatformAdapter {
     return await readManifestPublicVars(this.fs, root);
   }
 
-  override async secrets(
-    ctx: PlatformContext,
-    run: RunnerMethod,
-  ): Promise<void> {
-    this.configureApi(ctx);
+  /**
+   * What this deploy sends: the encrypted `secrets` and the declassified
+   * `vars`, both empty when there is nothing to send.
+   *
+   * ⚠️ Read by {@link deploy}, which carries both in the one upload. There is
+   * no `secrets()` step on this adapter any more; see `deploy`.
+   */
+  protected async resolveSecrets(ctx: PlatformContext): Promise<{
+    secrets: Record<string, string>;
+    vars: Record<string, string>;
+  }> {
     const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
 
     // The key set to push, by precedence:
@@ -580,7 +661,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     if (Object.keys(secrets).length === 0) {
-      return;
+      return { secrets: {}, vars: {} };
     }
 
     // Split off the keys the app declassified with `secret: false`. They are
@@ -606,123 +687,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       }
     }
 
-    // Push all secrets for a worker in a single PATCH so each `up` only
-    // mints one new deployment for the secrets step (regardless of how many
-    // are being updated). Loop-based `putSecret` worked but generated N
-    // deployment rows per push, cluttering the CF dashboard.
-    //
-    // Skip the PATCH entirely when nothing changed: we stamp a sha256 of the
-    // sorted secret set onto the worker as a plain_text binding called
-    // `ALEPHA_SECRETS_HASH`. On the next deploy we GET the settings, compare
-    // the stored hash to the freshly-computed one, and bail out if they
-    // match. The hash lives on Cloudflare (not on disk), so the cache works
-    // identically in CI and locally.
-    //
-    // Net deploy count per `up`:
-    //   - code change, secrets unchanged: 1 (wrangler deploy only)
-    //   - secrets changed:                 2 (wrangler deploy + bulk PATCH)
-    //
-    // Implementation mirrors `wrangler secret bulk`:
-    //   1. GET current worker bindings via `/script/{name}/settings`.
-    //   2. Compare ALEPHA_SECRETS_HASH binding to local hash → skip on match.
-    //   3. Keep all non-secret bindings (D1, R2, KV, etc.) and any secret
-    //      bindings we are NOT overwriting (forwarded as `{type,name}` only
-    //      — CF preserves their stored values).
-    //   4. Add/overwrite secrets as `{type,name,text}`, plus a fresh
-    //      ALEPHA_SECRETS_HASH binding so subsequent runs see it.
-    //   5. PATCH the merged binding list in one call.
-    {
-      const workerName = ctx.naming.worker();
-
-      await run({
-        name: `push secrets to ${workerName} (bulk)`,
-        handler: async () => {
-          const settings = await this.api.getWorkerSettings(workerName);
-          const existingBindings = settings.bindings ?? [];
-
-          const existingHashBinding = existingBindings.find(
-            (b) =>
-              b.type === "plain_text" &&
-              b.name === CloudflareAdapter.SECRETS_HASH_BINDING,
-          );
-
-          // Recompute against the STORED salt: matching means the secret set
-          // is unchanged and the PATCH can be skipped.
-          const existing = parseSecretsFingerprint(existingHashBinding?.text);
-          if (
-            existing &&
-            computeSecretsHash(secrets, vars, existing.salt) === existing.digest
-          ) {
-            this.log.info(
-              `Secrets for ${workerName} unchanged (${existing.digest.slice(0, 8)}…), skipping push.`,
-            );
-            return;
-          }
-
-          const salt = randomBytes(16).toString("hex");
-          const fingerprint = `v2:${salt}:${computeSecretsHash(secrets, vars, salt)}`;
-
-          // Both sides, because a key MOVING between them has to invalidate the
-          // cache. Declassifying a variable changes no value, so a fingerprint
-          // over the values alone still matches and the PATCH is skipped — the
-          // annotation would land in the manifest and never reach the worker,
-          // and the next value change would quietly fix it, which is the worst
-          // way for this to work.
-          const overwriting = new Set([
-            ...Object.keys(secrets),
-            ...Object.keys(vars),
-          ]);
-          const inherit = existingBindings
-            .filter(
-              (b) =>
-                // Drop the old hash binding — we'll write a fresh one below.
-                !(
-                  b.type === "plain_text" &&
-                  b.name === CloudflareAdapter.SECRETS_HASH_BINDING
-                ) &&
-                // Drop the value bindings we're about to rewrite, whichever
-                // side they are on today: a key that changed sides must not be
-                // inherited under its old type and then written under the new
-                // one. Keep the rest (D1, R2, KV, untouched secrets).
-                !(
-                  (b.type === "secret_text" || b.type === "plain_text") &&
-                  overwriting.has(b.name)
-                ),
-            )
-            // `{type,name}` for a secret — CF preserves the stored value, which
-            // we could not resend anyway. A plain_text binding is readable, so
-            // carry its text: forwarding one without would blank it.
-            .map((b) =>
-              b.type === "plain_text"
-                ? { type: b.type, name: b.name, text: b.text ?? "" }
-                : { type: b.type, name: b.name },
-            );
-
-          const upsert = [
-            ...Object.entries(secrets).map(([name, text]) => ({
-              type: "secret_text" as const,
-              name,
-              text,
-            })),
-            ...Object.entries(vars).map(([name, text]) => ({
-              type: "plain_text" as const,
-              name,
-              text,
-            })),
-          ];
-
-          await this.api.patchWorkerBindings(workerName, [
-            ...inherit,
-            ...upsert,
-            {
-              type: "plain_text",
-              name: CloudflareAdapter.SECRETS_HASH_BINDING,
-              text: fingerprint,
-            },
-          ]);
-        },
-      });
-    }
+    return { secrets, vars };
   }
 
   /**
@@ -745,7 +710,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    * other declassified key does: core carries it on the ambient `Env`
    * interface rather than in an `$env` schema, so it is not in `dump().env`
    * and can never reach the manifest's `publicVars`. It is also injected by
-   * {@link secrets} itself, derived from the configured domain — a value this
+   * {@link resolveSecrets} itself, derived from the configured domain: a value this
    * adapter made up, which no app schema was ever consulted about.
    *
    * It being public is not a judgement call: it is the address the app answers
@@ -754,12 +719,6 @@ export class CloudflareAdapter extends PlatformAdapter {
   static readonly ALWAYS_PUBLIC_KEYS: ReadonlySet<string> = new Set([
     "PUBLIC_URL",
   ]);
-
-  /**
-   * Plain-text binding used to fingerprint the deployed secret set so the
-   * next `up` can skip the PATCH when nothing has changed.
-   */
-  static readonly SECRETS_HASH_BINDING = "ALEPHA_SECRETS_HASH";
 
   // -------------------------------------------------------------------------
   // provision (REST API)
@@ -1674,53 +1633,4 @@ export class CloudflareAdapter extends PlatformAdapter {
       createdAt: version?.metadata.created_on,
     };
   }
-}
-
-/**
- * Stable SHA-256 of the pushed variable set — encrypted and declassified alike.
- * Keys are sorted so reordering `.env` lines does not invalidate the cache.
- * Used as a fingerprint by `CloudflareAdapter.secrets` — see the comment block
- * there.
- */
-function computeSecretsHash(
-  secrets: Record<string, string>,
-  vars: Record<string, string>,
-  salt: string,
-): string {
-  // Declassified keys are namespaced rather than merged, so that moving a key
-  // between the two sides changes the digest even though no value did. With no
-  // declassified keys the input is byte-identical to the pre-split one, so an
-  // already-deployed worker's stored fingerprint still matches and the first
-  // deploy after this change does not push a pointless PATCH.
-  const sorted = [
-    ...Object.keys(secrets)
-      .sort()
-      .map((k) => `${k}=${secrets[k]}`),
-    ...Object.keys(vars)
-      .sort()
-      .map((k) => `public:${k}=${vars[k]}`),
-  ].join("\n");
-  // Salted + deliberately slow. A plain sha256 of "KEY=VALUE" lines stored in
-  // a *readable* binding is an offline brute-force oracle: anyone with
-  // worker-settings read access could recover low-entropy secret values,
-  // which is precisely what Cloudflare's write-only secrets prevent. The salt
-  // kills precomputation; the KDF cost makes guessing expensive. It stays
-  // stable across deploys (the salt is stored alongside), so the skip-if-
-  // unchanged cache still works.
-  return scryptSync(sorted, salt, 32, { N: 16384, r: 8, p: 1 }).toString("hex");
-}
-
-/**
- * Serialized fingerprint: `v2:<salt>:<digest>`. The v1 format was a bare
- * sha256 of the values; it is treated as a miss so the next deploy upgrades
- * it in place.
- */
-function parseSecretsFingerprint(
-  text: string | undefined,
-): { salt: string; digest: string } | undefined {
-  if (!text?.startsWith("v2:")) {
-    return undefined;
-  }
-  const [, salt, digest] = text.split(":");
-  return salt && digest ? { salt, digest } : undefined;
 }

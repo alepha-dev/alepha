@@ -20,7 +20,10 @@ import {
   type CloudflareQueueConsumerSettings,
 } from "../services/CloudflareDeployClient.ts";
 import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
-import { D1MigrationsService } from "../services/D1MigrationsService.ts";
+import {
+  type D1MigrationTransport,
+  D1MigrationsService,
+} from "../services/D1MigrationsService.ts";
 import {
   PlatformAdapter,
   type PlatformContext,
@@ -109,12 +112,10 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    *
    * ⚠️ **Uploaded WITH the script**, as `secret_text` bindings in the same
    * `PUT`, which is why {@link PlatformAdapter.secrets} stays the inherited
-   * no-op here. `PlatformOrchestrator.up()` runs `deploy` then `secrets` only
-   * because `wrangler secret put` needs the worker to exist, and its own
-   * comment records what that costs: about six seconds of the new build
-   * running against the previous secret set, and a deploy introducing a newly
-   * required variable booting without it. Nothing here shells out to wrangler,
-   * so there is no such ordering and no such window.
+   * no-op here: a deploy is ONE Worker version, first deploy included, and
+   * the build never runs against the previous secret set. The CLI's
+   * `CloudflareAdapter` does the same through `wrangler deploy
+   * --secrets-file`; see the note in `PlatformOrchestrator.up()`.
    *
    * ⚠️ Never logged, never put in a progress line, never returned. The values
    * exist on this instance for the length of one deploy.
@@ -165,16 +166,24 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
   /**
    * Create what the app binds, and remember the ids.
+   *
+   * ⚠️ **Concurrently.** Each resource is its own list-then-create against its
+   * own API, and none reads what another produced, so running them one after
+   * the other only added their latencies: 4 s of a first club deploy were a
+   * D1 then an R2 that could have been one wait. Handed to `run` as an array,
+   * which the CLI's `Runner` and Lore's `DeployRunner.runner` both run in
+   * parallel while still logging one line per resource.
    */
   override async provision(
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<void> {
     const api = this.provisioner();
+    const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
 
     if (ctx.resources.hasDatabase) {
       const name = ctx.naming.d1();
-      await run({
+      tasks.push({
         name: `provision d1 (${name})`,
         handler: async () => {
           const database = await api.ensureD1(name);
@@ -189,7 +198,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
     if (ctx.resources.hasBucket) {
       const name = ctx.naming.r2();
-      await run({
+      tasks.push({
         name: `provision r2 (${name})`,
         handler: async () => {
           await api.ensureR2(name);
@@ -201,7 +210,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
     if (ctx.resources.hasKV) {
       const name = ctx.naming.kv();
-      await run({
+      tasks.push({
         name: `provision kv (${name})`,
         handler: async () => {
           const namespace = await api.ensureKV(name);
@@ -214,19 +223,22 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
 
     if (ctx.resources.hasQueue) {
       const name = ctx.naming.queue();
-      await run({
+      tasks.push({
         name: `provision queue (${name})`,
         handler: async () => {
-          await api.ensureQueue(name);
           // The dead-letter queue is a real queue too, and a consumer that
           // names one Cloudflare does not have is refused at bind time.
           const dlq = `${name}-dlq`;
-          await api.ensureQueue(dlq);
+          await Promise.all([api.ensureQueue(name), api.ensureQueue(dlq)]);
           this.provisioned.CLOUDFLARE_QUEUE_NAME = name;
           this.provisionedResources.queue = name;
           this.provisionedResources.dlq = dlq;
         },
       });
+    }
+
+    if (tasks.length > 0) {
+      await run(tasks);
     }
 
     if (ctx.resources.hasAnalytics) {
@@ -330,13 +342,28 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       name: `migrate d1 (${name})`,
       handler: async () => {
         await this.migrations.apply(
-          this.provisioner(),
+          this.migrationTransport(),
           name,
           ctx.root,
           "migrations/sqlite",
         );
       },
     });
+  }
+
+  /**
+   * The provisioner, answering the id `provision` already obtained instead of
+   * listing every database of the account a second time.
+   */
+  protected migrationTransport(): D1MigrationTransport {
+    const api = this.provisioner();
+    const known = this.provisionedResources.d1;
+    return {
+      resolveD1Id: async (wanted) =>
+        known?.name === wanted ? known.id : await api.resolveD1Id(wanted),
+      d1Query: (databaseId, sql) => api.d1Query(databaseId, sql),
+      d1Import: (databaseId, sql) => api.d1Import(databaseId, sql),
+    };
   }
 
   /**

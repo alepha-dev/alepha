@@ -690,6 +690,44 @@ describe("a deployment", () => {
       );
     });
 
+    /**
+     * Nothing a person reads shows a line's `at`: the Deploy tab and the MCP
+     * `deploy_status` tool answer texts. So the time goes in the text, from
+     * the start of the run, and the queue wait before it gets a line of its
+     * own (#Q2459).
+     */
+    it("times every line from the start of the run, after the queue wait", async ({
+      expect,
+    }) => {
+      const { project, instance } = await world();
+      const rows = alepha.inject(TestRows).deployments;
+      const dateTime = alepha.inject(DateTimeProvider);
+      dateTime.pause();
+      const row = await rows.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      });
+      const registry = alepha.inject(DeployRegistry);
+
+      await dateTime.travel(5600, "ms");
+      await registry.started(row.id);
+      await dateTime.travel(1400, "ms");
+      await registry.line(row.id, "provision d1 (my-app-staging)");
+      await dateTime.travel(31_700, "ms");
+      await registry.line(row.id, "deploy worker (my-app-staging)");
+
+      const stored = await rows.findById(row.id);
+      expect(stored?.log.map((it) => it.text)).toEqual([
+        "+0.0s Started after 5.6s queued",
+        "+1.4s provision d1 (my-app-staging)",
+        "+33.1s deploy worker (my-app-staging)",
+      ]);
+    });
+
     it("never throws, so a lost line cannot fail a deploy", async ({
       expect,
     }) => {

@@ -645,10 +645,60 @@ describe("CloudflareAdapter", () => {
   });
 
   describe("secrets", () => {
+    /**
+     * Deploy the way `up()` does after `build`: a freshly generated config,
+     * then `wrangler deploy`, which carries the secrets (#Q2459).
+     */
+    const deployed = async (
+      adapter: CloudflareAdapter,
+      fs: MemoryFileSystemProvider,
+      ctx: PlatformContext,
+      run: ReturnType<typeof createMockRun>,
+    ) => {
+      await fs.writeFile(
+        "/project/dist/wrangler.jsonc",
+        JSON.stringify({ name: "acme-portal-production" }),
+      );
+      await adapter.deploy(ctx, run);
+    };
+
+    /**
+     * What the last `wrangler deploy` uploaded: the secrets file it was
+     * handed as `secret_text`, the config's `vars` as `plain_text`.
+     */
+    const sent = (
+      fs: MemoryFileSystemProvider,
+      shell: MemoryShellProvider,
+    ): Array<{ type: string; name: string; text: string }> => {
+      const command =
+        shell.calls.findLast((it) => it.command.startsWith("wrangler deploy"))
+          ?.command ?? "";
+      const file = /--secrets-file=(\S+)/.exec(command)?.[1];
+      const written = file
+        ? fs.writeFileCalls.findLast((it) => it.path === file)?.data
+        : undefined;
+      const secrets = JSON.parse(written ?? "{}") as Record<string, string>;
+      const config = JSON.parse(
+        fs.getFileContent("/project/dist/wrangler.jsonc") ?? "{}",
+      ) as { vars?: Record<string, string> };
+      return [
+        ...Object.entries(secrets).map(([name, text]) => ({
+          type: "secret_text",
+          name,
+          text,
+        })),
+        ...Object.entries(config.vars ?? {}).map(([name, text]) => ({
+          type: "plain_text",
+          name,
+          text,
+        })),
+      ];
+    };
+
     test("pushes non-binding env vars via REST putSecret", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -676,9 +726,9 @@ describe("CloudflareAdapter", () => {
       );
 
       const run = createMockRun();
-      await adapter.secrets(ctx, run);
+      await deployed(adapter, fs, ctx, run);
 
-      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
       const names = pushed.map((s) => s.name).sort();
       expect(names).toEqual(["APP_SECRET", "GOOGLE_API_KEY"]);
     });
@@ -686,7 +736,7 @@ describe("CloudflareAdapter", () => {
     test("with platform.secrets.keys, resolves the allowlist from process.env (no .env file) and ignores ambient vars", async ({
       expect,
     }) => {
-      const { adapter, alepha, naming, api } = createTestEnv();
+      const { adapter, alepha, fs, naming, shell } = createTestEnv();
       // Declare an explicit allowlist — the CI shape: secrets arrive via the
       // job environment, there is no .env.production on the runner.
       alepha.set(platformOptions, {
@@ -713,14 +763,14 @@ describe("CloudflareAdapter", () => {
       process.env.AMBIENT_RUNNER_VAR = "leak-me-not";
       try {
         const run = createMockRun();
-        await adapter.secrets(ctx, run);
+        await deployed(adapter, fs, ctx, run);
       } finally {
         delete process.env.APP_SECRET;
         delete process.env.GOOGLE_CLIENT_ID;
         delete process.env.AMBIENT_RUNNER_VAR;
       }
 
-      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
       const names = pushed.map((s) => s.name).sort();
       expect(names).toEqual(["APP_SECRET", "GOOGLE_CLIENT_ID"]);
     });
@@ -728,7 +778,7 @@ describe("CloudflareAdapter", () => {
     test("with platform.secrets.keys, the .env file overrides process.env per key", async ({
       expect,
     }) => {
-      const { adapter, alepha, fs, naming, api } = createTestEnv();
+      const { adapter, alepha, fs, naming, shell } = createTestEnv();
       alepha.set(platformOptions, {
         secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID"] },
         environments: { production: { adapter: "cloudflare" } },
@@ -755,7 +805,7 @@ describe("CloudflareAdapter", () => {
       process.env.GOOGLE_CLIENT_ID = "env-google";
       try {
         const run = createMockRun();
-        await adapter.secrets(ctx, run);
+        await deployed(adapter, fs, ctx, run);
       } finally {
         delete process.env.APP_SECRET;
         delete process.env.GOOGLE_CLIENT_ID;
@@ -763,7 +813,7 @@ describe("CloudflareAdapter", () => {
 
       // Secret *values* land in the full binding set (api.bindings); the
       // api.secrets projection only keeps names.
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const bindings = sent(fs, shell);
       const byName = Object.fromEntries(
         bindings
           .filter((b) => b.type === "secret_text")
@@ -776,7 +826,7 @@ describe("CloudflareAdapter", () => {
     test("uses dist/manifest.json `env` as the default allowlist, resolved from process.env", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       // No platform.secrets.keys and no .env file → the manifest's declared
       // env list is the allowlist. This is the CI shape.
       const ctx = makeCtx(naming, {
@@ -809,14 +859,14 @@ describe("CloudflareAdapter", () => {
       // LOG_LEVEL is declared + ambient in the runner, but EXCLUDED (infra knob).
       try {
         const run = createMockRun();
-        await adapter.secrets(ctx, run);
+        await deployed(adapter, fs, ctx, run);
       } finally {
         delete process.env.APP_SECRET;
         delete process.env.GOOGLE_CLIENT_ID;
         delete process.env.CLOUDFLARE_ZONE;
       }
 
-      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name).sort()).toEqual([
         "APP_SECRET",
         "GOOGLE_CLIENT_ID",
@@ -826,7 +876,7 @@ describe("CloudflareAdapter", () => {
     test("pushes per-deploy keys from .env.<env>.local even when not in the manifest", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -852,9 +902,9 @@ describe("CloudflareAdapter", () => {
       );
 
       const run = createMockRun();
-      await adapter.secrets(ctx, run);
+      await deployed(adapter, fs, ctx, run);
 
-      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name).sort()).toEqual([
         "APP_SECRET",
         "CLUB_CONFIG_JSON",
@@ -864,7 +914,7 @@ describe("CloudflareAdapter", () => {
     test("platform.secrets.keys overrides the manifest `env` allowlist", async ({
       expect,
     }) => {
-      const { adapter, alepha, fs, naming, api } = createTestEnv();
+      const { adapter, alepha, fs, naming, shell } = createTestEnv();
       alepha.set(platformOptions, {
         secrets: { keys: ["APP_SECRET"] }, // narrow override
         environments: { production: { adapter: "cloudflare" } },
@@ -892,20 +942,20 @@ describe("CloudflareAdapter", () => {
       process.env.GOOGLE_CLIENT_ID = "g1";
       try {
         const run = createMockRun();
-        await adapter.secrets(ctx, run);
+        await deployed(adapter, fs, ctx, run);
       } finally {
         delete process.env.APP_SECRET;
         delete process.env.GOOGLE_CLIENT_ID;
       }
 
-      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name)).toEqual(["APP_SECRET"]);
     });
 
     test("auto-derives PUBLIC_URL from the configured domain", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
       });
@@ -916,9 +966,9 @@ describe("CloudflareAdapter", () => {
       );
 
       const run = createMockRun();
-      await adapter.secrets(ctx, run);
+      await deployed(adapter, fs, ctx, run);
 
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const bindings = sent(fs, shell);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.text).toBe("https://lore.alepha.dev");
     });
@@ -926,7 +976,7 @@ describe("CloudflareAdapter", () => {
     test("honors an explicit PUBLIC_URL over the derived one", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
       });
@@ -937,15 +987,15 @@ describe("CloudflareAdapter", () => {
       );
 
       const run = createMockRun();
-      await adapter.secrets(ctx, run);
+      await deployed(adapter, fs, ctx, run);
 
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const bindings = sent(fs, shell);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.text).toBe("https://custom.example.com");
     });
 
     test("skips when no env file exists", async ({ expect }) => {
-      const { adapter, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -959,13 +1009,14 @@ describe("CloudflareAdapter", () => {
       });
 
       const run = createMockRun();
-      await adapter.secrets(ctx, run);
+      await deployed(adapter, fs, ctx, run);
 
-      expect(api.secrets.size).toBe(0);
+      expect(sent(fs, shell)).toEqual([]);
+      expect(shell.wasCalledMatching(/--secrets-file/)).toBe(false);
     });
 
     test("skips comments and empty lines", async ({ expect }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -984,103 +1035,16 @@ describe("CloudflareAdapter", () => {
       );
 
       const run = createMockRun();
-      await adapter.secrets(ctx, run);
+      await deployed(adapter, fs, ctx, run);
 
-      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name)).toEqual(["ONLY_SECRET"]);
-    });
-
-    test("skips PATCH when ALEPHA_SECRETS_HASH binding matches", async ({
-      expect,
-    }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
-      const ctx = makeCtx(naming, {
-        entry: { root: "/project", server: "src/main.ts" },
-        resources: {
-          hasDatabase: false,
-          hasBucket: false,
-          hasAnalytics: false,
-          hasKV: false,
-          hasQueue: false,
-          hasCron: false,
-        },
-      });
-
-      await fs.writeFile(
-        "/project/.env.production",
-        ["APP_SECRET=my-secret", "GOOGLE_API_KEY=sk-123"].join("\n"),
-      );
-
-      const run = createMockRun();
-
-      // First push lands the hash binding on the worker.
-      await adapter.secrets(ctx, run);
-
-      const firstBindings = api.bindings.get("acme-portal-production") ?? [];
-      const hashBinding = firstBindings.find(
-        (b) => b.name === "ALEPHA_SECRETS_HASH",
-      );
-      expect(hashBinding?.type).toBe("plain_text");
-      // Salted + slow-KDF fingerprint (`v2:<salt>:<digest>`) — a bare sha256
-      // of the values in a readable binding is an offline brute-force oracle.
-      expect(hashBinding?.text).toMatch(/^v2:[a-f0-9]{32}:[a-f0-9]{64}$/);
-      expect(hashBinding?.text).not.toContain("my-secret");
-
-      // Mutate the bindings to a sentinel set we can watch for accidental
-      // overwrites. If the second `secrets()` call decides to PATCH again,
-      // the sentinel would be wiped.
-      api.bindings.set("acme-portal-production", [
-        ...firstBindings,
-        { type: "plain_text", name: "__SENTINEL__", text: "untouched" },
-      ]);
-
-      await adapter.secrets(ctx, run);
-
-      const afterBindings = api.bindings.get("acme-portal-production") ?? [];
-      expect(afterBindings.find((b) => b.name === "__SENTINEL__")?.text).toBe(
-        "untouched",
-      );
-    });
-
-    test("PATCHes when secrets changed (hash mismatch)", async ({ expect }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
-      const ctx = makeCtx(naming, {
-        entry: { root: "/project", server: "src/main.ts" },
-        resources: {
-          hasDatabase: false,
-          hasBucket: false,
-          hasAnalytics: false,
-          hasKV: false,
-          hasQueue: false,
-          hasCron: false,
-        },
-      });
-
-      await fs.writeFile("/project/.env.production", "APP_SECRET=v1");
-
-      const run = createMockRun();
-      await adapter.secrets(ctx, run);
-      const firstHash = api.bindings
-        .get("acme-portal-production")
-        ?.find((b) => b.name === "ALEPHA_SECRETS_HASH")?.text;
-
-      // Same key, different value → hash should change → fresh PATCH.
-      await fs.writeFile("/project/.env.production", "APP_SECRET=v2");
-      await adapter.secrets(ctx, run);
-
-      const secondHash = api.bindings
-        .get("acme-portal-production")
-        ?.find((b) => b.name === "ALEPHA_SECRETS_HASH")?.text;
-
-      expect(firstHash).toBeTruthy();
-      expect(secondHash).toBeTruthy();
-      expect(secondHash).not.toBe(firstHash);
     });
 
     test("pushes manifest `publicVars` as plain_text, everything else encrypted", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -1109,9 +1073,9 @@ describe("CloudflareAdapter", () => {
         ].join("\n"),
       );
 
-      await adapter.secrets(ctx, createMockRun());
+      await deployed(adapter, fs, ctx, createMockRun());
 
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const bindings = sent(fs, shell);
       const byName = Object.fromEntries(bindings.map((b) => [b.name, b]));
 
       // Declassified → readable and editable in the dashboard.
@@ -1127,7 +1091,7 @@ describe("CloudflareAdapter", () => {
     test("does not declassify a key the app never vouched for", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -1152,70 +1116,16 @@ describe("CloudflareAdapter", () => {
         ["APP_SECRET=my-secret", 'SIGIL_CONFIG={"project":"demo"}'].join("\n"),
       );
 
-      await adapter.secrets(ctx, createMockRun());
+      await deployed(adapter, fs, ctx, createMockRun());
 
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
-      expect(
-        bindings
-          .filter((b) => b.name !== "ALEPHA_SECRETS_HASH")
-          .every((b) => b.type === "secret_text"),
-      ).toBe(true);
-    });
-
-    test("re-PATCHes when a key is declassified without its value changing", async ({
-      expect,
-    }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
-      const ctx = makeCtx(naming, {
-        entry: { root: "/project", server: "src/main.ts" },
-        resources: {
-          hasDatabase: false,
-          hasBucket: false,
-          hasAnalytics: false,
-          hasKV: false,
-          hasQueue: false,
-          hasCron: false,
-        },
-      });
-
-      await fs.writeFile(
-        "/project/dist/manifest.json",
-        JSON.stringify({ env: ["SIGIL_CONFIG"] }),
-      );
-      await fs.writeFile(
-        "/project/.env.production",
-        'SIGIL_CONFIG={"project":"demo"}',
-      );
-
-      const run = createMockRun();
-      await adapter.secrets(ctx, run);
-      expect(
-        api.bindings
-          .get("acme-portal-production")
-          ?.find((b) => b.name === "SIGIL_CONFIG")?.type,
-      ).toBe("secret_text");
-
-      // Only the annotation changes — the value is byte-identical. A
-      // fingerprint over values alone would match here and skip the PATCH,
-      // leaving the binding encrypted until some unrelated secret changed.
-      await fs.writeFile(
-        "/project/dist/manifest.json",
-        JSON.stringify({ env: ["SIGIL_CONFIG"], publicVars: ["SIGIL_CONFIG"] }),
-      );
-      await adapter.secrets(ctx, run);
-
-      const after = api.bindings.get("acme-portal-production") ?? [];
-      expect(after.find((b) => b.name === "SIGIL_CONFIG")?.type).toBe(
-        "plain_text",
-      );
-      // And it is written once, not inherited as a secret AND upserted as a var.
-      expect(after.filter((b) => b.name === "SIGIL_CONFIG")).toHaveLength(1);
+      const bindings = sent(fs, shell);
+      expect(bindings.every((b) => b.type === "secret_text")).toBe(true);
     });
 
     test("pushes the auto-derived PUBLIC_URL as plain_text", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
+      const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
         envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
       });
@@ -1225,15 +1135,134 @@ describe("CloudflareAdapter", () => {
       // plaintext regardless — it is the address the app answers on.
       await fs.writeFile("/project/.env.production", "APP_SECRET=my-secret");
 
-      await adapter.secrets(ctx, createMockRun());
+      await deployed(adapter, fs, ctx, createMockRun());
 
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const bindings = sent(fs, shell);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.type).toBe("plain_text");
       expect(publicUrl?.text).toBe("https://lore.alepha.dev");
       expect(bindings.find((b) => b.name === "APP_SECRET")?.type).toBe(
         "secret_text",
       );
+    });
+
+    describe("one upload (#Q2459)", () => {
+      /**
+       * The secrets used to follow the upload as a settings PATCH: a second
+       * Worker version on every `up`, and a window in which the new build ran
+       * against the previous secret set, or, on a first deploy, with none.
+       */
+      test("a first deploy sends its secrets in the wrangler deploy, and patches nothing", async ({
+        expect,
+      }) => {
+        const { adapter, fs, naming, shell, api } = createTestEnv();
+        const ctx = makeCtx(naming);
+        await fs.writeFile(
+          "/project/.env.production",
+          ["APP_SECRET=s1", "GOOGLE_API_KEY=g1"].join("\n"),
+        );
+
+        await deployed(adapter, fs, ctx, createMockRun());
+
+        const deploys = shell.getCallsMatching(/^wrangler deploy/);
+        expect(deploys).toHaveLength(1);
+        const file = /--secrets-file=(\S+)/.exec(deploys[0]!.command)?.[1];
+        expect(file).toBeTruthy();
+        // Owner-only, and gone once wrangler has read it.
+        expect(fs.wasWrittenWithMode(file as string, 0o600)).toBe(true);
+        expect(fs.wasDeleted(file as string)).toBe(true);
+        expect(fs.getFileContent(file as string)).toBeUndefined();
+        expect(
+          Object.fromEntries(sent(fs, shell).map((b) => [b.name, b.text])),
+        ).toEqual({ APP_SECRET: "s1", GOOGLE_API_KEY: "g1" });
+        // No second step, so no second version.
+        expect(api.bindings.size).toBe(0);
+        await expect(adapter.secrets(ctx, createMockRun())).resolves.toBe(
+          undefined,
+        );
+        expect(api.bindings.size).toBe(0);
+      });
+
+      test("a redeploy carries a rotated value in the same single upload", async ({
+        expect,
+      }) => {
+        const { adapter, fs, naming, shell, api } = createTestEnv();
+        const ctx = makeCtx(naming);
+
+        await fs.writeFile("/project/.env.production", "APP_SECRET=v1");
+        await deployed(adapter, fs, ctx, createMockRun());
+        await fs.writeFile("/project/.env.production", "APP_SECRET=v2");
+        await deployed(adapter, fs, ctx, createMockRun());
+
+        expect(shell.getCallsMatching(/^wrangler deploy/)).toHaveLength(2);
+        expect(sent(fs, shell)).toEqual([
+          { type: "secret_text", name: "APP_SECRET", text: "v2" },
+        ]);
+        expect(api.bindings.size).toBe(0);
+      });
+
+      test("a key declassified since the last deploy leaves the secrets file for the config vars", async ({
+        expect,
+      }) => {
+        const { adapter, fs, naming, shell } = createTestEnv();
+        const ctx = makeCtx(naming);
+        await fs.writeFile(
+          "/project/dist/manifest.json",
+          JSON.stringify({ env: ["APP_SECRET", "SIGIL_CONFIG"] }),
+        );
+        await fs.writeFile(
+          "/project/.env.production",
+          ["APP_SECRET=s1", 'SIGIL_CONFIG={"project":"demo"}'].join("\n"),
+        );
+        await deployed(adapter, fs, ctx, createMockRun());
+        expect(
+          sent(fs, shell).find((b) => b.name === "SIGIL_CONFIG")?.type,
+        ).toBe("secret_text");
+
+        await fs.writeFile(
+          "/project/dist/manifest.json",
+          JSON.stringify({
+            env: ["APP_SECRET", "SIGIL_CONFIG"],
+            publicVars: ["SIGIL_CONFIG"],
+          }),
+        );
+        await deployed(adapter, fs, ctx, createMockRun());
+
+        const after = sent(fs, shell);
+        expect(after.filter((b) => b.name === "SIGIL_CONFIG")).toEqual([
+          {
+            type: "plain_text",
+            name: "SIGIL_CONFIG",
+            text: '{"project":"demo"}',
+          },
+        ]);
+      });
+
+      test("keeps the vars the build wrote, with the explicit value on top", async ({
+        expect,
+      }) => {
+        const { adapter, fs, naming } = createTestEnv();
+        const ctx = makeCtx(naming, {
+          envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+        });
+        await fs.writeFile(
+          "/project/dist/wrangler.jsonc",
+          JSON.stringify({
+            name: "acme-portal-production",
+            vars: { BUILT: "kept", PUBLIC_URL: "https://stale.example" },
+          }),
+        );
+
+        await adapter.deploy(ctx, createMockRun());
+
+        const config = JSON.parse(
+          fs.getFileContent("/project/dist/wrangler.jsonc") as string,
+        );
+        expect(config.vars).toEqual({
+          BUILT: "kept",
+          PUBLIC_URL: "https://lore.alepha.dev",
+        });
+      });
     });
   });
 
