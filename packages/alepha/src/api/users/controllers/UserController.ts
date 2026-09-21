@@ -5,6 +5,7 @@ import { $action, okSchema } from "alepha/server";
 import { completePasswordResetRequestSchema } from "../schemas/completePasswordResetRequestSchema.ts";
 import { completeRegistrationRequestSchema } from "../schemas/completeRegistrationRequestSchema.ts";
 import { passwordResetIntentResponseSchema } from "../schemas/passwordResetIntentResponseSchema.ts";
+import { refusedRealmSchema } from "../schemas/refusedRealmSchema.ts";
 import { registerQuerySchema } from "../schemas/registerQuerySchema.ts";
 import { registerRequestSchema } from "../schemas/registerRequestSchema.ts";
 import { registrationIntentResponseSchema } from "../schemas/registrationIntentResponseSchema.ts";
@@ -66,6 +67,7 @@ export class UserController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: z.object({
         email: z.email(),
@@ -116,6 +118,7 @@ export class UserController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
         method: z
           .enum(["code", "link"])
           .describe(
@@ -160,6 +163,7 @@ export class UserController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: z.object({
         email: z.email(),
@@ -195,6 +199,7 @@ export class UserController {
       query: z.object({
         email: z.email(),
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: z.object({
         verified: z.boolean(),

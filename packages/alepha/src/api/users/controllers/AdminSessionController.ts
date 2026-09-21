@@ -2,6 +2,7 @@ import { $inject, z } from "alepha";
 import { $secure, SecurityProvider } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
+import { refusedRealmSchema } from "../schemas/refusedRealmSchema.ts";
 import { sessionQuerySchema } from "../schemas/sessionQuerySchema.ts";
 import { sessionResourceSchema } from "../schemas/sessionResourceSchema.ts";
 import { SessionCrudService } from "../services/SessionCrudService.ts";
@@ -23,6 +24,7 @@ export class AdminSessionController {
     schema: {
       query: sessionQuerySchema.extend({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: z.page(sessionResourceSchema),
     },
@@ -46,6 +48,7 @@ export class AdminSessionController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: z.array(z.text()),
     },
@@ -69,6 +72,7 @@ export class AdminSessionController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: sessionResourceSchema,
     },
@@ -94,6 +98,7 @@ export class AdminSessionController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: okSchema,
     },
@@ -118,6 +123,7 @@ export class AdminSessionController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: z.object({
         ids: z.array(z.uuid()).min(1).max(1000),

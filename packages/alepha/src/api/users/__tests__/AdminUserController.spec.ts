@@ -258,18 +258,30 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     );
 
     // The payload as it arrives on the wire. `validateRequest` runs it through
-    // the route's body schema before the handler ever sees it, which is where
-    // the two fields have to disappear - the handler writes what it is given
-    // straight to the row.
-    const body = alepha.codec.validate(updateUserSchema, {
-      firstName: "Stay",
-      realm: "somebody-elses-realm",
-    });
+    // the route's body schema before the handler ever sees it, and the
+    // handler writes what it is given straight to the row. `realm` used to be
+    // stripped there, silently (#Q1348); it is refused now, with a message
+    // naming the parameter the API does read (#Q2453). Either way it must
+    // never reach the row.
+    expect(() =>
+      alepha.codec.validate(updateUserSchema, {
+        firstName: "Stay",
+        realm: "somebody-elses-realm",
+      }),
+    ).toThrow(/userRealmName/);
 
-    expect(body).not.toHaveProperty("realm");
+    await expect(
+      controller.updateUser(
+        {
+          params: { id: created.id },
+          body: { firstName: "Stay", realm: "somebody-elses-realm" } as never,
+        },
+        asAdmin,
+      ),
+    ).rejects.toThrow(/userRealmName/);
 
     const result = await controller.updateUser(
-      { params: { id: created.id }, body },
+      { params: { id: created.id }, body: { firstName: "Stay" } },
       asAdmin,
     );
 

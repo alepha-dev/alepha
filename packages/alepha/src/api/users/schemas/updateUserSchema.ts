@@ -1,6 +1,7 @@
 import type { Infer } from "alepha";
 
 import { users } from "../entities/users.ts";
+import { refusedRealmSchema } from "./refusedRealmSchema.ts";
 
 /**
  * What an admin may change on a user.
@@ -22,6 +23,9 @@ export const updateUserSchema = users.insertSchema
     updatedAt: true,
     realm: true,
   })
-  .partial();
+  .partial()
+  // Omitted above so it cannot be written, and refused here so it cannot be
+  // sent and silently ignored either.
+  .extend({ realm: refusedRealmSchema });
 
 export type UpdateUser = Infer<typeof updateUserSchema>;

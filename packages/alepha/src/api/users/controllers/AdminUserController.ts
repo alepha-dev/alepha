@@ -3,6 +3,7 @@ import { $secure, SecurityProvider } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { createUserSchema } from "../schemas/createUserSchema.ts";
+import { refusedRealmSchema } from "../schemas/refusedRealmSchema.ts";
 import { updateUserSchema } from "../schemas/updateUserSchema.ts";
 import { userQuerySchema } from "../schemas/userQuerySchema.ts";
 import { userResourceSchema } from "../schemas/userResourceSchema.ts";
@@ -26,6 +27,7 @@ export class AdminUserController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: z.array(
         z.object({
@@ -58,6 +60,7 @@ export class AdminUserController {
     schema: {
       query: userQuerySchema.extend({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: z.page(userResourceSchema),
     },
@@ -84,6 +87,7 @@ export class AdminUserController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: userResourceSchema,
     },
@@ -106,6 +110,7 @@ export class AdminUserController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: createUserSchema,
       response: userResourceSchema,
@@ -132,6 +137,7 @@ export class AdminUserController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: updateUserSchema,
       response: userResourceSchema,
@@ -161,6 +167,7 @@ export class AdminUserController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: z.object({
         password: z.string().min(1),
@@ -192,6 +199,7 @@ export class AdminUserController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: okSchema,
     },
@@ -218,6 +226,7 @@ export class AdminUserController {
     schema: {
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       body: z.object({
         ids: z.array(z.uuid()).min(1).max(1000),

@@ -4,6 +4,7 @@ import { $action, okSchema } from "alepha/server";
 
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
 import { identityResourceSchema } from "../schemas/identityResourceSchema.ts";
+import { refusedRealmSchema } from "../schemas/refusedRealmSchema.ts";
 import { IdentityService } from "../services/IdentityService.ts";
 
 export class AdminIdentityController {
@@ -23,6 +24,7 @@ export class AdminIdentityController {
     schema: {
       query: identityQuerySchema.extend({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: z.page(identityResourceSchema),
     },
@@ -49,6 +51,7 @@ export class AdminIdentityController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: identityResourceSchema,
     },
@@ -74,6 +77,7 @@ export class AdminIdentityController {
       }),
       query: z.object({
         userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
       }),
       response: okSchema,
     },
