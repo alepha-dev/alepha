@@ -1,10 +1,58 @@
 import { $inject, AlephaError } from "alepha";
+import type { AlephaMeta } from "alepha";
+import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
-import { BuildSlices } from "../services/BuildSlices.ts";
-import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
+import type { BuildRuntime } from "../atoms/buildOptions.ts";
+import type { ImageOptions } from "../atoms/imageOptions.ts";
+import { AlephaCliUtils } from "./AlephaCliUtils.ts";
+import { BuildSlices } from "./BuildSlices.ts";
+
+/**
+ * Everything `alepha image` hands the builder: what was built, where, and how
+ * the author wants it packaged.
+ */
+export interface ImageContext {
+  /**
+   * The app directory — where `alepha.config.ts` lives, and where a generated
+   * Dockerfile lands so the author can commit and edit it.
+   */
+  root: string;
+
+  /**
+   * `dist` unless the build renamed it. The docker build context.
+   */
+  distDir: string;
+
+  /**
+   * The PRIMARY slice, whose entry wrapper the image runs. Same rule as the
+   * manifest and every deployer: the first declared runtime.
+   */
+  runtime: BuildRuntime;
+
+  /**
+   * The author's `image:` configuration.
+   */
+  image: ImageOptions;
+
+  /**
+   * The name of a compiled binary inside `dist/`, when one was compiled.
+   * Switches the Dockerfile to the minimal-base variant.
+   */
+  compile?: string;
+
+  /**
+   * `--tag`'s value, or true for `latest`. Absent writes the Dockerfile and
+   * builds nothing.
+   */
+  build?: boolean | string;
+
+  run: RunnerMethod;
+
+  meta?: AlephaMeta;
+}
 
 /**
  * What the compile Dockerfile needs: the binary's name and the base image.
@@ -31,62 +79,115 @@ interface ResolvedCompile {
  * - Copies migrations directory if it exists
  * - Builds Docker image when `--image` flag is provided (standard mode)
  */
-export class BuildDockerTask extends BuildTask {
+export class DockerImageBuilder {
   protected readonly slices = $inject(BuildSlices);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly log = $logger();
 
-  async run(ctx: BuildTaskContext): Promise<void> {
-    if (ctx.options.target !== "docker") {
-      return;
-    }
-
-    const distDir = ctx.options.output?.dist ?? "dist";
-    // The PRIMARY slice. An image runs one process from one entry point, and
-    // the first declared runtime is what the manifest names and what a
-    // deployer spawns — so the image agrees with them by construction rather
-    // than picking for itself.
-    const runtime = this.slices.primary(this.slices.fromOptions(ctx.options));
+  /**
+   * Write the Dockerfile when the app owns none, then build the image.
+   */
+  async run(ctx: ImageContext): Promise<void> {
+    const distDir = ctx.distDir;
     const compile = this.resolveCompile(ctx);
 
     const dockerFrom =
-      ctx.options.docker?.from ??
-      (runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
+      ctx.image.from ??
+      (ctx.runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
     const dockerCommand =
-      ctx.options.docker?.command ?? (runtime === "bun" ? "bun" : "node");
+      ctx.image.command ?? (ctx.runtime === "bun" ? "bun" : "node");
+
+    const dockerfile = this.fs.join(ctx.root, "Dockerfile");
+    const owned = await this.fs.exists(dockerfile);
 
     await ctx.run({
-      name: "generate deploy config (docker)",
+      name: owned ? "check the Dockerfile" : "generate the Dockerfile",
       handler: async () => {
         const migrationsCopied = await this.copyMigrations(ctx.root, distDir);
-        const hasDeps = await this.hasRuntimeDeps(ctx.root, distDir);
+        if (owned) {
+          /*
+            ⚠️ **Reused untouched, and a mismatch WARNS rather than fails.**
+            The file is the author's once it exists — that is the whole point
+            of generating it into the app directory rather than into `dist/`,
+            which the build wipes. Failing on a difference would make an
+            intentional edit feel like a bug.
+
+            The warning exists only so the drift is not silent: a committed
+            Dockerfile stops tracking `runtimeVersion` the moment
+            `engines.node` moves, and nothing else would ever say so.
+          */
+          await this.warnOnDrift(dockerfile, ctx);
+          return;
+        }
         await this.writeDockerfile(ctx.root, distDir, {
           compile,
           standard: {
             image: dockerFrom,
             command: dockerCommand,
-            entry: this.slices.entryFileName(runtime),
+            entry: this.slices.entryFileName(ctx.runtime),
           },
           hasMigrations: migrationsCopied,
-          hasDeps,
-          install: ctx.options.docker?.install ?? [],
-          env: ctx.options.docker?.env ?? {},
-          volumes: ctx.options.docker?.volumes ?? [],
+          hasDeps: await this.hasRuntimeDeps(ctx.root, distDir),
+          install: ctx.image.install ?? [],
+          env: ctx.image.env ?? {},
+          volumes: ctx.image.volumes ?? [],
           user: this.resolveUser(ctx, compile),
           labels: {
             ...this.runtimeLabel(ctx),
             ...this.staticOciLabels(ctx),
           },
+          facts: this.dockerfileHeaderFacts(ctx),
         });
       },
     });
 
-    // In compile mode the image needs the binary, which BuildCompileTask
-    // produces later in the pipeline and then builds the image itself.
-    if (ctx.flags?.image && !compile) {
+    if (ctx.build) {
       await this.buildDockerImage(ctx, distDir);
     }
+  }
+
+  /**
+   * Warn when a committed Dockerfile disagrees with what this build declares.
+   *
+   * ⚠️ **Never throws.** Only the facts the generated header records are
+   * compared, so an author who rewrote the file entirely gets one warning and
+   * not a wall of them.
+   */
+  protected async warnOnDrift(
+    dockerfile: string,
+    ctx: ImageContext,
+  ): Promise<void> {
+    let body: string;
+    try {
+      body = (await this.fs.readFile(dockerfile)).toString();
+    } catch {
+      return;
+    }
+    const declared = this.dockerfileHeaderFacts(ctx);
+    const stale = Object.entries(declared).filter(
+      ([, value]) => value && !body.includes(value),
+    );
+    if (stale.length === 0) {
+      return;
+    }
+    this.log.warn(
+      `${dockerfile} was generated from an earlier build and no longer matches it: ` +
+        `${stale.map(([key, value]) => `${key} is now ${value}`).join(", ")}. ` +
+        "The file is yours: update it, or delete it to regenerate.",
+    );
+  }
+
+  /**
+   * The manifest facts the generated header records, so a later build can say
+   * which of them moved.
+   */
+  protected dockerfileHeaderFacts(ctx: ImageContext): Record<string, string> {
+    return {
+      runtime: ctx.runtime,
+      entry: ctx.compile ?? this.slices.entryFileName(ctx.runtime),
+    };
   }
 
   /**
@@ -97,14 +198,14 @@ export class BuildDockerTask extends BuildTask {
    * The flag and the config were already merged and validated by the build
    * command (runtime, target, binary name); this only reads the result.
    */
-  protected resolveCompile(ctx: BuildTaskContext): ResolvedCompile | null {
-    const name = ctx.flags?.compile;
+  protected resolveCompile(ctx: ImageContext): ResolvedCompile | null {
+    const name = ctx.compile;
     if (!name) {
       return null;
     }
     return {
       name,
-      base: ctx.options.docker?.from ?? "gcr.io/distroless/static-debian12",
+      base: ctx.image.from ?? "gcr.io/distroless/static-debian12",
     };
   }
 
@@ -122,10 +223,10 @@ export class BuildDockerTask extends BuildTask {
    * is still honoured there.
    */
   protected resolveUser(
-    ctx: BuildTaskContext,
+    ctx: ImageContext,
     compile: ResolvedCompile | null,
   ): string | null {
-    const configured = ctx.options.docker?.user;
+    const configured = ctx.image.user;
     if (configured) {
       return configured;
     }
@@ -246,11 +347,27 @@ export class BuildDockerTask extends BuildTask {
       volumes: string[];
       user: string | null;
       labels: Record<string, string>;
+      /**
+       * The manifest facts this file was generated from, recorded in its
+       * header so a later build can say which of them have moved.
+       */
+      facts: Record<string, string>;
     },
   ): Promise<void> {
+    /*
+      ⚠️ **Not "DO NOT MODIFY".** This file lands in the app directory to be
+      committed and edited: generating it once and then getting out of the way
+      is the whole point. The header says where it came from, and names the
+      facts `alepha image` compares against on a later run so the drift it
+      warns about is legible rather than mysterious.
+    */
     const header =
-      "# This file was automatically generated. DO NOT MODIFY.\n" +
-      "# Changes to this file will be lost when the code is regenerated.\n";
+      "# Generated by `alepha image`, from this build's manifest:\n" +
+      Object.entries(opts.facts)
+        .map(([key, value]) => `#   ${key}: ${value}\n`)
+        .join("") +
+      "# It is yours now. Edit it freely; `alepha image` reuses it untouched\n" +
+      "# and only warns when the facts above stop matching a later build.\n";
 
     const migrationsLine = opts.hasMigrations
       ? "COPY migrations ./migrations\n"
@@ -317,10 +434,15 @@ ${userLine}CMD ["${command}", "${entry}"]
 `;
     }
 
-    await this.fs.writeFile(
-      this.fs.join(root, distDir, "Dockerfile"),
-      dockerfile,
-    );
+    /*
+      ⚠️ **In the APP directory, beside `alepha.config.ts`** — not in `dist/`,
+      which `alepha build` wipes on every run. A file that cannot survive a
+      build cannot be committed or edited, and this one is meant to be both.
+
+      A monorepo has several apps, so the repository root would be wrong for
+      the same reason.
+    */
+    await this.fs.writeFile(this.fs.join(root, "Dockerfile"), dockerfile);
   }
 
   /**
@@ -347,14 +469,10 @@ ${userLine}CMD ["${command}", "${entry}"]
    * at push time, where the refusal can name itself, rather than at build
    * time, which would be a behaviour change of its own.
    */
-  protected runtimeLabel(ctx: BuildTaskContext): Record<string, string> {
+  protected runtimeLabel(ctx: ImageContext): Record<string, string> {
     // Same resolution BuildManifestTask uses, so the label and the
     // manifest cannot disagree about one build.
-    return {
-      "dev.alepha.runtime": this.slices.primary(
-        this.slices.fromOptions(ctx.options),
-      ),
-    };
+    return { "dev.alepha.runtime": ctx.runtime };
   }
 
   /**
@@ -369,8 +487,8 @@ ${userLine}CMD ["${command}", "${entry}"]
    *
    * A field left unset emits no label, never an empty one.
    */
-  protected staticOciLabels(ctx: BuildTaskContext): Record<string, string> {
-    const imageConfig = ctx.options.docker?.image;
+  protected staticOciLabels(ctx: ImageContext): Record<string, string> {
+    const imageConfig = ctx.image.image;
     if (!imageConfig?.oci) {
       return {};
     }
@@ -438,16 +556,15 @@ ${userLine}CMD ["${command}", "${entry}"]
   }
 
   /**
-   * `docker build` the image `--image` asks for. Public because in compile
+   * `docker build` the image. Public because in compile
    * mode `BuildCompileTask` calls it once the binary exists.
    */
   public async buildDockerImage(
-    ctx: BuildTaskContext,
+    ctx: ImageContext,
     distDir: string,
   ): Promise<void> {
-    const imageConfig = ctx.options.docker?.image;
-    const flagValue =
-      typeof ctx.flags?.image === "string" ? ctx.flags.image : null;
+    const imageConfig = ctx.image.image;
+    const flagValue = typeof ctx.build === "string" ? ctx.build : null;
 
     let imageTag: string;
     let version: string;
@@ -497,7 +614,15 @@ ${userLine}CMD ["${command}", "${entry}"]
     }
 
     const argsStr = args.length > 0 ? `${args.join(" ")} ` : "";
-    const dockerCmd = `docker build ${argsStr}-t ${imageTag} ${distDir}`;
+    /*
+      ⚠️ **The Dockerfile is in the app directory, the CONTEXT is `dist/`.**
+      Both halves matter. The file has to live where it can be committed and
+      edited, and the context has to be `dist/` so the Dockerfile's `COPY . .`
+      keeps meaning the built output — a context of the app directory would
+      drag `src/` and `node_modules/` into every build.
+    */
+    const dockerfile = this.fs.join(ctx.root, "Dockerfile");
+    const dockerCmd = `docker build ${argsStr}-f ${dockerfile} -t ${imageTag} ${distDir}`;
 
     await ctx.run(dockerCmd, {
       alias: `docker build ${imageTag}`,

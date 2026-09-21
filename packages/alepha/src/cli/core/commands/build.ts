@@ -20,7 +20,6 @@ import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
-import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
@@ -66,12 +65,6 @@ export class BuildCommand {
     $inject(BuildStaticTask),
     $inject(BuildHeadersTask),
     $inject(BuildCompressTask),
-    // ⚠️ After every task that writes into `dist/public`, because with
-    // `--image` it builds the standard image right here, from `dist/` as it
-    // stands. Before `_headers` and compress (where it used to run), that
-    // image shipped without `_headers` and without a single `.br` sidecar,
-    // while the same build's `dist/` had both.
-    $inject(BuildDockerTask),
   ];
 
   /**
@@ -154,13 +147,6 @@ export class BuildCommand {
         .meta({ aliases: ["r"] })
         .describe(
           "Runtimes to link the server for, comma-separated and in order: node, bun, workerd. The first is the primary — what the manifest names, what dist/package.json points at, and what a deployer spawns. e.g. --runtime node,workerd",
-        )
-        .optional(),
-      image: z
-        .union([z.boolean(), z.text()])
-        .meta({ aliases: ["i"] })
-        .describe(
-          "Build Docker image. Use -i for latest, -i=<version> for specific version",
         )
         .optional(),
       prebuilt: z
@@ -249,13 +235,6 @@ export class BuildCommand {
 
       const { target } = options;
 
-      // Validate --image requires --target=docker
-      if (flags.image && target !== "docker") {
-        throw new AlephaError(
-          `Flag '--image' requires '--target=docker', got '${target ?? "bare"}'`,
-        );
-      }
-
       this.log.trace("Build configuration", {
         target,
         runtimes: options.runtimes,
@@ -335,7 +314,7 @@ export class BuildCommand {
         meta,
         manifest,
         platformOptions,
-        flags: { image: flags.image, prebuilt: flags.prebuilt },
+        flags: { prebuilt: flags.prebuilt },
       };
 
       for (const task of this.pipeline) {

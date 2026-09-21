@@ -7,11 +7,12 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import type { BuildOptions } from "../atoms/buildOptions.ts";
+import type { ImageOptions } from "../atoms/imageOptions.ts";
 import { BuildCommand } from "../commands/build.ts";
-import type { AppEntry } from "../providers/AppEntryProvider.ts";
-import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
-import type { BuildTaskContext } from "../tasks/BuildTask.ts";
+import {
+  DockerImageBuilder,
+  type ImageContext,
+} from "../services/DockerImageBuilder.ts";
 
 /**
  * Exposes the pipeline's order, which is the whole of the next spec.
@@ -22,16 +23,24 @@ class TestBuildCommand extends BuildCommand {
   }
 }
 
-describe("BuildDockerTask", () => {
-  it("runs after every task that writes into dist/public", ({ expect }) => {
-    // With `--image` the standard image is built inside this task, from
-    // `dist/` as it stands at that moment. It used to run before the
-    // `_headers` and compress tasks, and the image it built had neither
-    // `dist/public/_headers` nor a single `.br` sidecar (found by the live
-    // proof of epic #E49 on a real `docker run`).
+describe("DockerImageBuilder", () => {
+  /**
+   * ⚠️ Neither the docker step nor the compile step is in the build pipeline
+   * any more. Both are commands reading `./dist`: `alepha image` and `alepha
+   * compile`.
+   *
+   * The order that used to matter here — the image being built after every
+   * task that writes into `dist/public`, found by the live proof of epic #E49
+   * when an image shipped with no `_headers` and no `.br` sidecar — is now
+   * guaranteed by construction, because the build is over before either
+   * command runs.
+   */
+  it("is not a build task any more", ({ expect }) => {
     const order = Alepha.create().inject(TestBuildCommand).order();
-    const at = (name: string) => order.indexOf(name);
-
+    expect(order).not.toContain("BuildDockerTask");
+    expect(order).not.toContain("BuildCompileTask");
+    // The tasks that write into `dist/public` are still there, and still
+    // before the end of the build.
     for (const writer of [
       "BuildClientTask",
       "BuildPrerenderTask",
@@ -39,15 +48,8 @@ describe("BuildDockerTask", () => {
       "BuildHeadersTask",
       "BuildCompressTask",
     ]) {
-      expect(at(writer), writer).toBeGreaterThanOrEqual(0);
-      expect(at(writer), writer).toBeLessThan(at("BuildDockerTask"));
+      expect(order, writer).toContain(writer);
     }
-    // ⚠️ And there is nothing after it. The compile step used to be the last
-    // task in this pipeline; it is `alepha compile` now, a command reading
-    // `./dist`, so the build no longer has a step that consumes what this one
-    // wrote.
-    expect(order).not.toContain("BuildCompileTask");
-    expect(at("BuildDockerTask")).toBe(order.length - 1);
   });
 
   const createTestEnv = () => {
@@ -57,7 +59,7 @@ describe("BuildDockerTask", () => {
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const shell = alepha.inject(MemoryShellProvider);
-    const task = alepha.inject(BuildDockerTask);
+    const task = alepha.inject(DockerImageBuilder);
 
     return { alepha, fs, shell, task };
   };
@@ -67,13 +69,15 @@ describe("BuildDockerTask", () => {
    * that a per-line regex cannot express.
    */
   const readDockerfile = (fs: MemoryFileSystemProvider): string =>
-    fs.getFileContent("/project/dist/Dockerfile") ?? "";
+    // ⚠️ The APP directory, not `dist/`: the build wipes `dist/` on every run,
+    // so a file living there could never be committed or edited by hand.
+    fs.getFileContent("/project/Dockerfile") ?? "";
 
   /**
    * Minimal RunnerMethod stand-in. Strings are forwarded to the shell so
    * MemoryShellProvider records them; task objects have their handler invoked.
    */
-  const createRun = (shell: MemoryShellProvider): BuildTaskContext["run"] => {
+  const createRun = (shell: MemoryShellProvider): ImageContext["run"] => {
     const run = (async (cmd: any, options?: any) => {
       if (typeof cmd === "string") {
         await shell.run(cmd, { root: options?.root });
@@ -91,28 +95,29 @@ describe("BuildDockerTask", () => {
       }
       const result = await cmd.handler();
       return String(result ?? "");
-    }) as BuildTaskContext["run"];
+    }) as ImageContext["run"];
     run.rm = async () => "";
     run.cp = async () => "";
     run.end = () => {};
     return run;
   };
 
+  /**
+   * The context `alepha image` hands the builder: what was built, where, and
+   * how the author wants it packaged. No build options — Docker left
+   * `alepha build --target=docker`, and its config left `build` with it.
+   */
   const createCtx = (
     _fs: MemoryFileSystemProvider,
     shell: MemoryShellProvider,
-    options: BuildOptions,
-    overrides: Partial<BuildTaskContext> = {},
-  ): BuildTaskContext => ({
-    alepha: {} as any,
-    options,
-    run: createRun(shell),
+    image: ImageOptions = {},
+    overrides: Partial<ImageContext> = {},
+  ): ImageContext => ({
     root: "/project",
-    entry: { server: "/project/src/server.ts" } as AppEntry,
-    hasClient: false,
-    manifest: null,
-    platformOptions: null,
-    flags: {},
+    distDir: "dist",
+    runtime: "node",
+    image,
+    run: createRun(shell),
     ...overrides,
   });
 
@@ -125,24 +130,19 @@ describe("BuildDockerTask", () => {
         JSON.stringify({ dependencies: {} }),
       );
 
-      await task.run(
-        createCtx(fs, shell, { target: "docker", runtime: "node" }),
-      );
+      await task.run(createCtx(fs, shell, {}));
 
-      expect(fs.wasWritten("/project/dist/Dockerfile")).toBe(true);
+      expect(fs.wasWritten("/project/Dockerfile")).toBe(true);
       expect(
-        fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
-          /FROM node:24-alpine/,
-        ),
+        fs.wasWrittenMatching("/project/Dockerfile", /FROM node:24-alpine/),
       ).toBe(true);
       // Empty deps → no install line (Vite bundled everything).
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /RUN npm install/),
+        fs.wasWrittenMatching("/project/Dockerfile", /RUN npm install/),
       ).toBe(false);
       expect(
         fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
+          "/project/Dockerfile",
           // The primary slice's entry wrapper: an image runs one process from
           // one entry point, and the first declared runtime is what the
           // manifest names, so the two agree by construction.
@@ -159,12 +159,10 @@ describe("BuildDockerTask", () => {
         JSON.stringify({ dependencies: { lodash: "^4.0.0" } }),
       );
 
-      await task.run(
-        createCtx(fs, shell, { target: "docker", runtime: "node" }),
-      );
+      await task.run(createCtx(fs, shell, {}));
 
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /RUN npm install/),
+        fs.wasWrittenMatching("/project/Dockerfile", /RUN npm install/),
       ).toBe(true);
     });
 
@@ -176,17 +174,11 @@ describe("BuildDockerTask", () => {
         JSON.stringify({ dependencies: {} }),
       );
 
-      await task.run(
-        createCtx(fs, shell, {
-          target: "docker",
-          runtime: "node",
-          docker: { install: ["wrangler", "tsx"] },
-        }),
-      );
+      await task.run(createCtx(fs, shell, { install: ["wrangler", "tsx"] }));
 
       expect(
         fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
+          "/project/Dockerfile",
           /RUN npm install --no-save --no-fund --no-audit wrangler tsx/,
         ),
       ).toBe(true);
@@ -198,44 +190,31 @@ describe("BuildDockerTask", () => {
         "/project/dist/package.json",
         JSON.stringify({ dependencies: { lodash: "^4.0.0" } }),
       );
-      await task.run(
-        createCtx(fs, shell, { target: "docker", runtime: "bun" }),
-      );
+      await task.run(createCtx(fs, shell, {}, { runtime: "bun" }));
 
       expect(
-        fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
-          /FROM oven\/bun:alpine/,
-        ),
+        fs.wasWrittenMatching("/project/Dockerfile", /FROM oven\/bun:alpine/),
       ).toBe(true);
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /RUN bun install/),
+        fs.wasWrittenMatching("/project/Dockerfile", /RUN bun install/),
       ).toBe(true);
-    });
-
-    it("does nothing when target is not docker", async () => {
-      const { fs, shell, task } = createTestEnv();
-      await task.run(createCtx(fs, shell, { target: "bare", runtime: "node" }));
-      expect(fs.wasWritten("/project/dist/Dockerfile")).toBe(false);
     });
 
     it("runs as uid 1000 and copies with a matching --chown", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
-      await task.run(
-        createCtx(fs, shell, { target: "docker", runtime: "node" }),
-      );
+      await task.run(createCtx(fs, shell, {}));
 
       expect(
         fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
+          "/project/Dockerfile",
           /^COPY --chown=1000:1000 \. \.$/m,
         ),
       ).toBe(true);
-      expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /^USER 1000$/m),
-      ).toBe(true);
+      expect(fs.wasWrittenMatching("/project/Dockerfile", /^USER 1000$/m)).toBe(
+        true,
+      );
       // `USER` lands after the install lines, which need root.
       const dockerfile = readDockerfile(fs);
       expect(dockerfile.indexOf("USER 1000")).toBeLessThan(
@@ -247,18 +226,12 @@ describe("BuildDockerTask", () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
-      await task.run(
-        createCtx(fs, shell, {
-          target: "docker",
-          runtime: "node",
-          docker: { user: "root" },
-        }),
-      );
+      await task.run(createCtx(fs, shell, { user: "root" }));
 
-      expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /^USER root$/m),
-      ).toBe(true);
-      expect(fs.wasWrittenMatching("/project/dist/Dockerfile", /--chown/)).toBe(
+      expect(fs.wasWrittenMatching("/project/Dockerfile", /^USER root$/m)).toBe(
+        true,
+      );
+      expect(fs.wasWrittenMatching("/project/Dockerfile", /--chown/)).toBe(
         false,
       );
     });
@@ -269,11 +242,7 @@ describe("BuildDockerTask", () => {
 
       await task.run(
         createCtx(fs, shell, {
-          target: "docker",
-          runtime: "node",
-          docker: {
-            env: { DATA_DIR: "/data", SERVER_HOST: "127.0.0.1" },
-          },
+          env: { DATA_DIR: "/data", SERVER_HOST: "127.0.0.1" },
         }),
       );
 
@@ -290,14 +259,10 @@ describe("BuildDockerTask", () => {
 
       await task.run(
         createCtx(fs, shell, {
-          target: "docker",
-          runtime: "node",
-          docker: {
-            env: {
-              WITH_SPACE: "a b",
-              WITH_QUOTE: 'a"b',
-              WITH_BACKSLASH: "a\\b",
-            },
+          env: {
+            WITH_SPACE: "a b",
+            WITH_QUOTE: 'a"b',
+            WITH_BACKSLASH: "a\\b",
           },
         }),
       );
@@ -312,13 +277,7 @@ describe("BuildDockerTask", () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
-      await task.run(
-        createCtx(fs, shell, {
-          target: "docker",
-          runtime: "node",
-          docker: { volumes: ["/data"] },
-        }),
-      );
+      await task.run(createCtx(fs, shell, { volumes: ["/data"] }));
 
       const dockerfile = readDockerfile(fs);
       expect(dockerfile).toContain(
@@ -337,11 +296,7 @@ describe("BuildDockerTask", () => {
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(
-        createCtx(fs, shell, {
-          target: "docker",
-          runtime: "node",
-          docker: { volumes: ["/data"], user: "root" },
-        }),
+        createCtx(fs, shell, { volumes: ["/data"], user: "root" }),
       );
 
       const dockerfile = readDockerfile(fs);
@@ -353,9 +308,7 @@ describe("BuildDockerTask", () => {
       const { fs, shell, task } = createTestEnv();
       await fs.mkdir("/project/migrations");
       await fs.writeFile("/project/migrations/001.sql", "CREATE TABLE x;");
-      await task.run(
-        createCtx(fs, shell, { target: "docker", runtime: "node" }),
-      );
+      await task.run(createCtx(fs, shell, {}));
       expect(await fs.exists("/project/dist/migrations/001.sql")).toBe(true);
     });
   });
@@ -365,12 +318,10 @@ describe("BuildDockerTask", () => {
     // `--compile` left `buildOptions` for `alepha compile`; all the Dockerfile
     // writer still needs to know is whether a binary exists and what it is
     // called.
-    const compileOptions: BuildOptions = {
-      target: "docker",
+    const compileOptions: ImageOptions = {};
+    const compiled = (name = "app"): Partial<ImageContext> => ({
       runtime: "bun",
-    };
-    const compiled = (name = "app"): Partial<BuildTaskContext> => ({
-      flags: { compile: name },
+      compile: name,
     });
 
     it("names the COPY and the ENTRYPOINT after compile.name", async () => {
@@ -394,7 +345,13 @@ describe("BuildDockerTask", () => {
       expect(await fs.exists("/project/dist/index.node.js")).toBe(true);
     });
 
-    it("does not build the image before the binary exists", async () => {
+    /**
+     * The binary already exists when `alepha image` runs: compiling is a
+     * separate command over the same `./dist`. This used to be the opposite
+     * assertion — the docker task ran mid-build, before the compile step, so
+     * it had to NOT build the image and leave that to the compile task.
+     */
+    it("builds the image, since the binary is already there", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
@@ -402,12 +359,14 @@ describe("BuildDockerTask", () => {
         createCtx(
           fs,
           shell,
-          { ...compileOptions, docker: { image: { tag: "ghcr.io/o/app" } } },
-          { flags: { image: true, compile: "app" } },
+          { ...compileOptions, image: { tag: "ghcr.io/o/app" } },
+          { build: true, compile: "app", runtime: "bun" },
         ),
       );
 
-      expect(shell.wasCalledMatching(/^docker build/)).toBe(false);
+      expect(shell.wasCalledMatching(/^docker build .*ghcr\.io\/o\/app/)).toBe(
+        true,
+      );
     });
 
     it("writes a distroless Dockerfile without bun install", async () => {
@@ -422,19 +381,19 @@ describe("BuildDockerTask", () => {
 
       expect(
         fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
+          "/project/Dockerfile",
           /FROM gcr\.io\/distroless\/static-debian12/,
         ),
       ).toBe(true);
+      expect(fs.wasWrittenMatching("/project/Dockerfile", /bun install/)).toBe(
+        false,
+      );
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /bun install/),
-      ).toBe(false);
-      expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /^COPY app \.$/m),
+        fs.wasWrittenMatching("/project/Dockerfile", /^COPY app \.$/m),
       ).toBe(true);
       expect(
         fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
+          "/project/Dockerfile",
           /ENTRYPOINT \["\/app\/app"\]/,
         ),
       ).toBe(true);
@@ -448,13 +407,13 @@ describe("BuildDockerTask", () => {
         createCtx(
           fs,
           shell,
-          { ...compileOptions, docker: { from: "alpine:3.20" } },
+          { ...compileOptions, from: "alpine:3.20" },
           compiled(),
         ),
       );
 
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /FROM alpine:3\.20/),
+        fs.wasWrittenMatching("/project/Dockerfile", /FROM alpine:3\.20/),
       ).toBe(true);
     });
 
@@ -465,7 +424,7 @@ describe("BuildDockerTask", () => {
       await task.run(createCtx(fs, shell, compileOptions, compiled()));
 
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /COPY migrations/),
+        fs.wasWrittenMatching("/project/Dockerfile", /COPY migrations/),
       ).toBe(false);
     });
 
@@ -490,10 +449,8 @@ describe("BuildDockerTask", () => {
           shell,
           {
             ...compileOptions,
-            docker: {
-              env: { DATA_DIR: "/data" },
-              volumes: ["/data"],
-            },
+            env: { DATA_DIR: "/data" },
+            volumes: ["/data"],
           },
           compiled(),
         ),
@@ -513,12 +470,12 @@ describe("BuildDockerTask", () => {
       await task.run(
         createCtx(fs, shell, {
           ...compileOptions,
-          docker: { user: "65532" },
+          user: "65532",
         }),
       );
 
       expect(
-        fs.wasWrittenMatching("/project/dist/Dockerfile", /^USER 65532$/m),
+        fs.wasWrittenMatching("/project/Dockerfile", /^USER 65532$/m),
       ).toBe(true);
     });
 
@@ -532,7 +489,7 @@ describe("BuildDockerTask", () => {
 
       expect(
         fs.wasWrittenMatching(
-          "/project/dist/Dockerfile",
+          "/project/Dockerfile",
           /COPY migrations \.\/migrations/,
         ),
       ).toBe(true);
@@ -543,19 +500,15 @@ describe("BuildDockerTask", () => {
     // The flag documents itself as "-i=<version> for specific version", but a
     // bare value was taken as the image NAME — `--image=1.3.4` produced an
     // image called `1.3.4:latest`, silently misnamed.
-    const dockerOptions: BuildOptions = {
-      target: "docker",
-      runtime: "node",
-      docker: { image: { tag: "registry.example.com/app" } },
-    } as BuildOptions;
+    const dockerOptions: ImageOptions = {
+      image: { tag: "registry.example.com/app" },
+    } as ImageOptions;
 
-    const buildWith = async (image: unknown) => {
+    const buildWith = async (image: boolean | string) => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
-      await task.run(
-        createCtx(fs, shell, dockerOptions, { flags: { image } as any }),
-      );
+      await task.run(createCtx(fs, shell, dockerOptions, { build: image }));
 
       return shell.calls.map((it) => it.command).join("\n");
     };
@@ -584,19 +537,12 @@ describe("BuildDockerTask", () => {
   });
 
   describe("OCI labels", () => {
-    const buildWithImage = async (image: BuildOptions["docker"]) => {
+    const buildWithImage = async (image: ImageOptions) => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
       shell.outputs.set("git rev-parse --short HEAD", "abc1234\n");
 
-      await task.run(
-        createCtx(
-          fs,
-          shell,
-          { target: "docker", runtime: "node", docker: image },
-          { flags: { image: "1.2.3" } as any },
-        ),
-      );
+      await task.run(createCtx(fs, shell, image, { build: "1.2.3" }));
 
       return {
         cmd: shell.calls.map((it) => it.command).join("\n"),
@@ -698,17 +644,13 @@ describe("BuildDockerTask", () => {
           fs,
           shell,
           {
-            target: "docker",
-            runtime: "bun",
-            docker: {
-              image: {
-                tag: "ghcr.io/myorg/app",
-                oci: true,
-                source: "https://github.com/myorg/app",
-              },
+            image: {
+              tag: "ghcr.io/myorg/app",
+              oci: true,
+              source: "https://github.com/myorg/app",
             },
           },
-          { flags: { compile: "app" } },
+          { compile: "app", runtime: "bun" },
         ),
       );
 
@@ -724,13 +666,14 @@ describe("BuildDockerTask", () => {
    * Alepha's own contract rather than an OCI annotation, so it is emitted
    * whether or not the app opted into `oci`.
    *
-   * Only `node` and `bun` are reachable: `static` comes from
-   * `target: "static"`, and `run` returns early on any target but `docker`.
+   * Only `node` and `bun` are reachable: `alepha image` refuses a `static`
+   * artifact (nothing to start) and a `workerd` one (only Cloudflare runs it)
+   * by name, before the builder is reached.
    */
   describe("the dev.alepha.runtime label", () => {
     const writeDockerfileFor = async (
-      options: BuildOptions,
-      overrides: Partial<BuildTaskContext> = {},
+      options: ImageOptions,
+      overrides: Partial<ImageContext> = {},
     ) => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
@@ -739,33 +682,27 @@ describe("BuildDockerTask", () => {
     };
 
     it("declares node in the standard variant, with no oci config at all", async () => {
-      const dockerfile = await writeDockerfileFor({
-        target: "docker",
-        runtime: "node",
-      });
+      const dockerfile = await writeDockerfileFor({});
 
       expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
     });
 
     it("declares node when no runtime is set, matching the manifest's default", async () => {
-      const dockerfile = await writeDockerfileFor({ target: "docker" });
+      const dockerfile = await writeDockerfileFor({});
 
       expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
     });
 
     it("declares bun in the standard variant", async () => {
-      const dockerfile = await writeDockerfileFor({
-        target: "docker",
-        runtime: "bun",
-      });
+      const dockerfile = await writeDockerfileFor({}, { runtime: "bun" });
 
       expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="bun"');
     });
 
     it("declares bun in the compile variant, which is bun by construction", async () => {
       const dockerfile = await writeDockerfileFor(
-        { target: "docker", runtime: "bun" },
-        { flags: { compile: "app" } },
+        {},
+        { runtime: "bun", compile: "app" },
       );
 
       expect(dockerfile).toContain("FROM gcr.io/distroless/static-debian12");
@@ -778,13 +715,10 @@ describe("BuildDockerTask", () => {
       // one above. This pins that the two branches do not disagree about the
       // label's shape.
       const compile = await writeDockerfileFor(
-        { target: "docker", runtime: "bun" },
-        { flags: { compile: "app" } },
+        {},
+        { runtime: "bun", compile: "app" },
       );
-      const standard = await writeDockerfileFor({
-        target: "docker",
-        runtime: "node",
-      });
+      const standard = await writeDockerfileFor({});
 
       expect(compile).toMatch(/^LABEL "dev\.alepha\.runtime"="bun"$/m);
       expect(standard).toMatch(/^LABEL "dev\.alepha\.runtime"="node"$/m);
@@ -792,15 +726,7 @@ describe("BuildDockerTask", () => {
 
     it("sits beside the OCI labels rather than replacing them", async () => {
       const dockerfile = await writeDockerfileFor({
-        target: "docker",
-        runtime: "node",
-        docker: {
-          image: {
-            tag: "ghcr.io/myorg/app",
-            oci: true,
-            title: "App",
-          },
-        },
+        image: { tag: "ghcr.io/myorg/app", oci: true, title: "App" },
       });
 
       expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');

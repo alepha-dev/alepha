@@ -6,6 +6,8 @@ import {
   buildOptions,
   type DevOptions,
   devOptions,
+  type ImageOptions,
+  imageOptions,
   type MetaOptions,
   metaOptions,
 } from "alepha/cli";
@@ -37,6 +39,17 @@ export interface AlephaCliConfig {
    * Configure Alepha dev command.
    */
   dev?: DevOptions;
+
+  /**
+   * Configure `alepha image`: the base image, the tag, baked env, volumes,
+   * OCI labels.
+   *
+   * ⚠️ **Top level, not `build.docker`.** Config follows the command that
+   * reads it, and Docker left `alepha build --target=docker` for `alepha
+   * image`. `build.cloudflare` correctly stays under `build`, because
+   * `wrangler.jsonc` really is written by the build.
+   */
+  image?: ImageOptions;
 
   /**
    * Override what `alepha.meta` reports about this build.
@@ -86,6 +99,10 @@ export const defineConfig = (config: AlephaCliConfig) => {
 
     if (config.dev) {
       alepha.set(devOptions, config.dev);
+    }
+
+    if (config.image) {
+      alepha.set(imageOptions, config.image);
     }
 
     if (config.meta) {
