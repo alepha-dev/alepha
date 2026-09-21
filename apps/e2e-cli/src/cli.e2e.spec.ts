@@ -819,10 +819,17 @@ describe("Alepha CLI E2E", () => {
      * embedded file, decodes to exactly the same bytes.
      */
     it("compiles to one binary that serves its assets from an empty directory", async () => {
-      const result = await run(
-        `"${CLI}" build --runtime=bun --compile e2e`,
-        PROJECT_DIR,
-      );
+      // ⚠️ Two commands. `--compile` left `alepha build` for `alepha compile`,
+      // its own command reading `./dist`, which is what let `--target` be
+      // retired: a build option that constrained other build options is gone.
+      const built = await run(`"${CLI}" build --runtime=bun`, PROJECT_DIR);
+      if (built.exitCode !== 0) {
+        console.log("BUILD OUTPUT:", built.stdout.slice(-2000));
+        console.log("BUILD STDERR:", built.stderr);
+      }
+      expect(built.exitCode).toBe(0);
+
+      const result = await run(`"${CLI}" compile --out e2e`, PROJECT_DIR);
 
       if (result.exitCode !== 0) {
         console.log("COMPILE OUTPUT:", result.stdout.slice(-2000));
