@@ -36,6 +36,11 @@ const create = (
      * refusal, which is the thing this client has to surface in words.
      */
     refusal?: unknown;
+    /**
+     * Instance ids whose `startDeploy` is refused, where the others are not:
+     * what one broken tenant among several looks like to `redeploy`.
+     */
+    refuseFor?: string[];
   } = {},
 ) => {
   const alepha = Alepha.create({
@@ -85,6 +90,14 @@ const create = (
 
   Object.assign(command as unknown as Record<string, unknown>, {
     apps: {
+      // Every faked instance, as copies of the one app `resolveApp` names.
+      listApps: async () => ({
+        items: Object.entries(instances).map(([env, it]) => ({
+          ...it,
+          app: "docs",
+          env,
+        })),
+      }),
       getApp: async ({ params }: { params: { env: string } }) => {
         const found = instances[params.env];
         if (!found) {
@@ -108,6 +121,9 @@ const create = (
       }) => {
         if (deploy.refusal) {
           throw deploy.refusal;
+        }
+        if (deploy.refuseFor?.includes(params.instanceId)) {
+          throw new HttpError({ status: 409, message: "Estate is frozen." });
         }
         started.push({
           instanceId: params.instanceId,
@@ -562,6 +578,84 @@ describe("lore apps deploy", () => {
         argv: "--env production --tag 0.28.0",
       }),
     ).rejects.toThrow(/still running/);
+  });
+});
+
+describe("lore apps redeploy", () => {
+  const threeCopies = (refuseFor?: string[]) =>
+    create(
+      {
+        production: { id: "inst-prod" },
+        "a-staging": { id: "inst-a" },
+        "b-staging": { id: "inst-b" },
+      },
+      [],
+      { refuseFor },
+    );
+
+  it("deploys the stored build to every copy whose env ends with --suffix, and only those", async () => {
+    const { fs, shell, cli, command, started, ran } = threeCopies();
+    await aWorkspace(fs);
+
+    await cli.run(command.redeploy, {
+      root: "/project",
+      argv: "--suffix=-staging",
+    });
+
+    expect(started.map((it) => it.instanceId)).toEqual(["inst-a", "inst-b"]);
+    expect(started.map((it) => it.body)).toEqual([
+      { tag: "latest" },
+      { tag: "latest" },
+    ]);
+    // ⚠️ Never builds and never pushes: N copies take the one stored build.
+    expect(commandsOf(shell)).toEqual([]);
+    expect(ran).toEqual([]);
+  });
+
+  it("deploys the named --tag", async () => {
+    const { fs, cli, command, started } = threeCopies();
+    await aWorkspace(fs);
+
+    await cli.run(command.redeploy, {
+      root: "/project",
+      argv: "--suffix=-staging --tag 0.28.0",
+    });
+
+    expect(started.map((it) => it.body.tag)).toEqual(["0.28.0", "0.28.0"]);
+  });
+
+  it("refuses without --suffix, which would mean every copy", async () => {
+    const { fs, cli, command, started } = threeCopies();
+    await aWorkspace(fs);
+
+    await expect(
+      cli.run(command.redeploy, { root: "/project", argv: "" }),
+    ).rejects.toThrow(/--suffix/);
+    expect(started).toEqual([]);
+  });
+
+  it("refuses when no copy matches", async () => {
+    const { fs, cli, command, started } = threeCopies();
+    await aWorkspace(fs);
+
+    await expect(
+      cli.run(command.redeploy, { root: "/project", argv: "--suffix=-qa" }),
+    ).rejects.toThrow(/no copy whose env ends with `-qa`/);
+    expect(started).toEqual([]);
+  });
+
+  it("carries on past a failed copy, then exits non-zero naming it", async () => {
+    const { fs, cli, command, started } = threeCopies(["inst-a"]);
+    await aWorkspace(fs);
+
+    await expect(
+      cli.run(command.redeploy, {
+        root: "/project",
+        argv: "--suffix=-staging",
+      }),
+    ).rejects.toThrow(/1 of 2 copies .*a-staging: Estate is frozen\./);
+    // The copy after the failure was still attempted.
+    expect(started.map((it) => it.instanceId)).toEqual(["inst-b"]);
   });
 });
 

@@ -440,10 +440,129 @@ export class AppsCommand {
     handler: (args) => this.runDeploy(args),
   });
 
+  /**
+   * `lore apps redeploy` - one stored build onto every copy of an app whose
+   * env ends with `--suffix`.
+   *
+   * ```bash
+   * lore apps redeploy --app portal --suffix=-staging
+   * ```
+   *
+   * For a project that runs one copy per tenant (a club, a shop), where a new
+   * build has to reach all of them: push once with `lore artifacts push`, then
+   * this. Each copy is started and followed in turn, exactly as `deploy --tag`
+   * would.
+   *
+   * ## ⚠️ It never builds
+   *
+   * The same rule as a named `--tag` on `deploy`: N copies take the one stored
+   * artifact, rather than N builds from this machine that only claim to be it.
+   *
+   * ## ⚠️ `--suffix` is required and never empty
+   *
+   * Every env ends with the empty string, so an omitted suffix would mean every
+   * copy, production included, without the word appearing anywhere. Same
+   * reasoning as `destroy` refusing to guess its `--env`.
+   *
+   * ## ⚠️ One failure does not stop the others
+   *
+   * The copies are independent tenants: leaving the rest on the old build
+   * because one failed would turn one broken tenant into all of them lagging.
+   * Every copy is attempted, and the command then exits non-zero naming each
+   * one that failed, so CI still goes red.
+   */
+  public readonly redeploy = $command({
+    name: "redeploy",
+    description:
+      "Deploy a stored build onto every copy of this app whose env ends with --suffix",
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description: "Lore project slug, overriding LORE_PROJECT.",
+        })
+        .optional(),
+      app: z
+        .text({
+          description:
+            "App name. Defaults to the slugified `name` from package.json.",
+        })
+        .optional(),
+      suffix: z
+        .text({
+          description:
+            "Env suffix the copies share, e.g. `--suffix=-staging` (with `=`, since the value starts with a dash). Required: an empty one would match every copy.",
+        })
+        .optional(),
+      tag: z
+        .text({
+          aliases: ["t"],
+          description:
+            "Stored build to deploy. Defaults to `latest`. Never builds.",
+        })
+        .optional(),
+    }),
+    handler: async ({ flags, root }) => {
+      const suffix = flags.suffix?.trim();
+      if (!suffix) {
+        throw new AlephaError(
+          "Name the copies with --suffix (e.g. `--suffix=-staging`). Every env ends with the empty string, so without it this would redeploy every copy, production included.",
+        );
+      }
+
+      const project = this.client.resolveProject(flags.project);
+      const projectId = await this.projects.resolve(project);
+      const app = await this.projects.resolveApp(flags.app, root);
+      const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
+
+      const { items } = await this.apps.listApps({ params: { projectId } });
+      const copies = items.filter(
+        (item) => item.app === app && item.env.endsWith(suffix),
+      );
+      if (copies.length === 0) {
+        throw new AlephaError(
+          `${app} has no copy whose env ends with \`${suffix}\`, so there is nothing to redeploy.`,
+        );
+      }
+
+      const noun = copies.length === 1 ? "copy" : "copies";
+      this.log.info(
+        `Redeploying ${app}@${tag} to ${copies.length} ${noun}: ${copies.map((copy) => copy.env).join(", ")}`,
+      );
+
+      const failed: string[] = [];
+      for (const copy of copies) {
+        try {
+          const started = await this.start(projectId, copy.id, tag);
+          const finished = await this.follow(projectId, started.id);
+          if (finished.status === "succeeded") {
+            this.log.info(`Deployed ${app}@${tag} to ${app}/${copy.env}`);
+          } else {
+            failed.push(
+              `${copy.env}: ${finished.error || `ended ${finished.status}`}`,
+            );
+          }
+        } catch (error) {
+          failed.push(
+            `${copy.env}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+
+      if (failed.length > 0) {
+        // ⚠️ Thrown, not logged: this runs in CI, and a partial redeploy must
+        // not read as a green step.
+        throw new AlephaError(
+          `${failed.length} of ${copies.length} ${noun} did not take ${app}@${tag}. ${failed.join("; ")}`,
+        );
+      }
+    },
+  });
+
   public readonly appsCommand = $command({
     name: "apps",
     description: "Build and deploy this project's apps",
-    children: [this.build, this.deploy, this.destroy],
+    children: [this.build, this.deploy, this.redeploy, this.destroy],
     handler: async ({ help }) => {
       help();
     },
