@@ -107,10 +107,14 @@ Every workspace holding specs owns a `vitest.config.ts` calling `workspaceProjec
 
 ### Ports
 
-- `3300-3399`: dev servers, `dev.port` in `alepha.config.ts`: docs 3302, lore 3303, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312.
-- `5173+`: dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**).
-- `4300-4999`: **e2e, and nothing else.**
-- `15432` / `16379` / `19090`: `compose.yml` test services (postgres / redis / s3mock).
+| band                        | owner                                                                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `3300-3399`                 | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, lore 3303, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312 |
+| `5173+`                     | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                            |
+| `4300-4999`                 | **e2e, and nothing else**                                                                                                                                        |
+| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / s3mock)                                                                                                          |
+
+⚠️ `check:conventions` reads this table: every dev port must appear in the `3300-3399` row.
 
 Every Playwright config takes its port from `e2ePort("<app>")` in `scripts/playwright.port.ts`, which binds this repository's registry (`E2E_SLOTS`) to `createE2ePortAllocator` from `alepha/testing/playwright`. The argument is the app name, never a port. Port logic goes in the package, suite names in `E2E_SLOTS`, and a new suite needs a slot or it will not typecheck. The slot derives from the checkout path, so two worktrees never collide, and is bind-tested. `reuseExistingServer` is `false` everywhere: an e2e run must never adopt a dev server. `E2E_PORT` overrides it all.
 
