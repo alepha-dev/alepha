@@ -75,6 +75,12 @@ export const jobExecutionEntity = $entity({
     cancelledByName: z.text().optional(),
   }),
   indexes: [
+    // The sweep is job-agnostic: every phase filters on `status` alone, so an
+    // index led by `jobName` cannot serve it and each tick scanned and sorted
+    // the whole table, terminal rows (and their `logs`) included. Led by
+    // `status`, the phases seek straight to the few live rows, in order.
+    { columns: ["status", "scheduledAt"] },
+    { columns: ["status", "updatedAt"] },
     { columns: ["jobName", "status", "scheduledAt"] },
     { columns: ["jobName", "status", "createdAt"] },
     { columns: ["jobName", "startedAt"] },
