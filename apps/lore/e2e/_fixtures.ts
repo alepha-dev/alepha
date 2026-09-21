@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { test as base, expect } from "@playwright/test";
 
-import { e2eWorkerPort } from "../../../playwright.port.ts";
+import { e2eWorkerPort } from "../../../scripts/playwright.port.ts";
 import { ADMIN_EMAIL, ADMIN_PASSWORD, registerAndVerify } from "./_helpers.ts";
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));

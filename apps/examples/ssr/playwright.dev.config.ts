@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { e2ePort } from "../../../playwright.port.ts";
+import { e2ePort } from "../../../scripts/playwright.port.ts";
 
 /*
  * This config was the one that never got migrated: it hardcoded 3311, which is

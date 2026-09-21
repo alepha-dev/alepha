@@ -233,7 +233,7 @@ Two test environments are configured:
 #### One Vitest project per workspace
 
 Every workspace holding spec files owns a `vitest.config.ts` that calls
-`workspaceProjects` from the repo-root `vitest.projects.ts`, exports the result
+`workspaceProjects` from the `scripts/vitest.projects.ts`, exports the result
 as `projects`, and default-exports it wrapped. The root `vitest.config.ts`
 imports each of those and spreads them, so `yarn test` is the union of the
 workspaces and `yarn w <workspace> test` is exactly one of them. Both read the
@@ -282,7 +282,7 @@ Two disjoint bands, and they must stay disjoint:
 | `4300-4999`                 | **e2e, and nothing else**                                                                                                                                                                                                                                                                                                       |
 | `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / s3mock)                                                                                                                                                                                                                                                                         |
 
-All six Playwright configs (`apps/docs`, `apps/lore`, `apps/ui`, and `apps/examples/{shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its projects from `vitest.projects.ts`. That file is only this repository's registry (`E2E_SLOTS`) bound to `createE2ePortAllocator` from `alepha/testing/playwright`, which holds the mechanism and ships to consumers. Add port logic to the package, never to a caller, and never a suite name to the package; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
+All six Playwright configs (`apps/docs`, `apps/lore`, `apps/ui`, and `apps/examples/{shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the `scripts/playwright.port.ts`, the same way every vitest config takes its projects from `vitest.projects.ts`. That file is only this repository's registry (`E2E_SLOTS`) bound to `createE2ePortAllocator` from `alepha/testing/playwright`, which holds the mechanism and ships to consumers. Add port logic to the package, never to a caller, and never a suite name to the package; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
 
 The argument is the **app name, not a port**, because it used to be the port — and it was the app's own _dev_ port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
 

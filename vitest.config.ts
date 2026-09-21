@@ -14,7 +14,7 @@ import { projects as protobuf } from "./packages/@alepha/protobuf/vitest.config.
 import { projects as ui } from "./packages/@alepha/ui/vitest.config.ts";
 import { projects as alepha } from "./packages/alepha/vitest.config.ts";
 import { projects as createAlepha } from "./packages/create-alepha/vitest.config.ts";
-import { workspaceProjects } from "./vitest.projects.ts";
+import { workspaceProjects } from "./scripts/vitest.projects.ts";
 
 /**
  * The suite, as one project per workspace.
@@ -78,7 +78,7 @@ export default defineConfig({
     },
     projects: [
       // The repository root is a workspace too (`alepha-monorepo`), and it
-      // holds the tooling specs that belong to no package: `playwright.port.ts`
+      // holds the tooling specs that belong to no package: `scripts/playwright.port.ts`
       // is the live one. `include` is what keeps it to those. Without it this
       // project's root is every other project's parent, and the whole suite is
       // collected a second time.
