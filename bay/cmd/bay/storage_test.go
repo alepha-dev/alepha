@@ -143,9 +143,7 @@ func bucketDeployableArtifact(t *testing.T) string {
 	files := map[string]string{
 		"manifest.json": `{
 			"project": "demo",
-			"entry": "index.js",
-			"runtime": "node",
-			"runtimeVersion": "24",
+			"runtimes": [{"runtime": "node", "entry": "index.js", "runtimeVersion": "24"}],
 			"resources": { "hasBucket": true, "hasDatabase": true }
 		}`,
 		"index.node.js": "process.exit(0)",

@@ -14,7 +14,7 @@ import (
 func staticArtifactWithHeaders(t *testing.T, name, headersFile string) string {
 	t.Helper()
 	return buildArchive(t,
-		entry{name: "manifest.json", body: `{"project": "` + name + `", "runtime": "static"}`},
+		entry{name: "manifest.json", body: `{"project": "` + name + `", "runtimes": [{"runtime": "static"}]}`},
 		entry{name: "public/index.html", body: "<html></html>"},
 		entry{name: "public/_headers", body: headersFile},
 	)

@@ -16,7 +16,7 @@ func staticArtifact(t *testing.T, name string) string {
 	return buildArchive(t,
 		entry{name: "manifest.json", body: `{
 			"project": "` + name + `",
-			"runtime": "static"
+			"runtimes": [{"runtime": "static"}]
 		}`},
 		entry{name: "public/index.html", body: "<html></html>"},
 	)
