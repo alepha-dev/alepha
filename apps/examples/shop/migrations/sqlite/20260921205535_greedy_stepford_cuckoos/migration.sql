@@ -1,0 +1,2 @@
+CREATE INDEX `job_executions_status_scheduled_at_idx` ON `job_executions` (`status`,`scheduled_at`);--> statement-breakpoint
+CREATE INDEX `job_executions_status_updated_at_idx` ON `job_executions` (`status`,`updated_at`);

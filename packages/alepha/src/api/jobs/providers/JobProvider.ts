@@ -1929,15 +1929,14 @@ export class JobProvider {
         // staleness with, and the ordering `recover-crashed` already uses.
         orderBy: { column: "updatedAt", direction: "asc" },
         // Pending and untouched for `staleThreshold`: the delivery was lost.
-        // `updatedAt` is the clock; the `createdAt` bound is redundant with
-        // it (a row is never updated before it is created) and is there only
-        // so the (jobName, status, createdAt) index can still be seeked.
+        // `updatedAt` is the clock, and the (status, updatedAt) index serves
+        // both the bound and the order.
         where: (where, now) => {
-          const staleIso = now
-            .subtract(this.config.staleThreshold, "millisecond")
-            .toISOString();
-          where.createdAt = { lte: staleIso };
-          where.updatedAt = { lte: staleIso };
+          where.updatedAt = {
+            lte: now
+              .subtract(this.config.staleThreshold, "millisecond")
+              .toISOString(),
+          };
         },
         act: (exec) => this.redispatchStale(exec),
       },
