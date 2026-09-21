@@ -24,7 +24,7 @@ export class SharedQueueProvider extends MemoryQueueProvider {
  *
  * ⚠️ Do NOT replace this with a readable literal. Every checkout on the
  * machine points at ONE Redis - `REDIS_URL: "redis://localhost:16379"` in the
- * repo-root `vitest.projects.ts` - so a literal name is shared state between
+ * `scripts/vitest.projects.ts` - so a literal name is shared state between
  * worktrees rather than a label. Two runs of the same spec register two
  * consumers on one list, and either may pop the other's message.
  *

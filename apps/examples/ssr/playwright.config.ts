@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { e2ePort } from "../../../playwright.port.ts";
+import { e2ePort } from "../../../scripts/playwright.port.ts";
 
 /*
  * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
