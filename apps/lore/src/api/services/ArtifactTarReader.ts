@@ -180,6 +180,25 @@ export class ArtifactTarReader {
         );
       }
 
+      /*
+        ⚠️ **The archive's own root, which every real tar writes.** `alepha
+        pack` builds the artifact with `tar -C <dist> .` so the build's
+        contents land at the root, and both GNU and BSD tar emit a `./` entry
+        for the directory itself when handed `.`.
+
+        It normalises to nothing, so there is no path to resolve and nothing to
+        extract. Skipped HERE, before `resolveInside`, because that refuses an
+        empty path - correctly, for every other way of producing one - and it
+        runs before the typeflag checks that would otherwise have treated this
+        as the directory it is.
+
+        Only a name made entirely of empty and `.` segments matches, so `/foo`
+        and `foo/..` are still refused below.
+      */
+      if (this.isArchiveRoot(entry.name)) {
+        continue;
+      }
+
       const path = this.resolveInside(root, entry.name);
 
       // A directory entry, and the two GNU pseudo-entries that carry a long
@@ -238,6 +257,18 @@ export class ArtifactTarReader {
     }
 
     return { files, bytes: written, skipped };
+  }
+
+  /**
+   * Whether this entry names the archive root rather than anything inside it.
+   *
+   * `.`, `./`, `//` and the empty name all mean the same thing: the directory
+   * the archive was made from. Nothing is written for it.
+   */
+  protected isArchiveRoot(name: string): boolean {
+    return name
+      .split("/")
+      .every((segment) => segment === "" || segment === ".");
   }
 
   /**

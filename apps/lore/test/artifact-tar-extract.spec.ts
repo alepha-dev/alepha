@@ -129,6 +129,38 @@ describe("unpacking an artifact", () => {
     expect(await fs.exists("/deploy/empty.txt")).toBe(true);
   });
 
+  /**
+   * ⚠️ The entry a REAL tar writes, and the one this suite could not have
+   * invented for itself.
+   *
+   * `alepha pack` builds the artifact with `tar -C <dist> .` so the build's
+   * contents land at the archive root, and both GNU and BSD tar emit a `./`
+   * entry for the directory itself when handed `.`. Every fixture here names
+   * its entries explicitly, so none of them ever produced one - the fixture
+   * agreed with the parser because the same hand wrote both.
+   *
+   * It reached production: the docs and ui deploys failed on
+   * `This artifact contains a path a deploy will not unpack ()`, whose empty
+   * parens are the whole diagnosis.
+   */
+  it("skips the ./ root entry a real tar writes", async ({ expect }) => {
+    const { fs, reader } = setup();
+
+    const result = await reader.extract(
+      await archive({
+        "./": { content: "", typeflag: "5" },
+        "index.node.js": "console.log(1);",
+        "manifest.json": "{}",
+      }),
+      fs,
+      "/deploy",
+    );
+
+    expect(await fs.exists("/deploy/index.node.js")).toBe(true);
+    // The root entry writes nothing and is not counted as a file.
+    expect(result.files).not.toContain("");
+  });
+
   it("refuses a path that climbs out of the archive", async ({ expect }) => {
     // The zip-slip case, and it is worse here than on a real filesystem: the
     // MemoryFS is SHARED with the build task, so an escaped path overwrites
