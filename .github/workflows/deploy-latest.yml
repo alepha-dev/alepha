@@ -377,3 +377,24 @@ jobs:
           # would make every flush a failed subrequest. It still reports: the
           # key above enrols it, and `LoreSigilSinkProvider` routes its own
           # batches in process instead of over HTTP.
+
+      # Lore's own build, stored as `latest` (#Q2464): one archive carrying
+      # the node and workerd slices, ready for the move from `alepha platform`
+      # to Lore Deploy.
+      #
+      # ⚠️ Its own build, not `platform up`'s. `platform up` builds with
+      # `--runtime=workerd`, so the `dist/` it leaves holds the workerd slice
+      # alone; a bare `alepha build` follows the config's
+      # `runtime: ["node", "workerd"]`, the same bytes `release.yml` pushes.
+      #
+      # AFTER the deploy on purpose: the push then lands on the Lore it just
+      # shipped, so a new manifest shape is never sent to an older registry.
+      - name: Build lore (node + workerd)
+        working-directory: apps/lore
+        run: yarn alepha build
+
+      - name: Push lore artifact to Lore
+        working-directory: apps/lore
+        run: yarn lore artifacts push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

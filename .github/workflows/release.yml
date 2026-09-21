@@ -343,26 +343,24 @@ jobs:
             ${{ runner.temp }}/artifacts/SHA256SUMS
 
       # ──────────────────────────────────────────────────────────────
-      # Lore, last - and twice per app, once per runtime.
+      # Lore, last.
       #
-      # `docs` and `lore` each ship as TWO artifacts under one version tag:
-      # the `node` bundle `yarn build` produced far above, and the `workerd`
-      # bundle rebuilt here. They are variants rather than rivals - the unique
-      # key is `(project, app, tag, runtime)`, so `0.29.0` names one release
-      # carrying both, and Lore folds them into a single entry when listing.
+      # `lore` ships as ONE archive carrying both slices (#Q2464): its config
+      # declares `runtime: ["node", "workerd"]`, so the `yarn build` far above
+      # already produced the node slice the `ghcr.io/alepha-dev/lore` image
+      # runs and the workerd slice `lore.alepha.dev` serves. Lore stores it as
+      # one row with both runtimes, and deploys either slice from it.
       #
-      # Both are worth keeping because both are real deployment targets: the
-      # node build is what the `ghcr.io/alepha-dev/lore` image runs and what a
-      # self-hoster gets, the workerd build is what `alepha.dev` and
-      # `lore.alepha.dev` actually serve. An artifact registry holding only
-      # one of them can answer "redeploy this version" for only half the
-      # places it runs.
+      # ⚠️ There is no second, workerd-only Lore push any more, and there must
+      # not be one: a runtime lives in at most one archive per tag, so it would
+      # overlap the two-slice archive and be refused as a conflict.
       #
-      # ⚠️ The rebuilds sit HERE, at the very end, and cannot move earlier.
-      # `alepha build --runtime=workerd` cleans `dist/` and replaces it, and
-      # `apps/lore/dist` was the docker build context of the ghcr push above.
-      # Rebuilding before that step would hand it a workerd bundle, or nothing
-      # at all.
+      # `docs` still ships as TWO single-runtime archives under one version
+      # tag: the `node` bundle `yarn build` produced, and the `workerd` bundle
+      # rebuilt here. Their runtimes do not overlap, so they sit side by side.
+      #
+      # ⚠️ The docs rebuild sits HERE, at the very end, and cannot move earlier:
+      # `alepha build --runtime=workerd` cleans `dist/` and replaces it.
       #
       # No Cloudflare credentials are needed and none are present: the build
       # emits `wrangler.jsonc` from env vars and never calls the API. The
@@ -405,7 +403,7 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
-      - name: Push lore artifact to Lore (node)
+      - name: Push lore artifact to Lore (node + workerd)
         working-directory: apps/lore
         run: >-
           yarn lore artifacts push
@@ -430,18 +428,6 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
-      - name: Rebuild lore for workerd
-        working-directory: apps/lore
-        run: yarn alepha build --runtime=workerd
-
-      - name: Push lore artifact to Lore (workerd)
-        working-directory: apps/lore
-        run: >-
-          yarn lore artifacts push
-          --tag "$VERSION"
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
 
       # The image, as a reference rather than as bytes. Lore reads what the
       # image says about itself out of ghcr - its `dev.alepha.runtime` label
