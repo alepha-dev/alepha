@@ -17,7 +17,9 @@ silent authorization hole.
 
 `$owns` loads the row named by a route param, checks the caller against it,
 and publishes it via `OwnedResourceProvider` so the handler does not
-re-fetch what the gate already read.
+re-fetch what the gate already read. An application whose request does not
+name the row - a single-tenant deployment with exactly one container -
+computes the id with `OwnsOptions.resolve` instead.
 
 Three checks, applied in order:
 
@@ -68,7 +70,8 @@ class CampaignController {
 | Option       | Type                                 | Required | Description                                                                                                                         |
 | ------------ | ------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `repository` | `Object`                             | Yes      | Repository the guarded resource is loaded from, as a thunk                                                                          |
-| `param`      | `string`                             | Yes      | Key holding the resource id, in whichever source `OwnsOptions.from` names                                                           |
+| `param`      | `string`                             | No       | Key holding the resource id, in whichever source `OwnsOptions.from` names                                                           |
+| `resolve`    | `Object`                             | No       | Compute the resource id instead of reading it off the request                                                                       |
 | `from`       | `"params" \| "query" \| "body"`      | No       | Where to read `OwnsOptions.param` from                                                                                              |
 | `through`    | `OwnsHop \| OwnsHop[]`               | No       | The second hop: say that ownership is not held by the row the param names, but by a row it belongs to                               |
 | `owner`      | `string`                             | No       | Column holding the owner's user id, on the row the decision is made against - the resource itself, or the row `through` lands on    |

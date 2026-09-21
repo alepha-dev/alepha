@@ -14,6 +14,7 @@ export const $ownsOrganization = (
     repository: options.repository ?? (() => organizationRepository),
     param: options.param,
     from: options.from,
+    resolve: options.resolve,
     requires: options.requires,
     secure: options.secure,
     cache: options.cache,
@@ -30,7 +31,7 @@ export const $ownsOrganization = (
 
 export interface OwnsOrganizationOptions extends Pick<
   OwnsOptions,
-  "param" | "from" | "requires" | "secure" | "cache" | "message"
+  "param" | "from" | "resolve" | "requires" | "secure" | "cache" | "message"
 > {
   repository?: () => Repository<any>;
   through?: OwnsHop | OwnsHop[];

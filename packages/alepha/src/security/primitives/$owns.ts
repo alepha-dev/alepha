@@ -1,4 +1,4 @@
-import { $context, AlephaError, type Middleware } from "alepha";
+import { $context, AlephaError, type Async, type Middleware } from "alepha";
 // Type-only on purpose. Authorization may depend on repository shapes without
 // creating a runtime module edge from security back to the ORM. Erased at
 // compile time, this import does not participate in module initialization.
@@ -9,7 +9,11 @@ import { currentAuthorityAtom } from "../atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
 import { ResourceGateMemoProvider } from "../providers/ResourceGateMemoProvider.ts";
 import { ResourceGrantsProvider } from "../providers/ResourceGrantsProvider.ts";
-import { $secure, type SecureOptions } from "./$secure.ts";
+import {
+  $secure,
+  type SecureGuardContext,
+  type SecureOptions,
+} from "./$secure.ts";
 
 /**
  * Resource-scoped authorization gate.
@@ -21,7 +25,9 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  *
  * `$owns` loads the row named by a route param, checks the caller against it,
  * and publishes it via `OwnedResourceProvider` so the handler does not
- * re-fetch what the gate already read.
+ * re-fetch what the gate already read. An application whose request does not
+ * name the row - a single-tenant deployment with exactly one container -
+ * computes the id with {@link OwnsOptions.resolve} instead.
  *
  * Three checks, applied in order:
  *
@@ -93,6 +99,32 @@ export function $owns(options: OwnsOptions): Middleware {
     );
   }
 
+  // Exactly one source for the resource id, decided at declaration time for
+  // the same reason as the check above: a gate that is wrong is wrong at
+  // boot, not on the request that happens to exercise it.
+  if (options.param === undefined && !options.resolve) {
+    throw new AlephaError(
+      "$owns: a gate needs a resource id. Name a request key with `param`, " +
+        "or compute one with `resolve` when the request does not carry it.",
+    );
+  }
+
+  if (options.param !== undefined && options.resolve) {
+    throw new AlephaError(
+      "$owns: `param` and `resolve` both name the resource id. Keep one.",
+    );
+  }
+
+  // `from` reads a request source and `cast` coerces what was read; with
+  // `resolve` there is nothing read. Refusing beats ignoring: a gate carrying
+  // `from: "body"` beside a resolver reads as if the body still decided.
+  if (options.resolve && (options.from || options.cast)) {
+    throw new AlephaError(
+      "$owns: `from` and `cast` describe reading the id off the request, which " +
+        "`resolve` replaces. Drop them, or return the coerced id from `resolve`.",
+    );
+  }
+
   const requires = options.requires
     ? Array.isArray(options.requires)
       ? options.requires
@@ -112,48 +144,9 @@ export function $owns(options: OwnsOptions): Middleware {
       ? [...(options.secure?.permissions ?? []), ...requires]
       : options.secure?.permissions,
     guard: async (ctx) => {
-      const from = options.from ?? "params";
-
-      // `Record<string, unknown>`, not the declared `Record<string, string>`:
-      // the guard runs after `validateRequest`, so a `z.integer()` param has
-      // already been decoded to a number. Reading it as a string here was
-      // only ever true of undeclared params.
-      const source: Record<string, unknown> | undefined =
-        from === "params"
-          ? ctx.params
-          : from === "query"
-            ? ctx.query
-            : (ctx.body as Record<string, unknown> | undefined);
-
-      const value = source?.[options.param];
-
-      // `null` counts as absent: it names no row, so gating on it would query
-      // for `id = null` and then 404 with a message about a missing row
-      // rather than a missing declaration.
-      if (value === undefined || value === null) {
-        throw new AlephaError(
-          // Naming the source it actually searched, so a `from: "body"` typo
-          // does not report a path problem the reader then goes looking for.
-          `$owns: '${options.param}' is not present in the ${from} of this handler. ` +
-            (from === "params"
-              ? `Declare it in the path (e.g. "/things/:${options.param}").`
-              : `Declare it in the ${from} schema, or correct \`from\`.`),
-        );
-      }
-
-      // An id is a scalar. Request validation has already run by the time a
-      // guard does, so a declared field cannot be anything else - but an
-      // UNDECLARED one is whatever the caller sent, and `from: "body"` is the
-      // source where that matters. Refusing here keeps an object out of the
-      // query builder rather than finding out what it does with one.
-      if (typeof value !== "string" && typeof value !== "number") {
-        throw new AlephaError(
-          `$owns: '${options.param}' in the ${from} of this handler is a ${typeof value}, not an id. ` +
-            "Declare it in the schema so it is validated before the gate runs.",
-        );
-      }
-
-      const raw = value;
+      const raw = options.resolve
+        ? await readResolved(options.resolve, ctx)
+        : readParam(options, ctx);
 
       const repository = options.repository();
       const id = options.cast ? options.cast(raw) : raw;
@@ -349,6 +342,86 @@ export function $owns(options: OwnsOptions): Middleware {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Read the resource id off the request, for a gate that named a `param`.
+ *
+ * An absent value is a DECLARATION error rather than a denial: the gate names
+ * a key the handler does not carry, which no caller can fix.
+ */
+function readParam(
+  options: OwnsOptions,
+  ctx: SecureGuardContext,
+): string | number {
+  const from = options.from ?? "params";
+  const param = options.param!;
+
+  // `Record<string, unknown>`, not the declared `Record<string, string>`:
+  // the guard runs after `validateRequest`, so a `z.integer()` param has
+  // already been decoded to a number. Reading it as a string here was
+  // only ever true of undeclared params.
+  const source: Record<string, unknown> | undefined =
+    from === "params"
+      ? ctx.params
+      : from === "query"
+        ? ctx.query
+        : (ctx.body as Record<string, unknown> | undefined);
+
+  const value = source?.[param];
+
+  // `null` counts as absent: it names no row, so gating on it would query
+  // for `id = null` and then 404 with a message about a missing row
+  // rather than a missing declaration.
+  if (value === undefined || value === null) {
+    throw new AlephaError(
+      // Naming the source it actually searched, so a `from: "body"` typo
+      // does not report a path problem the reader then goes looking for.
+      `$owns: '${param}' is not present in the ${from} of this handler. ` +
+        (from === "params"
+          ? `Declare it in the path (e.g. "/things/:${param}").`
+          : `Declare it in the ${from} schema, or correct \`from\`.`),
+    );
+  }
+
+  // An id is a scalar. Request validation has already run by the time a
+  // guard does, so a declared field cannot be anything else - but an
+  // UNDECLARED one is whatever the caller sent, and `from: "body"` is the
+  // source where that matters. Refusing here keeps an object out of the
+  // query builder rather than finding out what it does with one.
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new AlephaError(
+      `$owns: '${param}' in the ${from} of this handler is a ${typeof value}, not an id. ` +
+        "Declare it in the schema so it is validated before the gate runs.",
+    );
+  }
+
+  return value;
+}
+
+/**
+ * Call the gate's own resolver, for a gate the request cannot address.
+ *
+ * Nothing back is a wiring error - the deployment has no container row yet,
+ * or the resolver reads a column nobody filled - and it throws rather than
+ * denying. An orphan pointer must not read as "you are not allowed".
+ */
+async function readResolved(
+  resolve: NonNullable<OwnsOptions["resolve"]>,
+  ctx: SecureGuardContext,
+): Promise<string | number> {
+  const resolved = await resolve(ctx);
+
+  if (resolved === undefined || resolved === null) {
+    throw new AlephaError(
+      "$owns: `resolve` returned no resource id. A gate that cannot name its " +
+        "resource is misconfigured, and that is not the same answer as a denial.",
+    );
+  }
+
+  return resolved;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export interface OwnsOptions {
   /**
    * Repository the guarded resource is loaded from, as a thunk.
@@ -367,8 +440,46 @@ export interface OwnsOptions {
   /**
    * Key holding the resource id, in whichever source {@link OwnsOptions.from}
    * names. A route param by default.
+   *
+   * Optional only because {@link OwnsOptions.resolve} is the alternative:
+   * exactly one of the two must be given, and naming both is refused at
+   * declaration time.
    */
-  param: string;
+  param?: string;
+
+  /**
+   * Compute the resource id instead of reading it off the request.
+   *
+   * Every application whose resources are addressed in the URL names a
+   * {@link OwnsOptions.param} and is done. An application with **one** of
+   * something cannot: a single-tenant deployment has exactly one container
+   * row, no route names it, and so the gate would throw on every request for
+   * a param that is correctly absent.
+   *
+   * ```ts
+   * $ownsOrganization({
+   *   repository: () => this.clubs,
+   *   key: "organizationId",
+   *   resolve: () => this.clubs.findOneOrFail({}).then((club) => club.id),
+   *   requires: "staff:planning:delete",
+   * })
+   * ```
+   *
+   * Mutually exclusive with `param`, and with {@link OwnsOptions.from} and
+   * {@link OwnsOptions.cast}, which describe reading a request value: return
+   * the id already coerced. All three combinations are refused when the gate
+   * is declared rather than when it is first exercised.
+   *
+   * Returning nothing throws rather than denying. A resolver that finds no
+   * row is a wiring error, and "this deployment has no club row" must not
+   * reach the caller as "you are not allowed".
+   *
+   * It receives the guard's own context, so it is strictly more general than
+   * a constant. A resolver that reads the request is no more
+   * caller-controlled than `from: "body"` already is: it is still just an id
+   * handed to `findById`, and the gate below is what decides access.
+   */
+  resolve?: (ctx: SecureGuardContext) => Async<string | number>;
 
   /**
    * Where to read {@link OwnsOptions.param} from.
@@ -385,6 +496,9 @@ export interface OwnsOptions {
    * widens nothing: it is still just an id handed to `findById`, and the gate
    * below is what decides access - a caller naming somebody else's project
    * gets a 403 for it.
+   *
+   * Meaningless with {@link OwnsOptions.resolve}, which reads no request
+   * source, and refused alongside it rather than ignored.
    */
   from?: "params" | "query" | "body";
 
@@ -514,6 +628,9 @@ export interface OwnsOptions {
    * Returns an id, so `string | number` and not `unknown`: `findById` takes
    * one, and the old signature only got away with `unknown` by casting it
    * back at the call site.
+   *
+   * Meaningless with {@link OwnsOptions.resolve}, which coerces nothing it
+   * did not compute itself, and refused alongside it rather than ignored.
    */
   cast?: (raw: unknown) => string | number;
 
