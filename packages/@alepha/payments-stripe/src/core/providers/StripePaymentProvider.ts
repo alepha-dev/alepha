@@ -629,6 +629,15 @@ export class StripePaymentProvider implements PaymentProvider {
    *
    * `oneOffItems` are one-time prices charged with the first invoice only
    * (a setup fee), next to the recurring price.
+   *
+   * `trialPeriodDays` starts the subscription with a free trial: the card is
+   * still collected, and the first invoice comes when the trial ends.
+   * `automaticTax` asks Stripe Tax to compute the tax, which needs the price's
+   * `taxBehavior` and a customer address, so it goes with
+   * `billingAddressCollection: "required"`. `taxIdCollection` lets a business
+   * enter its VAT number (an EU business with a valid one is reverse-charged).
+   * For a known `customerId`, the address and name Checkout collects are
+   * saved back onto that customer, which Stripe requires for both.
    */
   public async createCheckoutSubscription(opts: {
     priceId?: string;
@@ -639,6 +648,8 @@ export class StripePaymentProvider implements PaymentProvider {
       /** Bill every `intervalCount` intervals (3 months = quarterly). */
       intervalCount?: number;
       productName: string;
+      /** Whether `unitAmount` excludes or includes tax (Stripe Tax needs it). */
+      taxBehavior?: "exclusive" | "inclusive";
     };
     oneOffItems?: Array<{
       currency: string;
@@ -651,6 +662,10 @@ export class StripePaymentProvider implements PaymentProvider {
     customerId?: string;
     metadata?: Record<string, string>;
     stripeAccount?: string;
+    trialPeriodDays?: number;
+    automaticTax?: boolean;
+    taxIdCollection?: boolean;
+    billingAddressCollection?: "auto" | "required";
   }): Promise<{ url: string; sessionId: string }> {
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       opts.priceData
@@ -667,6 +682,9 @@ export class StripePaymentProvider implements PaymentProvider {
                     : {}),
                 },
                 product_data: { name: opts.priceData.productName },
+                ...(opts.priceData.taxBehavior
+                  ? { tax_behavior: opts.priceData.taxBehavior }
+                  : {}),
               },
             },
           ]
@@ -690,9 +708,25 @@ export class StripePaymentProvider implements PaymentProvider {
         customer: opts.customerId,
         customer_email: opts.customerId ? undefined : opts.customerEmail,
         metadata: opts.metadata,
-        subscription_data: opts.metadata
-          ? { metadata: opts.metadata }
-          : undefined,
+        subscription_data:
+          opts.metadata || opts.trialPeriodDays
+            ? {
+                ...(opts.metadata ? { metadata: opts.metadata } : {}),
+                ...(opts.trialPeriodDays
+                  ? { trial_period_days: opts.trialPeriodDays }
+                  : {}),
+              }
+            : undefined,
+        ...(opts.automaticTax ? { automatic_tax: { enabled: true } } : {}),
+        ...(opts.taxIdCollection
+          ? { tax_id_collection: { enabled: true } }
+          : {}),
+        ...(opts.billingAddressCollection
+          ? { billing_address_collection: opts.billingAddressCollection }
+          : {}),
+        ...(opts.customerId && (opts.automaticTax || opts.taxIdCollection)
+          ? { customer_update: { address: "auto", name: "auto" } }
+          : {}),
       },
       opts.stripeAccount ? { stripeAccount: opts.stripeAccount } : undefined,
     );
@@ -700,6 +734,70 @@ export class StripePaymentProvider implements PaymentProvider {
       throw new AlephaError("Stripe Checkout session created without url");
     }
     return { url: session.url, sessionId: session.id };
+  }
+
+  /**
+   * Change the price of a single-item subscription, from its next invoice.
+   *
+   * The item's current price is replaced by an inline one with the new
+   * `unitAmount` and everything else carried over: the same product,
+   * currency, interval and tax behavior. Never prorated: the change neither
+   * credits nor bills the rest of the current period (or trial), so the new
+   * amount simply appears on the next invoice. `0` is a valid amount: the
+   * subscription keeps running on free invoices.
+   */
+  public async updateSubscriptionPrice(
+    subscriptionId: string,
+    unitAmount: number,
+    opts: { stripeAccount?: string } = {},
+  ): Promise<Stripe.Subscription> {
+    const account = opts.stripeAccount
+      ? { stripeAccount: opts.stripeAccount }
+      : undefined;
+    const subscription = await this.stripe.subscriptions.retrieve(
+      subscriptionId,
+      undefined,
+      account,
+    );
+    const items = subscription.items?.data ?? [];
+    if (items.length !== 1) {
+      throw new AlephaError(
+        `Subscription ${subscriptionId} has ${items.length} items; only a single-item subscription can change price`,
+      );
+    }
+    const [item] = items;
+    const price = item.price;
+    if (!price.recurring) {
+      throw new AlephaError(
+        `Subscription ${subscriptionId} holds a non-recurring price`,
+      );
+    }
+    const product =
+      typeof price.product === "string" ? price.product : price.product.id;
+    return this.stripe.subscriptions.update(
+      subscriptionId,
+      {
+        items: [
+          {
+            id: item.id,
+            price_data: {
+              currency: price.currency,
+              product,
+              unit_amount: unitAmount,
+              recurring: {
+                interval: price.recurring.interval,
+                interval_count: price.recurring.interval_count,
+              },
+              ...(price.tax_behavior && price.tax_behavior !== "unspecified"
+                ? { tax_behavior: price.tax_behavior }
+                : {}),
+            },
+          },
+        ],
+        proration_behavior: "none",
+      },
+      account,
+    );
   }
 
   public async retrieveSubscription(

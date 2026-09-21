@@ -428,6 +428,142 @@ describe("StripePaymentProvider", () => {
       );
     });
 
+    it("opens a trial with Stripe Tax, the VAT number and the billing address", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+
+      await provider.createCheckoutSubscription({
+        priceData: {
+          currency: "eur",
+          unitAmount: 7900,
+          interval: "month",
+          productName: "Alepha Club",
+          taxBehavior: "exclusive",
+        },
+        successUrl: "https://app.test/ok",
+        cancelUrl: "https://app.test/ko",
+        customerEmail: "owner@club.test",
+        metadata: { clubId: "c_1" },
+        trialPeriodDays: 30,
+        automaticTax: true,
+        taxIdCollection: true,
+        billingAddressCollection: "required",
+      });
+
+      const params = calls[0].params as Record<string, unknown>;
+      expect(params.line_items).toEqual([
+        {
+          quantity: 1,
+          price_data: {
+            currency: "eur",
+            unit_amount: 7900,
+            recurring: { interval: "month" },
+            product_data: { name: "Alepha Club" },
+            tax_behavior: "exclusive",
+          },
+        },
+      ]);
+      expect(params.subscription_data).toEqual({
+        metadata: { clubId: "c_1" },
+        trial_period_days: 30,
+      });
+      expect(params.automatic_tax).toEqual({ enabled: true });
+      expect(params.tax_id_collection).toEqual({ enabled: true });
+      expect(params.billing_address_collection).toBe("required");
+      // A new customer is created from the email: nothing to write back.
+      expect(params.customer_update).toBeUndefined();
+    });
+
+    it("saves the collected address onto a known customer when tax is on", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+
+      await provider.createCheckoutSubscription({
+        priceData: {
+          currency: "eur",
+          unitAmount: 7900,
+          interval: "month",
+          productName: "Alepha Club",
+        },
+        successUrl: "https://app.test/ok",
+        cancelUrl: "https://app.test/ko",
+        customerId: "cus_1",
+        automaticTax: true,
+      });
+
+      const params = calls[0].params as Record<string, unknown>;
+      expect(params.customer).toBe("cus_1");
+      expect(params.customer_update).toEqual({ address: "auto", name: "auto" });
+      expect(params.subscription_data).toBeUndefined();
+    });
+
+    it("changes a subscription's price from its next invoice, keeping the rest", async () => {
+      const provider = make();
+      const calls: Array<{ call: string; id: string; params: unknown }> = [];
+      (provider as unknown as { stripe: unknown }).stripe = {
+        subscriptions: {
+          retrieve: async (id: string) => {
+            calls.push({ call: "retrieve", id, params: undefined });
+            return {
+              id,
+              items: {
+                data: [
+                  {
+                    id: "si_1",
+                    price: {
+                      currency: "eur",
+                      product: "prod_1",
+                      tax_behavior: "exclusive",
+                      recurring: { interval: "month", interval_count: 1 },
+                    },
+                  },
+                ],
+              },
+            };
+          },
+          update: async (id: string, params: unknown) => {
+            calls.push({ call: "update", id, params });
+            return { id };
+          },
+        },
+      };
+
+      await provider.updateSubscriptionPrice("sub_1", 0);
+
+      expect(calls[1]).toEqual({
+        call: "update",
+        id: "sub_1",
+        params: {
+          items: [
+            {
+              id: "si_1",
+              price_data: {
+                currency: "eur",
+                product: "prod_1",
+                unit_amount: 0,
+                recurring: { interval: "month", interval_count: 1 },
+                tax_behavior: "exclusive",
+              },
+            },
+          ],
+          proration_behavior: "none",
+        },
+      });
+    });
+
+    it("refuses to change the price of a multi-item subscription", async () => {
+      const provider = make();
+      (provider as unknown as { stripe: unknown }).stripe = {
+        subscriptions: {
+          retrieve: async () => ({ items: { data: [{}, {}] } }),
+        },
+      };
+
+      await expect(
+        provider.updateSubscriptionPrice("sub_1", 4900),
+      ).rejects.toBeInstanceOf(AlephaError);
+    });
+
     it("schedules, clears, reads and cancels a subscription on the account", async () => {
       const provider = make();
       const calls = provider.recordBilling();
