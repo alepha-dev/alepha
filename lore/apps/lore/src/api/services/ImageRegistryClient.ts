@@ -470,7 +470,7 @@ export class ImageRegistryClient {
     const runtime = labels?.[ImageRegistryClient.RUNTIME_LABEL];
     if (typeof runtime !== "string" || !runtime.trim()) {
       throw new BadRequestError(
-        `${parsed.reference} declares no \`${ImageRegistryClient.RUNTIME_LABEL}\` label on ${platform}, so nothing in it says what it runs. Images built by \`alepha build --target=docker\` carry it; one built another way, or before that label existed, has to be rebuilt.`,
+        `${parsed.reference} declares no \`${ImageRegistryClient.RUNTIME_LABEL}\` label on ${platform}, so nothing in it says what it runs. Images built by \`alepha image\` carry it; one built another way, or before that label existed, has to be rebuilt.`,
       );
     }
     return runtime.trim();
