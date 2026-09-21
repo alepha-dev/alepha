@@ -1,7 +1,9 @@
+import { z } from "alepha";
+
 import { appSecrets } from "../entities/appSecrets.ts";
 
 /**
- * What a read path may say about a secret.
+ * What a read path may say about a stored variable.
  *
  * ## ⚠️ Built with `pick`, so exclusion is the default
  *
@@ -10,16 +12,28 @@ import { appSecrets } from "../entities/appSecrets.ts";
  * being forgotten. Written as the row minus `valueSealed`, the next column
  * would default to visible and the mistake would be silent.
  *
- * **No read path returns a value, for anybody, the project owner included.** A
- * `type="password"` input is a rendering hint: it still sends the real value to
- * the client on every edit, so it is not the control. `valuePrefix` is what a
- * list answers instead, and it is empty for a value short enough that a prefix
- * would be most of it.
+ * **No read path returns a SECRET's value, for anybody, the project owner
+ * included.** `valuePrefix` is what a list answers instead, and it is empty for
+ * a value short enough that a prefix would be most of it.
+ *
+ * A VARIABLE's value is returned (#Q2467): the app declared it `secret: false`,
+ * it ships as a plain binding, and `value` is only ever stored for one. The
+ * column is absent on a secret's row by construction, so picking it cannot
+ * leak one.
  */
-export const appSecretResourceSchema = appSecrets.schema.pick({
-  id: true,
-  key: true,
-  valuePrefix: true,
-  updatedAt: true,
-  updatedBy: true,
-});
+export const appSecretResourceSchema = appSecrets.schema
+  .pick({
+    id: true,
+    key: true,
+    value: true,
+    valuePrefix: true,
+    updatedAt: true,
+    updatedBy: true,
+  })
+  .extend({
+    /**
+     * `variable` when the stored row carries a readable value, `secret`
+     * otherwise.
+     */
+    kind: z.enum(["secret", "variable"]),
+  });

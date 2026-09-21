@@ -1,0 +1,1 @@
+ALTER TABLE `app_secrets` ADD `value` text;

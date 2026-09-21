@@ -68,6 +68,21 @@ export const appSecrets = $entity({
      */
     valuePrefix: db.default(z.string().max(8), ""),
     /**
+     * The plaintext, for a VARIABLE only: a key the app's manifest lists under
+     * `variables` (declared `secret: false`), so its value may be shown and
+     * edited in place (#Q2467).
+     *
+     * ⚠️ **Absent for a secret, always.** Which one a key is follows the
+     * app's declaration at the moment it is set, never a click: a key the
+     * manifest does not list as a variable is stored sealed only. A key that
+     * moves from secret to variable in a newer build is re-stored on its next
+     * set; its sealed value is never decrypted to fill this in.
+     *
+     * `valueSealed` is written for a variable too, so the deploy keeps one
+     * read path (`AppSecretService.open`) for both kinds.
+     */
+    value: z.string().max(5_000).optional(),
+    /**
      * Which key derivation sealed it, so rotating `APP_SECRET` is a re-seal
      * script rather than a crisis. Matches `CredentialSealService.KEY_VERSION`.
      */

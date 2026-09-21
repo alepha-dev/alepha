@@ -196,19 +196,72 @@ test.describe("deploying through Lore", () => {
       });
       await expect(page.getByText(/nothing set yet/i)).toBeVisible();
 
-      // ⚠️ The property the whole screen exists for: a value goes one way.
-      // Set one, and the list names it without ever saying what it is.
-      await page.getByTestId("app-environment-key").fill("STRIPE_SECRET_KEY");
+      // ⚠️ The property the whole screen exists for: a secret goes one way.
+      // Set one, and the table names it without ever saying what it is.
+      //
+      // The name is a combobox that autocompletes from the app's declared
+      // keys (#Q2467) and still takes any other through its create-new row.
+      // The popup is a portal, and both the trigger and its search field carry
+      // `role="combobox"`, so the search is reached as an input.
       await page
-        .getByTestId("app-environment-value")
+        .getByTestId("app-environment-key")
+        .getByRole("combobox")
+        .click();
+      const search = page.locator('input[role="combobox"]');
+      await expect(search).toBeVisible({ timeout: 15_000 });
+      await search.fill("STRIPE_SECRET_KEY");
+      await page
+        .getByRole("option")
+        .filter({ hasText: "STRIPE_SECRET_KEY" })
+        .first()
+        .click();
+      await page
+        .locator("#app-environment-add-value")
         .fill("sk_live_abcdefghijkl");
       await page.getByTestId("app-environment-save").click();
 
-      await expect(page.getByText("STRIPE_SECRET_KEY")).toBeVisible({
+      const table = page.getByTestId("app-environment");
+      await expect(table.getByText("STRIPE_SECRET_KEY")).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText(/sk_live_abcdefghijkl/)).toHaveCount(0);
-      await expect(page.getByText(/starts with sk_l/i)).toBeVisible();
+      await expect(table.getByText(/starts with sk_l/i)).toBeVisible();
+    });
+
+    await test.step("a .env import previews, then sets every line at once", async () => {
+      // #Q2468: the preview marks each key before anything is sent, and the
+      // import applies the sendable ones in one request.
+      await page.getByTestId("app-environment-import").click();
+      const dialog = page.getByRole("dialog");
+      await dialog
+        .locator('[data-testid="app-environment-import-text"]')
+        .fill(
+          [
+            "# pasted from a laptop",
+            "STRIPE_SECRET_KEY=sk_live_replacedvalue1",
+            "export MAILER_DSN='smtp://user:pass@host'",
+            "DATABASE_URL=postgres://nope",
+          ].join("\n"),
+        );
+
+      const preview = dialog.getByTestId("app-environment-import-preview");
+      await expect(preview.getByText("Replaced")).toBeVisible();
+      await expect(preview.getByText("New")).toBeVisible();
+      await expect(preview.getByText("Refused")).toBeVisible();
+
+      await dialog.getByTestId("app-environment-import-submit").click();
+      await expect(dialog).toBeHidden({ timeout: 15_000 });
+      await page.evaluate(() => {
+        document.body.style.pointerEvents = "";
+      });
+
+      const table = page.getByTestId("app-environment");
+      await expect(table.getByText("MAILER_DSN")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(
+        table.getByText("DATABASE_URL", { exact: true }),
+      ).toHaveCount(0);
     });
 
     await test.step("turning the option back off takes both tabs away", async () => {

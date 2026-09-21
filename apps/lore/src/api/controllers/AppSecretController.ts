@@ -3,7 +3,9 @@ import { $repository } from "alepha/orm";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
+import type { AppSecret } from "../entities/appSecrets.ts";
 import { appSecretResourceSchema } from "../schemas/appSecretResourceSchema.ts";
+import { declaredEnvKeySchema } from "../schemas/declaredEnvKeySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 
@@ -60,15 +62,36 @@ export class AppSecretController {
     use: [this.ownsProject()],
     method: "GET",
     path: "/projects/:projectId/apps/:instanceId/secrets",
-    description: "What this deployed copy runs with. Never the values.",
+    description:
+      "What this deployed copy runs with, and what its app declares. A variable's value, never a secret's.",
     schema: {
       params: z.object({ projectId: z.integer(), instanceId: z.uuid() }),
-      response: z.object({ items: z.array(appSecretResourceSchema) }),
+      response: z.object({
+        items: z.array(appSecretResourceSchema),
+        /**
+         * Every key the app's build declares, which is what the add form
+         * autocompletes from (#Q2467).
+         */
+        declared: z.array(declaredEnvKeySchema),
+        /**
+         * The names this copy refuses, so an import can flag them before it
+         * sends (#Q2468). The writes still refuse them on their own.
+         */
+        reserved: z.array(z.string()),
+      }),
     },
     handler: async ({ params }) => {
       await this.assertInstance(params.projectId, params.instanceId);
-      const items = await this.secrets.list(params.instanceId);
-      return { items } as any;
+      const [rows, declared, reserved] = await Promise.all([
+        this.secrets.list(params.instanceId),
+        this.secrets.declared(params.instanceId),
+        this.secrets.reservedKeys(params.instanceId),
+      ]);
+      return {
+        items: rows.map((row) => this.resource(row)),
+        declared,
+        reserved,
+      };
     },
   });
 
@@ -97,7 +120,39 @@ export class AppSecretController {
         value: body.value,
         updatedBy: user?.id,
       });
-      return row as any;
+      return this.resource(row);
+    },
+  });
+
+  importAppSecrets = $action({
+    use: [this.writeGate()],
+    method: "POST",
+    path: "/projects/:projectId/apps/:instanceId/secrets/import",
+    description:
+      "Set several variables at once, as a parsed .env. All or nothing: one refused name refuses the whole import.",
+    schema: {
+      params: z.object({ projectId: z.integer(), instanceId: z.uuid() }),
+      body: z.object({
+        entries: z
+          .array(
+            z.object({
+              key: z.string().min(1).max(100),
+              value: z.string().min(1).max(AppSecretService.MAX_VALUE_LENGTH),
+            }),
+          )
+          .min(1)
+          .max(AppSecretService.MAX_KEYS),
+      }),
+      response: z.object({ items: z.array(appSecretResourceSchema) }),
+    },
+    handler: async ({ params, body, user }) => {
+      await this.assertInstance(params.projectId, params.instanceId);
+      const rows = await this.secrets.setMany({
+        instanceId: params.instanceId,
+        entries: body.entries,
+        updatedBy: user?.id,
+      });
+      return { items: rows.map((row) => this.resource(row)) };
     },
   });
 
@@ -125,6 +180,21 @@ export class AppSecretController {
       return { ok: true };
     },
   });
+
+  /**
+   * The row as a read path may show it: a variable's value, a secret's prefix.
+   */
+  protected resource(row: AppSecret) {
+    return {
+      id: row.id,
+      key: row.key,
+      value: row.value ?? undefined,
+      valuePrefix: row.valuePrefix,
+      updatedAt: row.updatedAt,
+      updatedBy: row.updatedBy,
+      kind: row.value == null ? ("secret" as const) : ("variable" as const),
+    };
+  }
 
   /**
    * That this instance belongs to the gated project.

@@ -195,6 +195,155 @@ describe("a deployed copy's environment", () => {
     });
   });
 
+  /**
+   * Variables and secrets (#Q2467): a key the app's manifest declares
+   * `secret: false` is stored readable and shown; everything else stays
+   * write-only. The kind follows the declaration, never the caller.
+   */
+  describe("variables the app declared secret: false", () => {
+    const declaring = async (w: Awaited<ReturnType<typeof world>>) => {
+      await alepha.inject(TestRows).artifacts.create({
+        projectId: w.project.id,
+        app: "my-app",
+        tag: "latest",
+        runtime: "node",
+        runtimes: ["node"],
+        format: "archive",
+        sha256: "a".repeat(64),
+        size: 10,
+        fileId: crypto.randomUUID(),
+        manifest: JSON.stringify({
+          secrets: [{ name: "STRIPE_KEY", description: "Stripe API key" }],
+          variables: [{ name: "PUBLIC_URL", description: "Public origin" }],
+        }),
+      } as never);
+      return w;
+    };
+
+    it("lists what the app declares, with each key's kind and description", async ({
+      expect,
+    }) => {
+      const w = await declaring(await world());
+
+      expect((await list(w)).declared).toEqual([
+        { name: "PUBLIC_URL", description: "Public origin", kind: "variable" },
+        { name: "STRIPE_KEY", description: "Stripe API key", kind: "secret" },
+      ]);
+    });
+
+    it("shows a declared variable's value, and never a secret's", async ({
+      expect,
+    }) => {
+      const w = await declaring(await world());
+
+      await set(w, "PUBLIC_URL", "https://example.test");
+      await set(w, "STRIPE_KEY", "sk_live_abcdefghijkl");
+      const byKey = Object.fromEntries(
+        (await list(w)).items.map((it) => [it.key, it]),
+      );
+
+      expect(byKey.PUBLIC_URL.kind).toBe("variable");
+      expect(byKey.PUBLIC_URL.value).toBe("https://example.test");
+      expect(byKey.STRIPE_KEY.kind).toBe("secret");
+      expect(byKey.STRIPE_KEY.value).toBeUndefined();
+      expect(JSON.stringify(await list(w))).not.toContain(
+        "sk_live_abcdefghijkl",
+      );
+    });
+
+    it("stores an undeclared key as a secret", async ({ expect }) => {
+      const w = await declaring(await world());
+
+      await set(w, "SOMETHING_ELSE", "https://example.test");
+
+      const [item] = (await list(w)).items;
+      expect(item.kind).toBe("secret");
+      expect(item.value).toBeUndefined();
+    });
+
+    it("drops the readable copy when a variable is set again as a secret", async ({
+      expect,
+    }) => {
+      const w = await declaring(await world());
+      await set(w, "PUBLIC_URL", "https://example.test");
+      await alepha
+        .inject(TestRows)
+        .artifacts.updateById(
+          (await alepha.inject(TestRows).artifacts.findMany({}))[0]!.id,
+          {
+            manifest: JSON.stringify({
+              secrets: [{ name: "PUBLIC_URL" }],
+              variables: [],
+            }),
+          } as never,
+        );
+
+      await set(w, "PUBLIC_URL", "https://other.example.test");
+
+      const [row] = await alepha.inject(TestRows).secrets.findMany({});
+      expect(row?.value).toBeUndefined();
+      expect((await list(w)).items[0].kind).toBe("secret");
+    });
+
+    it("still seals a variable, so the deploy reads both kinds one way", async ({
+      expect,
+    }) => {
+      const w = await declaring(await world());
+      await set(w, "PUBLIC_URL", "https://example.test");
+
+      const opened = await alepha.inject(AppSecretService).open(w.instance.id);
+
+      expect(opened.PUBLIC_URL).toBe("https://example.test");
+    });
+  });
+
+  /**
+   * The .env import (#Q2468): every line is checked before anything is
+   * written, so one refused name leaves the set as it was.
+   */
+  describe("importing several at once", () => {
+    const importing = async (
+      w: Awaited<ReturnType<typeof world>>,
+      entries: Array<{ key: string; value: string }>,
+    ) =>
+      await alepha.inject(AppSecretController).importAppSecrets.fetch(
+        {
+          params: { projectId: w.project.id, instanceId: w.instance.id },
+          body: { entries },
+        },
+        { user: w.user },
+      );
+
+    it("sets every entry, replacing what was there", async ({ expect }) => {
+      const w = await world();
+      await set(w, "EXISTING_KEY", "old-value-123456");
+
+      const result = await importing(w, [
+        { key: "EXISTING_KEY", value: "new-value-123456" },
+        { key: "NEW_KEY", value: "another-value-1234" },
+      ]);
+
+      expect(result.data.items.map((it) => it.key)).toEqual([
+        "EXISTING_KEY",
+        "NEW_KEY",
+      ]);
+      const opened = await alepha.inject(AppSecretService).open(w.instance.id);
+      expect(opened.EXISTING_KEY).toBe("new-value-123456");
+    });
+
+    it("writes nothing when one entry is refused", async ({ expect }) => {
+      const w = await world();
+
+      await expect(
+        importing(w, [
+          { key: "GOOD_KEY", value: "a-good-value-1234" },
+          { key: "DATABASE_URL", value: "postgres://nope" },
+        ]),
+      ).rejects.toThrow(/DATABASE_URL is set by the deploy/);
+      expect((await list(w)).items).toHaveLength(0);
+    });
+  });
+
   describe("what is stored", () => {
     it("seals the value under its own label, never in cleartext", async ({
       expect,
@@ -302,7 +451,7 @@ describe("a deployed copy's environment", () => {
         await expect(set(w, key, "a-value-long-enough")).rejects.toThrow(
           /set by Bay, not here/,
         );
-        expect(await list(w)).toEqual({ items: [] });
+        expect((await list(w)).items).toEqual([]);
       },
     );
 
