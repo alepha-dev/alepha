@@ -149,18 +149,23 @@ export class DeployGate {
    * changed. The spec pins the string, so #1812 and this cannot silently
    * disagree.
    *
-   * Neither side needed new storage: `artifacts.runtime` is read from the
-   * manifest at push time, and `acceptedRuntimes` is a property of the estate's
-   * TYPE rather than of the row.
+   * `artifacts.runtimes` is read from the manifest at push time, and
+   * `acceptedRuntimes` is a property of the estate's TYPE rather than of the
+   * row.
    */
   public assertRuntime(input: {
     estate: Estate;
     app: string;
     tag: string;
-    runtime: string;
     /**
-     * The runtimes this app has actually built for this tag, so the refusal
-     * can tell "wrong variant" from "no variant at all".
+     * Every slice the chosen archive carries, in declared order (#Q2462). A
+     * `node,workerd` archive passes for a Bay AND for a Cloudflare account.
+     */
+    runtimes: string[];
+    /**
+     * The runtimes this app has actually built for this tag, across its
+     * archives, so the refusal can tell "wrong variant" from "no variant at
+     * all".
      *
      * ⚠️ **Archive runtimes only.** An image row carries a real `runtime`, so
      * feeding every variant here makes a refusal read "It has: node, node" for
@@ -171,14 +176,14 @@ export class DeployGate {
     available: string[];
   }): void {
     const accepted = this.estateService.acceptedRuntimes(input.estate.type);
-    if (accepted.includes(input.runtime)) {
+    if (input.runtimes.some((runtime) => accepted.includes(runtime))) {
       return;
     }
 
     const wanted = accepted[0] ?? "unknown";
     if (input.available.includes(wanted)) {
       throw new BadRequestError(
-        `Artifact ${input.app}@${input.tag} is a \`${input.runtime}\` build; estate '${input.estate.slug}' (${input.estate.type}) runs \`${accepted.join("`, `")}\`.`,
+        `Artifact ${input.app}@${input.tag} carries \`${input.runtimes.join("`, `")}\`; estate '${input.estate.slug}' (${input.estate.type}) runs \`${accepted.join("`, `")}\`.`,
       );
     }
 

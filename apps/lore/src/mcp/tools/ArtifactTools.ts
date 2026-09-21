@@ -40,7 +40,7 @@ export class ArtifactTools {
   artifact_list = $tool({
     title: "List artifacts",
     description:
-      'What a project has built, newest push first, with every variant of a tag folded into ONE entry - `1.2.3` names one release that may carry a node build, a workerd build and a container image, and they are variants rather than three releases. A variant is identified by `runtime` AND `format` (`archive` or `image`); an image carries a `reference` to `docker pull` and no bytes at all, and `size` may be absent on one. Narrow with `app` for one application, or with `tag` to answer "does a build for this release exist", which is the join a release page makes. `pushedAt` is when the bytes landed, not when the tag first appeared: `latest` is replaced in place, so its creation date would be misleading and is not what is returned. The tarball itself is never included.',
+      'What a project has built, newest push first, with every variant of a tag folded into ONE entry - `1.2.3` names one release that may carry a node build, a workerd build and a container image, and they are variants rather than three releases. A variant is identified by `runtime` AND `format` (`archive` or `image`), and `runtimes` lists every slice an archive carries (`node` + `workerd` in one build); an image carries a `reference` to `docker pull` and no bytes at all, and `size` may be absent on one. Narrow with `app` for one application, or with `tag` to answer "does a build for this release exist", which is the join a release page makes. `pushedAt` is when the bytes landed, not when the tag first appeared: `latest` is replaced in place, so its creation date would be misleading and is not what is returned. The tarball itself is never included.',
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: artifactListParamsSchema,
@@ -97,7 +97,9 @@ export class ArtifactTools {
 
       const variants = group.variants.filter(
         (variant) =>
-          (!params.runtime || variant.runtime === params.runtime) &&
+          // Any slice, not the primary: a `node,workerd` archive is the
+          // workerd build of this tag too (#Q2462).
+          (!params.runtime || variant.runtimes.includes(params.runtime)) &&
           (!params.format || variant.format === params.format),
       );
       if (variants.length === 0) {
@@ -111,7 +113,7 @@ export class ArtifactTools {
         const asked = [params.runtime, params.format].filter(Boolean).join(" ");
         throw new NotFoundError(
           `"${params.tag}" has no ${asked} build of "${params.app}". It has: ${group.variants
-            .map((variant) => `${variant.runtime} ${variant.format}`)
+            .map((variant) => `${variant.runtimes.join("+")} ${variant.format}`)
             .join(", ")}.`,
         );
       }

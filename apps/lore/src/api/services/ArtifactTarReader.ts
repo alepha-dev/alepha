@@ -128,7 +128,7 @@ export class ArtifactTarReader {
     const manifest = artifactManifestSchema.safeParse(parsed);
     if (!manifest.success) {
       throw new BadRequestError(
-        `${ArtifactTarReader.MANIFEST_PATH} is not a manifest this Lore can read: it must declare \`version: 1\` and a \`runtime\` of node, bun, workerd or static.`,
+        `${ArtifactTarReader.MANIFEST_PATH} is not a manifest this Lore can read: it must declare \`runtimes\`, a non-empty list of node, bun, workerd or static slices. Rebuild it with a current \`alepha build\`.`,
       );
     }
 

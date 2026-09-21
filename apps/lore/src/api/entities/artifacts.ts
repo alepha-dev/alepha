@@ -116,6 +116,27 @@ export const artifacts = $entity({
      */
     runtime: z.string().min(1).max(32),
     /**
+     * Every runtime slice an archive carries, in declared order: `["node",
+     * "workerd"]` for Lore's own build. `runtimes[0]` is {@link runtime}.
+     *
+     * ⚠️ **One archive is one row** (#Q2462). A multi-slice archive used to be
+     * filed under its primary alone, so a Cloudflare estate refused a
+     * `node,workerd` build that carried the workerd slice it needed. The row
+     * keeps its single `runtime` as the key and gains the list as what a
+     * deploy matches against. Rejected: one row per slice sharing the bytes,
+     * which shows one build as N builds.
+     *
+     * **A runtime lives in at most one archive per tag**, enforced by
+     * `ArtifactService.push` rather than an index: a list has no uniqueness a
+     * SQLite index can express.
+     *
+     * Optional because an IMAGE row has one runtime from its label and no list,
+     * and because a nullable column is what D1 can add without a rebuild. Read
+     * it through `ArtifactService.runtimesOf`, which answers `[runtime]` when
+     * it is absent.
+     */
+    runtimes: z.array(z.string().max(32)).max(8).optional(),
+    /**
      * `archive` | `image`. Which kind of thing this row records.
      *
      * `archive` is a tarball whose bytes are in the `artifacts` `$storage`

@@ -262,12 +262,11 @@ describe("unpacking an artifact", () => {
       await archive({
         "index.node.js": "1",
         "manifest.json": JSON.stringify({
-          version: 1,
-          runtime: "workerd",
+          runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
         }),
       }),
     );
 
-    expect(manifest.runtime).toBe("workerd");
+    expect(manifest.runtimes[0]?.runtime).toBe("workerd");
   });
 });

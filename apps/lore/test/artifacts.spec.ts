@@ -298,7 +298,7 @@ describe("artifacts", () => {
 
       const result = await push(projectId, owner, {
         file: await packedArtifact({
-          manifest: { version: 1, runtime: "workerd" },
+          manifest: { runtimes: [{ runtime: "workerd" }] },
           name: "my-app_1.2.3_node.tar.gz",
         }),
       });
@@ -318,7 +318,7 @@ describe("artifacts", () => {
 
       const zstd = await push(projectId, owner, {
         file: await packedArtifact({
-          manifest: { version: 1, runtime: "node" },
+          manifest: { runtimes: [{ runtime: "node" }] },
         }),
       });
       const gzip = await push(projectId, owner, {
@@ -327,7 +327,7 @@ describe("artifacts", () => {
           // Different bytes, so this is a distinct artifact rather than a
           // re-push that would be refused under the same tag.
           filler: "gzip",
-          manifest: { version: 1, runtime: "bun" },
+          manifest: { runtimes: [{ runtime: "bun" }] },
         }),
       });
 
@@ -360,10 +360,130 @@ describe("artifacts", () => {
       expect(
         await statusOf(
           push(projectId, owner, {
-            file: await packedArtifact({ manifest: { version: 1 } }),
+            file: await packedArtifact({ manifest: { runtimes: [] } }),
           }),
         ),
       ).toBe(400);
+    });
+  });
+
+  /**
+   * One archive is one row with its slices (#Q2462). A runtime lives in at
+   * most one archive per tag, so a deploy for any runtime resolves to exactly
+   * one build.
+   */
+  describe("one archive, several runtimes", () => {
+    const twoSlices = (filler?: string) =>
+      packedArtifact({
+        filler,
+        manifest: {
+          runtimes: [
+            { runtime: "node", entry: "index.node.js" },
+            { runtime: "workerd", entry: "index.workerd.js" },
+          ],
+        },
+      });
+
+    it("stores a two-slice archive as one row carrying both runtimes", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const result = await push(projectId, owner, { file: await twoSlices() });
+
+      expect(result.data.artifact.runtime).toBe("node");
+      expect(result.data.artifact.runtimes).toEqual(["node", "workerd"]);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+    });
+
+    it("refuses a pinned tag whose runtime another archive already holds", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        file: await packedArtifact({
+          manifest: { runtimes: [{ runtime: "workerd" }] },
+        }),
+      });
+
+      const refused = push(projectId, owner, { file: await twoSlices() });
+
+      expect(await statusOf(refused)).toBe(409);
+      await expect(refused).rejects.toThrow(/workerd/);
+    });
+
+    it("takes over every runtime it carries on latest, dropping the archive it overlaps", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({
+          manifest: { runtimes: [{ runtime: "workerd" }] },
+        }),
+      });
+
+      const result = await push(projectId, owner, {
+        tag: "latest",
+        file: await twoSlices(),
+      });
+
+      const rows = await ctx.rows.artifacts.findMany({});
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.id).toBe(result.data.artifact.id);
+      expect(rows[0]?.runtimes).toEqual(["node", "workerd"]);
+      // The dropped archive's bytes go with it.
+      const held = await ctx.artifactController.artifactBucket.list({});
+      expect(held.content).toHaveLength(1);
+    });
+
+    it("replaces a same-primary archive in place under force, widening its runtimes", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const first = await push(projectId, owner, {
+        file: await packedArtifact(),
+      });
+
+      const second = await push(projectId, owner, {
+        force: true,
+        file: await twoSlices(),
+      });
+
+      expect(second.data.artifact.id).toBe(first.data.artifact.id);
+      expect(second.data.artifact.runtimes).toEqual(["node", "workerd"]);
+    });
+
+    it("keeps archives whose runtimes do not overlap side by side", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        file: await packedArtifact({
+          manifest: { runtimes: [{ runtime: "workerd" }] },
+        }),
+      });
+      await push(projectId, owner, {
+        file: await packedArtifact({
+          filler: "bun",
+          manifest: { runtimes: [{ runtime: "bun" }] },
+        }),
+      });
+
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(2);
+    });
+
+    it("re-pushing the same two-slice bytes changes nothing", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const file = await twoSlices();
+      const first = await push(projectId, owner, { file });
+
+      const again = await push(projectId, owner, { file });
+
+      expect(again.data.stored).toBe(false);
+      expect(again.data.artifact.id).toBe(first.data.artifact.id);
     });
   });
 
@@ -380,14 +500,17 @@ describe("artifacts", () => {
       ).toBe(400);
     });
 
-    it("refuses a manifest whose version is not 1", async ({ expect }) => {
+    // Manifest v1's scalar pair, which no current build writes (#Q2462).
+    it("refuses a manifest that declares only the old scalar runtime", async ({
+      expect,
+    }) => {
       const { owner, projectId } = await aProject();
 
       expect(
         await statusOf(
           push(projectId, owner, {
             file: await packedArtifact({
-              manifest: { version: 2, runtime: "node" },
+              manifest: { version: 1, runtime: "node", entry: "index.node.js" },
             }),
           }),
         ),
@@ -491,12 +614,12 @@ describe("artifacts", () => {
 
       await push(projectId, owner, {
         file: await packedArtifact({
-          manifest: { version: 1, runtime: "node" },
+          manifest: { runtimes: [{ runtime: "node" }] },
         }),
       });
       await push(projectId, owner, {
         file: await packedArtifact({
-          manifest: { version: 1, runtime: "workerd" },
+          manifest: { runtimes: [{ runtime: "workerd" }] },
         }),
       });
 
@@ -692,13 +815,13 @@ describe("artifacts", () => {
       await push(projectId, owner, {
         tag: "1.2.3",
         file: await packedArtifact({
-          manifest: { version: 1, runtime: "workerd" },
+          manifest: { runtimes: [{ runtime: "workerd" }] },
         }),
       });
       await push(projectId, owner, {
         tag: "1.2.3",
         file: await packedArtifact({
-          manifest: { version: 1, runtime: "node" },
+          manifest: { runtimes: [{ runtime: "node" }] },
         }),
       });
 

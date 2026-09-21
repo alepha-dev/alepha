@@ -429,6 +429,7 @@ export class ArtifactController {
       app: artifact.app,
       tag: artifact.tag,
       runtime: artifact.runtime,
+      runtimes: ArtifactService.runtimesOf(artifact),
       format: artifact.format,
       reference: artifact.reference,
       sha256: artifact.sha256,

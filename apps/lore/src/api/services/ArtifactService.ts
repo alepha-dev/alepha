@@ -77,50 +77,81 @@ export class ArtifactService {
     const sha256 = await this.digest(bytes);
     const manifest = await this.reader.readManifest(bytes);
 
-    const existing = await this.rows.findOne({
+    const runtimes: string[] = manifest.runtimes.map((slice) => slice.runtime);
+    const primary = runtimes[0];
+
+    // ⚠️ Every ARCHIVE of this tag, not the one row the key names: a runtime
+    // lives in at most one archive per tag (#Q2462), and a `node,workerd` push
+    // collides with a `workerd` archive whose primary is not `node`. The
+    // format clause keeps a node IMAGE of the same tag out of it: an image is
+    // a reference, and replacing one with a tarball is a different act.
+    const archives = await this.rows.findMany({
       where: {
         projectId: { eq: input.projectId },
         app: { eq: app },
         tag: { eq: tag },
-        runtime: { eq: manifest.runtime },
-        // ⚠️ The whole key, since `format` joined it. Without this clause a
-        // node ARCHIVE push would resolve to the node IMAGE row of the same
-        // tag, compare digests that can never match, and then either conflict
-        // or `replace` an image row with a tarball.
         format: { eq: ArtifactService.ARCHIVE },
       },
     });
+    const overlapping = archives.filter((row) =>
+      ArtifactService.runtimesOf(row).some((runtime) =>
+        runtimes.includes(runtime),
+      ),
+    );
+    const existing = overlapping.find((row) => row.runtime === primary);
+
+    // Identical bytes under an identical key is the same push happening twice -
+    // a re-run of a job, a retried step - and answering it with a conflict
+    // would turn an idempotent pipeline red for succeeding. It comes FIRST, so
+    // re-pushing `latest` unchanged replaces nothing and churns no storage.
+    if (
+      existing &&
+      existing.sha256 === sha256 &&
+      overlapping.length === 1 &&
+      this.sameRuntimes(ArtifactService.runtimesOf(existing), runtimes)
+    ) {
+      return { artifact: existing, stored: false };
+    }
+
+    if (
+      overlapping.length > 0 &&
+      tag !== ArtifactService.MUTABLE_TAG &&
+      !input.force
+    ) {
+      const taken = [
+        ...new Set(
+          overlapping.flatMap((row) =>
+            ArtifactService.runtimesOf(row).filter((runtime) =>
+              runtimes.includes(runtime),
+            ),
+          ),
+        ),
+      ];
+      throw new ConflictError(
+        `${app} ${tag} already holds a build for ${taken.join(", ")} (${overlapping.map((row) => row.sha256.slice(0, 12)).join(", ")}). Every tag but \`${ArtifactService.MUTABLE_TAG}\` is write-once - push --force to move it.`,
+      );
+    }
+
+    // `latest`, or a forced push: the new archive takes over every runtime it
+    // carries. The row sharing its primary is replaced in place, and any other
+    // archive it overlaps is dropped with its bytes, so no runtime of this tag
+    // resolves to two builds.
+    const superseded = overlapping.filter((row) => row !== existing);
 
     if (existing) {
-      // Identical bytes under an identical key is the same push happening
-      // twice - a re-run of a job, a retried step - and answering it with a
-      // conflict would turn an idempotent pipeline red for succeeding. Note
-      // this comes FIRST, so re-pushing `latest` unchanged replaces nothing
-      // and churns no storage.
-      if (existing.sha256 === sha256) {
-        return { artifact: existing, stored: false };
-      }
-
-      if (tag !== ArtifactService.MUTABLE_TAG && !input.force) {
-        throw new ConflictError(
-          `${app} ${tag} (${manifest.runtime}) already holds different bytes (${existing.sha256.slice(0, 12)}). Every tag but \`${ArtifactService.MUTABLE_TAG}\` is write-once - push --force to move it.`,
-        );
-      }
-
-      return {
-        artifact: await this.replace(existing, {
-          projectId: input.projectId,
-          app,
-          tag,
-          sha256,
-          size: bytes.length,
-          commitSha: input.commitSha,
-          file: input.file,
-          maps: input.maps,
-          manifest,
-        }),
-        stored: true,
-      };
+      const artifact = await this.replace(existing, {
+        projectId: input.projectId,
+        app,
+        tag,
+        sha256,
+        size: bytes.length,
+        commitSha: input.commitSha,
+        file: input.file,
+        maps: input.maps,
+        manifest,
+      });
+      await this.dropAll(superseded);
+      return { artifact, stored: true };
     }
 
     const stored = await this.files.uploadFile(input.file, {
@@ -137,12 +168,14 @@ export class ArtifactService {
     // The row goes in last. The reverse order leaves, on a failure in between,
     // a row pointing at bytes that were never stored - which every reader
     // would render as an artifact that exists and cannot be fetched.
+    let artifact: Artifact;
     try {
-      const artifact = await this.rows.create({
+      artifact = await this.rows.create({
         projectId: input.projectId,
         app,
         tag,
-        runtime: manifest.runtime,
+        runtime: primary,
+        runtimes,
         format: ArtifactService.ARCHIVE,
         sha256,
         size: bytes.length,
@@ -151,13 +184,44 @@ export class ArtifactService {
         commitSha: input.commitSha,
         manifest: this.serialise(manifest),
       });
-      return { artifact, stored: true };
     } catch (error) {
       await this.files.deleteFile(stored.id);
       if (storedMaps) {
         await this.files.deleteFile(storedMaps.id);
       }
       throw error;
+    }
+    await this.dropAll(superseded);
+    return { artifact, stored: true };
+  }
+
+  /**
+   * Every runtime an artifact row can run on, in declared order.
+   *
+   * An archive answers its `runtimes` list; an image, which has one runtime
+   * from its label and no list, answers `[runtime]`. Every reader goes through
+   * this, so none of them has to know which rows carry the column.
+   */
+  public static runtimesOf(
+    artifact: Pick<Artifact, "runtime" | "runtimes">,
+  ): string[] {
+    return artifact.runtimes?.length ? artifact.runtimes : [artifact.runtime];
+  }
+
+  /**
+   * Whether two runtime lists are the same slices in the same order. Order
+   * matters: it decides the primary.
+   */
+  protected sameRuntimes(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((runtime, i) => runtime === b[i]);
+  }
+
+  /**
+   * Drop archives a newer push took every runtime from, bytes included.
+   */
+  protected async dropAll(rows: Artifact[]): Promise<void> {
+    for (const row of rows) {
+      await this.delete(row);
     }
   }
 
@@ -359,6 +423,9 @@ export class ArtifactService {
     let updated: Artifact;
     try {
       updated = await this.rows.updateById(existing.id, {
+        // The slices move with the bytes: a forced push of `node,workerd` over
+        // a `node` archive now carries both.
+        runtimes: next.manifest.runtimes.map((slice) => slice.runtime),
         sha256: next.sha256,
         size: next.size,
         fileId: stored.id,

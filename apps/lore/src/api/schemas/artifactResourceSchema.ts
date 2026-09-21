@@ -21,7 +21,16 @@ export const artifactResourceSchema = z.object({
    * Case-preserved: this is the join key to `releases.tag`.
    */
   tag: z.string(),
+  /**
+   * The primary runtime: `runtimes[0]`, and part of the row's key.
+   */
   runtime: z.string(),
+  /**
+   * Every runtime slice this variant carries, in declared order (#Q2462).
+   * `["node", "workerd"]` for a two-slice archive; `[runtime]` for a
+   * single-slice archive and for an image.
+   */
+  runtimes: z.array(z.string()),
   /**
    * `archive` or `image`. Which kind of thing this variant is.
    *

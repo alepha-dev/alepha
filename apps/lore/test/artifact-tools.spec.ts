@@ -85,7 +85,7 @@ const setup = async () => {
     // so an `await` inside it would need the thunk to be async and the
     // identity would then be seeded in a different tick from the call.
     const file = await packedArtifact({
-      manifest: { version: 1, runtime: over.runtime ?? "node" },
+      manifest: { runtimes: [{ runtime: over.runtime ?? "node" }] },
       filler: over.filler,
     });
 

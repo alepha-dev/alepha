@@ -67,11 +67,17 @@ redeploying or promoting unchanged bytes skips asset hashing. Server files
 are still unpacked each time, and a missing or damaged cache is rebuilt.
 Replacing or deleting a build also removes its disposable manifest sidecar.
 
-`lore artifacts push` packs `dist/` and stores it. It reads the runtime out of
-the build's own `dist/manifest.json` rather than from a flag, so an artifact is
-identified by `(project, app, tag, runtime, format)` - `1.2.3` built for
-Cloudflare and `1.2.3` built for a Bay machine are two stored builds rather than
-a collision.
+`lore artifacts push` packs `dist/` and stores it. It reads the runtimes out of
+the build's own `manifest.json` rather than from a flag. **One archive is one
+stored build**, carrying every runtime slice it was built with: an app built
+with `runtime: ["node", "workerd"]` pushes once, deploys its node slice to a
+Bay machine and its workerd slice to Cloudflare.
+
+A runtime lives in at most one archive per tag, so a deploy for any runtime
+resolves to exactly one build. Pushing `latest` takes over every runtime the new
+archive carries and drops an older archive it overlaps; any other tag refuses
+the overlap unless you pass `--force`. Two single-runtime archives of one tag
+(`1.2.3` built once for workerd, once for bun) still sit side by side.
 
 ## Record a container image
 
