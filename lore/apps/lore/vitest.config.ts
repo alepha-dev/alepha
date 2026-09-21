@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
 
-import { workspaceProjects } from "../../vitest.projects.ts";
+import { workspaceProjects } from "../../scripts/vitest.projects.ts";
 
 /**
  * This workspace's Vitest projects.

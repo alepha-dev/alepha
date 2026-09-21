@@ -38,7 +38,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { candidatePorts, e2ePort } from "../../../playwright.port.ts";
+import { candidatePorts, e2ePort } from "../../../scripts/playwright.port.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const BAY_DIR = join(ROOT, "apps", "bay");
