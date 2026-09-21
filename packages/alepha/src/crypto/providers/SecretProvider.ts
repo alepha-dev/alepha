@@ -38,7 +38,25 @@ export class SecretProvider {
   protected resolvedSecret?: string;
 
   public get secretKey(): string {
-    return this.resolvedSecret ?? this.env.APP_SECRET;
+    return this.resolvedSecret ?? this.configuredSecret;
+  }
+
+  /**
+   * `APP_SECRET` as configured, with an empty value read as an absent one.
+   *
+   * A schema default applies only to an undefined value, and `APP_SECRET=`
+   * in a `.env` file is an empty string. Read raw, that empty string became
+   * the signing key: the production guard compared it with the default
+   * constant and let it boot, every sign-in then failed with "No secret key
+   * found in the keystore", and `resolveSecretFromFile` took it for an
+   * explicit value and skipped `APP_SECRET_FILE` altogether. The scaffold's
+   * own `.env.example` writes that line.
+   *
+   * Every reader goes through this, so the three cannot disagree again.
+   * `z.text` trims, so a whitespace-only value arrives here empty too.
+   */
+  protected get configuredSecret(): string {
+    return this.env.APP_SECRET || DEFAULT_SECRET_KEY_VALUE;
   }
 
   protected readonly configure = $hook({
@@ -93,7 +111,7 @@ export class SecretProvider {
     // An explicit APP_SECRET always wins, and short-circuits before the
     // serverless refusal: a Worker that already carries its own secret is
     // correctly configured, whatever else the shared env happens to say.
-    if (this.env.APP_SECRET !== DEFAULT_SECRET_KEY_VALUE) {
+    if (this.configuredSecret !== DEFAULT_SECRET_KEY_VALUE) {
       return;
     }
 

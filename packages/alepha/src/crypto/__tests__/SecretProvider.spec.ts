@@ -63,6 +63,67 @@ describe("SecretProvider", () => {
     await alepha.stop();
   });
 
+  describe("an empty APP_SECRET", () => {
+    /*
+     * `APP_SECRET=` in a `.env` file is an empty string, not an absent key,
+     * and a schema default only applies to an absent one. The empty string
+     * used to become the key: the production guard compared it with the
+     * default constant and let it boot, and every sign-in then failed with
+     * "No secret key found in the keystore". The scaffold's own `.env.example`
+     * writes that line, so a project whose `.env` is a copy of it hit this.
+     */
+    it("refuses to start in production, as an unset one does", async () => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "" },
+      });
+      alepha.inject(SecretProvider);
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+
+    it("refuses a whitespace-only value the same way", async () => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "   " },
+      });
+      alepha.inject(SecretProvider);
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+
+    it("falls back to the development default outside production, so signing works", async () => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "test", APP_SECRET: "" },
+      });
+      const secret = alepha.inject(SecretProvider);
+
+      await alepha.start();
+
+      expect(secret.secretKey).toBe(DEFAULT_SECRET_KEY_VALUE);
+
+      await alepha.stop();
+    });
+
+    it("does not disable APP_SECRET_FILE, which an explicit value would", async () => {
+      const alepha = Alepha.create({
+        env: {
+          NODE_ENV: "production",
+          APP_SECRET: "",
+          APP_SECRET_FILE: "/data/.app_secret",
+        },
+      }).with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      const secret = alepha.inject(SecretProvider);
+
+      await alepha.start();
+
+      expect(fs.wasWritten("/data/.app_secret")).toBe(true);
+      expect(secret.secretKey).not.toBe("");
+      expect(secret.secretKey).not.toBe(DEFAULT_SECRET_KEY_VALUE);
+
+      await alepha.stop();
+    });
+  });
+
   describe("APP_SECRET_FILE", () => {
     const SECRET_PATH = "/data/.app_secret";
 
