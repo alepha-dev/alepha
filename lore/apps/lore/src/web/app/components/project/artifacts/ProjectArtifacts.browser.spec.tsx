@@ -86,6 +86,7 @@ const group = (over: Record<string, unknown> = {}) => ({
       app: "docs",
       tag: "1.0.0",
       runtime: "workerd",
+      runtimes: ["workerd"],
       format: "archive",
       sha256: "a".repeat(64),
       size: 2_000_000,
@@ -354,6 +355,32 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
+   * One archive carrying two slices is ONE row (#Q2462), and its Runtime cell
+   * names both in declared order.
+   */
+  it("draws one row for a two-slice archive, naming both runtimes", async ({
+    expect,
+  }) => {
+    const { findAllByText, getByTestId } = await show(
+      listing([
+        group({
+          variants: [
+            {
+              ...group().variants[0],
+              runtime: "node",
+              runtimes: ["node", "workerd"],
+            },
+          ],
+        }),
+      ]),
+    );
+
+    expect(await findAllByText("1.0.0")).toHaveLength(1);
+    const text = getByTestId("artifacts-table").textContent ?? "";
+    expect(text.indexOf("node")).toBeLessThan(text.indexOf("workerd"));
+  });
+
+  /**
    * One row per ARTIFACT, not per tag: the endpoint groups a tag's runtime
    * variants because that is the app page's presentation, and this page
    * unwinds it. Two runtimes under one tag are two rows here.
@@ -365,8 +392,17 @@ describe("ProjectArtifacts", () => {
       listing([
         group({
           variants: [
-            { ...group().variants[0], runtime: "workerd" },
-            { ...group().variants[0], runtime: "node", size: 3_000_000 },
+            {
+              ...group().variants[0],
+              runtime: "workerd",
+              runtimes: ["workerd"],
+            },
+            {
+              ...group().variants[0],
+              runtime: "node",
+              runtimes: ["node"],
+              size: 3_000_000,
+            },
           ],
         }),
       ]),
@@ -374,8 +410,8 @@ describe("ProjectArtifacts", () => {
 
     // The tag appears once per runtime row.
     expect(await findAllByText("1.0.0")).toHaveLength(2);
-    // `workerd` is the stored value; the badge reads the infrastructure.
-    expect(await findAllByText("cloudflare")).toHaveLength(1);
+    // A runtime is named by its runtime (#Q2463), never by the host.
+    expect(await findAllByText("workerd")).toHaveLength(1);
     expect(await findAllByText("node")).toHaveLength(1);
   });
 
@@ -393,11 +429,17 @@ describe("ProjectArtifacts", () => {
       listing([
         group({
           variants: [
-            { ...group().variants[0], runtime: "node", format: "archive" },
+            {
+              ...group().variants[0],
+              runtime: "node",
+              runtimes: ["node"],
+              format: "archive",
+            },
             {
               ...group().variants[0],
               id: "00000000-0000-4000-8000-000000000002",
               runtime: "node",
+              runtimes: ["node"],
               format: "image",
               reference: "ghcr.io/acme/docs:1.0.0",
               sha256: "b".repeat(64),
@@ -431,6 +473,7 @@ describe("ProjectArtifacts", () => {
             {
               ...group().variants[0],
               runtime: "node",
+              runtimes: ["node"],
               format: "image",
               size: undefined,
             },
@@ -653,7 +696,7 @@ describe("ProjectArtifacts", () => {
 
       const confirm = await askToDelete("1.0.0");
       expect(confirm.textContent).toContain(
-        "Delete docs 1.0.0 (cloudflare, archive)?",
+        "Delete docs 1.0.0 (workerd, archive)?",
       );
       fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
 

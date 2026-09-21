@@ -147,10 +147,13 @@ const AppDeploy = () => {
           // to prevent, and the server half of the same gate is in
           // `DeployService.queue`. Shipping one without the other is what
           // makes a hidden-button bug.
+          //
+          // And every slice, not the primary (#Q2462): a `node,workerd`
+          // archive is deployable to a Cloudflare estate.
           const usable = group.variants.some(
             (variant) =>
               variant.format === "archive" &&
-              runnable.includes(variant.runtime),
+              variant.runtimes.some((runtime) => runnable.includes(runtime)),
           );
           const imageOnly =
             !usable && group.variants.every((it) => it.format === "image");

@@ -27,6 +27,7 @@ const variant = (over: Record<string, unknown> = {}) => ({
   app: "lore",
   tag: "0.30.0",
   runtime: "node",
+  runtimes: ["node"],
   format: "archive",
   sha256: "a".repeat(64),
   size: 4_400_000,
@@ -110,7 +111,7 @@ describe("ReleaseArtifactsTab", () => {
     expect(container.textContent).not.toContain("Download");
   });
 
-  it("orders rows by app, format and runtime, and names workerd cloudflare", async ({
+  it("orders rows by app, format and runtime, and names workerd by its runtime", async ({
     expect,
   }) => {
     // The five rows of feedback #P2193, handed over grouped and out of order.
@@ -120,7 +121,7 @@ describe("ReleaseArtifactsTab", () => {
         tag: "0.30.0",
         pushedAt: "2026-09-09T10:00:00.000Z",
         variants: [
-          variant({ id: id(1), runtime: "workerd" }),
+          variant({ id: id(1), runtime: "workerd", runtimes: ["workerd"] }),
           variant({
             id: id(2),
             format: "image",
@@ -134,7 +135,12 @@ describe("ReleaseArtifactsTab", () => {
         tag: "0.30.0",
         pushedAt: "2026-09-09T10:00:00.000Z",
         variants: [
-          variant({ id: id(4), app: "docs", runtime: "workerd" }),
+          variant({
+            id: id(4),
+            app: "docs",
+            runtime: "workerd",
+            runtimes: ["workerd"],
+          }),
           variant({ id: id(5), app: "docs" }),
         ],
       } as ArtifactGroup,
@@ -142,13 +148,13 @@ describe("ReleaseArtifactsTab", () => {
 
     expect(cellsOf(await findAllByTestId("release-artifact-row"))).toEqual([
       ["docs", "archive", "node"],
-      ["docs", "archive", "cloudflare"],
+      ["docs", "archive", "workerd"],
       ["lore", "archive", "node"],
-      ["lore", "archive", "cloudflare"],
+      ["lore", "archive", "workerd"],
       ["lore", "image", "node"],
     ]);
-    // The stored value is a key across the stack; only the label moved.
-    expect(container.textContent).not.toContain("workerd");
+    // A runtime is named by its runtime (#Q2463), never by the host.
+    expect(container.textContent).not.toContain("cloudflare");
   });
 
   it("renders N/A rather than NaN when the only variant is a sizeless image", async ({

@@ -1,13 +1,13 @@
 import { TimeAgo } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { Archive, Cloud, Container, Link2, Server } from "lucide-react";
+import { Archive, Container, Link2 } from "lucide-react";
 import { useMemo } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
-import { artifactRuntimeLabel } from "../../shared/artifactRuntimeLabel.ts";
+import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
 
 export interface ReleaseArtifactsTabProps {
   /**
@@ -55,9 +55,9 @@ export interface ReleaseArtifactsTabProps {
  *
  * So the groups are unwound: one row per `(app, format, runtime)`, ordered
  * by app, then format, then the stored runtime value, and every cell reads
- * from its own variant. The runtime prints as `artifactRuntimeLabel` has it
- * (`workerd` reads "cloudflare"), and the version is in the header rather
- * than repeated. **Digest** is short, with the whole value on the title: a
+ * from its own variant. The runtimes print as `ArtifactRuntimeBadges` draws
+ * them, every slice in declared order and `workerd` named `workerd`, and the
+ * version is in the header rather than repeated. **Digest** is short, with the whole value on the title: a
  * deploy pins a digest because a tag can be moved by whoever pushes next.
  *
  * An image row carries its registry reference in the one flexible column,
@@ -159,13 +159,8 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
                 )}
                 {variant.format}
               </span>
-              <span className="flex w-28 shrink-0 items-center gap-1.5 font-mono text-[12px]">
-                {variant.runtime === "workerd" ? (
-                  <Cloud className="size-3.5 shrink-0" aria-hidden />
-                ) : (
-                  <Server className="size-3.5 shrink-0" aria-hidden />
-                )}
-                {artifactRuntimeLabel(variant.runtime)}
+              <span className="flex w-40 shrink-0 items-center">
+                <ArtifactRuntimeBadges runtimes={variant.runtimes} />
               </span>
               <span className="flex min-w-0 flex-1">
                 {variant.format === "image" && variant.reference && (
