@@ -303,7 +303,7 @@ describe("the build manifest schema", () => {
     it("declares no slice and no entry for a static build", async ({
       expect,
     }) => {
-      const written = await writtenFor({ target: "static" });
+      const written = await writtenFor({ runtime: "static" });
       expect(written.runtime).toBe("static");
       expect(written.runtimes).toBeUndefined();
       expect(written.entry).toBeUndefined();

@@ -1,14 +1,6 @@
 import { $atom, type Infer, z } from "alepha";
 
 /**
- * Deployment target for the build output.
- *
- * - `docker` - Generate Dockerfile for containerized deployment
- * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
- */
-export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
-
-/**
  * JavaScript runtime for the build output.
  *
  * - `node` - Node.js runtime (default)
@@ -18,10 +10,22 @@ export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
 export type BuildRuntime = "node" | "bun" | "workerd";
 
 /**
- * What `build.runtime` accepts in `alepha.config.ts`: one runtime, or an
- * ordered list of them.
+ * What `build.runtime` accepts in `alepha.config.ts`: one runtime, an ordered
+ * list of them, or `static` for an app with no server at all.
+ *
+ * ⚠️ `static` is a DECLARATION, never a slice. It says the build produces no
+ * server slice, so it can never appear in `runtimes`, which is the resolved
+ * slice set.
  */
-export type BuildRuntimeDeclaration = BuildRuntime | BuildRuntime[];
+export type BuildRuntimeDeclaration =
+  | BuildRuntime
+  | "static"
+  | Array<BuildRuntime | "static">;
+
+/**
+ * The declaration meaning "this app has no server".
+ */
+export const STATIC_RUNTIME = "static";
 
 /**
  * Build options atom for CLI build command.
@@ -40,14 +44,6 @@ export const buildOptions = $atom({
      * - `"json"` - Generate a JSON report
      */
     stats: z.union([z.boolean(), z.enum(["json"])]).optional(),
-
-    /**
-     * Deployment target for the build output.
-     *
-     * - `docker` - Generate Dockerfile for containerized deployment
-     * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
-     */
-    target: z.enum(["bare", "docker", "cloudflare", "static"]).optional(),
 
     /**
      * The runtime, or runtimes, the server is linked for.
@@ -72,13 +68,25 @@ export const buildOptions = $atom({
      * `--runtime node,workerd` overrides this. The config declares what the app
      * needs; the flag is for a caller that knows better.
      *
-     * Note: Some targets force a specific runtime:
-     * - `cloudflare` always uses `workerd`
+     * ## `static` is the fourth answer: no server at all
+     *
+     * `runtime: ["static"]` declares an app with nothing to spawn — a
+     * prerendered client, served from disk. It produces no server slice, and
+     * the manifest records it in the same field, where `static` has always
+     * meant "nothing to do, serve the files".
+     *
+     * ⚠️ It is a slight abuse of the word, and the alternative was a
+     * `static: true` beside this one. Decided here rather than in advance:
+     * `build.static` ALREADY exists and holds the static site's own settings
+     * (`domain`, `source`), so a boolean of the same name would be two
+     * different things one keystroke apart. Reusing this field costs a small
+     * stretch of "runtime" and introduces no new concept, and the manifest
+     * had already made the same trade for the same reason.
      */
     runtime: z
       .union([
-        z.enum(["node", "bun", "workerd"]),
-        z.array(z.enum(["node", "bun", "workerd"])),
+        z.enum(["node", "bun", "workerd", "static"]),
+        z.array(z.enum(["node", "bun", "workerd", "static"])),
       ])
       .optional(),
 
@@ -139,8 +147,8 @@ export const buildOptions = $atom({
     /**
      * Cloudflare-specific deployment configuration.
      *
-     * Note: Set `target: "cloudflare"` to enable Cloudflare deployment.
-     * This object is only for additional configuration.
+     * Note: declaring a `workerd` runtime is what enables the Cloudflare
+     * deploy config. This object is only for additional configuration.
      */
     cloudflare: z
       .object({
@@ -151,7 +159,8 @@ export const buildOptions = $atom({
     /**
      * Infer site deployment configuration.
      *
-     * Note: Set `target: "static"` to enable static site generation.
+     * Note: `runtime: ["static"]` is what enables static site generation.
+     * This object is only for additional configuration.
      */
     static: z
       .object({

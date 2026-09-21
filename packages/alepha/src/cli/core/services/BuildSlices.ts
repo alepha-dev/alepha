@@ -1,6 +1,10 @@
 import { $inject, Alepha } from "alepha";
 
-import type { BuildRuntime } from "../atoms/buildOptions.ts";
+import type {
+  BuildRuntime,
+  BuildRuntimeDeclaration,
+} from "../atoms/buildOptions.ts";
+import { STATIC_RUNTIME } from "../atoms/buildOptions.ts";
 
 /**
  * Where one runtime's server slice lives inside `dist/`, and how the set of
@@ -45,11 +49,19 @@ export class BuildSlices {
    * nothing. A repeat is dropped rather than built twice, keeping the FIRST
    * occurrence so the primary cannot be moved by a duplicate further down.
    */
-  resolve(declared: BuildRuntime | BuildRuntime[] | undefined): BuildRuntime[] {
+  resolve(declared: BuildRuntimeDeclaration | undefined): BuildRuntime[] {
     if (!declared) {
       return [...this.defaultRuntimes];
     }
-    const list = Array.isArray(declared) ? declared : [declared];
+    // ⚠️ A static app produces NO server slice, so the answer is the empty
+    // list rather than a default. `static` is a declaration, never a slice,
+    // and must never reach a `server/<runtime>/` path.
+    if (this.isStatic(declared)) {
+      return [];
+    }
+    const list = (Array.isArray(declared) ? declared : [declared]).filter(
+      (runtime): runtime is BuildRuntime => runtime !== STATIC_RUNTIME,
+    );
     const ordered: BuildRuntime[] = [];
     for (const runtime of list) {
       if (!ordered.includes(runtime)) {
@@ -60,6 +72,23 @@ export class BuildSlices {
   }
 
   /**
+   * Whether this declaration says the app has no server.
+   *
+   * ⚠️ `static` anywhere in the list means static, rather than being one entry
+   * among several. There is no such thing as a half-static build: the static
+   * task strips every server artifact out of `dist/`, so a slice declared
+   * beside it would be built and then deleted. Saying so here is better than
+   * producing an artifact whose manifest and contents disagree.
+   */
+  isStatic(declared: BuildRuntimeDeclaration | undefined): boolean {
+    if (!declared) {
+      return false;
+    }
+    const list = Array.isArray(declared) ? declared : [declared];
+    return list.includes(STATIC_RUNTIME);
+  }
+
+  /**
    * The ordered slice set of a resolved build, from the options a task holds.
    *
    * `runtimes` is what `BuildCommand` resolved; `runtime` is the declaration it
@@ -67,17 +96,23 @@ export class BuildSlices {
    * hand (a spec, a prebuilt path) and never went through the command.
    */
   fromOptions(options: {
-    runtime?: BuildRuntime | BuildRuntime[] | "static";
+    runtime?: BuildRuntimeDeclaration;
     runtimes?: BuildRuntime[];
   }): BuildRuntime[] {
     if (options.runtimes?.length) {
       return this.resolve(options.runtimes);
     }
-    // `static` is a target, not a runtime that links a bundle. A static build
-    // produces no server slice at all, and the tasks that ask this question
-    // return early before reaching it.
-    const declared = options.runtime === "static" ? undefined : options.runtime;
-    return this.resolve(declared);
+    return this.resolve(options.runtime);
+  }
+
+  /**
+   * Whether this resolved build produces no server at all.
+   */
+  isStaticBuild(options: {
+    runtime?: BuildRuntimeDeclaration;
+    runtimes?: BuildRuntime[];
+  }): boolean {
+    return this.isStatic(options.runtime);
   }
 
   /**
@@ -87,14 +122,16 @@ export class BuildSlices {
    * not express as clearly. Empty segments are dropped so a trailing comma is
    * not an empty runtime name.
    */
-  parseFlag(value: string | undefined): BuildRuntime[] | undefined {
+  parseFlag(
+    value: string | undefined,
+  ): Array<BuildRuntime | "static"> | undefined {
     if (!value) {
       return undefined;
     }
     const parts = value
       .split(",")
       .map((part) => part.trim())
-      .filter(Boolean) as BuildRuntime[];
+      .filter(Boolean) as Array<BuildRuntime | "static">;
     return parts.length ? parts : undefined;
   }
 

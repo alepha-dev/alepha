@@ -5,10 +5,12 @@ The `cloudflare` build target generates a Cloudflare Workers bundle with a `wran
 ## Build
 
 ```bash
-alepha build --target=cloudflare
+alepha build --runtime=workerd
 ```
 
-This forces the `workerd` runtime. You cannot combine `--target=cloudflare` with `--runtime=node` or `--runtime=bun`.
+Declaring a `workerd` slice is what asks for the Cloudflare deploy config: `wrangler.jsonc` and the Worker entry point are written because the build produced a slice only Cloudflare can run.
+
+A build may carry other slices beside it. `alepha build --runtime workerd,node` produces one `dist/` holding both, and the Worker upload takes only the workerd one.
 
 ## Environment Variables
 
@@ -32,7 +34,7 @@ alepha p up
 To deploy a build manually instead:
 
 ```bash
-alepha build --target=cloudflare
+alepha build --runtime=workerd
 cd dist && wrangler deploy
 ```
 
@@ -185,7 +187,7 @@ larger tier would make crash recovery four times slower for a budget that is
 Use `--mode` to control which `.env` file is loaded:
 
 ```bash
-alepha build --target=cloudflare --mode production
+alepha build --runtime=workerd --mode production
 ```
 
 This loads `.env` and `.env.production` before building.
@@ -311,7 +313,7 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "cloudflare",
+    runtime: ["workerd"],
     cloudflare: {
       config: {
         // Additional wrangler.jsonc fields merged into the generated config
@@ -328,6 +330,6 @@ export default defineConfig({
 DATABASE_URL=d1://alepha-app:00000000-0000-0000-0000-000000000000
 
 # Build and deploy
-alepha build --target=cloudflare --mode production
+alepha build --runtime=workerd --mode production
 cd dist && wrangler deploy
 ```

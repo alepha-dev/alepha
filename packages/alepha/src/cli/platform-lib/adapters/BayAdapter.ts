@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 import { $inject, $store, AlephaError } from "alepha";
-import { buildOptions, PackageManagerUtils } from "alepha/cli";
+import { BuildSlices, buildOptions, PackageManagerUtils } from "alepha/cli";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -40,6 +40,7 @@ import {
  * which is why `provision` stays empty.
  */
 export class BayAdapter extends PlatformAdapter {
+  protected readonly slices = $inject(BuildSlices);
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
@@ -501,9 +502,9 @@ export class BayAdapter extends PlatformAdapter {
   /**
    * Builds the artifact Bay consumes.
    *
-   * `--target=bare` and nothing else. A workerd bundle is resolved against
+   * `--runtime node` and nothing else. A workerd bundle is resolved against
    * Cloudflare's export conditions and has no node-runnable entry point, so Bay
-   * refuses it at deploy time — better to never produce one.
+   * refuses it at deploy time: better to never produce one.
    */
   async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     if (ctx.prebuilt) {
@@ -512,25 +513,34 @@ export class BayAdapter extends PlatformAdapter {
       return;
     }
     /*
-      `bare` is forced rather than inherited, and that is deliberate: a
-      `cloudflare` target resolves the bundle against workerd's export
-      conditions and leaves no entry point node can run, so a workspace
-      configured for Cloudflare would otherwise deploy to Bay, fail to boot, and
-      report only "never became ready".
+      `node` is forced rather than inherited, and that is deliberate: a
+      workerd slice is resolved against Cloudflare's export conditions and
+      leaves no entry point node can run, so a workspace configured for
+      Cloudflare would otherwise deploy to Bay, fail to boot, and report only
+      "never became ready".
 
-      `static` is the one target that must survive, because it is not a
-      different way of building a server — it is the absence of one. Forcing
-      `bare` over it built a server bundle for a site that has no process,
+      `static` is the one declaration that must survive, because it is not a
+      different way of building a server: it is the absence of one. Forcing a
+      node slice over it built a server bundle for a site that has no process,
       shipped it, and left Bay to spawn it.
+
+      ⚠️ It is now a RUNTIME rather than a target, and it narrows rather than
+      replaces: a workspace declaring `["node", "workerd"]` would pack both
+      slices, and Bay would take the node one correctly, but the workerd half is
+      megabytes Bay never runs. Naming one keeps the artifact the size of
+      what it is for.
     */
-    const target = this.buildOptions.target === "static" ? "static" : "bare";
+    const runtime = this.slices.isStaticBuild(this.buildOptions)
+      ? "static"
+      : "node";
 
     await run({
       name: "build (bay)",
       handler: async () => {
-        await this.shell.run(await this.cli(ctx, `build --target=${target}`), {
-          root: ctx.root,
-        });
+        await this.shell.run(
+          await this.cli(ctx, `build --runtime=${runtime}`),
+          { root: ctx.root },
+        );
       },
     });
   }
@@ -580,10 +590,9 @@ export class BayAdapter extends PlatformAdapter {
     // The app's own secrets ride along with the artifact — see `secrets()` for
     // why this is not a second command. A static site is skipped: it has no
     // process and no `.env`, and Bay refuses a secrets file for one outright.
-    const secretsPath =
-      this.buildOptions.target === "static"
-        ? undefined
-        : await this.stageSecrets(ctx, run);
+    const secretsPath = this.slices.isStaticBuild(this.buildOptions)
+      ? undefined
+      : await this.stageSecrets(ctx, run);
 
     let url: string | undefined;
     await run({

@@ -200,10 +200,10 @@ App starts up just like in development mode, but without HMR and with better per
 Alepha adapts the build output based on where you deploy:
 
 ```bash
-npm run build -- --target=cloudflare   # Adapts output for Cloudflare Workers
+npm run build -- --runtime=workerd   # Adapts output for Cloudflare Workers
 npm run build -- --runtime=bun         # Optimizes for Bun runtime
 # or with alepha
-npx alepha build --target=cloudflare
+npx alepha build --runtime=workerd
 ```
 
 Build targets and runtime can also be set in `alepha.config.ts`:
@@ -213,7 +213,7 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "cloudflare",
+    runtime: ["workerd"],
     runtime: "workerd",
   },
 });

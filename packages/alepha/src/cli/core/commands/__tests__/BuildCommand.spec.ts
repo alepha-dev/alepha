@@ -4,14 +4,14 @@ import { describe, expect, it } from "vitest";
 import { BuildCommand } from "../build.ts";
 
 /**
- * Exposes the protected target/runtime resolvers for unit testing.
+ * Exposes the protected runtime resolver for unit testing.
  *
- * ⚠️ There is no `resolveCompile` any more: `--compile` left `buildOptions`
- * for `alepha compile`, its own command reading `./dist`, which is what let
- * `--target` stop being constrained by it.
+ * ⚠️ There is no `resolveTarget` and no `resolveCompile` any more. `--compile`
+ * left `buildOptions` for `alepha compile`, which is what let `--target` stop
+ * being constrained by it, and `--target` then had nothing left to say: the
+ * build is described by what it produces.
  */
 class TestBuildCommand extends BuildCommand {
-  public testResolveTarget = this.resolveTarget.bind(this);
   public testResolveRuntimes = this.resolveRuntimes.bind(this);
 }
 
@@ -21,49 +21,41 @@ describe("BuildCommand", () => {
     return alepha.inject(TestBuildCommand);
   };
 
-  describe("resolveTarget", () => {
-    it("maps the 'cf' alias to 'cloudflare'", () => {
-      expect(createCommand().testResolveTarget("cf")).toBe("cloudflare");
-    });
-
-    it("passes canonical targets through unchanged", () => {
-      const cmd = createCommand();
-      expect(cmd.testResolveTarget("cloudflare")).toBe("cloudflare");
-      expect(cmd.testResolveTarget("docker")).toBe("docker");
-      expect(cmd.testResolveTarget("bare")).toBe("bare");
-    });
-
-    it("returns undefined when no target is given", () => {
-      expect(createCommand().testResolveTarget(undefined)).toBeUndefined();
-    });
-  });
-
   describe("resolveRuntimes", () => {
-    it("forces workerd for the canonicalized cloudflare target", () => {
-      const cmd = createCommand();
-      const target = cmd.testResolveTarget("cf");
-      expect(cmd.testResolveRuntimes(target, undefined)).toEqual(["workerd"]);
-    });
-
-    it("refuses a cloudflare target asked for anything but workerd", () => {
-      const cmd = createCommand();
-      expect(() => cmd.testResolveRuntimes("cloudflare", ["node"])).toThrow(
-        /workerd/,
-      );
+    /**
+     * ⚠️ Cloudflare is no longer a target that forces a runtime: declaring a
+     * workerd slice is what asks for a Worker, and that is the whole of it.
+     * The old `--target=cloudflare` said the same thing twice, and could only
+     * ever mean one slice, which is what made it impossible to express a
+     * `node,workerd` build.
+     */
+    it("takes workerd as an ordinary declaration", () => {
+      expect(createCommand().testResolveRuntimes("workerd")).toEqual([
+        "workerd",
+      ]);
+      expect(createCommand().testResolveRuntimes(["node", "workerd"])).toEqual([
+        "node",
+        "workerd",
+      ]);
     });
 
     // node alone: the universal floor. workerd is Cloudflare-only and bun is an
     // optimization, so neither belongs in a default every app pays for.
     it("defaults to node when nothing is declared", () => {
-      expect(createCommand().testResolveRuntimes(undefined, undefined)).toEqual(
-        ["node"],
-      );
+      expect(createCommand().testResolveRuntimes(undefined)).toEqual(["node"]);
+    });
+
+    /**
+     * ⚠️ A static app declares `runtime: ["static"]` and gets NO slices. The
+     * old spelling was `--target=static`; the build is described by what it
+     * produces, and this one produces no server.
+     */
+    it("resolves a static declaration to no slices at all", () => {
+      expect(createCommand().testResolveRuntimes("static")).toEqual([]);
     });
 
     it("widens a scalar declaration to a one-slice list", () => {
-      expect(createCommand().testResolveRuntimes("bare", "bun")).toEqual([
-        "bun",
-      ]);
+      expect(createCommand().testResolveRuntimes("bun")).toEqual(["bun"]);
     });
 
     /**
@@ -75,25 +67,18 @@ describe("BuildCommand", () => {
      */
     it("preserves declared order, and never sorts it", () => {
       const cmd = createCommand();
-      expect(cmd.testResolveRuntimes("bare", ["node", "workerd"])).toEqual([
+      expect(cmd.testResolveRuntimes(["node", "workerd"])).toEqual([
         "node",
         "workerd",
       ]);
-      expect(cmd.testResolveRuntimes("bare", ["bun", "node"])).toEqual([
-        "bun",
-        "node",
-      ]);
+      expect(cmd.testResolveRuntimes(["bun", "node"])).toEqual(["bun", "node"]);
     });
 
     // Keeping the FIRST occurrence: a duplicate further down must not be able
     // to move the primary.
     it("drops a repeat without moving the primary", () => {
       expect(
-        createCommand().testResolveRuntimes("bare", [
-          "node",
-          "workerd",
-          "node",
-        ]),
+        createCommand().testResolveRuntimes(["node", "workerd", "node"]),
       ).toEqual(["node", "workerd"]);
     });
   });

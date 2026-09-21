@@ -60,7 +60,7 @@ describe("build --target=static", () => {
       // entry point.
       const { task, fs } = createManifestTask();
 
-      await task.testWriteManifest(contextFor({ target: "static" }), "dist");
+      await task.testWriteManifest(contextFor({ runtime: "static" }), "dist");
 
       expect(readManifest(fs).runtime).toBe("static");
     });
@@ -71,7 +71,7 @@ describe("build --target=static", () => {
       // exist.
       const { task, fs } = createManifestTask();
 
-      await task.testWriteManifest(contextFor({ target: "static" }), "dist");
+      await task.testWriteManifest(contextFor({ runtime: "static" }), "dist");
 
       expect(readManifest(fs).runtimeVersion).toBeUndefined();
     });
@@ -79,7 +79,7 @@ describe("build --target=static", () => {
     it("still records node for a bare build", async () => {
       const { task, fs } = createManifestTask();
 
-      await task.testWriteManifest(contextFor({ target: "bare" }), "dist");
+      await task.testWriteManifest(contextFor({ runtime: "node" }), "dist");
 
       expect(readManifest(fs).runtime).toBe("node");
     });
@@ -113,7 +113,7 @@ describe("build --target=static", () => {
       const ctx = {
         alepha: { isConfigured: () => true, primitives: () => [] },
         root: "/root/my-app",
-        options: { target: "static", static: source ? { source } : undefined },
+        options: { runtime: "static", static: source ? { source } : undefined },
         run: async (task: { handler: () => Promise<void> }) => task.handler(),
       } as any;
 
@@ -233,7 +233,7 @@ describe("build --target=static", () => {
         alepha: fakeAlepha,
         root: "/root/my-app",
         hasClient: false,
-        options: { target: "static", static: { source: "dist-client" } },
+        options: { runtime: "static", static: { source: "dist-client" } },
         run: async (step: { handler: () => Promise<void> }) => step.handler(),
       } as any);
 

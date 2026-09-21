@@ -4,6 +4,7 @@ import { dirname, isAbsolute } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
@@ -14,9 +15,12 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  */
 export class BuildStaticTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly slices = $inject(BuildSlices);
 
   async run(ctx: BuildTaskContext): Promise<void> {
-    if (ctx.options.target !== "static") {
+    // `runtime: ["static"]` rather than `--target=static`: the build is
+    // described by what it produces, and this one produces no server.
+    if (!this.slices.isStaticBuild(ctx.options)) {
       return;
     }
 
@@ -25,7 +29,7 @@ export class BuildStaticTask extends BuildTask {
     // Without the guard the build died on a TypeError naming nothing.
     if (ctx.flags?.prebuilt) {
       throw new AlephaError(
-        "Target 'static' does not support --prebuilt: it needs a live app to render its pages. Run the build without --prebuilt.",
+        "A static build does not support --prebuilt: it needs a live app to render its pages. Run the build without --prebuilt.",
       );
     }
 

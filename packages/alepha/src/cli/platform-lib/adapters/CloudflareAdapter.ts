@@ -422,10 +422,9 @@ export class CloudflareAdapter extends PlatformAdapter {
       // dereferences alepha. Cast keeps the type signature happy.
       alepha: null as unknown as AlephaInstance,
       options: {
-        target: "cloudflare",
-        // Declared, not inferred from the target. `BuildCloudflareTask` is
-        // triggered by the presence of a workerd SLICE now, because a
-        // multi-slice build has no single target to name — and this path
+        // ⚠️ Declared, and there is no target any more. `BuildCloudflareTask`
+        // is triggered by the presence of a workerd SLICE, because a
+        // multi-slice build has no single target to name, and this path
         // regenerating `wrangler.jsonc` is a workerd build by definition.
         runtime: ["workerd"],
         runtimes: ["workerd"],

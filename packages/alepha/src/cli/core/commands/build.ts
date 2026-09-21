@@ -3,9 +3,9 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
 import {
+  type BuildOptions,
   type BuildRuntime,
   type BuildRuntimeDeclaration,
-  type BuildTarget,
   buildOptions,
 } from "../atoms/buildOptions.ts";
 import { metaOptions } from "../atoms/metaOptions.ts";
@@ -68,63 +68,17 @@ export class BuildCommand {
   ];
 
   /**
-   * Value aliases accepted for `--target`.
-   *
-   * These let the CLI accept short forms (e.g. `--target cf`) that are
-   * canonicalized to a real {@link BuildTarget} before they flow into the
-   * pipeline. The enum in `flags.target` must also list the alias so it
-   * passes schema validation.
-   */
-  protected readonly targetAliases: Record<string, BuildTarget> = {
-    cf: "cloudflare",
-  };
-
-  /**
-   * Canonicalize a raw `--target` value, mapping any known alias
-   * (e.g. `cf` → `cloudflare`) to its real {@link BuildTarget}.
-   */
-  protected resolveTarget(target: string | undefined): BuildTarget | undefined {
-    if (!target) {
-      return undefined;
-    }
-    return this.targetAliases[target] ?? (target as BuildTarget);
-  }
-
-  /**
-   * Resolve the ordered slice set from the target and the declared runtimes.
-   *
-   * Some targets force a specific runtime:
-   * - `cloudflare` always uses `workerd`
-   * - `docker` and bare deployments respect the declaration
+   * Resolve the ordered slice set from what was declared.
    *
    * ⚠️ The order of the returned list is the build's decision and is preserved
    * end to end: the first entry is the primary. Nothing downstream may sort it.
    *
-   * @throws {AlephaError} If a target cannot hold the runtimes asked for
+   * A static declaration resolves to NO slices, which is what makes the server
+   * link skip entirely rather than build a bundle the static task deletes.
    */
   protected resolveRuntimes(
-    target: BuildTarget | undefined,
     declared: BuildRuntimeDeclaration | undefined,
   ): BuildRuntime[] {
-    if (target === "cloudflare") {
-      // `--target=cloudflare` is the old way of saying "link for workerd", and
-      // it can only mean one slice: the wrangler upload has exactly one entry
-      // point. Asking for anything else is a contradiction worth naming rather
-      // than silently narrowing.
-      //
-      // ⚠️ Read from what was DECLARED, not from the resolved list: resolving
-      // first turns "nothing was asked for" into the `node` default, and this
-      // target would then refuse a build that named no runtime at all.
-      if (declared) {
-        const asked = Array.isArray(declared) ? declared : [declared];
-        if (asked.some((runtime) => runtime !== "workerd")) {
-          throw new AlephaError(
-            `Target 'cloudflare' requires the 'workerd' runtime, got '${asked.join(",")}'`,
-          );
-        }
-      }
-      return ["workerd"];
-    }
     return this.slices.resolve(declared);
   }
 
@@ -137,16 +91,11 @@ export class BuildCommand {
         .union([z.boolean(), z.enum(["json"])])
         .describe("Generate build stats report")
         .optional(),
-      target: z
-        .enum(["bare", "docker", "cloudflare", "cf", "static"])
-        .meta({ aliases: ["t"] })
-        .describe("Deployment target (cf = cloudflare)")
-        .optional(),
       runtime: z
         .text()
         .meta({ aliases: ["r"] })
         .describe(
-          "Runtimes to link the server for, comma-separated and in order: node, bun, workerd. The first is the primary — what the manifest names, what dist/package.json points at, and what a deployer spawns. e.g. --runtime node,workerd",
+          "Runtimes to link the server for, comma-separated and in order: node, bun, workerd. The first is the primary: what the manifest names, what dist/package.json points at, and what a deployer spawns. e.g. --runtime node,workerd. `static` declares an app with no server at all.",
         )
         .optional(),
       prebuilt: z
@@ -184,27 +133,29 @@ export class BuildCommand {
 
       // Resolve flags → mutate the atom (single source of truth)
       this.alepha.store.mut(buildOptions, (current) => {
-        const target = this.resolveTarget(flags.target) ?? current.target;
         // The flag is a comma-separated list so one flag carries the order.
         // It replaces the declaration outright rather than merging with it:
         // a caller that names a set means that set, and a union would make
         // `--runtime workerd` silently also build whatever the config asked
         // for.
-        const runtimes = this.resolveRuntimes(
-          target,
-          this.slices.parseFlag(flags.runtime) ?? current.runtime,
-        );
+        const declared = (this.slices.parseFlag(flags.runtime) ??
+          current.runtime) as BuildRuntimeDeclaration | undefined;
+        const runtimes = this.resolveRuntimes(declared);
+        const isStatic = this.slices.isStatic(declared);
         // Resolved into BOTH fields, the same relationship the manifest
         // carries: the scalar is the primary and is always `runtimes[0]`, so a
-        // task reading one cannot disagree with a task reading the other.
-        const runtime = this.slices.primary(runtimes);
-        return {
+        // task reading one cannot disagree with a task reading the other. A
+        // static build has no slices, and the scalar says so.
+        const runtime: BuildRuntimeDeclaration = isStatic
+          ? "static"
+          : this.slices.primary(runtimes);
+        const resolved: BuildOptions = {
           ...current,
           stats: flags.stats ?? current.stats ?? false,
-          target,
           runtime,
           runtimes,
         };
+        return resolved;
       });
 
       const options = this.options;
@@ -233,11 +184,9 @@ export class BuildCommand {
         await run.rm(distDir, { alias: "clean dist" });
       }
 
-      const { target } = options;
-
       this.log.trace("Build configuration", {
-        target,
         runtimes: options.runtimes,
+        static: this.slices.isStaticBuild(options),
       });
 
       // Prebuilt + manifest fast-path: skip `analyze app` (which boots
@@ -286,11 +235,10 @@ export class BuildCommand {
         // The PRIMARY slice, which is what a deployer spawns. A multi-slice
         // build bakes one `alepha.meta` into every slice, and naming a
         // secondary there would have a Worker report the runtime of a bundle
-        // it is not.
-        runtime:
-          options.target === "static"
-            ? "static"
-            : this.slices.primary(this.slices.fromOptions(options)),
+        // it is not. A static build names no interpreter.
+        runtime: this.slices.isStaticBuild(options)
+          ? "static"
+          : this.slices.primary(this.slices.fromOptions(options)),
         dev: false,
         override: this.metaOverride,
       });

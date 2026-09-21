@@ -5,7 +5,7 @@ Pack a built workspace into a deployable `tar.gz`. The archive contains everythi
 ## Quick Start
 
 ```bash
-alepha build --target=cloudflare
+alepha build --runtime=workerd
 alepha pack --tag 0.0.2
 # → my-app-0.0.2.tar.gz
 ```

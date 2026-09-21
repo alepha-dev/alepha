@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import { Alepha, AlephaError } from "alepha";
-import { type BuildTarget, buildOptions } from "alepha/cli";
+import { type BuildRuntimeDeclaration, buildOptions } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import {
   FileSystemProvider,
@@ -773,18 +773,21 @@ describe("BayAdapter — login and logout", () => {
   });
 });
 
-describe("BayAdapter — the target it builds for", () => {
+describe("BayAdapter, the runtime it builds for", () => {
   /*
-    `build` hardcoded `--target=bare`.
+    `build` hardcodes the slice it wants.
 
     The hardcode is load-bearing: a workerd bundle is resolved against
     Cloudflare's export conditions and has no runnable entry point, so letting
     one reach Bay produces an app that deploys, never boots, and says only
     "never became ready". But an explicit flag OVERRIDES the workspace's own
-    `alepha.config.ts`, so a site declaring `target: "static"` was silently
-    built as a server and shipped a bundle Bay would try to spawn.
+    `alepha.config.ts`, so a site declaring itself static was silently built as
+    a server and shipped a bundle Bay would try to spawn.
+
+    ⚠️ It is `--runtime` now, not `--target`: the build is described by what it
+    produces, and Bay wants exactly one node slice.
   */
-  const buildWith = async (target?: BuildTarget) => {
+  const buildWith = async (runtime?: BuildRuntimeDeclaration) => {
     // Its own container, and the store is mutated BEFORE the adapter is
     // injected — the order the previous version of this suite used, because
     // `$store` is resolved at injection.
@@ -796,30 +799,41 @@ describe("BayAdapter — the target it builds for", () => {
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const fs = alepha.inject(MemoryFileSystemProvider);
     await fs.writeFile("/project/yarn.lock", "");
-    if (target) {
-      alepha.store.mut(buildOptions, (current) => ({ ...current, target }));
+    if (runtime) {
+      alepha.store.mut(buildOptions, (current) => ({ ...current, runtime }));
     }
     const adapter = alepha.inject(BayAdapter);
     await adapter.build(context(), run);
     return alepha.inject(MemoryShellProvider);
   };
 
-  it("should build a declared static site for the static target", async () => {
+  it("should build a declared static site as static", async () => {
     const shell = await buildWith("static");
 
-    expect(shell.wasCalled("yarn alepha build --target=static")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=static")).toBe(true);
   });
 
-  it("should still force bare when nothing is declared", async () => {
+  it("should force node when nothing is declared", async () => {
     const shell = await buildWith();
 
-    expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
   });
 
-  it("should refuse to inherit a cloudflare target", async () => {
-    const shell = await buildWith("cloudflare");
+  it("should refuse to inherit a workerd declaration", async () => {
+    const shell = await buildWith("workerd");
 
-    expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
+  });
+
+  /**
+   * ⚠️ It narrows rather than passes through. A workspace declaring both
+   * slices would pack the workerd half too: megabytes Bay never runs, in an
+   * artifact it has to download and store.
+   */
+  it("should narrow a multi-slice declaration to the node slice", async () => {
+    const shell = await buildWith(["node", "workerd"]);
+
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
   });
 });
 
@@ -849,7 +863,7 @@ describe("BayAdapter — the package manager it shells out to", () => {
   it("should use yarn for a yarn workspace", async () => {
     const shell = await withLockfile("yarn.lock");
 
-    expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
   });
 
   it("should run the binary, not a script, for an npm workspace", async () => {
@@ -858,19 +872,19 @@ describe("BayAdapter — the package manager it shells out to", () => {
     // package.json SCRIPT by that name, which an app has no reason to declare.
     const shell = await withLockfile("package-lock.json");
 
-    expect(shell.wasCalled("npx alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("npx alepha build --runtime=node")).toBe(true);
   });
 
   it("should use pnpm exec for a pnpm workspace", async () => {
     const shell = await withLockfile("pnpm-lock.yaml");
 
-    expect(shell.wasCalled("pnpm exec alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("pnpm exec alepha build --runtime=node")).toBe(true);
   });
 
   it("should use bunx for a bun workspace", async () => {
     const shell = await withLockfile("bun.lock");
 
-    expect(shell.wasCalled("bunx alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("bunx alepha build --runtime=node")).toBe(true);
   });
 });
 
@@ -1387,7 +1401,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
     const { adapter, shell, alepha } = await withEnvFile("STRIPE_KEY=sk\n");
     alepha.store.mut(buildOptions, (current) => ({
       ...current,
-      target: "static" as BuildTarget,
+      runtime: "static" as BuildRuntimeDeclaration,
     }));
 
     await adapter.deploy(context(), run);

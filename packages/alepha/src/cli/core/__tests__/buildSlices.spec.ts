@@ -107,11 +107,31 @@ describe("BuildSlices", () => {
       ]);
     });
 
-    // `static` is a target, not a runtime that links a bundle. The tasks that
-    // ask this return early for a static build, so the honest answer is the
-    // default rather than a slice named "static".
-    it("does not treat the static target as a runtime", ({ expect }) => {
-      expect(slices().fromOptions({ runtime: "static" })).toEqual(["node"]);
+    /**
+     * ⚠️ `static` declares an app with NO server, so it resolves to no slices
+     * at all rather than to a default. It is a declaration, never a slice, and
+     * must never reach a `server/<runtime>/` path.
+     */
+    it("resolves a static declaration to no slices", ({ expect }) => {
+      expect(slices().fromOptions({ runtime: "static" })).toEqual([]);
+      expect(slices().isStaticBuild({ runtime: "static" })).toBe(true);
+    });
+
+    /**
+     * There is no such thing as a half-static build: the static task strips
+     * every server artifact out of `dist/`, so a slice declared beside it
+     * would be built and then deleted.
+     */
+    it("treats static anywhere in the list as static", ({ expect }) => {
+      expect(slices().resolve(["node", "static"])).toEqual([]);
+      expect(slices().isStatic(["node", "static"])).toBe(true);
+    });
+
+    it("is not static when nothing says so", ({ expect }) => {
+      expect(slices().isStaticBuild({ runtime: ["node", "workerd"] })).toBe(
+        false,
+      );
+      expect(slices().isStaticBuild({})).toBe(false);
     });
   });
 

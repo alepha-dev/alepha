@@ -47,16 +47,13 @@ node dist/index.js
 
 ## Options
 
-| Flag              | Description                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `--target`, `-t`  | Deployment target: `bare`, `docker`, `cloudflare` (alias: `cf`), or `static`                                                   |
-| `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd`                                                                                |
-| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                          |
-| `--image`, `-i`   | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker`                          |
-| `--compile`, `-c` | Compile to one executable, `dist/app` or `dist/<name>` with `--compile <name>`. Requires `--runtime=bun`; `bare` or `docker`   |
-| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built |
+| Flag              | Description                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--runtime`, `-r` | Runtimes to link the server for, comma-separated and in order: `node`, `bun`, `workerd`. The first is the primary. `static` declares an app with no server. |
+| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                                                       |
+| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built                              |
 
-Some targets force a runtime: `cloudflare` always uses `workerd`.
+Declaring a `workerd` slice is what writes the Cloudflare deploy config; `runtime: ["static"]` is what makes a static site. There is no `--target`: the build is described by what it produces.
 
 ## Deployment Targets
 
@@ -79,24 +76,28 @@ cd /app && node index.js
 ### Docker
 
 ```bash
-alepha build --target=docker
+alepha build && alepha image
 ```
 
-Generates a `Dockerfile` alongside the build. Add `--image` to build the image in one go:
+`alepha image` generates a `Dockerfile` **in the app directory** when there is none, beside `alepha.config.ts`, and reuses yours when there is: the file is meant to be committed and edited. It is not written into `dist/`, which the build wipes on every run.
 
 ```bash
-alepha build --target=docker --image           # tag:latest
-alepha build --target=docker --image=1.3.4     # tag:1.3.4
+alepha image --tag           # tag:latest
+alepha image --tag=1.3.4     # tag:1.3.4
 ```
 
-The generated image runs as uid `1000`, not root (`docker.user` overrides it). `docker.env` and `docker.volumes` bake `ENV` defaults and `VOLUME` declarations into it, so a self-contained image needs no `docker run` flags - see the [Docker deployment guide](/docs/guides-deployment-docker).
+The generated image runs as uid `1000`, not root (`image.user` overrides it). `image.env` and `image.volumes` bake `ENV` defaults and `VOLUME` declarations into it, so a self-contained image needs no `docker run` flags - see the [Docker deployment guide](/docs/guides-deployment-docker).
 
-With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image (`docker.from` overrides it). `--compile <name>` names the binary. That variant stays root: distroless has no shell to prepare a volume with.
+`alepha image --compile` compiles the bun slice first and ships an image holding the binary and nothing else, on `gcr.io/distroless/cc-debian12` (`image.from` overrides it). That variant stays root: the base has no shell to prepare a volume with.
+
+⚠️ A Bun `--compile` binary is **not static**, whatever triple it is built for: it needs an interpreter, `libstdc++` and `libgcc`. `alepha image` derives the triple from the base for that reason, and refuses a base with no libc (`scratch`, `distroless/static`) rather than producing a container that exits immediately.
+
+⚠️ `alepha image` shells out to `docker build`, so it is a local and CI command. It cannot run in an in-process build path.
 
 ### Cloudflare Workers
 
 ```bash
-alepha build --target=cloudflare    # or -t cf
+alepha build --runtime=workerd    # or -t cf
 ```
 
 Creates Cloudflare Workers configuration:
@@ -124,7 +125,7 @@ Or let `alepha p up` drive the whole pipeline - provisioning, build, migrations,
 ### Static Site
 
 ```bash
-alepha build --target=static
+alepha build --runtime=static
 ```
 
 Prerenders your pages to plain HTML/CSS/JS for any static host. Not compatible with `--prebuilt` (prerendering needs a live app).
@@ -211,7 +212,6 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "docker",
     runtime: "bun",
     stats: true,
     compile: "myapp",
@@ -284,7 +284,7 @@ A typical deployment workflow:
 alepha verify
 
 # 2. Build for production
-alepha build --target=cloudflare
+alepha build --runtime=workerd
 
 # 3. Deploy
 alepha platform up --env production

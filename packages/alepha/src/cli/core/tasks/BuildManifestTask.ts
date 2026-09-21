@@ -335,7 +335,7 @@ export class BuildManifestTask extends BuildTask {
       breaks an older deployer — leaving it to read `runtime: node` and spawn a
       process against a directory with no entry point.
     */
-    const isStatic = ctx.options.target === "static";
+    const isStatic = this.slices.isStaticBuild(ctx.options);
     // Declared order, and never sorted: the first is the primary, which is
     // what the scalar `runtime` below names and what a deployer spawns.
     const runtimes = this.slices.fromOptions(ctx.options);

@@ -15,6 +15,10 @@ export default defineConfig({
     }),
   ],
   build: {
-    target: "cloudflare",
+    // ⚠️ A runtime, not a target. `--target=cloudflare` said "link for
+    // workerd" and nothing else, and it could only ever name one slice, which
+    // made a `node,workerd` build impossible to express. Declaring the slice
+    // is what asks for the Cloudflare deploy config now.
+    runtime: ["workerd"],
   },
 });

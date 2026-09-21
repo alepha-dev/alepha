@@ -11,7 +11,7 @@ stay on hardware you control.
 ## Build
 
 ```bash
-alepha build --target=bare
+alepha build --runtime=node
 ```
 
 That is the whole target-specific story: Bay has no `wrangler.jsonc` equivalent, because everything
@@ -133,7 +133,7 @@ revoked. Revoke access for real by removing the key from `authorized_keys`, or d
 alepha platform up --env production
 ```
 
-Under the hood: `alepha build --target=bare`, then `alepha pack` - which produces
+Under the hood: `alepha build --runtime=node`, then `alepha pack` - which produces
 `<project>-latest.tar.gz` containing the bundle and its `migrations/` directory - then one `ssh`
 invocation that pipes the artifact straight into the Bay's own CLI:
 

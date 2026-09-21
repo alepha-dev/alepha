@@ -5,7 +5,7 @@ The `docker` build target packages your app for containerized deployment - a gen
 ## Build
 
 ```bash
-alepha build --target=docker
+alepha build && alepha image
 ```
 
 Produces:
@@ -45,7 +45,6 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "docker",
     docker: {
       env: {
         DATA_DIR: "/data",
@@ -93,7 +92,6 @@ Override with `docker.user`, including back to root:
 ```typescript filename=alepha.config.ts
 export default defineConfig({
   build: {
-    target: "docker",
     docker: { user: "root" },
   },
 });
@@ -106,9 +104,9 @@ Compile mode has no default and stays root, because the distroless base has no s
 Add `--image` to run `docker build` as the last step:
 
 ```bash
-alepha build --target=docker --image           # <tag>:latest
-alepha build --target=docker --image=1.3.4     # <tag>:1.3.4
-alepha build --target=docker --image=myorg/app:v2   # full override
+alepha image --tag           # <tag>:latest
+alepha image --tag=1.3.4     # <tag>:1.3.4
+alepha image --tag=myorg/app:v2   # full override
 ```
 
 The default tag comes from config:
@@ -118,7 +116,6 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "docker",
     docker: {
       image: {
         tag: "ghcr.io/myorg/myapp",
@@ -165,7 +162,7 @@ That matters as soon as something other than `--image` builds the image - a rele
 With `--runtime=bun --compile` (or `build.compile` in config), the app is compiled to one static binary via `bun build --compile`, client assets included, and packaged in a distroless base image. The compilation itself is the same as for the [bare target](/docs/guides-deployment-bare), for linux-musl:
 
 ```bash
-alepha build --target=docker --runtime=bun --compile --image
+alepha build && alepha image --runtime=bun --compile --image
 ```
 
 ```dockerfile
