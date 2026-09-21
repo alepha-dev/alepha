@@ -312,11 +312,23 @@ export class UserService {
   }
 
   /**
-   * Create a new user.
+   * Create a new user, with a password when `options.password` is given.
+   *
+   * The password is checked against the realm's `passwordPolicy` BEFORE the
+   * user row is written, so a refused password leaves nothing behind. Doing
+   * it as two calls, `createUser` then `setPassword`, is not atomic: when the
+   * policy refused the second, the account already existed with no
+   * credential, and a bootstrap written as "create if missing, skip if it
+   * exists" then skipped that passwordless row forever.
+   *
+   * Only the service takes it. The HTTP create action's body is
+   * `createUserSchema`, which has no password field: creating an account and
+   * setting its password stay two acts in the admin console.
    */
   public async createUser(
     data: CreateUser,
     userRealmName?: string,
+    options: { password?: string } = {},
   ): Promise<UserEntity> {
     this.log.trace("Creating user", {
       username: data.username,
@@ -326,6 +338,14 @@ export class UserService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
     const realmSettings = await realm.getSettings();
+
+    // Before any write: the same check `setPassword` makes, one call earlier.
+    if (options.password !== undefined && realmSettings.passwordPolicy) {
+      this.credentialService.validatePasswordPolicy(
+        options.password,
+        realmSettings.passwordPolicy,
+      );
+    }
 
     // Check for existing user based on provided unique fields (scoped to realm)
     if (data.username) {
@@ -389,6 +409,10 @@ export class UserService {
         roles: user.roles,
       },
     });
+
+    if (options.password !== undefined) {
+      await this.setPassword(user.id, options.password, userRealmName);
+    }
 
     return user;
   }
