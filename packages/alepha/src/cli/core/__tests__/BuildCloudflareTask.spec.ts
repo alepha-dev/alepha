@@ -19,6 +19,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
   public testEnhanceCron = this.enhanceCron.bind(this);
   public testEnhanceDomain = this.enhanceDomain.bind(this);
+  public testEnhanceEmail = this.enhanceEmail.bind(this);
   public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
 
   /**
@@ -851,6 +852,44 @@ describe("BuildCloudflareTask", () => {
           /\["\/ws\/chat"\]/,
         ),
       ).toBe(true);
+    });
+  });
+
+  /**
+   * A prebuilt deploy (Lore Deploy) has no app to probe, so the `send_email`
+   * binding comes from the manifest's `cloudflare.email` (#Q2465). Without it
+   * the worker boots with email inert.
+   */
+  describe("enhanceEmail (manifest/prebuilt mode)", () => {
+    it("binds send_email from the manifest's cloudflare block", () => {
+      const task = createTask();
+      const wrangler: any = {};
+
+      task.testEnhanceEmail(
+        {
+          manifest: {
+            cloudflare: {
+              websocketPaths: [],
+              email: { binding: "SEND_EMAIL" },
+            },
+          },
+        } as any,
+        wrangler,
+      );
+
+      expect(wrangler.send_email).toEqual([{ name: "SEND_EMAIL" }]);
+    });
+
+    it("binds nothing when the manifest declares no email", () => {
+      const task = createTask();
+      const wrangler: any = {};
+
+      task.testEnhanceEmail(
+        { manifest: { cloudflare: { websocketPaths: [] } } } as any,
+        wrangler,
+      );
+
+      expect(wrangler.send_email).toBeUndefined();
     });
   });
 
