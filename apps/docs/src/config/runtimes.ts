@@ -39,7 +39,7 @@ export const runtimeTargets: RuntimeTarget[] = [
     headline: "Free to start, nothing to manage.",
     description:
       "Create a Cloudflare account and your full-stack app is live in seconds. No configuration, no server to keep running, and the database, cache, queues and cron are all Cloudflare's problem rather than yours. It is the easiest way to run an Alepha app, and the one you can stop thinking about.",
-    command: "alepha build --target cloudflare",
+    command: "alepha build --runtime workerd",
     bindings: [
       { primitive: "$entity", impl: "D1 / Hyperdrive" },
       { primitive: "$cache", impl: "D1" },
@@ -57,7 +57,7 @@ export const runtimeTargets: RuntimeTarget[] = [
     headline: "One cheap box you own.",
     description:
       "Sometimes you just want a small VPS. The build is one folder and one process, so it runs on the cheapest box you can rent: node dist, and it is up. It is also the answer when the data has to stay on hardware you control.",
-    command: "alepha build --target bare",
+    command: "alepha build",
     bindings: [
       { primitive: "$entity", impl: "PostgreSQL / SQLite" },
       { primitive: "$cache", impl: "Memory" },
@@ -75,7 +75,7 @@ export const runtimeTargets: RuntimeTarget[] = [
     headline: "Millions of requests an hour.",
     description:
       "When the app is genuinely large, Alepha builds a Docker image and stops there. You bring the Kubernetes cluster and run the image on it. Alepha apps are distributed by design, so cache, locks, pub/sub and job dispatch all coordinate through Redis. The biggest Alepha apps running today are on Kubernetes, on dedicated infrastructure.",
-    command: "alepha build --target docker",
+    command: "alepha build && alepha image",
     bindings: [
       { primitive: "$entity", impl: "PostgreSQL" },
       { primitive: "$cache", impl: "Redis" },

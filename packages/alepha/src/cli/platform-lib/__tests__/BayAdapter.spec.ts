@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import { Alepha, AlephaError } from "alepha";
-import { type BuildTarget, buildOptions } from "alepha/cli";
+import { type BuildRuntimeDeclaration, buildOptions } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import {
   FileSystemProvider,
@@ -11,6 +11,10 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import {
+  ArchiveCompressor,
+  MemoryArchiveCompressor,
+} from "../../core/services/ArchiveCompressor.ts";
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
 import { BAY_OWNED_SECRET_KEYS } from "../secretKeys.ts";
@@ -35,13 +39,16 @@ const context = (overrides: Partial<PlatformContext> = {}): PlatformContext =>
 
 const setup = async () => {
   const alepha = Alepha.create()
+    // The one pack step that touches real files: the shell here is a fake, so
+    // no tar was ever written for it to read.
+    .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
     .with({ provide: ShellProvider, use: MemoryShellProvider });
   const fs = alepha.inject(MemoryFileSystemProvider);
   await fs.writeFile("/project/yarn.lock", "");
   // `alepha pack` is a recorded no-op under MemoryShellProvider, so the
   // artifact it "produced" has to exist for the deploy step to find it.
-  await fs.writeFile("/project/demo-latest.tar.gz", "TARBALL");
+  await fs.writeFile("/project/demo-latest.tar.zst", "TARBALL");
   return {
     alepha,
     adapter: alepha.inject(BayAdapter),
@@ -251,7 +258,7 @@ describe("BayAdapter — the deploy it composes", () => {
 
   it("packs before it deploys, and refuses if nothing was produced", async () => {
     const { adapter, fs } = await setup();
-    await fs.rm("/project/demo-latest.tar.gz");
+    await fs.rm("/project/demo-latest.tar.zst");
 
     await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /alepha pack. produced no/,
@@ -270,7 +277,7 @@ describe("BayAdapter — the deploy it composes", () => {
       "/project/package.json",
       JSON.stringify({ name: "app" }),
     );
-    await fs.writeFile("/project/capacity-latest.tar.gz", "TARBALL");
+    await fs.writeFile("/project/capacity-latest.tar.zst", "TARBALL");
 
     await adapter.deploy(context({ project: "capacity" }), run);
 
@@ -766,50 +773,67 @@ describe("BayAdapter — login and logout", () => {
   });
 });
 
-describe("BayAdapter — the target it builds for", () => {
+describe("BayAdapter, the runtime it builds for", () => {
   /*
-    `build` hardcoded `--target=bare`.
+    `build` hardcodes the slice it wants.
 
     The hardcode is load-bearing: a workerd bundle is resolved against
     Cloudflare's export conditions and has no runnable entry point, so letting
     one reach Bay produces an app that deploys, never boots, and says only
     "never became ready". But an explicit flag OVERRIDES the workspace's own
-    `alepha.config.ts`, so a site declaring `target: "static"` was silently
-    built as a server and shipped a bundle Bay would try to spawn.
+    `alepha.config.ts`, so a site declaring itself static was silently built as
+    a server and shipped a bundle Bay would try to spawn.
+
+    ⚠️ It is `--runtime` now, not `--target`: the build is described by what it
+    produces, and Bay wants exactly one node slice.
   */
-  const buildWith = async (target?: BuildTarget) => {
+  const buildWith = async (runtime?: BuildRuntimeDeclaration) => {
     // Its own container, and the store is mutated BEFORE the adapter is
     // injected — the order the previous version of this suite used, because
     // `$store` is resolved at injection.
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const fs = alepha.inject(MemoryFileSystemProvider);
     await fs.writeFile("/project/yarn.lock", "");
-    if (target) {
-      alepha.store.mut(buildOptions, (current) => ({ ...current, target }));
+    if (runtime) {
+      alepha.store.mut(buildOptions, (current) => ({ ...current, runtime }));
     }
     const adapter = alepha.inject(BayAdapter);
     await adapter.build(context(), run);
     return alepha.inject(MemoryShellProvider);
   };
 
-  it("should build a declared static site for the static target", async () => {
+  it("should build a declared static site as static", async () => {
     const shell = await buildWith("static");
 
-    expect(shell.wasCalled("yarn alepha build --target=static")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=static")).toBe(true);
   });
 
-  it("should still force bare when nothing is declared", async () => {
+  it("should force node when nothing is declared", async () => {
     const shell = await buildWith();
 
-    expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
   });
 
-  it("should refuse to inherit a cloudflare target", async () => {
-    const shell = await buildWith("cloudflare");
+  it("should refuse to inherit a workerd declaration", async () => {
+    const shell = await buildWith("workerd");
 
-    expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
+  });
+
+  /**
+   * ⚠️ It narrows rather than passes through. A workspace declaring both
+   * slices would pack the workerd half too: megabytes Bay never runs, in an
+   * artifact it has to download and store.
+   */
+  it("should narrow a multi-slice declaration to the node slice", async () => {
+    const shell = await buildWith(["node", "workerd"]);
+
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
   });
 });
 
@@ -824,6 +848,9 @@ describe("BayAdapter — the package manager it shells out to", () => {
   */
   const withLockfile = async (lockfile: string) => {
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const fs = alepha.inject(MemoryFileSystemProvider);
@@ -836,7 +863,7 @@ describe("BayAdapter — the package manager it shells out to", () => {
   it("should use yarn for a yarn workspace", async () => {
     const shell = await withLockfile("yarn.lock");
 
-    expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("yarn alepha build --runtime=node")).toBe(true);
   });
 
   it("should run the binary, not a script, for an npm workspace", async () => {
@@ -845,25 +872,28 @@ describe("BayAdapter — the package manager it shells out to", () => {
     // package.json SCRIPT by that name, which an app has no reason to declare.
     const shell = await withLockfile("package-lock.json");
 
-    expect(shell.wasCalled("npx alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("npx alepha build --runtime=node")).toBe(true);
   });
 
   it("should use pnpm exec for a pnpm workspace", async () => {
     const shell = await withLockfile("pnpm-lock.yaml");
 
-    expect(shell.wasCalled("pnpm exec alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("pnpm exec alepha build --runtime=node")).toBe(true);
   });
 
   it("should use bunx for a bun workspace", async () => {
     const shell = await withLockfile("bun.lock");
 
-    expect(shell.wasCalled("bunx alepha build --target=bare")).toBe(true);
+    expect(shell.wasCalled("bunx alepha build --runtime=node")).toBe(true);
   });
 });
 
 describe("BayAdapter — quoting", () => {
   it("round-trips a value containing a single quote", async () => {
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const adapter = alepha.inject(QuotingBayAdapter);
@@ -1371,7 +1401,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
     const { adapter, shell, alepha } = await withEnvFile("STRIPE_KEY=sk\n");
     alepha.store.mut(buildOptions, (current) => ({
       ...current,
-      target: "static" as BuildTarget,
+      runtime: "static" as BuildRuntimeDeclaration,
     }));
 
     await adapter.deploy(context(), run);
@@ -1517,7 +1547,7 @@ describe("BayAdapter — inspect reports the secrets that are set", () => {
           "bay — Alepha application server (PoC)\n\n" +
           "  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]\n" +
           "              [--base-domain bay.example.com]\n" +
-          "  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
+          "  bay deploy  (<app.tar.zst>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
           "Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on\n" +
           "the Bay host.",
       },

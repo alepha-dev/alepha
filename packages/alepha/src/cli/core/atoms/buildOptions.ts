@@ -1,14 +1,6 @@
 import { $atom, type Infer, z } from "alepha";
 
 /**
- * Deployment target for the build output.
- *
- * - `docker` - Generate Dockerfile for containerized deployment
- * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
- */
-export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
-
-/**
  * JavaScript runtime for the build output.
  *
  * - `node` - Node.js runtime (default)
@@ -18,25 +10,22 @@ export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
 export type BuildRuntime = "node" | "bun" | "workerd";
 
 /**
- * Compile options once the `--compile` flag and the config are merged and
- * validated: what the build tasks read.
+ * What `build.runtime` accepts in `alepha.config.ts`: one runtime, an ordered
+ * list of them, or `static` for an app with no server at all.
+ *
+ * ⚠️ `static` is a DECLARATION, never a slice. It says the build produces no
+ * server slice, so it can never appear in `runtimes`, which is the resolved
+ * slice set.
  */
-export interface BuildCompile {
-  /**
-   * File name of the binary in `dist/`.
-   */
-  name: string;
+export type BuildRuntimeDeclaration =
+  | BuildRuntime
+  | "static"
+  | Array<BuildRuntime | "static">;
 
-  /**
-   * Bun target triple; unset means the target's default.
-   */
-  target?: string;
-
-  /**
-   * Minify the compiled output.
-   */
-  minify: boolean;
-}
+/**
+ * The declaration meaning "this app has no server".
+ */
+export const STATIC_RUNTIME = "static";
 
 /**
  * Build options atom for CLI build command.
@@ -57,67 +46,63 @@ export const buildOptions = $atom({
     stats: z.union([z.boolean(), z.enum(["json"])]).optional(),
 
     /**
-     * Deployment target for the build output.
+     * The runtime, or runtimes, the server is linked for.
      *
-     * - `docker` - Generate Dockerfile for containerized deployment
-     * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
+     * - `node` - Node.js (the default, and the universal floor: it runs under
+     *   Bun too)
+     * - `bun` - Bun export conditions; an optimization, never required
+     * - `workerd` - Cloudflare Workers; mandatory and unavoidable for Cloudflare
+     *
+     * A list produces one server slice per runtime in ONE `dist/`, with the
+     * client bundle, the prerender and the asset compression done exactly once:
+     * `runtime: ["node", "workerd"]` covers Node hosts, Bun hosts and
+     * Cloudflare from a single build.
+     *
+     * ## ⚠️ Order is meaningful
+     *
+     * The first declared runtime is the **primary**: it is `manifest.runtime`,
+     * it is what `dist/package.json`'s `main` points at, and it is what a
+     * deployer spawns. `["bun", "node"]` and `["node", "bun"]` produce the same
+     * two slices and different behaviour.
+     *
+     * `--runtime node,workerd` overrides this. The config declares what the app
+     * needs; the flag is for a caller that knows better.
+     *
+     * ## `static` is the fourth answer: no server at all
+     *
+     * `runtime: ["static"]` declares an app with nothing to spawn — a
+     * prerendered client, served from disk. It produces no server slice, and
+     * the manifest records it in the same field, where `static` has always
+     * meant "nothing to do, serve the files".
+     *
+     * ⚠️ It is a slight abuse of the word, and the alternative was a
+     * `static: true` beside this one. Decided here rather than in advance:
+     * `build.static` ALREADY exists and holds the static site's own settings
+     * (`domain`, `source`), so a boolean of the same name would be two
+     * different things one keystroke apart. Reusing this field costs a small
+     * stretch of "runtime" and introduces no new concept, and the manifest
+     * had already made the same trade for the same reason.
      */
-    target: z.enum(["bare", "docker", "cloudflare", "static"]).optional(),
-
-    /**
-     * JavaScript runtime for the build output.
-     *
-     * - `node` - Node.js runtime (default)
-     * - `bun` - Bun runtime (uses bun export conditions)
-     * - `workerd` - Cloudflare Workers runtime (auto-set with cloudflare target)
-     *
-     * Note: Some targets force a specific runtime:
-     * - `cloudflare` always uses `workerd`
-     */
-    runtime: z.enum(["node", "bun", "workerd"]).optional(),
-
-    /**
-     * Compile the app to one executable with `bun build --compile`, its
-     * `public/` files embedded inside it. Requires `runtime: "bun"`, and a
-     * `bare` (the default) or `docker` target.
-     *
-     * - `true` names the binary `app`
-     * - a string names it: `compile: "loom"` produces `dist/loom`
-     * - an object sets the name, the Bun target triple and minification
-     *
-     * `dist/` then holds the binary, `manifest.json` and, when the app has
-     * any, `migrations/` beside it. The `--compile [name]` flag beats this.
-     */
-    compile: z
+    runtime: z
       .union([
-        z.boolean(),
-        z.string(),
-        z.object({
-          /**
-           * File name of the binary: lowercase letters, digits, `.`, `_`
-           * and `-`, starting with a letter or a digit.
-           *
-           * @default "app"
-           */
-          name: z.string().optional(),
-
-          /**
-           * Bun target triple, e.g. `bun-darwin-arm64`, `bun-linux-x64` or
-           * `bun-linux-arm64-musl`.
-           *
-           * @default the host for `bare`, linux-musl on the host's CPU for `docker`
-           */
-          target: z.string().optional(),
-
-          /**
-           * Minify the compiled output.
-           *
-           * @default true
-           */
-          minify: z.boolean().optional(),
-        }),
+        z.enum(["node", "bun", "workerd", "static"]),
+        z.array(z.enum(["node", "bun", "workerd", "static"])),
       ])
       .optional(),
+
+    /**
+     * The resolved, ordered slice set — written by `alepha build`, never by an
+     * app.
+     *
+     * `runtime` above is the declaration and accepts a scalar or a list;
+     * `BuildCommand` normalizes it here once, so no task has to re-merge the
+     * flag with the config and arrive at its own answer. After resolution
+     * `runtime` is the primary scalar and `runtimes[0]` is the same value, the
+     * same relationship the build manifest carries.
+     *
+     * @internal
+     */
+    runtimes: z.array(z.enum(["node", "bun", "workerd"])).optional(),
 
     /**
      * Output directory configuration.
@@ -162,8 +147,8 @@ export const buildOptions = $atom({
     /**
      * Cloudflare-specific deployment configuration.
      *
-     * Note: Set `target: "cloudflare"` to enable Cloudflare deployment.
-     * This object is only for additional configuration.
+     * Note: declaring a `workerd` runtime is what enables the Cloudflare
+     * deploy config. This object is only for additional configuration.
      */
     cloudflare: z
       .object({
@@ -172,179 +157,10 @@ export const buildOptions = $atom({
       .optional(),
 
     /**
-     * Docker-specific deployment configuration.
-     *
-     * Note: Set `target: "docker"` to enable Docker deployment.
-     * This object is only for additional configuration.
-     */
-    docker: z
-      .object({
-        /**
-         * Base image for the Dockerfile (FROM instruction).
-         *
-         * @default "node:24-alpine" for node runtime
-         * @default "oven/bun:alpine" for bun runtime
-         * @default "gcr.io/distroless/static-debian12" in `compile` mode
-         */
-        from: z.string().optional(),
-
-        /**
-         * Command to run in the Docker container.
-         *
-         * @default "node" for node runtime
-         * @default "bun" for bun runtime
-         */
-        command: z.string().optional(),
-
-        /**
-         * Extra packages to install in the generated image.
-         *
-         * Each entry becomes a `RUN npm install --no-fund --no-audit
-         * <pkg> …` line (local, not `--global`, so the app resolves them
-         * like any dependency) inserted after `FROM` and before the
-         * app `COPY`. Use it for CLI tools the running app shells out to
-         * — typical example is `wrangler` for a service that deploys to
-         * Cloudflare on someone else's behalf.
-         *
-         * Ignored in `compile` mode (the distroless base has no `npm`).
-         *
-         * @example install: ["wrangler"]
-         */
-        install: z.array(z.string()).optional(),
-
-        /**
-         * Environment variables baked into the generated image.
-         *
-         * Each entry becomes an `ENV key="value"` line emitted **after**
-         * the built-in `SERVER_HOST=0.0.0.0`, so an app that sets
-         * `SERVER_HOST` itself wins. Values are escaped, so a space or a
-         * quote cannot produce a Dockerfile that builds fine and sets the
-         * wrong thing.
-         *
-         * These are defaults, not secrets: anything passed with
-         * `docker run -e` overrides them, and everything here is readable
-         * with `docker inspect`.
-         *
-         * @example env: { DATA_DIR: "/data", DATABASE_URL: "sqlite:///data/app.db" }
-         */
-        env: z.record(z.string(), z.string()).optional(),
-
-        /**
-         * Mount points declared as `VOLUME` in the generated image.
-         *
-         * In the standard variant each directory is created and chowned to
-         * the container user before its `VOLUME` line, so a **named** volume
-         * inherits a writable directory. A **bind mount** does not follow
-         * this: the host directory's ownership wins, and the host has to
-         * grant access itself.
-         *
-         * @example volumes: ["/data"]
-         */
-        volumes: z.array(z.string()).optional(),
-
-        /**
-         * User the container process runs as (`USER` instruction).
-         *
-         * The standard variant defaults to uid `1000`, which exists in both
-         * official bases (`node` and `bun`). A numeric id is emitted rather
-         * than a name because a custom `from` may not carry that user, and
-         * `USER node` fails the build outright on a base that lacks it.
-         *
-         * Pass `"root"` to opt back into running as root.
-         *
-         * Compile mode has no default: the distroless base has no shell, so
-         * a declared volume cannot be prepared at build time. Set this
-         * explicitly there if the image needs a non-root user.
-         *
-         * @default "1000" (standard variant only)
-         */
-        user: z.string().optional(),
-
-        /**
-         * Docker build options (used when --image flag is passed).
-         */
-        image: z
-          .object({
-            /**
-             * Default image tag (name without version).
-             *
-             * Used when --image is provided without a full override:
-             * - `--image` → `tag:latest`
-             * - `--image=1.3.4` → `tag:1.3.4`
-             * - `--image=other/img:v1` → `other/img:v1` (full override)
-             *
-             * @example "myproject/myapp"
-             * @example "ghcr.io/myorg/myapp"
-             */
-            tag: z.string(),
-
-            /**
-             * Additional arguments to pass to `docker build`.
-             *
-             * @example '--platform linux/amd64 --no-cache'
-             */
-            args: z.string().optional(),
-
-            /**
-             * Auto-add OCI standard labels (revision, created, version).
-             *
-             * Adds:
-             * - org.opencontainers.image.revision (git commit SHA)
-             * - org.opencontainers.image.created (build timestamp)
-             * - org.opencontainers.image.version (from image tag)
-             *
-             * The four fields below are added too, each only when set.
-             */
-            oci: z.boolean().optional(),
-
-            /**
-             * `org.opencontainers.image.source`: the URL of the repository
-             * the image was built from.
-             *
-             * This is what links a package to its repository on a registry
-             * like GHCR: without it the package page stands alone, with no
-             * README and no repo link.
-             *
-             * **Config only, never derived from the git remote.** An SSH
-             * remote is not a URL, a CI checkout may have no remote at all,
-             * and a fork would publish either the upstream's URL or its own
-             * with nothing inside the build able to tell which is meant. A
-             * wrong `source` on a published image is worse than a missing
-             * one, and the right value changes approximately never.
-             *
-             * @example "https://github.com/myorg/myapp"
-             */
-            source: z.string().optional(),
-
-            /**
-             * `org.opencontainers.image.title`: human-readable image name.
-             *
-             * @example "Lore"
-             */
-            title: z.string().optional(),
-
-            /**
-             * `org.opencontainers.image.description`: one line about what
-             * the image is.
-             */
-            description: z.string().optional(),
-
-            /**
-             * `org.opencontainers.image.licenses`: an SPDX expression.
-             *
-             * @example "MIT"
-             * @example "Apache-2.0 OR MIT"
-             */
-            licenses: z.string().optional(),
-          })
-          .optional(),
-      })
-      .optional(),
-
-    /**
      * Infer site deployment configuration.
      *
-     * Note: Set `target: "static"` to enable static site generation.
+     * Note: `runtime: ["static"]` is what enables static site generation.
+     * This object is only for additional configuration.
      */
     static: z
       .object({

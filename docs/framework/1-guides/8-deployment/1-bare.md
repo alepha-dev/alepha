@@ -59,14 +59,17 @@ The `--runtime=bun` flag uses Bun-specific export conditions during bundling.
 
 ## Single Binary
 
-`--compile` turns the build into one executable, with the client's `public/` files inside it:
+`alepha compile` turns a built `dist/` into one executable, with the client's `public/` files inside it:
 
 ```bash
-alepha build --runtime=bun --compile          # dist/app
-alepha build --runtime=bun --compile myapp    # dist/myapp
+alepha build --runtime=bun
+alepha compile              # dist/app
+alepha compile --out myapp  # dist/myapp
 ```
 
-The compiler is `bun build --compile`, so the build needs `--runtime=bun` and Bun on the build machine. The binary carries its own runtime: nothing has to be installed where it runs. `dist/` then holds the binary, `manifest.json` and, when the app has a database, `migrations/`.
+The compiler is `bun build --compile`, so the build needs a **bun slice** (`--runtime=bun`, or `bun` in `build.runtime`) and Bun on the build machine. A `dist/` with no `index.bun.js` is refused by name rather than compiled from whichever slice is there: the node slice runs under Bun, so that fallback would produce a working binary built from the generic bundle, with every Bun-native API and every dependency the bun conditions exist to drop still inside it.
+
+The binary carries its own runtime: nothing has to be installed where it runs. `dist/` then holds the binary, `manifest.json` and, when the app has a database, `migrations/`.
 
 ```bash
 cd dist && APP_SECRET=... SERVER_HOST=127.0.0.1 ./myapp
@@ -76,10 +79,10 @@ cd dist && APP_SECRET=... SERVER_HOST=127.0.0.1 ./myapp
 - A compiled app runs in production mode, which refuses to boot without `APP_SECRET` as soon as the app signs anything: sessions, tokens, signed cookies. An app that signs nothing boots without one.
 - Set `SERVER_HOST`: under Bun, `localhost` listens on IPv6 `::1` only.
 - The binary serves its assets from inside itself, ETag and precompressed brotli included, and ignores any `public/` directory next to it.
-- It targets the machine that builds it (`bun-darwin-arm64` on an Apple Silicon Mac). Cross-compile with `build.compile.target`, for example `bun-linux-x64` for a Linux server built on a Mac.
+- It targets the machine that builds it (`bun-darwin-arm64` on an Apple Silicon Mac). Cross-compile with `--target`, for example `alepha compile --target bun-linux-x64` for a Linux server built on a Mac.
 - Expect about 60 MB, almost all of it the Bun runtime. Windows is untested.
 
-The same in `alepha.config.ts`, where `compile` also takes `true` or just a name:
+Declare the slice in `alepha.config.ts` so the build needs no flag:
 
 ```typescript check
 import { defineConfig } from "alepha/cli/config";
@@ -87,12 +90,11 @@ import { defineConfig } from "alepha/cli/config";
 export default defineConfig({
   build: {
     runtime: "bun",
-    compile: { name: "myapp", target: "bun-linux-x64", minify: true },
   },
 });
 ```
 
-An explicit `--compile` beats the config, and `--no-compile` turns it off. The `docker` target compiles the same way and packages the binary in a distroless image: see the [Docker guide](/docs/guides-deployment-docker).
+⚠️ **Compiling has no config key**, on purpose. Its three settings are the binary name, the Bun triple and minification, and all three are flags: a key nobody sets is worse than three flags. `alepha image` drives the triple itself, because a Bun binary is not fully static and the triple picks the libc. See the [Docker guide](/docs/guides-deployment-docker).
 
 ## Configuration
 
@@ -103,7 +105,6 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "bare",
     runtime: "node",
   },
 });

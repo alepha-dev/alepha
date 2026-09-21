@@ -3,24 +3,23 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
 import {
-  type BuildCompile,
+  type BuildOptions,
   type BuildRuntime,
-  type BuildTarget,
+  type BuildRuntimeDeclaration,
   buildOptions,
 } from "../atoms/buildOptions.ts";
 import { metaOptions } from "../atoms/metaOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { BuildFreshness } from "../services/BuildFreshness.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
-import { BuildCompileTask } from "../tasks/BuildCompileTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
-import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
@@ -40,15 +39,18 @@ export class BuildCommand {
   protected readonly metaResolver = $inject(MetaResolver);
   protected readonly metaOverride = $store(metaOptions);
   protected readonly freshness = $inject(BuildFreshness);
+  protected readonly slices = $inject(BuildSlices);
 
   /**
    * Build pipeline: tasks run sequentially in this order.
    * Each task self-guards (checks target, hasClient, etc.).
-   * Order matters: compress runs after everything that writes public files,
-   * and compile runs last because it embeds what compress produced.
+   * Order matters: compress runs after everything that writes public files.
    * `_headers` is written after the static task, which copies an adopted
-   * site (and its own `_headers`) into `dist/public`, and before compile,
-   * which embeds `dist/public` and deletes it.
+   * site (and its own `_headers`) into `dist/public`.
+   *
+   * ⚠️ There is no compile step here any more. It was `alepha build
+   * --compile`, a build option that reached back to constrain `target`, and it
+   * is `alepha compile` now — its own command, reading `./dist`.
    */
   protected readonly pipeline = [
     $inject(BuildClientTask),
@@ -63,124 +65,21 @@ export class BuildCommand {
     $inject(BuildStaticTask),
     $inject(BuildHeadersTask),
     $inject(BuildCompressTask),
-    // ⚠️ After every task that writes into `dist/public`, because with
-    // `--image` it builds the standard image right here, from `dist/` as it
-    // stands. Before `_headers` and compress (where it used to run), that
-    // image shipped without `_headers` and without a single `.br` sidecar,
-    // while the same build's `dist/` had both. Before compile, which needs
-    // the Dockerfile this writes and builds the compile image itself.
-    $inject(BuildDockerTask),
-    $inject(BuildCompileTask),
   ];
 
   /**
-   * Value aliases accepted for `--target`.
+   * Resolve the ordered slice set from what was declared.
    *
-   * These let the CLI accept short forms (e.g. `--target cf`) that are
-   * canonicalized to a real {@link BuildTarget} before they flow into the
-   * pipeline. The enum in `flags.target` must also list the alias so it
-   * passes schema validation.
+   * ⚠️ The order of the returned list is the build's decision and is preserved
+   * end to end: the first entry is the primary. Nothing downstream may sort it.
+   *
+   * A static declaration resolves to NO slices, which is what makes the server
+   * link skip entirely rather than build a bundle the static task deletes.
    */
-  protected readonly targetAliases: Record<string, BuildTarget> = {
-    cf: "cloudflare",
-  };
-
-  /**
-   * Canonicalize a raw `--target` value, mapping any known alias
-   * (e.g. `cf` → `cloudflare`) to its real {@link BuildTarget}.
-   */
-  protected resolveTarget(target: string | undefined): BuildTarget | undefined {
-    if (!target) {
-      return undefined;
-    }
-    return this.targetAliases[target] ?? (target as BuildTarget);
-  }
-
-  /**
-   * Resolve the effective runtime based on target and explicit runtime flag.
-   *
-   * Some targets force a specific runtime:
-   * - `cloudflare` always uses `workerd`
-   * - `docker` and bare deployments respect the runtime flag
-   *
-   * @throws {AlephaError} If an incompatible runtime is specified for a target
-   */
-  protected resolveRuntime(
-    target: BuildTarget | undefined,
-    runtime: BuildRuntime | undefined,
-  ): BuildRuntime {
-    if (target === "cloudflare") {
-      if (runtime && runtime !== "workerd") {
-        throw new AlephaError(
-          `Target 'cloudflare' requires 'workerd' runtime, got '${runtime}'`,
-        );
-      }
-      return "workerd";
-    }
-
-    return runtime ?? "node";
-  }
-
-  /**
-   * Merge the `--compile` flag with `build.compile`, and refuse what cannot
-   * produce a binary.
-   *
-   * The flag is explicit intent and wins: `--compile` alone keeps the
-   * config's settings, `--compile <name>` renames the binary and keeps the
-   * rest, and `--no-compile` turns compile off whatever the config says.
-   *
-   * @throws {AlephaError} On a binary name that is not a plain file name, a
-   * runtime other than bun, or a target that cannot hold a binary.
-   */
-  protected resolveCompile(
-    flag: boolean | string | undefined,
-    config:
-      | boolean
-      | string
-      | { name?: string; target?: string; minify?: boolean }
-      | undefined,
-    target: BuildTarget | undefined,
-    runtime: BuildRuntime | undefined,
-  ): BuildCompile | undefined {
-    // The parser hands a boolean-or-text flag its raw text, so
-    // `--compile=false` arrives as "false", itself a valid file name.
-    const requested = flag === "false" ? false : flag === "true" ? true : flag;
-
-    const enabled = requested !== undefined ? requested !== false : !!config;
-    if (!enabled) {
-      return undefined;
-    }
-
-    const base =
-      typeof config === "object"
-        ? config
-        : typeof config === "string"
-          ? { name: config }
-          : {};
-    const name =
-      typeof requested === "string" ? requested : (base.name ?? "app");
-
-    if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) {
-      throw new AlephaError(
-        `Invalid binary name '${name}': use lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit.`,
-      );
-    }
-    if (runtime !== "bun") {
-      throw new AlephaError(
-        `Compile mode needs the Bun runtime, got '${runtime ?? "node"}': add --runtime=bun (or build.runtime: "bun").`,
-      );
-    }
-    if (target && target !== "bare" && target !== "docker") {
-      throw new AlephaError(
-        `Compile mode produces a binary, and only 'bare' and 'docker' targets can hold one, got '${target}'.`,
-      );
-    }
-
-    return {
-      name,
-      ...(base.target && { target: base.target }),
-      minify: base.minify ?? true,
-    };
+  protected resolveRuntimes(
+    declared: BuildRuntimeDeclaration | undefined,
+  ): BuildRuntime[] {
+    return this.slices.resolve(declared);
   }
 
   public readonly build = $command({
@@ -192,28 +91,11 @@ export class BuildCommand {
         .union([z.boolean(), z.enum(["json"])])
         .describe("Generate build stats report")
         .optional(),
-      target: z
-        .enum(["bare", "docker", "cloudflare", "cf", "static"])
-        .meta({ aliases: ["t"] })
-        .describe("Deployment target (cf = cloudflare)")
-        .optional(),
       runtime: z
-        .enum(["node", "bun", "workerd"])
+        .text()
         .meta({ aliases: ["r"] })
-        .describe("JavaScript runtime")
-        .optional(),
-      image: z
-        .union([z.boolean(), z.text()])
-        .meta({ aliases: ["i"] })
         .describe(
-          "Build Docker image. Use -i for latest, -i=<version> for specific version",
-        )
-        .optional(),
-      compile: z
-        .union([z.boolean(), z.text()])
-        .meta({ aliases: ["c"] })
-        .describe(
-          "Compile the app to one executable with its public/ files inside: --compile names it 'app', --compile <name> names it; --no-compile turns it off. Requires --runtime=bun, and the bare or docker target",
+          "Runtimes to link the server for, comma-separated and in order: node, bun, workerd. The first is the primary: what the manifest names, what dist/package.json points at, and what a deployer spawns. e.g. --runtime node,workerd. `static` declares an app with no server at all.",
         )
         .optional(),
       prebuilt: z
@@ -251,25 +133,29 @@ export class BuildCommand {
 
       // Resolve flags → mutate the atom (single source of truth)
       this.alepha.store.mut(buildOptions, (current) => {
-        const target = this.resolveTarget(flags.target) ?? current.target;
-        const runtime = this.resolveRuntime(
-          target,
-          flags.runtime ?? current.runtime,
-        );
-        return {
+        // The flag is a comma-separated list so one flag carries the order.
+        // It replaces the declaration outright rather than merging with it:
+        // a caller that names a set means that set, and a union would make
+        // `--runtime workerd` silently also build whatever the config asked
+        // for.
+        const declared = (this.slices.parseFlag(flags.runtime) ??
+          current.runtime) as BuildRuntimeDeclaration | undefined;
+        const runtimes = this.resolveRuntimes(declared);
+        const isStatic = this.slices.isStatic(declared);
+        // Resolved into BOTH fields, the same relationship the manifest
+        // carries: the scalar is the primary and is always `runtimes[0]`, so a
+        // task reading one cannot disagree with a task reading the other. A
+        // static build has no slices, and the scalar says so.
+        const runtime: BuildRuntimeDeclaration = isStatic
+          ? "static"
+          : this.slices.primary(runtimes);
+        const resolved: BuildOptions = {
           ...current,
           stats: flags.stats ?? current.stats ?? false,
-          target,
           runtime,
-          // Resolved once, so every task reads the same merged, validated
-          // options rather than re-merging flag and config itself.
-          compile: this.resolveCompile(
-            flags.compile,
-            current.compile,
-            target,
-            runtime,
-          ),
+          runtimes,
         };
+        return resolved;
       });
 
       const options = this.options;
@@ -298,18 +184,9 @@ export class BuildCommand {
         await run.rm(distDir, { alias: "clean dist" });
       }
 
-      const { target } = options;
-
-      // Validate --image requires --target=docker
-      if (flags.image && target !== "docker") {
-        throw new AlephaError(
-          `Flag '--image' requires '--target=docker', got '${target ?? "bare"}'`,
-        );
-      }
-
       this.log.trace("Build configuration", {
-        target,
-        runtime: options.runtime,
+        runtimes: options.runtimes,
+        static: this.slices.isStaticBuild(options),
       });
 
       // Prebuilt + manifest fast-path: skip `analyze app` (which boots
@@ -355,8 +232,13 @@ export class BuildCommand {
       // a static build names no interpreter.
       const meta = await this.metaResolver.resolve({
         root,
-        runtime:
-          options.target === "static" ? "static" : (options.runtime ?? "node"),
+        // The PRIMARY slice, which is what a deployer spawns. A multi-slice
+        // build bakes one `alepha.meta` into every slice, and naming a
+        // secondary there would have a Worker report the runtime of a bundle
+        // it is not. A static build names no interpreter.
+        runtime: this.slices.isStaticBuild(options)
+          ? "static"
+          : this.slices.primary(this.slices.fromOptions(options)),
         dev: false,
         override: this.metaOverride,
       });
@@ -380,7 +262,7 @@ export class BuildCommand {
         meta,
         manifest,
         platformOptions,
-        flags: { image: flags.image, prebuilt: flags.prebuilt },
+        flags: { prebuilt: flags.prebuilt },
       };
 
       for (const task of this.pipeline) {

@@ -32,7 +32,9 @@ export interface CloudflareDeployPlan {
   /**
    * The script and everything it imports. With `no_bundle` this is a glob
    * result, not an import-graph walk: the generated config sets
-   * `rules: [{ type: "ESModule", globs: ["index.js", "server/*.js"] }]`.
+   * `rules: [{ type: "ESModule", globs: ["index.workerd.js", "server/workerd/*.js"] }]`
+   * — scoped to the workerd slice, since a multi-runtime build leaves the
+   * other slices in the same `dist/`.
    */
   modules: Array<{ name: string; bytes: Uint8Array; type?: string }>;
 

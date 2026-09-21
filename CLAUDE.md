@@ -76,6 +76,24 @@ however short it is. If you cannot tell, ask.
   - Not `yarn w bay test`: the native pass is GREEN while skipping every test of `Systemd.render()`, whose files are `//go:build linux` and never compile on macOS.
 - `yarn clean` or `yarn alepha clean` - Remove generated files and the **per-package** `node_modules` (`packages/*/node_modules`); the root `node_modules` and every `apps/*/node_modules` are left alone. No longer run by `yarn v`, so reach for it deliberately.
 - `yarn build` - Build all workspace packages using `tsdown`
+
+### One artifact, N runtimes
+
+`alepha build` produces ONE `dist/` carrying a server slice per runtime, and the three packaging formats are three commands beside it:
+
+```bash
+alepha build --runtime node,workerd   # one dist/, two slices
+alepha compile --out my-app           # a binary, from the bun slice
+alepha pack                           # <project>-<tag>.tar.zst
+alepha image --tag                    # a container image
+```
+
+- `dist/` holds `index.<runtime>.js` per slice over `server/<runtime>/`, plus `public/` and `manifest.json`. There is no `index.js`: the manifest is the discovery mechanism.
+- ⚠️ **Declared order is the decision.** The first runtime is the primary: `manifest.runtime`, `dist/package.json`'s `main`, and what a deployer spawns. Nothing sorts it.
+- ⚠️ **`--target` is gone.** Declaring a `workerd` slice writes the Cloudflare config; `runtime: ["static"]` makes a static site; Docker is `alepha image`; `bare` was the absence of the other three.
+- The archive root is the CONTENTS, not a `dist/` wrapper, and it is zstd with a pinned `windowLog` (32 MiB). At the default window two slices do not dedup and the archive is silently twice the size.
+- `alepha image` writes its Dockerfile into the APP directory, to be committed and edited, and builds with `dist/` as the context. It needs the docker CLI, so it cannot run in an in-process deploy.
+- `image:` is a top-level config key, not `build.docker`. `build.cloudflare` stays under `build`, because the build really does write `wrangler.jsonc`.
 - `yarn test` - Run all tests using Vitest
 - `yarn lint` - Lint with oxlint (`--fix`), then format with oxfmt
 - `yarn typecheck` - TypeScript type checking (`tsc --noEmit`)

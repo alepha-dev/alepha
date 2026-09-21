@@ -1,10 +1,17 @@
 // Package deploy turns an app artifact into a running app instance.
 //
-// The artifact is the tar.gz produced by `alepha pack`: `dist/` (including
-// `dist/manifest.json`) plus `migrations/`, and nothing else. Bay consumes the
+// The artifact is the archive produced by `alepha pack`: the contents of the
+// build at the root — `public/`, `server/`, one `index.<runtime>.js` per slice,
+// `manifest.json` — plus `migrations/`, and nothing else. Bay consumes the
 // framework's existing artifact format rather than a Bay-specific one, so the
 // same file deploys to Bay, to Alepha Rocket, or through `alepha platform up
 // --prebuilt`.
+//
+// It arrives as `.tar.zst`. `.tar.gz` is read too, and is not going away:
+// hosts hold cached artifacts from before the change, and a reader that knew
+// only one of the two would make them undeployable. The compression is
+// detected from the stream's own magic bytes rather than from the file name,
+// so a cached artifact deploys whatever it happens to be called.
 //
 // This is the primitive that must exist in the Go binary itself and never move
 // up into anything Bay deploys: it is how those get installed in the first
@@ -26,6 +33,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/klauspost/compress/zstd"
 
 	"github.com/alepha/bay/internal/headers"
 	"github.com/alepha/bay/internal/manifest"
@@ -53,7 +62,7 @@ const (
 // Options describes one deployment.
 type Options struct {
 	Root     string // bay data root
-	Artifact string // path to the tar.gz produced by `alepha pack`
+	Artifact string // path to the archive produced by `alepha pack`
 	Name     string
 	Env      string
 	// Domains override the composed one, canonical first. Left empty, Bay
@@ -356,18 +365,18 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	}, nil
 }
 
-// checkHeaders refuses a release whose `dist/public/_headers` does not parse,
+// checkHeaders refuses a release whose `public/_headers` does not parse,
 // naming every line. A release without one is fine: it is served the way every
 // release was before Bay applied the file.
 func checkHeaders(release string) error {
-	body, err := os.ReadFile(filepath.Join(release, "dist", "public", "_headers"))
+	body, err := os.ReadFile(filepath.Join(release, manifest.PublicDir, "_headers"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("read dist/public/_headers: %w", err)
+		return fmt.Errorf("read %s/_headers: %w", manifest.PublicDir, err)
 	}
-	if _, err := headers.Read(string(body), "dist/public/_headers"); err != nil {
+	if _, err := headers.Read(string(body), manifest.PublicDir+"/_headers"); err != nil {
 		return fmt.Errorf("refusing the release: %w", err)
 	}
 	return nil
@@ -793,11 +802,11 @@ func allocatePort(used map[int]bool) (int, error) {
 // that a bound exists.
 const maxEntrySize = 512 << 20 // 512 MiB
 
-// untar extracts a gzipped tar, refusing anything that could write outside the
-// destination.
+// untar extracts a compressed tar, refusing anything that could write outside
+// the destination.
 //
-// This is the artifact `alepha pack` produces — `dist/` + `migrations/`, all
-// regular files and directories. Anything else in the stream is refused rather
+// This is the artifact `alepha pack` produces — the build's contents +
+// `migrations/`, all regular files and directories. Anything else in the stream is refused rather
 // than skipped: a symlink or hard link is the standard tar escape (point one at
 // /etc, then write "through" it on a later entry), and a device node or setuid
 // bit has no business in an application bundle. Refusing outright is both safer
@@ -809,18 +818,18 @@ func untar(src, dest string) error {
 	}
 	defer f.Close()
 
-	gz, err := gzip.NewReader(f)
+	stream, closeStream, err := decompress(f)
 	if err != nil {
-		return fmt.Errorf("not a gzip archive: %w", err)
+		return err
 	}
-	defer gz.Close()
+	defer closeStream()
 
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return err
 	}
 	root := filepath.Clean(dest)
 
-	tr := tar.NewReader(gz)
+	tr := tar.NewReader(stream)
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -869,6 +878,66 @@ func untar(src, dest string) error {
 		}
 	}
 }
+
+// decompress wraps the artifact stream in the right decoder, chosen by the
+// stream's own first bytes.
+//
+// ⚠️ **Sniffed, never taken from the file name.** Bay writes cached artifacts
+// under a name it composes from the digest, the CLI accepts `bay deploy -`
+// from stdin where there is no name at all, and an operator copying an archive
+// around renames it freely. A decision made on a suffix is a decision made on
+// the one part of the artifact nobody checks.
+//
+// gzip is 0x1f 0x8b; zstd is the little-endian magic 0x FD2FB528. Anything
+// else is refused here rather than half-read as a tar three frames later.
+func decompress(f *os.File) (io.Reader, func(), error) {
+	var magic [4]byte
+	n, err := io.ReadFull(f, magic[:])
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return nil, nil, fmt.Errorf("read archive: %w", err)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return nil, nil, fmt.Errorf("read archive: %w", err)
+	}
+	head := magic[:n]
+
+	switch {
+	case len(head) >= 2 && head[0] == 0x1f && head[1] == 0x8b:
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			return nil, nil, fmt.Errorf("not a gzip archive: %w", err)
+		}
+		return gz, func() { _ = gz.Close() }, nil
+	case len(head) >= 4 && head[0] == 0x28 && head[1] == 0xb5 && head[2] == 0x2f && head[3] == 0xfd:
+		// Decoding a long-window archive needs a window as large as the one it
+		// was written with. `alepha pack` pins windowLog 25 (32 MiB) so two
+		// server slices megabytes apart still dedup, and the decoder's own
+		// default ceiling is lower than that, so it is raised here.
+		//
+		// A CEILING, not a match: this is the largest window Bay is willing to
+		// allocate, so it must be at least the packer's pin and may be more.
+		// Headroom is deliberate — an app whose slices outgrow 32 MiB gets a
+		// larger pin on the produce side, and a Bay already in the field must
+		// not refuse the first artifact that uses it.
+		zr, err := zstd.NewReader(f, zstd.WithDecoderMaxWindow(maxZstdWindow))
+		if err != nil {
+			return nil, nil, fmt.Errorf("not a zstd archive: %w", err)
+		}
+		return zr, zr.Close, nil
+	}
+	return nil, nil, fmt.Errorf(
+		"artifact is neither a gzip nor a zstd archive (first bytes %x); `alepha pack` produces .tar.zst",
+		head,
+	)
+}
+
+// maxZstdWindow is the largest decompression window Bay will allocate, and it
+// must be at least the `windowLog` the packer compresses with.
+//
+// `alepha pack` pins 25 (32 MiB). This is 27 (128 MiB) on purpose: four times
+// the headroom, so raising the produce-side pin does not strand every Bay
+// already deployed in the field.
+const maxZstdWindow = 1 << 27 // 128 MiB; the packer pins 32 MiB
 
 // writeEntry copies one file, refusing to read past its declared size.
 //

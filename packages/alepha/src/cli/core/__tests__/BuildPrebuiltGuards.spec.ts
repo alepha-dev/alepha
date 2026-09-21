@@ -11,10 +11,12 @@ describe("--prebuilt guards", () => {
   // In prebuilt/manifest mode `ctx.alepha` is null: there is no live app to
   // introspect. Neither task checked, so the build died on a TypeError that
   // named nothing the user could act on.
-  const createCtx = (target: string): BuildTaskContext =>
+  const createCtx = (runtime: string): BuildTaskContext =>
     ({
       alepha: null as any,
-      options: { target } as BuildOptions,
+      // ⚠️ A runtime, not a target. The build is described by what it
+      // produces, and `static` is the declaration for "no server at all".
+      options: { runtime } as BuildOptions,
       run: (async (cmd: any) => {
         if (typeof cmd === "object" && cmd.handler) await cmd.handler();
         return "";
@@ -37,7 +39,7 @@ describe("--prebuilt guards", () => {
     };
   };
 
-  it("should refuse --prebuilt for the static target", async () => {
+  it("should refuse --prebuilt for a static build", async () => {
     const tasks = create();
 
     await expect(tasks.static.run(createCtx("static"))).rejects.toThrow(
@@ -45,7 +47,7 @@ describe("--prebuilt guards", () => {
     );
   });
 
-  it("should stay inert for a target it does not own", async () => {
+  it("should stay inert for a build it does not own", async () => {
     const tasks = create();
 
     await expect(

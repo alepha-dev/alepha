@@ -111,6 +111,29 @@ export const gzip = async (bytes: Uint8Array): Promise<Uint8Array> => {
  * accepts. Overriding it with `null` omits `dist/manifest.json` entirely,
  * which is a different failure from carrying a bad one and gets its own test.
  */
+/**
+ * `tar`, compressed with zstd the way `alepha pack` compresses it.
+ *
+ * ⚠️ **Node's zlib, not a `CompressionStream`.** There is no `zstd` format in
+ * the Compression Streams API - which is the whole reason Lore decodes zstd in
+ * JavaScript on the read side - so the fixture reaches for the runtime that
+ * does have it. Specs run under node; the Worker never builds an artifact.
+ *
+ * The `windowLog` matches `WorkspacePacker.ZSTD_WINDOW_LOG`, so a frame this
+ * fixture produces is the frame a real push carries.
+ */
+export const zstd = async (bytes: Uint8Array): Promise<Uint8Array> => {
+  const { constants, zstdCompressSync } = await import("node:zlib");
+  return new Uint8Array(
+    zstdCompressSync(bytes, {
+      params: {
+        [constants.ZSTD_c_compressionLevel]: 10,
+        [constants.ZSTD_c_windowLog]: 25,
+      },
+    }),
+  );
+};
+
 export const packedArtifact = async (
   options: {
     manifest?: Record<string, unknown> | null;
@@ -126,22 +149,38 @@ export const packedArtifact = async (
      */
     name?: string;
     type?: string;
+    /**
+     * Which compression to produce. `zstd` is what `alepha pack` writes;
+     * `gzip` is what the registry still has to read, for artifacts pushed
+     * before the move.
+     */
+    compression?: "zstd" | "gzip";
   } = {},
 ): Promise<File> => {
   const manifest =
     options.manifest === undefined
-      ? { version: 1, runtime: "node", project: "my-app", entry: "dist" }
+      ? {
+          version: 1,
+          runtime: "node",
+          project: "my-app",
+          entry: "index.node.js",
+        }
       : options.manifest;
 
+  // ⚠️ The archive root is the CONTENTS: `index.node.js` and `manifest.json`
+  // at the top, never inside a `dist/` wrapper.
   const entries: Record<string, string> = {
-    "dist/index.js": `console.log("hello");${options.filler ?? ""}`,
+    "index.node.js": `console.log("hello");${options.filler ?? ""}`,
   };
   if (manifest !== null) {
-    entries["dist/manifest.json"] = JSON.stringify(manifest);
+    entries["manifest.json"] = JSON.stringify(manifest);
   }
 
-  const bytes = await gzip(tar(entries));
-  return new File([bytes as BlobPart], options.name ?? "my-app-latest.tar.gz", {
-    type: options.type ?? "application/gzip",
-  });
+  const gz = options.compression === "gzip";
+  const bytes = gz ? await gzip(tar(entries)) : await zstd(tar(entries));
+  return new File(
+    [bytes as BlobPart],
+    options.name ?? (gz ? "my-app-latest.tar.gz" : "my-app-latest.tar.zst"),
+    { type: options.type ?? (gz ? "application/gzip" : "application/zstd") },
+  );
 };

@@ -108,6 +108,17 @@ export interface BuildTaskContext {
   flags?: {
     image?: boolean | string;
     /**
+     * The name of a compiled binary in `dist/`, when the caller compiled one.
+     *
+     * ⚠️ **A flag rather than a build option**, and that is the point.
+     * `compile` used to live in `buildOptions` and reach back to constrain
+     * `target`, which is a build option deciding other build options. It is
+     * `alepha compile` now, its own command reading `./dist`, and the only
+     * thing the Dockerfile writer still needs to know is whether a binary
+     * exists and what it is called — so that is all it is handed.
+     */
+    compile?: string;
+    /**
      * Skip the slow build steps (Vite client + Vite server + asset
      * compression). Only runs the deploy-config generation
      * (wrangler.jsonc, etc.) — useful when the caller already has a

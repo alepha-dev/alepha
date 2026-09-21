@@ -9,10 +9,17 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { PackCommand } from "../commands/pack.ts";
+import {
+  ArchiveCompressor,
+  MemoryArchiveCompressor,
+} from "../services/ArchiveCompressor.ts";
 
 describe("PackCommand", () => {
   const create = async (packageName: string) => {
     const alepha = Alepha.create()
+      // The one pack step that touches real files: the shell here is a fake, so
+      // no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
 
@@ -32,15 +39,15 @@ describe("PackCommand", () => {
   };
 
   it("should slugify a scoped package name", async () => {
-    // `@acme/app-latest.tar.gz` puts a path separator in the archive name, so
+    // `@acme/app-latest.tar.zst` puts a path separator in the archive name, so
     // tar targeted a directory that does not exist and the command failed.
     const { cli, pack, shell } = await create("@acme/app");
 
     await cli.run(pack.pack, { argv: "", root: "/app" });
 
     const commands = shell.calls.map((it) => it.command).join("\n");
-    expect(commands).toContain("acme-app-latest.tar.gz");
-    expect(commands).not.toContain("@acme/app-latest.tar.gz");
+    expect(commands).toContain("acme-app-latest.tar.zst");
+    expect(commands).not.toContain("@acme/app-latest.tar.zst");
   });
 
   it("should leave an unscoped name readable", async () => {
@@ -49,7 +56,7 @@ describe("PackCommand", () => {
     await cli.run(pack.pack, { argv: "", root: "/app" });
 
     expect(shell.calls.map((it) => it.command).join("\n")).toContain(
-      "my-app-latest.tar.gz",
+      "my-app-latest.tar.zst",
     );
   });
 
@@ -63,8 +70,8 @@ describe("PackCommand", () => {
     await cli.run(pack.pack, { argv: "--name capacity", root: "/app" });
 
     const commands = shell.calls.map((it) => it.command).join("\n");
-    expect(commands).toContain("capacity-latest.tar.gz");
-    expect(commands).not.toContain("app-latest.tar.gz");
+    expect(commands).toContain("capacity-latest.tar.zst");
+    expect(commands).not.toContain("app-latest.tar.zst");
   });
 
   it("should keep --name verbatim, so the caller can predict the filename", async () => {
@@ -75,7 +82,7 @@ describe("PackCommand", () => {
     await cli.run(pack.pack, { argv: "--name app.v2", root: "/app" });
 
     expect(shell.calls.map((it) => it.command).join("\n")).toContain(
-      "app.v2-latest.tar.gz",
+      "app.v2-latest.tar.zst",
     );
   });
 

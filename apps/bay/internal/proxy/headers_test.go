@@ -60,7 +60,7 @@ func releasesSite(t *testing.T, releases map[string]map[string]string, current s
 		t.Fatal(err)
 	}
 	for release, files := range releases {
-		base := filepath.Join(root, "apps", naming.Instance("docs", "production"), "releases", release, "dist", "public")
+		base := filepath.Join(root, "apps", naming.Instance("docs", "production"), "releases", release, "public")
 		for name, body := range files {
 			path := filepath.Join(base, name)
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

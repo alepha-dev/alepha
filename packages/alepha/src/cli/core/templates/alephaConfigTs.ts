@@ -17,7 +17,7 @@ export default defineConfig({
   // },
   //
   // How \`alepha build\` packages dist/. Unset, you get "bare": the plain
-  // Node server you run with \`node dist/index.js\`.
+  // Node server you run with \`node dist/index.node.js\` (or \`node dist\`).
   //
   //   target: "bare"        dist/ only — deploy it yourself           (default)
   //          | "docker"     also writes a Dockerfile for dist/

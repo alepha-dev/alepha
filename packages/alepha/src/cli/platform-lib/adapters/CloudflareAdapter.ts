@@ -344,7 +344,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     //    which still needs Vite analyze + bundle.
     if (ctx.prebuilt) {
       await run({
-        name: "alepha build -t cloudflare --prebuilt (in-process)",
+        name: "alepha build --runtime=workerd --prebuilt (in-process)",
         handler: async () => {
           await this.runBuildInProcess(appDir, env);
         },
@@ -352,7 +352,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       return;
     }
 
-    const cmd = "alepha build -t cloudflare";
+    const cmd = "alepha build --runtime=workerd";
     await run({
       name: cmd,
       handler: async () => {
@@ -365,7 +365,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   /**
-   * Library-embed of `alepha build -t cloudflare --prebuilt`. Loads the
+   * Library-embed of `alepha build --runtime=workerd --prebuilt`. Loads the
    * pre-built `dist/manifest.json` through `this.fs`, puts the per-deploy env
    * vars ON THE CONTEXT, then runs `BuildCloudflareTask` against it.
    *
@@ -390,7 +390,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     } catch (err) {
       throw new AlephaError(
         `Cannot read ${manifestPath}: ${(err as Error).message}. ` +
-          `Prebuilt deploys require dist/manifest.json (emitted by \`alepha build -t cloudflare\`).`,
+          `Prebuilt deploys require dist/manifest.json (emitted by \`alepha build --runtime=workerd\`).`,
       );
     }
 
@@ -412,7 +412,7 @@ export class CloudflareAdapter extends PlatformAdapter {
               (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
             )
             .join("; ")}. ` +
-          `Rebuild the artifact with \`alepha build -t cloudflare\`.`,
+          `Rebuild the artifact with \`alepha build --runtime=workerd\`.`,
       );
     }
     manifest = validated.data;
@@ -422,7 +422,12 @@ export class CloudflareAdapter extends PlatformAdapter {
       // dereferences alepha. Cast keeps the type signature happy.
       alepha: null as unknown as AlephaInstance,
       options: {
-        target: "cloudflare",
+        // ⚠️ Declared, and there is no target any more. `BuildCloudflareTask`
+        // is triggered by the presence of a workerd SLICE, because a
+        // multi-slice build has no single target to name, and this path
+        // regenerating `wrangler.jsonc` is a workerd build by definition.
+        runtime: ["workerd"],
+        runtimes: ["workerd"],
         output: { dist: "dist", public: "public" },
       },
       run: this.runner.run,

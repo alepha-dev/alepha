@@ -32,9 +32,25 @@ const RuntimeStatic = "static"
 // Path is where the manifest lives inside an unpacked artifact.
 //
 // Hardcoded rather than derived from the manifest's own `entry` field, which
-// would be circular. `alepha pack` hardcodes the same `dist/` + `migrations/`
-// pair when it builds the archive, so the two agree by construction.
-const Path = "dist/manifest.json"
+// would be circular.
+//
+// ⚠️ **At the archive ROOT, not inside `dist/`.** The artifact used to wrap
+// everything in a `dist/` directory; it now unpacks to `./public`, `./server`,
+// `./index.<runtime>.js`, `./migrations` and `./manifest.json` at the top. No
+// compatibility alias is carried: Bay ships this first, and every artifact
+// produced afterwards has the new shape. An older artifact is refused with a
+// message naming a redeploy as the fix, in `load` below.
+const Path = "manifest.json"
+
+// PublicDir is where an unpacked artifact keeps the files served straight from
+// disk: the client bundle, the prerendered HTML, `_headers`.
+//
+// It moved with the rest when the archive root became the contents (it was
+// `dist/public`), and it is named here rather than composed at each of the four
+// call sites — the deployer's `_headers` check, the proxy's static root, the
+// proxy's header lookup — because a rename that reaches three of four is a
+// static site that serves nothing with nobody able to say which layer lost it.
+const PublicDir = "public"
 
 // resources mirrors the `resources` object of the framework's BuildManifest.
 //
@@ -58,8 +74,55 @@ type buildManifest struct {
 	Runtime        string    `json:"runtime"`
 	RuntimeVersion string    `json:"runtimeVersion"`
 	Entry          string    `json:"entry"`
+	Runtimes       []slice   `json:"runtimes"`
 	Resources      resources `json:"resources"`
 	Crons          []string  `json:"crons"`
+}
+
+// slice is one server slice of a multi-runtime artifact.
+//
+// An artifact may carry several: one linked for node, one for workerd, one for
+// bun. Each names its runtime and the file to spawn, relative to the archive
+// root.
+type slice struct {
+	Runtime string `json:"runtime"`
+	Entry   string `json:"entry"`
+}
+
+// runnable reports whether Bay can spawn this runtime at all.
+//
+// workerd cannot: it is Cloudflare's, and a bundle resolved against its export
+// conditions has no self-hosted entry point. static spawns nothing by
+// definition. So the two Bay can run are node and bun, and `pick` below walks
+// the declared order looking for one of them.
+func runnable(runtime string) bool {
+	return runtime == "node" || runtime == "bun"
+}
+
+// pick chooses the slice Bay will run, in DECLARED ORDER.
+//
+// ⚠️ **The first runnable one wins, and Bay applies no preference of its own.**
+// `["node", "bun"]` runs node and `["bun", "node"]` runs bun, from the same two
+// slices: the build's declared order is the decision, and reordering here
+// would silently change which runtime an app is deployed on. It is the same
+// rule the build uses to pick the primary, which is what makes the scalar
+// `runtime` (always `runtimes[0]`) and this choice incapable of disagreeing.
+//
+// When nothing declared is runnable, the FIRST slice is returned anyway so
+// `validate` can refuse it by name — a workerd-only artifact should say
+// "built for Cloudflare Workers", not "no runnable slice".
+func (b *buildManifest) pick() (runtime, entry string) {
+	// Nothing to spawn: the slice search would be answering a question a static
+	// site does not ask.
+	if b.Runtime == RuntimeStatic || len(b.Runtimes) == 0 {
+		return b.Runtime, b.Entry
+	}
+	for _, s := range b.Runtimes {
+		if runnable(s.Runtime) {
+			return s.Runtime, s.Entry
+		}
+	}
+	return b.Runtimes[0].Runtime, b.Runtimes[0].Entry
 }
 
 // Resources is what Bay acts on: each true value becomes a directory the app is
@@ -79,9 +142,13 @@ type Manifest struct {
 	Name           string
 	Runtime        string // "node" | "bun" | "static"
 	RuntimeVersion string // MAJOR only, e.g. "26"
-	Entry          string // defaults to "dist"
-	Resources      Resources
-	Cron           []string
+	// Entry is the file to spawn, relative to the release root — e.g.
+	// `index.node.js`. It used to be a directory (`dist`, resolved through its
+	// `main`) and has no default anymore: the archive root is the contents, so
+	// a default of `dist` would name a directory that is not there.
+	Entry     string
+	Resources Resources
+	Cron      []string
 }
 
 // LoadFromRelease reads and validates the manifest of an unpacked release.
@@ -102,10 +169,10 @@ func load(path string) (*Manifest, error) {
 		// manifest: no such file", which on a Bay restart shows up as every app
 		// failing to come back with no hint that a redeploy is the fix.
 		if os.IsNotExist(err) {
-			legacy := filepath.Join(filepath.Dir(filepath.Dir(path)), "manifest.json")
+			legacy := filepath.Join(filepath.Dir(path), "dist", "manifest.json")
 			if _, legacyErr := os.Stat(legacy); legacyErr == nil {
 				return nil, fmt.Errorf(
-					"%s is missing, but a root-level manifest.json is present: this release was unpacked by an older Bay and predates the derived manifest; redeploy the app to migrate it",
+					"%s is missing, but dist/manifest.json is present: this release predates the flat artifact layout, where the archive root is the contents rather than a dist/ wrapper; redeploy the app to migrate it",
 					Path,
 				)
 			}
@@ -116,11 +183,12 @@ func load(path string) (*Manifest, error) {
 	if err := json.Unmarshal(raw, &b); err != nil {
 		return nil, fmt.Errorf("parse manifest: %w", err)
 	}
+	runtime, entry := b.pick()
 	m := &Manifest{
 		Name:           b.Project,
-		Runtime:        b.Runtime,
+		Runtime:        runtime,
 		RuntimeVersion: b.RuntimeVersion,
-		Entry:          b.Entry,
+		Entry:          entry,
 		Resources: Resources{
 			Database: b.Resources.HasDatabase,
 			Bucket:   b.Resources.HasBucket,
@@ -139,9 +207,12 @@ func (m *Manifest) applyDefaults() {
 	if m.Runtime == "" {
 		m.Runtime = "node"
 	}
-	if m.Entry == "" {
-		m.Entry = "dist"
-	}
+	// No `Entry` default. `dist` used to be one, because the archive wrapped the
+	// build in a `dist/` directory whose `main` resolved the bundle. The archive
+	// root is now the contents, so that default would name a directory that does
+	// not exist — and spawning `node dist` against it fails as "never became
+	// ready", which says nothing about why. `validate` refuses an empty entry
+	// instead.
 }
 
 func (m *Manifest) validate() error {
@@ -150,6 +221,15 @@ func (m *Manifest) validate() error {
 	}
 	switch m.Runtime {
 	case "node", "bun":
+		// The file to spawn. Named here rather than discovered, because the only
+		// alternative is guessing, and a guess that lands on the wrong slice
+		// starts a workerd bundle under node.
+		if m.Entry == "" {
+			return fmt.Errorf(
+				"artifact declares runtime %q but names no entry file; rebuild it with a current `alepha build`, which writes one per slice",
+				m.Runtime,
+			)
+		}
 	case RuntimeStatic:
 		// Nothing is spawned, so nothing can open any of these. Refusing names
 		// the contradiction while the operator is still watching a deploy;

@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
@@ -193,7 +194,7 @@ func (p *Proxy) findStatic(app state.App, urlPath string) (string, bool) {
 		// The Alepha build emits client assets at dist/public — served from
 		// there directly rather than hoisted into the archive root, which would
 		// mean moving hundreds of files at packaging time for no gain.
-		base := filepath.Join(instance, "releases", release, "dist", "public")
+		base := filepath.Join(instance, "releases", release, manifest.PublicDir)
 		for _, name := range names {
 			candidate := filepath.Join(base, name)
 			// Defence in depth: Clean above already strips ../, but a symlinked

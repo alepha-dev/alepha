@@ -7,6 +7,8 @@ import { FileSystemProvider } from "alepha/system";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 
+import type { BuildRuntime } from "../atoms/buildOptions.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import {
   type PreloadTable,
@@ -16,10 +18,36 @@ import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
- * Build server-side SSR bundle with Vite.
+ * Build the server-side SSR bundle with Vite — one **slice** per runtime.
  *
  * Compiles the server code for production, generates the externals
- * package.json, and creates the dist/index.js entry wrapper.
+ * `package.json`, and writes one `dist/index.<runtime>.js` entry wrapper per
+ * slice over its own `dist/server/<runtime>/` chunk directory.
+ *
+ * ## Why only this task loops
+ *
+ * The runtimes differ by almost nothing: one export condition, plus the
+ * workerd `createRequire` shim and, for a `$websocket` app, a generated entry
+ * re-exporting the Durable Object class. Everything else about the Vite config
+ * is identical. `BuildClientTask` never reads the runtime at all and
+ * `BuildPrerenderTask` renders from the live container rather than from a
+ * built bundle, so neither has a slice question — which is the whole point of
+ * the epic: the slow steps run once and only the server link repeats.
+ *
+ * ## ⚠️ What must happen exactly once, inside a loop
+ *
+ * Three things here are per-BUILD and not per-slice, and doing them per slice
+ * is silently wrong rather than loud:
+ *
+ * - The client `index.html` is removed once the server takes over rendering it.
+ *   Removed on the first pass, it is simply absent for the second.
+ * - The client's `.vite` manifest directory is consumed to build the preload
+ *   table and then deleted. Deleted after the first slice, every later slice
+ *   ships with no preload table at all and nothing says so.
+ * - `dist/package.json` names ONE `main`, which is the primary slice.
+ *
+ * So the manifests are read once and reused, and the two deletions happen
+ * after the loop.
  */
 export class BuildServerTask extends BuildTask {
   protected readonly alepha = $inject(Alepha);
@@ -28,12 +56,13 @@ export class BuildServerTask extends BuildTask {
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
   protected readonly preloadTable = $inject(PreloadTableBuilder);
+  protected readonly slices = $inject(BuildSlices);
 
   /**
    * Whether the Durable Object class should be re-exported through the app's
    * server bundle. Set to `true` only for a `workerd` build of an app that uses
    * the `$websocket` primitive. Any other build leaves this `false`, so the
-   * generated bundle and `dist/index.js` stay byte-identical to before.
+   * generated bundle and the slice's entry wrapper carry nothing extra.
    */
   protected exportDurableObject = false;
 
@@ -59,46 +88,92 @@ export class BuildServerTask extends BuildTask {
     );
     const clientBuilt = await this.fs.exists(clientIndexPath);
 
-    const conditions: string[] = [];
-    if (ctx.options.runtime === "bun") {
-      conditions.push("bun");
-    } else if (ctx.options.runtime === "workerd") {
-      conditions.push("workerd");
+    // Declared order, straight from the resolved options. Never sorted: the
+    // first entry is the primary, and reordering it here would change what
+    // `dist/package.json` points at and what a deployer spawns.
+    const runtimes = this.slices.resolve(
+      ctx.options.runtimes ?? ctx.options.runtime,
+    );
+
+    // Read once and reused by every slice: the client bundle is
+    // runtime-agnostic, so its manifests answer the same for all of them, and
+    // reading them again after the first pass deleted `.vite` would answer
+    // nothing at all.
+    let ssr: SsrManifest | undefined;
+    let primaryExternals: string[] = [];
+
+    for (const runtime of runtimes) {
+      await ctx.run({
+        // Named per slice so a failing multi-runtime build says which link
+        // failed rather than "build server".
+        name:
+          runtimes.length > 1 ? `build server (${runtime})` : "build server",
+        handler: async () => {
+          const built = await this.buildServer({
+            root: ctx.root,
+            entry: ctx.entry.server,
+            distDir,
+            runtime,
+            clientDir: clientBuilt ? publicDir : undefined,
+            stats,
+            silent: !isCI,
+            alepha: ctx.alepha,
+            meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
+            allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
+            ssr,
+          });
+          ssr ??= built.ssr;
+          if (runtime === this.slices.primary(runtimes)) {
+            primaryExternals = built.externals;
+          }
+        },
+      });
     }
 
-    await ctx.run({
-      name: "build server",
-      handler: async () => {
-        await this.buildServer({
-          root: ctx.root,
-          entry: ctx.entry.server,
-          distDir,
-          clientDir: clientBuilt ? publicDir : undefined,
-          stats,
-          silent: !isCI,
-          conditions,
-          alepha: ctx.alepha,
-          meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
-          allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
-        });
+    // `main` names ONE file, and the primary is the honest answer: it is what
+    // the manifest declares and what a deployer without slice support spawns.
+    // The externals are the primary's too — a workerd slice externalizes
+    // nothing and a bun slice externalizes less, so taking any other slice's
+    // list would under-declare what `node .` needs.
+    await this.generateExternals(
+      distDir,
+      primaryExternals,
+      this.slices.entryFileName(this.slices.primary(runtimes)),
+    );
 
-        // Server will handle index.html if both client & server are built
-        if (clientBuilt) {
-          await this.fs.rm(clientIndexPath);
-        }
-      },
-    });
+    // Both deletions after the loop. See the class doc: doing either inside it
+    // leaves every slice after the first missing something, silently.
+    if (clientBuilt) {
+      // The server renders index.html once both halves are built.
+      await this.fs.rm(clientIndexPath);
+    }
+    if (ssr?.viteDir) {
+      await this.fs.rm(ssr.viteDir, { recursive: true });
+    }
   }
 
   protected async buildServer(opts: {
     root: string;
     entry: string;
     distDir: string;
+    /**
+     * The runtime this slice is linked for. Decides the export condition, the
+     * chunk directory and the entry wrapper's name.
+     */
+    runtime: BuildRuntime;
     clientDir?: string;
     stats?: boolean | "json";
     silent?: boolean;
-    conditions?: string[];
     alepha: Alepha;
+    /**
+     * The client manifests, already read and resolved by an earlier slice.
+     *
+     * Present for every slice after the first. The client bundle is
+     * runtime-agnostic, so re-reading would produce the same answer — and
+     * cannot anyway, since the directory it reads is deleted once the build is
+     * over.
+     */
+    ssr?: SsrManifest;
     /**
      * The build metadata token, already encoded as a `define` entry. The same
      * one the client bundle gets.
@@ -109,7 +184,14 @@ export class BuildServerTask extends BuildTask {
      * the build.
      */
     allowUnresolvedPreloads?: string[];
-  }): Promise<void> {
+  }): Promise<{ entryFile: string; externals: string[]; ssr?: SsrManifest }> {
+    const serverDir = this.slices.serverDir(opts.runtime);
+    const conditions: string[] = [];
+    if (opts.runtime === "bun") {
+      conditions.push("bun");
+    } else if (opts.runtime === "workerd") {
+      conditions.push("workerd");
+    }
     const { build: viteBuild, resolveConfig } =
       await this.viteUtils.importVite();
     const plugins: any[] = [];
@@ -123,7 +205,7 @@ export class BuildServerTask extends BuildTask {
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.viteUtils.createClientModulesPlugin());
 
-    if (opts.conditions?.includes("workerd")) {
+    if (conditions.includes("workerd")) {
       plugins.push(this.workerdCreateRequirePlugin());
     }
 
@@ -140,20 +222,18 @@ export class BuildServerTask extends BuildTask {
       ? this.viteUtils.createBufferedLogger()
       : undefined;
 
-    const conditions = ["node", "import", "module", "default"];
-    if (opts.conditions) {
-      conditions.unshift(...opts.conditions);
-    }
+    const resolveConditions = ["node", "import", "module", "default"];
+    resolveConditions.unshift(...conditions);
 
-    // Cloudflare ships `dist/index.js` + `dist/server/*.js` under `no_bundle`
+    // Cloudflare ships `dist/index.workerd.js` + `dist/server/workerd/*.js`
+    // under `no_bundle`
     // (no node_modules). For the `AlephaWebSocketDurableObject` class named in
     // the wrangler `durable_objects`/`migrations` config to be reachable at the
     // edge, it must ride out through the app's own server bundle as a real
     // named export. Only do this for a workerd build of an app that actually
     // uses `$websocket` or `$room` — every other build stays untouched.
     this.exportDurableObject =
-      (opts.conditions?.includes("workerd") ?? false) &&
-      this.usesWebSocket(opts.alepha);
+      conditions.includes("workerd") && this.usesWebSocket(opts.alepha);
 
     // For the entry chunk to carry the named export, build from a generated
     // entry that both runs the real app entry (for its side effects) and
@@ -164,7 +244,9 @@ export class BuildServerTask extends BuildTask {
       const entryAbsolute = isAbsolute(opts.entry)
         ? opts.entry
         : join(opts.root, opts.entry);
-      const generated = `${opts.distDir}/.alepha-workerd-entry.mjs`;
+      // Named after the runtime: two slices generating the same file would
+      // race, and only one of them builds what it thinks it built.
+      const generated = `${opts.distDir}/.alepha-${opts.runtime}-entry.mjs`;
       await this.fs.mkdir(opts.distDir);
       await this.fs.writeFile(
         generated,
@@ -195,14 +277,18 @@ export class BuildServerTask extends BuildTask {
       publicDir: false,
       ssr: {
         noExternal: true,
-        resolve: { conditions },
+        resolve: { conditions: resolveConditions },
       },
       build: {
         ssr: entry,
         minify: true,
         sourcemap: true,
         chunkSizeWarningLimit: 10000,
-        outDir: `${opts.distDir}/server`,
+        // ⚠️ Namespaced by runtime. Two slices in one `server/` do not
+        // collide — their content hashes differ — so both sets sit there and
+        // the wrangler `server/*.js` glob sweeps the Node chunks into the
+        // Worker upload. See BuildSlices.serverDir.
+        outDir: `${opts.distDir}/${serverDir}`,
         rolldownOptions: {
           external: [/^bun(:|$)/, /^cloudflare:/],
           output: {
@@ -261,65 +347,24 @@ export class BuildServerTask extends BuildTask {
       externals.push(...resolvedConfig.ssr.external);
     }
 
-    await this.generateExternals(opts.distDir, externals);
-
     const entryFile = this.extractEntryFromBundle(opts.root, entry, result);
 
-    let manifest = "";
-    let manifestData:
-      | {
-          preload?: PreloadTable;
-          favicon?: string;
-        }
-      | undefined;
+    // Read once per BUILD, not once per slice. The directory it reads is
+    // deleted by `run` after the last slice, so a second read would find
+    // nothing and every slice past the first would ship an empty preload
+    // table with nothing going red.
+    let ssr = opts.ssr;
+    if (opts.clientDir && !ssr) {
+      ssr = await this.readSsrManifest({
+        distDir: opts.distDir,
+        clientDir: opts.clientDir,
+        base: resolvedConfig.base,
+        allowUnresolvedPreloads: opts.allowUnresolvedPreloads,
+      });
+    }
 
-    if (opts.clientDir) {
-      const viteDir = `${opts.distDir}/${opts.clientDir}/.vite`;
-      const clientManifest = await this.loadJsonFile(
-        `${viteDir}/manifest.json`,
-      );
-      const preloadManifest = await this.loadJsonFile(
-        `${viteDir}/preload-manifest.json`,
-      );
-      const ssrManifest = await this.loadJsonFile(
-        `${viteDir}/ssr-manifest.json`,
-      );
-
-      let base = resolvedConfig.base || "/";
-      if (!base.startsWith("/")) {
-        base = `/${base}`;
-      }
-      if (base.length > 1 && base.endsWith("/")) {
-        base = base.slice(0, -1);
-      }
-
-      const favicon = await this.detectFavicon(
-        `${opts.distDir}/${opts.clientDir}`,
-      );
-
-      manifestData = {
-        // This is the only point in the pipeline holding every manifest at
-        // once, so it is the only one that can resolve a preload key - and the
-        // only one that can refuse to.
-        preload: clientManifest
-          ? this.preloadTable.build({
-              clientManifest,
-              preloadManifest: preloadManifest ?? {},
-              ssrManifest: ssrManifest ?? {},
-              base: base === "/" ? "" : base,
-              allowUnresolved: opts.allowUnresolvedPreloads,
-            })
-          : undefined,
-        favicon,
-      };
-
-      // Compact, not pretty-printed: the payload is an index table, and one
-      // integer per line tripled the size of a generated file nobody reads.
-      manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData)});\n`;
-
-      opts.alepha.store.set("alepha.react.ssr.manifest" as any, manifestData);
-
-      await this.fs.rm(viteDir, { recursive: true });
+    if (ssr?.data) {
+      opts.alepha.store.set("alepha.react.ssr.manifest" as any, ssr.data);
     }
 
     const warning =
@@ -328,26 +373,91 @@ export class BuildServerTask extends BuildTask {
       "// Changes to this file will be lost when the code is regenerated.\n";
 
     await this.fs.writeFile(
-      `${opts.distDir}/index.js`,
-      `${warning}\nimport './server/${entryFile}';\n${this.durableObjectReexport(entryFile)}\n${manifest}`.trim(),
+      `${opts.distDir}/${this.slices.entryFileName(opts.runtime)}`,
+      `${warning}\nimport './${serverDir}/${entryFile}';\n${this.durableObjectReexport(serverDir, entryFile)}\n${ssr?.statement ?? ""}`.trim(),
     );
+
+    return { entryFile, externals, ssr };
   }
 
   /**
-   * Re-export line appended to `dist/index.js` so the Durable Object class rides
+   * Read the client build's manifests and turn them into the SSR payload the
+   * entry wrapper carries.
+   *
+   * Extracted from {@link buildServer} because it is per-BUILD while that is
+   * per-slice: the client bundle never reads the runtime, so the answer is the
+   * same for every slice, and the `.vite` directory it reads exists only until
+   * the build removes it.
+   */
+  protected async readSsrManifest(opts: {
+    distDir: string;
+    clientDir: string;
+    base: string | undefined;
+    allowUnresolvedPreloads?: string[];
+  }): Promise<SsrManifest> {
+    const viteDir = `${opts.distDir}/${opts.clientDir}/.vite`;
+    const clientManifest = await this.loadJsonFile(`${viteDir}/manifest.json`);
+    const preloadManifest = await this.loadJsonFile(
+      `${viteDir}/preload-manifest.json`,
+    );
+    const ssrManifest = await this.loadJsonFile(`${viteDir}/ssr-manifest.json`);
+
+    let base = opts.base || "/";
+    if (!base.startsWith("/")) {
+      base = `/${base}`;
+    }
+    if (base.length > 1 && base.endsWith("/")) {
+      base = base.slice(0, -1);
+    }
+
+    const favicon = await this.detectFavicon(
+      `${opts.distDir}/${opts.clientDir}`,
+    );
+
+    const data = {
+      // This is the only point in the pipeline holding every manifest at
+      // once, so it is the only one that can resolve a preload key - and the
+      // only one that can refuse to.
+      preload: clientManifest
+        ? this.preloadTable.build({
+            clientManifest,
+            preloadManifest: preloadManifest ?? {},
+            ssrManifest: ssrManifest ?? {},
+            base: base === "/" ? "" : base,
+            allowUnresolved: opts.allowUnresolvedPreloads,
+          })
+        : undefined,
+      favicon,
+    };
+
+    return {
+      viteDir,
+      data,
+      // Compact, not pretty-printed: the payload is an index table, and one
+      // integer per line tripled the size of a generated file nobody reads.
+      statement: `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(data)});\n`,
+    };
+  }
+
+  /**
+   * Re-export line appended to the workerd slice's entry wrapper so the
+   * Durable Object class rides
    * out through the app's own (`no_bundle`) server bundle and is reachable from
    * the generated Cloudflare worker entry (`main.cloudflare.js` does
-   * `export { AlephaWebSocketDurableObject } from "./index.js"`).
+   * `export { AlephaWebSocketDurableObject } from "./index.workerd.js"`).
    *
    * Returns an empty string for any build that is not a workerd +
-   * `$websocket`/`$room` build, keeping `dist/index.js` byte-identical to
-   * before in every other case.
+   * `$websocket`/`$room` build, so every other slice's wrapper carries nothing
+   * extra.
    */
-  protected durableObjectReexport(entryFile: string): string {
+  protected durableObjectReexport(
+    serverDir: string,
+    entryFile: string,
+  ): string {
     if (!this.exportDurableObject) {
       return "";
     }
-    return `export { AlephaWebSocketDurableObject } from "./server/${entryFile}";\n`;
+    return `export { AlephaWebSocketDurableObject } from "./${serverDir}/${entryFile}";\n`;
   }
 
   /**
@@ -628,6 +738,7 @@ export class BuildServerTask extends BuildTask {
   protected async generateExternals(
     distDir: string,
     externals: string[],
+    main: string,
   ): Promise<void> {
     const require = createRequire(import.meta.filename);
     const deps: Record<string, string> = {};
@@ -645,7 +756,10 @@ export class BuildServerTask extends BuildTask {
 
     const minimalPkg = {
       type: "module",
-      main: "index.js",
+      // The primary slice. `node .` has to resolve to something runnable, and
+      // there is exactly one `main` to name it with, so the first declared
+      // runtime is the answer — the same one the manifest gives.
+      main,
       dependencies: deps,
     };
 
@@ -726,6 +840,25 @@ export class BuildServerTask extends BuildTask {
         "dropped. Refusing to ship the build.",
     );
   }
+}
+
+/**
+ * The client build's manifests, resolved once and shared by every slice.
+ */
+interface SsrManifest {
+  /**
+   * The `.vite` directory the manifests came from, removed once the last slice
+   * is built.
+   */
+  viteDir: string;
+  data: {
+    preload?: PreloadTable;
+    favicon?: string;
+  };
+  /**
+   * The `__alepha.set(...)` line appended to each slice's entry wrapper.
+   */
+  statement: string;
 }
 
 /**

@@ -230,7 +230,7 @@ func usageText() string {
               [--control-socket PATH] [--control-group %s]
               [--backup-interval %s]   # 0 disables; needs "bay config s3"
               [--keep-releases %d]   # per app; min 2, the serving one is always kept
-  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...
+  bay deploy  (<app.tar.zst>|-) [--name NAME] [--env ENV] [--domain HOST]...
               [--secrets-file PATH]
               # --secrets-file names a 0600 file of KEY=VALUE lines holding the
               # app's own environment. It is merged into the instance .env
@@ -244,7 +244,7 @@ func usageText() string {
               # --domain is repeatable and accepts a comma-separated list —
               # apex + www are one site. The first is the canonical one.
               # -  reads the artifact from stdin, e.g.
-              #    ssh HOST 'bay deploy - --name app' < app.tar.gz
+              #    ssh HOST 'bay deploy - --name app' < app.tar.zst
   bay list
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
@@ -301,7 +301,7 @@ socket's authorization is the file mode, enforced by the kernel — reaching it
 already requires being root or in the control group.
 
 Remote access is SSH, and nothing else: reach the host that way and run bay
-commands there directly, e.g. "ssh host ./bay deploy app.tar.gz --name app".
+commands there directly, e.g. "ssh host ./bay deploy app.tar.zst --name app".
 Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on
 the Bay host.
 `,
@@ -1085,7 +1085,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// themselves in a query string would be the argv mistake with extra steps.
 	secretsFile := q.Get("secretsFile")
 
-	tmp, err := os.CreateTemp("", "bay-upload-*.tar.gz")
+	tmp, err := os.CreateTemp("", "bay-upload-*.tar.zst")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1125,7 +1125,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 
 // deployArtifactOptions is one deploy, whatever asked for it.
 type deployArtifactOptions struct {
-	// Artifact is a tar.gz already on local disk. Getting it there is the
+	// Artifact is an archive already on local disk. Getting it there is the
 	// caller's problem — currently always an upload staged by the control
 	// API's deploy handler.
 	Artifact string
@@ -1622,7 +1622,7 @@ func writeError(w http.ResponseWriter, code int, message string, extra ...map[st
 //
 // `-` means stdin, which is what makes a remote deploy one command:
 //
-//	ssh HOST 'bay deploy - --name app' < app.tar.gz
+//	ssh HOST 'bay deploy - --name app' < app.tar.zst
 //
 // `/dev/stdin` happens to work for a pipe on Linux, so this is not strictly
 // required — but it depends on a /proc coincidence, it is absent on macOS, and
@@ -1643,8 +1643,8 @@ func artifactBody(artifact string, stdin io.Reader) (io.Reader, func(), error) {
 
 func cmdDeploy(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: bay deploy (<app.tar.gz>|-) --name NAME --domain HOST [--env ENV]\n" +
-			"  -  reads the artifact from stdin, e.g. ssh HOST 'bay deploy - --name app' < app.tar.gz")
+		return errors.New("usage: bay deploy (<app.tar.zst>|-) --name NAME --domain HOST [--env ENV]\n" +
+			"  -  reads the artifact from stdin, e.g. ssh HOST 'bay deploy - --name app' < app.tar.zst")
 	}
 	artifact := args[0]
 	if err := checkFlags(args[1:],

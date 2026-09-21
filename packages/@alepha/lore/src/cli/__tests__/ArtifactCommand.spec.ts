@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { ArchiveCompressor, MemoryArchiveCompressor } from "alepha/cli";
 import { CliProvider } from "alepha/command";
 import { LinkProvider } from "alepha/server/links";
 import {
@@ -90,6 +91,9 @@ describe("lore artifacts push", () => {
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
+      // The one pack step that touches real files: the shell here is a fake,
+      // so no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with({ provide: ArtifactUploader, use: FakeUploader })
       .with(ArtifactCommand);
@@ -133,10 +137,10 @@ describe("lore artifacts push", () => {
 
       expect(ctx.uploader.uploads[0].app).toBe("acme-my-app");
       expect(ctx.uploader.uploads[0].filename).toBe(
-        "acme-my-app-latest.tar.gz",
+        "acme-my-app-latest.tar.zst",
       );
       expect(ctx.uploader.uploads[0].archivePath).toBe(
-        "/repo/node_modules/.alepha/acme-my-app-latest.tar.gz",
+        "/repo/node_modules/.alepha/acme-my-app-latest.tar.zst",
       );
     });
 
@@ -151,7 +155,10 @@ describe("lore artifacts push", () => {
 
       expect(
         ctx.shell.wasCalledMatching(
-          /tar -czf '\/repo\/node_modules\/\.alepha\/acme-my-app-latest\.tar\.gz'/,
+          // Uncompressed tar first, then zstd into place: `tar --zstd` needs
+          // GNU tar 1.31+ on every machine that packs and gives no control of
+          // `windowLog`, which is the one setting the dedup depends on.
+          /tar -cf '\/repo\/node_modules\/\.alepha\/acme-my-app-latest\.tar\.zst\.tar'/,
         ),
       ).toBe(true);
     });
@@ -166,7 +173,7 @@ describe("lore artifacts push", () => {
 
       expect(
         await ctx.fs.exists(
-          "/repo/node_modules/.alepha/acme-my-app-latest.tar.gz",
+          "/repo/node_modules/.alepha/acme-my-app-latest.tar.zst",
         ),
       ).toBe(false);
     });
@@ -256,7 +263,7 @@ describe("lore artifacts push", () => {
 
       expect(
         await ctx.fs.exists(
-          "/repo/node_modules/.alepha/acme-my-app-latest.tar.gz",
+          "/repo/node_modules/.alepha/acme-my-app-latest.tar.zst",
         ),
       ).toBe(false);
     });

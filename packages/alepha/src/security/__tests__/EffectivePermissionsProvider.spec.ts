@@ -1,4 +1,6 @@
 import { Alepha } from "alepha";
+import { describe, expect, it } from "vitest";
+
 import {
   $issuer,
   $permission,
@@ -6,7 +8,6 @@ import {
   EffectivePermissionsProvider,
   type UserAccountToken,
 } from "../index.ts";
-import { describe, expect, it } from "vitest";
 
 /**
  * The application half of an effective permission set: the catalogue, the

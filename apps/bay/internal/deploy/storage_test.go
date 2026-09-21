@@ -15,13 +15,13 @@ import (
 func bucketArtifact(t *testing.T, name string) string {
 	t.Helper()
 	return buildArchive(t,
-		entry{name: "dist/manifest.json", body: `{
+		entry{name: "manifest.json", body: `{
 			"project": "` + name + `",
 			"entry": "index.js",
 			"runtime": "node",
 			"resources": { "hasBucket": true }
 		}`},
-		entry{name: "dist/index.js", body: "process.exit(0)"},
+		entry{name: "index.node.js", body: "process.exit(0)"},
 	)
 }
 

@@ -39,9 +39,9 @@ describe("deploy asset cache", () => {
   const bytes = () =>
     gzip(
       tar({
-        "dist/index.js": "server",
-        "dist/public/index.html": "page",
-        "dist/public/_headers": `/*\n  X-Test: ${"yes".repeat(200)}\n`,
+        "index.node.js": "server",
+        "public/index.html": "page",
+        "public/_headers": `/*\n  X-Test: ${"yes".repeat(200)}\n`,
       }),
     );
   const digest = "a".repeat(64);
@@ -72,8 +72,8 @@ describe("deploy asset cache", () => {
       _headers: `/*\n  X-Test: ${"yes".repeat(200)}\n`,
     });
     expect(Object.keys(second.manifest)).toEqual(["/index.html"]);
-    expect(await target.readTextFile("/deploy/dist/index.js")).toBe("server");
-    expect(await target.exists("/deploy/dist/public/index.html")).toBe(false);
+    expect(await target.readTextFile("/deploy/index.node.js")).toBe("server");
+    expect(await target.exists("/deploy/public/index.html")).toBe(false);
     await ctx.cache.prepare(
       "artifacts",
       "b".repeat(64),
@@ -153,7 +153,7 @@ describe("deploy asset cache", () => {
         const [, , root, options] = args;
         for (let i = 0; i < 200; i++) {
           await options?.onSkipped?.(
-            `${root}/dist/public/${i}.html`,
+            `${root}/public/${i}.html`,
             new Uint8Array([1]),
           );
         }
@@ -162,7 +162,7 @@ describe("deploy asset cache", () => {
     }
     const ctx = boot(BufferedReader);
     const files = Object.fromEntries(
-      Array.from({ length: 200 }, (_, i) => [`dist/public/${i}.html`, "page"]),
+      Array.from({ length: 200 }, (_, i) => [`public/${i}.html`, "page"]),
     );
     await ctx.cache.prepare(
       "artifacts",

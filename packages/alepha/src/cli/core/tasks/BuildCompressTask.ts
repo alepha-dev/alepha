@@ -9,6 +9,7 @@ import {
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 export interface CompressOptions {
@@ -43,6 +44,7 @@ export interface CompressOptions {
  * have written their files.
  */
 export class BuildCompressTask extends BuildTask {
+  protected readonly slices = $inject(BuildSlices);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly gzipCompress = promisify(gzipCb);
   protected readonly brotliCompress = promisify(brotliCompressCb);
@@ -58,11 +60,20 @@ export class BuildCompressTask extends BuildTask {
     // manifest dead weight (651 of 1349 files for the docs app) and published
     // every one of them as its own fetchable URL.
     //
-    // Guarded on the target rather than exposed as an option, because it is
-    // not a preference: the sidecars are unusable there, so no app would ever
-    // choose otherwise. Node and Bay keep them — the Alepha server does serve
-    // a `.br` in place of recompressing per request.
-    if (ctx.options.target === "cloudflare") {
+    // Not exposed as an option, because it is not a preference: the sidecars
+    // are unusable there, so no app would ever choose otherwise. Node and Bay
+    // keep them: the Alepha server does serve a `.br` in place of
+    // recompressing per request.
+    //
+    // ⚠️ **Only when workerd is the ONLY slice**, which is exactly what
+    // `--target=cloudflare` used to mean. A `--runtime node,workerd` build
+    // shares one `public/` between a Worker that cannot use the sidecars and a
+    // Node server that can, so the two want opposite things and there is no
+    // answer that serves both. Keeping them is the conservative half: the
+    // Worker carries files it ignores, where dropping them would make the node
+    // slice recompress every asset on every request.
+    const slices = this.slices.fromOptions(ctx.options);
+    if (slices.length === 1 && slices[0] === "workerd") {
       return;
     }
     // `hasClient` asks whether ALEPHA bundled a client, which is false for a

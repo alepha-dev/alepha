@@ -31,7 +31,7 @@
 import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 /**
  * One OCI index or image manifest document. The two shapes share a reader
@@ -57,6 +57,15 @@ const flag = (name: string, fallback: string): string => {
 
 const budgetMb = Number(flag("budget-mb", "200"));
 const context = flag("context", "apps/lore/dist");
+/*
+  ⚠️ The Dockerfile no longer lives in the build context.
+
+  `alepha image` generates it into the APP directory, beside
+  `alepha.config.ts`, so it can be committed and edited: `dist/` is wiped by
+  every build. The context stays `dist/` because the Dockerfile's `COPY . .`
+  means the built output, so the two are named separately.
+*/
+const dockerfile = flag("dockerfile", join(context, "..", "Dockerfile"));
 
 const run = (
   cmd: string,
@@ -119,6 +128,8 @@ try {
         platform,
         "--output",
         `type=oci,dest=${tarball},compression=gzip`,
+        "-f",
+        resolve(dockerfile),
         ".",
       ],
       { cwd: context, stdio: ["ignore", "inherit", "inherit"] },

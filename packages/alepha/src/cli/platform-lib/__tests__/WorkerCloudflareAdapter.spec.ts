@@ -174,7 +174,7 @@ describe("the worker-side Cloudflare adapter", () => {
     // is truncated or from a different tool has to be refused by name rather
     // than emit a Worker with no bindings and report success.
     await fs.writeFile(
-      "/deploy/dist/manifest.json",
+      "/deploy/manifest.json",
       JSON.stringify({
         version: 1,
         runtime: "workerd",
@@ -243,16 +243,23 @@ describe("the worker-side Cloudflare adapter", () => {
    */
   const deployable = async (fs: MemoryFileSystemProvider, main: string) => {
     await fs.writeFile(
-      "/deploy/dist/wrangler.jsonc",
+      "/deploy/wrangler.jsonc",
       JSON.stringify({
         name: "my-app",
         main,
         compatibility_date: "2025-11-17",
-        rules: [{ type: "ESModule", globs: ["index.js"] }],
+        // The globs the build really writes: scoped to the workerd slice, so a
+        // multi-slice artifact does not upload its node chunks.
+        rules: [
+          {
+            type: "ESModule",
+            globs: ["index.workerd.js", "server/workerd/*.js"],
+          },
+        ],
       }),
     );
-    await fs.writeFile("/deploy/dist/main.cloudflare.js", "export default {};");
-    await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
+    await fs.writeFile("/deploy/main.cloudflare.js", "export default {};");
+    await fs.writeFile("/deploy/index.workerd.js", "export const a = 1;");
   };
 
   const recordingDeployer = (
@@ -292,6 +299,74 @@ describe("the worker-side Cloudflare adapter", () => {
     );
   });
 
+  /**
+   * ⚠️ The Worker deploy path applies the module globs ITSELF.
+   *
+   * On the CLI path wrangler reads `rules` and decides the upload. Here the
+   * modules are listed off a directory and posted directly, so nothing else
+   * would apply them — and a `--runtime node,workerd` artifact carries
+   * `server/node/` and `index.node.js` beside the workerd ones. Uploading
+   * those is a Worker twice the size it needs, or a Node chunk importing a
+   * node builtin and a deploy refused at validation.
+   */
+  it("uploads no node slice from a multi-slice artifact", async ({
+    expect,
+  }) => {
+    const { adapter, fs, naming } = setup();
+    adapter.use(credential);
+    await deployable(fs, "./main.cloudflare.js");
+    // The other half of the same artifact.
+    await fs.writeFile("/deploy/index.node.js", "export const node = 1;");
+    await fs.writeFile("/deploy/server/node/chunk.js", "export const n = 1;");
+    await fs.writeFile(
+      "/deploy/server/workerd/chunk.js",
+      "export const w = 1;",
+    );
+    const calls = recordingDeployer(adapter);
+
+    await adapter.deploy(context(naming), run);
+
+    const names = (calls[0]!.modules ?? []).map(
+      (it: { name: string }) => it.name,
+    );
+    expect(names).toContain("main.cloudflare.js");
+    expect(names).toContain("index.workerd.js");
+    expect(names).toContain("server/workerd/chunk.js");
+    // Asserted by absence, because the failure mode is an EXTRA module.
+    expect(names).not.toContain("index.node.js");
+    expect(names).not.toContain("server/node/chunk.js");
+  });
+
+  /**
+   * An artifact from a build that predates scoped rules carries none. Uploading
+   * everything is what that build meant, and it was right for a single-slice
+   * artifact, so an absent list must not read as "upload nothing".
+   */
+  it("uploads everything when the config carries no rules", async ({
+    expect,
+  }) => {
+    const { adapter, fs, naming } = setup();
+    adapter.use(credential);
+    await fs.writeFile(
+      "/deploy/wrangler.jsonc",
+      JSON.stringify({
+        name: "my-app",
+        main: "./main.cloudflare.js",
+        compatibility_date: "2025-11-17",
+      }),
+    );
+    await fs.writeFile("/deploy/main.cloudflare.js", "export default {};");
+    await fs.writeFile("/deploy/index.js", "export const a = 1;");
+    const calls = recordingDeployer(adapter);
+
+    await adapter.deploy(context(naming), run);
+
+    const names = (calls[0]!.modules ?? []).map(
+      (it: { name: string }) => it.name,
+    );
+    expect(names).toContain("index.js");
+  });
+
   it("refuses locally when the entry names no uploaded module", async ({
     expect,
   }) => {
@@ -323,12 +398,19 @@ describe("the worker-side Cloudflare adapter", () => {
   describe("the static assets", () => {
     const withAssets = async (fs: MemoryFileSystemProvider) => {
       await fs.writeFile(
-        "/deploy/dist/wrangler.jsonc",
+        "/deploy/wrangler.jsonc",
         JSON.stringify({
           name: "my-app",
           main: "./main.cloudflare.js",
           compatibility_date: "2025-11-17",
-          rules: [{ type: "ESModule", globs: ["index.js"] }],
+          // The globs the build really writes: scoped to the workerd slice, so a
+          // multi-slice artifact does not upload its node chunks.
+          rules: [
+            {
+              type: "ESModule",
+              globs: ["index.workerd.js", "server/workerd/*.js"],
+            },
+          ],
           assets: {
             directory: "./public",
             binding: "ASSETS",
@@ -337,16 +419,10 @@ describe("the worker-side Cloudflare adapter", () => {
           },
         }),
       );
-      await fs.writeFile(
-        "/deploy/dist/main.cloudflare.js",
-        "export default {};",
-      );
-      await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
-      await fs.writeFile(
-        "/deploy/dist/public/asset.abc.css",
-        "body{color:red}",
-      );
-      await fs.writeFile("/deploy/dist/public/nested/logo.svg", "<svg/>");
+      await fs.writeFile("/deploy/main.cloudflare.js", "export default {};");
+      await fs.writeFile("/deploy/index.workerd.js", "export const a = 1;");
+      await fs.writeFile("/deploy/public/asset.abc.css", "body{color:red}");
+      await fs.writeFile("/deploy/public/nested/logo.svg", "<svg/>");
     };
 
     it("sends every file under public/, keyed by the path it is served at", async ({
@@ -441,12 +517,19 @@ describe("the worker-side Cloudflare adapter", () => {
       const { adapter, fs, naming } = setup();
       adapter.use(credential);
       await fs.writeFile(
-        "/deploy/dist/wrangler.jsonc",
+        "/deploy/wrangler.jsonc",
         JSON.stringify({
           name: "my-app",
           main: "./main.cloudflare.js",
           compatibility_date: "2025-11-17",
-          rules: [{ type: "ESModule", globs: ["index.js"] }],
+          // The globs the build really writes: scoped to the workerd slice, so a
+          // multi-slice artifact does not upload its node chunks.
+          rules: [
+            {
+              type: "ESModule",
+              globs: ["index.workerd.js", "server/workerd/*.js"],
+            },
+          ],
           send_email: [
             { name: "SEND_EMAIL" },
             {
@@ -457,11 +540,8 @@ describe("the worker-side Cloudflare adapter", () => {
           ],
         }),
       );
-      await fs.writeFile(
-        "/deploy/dist/main.cloudflare.js",
-        "export default {};",
-      );
-      await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
+      await fs.writeFile("/deploy/main.cloudflare.js", "export default {};");
+      await fs.writeFile("/deploy/index.workerd.js", "export const a = 1;");
       const calls = recordingDeployer(adapter);
 
       await adapter.deploy(context(naming), run);
@@ -493,13 +573,13 @@ describe("the worker-side Cloudflare adapter", () => {
       adapter.use(credential);
       await withAssets(fs);
       await fs.writeFile(
-        "/deploy/dist/public/_headers",
+        "/deploy/public/_headers",
         "/*\n  X-Content-Type-Options: nosniff\n",
       );
-      await fs.writeFile("/deploy/dist/public/_redirects", "/old /new 301\n");
-      await fs.writeFile("/deploy/dist/public/.assetsignore", "*.map\n");
+      await fs.writeFile("/deploy/public/_redirects", "/old /new 301\n");
+      await fs.writeFile("/deploy/public/.assetsignore", "*.map\n");
       // Only at the root: a nested `_headers` is an ordinary file to wrangler.
-      await fs.writeFile("/deploy/dist/public/nested/_headers", "not config");
+      await fs.writeFile("/deploy/public/nested/_headers", "not config");
       const calls = recordingDeployer(adapter);
 
       await adapter.deploy(context(naming), run);
@@ -603,10 +683,10 @@ describe("the worker-side Cloudflare adapter", () => {
     ) => {
       await deployable(fs, "./main.cloudflare.js");
       const config = JSON.parse(
-        await fs.readTextFile("/deploy/dist/wrangler.jsonc"),
+        await fs.readTextFile("/deploy/wrangler.jsonc"),
       );
       config.queues = { consumers };
-      await fs.writeFile("/deploy/dist/wrangler.jsonc", JSON.stringify(config));
+      await fs.writeFile("/deploy/wrangler.jsonc", JSON.stringify(config));
     };
 
     /**
@@ -624,7 +704,7 @@ describe("the worker-side Cloudflare adapter", () => {
         provisioner: () => cloudflare,
       });
       await fs.writeFile(
-        "/deploy/dist/manifest.json",
+        "/deploy/manifest.json",
         JSON.stringify({
           version: 1,
           runtime: "workerd",

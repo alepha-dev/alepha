@@ -14,7 +14,7 @@ export interface EnvExampleOptions {
  * `!.env.example` negation — it expected this file all along — and because
  * `APP_SECRET` is a hard stop for an app that signs anything: `SecretProvider`
  * refuses to boot in production without it, so the very first
- * `node dist/index.js` after `alepha build` failed with nothing on disk
+ * `node dist` after `alepha build` failed with nothing on disk
  * pointing at the fix.
  *
  * `APP_SECRET` is left empty on purpose. A scaffolded secret would be a public

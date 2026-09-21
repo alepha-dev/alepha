@@ -283,7 +283,10 @@ func TestDeployPullsVerifiesAndDeploys(t *testing.T) {
 	if !f.runner.Running("demo/production") || f.runner.starts != 1 {
 		t.Fatalf("the deploy path must have started the app once, starts=%d", f.runner.starts)
 	}
-	cached := filepath.Join(f.root, "artifacts", sink.digest()+".tar.gz")
+	// Pulled artifacts land under the current suffix. The digest is the
+	// identity; the suffix is only a file name, and `untar` sniffs the
+	// compression from the stream itself.
+	cached := filepath.Join(f.root, "artifacts", sink.digest()+".tar.zst")
 	if !connector.ArtifactCached(cached, sink.digest()) {
 		t.Fatal("the verified artifact must be held under its digest for the next deploy")
 	}

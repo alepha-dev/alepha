@@ -161,7 +161,7 @@ jobs:
 
       - name: Build Documentation
         working-directory: apps/docs
-        run: yarn alepha build -t cloudflare && yarn alepha gen:llms
+        run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
 
       - name: Push docs artifact to Lore
         working-directory: apps/docs
@@ -254,7 +254,7 @@ jobs:
   # before anything depends on it. When shop really deploys, the deploy step
   # goes in here beside the push, and the job is already named for it.
   #
-  # ⚠️ The build is `-t cloudflare`, and that is the whole point of the job.
+  # ⚠️ The build is `--runtime=workerd`, and that is the whole point of the job.
   # `yarn build` in `e2e` produces a `node` bundle; shop runs on Workers, so a
   # node artifact of it is a build nobody can deploy. The manifest records
   # `runtime: workerd`, which is where Lore reads it from - there is no
@@ -306,7 +306,7 @@ jobs:
 
       - name: Build
         working-directory: apps/examples/shop
-        run: yarn alepha build -t cloudflare
+        run: yarn alepha build --runtime=workerd
 
       - name: Push shop artifact to Lore
         working-directory: apps/examples/shop

@@ -171,8 +171,8 @@ Declarations like `$job({ cron })` automatically map to native platform formats 
 
 ```bash
 alepha build                         # Default: Node.js
-alepha build --target=cloudflare     # Adapts to Cloudflare Workers
-alepha build --target=static         # Static site generation
+alepha build --runtime=workerd     # Adapts to Cloudflare Workers
+alepha build --runtime=static         # Static site generation
 alepha build --runtime=bun           # Bun runtime
 ```
 

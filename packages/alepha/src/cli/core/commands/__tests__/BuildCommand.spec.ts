@@ -4,12 +4,15 @@ import { describe, expect, it } from "vitest";
 import { BuildCommand } from "../build.ts";
 
 /**
- * Exposes the protected target/runtime resolvers for unit testing.
+ * Exposes the protected runtime resolver for unit testing.
+ *
+ * ⚠️ There is no `resolveTarget` and no `resolveCompile` any more. `--compile`
+ * left `buildOptions` for `alepha compile`, which is what let `--target` stop
+ * being constrained by it, and `--target` then had nothing left to say: the
+ * build is described by what it produces.
  */
 class TestBuildCommand extends BuildCommand {
-  public testResolveTarget = this.resolveTarget.bind(this);
-  public testResolveRuntime = this.resolveRuntime.bind(this);
-  public testResolveCompile = this.resolveCompile.bind(this);
+  public testResolveRuntimes = this.resolveRuntimes.bind(this);
 }
 
 describe("BuildCommand", () => {
@@ -18,128 +21,65 @@ describe("BuildCommand", () => {
     return alepha.inject(TestBuildCommand);
   };
 
-  describe("resolveTarget", () => {
-    it("maps the 'cf' alias to 'cloudflare'", () => {
-      expect(createCommand().testResolveTarget("cf")).toBe("cloudflare");
+  describe("resolveRuntimes", () => {
+    /**
+     * ⚠️ Cloudflare is no longer a target that forces a runtime: declaring a
+     * workerd slice is what asks for a Worker, and that is the whole of it.
+     * The old `--target=cloudflare` said the same thing twice, and could only
+     * ever mean one slice, which is what made it impossible to express a
+     * `node,workerd` build.
+     */
+    it("takes workerd as an ordinary declaration", () => {
+      expect(createCommand().testResolveRuntimes("workerd")).toEqual([
+        "workerd",
+      ]);
+      expect(createCommand().testResolveRuntimes(["node", "workerd"])).toEqual([
+        "node",
+        "workerd",
+      ]);
     });
 
-    it("passes canonical targets through unchanged", () => {
-      const cmd = createCommand();
-      expect(cmd.testResolveTarget("cloudflare")).toBe("cloudflare");
-      expect(cmd.testResolveTarget("docker")).toBe("docker");
-      expect(cmd.testResolveTarget("bare")).toBe("bare");
-    });
-
-    it("returns undefined when no target is given", () => {
-      expect(createCommand().testResolveTarget(undefined)).toBeUndefined();
-    });
-  });
-
-  describe("resolveRuntime", () => {
-    it("forces workerd for the canonicalized cloudflare target", () => {
-      const cmd = createCommand();
-      const target = cmd.testResolveTarget("cf");
-      expect(cmd.testResolveRuntime(target, undefined)).toBe("workerd");
-    });
-  });
-
-  describe("resolveCompile", () => {
-    it("is off when neither the flag nor the config asks for it", () => {
-      expect(
-        createCommand().testResolveCompile(undefined, undefined, "bare", "bun"),
-      ).toBeUndefined();
-    });
-
-    it("names the binary 'app' for a bare --compile", () => {
-      expect(
-        createCommand().testResolveCompile(true, undefined, "bare", "bun"),
-      ).toEqual({ name: "app", minify: true });
-    });
-
-    it("takes the binary name from --compile <name>", () => {
-      expect(
-        createCommand().testResolveCompile("loom", undefined, undefined, "bun"),
-      ).toEqual({ name: "loom", minify: true });
-    });
-
-    it("takes the name, target and minify from the config", () => {
-      expect(
-        createCommand().testResolveCompile(
-          undefined,
-          { name: "loom", target: "bun-linux-arm64-musl", minify: false },
-          "docker",
-          "bun",
-        ),
-      ).toEqual({
-        name: "loom",
-        target: "bun-linux-arm64-musl",
-        minify: false,
-      });
-      expect(
-        createCommand().testResolveCompile(undefined, "loom", "bare", "bun"),
-      ).toEqual({ name: "loom", minify: true });
-    });
-
-    it("lets a flag name override the config name and keep the rest", () => {
-      expect(
-        createCommand().testResolveCompile(
-          "api",
-          { name: "loom", target: "bun-linux-arm64-musl", minify: false },
-          "bare",
-          "bun",
-        ),
-      ).toEqual({ name: "api", target: "bun-linux-arm64-musl", minify: false });
-    });
-
-    it("lets an explicit flag beat the config either way", () => {
-      const cmd = createCommand();
-      expect(cmd.testResolveCompile(false, "loom", "bare", "bun")).toBe(
-        undefined,
-      );
-      expect(cmd.testResolveCompile(true, false, "bare", "bun")).toEqual({
-        name: "app",
-        minify: true,
-      });
+    // node alone: the universal floor. workerd is Cloudflare-only and bun is an
+    // optimization, so neither belongs in a default every app pays for.
+    it("defaults to node when nothing is declared", () => {
+      expect(createCommand().testResolveRuntimes(undefined)).toEqual(["node"]);
     });
 
     /**
-     * The parser hands a boolean-or-text flag its raw text, so `--compile=false`
-     * arrives as the string "false", which is also a valid file name.
+     * ⚠️ A static app declares `runtime: ["static"]` and gets NO slices. The
+     * old spelling was `--target=static`; the build is described by what it
+     * produces, and this one produces no server.
      */
-    it("reads --compile=false as off, not as a binary named 'false'", () => {
-      const cmd = createCommand();
-      expect(cmd.testResolveCompile("false", "loom", "bare", "bun")).toBe(
-        undefined,
-      );
-      expect(cmd.testResolveCompile("true", undefined, "bare", "bun")).toEqual({
-        name: "app",
-        minify: true,
-      });
+    it("resolves a static declaration to no slices at all", () => {
+      expect(createCommand().testResolveRuntimes("static")).toEqual([]);
     });
 
-    it("refuses a binary name that is not a plain file name", () => {
-      const cmd = createCommand();
-      for (const name of ["../evil", "my app", "Loom", "-x", ""]) {
-        expect(() =>
-          cmd.testResolveCompile(name, undefined, "bare", "bun"),
-        ).toThrow(/binary name/);
-      }
+    it("widens a scalar declaration to a one-slice list", () => {
+      expect(createCommand().testResolveRuntimes("bun")).toEqual(["bun"]);
     });
 
-    it("refuses any runtime but bun, and says which flag to add", () => {
-      expect(() =>
-        createCommand().testResolveCompile(true, undefined, "bare", "node"),
-      ).toThrow(/--runtime=bun/);
+    /**
+     * ⚠️ The whole contract in one case. The same two runtimes declared the
+     * other way round must come back the other way round, because the first is
+     * the primary: it is `manifest.runtime`, it is `dist/package.json`'s `main`,
+     * and it is what a deployer spawns. A sort here would make the two
+     * indistinguishable.
+     */
+    it("preserves declared order, and never sorts it", () => {
+      const cmd = createCommand();
+      expect(cmd.testResolveRuntimes(["node", "workerd"])).toEqual([
+        "node",
+        "workerd",
+      ]);
+      expect(cmd.testResolveRuntimes(["bun", "node"])).toEqual(["bun", "node"]);
     });
 
-    it("refuses a target that cannot hold a binary", () => {
-      const cmd = createCommand();
-      expect(() =>
-        cmd.testResolveCompile(true, undefined, "cloudflare", "bun"),
-      ).toThrow(/only 'bare' and 'docker'/);
-      expect(() =>
-        cmd.testResolveCompile(true, undefined, "static", "bun"),
-      ).toThrow(/only 'bare' and 'docker'/);
+    // Keeping the FIRST occurrence: a duplicate further down must not be able
+    // to move the primary.
+    it("drops a repeat without moving the primary", () => {
+      expect(
+        createCommand().testResolveRuntimes(["node", "workerd", "node"]),
+      ).toEqual(["node", "workerd"]);
     });
   });
 });

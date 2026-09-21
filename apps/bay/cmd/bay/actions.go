@@ -379,7 +379,14 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 
 	want := strings.ToLower(cmd.Artifact.SHA256)
 	dir := filepath.Join(a.s.root, "artifacts")
-	dest := filepath.Join(dir, want+".tar.gz")
+	dest := filepath.Join(dir, want+artifactSuffixes[0])
+	// A host that has been here a while holds artifacts pulled before `alepha
+	// pack` moved to zstd, under the old name. The bytes are identified by their
+	// digest, not by their suffix, and `untar` sniffs the compression, so a hit
+	// under either name is a hit.
+	if held, ok := cachedArtifact(dir, want); ok {
+		dest = held
+	}
 	if connector.ArtifactCached(dest, want) {
 		a.s.log.Info("artifact already held, skipping the download", "command", cmd.ID, "sha256", want[:12])
 	} else {
@@ -467,6 +474,37 @@ func (a *actions) writeSecretsFile(secrets map[string]string) (string, error) {
 	return f.Name(), nil
 }
 
+// artifactSuffixes are the names a cached artifact may carry, newest first.
+//
+// ⚠️ **Both, and `.tar.gz` is not going away.** New artifacts are zstd, but a
+// host holds whatever it pulled before the change. A prune that matched only
+// one suffix would stop seeing the others entirely: they would never be
+// counted, never be trimmed, and leak disk on the longest-running hosts —
+// exactly the ones with the most of them.
+var artifactSuffixes = []string{".tar.zst", ".tar.gz"}
+
+// isArtifactName reports whether a cache-directory entry is an artifact.
+func isArtifactName(name string) bool {
+	for _, suffix := range artifactSuffixes {
+		if strings.HasSuffix(name, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// cachedArtifact finds an artifact already held for this digest, under any of
+// the names one may carry.
+func cachedArtifact(dir, sha256 string) (string, bool) {
+	for _, suffix := range artifactSuffixes {
+		path := filepath.Join(dir, sha256+suffix)
+		if connector.ArtifactCached(path, sha256) {
+			return path, true
+		}
+	}
+	return "", false
+}
+
 // pruneArtifacts keeps the newest `keep` cached artifacts and removes the
 // rest. Never fatal: a cache that could not be trimmed is disk used, not a
 // deploy that failed.
@@ -481,7 +519,7 @@ func (a *actions) pruneArtifacts(dir string, keep int) {
 	}
 	var files []cached
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".tar.gz") {
+		if e.IsDir() || !isArtifactName(e.Name()) {
 			continue
 		}
 		info, err := e.Info()

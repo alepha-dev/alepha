@@ -52,7 +52,7 @@
     "test": "alepha test",
     "dev:ui": "alepha dev --no-devtools",
     "build": "yarn build:ui && tsdown --no-clean",
-    "build:ui": "alepha build -t static && rm -rf assets/ui && mkdir -p assets && cp -r dist/public assets/ui"
+    "build:ui": "alepha build --runtime static && rm -rf assets/ui && mkdir -p assets && cp -r dist/public assets/ui"
   },
   "devDependencies": {
     "@alepha/ui": "workspace:^",

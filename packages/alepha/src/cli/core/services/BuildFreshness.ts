@@ -13,7 +13,7 @@ import { FileSystemProvider } from "alepha/system";
  *
  * ⚠️ The obvious check - "does dist exist" - is worse than doing nothing.
  * Existence is not freshness: an app's bundle inlines its workspace
- * dependencies (lore's `dist/index.js` is ~109KB with an empty `dependencies`
+ * dependencies (lore's entry wrapper is ~109KB with an empty `dependencies`
  * map, the whole framework compiled in), so editing `packages/alepha/src`
  * leaves a present, stale, wrong bundle. A suite then passes against the
  * previous build and reports nothing. This compares mtimes instead, and the
@@ -43,9 +43,17 @@ export class BuildFreshness {
    * "skipping build" with no reason is indistinguishable from a broken check.
    */
   async staleReason(root: string, distDir: string): Promise<string | null> {
-    const artifact = this.fs.join(root, distDir, "index.js");
+    /*
+      `manifest.json` rather than an entry file, because there is no longer one
+      name an entry is guaranteed to have: a build produces `index.node.js`,
+      `index.workerd.js` or both, a compile build produces a binary instead, and
+      a static build produces no entry at all. The manifest is written by every
+      one of them, and written after the server link, so it is both always
+      present and late enough to date the build.
+    */
+    const artifact = this.fs.join(root, distDir, "manifest.json");
     if (!(await this.fs.exists(artifact))) {
-      return `${distDir}/index.js is missing`;
+      return `${distDir}/manifest.json is missing`;
     }
     const builtAt = (await this.fs.stat(artifact)).mtimeMs;
 

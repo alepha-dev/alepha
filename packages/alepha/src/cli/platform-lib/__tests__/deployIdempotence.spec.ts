@@ -5,6 +5,10 @@ import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
+import {
+  ArchiveCompressor,
+  MemoryArchiveCompressor,
+} from "../../core/services/ArchiveCompressor.ts";
 import { WorkerCloudflareAdapter } from "../adapters/WorkerCloudflareAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import { AlephaPlatformLibPlugin } from "../index.ts";
@@ -69,7 +73,7 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
    * cron, a custom domain and two static assets.
    */
   const artifact: Record<string, string> = {
-    "dist/manifest.json": JSON.stringify({
+    "manifest.json": JSON.stringify({
       version: 1,
       runtime: "workerd",
       project: "notes",
@@ -80,10 +84,10 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
       env: [],
       resources,
     }),
-    "dist/index.js": "export default { fetch: () => new Response('ok') };",
-    "dist/server/chunk.js": "export const chunk = 1;",
-    "dist/public/assets/app.3f9a.js": "console.log('app');",
-    "dist/public/favicon.svg": "<svg/>",
+    "index.workerd.js": "export default { fetch: () => new Response('ok') };",
+    "server/workerd/chunk.js": "export const chunk = 1;",
+    "public/assets/app.3f9a.js": "console.log('app');",
+    "public/favicon.svg": "<svg/>",
     "migrations/sqlite/0001_notes/migration.sql":
       "CREATE TABLE notes (id integer PRIMARY KEY, body text NOT NULL);",
     "migrations/sqlite/0002_title/migration.sql":
@@ -100,6 +104,9 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
   const deploy = async (account: FakeCloudflareAccount) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      // The one pack step that touches real files: the shell here is a fake,
+      // so no tar was ever written for it to read.
+      .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with(AlephaPlatformLibPlugin);
     const fs = alepha.inject(MemoryFileSystemProvider);
     for (const [path, content] of Object.entries(artifact)) {

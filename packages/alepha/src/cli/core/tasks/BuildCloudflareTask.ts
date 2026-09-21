@@ -6,6 +6,7 @@ import { QUEUE_DEFAULT_BINDING, QUEUE_DEFAULT_MAX_RETRIES } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
 
+import { BuildSlices } from "../services/BuildSlices.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 interface WranglerConfig {
@@ -20,6 +21,8 @@ interface WranglerConfig {
  * - main.cloudflare.js entry point for Cloudflare Workers
  */
 export class BuildCloudflareTask extends BuildTask {
+  protected readonly slices = $inject(BuildSlices);
+
   // Looked up by class name string (not by class identity) because
   // BuildCloudflareTask runs in the CLI's Alepha context while ctx.alepha
   // is the workspace's separate context. Two module graphs = two distinct
@@ -91,7 +94,21 @@ export class BuildCloudflareTask extends BuildTask {
   protected websocketPaths: string[] = [];
 
   async run(ctx: BuildTaskContext): Promise<void> {
-    if (ctx.options.target !== "cloudflare") {
+    /*
+      Triggered by a workerd SLICE, not by `--target=cloudflare`.
+
+      The target only ever meant "link for workerd", and once the runtimes are
+      declared directly it says the same thing twice. More to the point, a
+      `--runtime node,workerd` build cannot use the target at all — it names
+      one destination and the build has two slices — so gating on it would make
+      the multi-slice artifact the one case that never gets a `wrangler.jsonc`,
+      which is exactly the case the whole epic exists for.
+
+      Backwards compatible in the direction that matters: `--target=cloudflare`
+      still resolves to a workerd slice, so a build that generated wrangler
+      config before still does.
+    */
+    if (!this.slices.fromOptions(ctx.options).includes("workerd")) {
       return;
     }
 
@@ -128,7 +145,7 @@ export class BuildCloudflareTask extends BuildTask {
     const root = ctx.root;
     // Slugify the dir basename — wrangler rejects names that aren't
     // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
-    // Without this, running `alepha build -t cloudflare` in a dir like
+    // Without this, running `alepha build --runtime=workerd` in a dir like
     // `My App` or `club-0.0.2` produces an unusable `wrangler.jsonc`.
     //
     // This is a build-time PLACEHOLDER, not the deployed worker name. A
@@ -159,6 +176,9 @@ export class BuildCloudflareTask extends BuildTask {
     const appConfig =
       ctx.options.cloudflare?.config ?? ctx.manifest?.cloudflareConfig ?? {};
 
+    const workerdEntry = this.slices.entryFileName("workerd");
+    const workerdServerDir = this.slices.serverDir("workerd");
+
     const wrangler: WranglerConfig = {
       name,
       main: "./main.cloudflare.js",
@@ -168,7 +188,19 @@ export class BuildCloudflareTask extends BuildTask {
       rules: [
         {
           type: "ESModule",
-          globs: ["index.js", "server/*.js"],
+          /*
+            ⚠️ **Scoped to the workerd slice, and this is why the slices are
+            namespaced at all.** Under `no_bundle` these globs decide what gets
+            uploaded, and a `dist/` from a `--runtime node,workerd` build holds
+            BOTH slices. The old `["index.js", "server/*.js"]` against such a
+            build sweeps the Node chunks in too: best case a Worker twice the
+            size it needs, likely case a Node chunk importing a node builtin
+            and a deploy refused at validation.
+
+            Nothing about that failure points here, which is what makes the
+            narrow glob load-bearing rather than tidy.
+          */
+          globs: [workerdEntry, `${workerdServerDir}/*.js`],
         },
       ],
       ...appConfig,
@@ -801,13 +833,19 @@ export class BuildCloudflareTask extends BuildTask {
     root: string,
     distDir: string,
   ): Promise<void> {
+    // The workerd slice, always by name. A multi-slice `dist/` has several
+    // entry wrappers side by side and only one of them is linked against
+    // Cloudflare's export conditions; importing any other would upload a
+    // bundle the Worker cannot run.
+    const workerdEntry = this.slices.entryFileName("workerd");
+
     // Re-exports the room Durable Object class so wrangler's
     // `new_sqlite_classes` migration (see enhanceDurableObjects) resolves a
-    // real binding target. This only resolves at deploy time once `index.js`
-    // itself re-exports the class — emitted here regardless, gated on
-    // `hasWebSocket` alone.
+    // real binding target. This only resolves at deploy time once the workerd
+    // entry wrapper itself re-exports the class — emitted here regardless,
+    // gated on `hasWebSocket` alone.
     const doExport = this.hasWebSocket
-      ? '\nexport { AlephaWebSocketDurableObject } from "./index.js";\n'
+      ? `\nexport { AlephaWebSocketDurableObject } from "./${workerdEntry}";\n`
       : "";
 
     // WebSocket upgrade -> route to the room Durable Object. Runs at the very
@@ -897,7 +935,7 @@ export class BuildCloudflareTask extends BuildTask {
       : "";
 
     const workerCode = `
-import "./index.js";
+import "./${workerdEntry}";
 ${doExport}
 // Run an invocation inside an Alepha fork carrying THIS invocation's
 // \`executionCtx.waitUntil\`, so background work (notably $job direct dispatch)

@@ -371,19 +371,24 @@ const packApp = async (
   marker: string,
 ): Promise<{ path: string; bytes: Buffer }> => {
   const src = join(dir, `app-${marker}`);
-  await mkdir(join(src, "dist"), { recursive: true });
+  // ⚠️ The archive root is the CONTENTS, not a `dist/` wrapper, and `entry`
+  // names a file rather than a directory. Bay refuses the old shape by name
+  // and tells the operator to redeploy, so an artifact built the old way here
+  // tests nothing but that refusal.
+  await mkdir(src, { recursive: true });
   await writeFile(
-    join(src, "dist", "manifest.json"),
+    join(src, "manifest.json"),
     JSON.stringify({
       version: 1,
       project: "demo",
       runtime: "node",
       runtimeVersion: "24",
-      entry: "dist",
+      entry: "index.node.js",
+      runtimes: [{ runtime: "node", entry: "index.node.js" }],
     }),
   );
   await writeFile(
-    join(src, "dist", "index.js"),
+    join(src, "index.node.js"),
     `const http = require("node:http");
 const marker = ${JSON.stringify(marker)};
 http.createServer((req, res) => {
@@ -393,7 +398,9 @@ http.createServer((req, res) => {
 `,
   );
   const path = join(dir, `app-${marker}.tar.gz`);
-  const tar = await run("tar", ["-czf", path, "-C", src, "dist"], dir);
+  // Still gzip on purpose: Bay reads both compressions and must keep reading
+  // this one, for the artifacts hosts already hold.
+  const tar = await run("tar", ["-czf", path, "-C", src, "."], dir);
   if (tar.code !== 0) throw new Error(`tar failed: ${tar.out}`);
   return { path, bytes: readFileSync(path) };
 };
@@ -851,9 +858,12 @@ describe("Bay connector against a real Lore", () => {
     );
     const settled = await commandSettles(queued.id);
     expect(settled.status, settled.reason).toBe("done");
+    // Bay names a pulled artifact after its digest and the CURRENT suffix.
+    // The suffix is only a file name — `untar` sniffs the compression from the
+    // stream — but the cache lookup composes it, so the two have to agree.
     expect(
       existsSync(
-        join(bay.root, "artifacts", `${pushed.artifact.sha256}.tar.gz`),
+        join(bay.root, "artifacts", `${pushed.artifact.sha256}.tar.zst`),
       ),
     ).toBe(true);
   });

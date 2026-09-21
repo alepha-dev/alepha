@@ -11,9 +11,11 @@ import { $module } from "alepha";
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
 import { devOptions } from "./atoms/devOptions.ts";
+import { imageOptions } from "./atoms/imageOptions.ts";
 import { metaOptions } from "./atoms/metaOptions.ts";
 import { BuildCommand } from "./commands/build.ts";
 import { CleanCommand } from "./commands/clean.ts";
+import { CompileCommand } from "./commands/compile.ts";
 import { DbCommand } from "./commands/db.ts";
 import { DevCommand } from "./commands/dev.ts";
 import { GenCommand } from "./commands/gen.ts";
@@ -22,6 +24,7 @@ import {
   GitMessageParser,
   GitProvider,
 } from "./commands/gen/changelog.ts";
+import { ImageCommand } from "./commands/image.ts";
 import { InitCommand } from "./commands/init.ts";
 import { LintCommand } from "./commands/lint.ts";
 import { PackCommand } from "./commands/pack.ts";
@@ -34,15 +37,18 @@ import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
+import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
+import { BuildSlices } from "./services/BuildSlices.ts";
+import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
+import { WorkspaceCompiler } from "./services/WorkspaceCompiler.ts";
 import { WorkspacePacker } from "./services/WorkspacePacker.ts";
 import { BuildAssetsTask } from "./tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "./tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "./tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "./tasks/BuildCompressTask.ts";
-import { BuildDockerTask } from "./tasks/BuildDockerTask.ts";
 import { BuildHeadersTask } from "./tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "./tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "./tasks/BuildPrerenderTask.ts";
@@ -57,9 +63,12 @@ export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
 export * from "./atoms/changelogOptions.ts";
 export * from "./atoms/devOptions.ts";
+export * from "./atoms/imageOptions.ts";
 export * from "./atoms/metaOptions.ts";
 export * from "./commands/build.ts";
 export * from "./commands/clean.ts";
+export * from "./commands/compile.ts";
+export * from "./commands/image.ts";
 export * from "./commands/db.ts";
 export * from "./commands/dev.ts";
 export * from "./commands/gen/changelog.ts";
@@ -81,13 +90,16 @@ export * from "./services/AlephaCliUtils.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
+export * from "./services/ArchiveCompressor.ts";
+export * from "./services/BuildSlices.ts";
+export * from "./services/DockerImageBuilder.ts";
 export * from "./services/ViteUtils.ts";
+export * from "./services/WorkspaceCompiler.ts";
 export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
 export * from "./tasks/BuildClientTask.ts";
 export * from "./tasks/BuildCloudflareTask.ts";
 export * from "./tasks/BuildCompressTask.ts";
-export * from "./tasks/BuildDockerTask.ts";
 export * from "./tasks/BuildHeadersTask.ts";
 export * from "./tasks/BuildManifestTask.ts";
 export * from "./tasks/BuildPrerenderTask.ts";
@@ -126,7 +138,7 @@ export const AlephaCliServices = $module({
   // The tasks resolve `buildOptions`, so it belongs to whichever module
   // declares them. Left behind on `AlephaCli` it would read as unregistered
   // from a container that has the tasks and not the commands.
-  atoms: [buildOptions],
+  atoms: [buildOptions, imageOptions],
   services: [
     // Services & providers
     AlephaCliUtils,
@@ -138,6 +150,10 @@ export const AlephaCliServices = $module({
     GitProvider,
     ViteDevServerProvider,
     ViteBuildProvider,
+    ArchiveCompressor,
+    BuildSlices,
+    DockerImageBuilder,
+    WorkspaceCompiler,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.
@@ -145,7 +161,6 @@ export const AlephaCliServices = $module({
     BuildClientTask,
     BuildCloudflareTask,
     BuildCompressTask,
-    BuildDockerTask,
     BuildHeadersTask,
     BuildManifestTask,
     BuildPrerenderTask,
@@ -178,6 +193,8 @@ export const AlephaCli = $module({
     DevCommand,
     InitCommand,
     LintCommand,
+    CompileCommand,
+    ImageCommand,
     PackCommand,
     RootCommand,
     TestCommand,

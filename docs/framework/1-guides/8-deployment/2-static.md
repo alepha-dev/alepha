@@ -5,7 +5,7 @@ The `static` build target generates a client-only bundle with no server code. Th
 ## Build
 
 ```bash
-alepha build --target=static
+alepha build --runtime=static
 ```
 
 The build process:
@@ -33,7 +33,7 @@ dist/
 The output in `dist/public/` is plain HTML/CSS/JS - deploy it to any static host. With [Surge](https://surge.sh) (which the generated `CNAME` file targets):
 
 ```bash
-alepha build --target=static
+alepha build --runtime=static
 npx surge dist/public
 ```
 
@@ -48,7 +48,7 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "static",
+    runtime: ["static"],
     static: {
       domain: "myapp.surge.sh",
     },
@@ -69,7 +69,7 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "static",
+    runtime: ["static"],
     static: {
       source: "dist-client",
     },
@@ -79,7 +79,7 @@ export default defineConfig({
 
 ```bash
 vite build --outDir dist-client --emptyOutDir
-alepha build --target=static
+alepha build --runtime=static
 ```
 
 The directory is copied into `dist/public/` before the fallbacks are derived, so your `index.html` ships as written and `200.html`/`404.html` are stripped-down shells of it. Two rules:

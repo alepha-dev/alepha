@@ -9,8 +9,8 @@ import { BuildServerTask } from "../BuildServerTask.ts";
  * helper so the Durable Object re-export line can be unit-tested in isolation.
  */
 class TestServerTask extends BuildServerTask {
-  public testExportLine = (entryFile: string) =>
-    this.durableObjectReexport(entryFile);
+  public testExportLine = (serverDir: string, entryFile: string) =>
+    this.durableObjectReexport(serverDir, entryFile);
 
   public testUsesWebSocket = (alepha: unknown) =>
     this.usesWebSocket(alepha as any);
@@ -44,8 +44,10 @@ describe("BuildServerTask DO re-export", () => {
     });
     const task = alepha.inject(TestServerTask) as any;
     task.exportDurableObject = true;
-    expect(task.testExportLine("abc123.js")).toBe(
-      'export { AlephaWebSocketDurableObject } from "./server/abc123.js";\n',
+    // The slice's own chunk directory, never a flat `server/`: the workerd
+    // chunks and the node chunks live side by side in one `dist/`.
+    expect(task.testExportLine("server/workerd", "abc123.js")).toBe(
+      'export { AlephaWebSocketDurableObject } from "./server/workerd/abc123.js";\n',
     );
   });
 
@@ -56,13 +58,13 @@ describe("BuildServerTask DO re-export", () => {
     });
     const task = alepha.inject(TestServerTask) as any;
     task.exportDurableObject = false;
-    expect(task.testExportLine("abc123.js")).toBe("");
+    expect(task.testExportLine("server/workerd", "abc123.js")).toBe("");
   });
 
   /**
    * The DO gate must fire for `$room`-only apps too: a rooms-only realtime
    * layer still runs inside `AlephaWebSocketDurableObject`, and without the
-   * re-export in `dist/index.js` wrangler cannot resolve the migration's
+   * re-export in `dist/index.workerd.js` wrangler cannot resolve the migration's
    * `class_name` at deploy time.
    */
   describe("usesWebSocket", () => {
