@@ -87,6 +87,11 @@ test.describe("Build Artifacts", () => {
      * has to be `reference-primitives-$sitemap.html`. Named after the encoded
      * pathname, every `$primitive` page was a 404 on alepha.dev (#Q2340).
      */
+    /**
+     * A URL whose last segment has an extension is a file served as is, such
+     * as `/llms.txt`, listed through `$sitemap({ urls })` because no page
+     * answers it. Any other URL is a prerendered page, `<path>.html`.
+     */
     test("every sitemap URL has a pre-rendered file under the decoded name the edge looks up", async () => {
       const content = readFileSync(join(distDir, "sitemap.xml"), "utf-8");
       const locs = [...content.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
@@ -100,7 +105,12 @@ test.describe("Build Artifacts", () => {
           .split("/")
           .map((it) => decodeURIComponent(it))
           .join("/");
-        const file = decoded === "/" ? "/index.html" : `${decoded}.html`;
+        const file =
+          decoded === "/"
+            ? "/index.html"
+            : /\.[a-z]+$/.test(decoded)
+              ? decoded
+              : `${decoded}.html`;
         return !existsSync(join(distDir, file));
       });
       expect(missing).toEqual([]);

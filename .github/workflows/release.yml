@@ -363,9 +363,11 @@ jobs:
       # `alepha build --runtime=workerd` cleans `dist/` and replaces it.
       #
       # ⚠️ `gen:llms` follows EVERY docs build, node and workerd alike. It writes
-      # the `llms.txt` files and the raw markdown into `dist/public`, which no
-      # build produces, so an archive pushed without it serves an `alepha.dev`
-      # with no `llms.txt` at all.
+      # the `llms.txt` files and the raw markdown into `dist/public`, which
+      # `alepha build` does not produce, so an archive pushed without it serves
+      # an `alepha.dev` with no `llms.txt` at all. The docs `build` script runs
+      # it, which covers `yarn build` above; the workerd rebuild below calls
+      # `alepha build` directly, so it runs it itself.
       #
       # No Cloudflare credentials are needed and none are present: the build
       # emits `wrangler.jsonc` from env vars and never calls the API. The
@@ -399,10 +401,6 @@ jobs:
       # with no Lore release exits 0 with a log line, and a re-run of this job
       # finds it already published and exits 0 again.
       # ──────────────────────────────────────────────────────────────
-      - name: Generate docs llms.txt (node)
-        working-directory: apps/docs
-        run: yarn alepha gen:llms
-
       - name: Push docs artifact to Lore (node)
         working-directory: apps/docs
         run: >-
