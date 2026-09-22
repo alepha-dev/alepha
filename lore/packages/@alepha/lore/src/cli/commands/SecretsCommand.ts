@@ -9,6 +9,7 @@ import type { AppSecretController } from "lore/api/controllers/AppSecretControll
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
+import { LoreSecretsService } from "../services/LoreSecretsService.ts";
 
 /**
  * A deployed copy's secrets, from a terminal or a CI job.
@@ -43,23 +44,12 @@ export class SecretsCommand {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
+  protected readonly sealed = $inject(LoreSecretsService);
 
   protected readonly apps = $client<AppController>(this.client.scope());
   protected readonly secrets = $client<AppSecretController>(
     this.client.scope(),
   );
-
-  /**
-   * Keys a `--file` import leaves alone.
-   *
-   * `SIGIL_KEY` is minted by Lore for each copy and stored as one of its
-   * secrets; an env file carrying an older key would silently point the copy
-   * at somebody else's sigil. Setting it one by one still works, because that
-   * is somebody saying so.
-   */
-  public static readonly IMPORT_SKIPPED: ReadonlySet<string> = new Set([
-    "SIGIL_KEY",
-  ]);
 
   protected static readonly TARGET_FLAGS = {
     project: z
@@ -113,29 +103,18 @@ export class SecretsCommand {
         : [this.readPair(args as string)];
       const { projectId, instanceId, label } = await this.target(flags, root);
 
-      const refused: string[] = [];
-      let set = 0;
-      for (const [key, value] of pairs) {
-        try {
-          await this.secrets.setAppSecret({
-            params: { projectId, instanceId },
-            body: { key, value },
-          });
-          set += 1;
-          this.log.info(`Set ${key} on ${label}`);
-        } catch (error) {
-          // Lore's own sentence says which rule refused the key (a reserved
-          // name, an oversized value); the value is not in it.
-          if (error instanceof HttpError) {
-            refused.push(`${key}: ${error.message}`);
-            continue;
-          }
-          throw error;
-        }
+      // Additive and one key at a time, through the service the platform
+      // adapter pushes with too: a refused key does not stop the rest.
+      const { set, refused } = await this.sealed.push(
+        { projectId, instanceId },
+        pairs,
+      );
+      for (const key of set) {
+        this.log.info(`Set ${key} on ${label}`);
       }
 
       this.log.info(
-        `${set} secret${set === 1 ? "" : "s"} set on ${label}. They apply on its next deploy.`,
+        `${set.length} secret${set.length === 1 ? "" : "s"} set on ${label}. They apply on its next deploy.`,
       );
       if (refused.length > 0) {
         throw new AlephaError(
@@ -216,7 +195,9 @@ export class SecretsCommand {
    * Every key of a dotenv file, in the order it declares them.
    *
    * An empty value is dropped rather than sent, for the reason `readPair`
-   * refuses one, and so is {@link IMPORT_SKIPPED}; both are said out loud.
+   * refuses one, and so is `SIGIL_KEY` (`LoreSecretsService.IMPORT_SKIPPED`);
+   * both are said out loud. A reserved name is NOT dropped here: an operator
+   * who typed one into the file hears Lore's own refusal.
    */
   protected async readFile(
     root: string,
@@ -226,20 +207,7 @@ export class SecretsCommand {
       throw new AlephaError(`${file} does not exist.`);
     }
     const vars = await this.envUtils.parseEnv(root, [file]);
-    const pairs: Array<[string, string]> = [];
-    for (const [key, value] of Object.entries(vars)) {
-      if (SecretsCommand.IMPORT_SKIPPED.has(key)) {
-        this.log.info(
-          `Kept Lore's ${key}: a copy's own is minted by Lore. Set it one by one to override it.`,
-        );
-        continue;
-      }
-      if (!value) {
-        this.log.info(`Skipped ${key}: it has no value in ${file}.`);
-        continue;
-      }
-      pairs.push([key, value]);
-    }
+    const pairs = this.sealed.importable(vars, file);
     if (pairs.length === 0) {
       throw new AlephaError(`${file} has no secret to set.`);
     }
