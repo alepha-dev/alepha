@@ -17,6 +17,12 @@ export const loreEnvironmentOptionsSchema = z.object({
    * `LORE_URL` overrides.
    */
   url: z.text().optional(),
+  /**
+   * The estate a copy created by the first `up` deploys to, by slug. Only read
+   * when the copy does not exist yet; omitted, it is the estate lent to the
+   * project first. An existing copy keeps the estate it has.
+   */
+  estate: z.text().optional(),
 });
 
 export type LoreEnvironmentOptions = Infer<typeof loreEnvironmentOptionsSchema>;
