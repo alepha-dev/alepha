@@ -431,6 +431,31 @@ describe("OAuthController authorize + token", () => {
     });
 
     expect(resp.status).toBe(400);
+    // Never a redirect (RFC 6749 §4.1.2.1), but a page that says what to do:
+    // a client keeping a deleted `client_id` retries into it forever.
+    expect(resp.headers.get("location")).toBeNull();
+    expect(resp.headers.get("content-type")).toContain("text/html");
+    const html = await resp.text();
+    expect(html).toContain("mcp_unknown");
+    expect(html).toContain("Remove the connector");
+  });
+
+  it("advertises the refresh_token grant to a registered client", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "ChatGPT",
+        redirect_uris: ["https://chatgpt.com/connector/oauth/cb"],
+      }),
+    });
+
+    expect(resp.status).toBe(201);
+    const body = (await resp.json()) as { grant_types: string[] };
+    expect(body.grant_types).toEqual(["authorization_code", "refresh_token"]);
   });
 
   it("exchanges an authorization code for an access token", async ({

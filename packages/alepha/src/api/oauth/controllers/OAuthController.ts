@@ -21,6 +21,7 @@ import {
   buildProtectedResourceMetadata,
 } from "../helpers/oauthMetadata.ts";
 import { buildOpenIdConfiguration } from "../helpers/oidcMetadata.ts";
+import { renderUnknownClientPage } from "../helpers/unknownClientPage.ts";
 import { authorizeDecisionBodySchema } from "../schemas/authorizeDecisionBodySchema.ts";
 import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
 import { deviceAuthorizationBodySchema } from "../schemas/deviceAuthorizationBodySchema.ts";
@@ -411,7 +412,12 @@ export class OAuthController {
         ),
         client_name: client.clientName,
         redirect_uris: client.redirectUris,
-        grant_types: ["authorization_code"],
+        // RFC 7591 §3.2.1: the grants this client may use, and a client may
+        // take the response at its word. The token endpoint has always
+        // refreshed for a DCR client, but answering `authorization_code`
+        // alone told one that trusts the answer not to try, and a session
+        // nobody refreshes is one the idle timeout ends (#Q2413).
+        grant_types: ["authorization_code", "refresh_token"],
         token_endpoint_auth_method: "none",
       });
     },
@@ -441,8 +447,16 @@ export class OAuthController {
       }
       const client = await this.clients.findByClientId(query.client_id);
       if (!client || client.revokedAt) {
+        // A page for the human, never a redirect: with no valid client there
+        // is no redirect URI to trust (RFC 6749 §4.1.2.1). A bare string
+        // left them no way out, and a client that keeps its `client_id`
+        // retries into it forever (#Q2413).
         reply.status = 400;
-        reply.body = "unknown client_id";
+        reply.headers["content-type"] = "text/html; charset=utf-8";
+        reply.body = renderUnknownClientPage({
+          clientId: query.client_id,
+          productName: this.options.productName,
+        });
         return;
       }
       if (!this.clients.isRedirectUriAllowed(client, query.redirect_uri)) {
