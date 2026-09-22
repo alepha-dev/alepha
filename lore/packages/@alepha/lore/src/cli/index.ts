@@ -1,6 +1,8 @@
 import { $module } from "alepha";
+import type { EnvironmentDescriptor } from "alepha/cli/platform-lib";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
+import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { AlephaLoreDeploy } from "./AlephaLoreDeploy.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
@@ -12,6 +14,7 @@ import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
+import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
 import { LoreReferences } from "./services/LoreReferences.ts";
@@ -105,7 +108,39 @@ export const AlephaLoreCli = $module({
 
 // ---------------------------------------------------------------------------
 
+/**
+ * An `alepha platform` environment that deploys through Lore.
+ *
+ * ```ts
+ * import { platform } from "alepha/cli/platform";
+ * import { lore } from "@alepha/lore/cli";
+ *
+ * platform({
+ *   name: "docs",
+ *   environments: {
+ *     production: lore({ project: "alepha" }),
+ *   },
+ * });
+ * ```
+ *
+ * `alepha platform up --env production` then builds the runtime the copy's
+ * estate accepts, pushes it as `latest`, seals the local secrets into the copy
+ * and deploys, following the run. The copy is `platform().name` and the
+ * environment's key; `LORE_PROJECT` and `LORE_URL` override `project` and
+ * `url`, so `lore()` with no arguments is legal in CI.
+ *
+ * ⚠️ The declared return type is the generic descriptor, so the published
+ * `.d.ts` names neither the adapter class nor anything it injects.
+ */
+export const lore = (
+  options: LoreEnvironmentOptions = {},
+): EnvironmentDescriptor<LoreEnvironmentOptions> => ({
+  adapter: LoreAdapter,
+  options,
+});
+
 export * from "./AlephaLoreDeploy.ts";
+export * from "./schemas/loreEnvironmentOptions.ts";
 export * from "./services/GitContextService.ts";
 export * from "./services/LoreClientService.ts";
 export * from "./services/LoreTokenStore.ts";

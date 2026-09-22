@@ -9,6 +9,7 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import { LoreAdapter } from "../adapters/LoreAdapter.ts";
 import { AlephaLoreDeploy } from "../AlephaLoreDeploy.ts";
 // ⚠️ Imported even where it is not used: evaluating `AlephaLoreCli` sets the
 // `[MODULE]` back-reference of everything IT declares. Without it, a service
@@ -46,6 +47,8 @@ describe("the Lore deploy module", () => {
     ["LoreDeployer", LoreDeployer],
     ["LoreSecretsService", LoreSecretsService],
     ["LoreDeviceLogin", LoreDeviceLogin],
+    // What `platform()` registers from inside the `alepha` binary.
+    ["LoreAdapter", LoreAdapter],
   ];
 
   const bare = () =>
