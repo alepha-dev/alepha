@@ -42,17 +42,13 @@ export const docsOf = (product: DocProduct) =>
   docs.filter((doc) => doc.product === product);
 
 /**
- * ⚠️ The llm folder stays in the FRAMEWORK tree only, and is not repeated.
+ * The `llms.txt` of one doc set, as the last entry of its sidebar.
  *
- * `llms.txt` and `llms-full.txt` cover the whole site rather than the
- * framework alone, so on the face of it they belong to none of the three
- * trees. Repeating them in all three would offer the same two files from
- * three places and imply three scopes that do not exist; moving them out of
- * the trees entirely would cost them their only link. The framework tree is
- * the one every reader passes through, so that is where they sit - and the
- * `/llms.txt` hrefs are absolute, so nothing about them is product-relative.
+ * Each product has its own, at the root of its URL space (`/llms.txt`,
+ * `/bay/llms.txt`, `/lore/llms.txt`), so each sidebar offers the one that
+ * describes what the reader is looking at. `gen-llms.ts` writes all three.
  */
-const llmFolder: DocNode = {
+const llmFolder = (product: DocProduct): DocNode => ({
   slug: "llm",
   name: "llm",
   order: 99,
@@ -61,29 +57,21 @@ const llmFolder: DocNode = {
       slug: "llm-llms",
       name: "llms",
       order: 1,
-      href: "/llms.txt",
+      href: product ? `/${product}/llms.txt` : "/llms.txt",
       description: "AI-friendly documentation index",
       asset: "txt",
     },
-    {
-      slug: "llm-llms-full",
-      name: "llms-full",
-      order: 2,
-      href: "/llms-full.txt",
-      description: "Complete documentation for LLMs",
-      asset: "txt",
-    },
   ],
-};
+});
 
 /**
  * One navigation tree per doc set. The sidebar picks by the product of the
  * page it is rendering beside.
  */
 export const trees: Record<DocProduct, DocNode[]> = {
-  "": [...generated.trees[""], llmFolder],
-  bay: generated.trees.bay,
-  lore: generated.trees.lore,
+  "": [...generated.trees[""], llmFolder("")],
+  bay: [...generated.trees.bay, llmFolder("bay")],
+  lore: [...generated.trees.lore, llmFolder("lore")],
 };
 
 export const snippets = generated.snippets;

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "alepha build",
+    "build": "alepha build && alepha gen:llms",
     "check:docs": "alepha check:docs",
     "copy": "alepha gen:docs && alepha gen:tree",
     "copy&dev": "alepha dev",

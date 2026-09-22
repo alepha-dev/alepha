@@ -61,7 +61,7 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 The only public Alepha application, at `lore.alepha.dev`, kept here to **dogfood the framework**: when working on it, `packages/alepha` and `packages/@alepha/ui` are fair game, edited in place and shipped in the same commit.
 
-`main` auto-deploys to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. A Verify cancelled by a newer push leaves that commit undeployed until the next green push. Lore migrations (`apps/lore/migrations/sqlite/`) target D1, which has a cascade-on-DROP-TABLE quirk: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing anything that touches them.
+`main` auto-deploys to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. The docs at `alepha.dev` are the exception: they document the published framework, so only **Release** (`release.yml`) deploys them. A Verify cancelled by a newer push leaves that commit undeployed until the next green push. Lore migrations (`apps/lore/migrations/sqlite/`) target D1, which has a cascade-on-DROP-TABLE quirk: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing anything that touches them.
 
 ### Lore MCP: the planning memory
 

@@ -16,15 +16,17 @@ the build prerenders it to `dist/public/sitemap.xml` for static deployments -
 while SSR runtimes also serve it live.
 
 The hostname comes from `options.hostname`, falling back to `PUBLIC_URL`, then
-to `""` (relative URLs).
+to `""` (relative URLs). URLs that no page answers, a feed or an
+`llms.txt`, are listed through `options.urls`.
 
 ## Options
 
-| Option     | Type      | Required | Description                                                |
-| ---------- | --------- | -------- | ---------------------------------------------------------- |
-| `hostname` | `string`  | No       | Absolute base URL used to build `&lt;loc&gt;` entries (e.g |
-| `path`     | `string`  | No       | Route path the sitemap is served at.                       |
-| `static`   | `boolean` | No       | Prerender the sitemap to a static file at build time.      |
+| Option     | Type       | Required | Description                                                                                      |
+| ---------- | ---------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `hostname` | `string`   | No       | Absolute base URL used to build `&lt;loc&gt;` entries (e.g                                       |
+| `urls`     | `string[]` | No       | Extra URLs to list after the pages: files and routes that are not a `$page`, such as `/llms.txt` |
+| `path`     | `string`   | No       | Route path the sitemap is served at.                                                             |
+| `static`   | `boolean`  | No       | Prerender the sitemap to a static file at build time.                                            |
 
 ## Examples
 

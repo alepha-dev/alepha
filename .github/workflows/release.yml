@@ -362,6 +362,13 @@ jobs:
       # ⚠️ The docs rebuild sits HERE, at the very end, and cannot move earlier:
       # `alepha build --runtime=workerd` cleans `dist/` and replaces it.
       #
+      # ⚠️ `gen:llms` follows EVERY docs build, node and workerd alike. It writes
+      # the `llms.txt` files and the raw markdown into `dist/public`, which
+      # `alepha build` does not produce, so an archive pushed without it serves
+      # an `alepha.dev` with no `llms.txt` at all. The docs `build` script runs
+      # it, which covers `yarn build` above; the workerd rebuild below calls
+      # `alepha build` directly, so it runs it itself.
+      #
       # No Cloudflare credentials are needed and none are present: the build
       # emits `wrangler.jsonc` from env vars and never calls the API. The
       # bindings it cannot see (`DATABASE_URL` above all) are simply absent
@@ -417,7 +424,7 @@ jobs:
       # looking at them.
       - name: Rebuild docs for workerd
         working-directory: apps/docs
-        run: yarn alepha build --runtime=workerd
+        run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
 
       - name: Push docs artifact to Lore (workerd)
         working-directory: apps/docs
@@ -427,7 +434,6 @@ jobs:
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
-
 
       # The image, as a reference rather than as bytes. Lore reads what the
       # image says about itself out of ghcr - its `dev.alepha.runtime` label
@@ -461,6 +467,30 @@ jobs:
 
       - name: Publish the Lore release
         run: yarn lore releases publish --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
+      # ──────────────────────────────────────────────────────────────
+      # `alepha.dev`, and ONLY here (#Q2480).
+      #
+      # It used to deploy from `deploy-latest.yml` on every green push to
+      # `main`, so the site documented code no one could install yet: an agent
+      # reading `llms.txt` was told about APIs its `node_modules` did not have.
+      # The docs now move with the npm version, and a docs-only fix waits for
+      # the next release, or a hand-dispatched patch release.
+      #
+      # `--tag` deploys the workerd archive pushed above and never builds. The
+      # estate behind `production` accepts workerd, and an artifact's runtime is
+      # part of its identity, so the node archive under the same tag is not a
+      # candidate.
+      #
+      # Last, after every push and the publish: a red deploy then tears
+      # nothing, and re-running the job redeploys the same stored bytes.
+      # ──────────────────────────────────────────────────────────────
+      - name: Deploy docs
+        working-directory: apps/docs
+        run: yarn lore apps deploy --env production --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}

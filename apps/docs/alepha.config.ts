@@ -15,9 +15,10 @@ export default defineConfig({
   dev: { port: 3302 },
   services: [DocsCommand, TreeCommand, LlmsCommand, CheckDocsCommand],
   // The build resolves commit and build date itself, and serves the lot on
-  // `GET /version`. `version` still has to be declared: the docs site deploys
-  // on every push to main, while tags exist only on releases, so the built-in
-  // git-tag chain would report "latest" on almost every deploy.
+  // `GET /version`. `version` is declared from `packages/alepha` rather than
+  // read from git: the site deploys from `release.yml` only (#Q2480), where it
+  // is the version being published, and a local or CI build of an untagged
+  // commit still says which framework version its pages describe.
   meta: { version: pkg.version },
   env: {
     // Here rather than in `.env.production` because the canonical URL is baked
