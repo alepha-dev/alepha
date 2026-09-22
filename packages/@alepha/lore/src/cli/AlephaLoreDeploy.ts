@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
+import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
 import { LoreArtifactPusher } from "./services/LoreArtifactPusher.ts";
@@ -46,5 +47,8 @@ export const AlephaLoreDeploy = $module({
     LoreDeployer,
     LoreSecretsService,
     LoreDeviceLogin,
+    // The platform adapter itself: `platform()` registers it by class, which
+    // registers this module, and so none of the `lore` commands.
+    LoreAdapter,
   ],
 });

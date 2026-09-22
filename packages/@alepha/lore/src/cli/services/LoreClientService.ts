@@ -32,6 +32,12 @@ export class LoreClientService {
   protected readonly http = $inject(HttpClient);
 
   /**
+   * The origin a caller configured in code, below `LORE_URL`: what
+   * `lore({ url })` in `alepha.config.ts` sets. See {@link useUrl}.
+   */
+  protected configuredUrl?: string;
+
+  /**
    * The refresh in flight, per hostname. The credential is resolved per
    * request, so a command sending several at once would otherwise trade the
    * same expired token several times over.
@@ -48,11 +54,14 @@ export class LoreClientService {
         description:
           "API key for the Lore instance, from the account's API keys page. Secret.",
       }),
+      // ⚠️ Empty by default, not the public origin: an explicit `LORE_URL`
+      // must be told apart from an absent one, since it wins over a URL set in
+      // code (`lore({ url })`) and an absent one does not.
       LORE_URL: z.text({
-        default: LoreClientService.DEFAULT_HOSTNAME,
+        default: "",
         secret: false,
         description:
-          "Origin of the Lore instance. Defaults to the public one; set it to self-host.",
+          "Origin of the Lore instance. Defaults to the public one (https://lore.alepha.dev); set it to self-host.",
       }),
       LORE_PROJECT: z.text({
         default: "",
@@ -86,10 +95,27 @@ export class LoreClientService {
    * fail on the very machine someone is reading it on.
    */
   public scope(): ClientScope {
-    return {
-      hostname: this.hostname(),
+    const scope: ClientScope = {
       authorization: () => this.authorization(),
     };
+    // A getter, read per request like the credential: a `$client` is built in
+    // a field initializer, before `lore({ url })` can call `useUrl`. The link
+    // provider spreads the scope on every call, which reads it then.
+    Object.defineProperty(scope, "hostname", {
+      get: () => this.hostname(),
+      enumerable: true,
+    });
+    return scope;
+  }
+
+  /**
+   * Point this process at an origin configured in code.
+   *
+   * `LORE_URL` still wins, so CI and a self-hoster's shell need no edit to a
+   * committed config. `undefined` clears it.
+   */
+  public useUrl(url: string | undefined): void {
+    this.configuredUrl = url || undefined;
   }
 
   /**
@@ -107,7 +133,11 @@ export class LoreClientService {
    * {@link authorization} already reads an empty key.
    */
   public hostname(): string {
-    return String(this.env.LORE_URL || LoreClientService.DEFAULT_HOSTNAME);
+    return String(
+      this.env.LORE_URL ||
+        this.configuredUrl ||
+        LoreClientService.DEFAULT_HOSTNAME,
+    );
   }
 
   /**
@@ -271,6 +301,14 @@ export class LoreClientService {
    *
    * `||` not `??`, for the reason {@link hostname} carries.
    */
+  /**
+   * The project `LORE_PROJECT` names, or nothing: for a caller whose own
+   * setting it overrides, the reverse of {@link resolveProject}'s precedence.
+   */
+  public projectFromEnv(): string | undefined {
+    return String(this.env.LORE_PROJECT || "") || undefined;
+  }
+
   public appFromEnv(flag?: string): string | undefined {
     return flag || String(this.env.LORE_APP || "") || undefined;
   }
