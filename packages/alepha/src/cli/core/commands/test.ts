@@ -90,6 +90,16 @@ export class TestCommand {
           "Measure coverage and write coverage/coverage-summary.json and coverage/test-results.json",
         )
         .optional(),
+      shard: z
+        .string()
+        .regex(
+          /^[1-9]\d*\/[1-9]\d*$/,
+          "--shard takes <index>/<count>, e.g. 2/6",
+        )
+        .describe(
+          "Run one slice of the spec files, `<index>/<count>` (e.g. `2/6`): one leg of a CI matrix",
+        )
+        .optional(),
       project: z
         .string()
         .meta({ alias: "p" })
@@ -120,6 +130,11 @@ export class TestCommand {
 
       const projects = this.projectArgs(flags.project);
 
+      // Vitest splits the spec files by a hash of their path into equal
+      // COUNTS, not equal durations: fine for a suite of many files, and
+      // refused outright by vitest when the count exceeds the files.
+      const shard = flags.shard ? `--shard=${flags.shard}` : "";
+
       // Vitest ships embedded in `alepha` (paired with vite) — resolve and
       // run it from alepha's own install, so the project never declares it.
       const vitest = this.utils.resolveBin("vitest", "vitest");
@@ -129,7 +144,7 @@ export class TestCommand {
       // that makes the escape hatch an escape hatch is that it is appended
       // after the flags built above.
       await run(
-        `node "${vitest}" run ${config} ${projects} ${filter} ${reports} ${env.VITEST_ARGS}`
+        `node "${vitest}" run ${config} ${projects} ${shard} ${filter} ${reports} ${env.VITEST_ARGS}`
           .replace(/\s+/g, " ")
           .trim(),
       );

@@ -12,9 +12,10 @@ alepha test user                  # only specs whose path matches "user"
 alepha test test/auth.spec.ts     # a single file
 ```
 
-| Flag             | Description                  |
-| ---------------- | ---------------------------- |
-| `--config`, `-c` | Path to a Vitest config file |
+| Flag             | Description                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| `--config`, `-c` | Path to a Vitest config file                                                        |
+| `--shard`        | One slice of the spec files, `<index>/<count>` (e.g. `2/6`): one leg of a CI matrix |
 
 Extra Vitest arguments go through the `VITEST_ARGS` environment variable:
 

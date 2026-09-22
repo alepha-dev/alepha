@@ -86,6 +86,21 @@ describe("TestCommand", () => {
     });
   });
 
+  describe("--shard", () => {
+    it("passes one leg of a matrix to vitest", async () => {
+      expect(await argv("--shard 2/6")).toContain("--shard=2/6");
+    });
+
+    it("adds nothing without it", async () => {
+      expect(await argv("")).not.toContain("--shard");
+    });
+
+    it("refuses anything that is not <index>/<count>", async () => {
+      await expect(argv("--shard 2")).rejects.toThrow();
+      await expect(argv("--shard 0/4")).rejects.toThrow();
+    });
+  });
+
   /**
    * VITEST_ARGS is the escape hatch, and with a concatenated string the only
    * thing that makes it one is position: whatever the caller sets has to come

@@ -164,9 +164,8 @@ jobs:
   # The unit and integration suite - `yarn v`'s longest single step, and the
   # other half of the old `verify` job.
   #
-  # Sharded six ways. `alepha test` appends `VITEST_ARGS` last on the vitest
-  # command line, so this needs no code change on the CLI side - the flag
-  # reaches vitest as `vitest run --shard=i/6`.
+  # Sharded six ways, with `alepha test --shard i/6`, which reaches vitest as
+  # `vitest run --shard=i/6` (#Q2479; it used to ride `VITEST_ARGS`).
   #
   # ⚠️ **Six is the ceiling, and it is not a round number - it is where this
   # job stops being the critical path.** Measured on run #1691, which ran
@@ -266,9 +265,7 @@ jobs:
       # carries five of the nine numbers Lore stores, not four: it also turns
       # on the JSON test reporter. Nothing in this job reads either report.
       - name: Test Project
-        run: yarn alepha test
-        env:
-          VITEST_ARGS: --shard=${{ matrix.shard }}/6
+        run: yarn alepha test --shard ${{ matrix.shard }}/6
 
       # Here rather than in `checks`, because two of the six bun specs are
       # `BunPostgresProvider` and `BunRedisProvider`: they want the service

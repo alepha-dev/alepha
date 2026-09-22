@@ -310,6 +310,34 @@ session and makes anything the app sealed with it unreadable. A copy replacing
 an existing deployment should set the secret it already has before its first
 deploy.
 
+## Cut a release
+
+A Lore release is the plan for a version: the quests and epics it holds become
+its changelog. Three commands take a version from that plan to shipped, from a
+release job:
+
+```bash
+lore releases cut --bump minor --notes notes.md --env-file "$GITHUB_ENV"
+lore artifacts push --tag "$VERSION"
+git push --follow-tags
+lore releases publish --tag "$VERSION"
+```
+
+`cut` bumps the root `package.json` (a plain `x.y.z`), prepends the open
+release's changelog to `CHANGELOG.md` under `## [x.y.z] - YYYY-MM-DD`, commits
+`release: x.y.z` and tags it. It is local only: nothing is pushed, so a build
+that fails after it leaves nothing public behind. `--notes` keeps the notes
+for a GitHub Release body, and `--env-file` appends `VERSION=x.y.z` for the
+steps after it.
+
+Every check runs before the first write: a version that is not `x.y.z`, a tag
+that already exists, and a release that is missing or already published all
+stop `cut` with the working tree untouched. `lore releases changelog --tag
+x.y.z` prints the same notes on stdout, with the same refusals.
+
+`publish` is the opposite on purpose: a missing or already published release
+is a log line and a clean exit, so a re-run of the job is safe.
+
 ## Where to read next
 
 The end-to-end story from an empty project - lending an estate, naming a copy,
