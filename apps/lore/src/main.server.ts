@@ -2,6 +2,7 @@ import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
+import { jobConfig } from "alepha/api/jobs";
 import {
   NotificationInboxRecipientProvider,
   NotificationPreferenceProvider,
@@ -15,6 +16,7 @@ import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
 import { LoreApi } from "./api/index.ts";
+import { DeployJobs } from "./api/jobs/DeployJobs.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./api/providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "./api/providers/LoreNotificationPreferences.ts";
@@ -30,6 +32,13 @@ const alepha = Alepha.create({
   env: {
     APP_NAME: "LORE",
   },
+});
+
+// Before any module: the job provider creates its sweep cron when it is
+// constructed. See `DeployJobs.JOB_SWEEP` (#Q2478).
+alepha.set(jobConfig, {
+  ...alepha.store.get(jobConfig),
+  ...DeployJobs.JOB_SWEEP,
 });
 
 // Cloudflare Email Sending. Registered only in production — both the real

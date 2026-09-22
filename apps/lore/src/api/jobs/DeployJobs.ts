@@ -93,6 +93,29 @@ export class DeployJobs {
   public static readonly SLOT_RETRY_SECONDS = 10;
 
   /**
+   * How Lore runs the framework's job sweep (`jobConfig`), set by
+   * `main.server.ts` before any module is registered.
+   *
+   * ⚠️ **Before any module, not in `LoreApi.register`.** The job provider
+   * creates its sweep cron when it is constructed, and whichever module
+   * imports `alepha/api/jobs` first constructs it: set later, `sweepCron` is
+   * silently ignored (`staleThreshold` is read live and would still apply).
+   *
+   * A queue delivery Cloudflare loses leaves its row `pending` until the
+   * sweep re-dispatches it: on 2026-09-22 a deploy waited 827 s for it
+   * (#Q2478). The sweep runs on the every-five-minutes expression
+   * {@link sweepAbandoned} already uses, because cron triggers are counted
+   * per account (see `EstateCommandJobs`), and a row counts as lost after
+   * one minute instead of five: a lost delivery costs about 6 minutes, not
+   * about 20. Re-dispatching a message that was only slow is safe, since
+   * `claim()` is the guard.
+   */
+  public static readonly JOB_SWEEP = {
+    sweepCron: "*/5 * * * *",
+    staleThreshold: 60_000,
+  } as const;
+
+  /**
    * The execution's own timeout: one minute past the longest deploy timer
    * `DeployLimits` allows, and still under the queue consumer's 15 minutes.
    *
