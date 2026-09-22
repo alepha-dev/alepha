@@ -221,22 +221,111 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
     _run: RunnerMethod,
   ): Promise<void> {}
 
+  /**
+   * The copy, in the shape `alepha platform status` prints for every adapter.
+   *
+   * Lore owns the resources behind a copy and does not list them to a client,
+   * so the one row is the copy itself: its name on the estate, what it runs
+   * and where. The secrets are the keys of its sealed set, never a value.
+   */
   async inspect(
-    _ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: PlatformContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<PlatformState> {
-    throw new AlephaError(
-      "`alepha platform status` does not read a Lore environment yet. Use the copy's page in Lore.",
+    const project = this.configure(ctx);
+    const projectId = await this.projects.resolve(project);
+    const instance = await this.deployer.findInstance(
+      projectId,
+      ctx.project,
+      ctx.env,
     );
+    const state: PlatformState = {
+      workers: [],
+      databases: [],
+      buckets: [],
+      kvNamespaces: [],
+      queues: [],
+      secrets: [],
+    };
+    const name = `${ctx.project}/${ctx.env}`;
+    if (!instance) {
+      state.workers.push({
+        name,
+        exists: false,
+        detail: "not a deployed copy of this project",
+      });
+      return state;
+    }
+
+    const where = instance.estate?.slug
+      ? ` on estate '${instance.estate.slug}'`
+      : "";
+    state.workers.push({
+      name: instance.resourceName || name,
+      exists: true,
+      id: instance.id,
+      tag: instance.version,
+      createdAt: instance.updatedAt,
+      detail: `${instance.url ?? "no address yet"}${where}${instance.ephemeral ? ", ephemeral" : ""}`,
+    });
+    for (const key of await this.sealed.keys({
+      projectId,
+      instanceId: instance.id,
+    })) {
+      state.secrets.push({ name: key, deployed: true });
+    }
+    return state;
   }
 
+  /**
+   * Tear the copy down, after reading what it would take with it.
+   *
+   * ## ⚠️ The blast radius is read, not assumed
+   *
+   * A copy that is not **ephemeral** loses its Worker, queue and cache, and
+   * keeps its database and bucket: the next `up` rebuilds everything it lost.
+   * For it, `platform down`'s own gate (type the env, or `--yes`) is the gate,
+   * and the `app/env` confirmation Lore's endpoint requires is written here.
+   *
+   * An ephemeral copy loses its database and its bucket too, with no backup,
+   * and the flag was set when it was created, possibly by somebody else. It is
+   * refused before anything is removed, whatever `--yes` says and whatever the
+   * env is called (a `tmp*` env skips the platform prompt): the command it
+   * names is the one whose confirmation is typed on purpose, and a written one
+   * here would make that confirmation meaningless exactly where the data is.
+   */
   async teardown(
     ctx: PlatformContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
-    throw new AlephaError(
-      `\`alepha platform down\` does not tear down a Lore environment yet. Run \`lore apps destroy --app ${ctx.project} --env ${ctx.env} --confirm ${ctx.project}/${ctx.env}\`.`,
+    const project = this.configure(ctx);
+    const projectId = await this.projects.resolve(project);
+    const label = `${ctx.project}/${ctx.env}`;
+    const instance = await this.deployer.findInstance(
+      projectId,
+      ctx.project,
+      ctx.env,
     );
+    if (!instance) {
+      this.log.info(
+        `${label} is not a deployed copy of this project. Nothing to remove.`,
+      );
+      return;
+    }
+
+    if (instance.ephemeral) {
+      throw new AlephaError(
+        `${label} is EPHEMERAL: tearing it down also deletes its database and its bucket, and there is no backup. \`alepha platform down\` will not do that, even with --yes. Run \`lore apps destroy --app ${ctx.project} --env ${ctx.env} --confirm ${label}\` to destroy it.`,
+      );
+    }
+
+    const result = await this.deployer.destroy(
+      projectId,
+      ctx.project,
+      ctx.env,
+      label,
+    );
+    this.deployer.report(result, label);
   }
 
   /**

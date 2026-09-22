@@ -259,27 +259,9 @@ export class AppsCommand {
         flags.confirm.trim(),
       );
 
-      this.log.info(
-        result.removed.length > 0
-          ? `Removed ${result.removed.join(", ")} for ${app}/${env}`
-          : `Nothing left to remove for ${app}/${env}`,
-      );
-      if (result.kept.length > 0) {
-        // Said out loud on every run: the point of this command is that the
-        // data survives it, and an operator who assumes otherwise will go
-        // looking for a backup that was never needed.
-        this.log.info(`Kept: ${result.kept.join(", ")}`);
-      }
-      for (const failure of result.failed) {
-        this.log.warn(
-          `${failure.resource} was not removed: ${failure.message}`,
-        );
-      }
-      if (result.failed.length > 0) {
-        throw new AlephaError(
-          `${result.failed.length} resource(s) could not be removed. What did go is no longer recorded, so running this again retries only the rest.`,
-        );
-      }
+      // The same report `alepha platform down` prints for a Lore copy:
+      // `kept` on every run, and a failed resource exits non-zero.
+      this.deployer.report(result, `${app}/${env}`);
     },
   });
 

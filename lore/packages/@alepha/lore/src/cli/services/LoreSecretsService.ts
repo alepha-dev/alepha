@@ -85,6 +85,17 @@ export class LoreSecretsService {
   }
 
   /**
+   * The keys the copy's sealed set holds. Never a value.
+   */
+  public async keys(target: {
+    projectId: number;
+    instanceId: string;
+  }): Promise<string[]> {
+    const { items } = await this.secrets.listAppSecrets({ params: target });
+    return items.map((it: { key: string }) => it.key);
+  }
+
+  /**
    * Write each pair into the copy's set.
    *
    * One refused key does not stop the others: each refusal is collected with

@@ -28,7 +28,18 @@ describe("LoreAdapter", () => {
   const create = async (
     options: {
       env?: Record<string, string>;
-      instance?: { id: string; estateId?: string } | null;
+      instance?:
+        | (Record<string, unknown> & { app?: string; env?: string })
+        | null;
+      /**
+       * What Lore's destroy answers, or `undefined` to answer every resource
+       * removed.
+       */
+      destroyed?: {
+        removed: string[];
+        kept: string[];
+        failed: Array<{ resource: string; message: string }>;
+      };
       descriptor?: ReturnType<typeof lore>;
     } = {},
   ) => {
@@ -51,6 +62,7 @@ describe("LoreAdapter", () => {
       name: "docs",
       environments: {
         production: options.descriptor ?? lore({ project: "alepha" }),
+        "tmp-pr-1": lore({ project: "alepha" }),
       },
     });
 
@@ -81,6 +93,14 @@ describe("LoreAdapter", () => {
      * Everything Lore was asked, in order.
      */
     const events: string[] = [];
+    const printed: string[] = [];
+    const log = {
+      info: (message: string) => printed.push(message),
+      warn: (message: string) => printed.push(message),
+      error: () => {},
+      debug: () => {},
+      trace: () => {},
+    };
     const instance =
       options.instance === undefined
         ? { id: "inst-1", estateId: "cf-1" }
@@ -93,6 +113,32 @@ describe("LoreAdapter", () => {
             throw new HttpError({ status: 404, message: "App not found" });
           }
           return instance;
+        },
+        // Lore's own check: the confirmation must be the copy's `app/env` as
+        // the ROW spells it, which is what makes a written one safe only when
+        // it names this copy.
+        destroyAppResources: async ({
+          params,
+          body,
+        }: {
+          params: { app: string; env: string };
+          body: { confirm: string };
+        }) => {
+          const expected = `${instance?.app ?? params.app}/${instance?.env ?? params.env}`;
+          if (body.confirm !== expected) {
+            throw new HttpError({
+              status: 400,
+              message: `Type "${expected}" to confirm.`,
+            });
+          }
+          events.push(`destroy ${body.confirm}`);
+          return (
+            options.destroyed ?? {
+              removed: ["worker", "queue"],
+              kept: ["database", "bucket"],
+              failed: [],
+            }
+          );
         },
       },
       estates: {
@@ -119,6 +165,9 @@ describe("LoreAdapter", () => {
     });
     Object.assign(alepha.inject(LoreSecretsService) as unknown as object, {
       secrets: {
+        listAppSecrets: async () => ({
+          items: [{ id: "1", key: "APP_SECRET", valuePrefix: "s3" }],
+        }),
         setAppSecret: async ({
           params,
           body,
@@ -131,31 +180,41 @@ describe("LoreAdapter", () => {
         },
       },
     });
+    Object.assign(alepha.inject(LoreDeployer) as unknown as object, { log });
     Object.assign(alepha.inject(LoreAdapter) as unknown as object, {
       projects: { resolve: async () => 1 },
+      log,
     });
 
-    const up = () =>
-      alepha.inject(PlatformOrchestrator).up({
-        root: "/project",
-        env: "production",
-        entry: { root: "/project", server: "" },
-        resources: {
-          hasDatabase: false,
-          hasBucket: false,
-          hasAnalytics: false,
-          hasKV: false,
-          hasQueue: false,
-          hasCron: false,
-        },
-        run: Object.assign(
-          async (task: { handler: () => Promise<unknown> }) =>
-            await task.handler(),
-          { end: () => {} },
-        ) as never,
-      });
+    const parts = {
+      root: "/project",
+      entry: { root: "/project", server: "" },
+      resources: {
+        hasDatabase: false,
+        hasBucket: false,
+        hasAnalytics: false,
+        hasKV: false,
+        hasQueue: false,
+        hasCron: false,
+      },
+      run: Object.assign(
+        async (task: { handler: () => Promise<unknown> }) =>
+          await task.handler(),
+        { end: () => {} },
+      ) as never,
+    };
+    const orchestrator = alepha.inject(PlatformOrchestrator);
 
-    return { alepha, shell, events, up };
+    const up = () => orchestrator.up({ ...parts, env: "production" });
+    /**
+     * `alepha platform down`, as `--yes` answers its prompt: with the env's
+     * own name, which is what a typed confirmation would have been.
+     */
+    const down = (env = "production") =>
+      orchestrator.down({ ...parts, env, confirm: async () => env });
+    const status = () => orchestrator.status({ ...parts, env: "production" });
+
+    return { alepha, shell, events, printed, up, down, status };
   };
 
   it("names its own class, and keeps the options as given", () => {
@@ -259,6 +318,118 @@ describe("LoreAdapter", () => {
       expect(alepha.inject(LoreClientService).hostname()).toBe(
         "https://lore.self-hosted.test",
       );
+    });
+  });
+
+  describe("down", () => {
+    const aCopy = (extra: Record<string, unknown> = {}) => ({
+      id: "inst-1",
+      estateId: "cf-1",
+      app: "docs",
+      env: "production",
+      ...extra,
+    });
+
+    it("tears down a copy that keeps its data, confirming it as Lore requires", async () => {
+      const { events, printed, down } = await create({ instance: aCopy() });
+
+      expect(await down()).toBe(true);
+
+      expect(events).toEqual(["destroy docs/production"]);
+      expect(printed).toContain("Removed worker, queue for docs/production");
+      // Said on every run: the data survives, and the operator reads so.
+      expect(printed).toContain("Kept: database, bucket");
+    });
+
+    it("refuses an ephemeral copy even under --yes, naming the command that can", async () => {
+      const { events, down } = await create({
+        instance: aCopy({ ephemeral: true }),
+      });
+
+      await expect(down()).rejects.toThrow(
+        /EPHEMERAL.*lore apps destroy --app docs --env production --confirm docs\/production/,
+      );
+      expect(events).toEqual([]);
+    });
+
+    it("refuses an ephemeral copy on a tmp env too, where the platform never prompts", async () => {
+      const { events, down } = await create({
+        instance: aCopy({ env: "tmp-pr-1", ephemeral: true }),
+      });
+
+      await expect(down("tmp-pr-1")).rejects.toThrow(/EPHEMERAL/);
+      expect(events).toEqual([]);
+    });
+
+    it("reports a resource that failed, and exits non-zero", async () => {
+      const { printed, down } = await create({
+        instance: aCopy(),
+        destroyed: {
+          removed: ["worker"],
+          kept: ["database"],
+          failed: [{ resource: "queue", message: "still has consumers" }],
+        },
+      });
+
+      await expect(down()).rejects.toThrow(
+        /1 resource\(s\) could not be removed/,
+      );
+      expect(printed).toContain("queue was not removed: still has consumers");
+    });
+
+    it("is refused by Lore when the written confirmation does not name the row", async () => {
+      // The config says `production`; the row Lore holds is `prod`. A written
+      // confirmation is only safe because Lore checks it against the ROW.
+      const { events, down } = await create({
+        instance: aCopy({ env: "prod" }),
+      });
+
+      await expect(down()).rejects.toThrow(/Type "docs\/prod" to confirm/);
+      expect(events).toEqual([]);
+    });
+  });
+
+  describe("status", () => {
+    it("prints the copy in the shape every adapter's status has", async () => {
+      const { status } = await create({
+        instance: {
+          id: "inst-1",
+          estateId: "cf-1",
+          url: "https://docs.alepha.dev",
+          resourceName: "alepha-docs-production",
+          version: "0.29.0",
+          estate: { slug: "alepha-cf" },
+        },
+      });
+
+      const { state } = await status();
+
+      expect(state.workers).toEqual([
+        {
+          name: "alepha-docs-production",
+          exists: true,
+          id: "inst-1",
+          tag: "0.29.0",
+          createdAt: undefined,
+          detail: "https://docs.alepha.dev on estate 'alepha-cf'",
+        },
+      ]);
+      expect(state.secrets).toEqual([{ name: "APP_SECRET", deployed: true }]);
+      expect(state.databases).toEqual([]);
+    });
+
+    it("says a missing copy does not exist, rather than failing", async () => {
+      const { status } = await create({ instance: null });
+
+      const { state } = await status();
+
+      expect(state.workers).toEqual([
+        {
+          name: "docs/production",
+          exists: false,
+          detail: "not a deployed copy of this project",
+        },
+      ]);
     });
   });
 });
