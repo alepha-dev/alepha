@@ -1124,8 +1124,6 @@ export default {
   "quest.view.reminder.none":
     "No reminder configured. You won't receive email nudges.",
   "quest.view.reminder.next": "Next email $1.",
-  "quest.view.reminder.unavailable":
-    "Accept the quest first: reminders go to the assignee.",
   "quest.view.duplicate": "Duplicate",
   "quest.view.duplicate.title": "Duplicate quest",
   "quest.view.duplicate.suffix": "(Copy)",

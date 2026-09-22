@@ -98,7 +98,12 @@ const QuestReleaseControl = (props: QuestReleaseControlProps) => {
       // default-height select beside it read as visibly heavier (#1703).
       minimal
       size="xs"
-      triggerClassName="w-auto"
+      // `-my-1`: the xs trigger is `h-6` against the rail's 16px line, so it
+      // made this the one row 8px taller than its neighbours (#Q2424). The
+      // negative margin keeps the whole trigger as the click target while
+      // the row lays out around a line of text. Here rather than a `min-h`
+      // on `QuestViewRailRow`, for the reason given there.
+      triggerClassName="-my-1 w-auto"
       disabled={
         submitting || !!current?.releasedAt || !questApi.updateQuestById.can()
       }

@@ -1094,8 +1094,6 @@ export default {
   "quest.view.reminder.none":
     "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
   "quest.view.reminder.next": "Prochain e-mail $1.",
-  "quest.view.reminder.unavailable":
-    "Acceptez d'abord la quête : les rappels sont envoyés à la personne assignée.",
   "quest.view.duplicate": "Dupliquer",
   "quest.view.duplicate.title": "Dupliquer la quête",
   "quest.view.duplicate.suffix": "(Copie)",
