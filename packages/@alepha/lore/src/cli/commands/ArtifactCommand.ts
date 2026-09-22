@@ -1,13 +1,11 @@
-import { $env, $inject, AlephaError, z } from "alepha";
-import { WorkspacePacker } from "alepha/cli";
+import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
-import { FileSystemProvider } from "alepha/system";
 import type { ArtifactController } from "lore/api/controllers/ArtifactController";
 
-import { ArtifactUploader } from "../services/ArtifactUploader.ts";
 import { GitContextService } from "../services/GitContextService.ts";
+import { LoreArtifactPusher } from "../services/LoreArtifactPusher.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
@@ -19,6 +17,9 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  * export LORE_API_KEY=...
  * lore artifacts push --tag 1.2.3 --project alepha
  * ```
+ *
+ * The push itself is {@link LoreArtifactPusher}, which `lore deploy` and the
+ * platform adapter call too: one packing and one upload for every caller.
  *
  * ## It packs for you, and that is not a convenience
  *
@@ -44,12 +45,10 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  */
 export class ArtifactCommand {
   protected readonly log = $logger();
-  protected readonly fs = $inject(FileSystemProvider);
-  protected readonly packer = $inject(WorkspacePacker);
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
-  protected readonly uploader = $inject(ArtifactUploader);
   protected readonly git = $inject(GitContextService);
+  protected readonly pusher = $inject(LoreArtifactPusher);
 
   /**
    * ⚠️ Declared after `client`, and it has to be: a field initializer reading
@@ -61,36 +60,6 @@ export class ArtifactCommand {
    * that will answer it, with no hand-maintained wire contract to drift.
    */
   protected readonly api = $client<ArtifactController>(this.client.scope());
-
-  /**
-   * ⚠️ Declared through `$env` rather than read off `process.env`, for the
-   * reason every other variable in this package is: a direct read is a seam
-   * nothing can substitute, so the one behaviour that only ever happens inside
-   * CI would be the one behaviour no test could reach.
-   */
-  protected readonly env = $env(
-    z.object({
-      GITHUB_OUTPUT: z
-        .text({
-          default: "",
-          secret: false,
-          description:
-            "File GitHub Actions gives a step to write its outputs to. Set by Actions; never set by hand.",
-        })
-        .optional(),
-    }),
-  );
-
-  /**
-   * Where the tarball is written on the way through.
-   *
-   * Under `node_modules/.alepha`, beside the dev database and the mail spool,
-   * rather than in the workspace root: `push` produces the file as a means and
-   * not as an output, and leaving `my-app-latest.tar.zst` in a checkout would
-   * be indistinguishable from one somebody packed on purpose. Removed again
-   * whichever way the push ends.
-   */
-  protected static readonly WORK_DIR = "node_modules/.alepha";
 
   /**
    * The tag a push carries when nobody names one.
@@ -134,70 +103,14 @@ export class ArtifactCommand {
         .optional(),
     }),
     handler: async ({ flags, root, run }) => {
-      const project = this.client.resolveProject(flags.project);
-      const app = await this.projects.resolveApp(flags.app, root);
-      const tag = flags.tag ?? ArtifactCommand.DEFAULT_TAG;
-
-      const [projectId, git] = await Promise.all([
-        this.projects.resolve(project),
-        this.git.resolve(root),
-      ]);
-
-      const workDir = this.fs.join(root, ArtifactCommand.WORK_DIR);
-      await this.fs.mkdir(workDir, { recursive: true });
-      const filename = `${app}-${tag}.tar.zst`;
-      const archivePath = this.fs.join(workDir, filename);
-
-      try {
-        // ⚠️ `name` is passed rather than left to the packer's own fallback,
-        // so the filename is derived ONCE. Deriving it a second time here is
-        // exactly what let `pack` write one file while `BayAdapter` looked for
-        // another.
-        const packed = await this.packer.pack({
-          root,
-          name: app,
-          tag,
-          output: workDir,
-          run,
-        });
-
-        const result = await this.uploader.upload({
-          projectId,
-          app,
-          tag,
-          commitSha: git.commitSha,
-          force: flags.force,
-          archivePath,
-          filename,
-          // The sibling source-map archive, when the build produced one
-          // (#1515). Absent is normal, not an error: the maps are excluded
-          // from the artifact and stored beside it, so nothing is discarded.
-          mapsPath: packed.maps?.outputPath,
-          mapsFilename: packed.maps?.filename,
-        });
-
-        const { artifact } = result;
-        this.log.info(
-          result.stored
-            ? `Pushed ${artifact.app} ${artifact.tag} (${artifact.runtime}) to ${project}`
-            : `${artifact.app} ${artifact.tag} (${artifact.runtime}) was already pushed to ${project}`,
-          { sha256: artifact.sha256, size: artifact.size },
-        );
-        // On its own line and unadorned: a later step reads this off the log
-        // when it has no `$GITHUB_OUTPUT` to read instead.
-        this.log.info(`sha256: ${artifact.sha256}`);
-
-        await this.publishOutput(artifact.sha256);
-      } finally {
-        // A tarball left in `node_modules` is invisible until it is stale.
-        // `alepha pack` is what to run when the file itself is wanted. The
-        // maps archive is removed by name rather than from `packed`, which is
-        // out of scope in a `finally` that also runs when `pack` threw.
-        await this.fs.rm(archivePath, { force: true });
-        await this.fs.rm(this.fs.join(workDir, `${app}-${tag}.maps.tar.zst`), {
-          force: true,
-        });
-      }
+      await this.pusher.push({
+        root,
+        project: this.client.resolveProject(flags.project),
+        app: await this.projects.resolveApp(flags.app, root),
+        tag: flags.tag ?? ArtifactCommand.DEFAULT_TAG,
+        force: flags.force,
+        run,
+      });
     },
   });
 
@@ -322,7 +235,7 @@ export class ArtifactCommand {
       );
       this.log.info(`sha256: ${artifact.sha256}`);
 
-      await this.publishOutput(artifact.sha256);
+      await this.pusher.publishOutput(artifact.sha256);
     },
   });
 
@@ -334,25 +247,6 @@ export class ArtifactCommand {
       help();
     },
   });
-
-  /**
-   * Hand the digest to the rest of the workflow.
-   *
-   * A tag can be moved by another job; a digest cannot. A step that means to
-   * deploy exactly these bytes needs the second, so the push writes it where
-   * GitHub Actions expects an output rather than leaving the next step to
-   * scrape a log line.
-   *
-   * `GITHUB_OUTPUT` being set IS the CI detection - it is the file Actions
-   * creates per step - so there is no separate `CI` check to disagree with it.
-   */
-  protected async publishOutput(sha256: string): Promise<void> {
-    const target = String(this.env.GITHUB_OUTPUT ?? "");
-    if (!target) {
-      return;
-    }
-    await this.fs.appendFile(target, `sha256=${sha256}\n`);
-  }
 
   /*
     The app name used to be derived here, from `package.json` slugified through
