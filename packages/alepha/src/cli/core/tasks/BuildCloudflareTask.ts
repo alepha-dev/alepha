@@ -957,6 +957,18 @@ const withExecutionContext = (executionCtx, fn) => {
   return __alepha.context.run(fn, { "cloudflare.waitUntil": waitUntil });
 };
 
+// A \`queue\` or \`scheduled\` invocation carries no bookmark, so a D1
+// session would start \`first-unconstrained\` and may read a replica that
+// has not yet received a row written moments before: a job claimed from
+// the queue found nothing, was skipped and acked, and waited for the sweep
+// (#Q2478). Background work acts on rows written elsewhere, so its session
+// starts on the primary. A no-op when sessions are off.
+const readOnPrimary = () => {
+  __alepha.store.set("alepha.orm.d1.bookmark", "first-primary", {
+    skipEvents: true,
+  });
+};
+
 // Bind the per-invocation Worker \`env\`: keep the full binding (D1, R2, KV, …)
 // in the store for providers, and lift its string values (secrets/vars like
 // PUBLIC_URL) into \`alepha.env\` so \`$env\` resolves them at runtime.
@@ -1131,12 +1143,13 @@ export default {
       throw err;
     }
 
-    await withExecutionContext(executionCtx, () =>
-      __alepha.events.emit("cloudflare:scheduled", {
+    await withExecutionContext(executionCtx, () => {
+      readOnPrimary();
+      return __alepha.events.emit("cloudflare:scheduled", {
         cron: event.cron,
         scheduledTime: event.scheduledTime,
-      }),
-    );
+      });
+    });
   },
 
   queue: async (batch, env, executionCtx) => {
@@ -1153,8 +1166,9 @@ export default {
     // second job of a batch waited for the whole of the first - a Lore deploy
     // sat behind another for up to 43s - and a job's own concurrency limit
     // never came into play. Each message still settles on its own.
-    await withExecutionContext(executionCtx, () =>
-      Promise.all(
+    await withExecutionContext(executionCtx, () => {
+      readOnPrimary();
+      return Promise.all(
         batch.messages.map(async (msg) => {
           try {
             await __alepha.events.emit("cloudflare:queue", msg.body);
@@ -1163,8 +1177,8 @@ export default {
             msg.retry();
           }
         }),
-      ),
-    );
+      );
+    });
   },
 };
 `.trim();

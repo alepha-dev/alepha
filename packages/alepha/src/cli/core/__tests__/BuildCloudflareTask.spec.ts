@@ -456,6 +456,38 @@ describe("BuildCloudflareTask", () => {
     });
 
     describe("d1 bookmark carrier", () => {
+      /**
+       * A queue or cron invocation has no cookie to carry a bookmark, and a
+       * session left `first-unconstrained` may read a replica that has not
+       * seen a row written moments before: a job claimed off the queue found
+       * nothing and its message was acked (#Q2478). Both handlers start their
+       * session on the primary.
+       */
+      it("starts queue and cron invocations on the primary", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /const readOnPrimary = \(\) => \{\s*__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.bookmark["'],\s*["']first-primary["']/,
+          ),
+        ).toBe(true);
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /scheduled: async[\s\S]*?withExecutionContext\(executionCtx, \(\) => \{\s*readOnPrimary\(\);/,
+          ),
+        ).toBe(true);
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /queue: async[\s\S]*?withExecutionContext\(executionCtx, \(\) => \{\s*readOnPrimary\(\);/,
+          ),
+        ).toBe(true);
+      });
+
       it("reads the incoming bookmark into the request's async context", async () => {
         const { task, fs } = createTaskWithFs();
 
@@ -609,7 +641,7 @@ describe("BuildCloudflareTask", () => {
 
       /**
        * Lifts the generated `queue` handler out of the emitted worker and
-       * runs it against stand-ins for the three things it closes over, so
+       * runs it against stand-ins for the four things it closes over, so
        * these assert how a batch is PROCESSED rather than how the loop is
        * spelled.
        */
@@ -633,11 +665,13 @@ describe("BuildCloudflareTask", () => {
           "__alepha",
           "bindEnv",
           "withExecutionContext",
+          "readOnPrimary",
           `return ${handler};`,
         )(
           { start: async () => {}, log: { error: () => {} }, events: { emit } },
           () => {},
           (_ctx: unknown, fn: () => Promise<void>) => fn(),
+          () => {},
         ) as (batch: { messages: FakeMessage[] }) => Promise<void>;
         await queue({ messages });
       };

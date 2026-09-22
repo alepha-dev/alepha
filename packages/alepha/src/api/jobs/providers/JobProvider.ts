@@ -1706,7 +1706,17 @@ export class JobProvider {
    */
   protected async claim(executionId: string) {
     const current = await this.executions.findById(executionId);
-    if (!current) return null;
+    if (!current) {
+      // Not the "already claimed" case, which the guarded update below
+      // answers: the row is not there at all. A delivery for a deleted row,
+      // or a read that did not see the write (a D1 replica behind the
+      // primary). The message is acked either way and only the sweep can
+      // recover the row, so this must be visible (#Q2478).
+      this.log.warn(
+        `Execution ${executionId} not found when claiming; the sweep will re-dispatch it if it exists`,
+      );
+      return null;
+    }
     const where =
       current.status === "scheduled"
         ? {
