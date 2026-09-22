@@ -6,7 +6,6 @@
     "build": "alepha build --stats",
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
-    "deploy": "alepha platform up -e production",
     "dev": "alepha dev",
     "e2e": "playwright test",
     "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist",

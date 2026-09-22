@@ -246,35 +246,27 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   # ---------------------------------------------------------------------------
-  # shop: the artifact only, and the job name says where this is going.
+  # The commerce example at `shop.alepha.dev`, deployed THROUGH Lore (#Q2471),
+  # the last of the three after ui and docs.
   #
-  # `apps/examples/shop` declares `shop.alepha.dev` in its `platform()` block
-  # and nothing deploys it. This job builds the bundle that deploy would upload
-  # and stores it in Lore, so the foundation for deploying THROUGH Lore exists
-  # before anything depends on it. When shop really deploys, the deploy step
-  # goes in here beside the push, and the job is already named for it.
+  # Until then it was the `shop-production` Worker that `alepha platform up`
+  # made by hand, and this job only pushed the artifact. The copy now has the
+  # `cf-feunard` estate and its `url` pinned to `https://shop.alepha.dev`,
+  # which is where a Lore deploy takes its Custom Domain from. The Worker is
+  # `alepha-shop-production`, with a D1 and a bucket of its own: the old
+  # catalogue, orders and drawings stayed behind with `shop-production`.
   #
-  # ⚠️ The build is `--runtime=workerd`, and that is the whole point of the job.
-  # `yarn build` in `e2e` produces a `node` bundle; shop runs on Workers, so a
-  # node artifact of it is a build nobody can deploy. The manifest records
-  # `runtime: workerd`, which is where Lore reads it from - there is no
-  # `--runtime` flag anywhere and nothing parses a filename.
+  # ⚠️ No Cloudflare credentials, and no secret but `LORE_API_KEY`, as on the
+  # ui job. `APP_SECRET` is minted by Lore on the first deploy. `SIGIL_KEY` and
+  # the two Stripe keys live in the copy's Lore environment: the copy already
+  # had a sigil, and Lore keeps only its hash, so it cannot fill that one in.
   #
-  # No Cloudflare credentials: this builds and never talks to the API. The
-  # bindings the build emits come from env vars (`DATABASE_URL` and friends),
-  # not from a lookup, so an unset one costs a binding in the generated
-  # `wrangler.jsonc` rather than a failure.
+  # One step, like ui. `lore apps deploy` with no `--tag` builds for the
+  # runtime the copy's estate accepts (workerd, for a Cloudflare estate),
+  # pushes it as `latest` and deploys it. Nothing here needs the docs job's
+  # split, since nothing writes into `dist/public` after the build.
   #
-  # ⚠️ Was gated on `checks` and `test` only, like docs and ui; it now waits
-  # for all of Verify, for the reason given on the ui job above. Nothing gates
-  # on this job in turn - a failed push blocks no deploy, which is the
-  # property that lets it be non-swallowing.
-  #
-  # Tagged `latest` - the CLI's default, so no `--tag`. It replaces in place
-  # and IS the retention policy: one row and one stored object, no sweep job.
-  # `release.yml` is where version tags are pushed. No `--app` or `--project`
-  # either: the name is the slugified `package.json` name of the working
-  # directory, and the project is the workflow-level `LORE_PROJECT` above.
+  # ⚠️ Waits for all of Verify, for the reason given on the ui job above.
   # ---------------------------------------------------------------------------
   deploy-shop-production:
     # See the docs job above for the guard's reasoning.
@@ -289,7 +281,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # `alepha.meta.version` reads the git tag on the built commit, and
-          # the default checkout passes --no-tags, so without this the artifact
+          # the default checkout passes --no-tags, so without this the deploy
           # would report "latest" as its version.
           # ⚠️ The commit Verify actually passed on. WITHOUT this line a
           # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
@@ -304,13 +296,11 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      - name: Build
+      # Run inside the app, because `lore apps deploy` reads the name from the
+      # working directory's `package.json`.
+      - name: Deploy
         working-directory: apps/examples/shop
-        run: yarn alepha build --runtime=workerd
-
-      - name: Push shop artifact to Lore
-        working-directory: apps/examples/shop
-        run: yarn lore artifacts push
+        run: yarn lore apps deploy --env production
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
