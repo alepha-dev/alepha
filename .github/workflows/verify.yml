@@ -180,8 +180,11 @@ jobs:
   # Raising it again is therefore the wrong lever twice over: it buys no wall
   # clock, and it costs 89s of setup per added shard plus one more draw from
   # a flake distribution this repository knows is environmental. The lever
-  # that IS left is the 149s `yarn build` in the three e2e jobs, none of
-  # which needs every workspace built.
+  # that was left, the full `yarn build` in the three e2e jobs, was pulled on
+  # 2026-09-22 (see the e2e header below): on run 35762516839 `e2e-apps` fell
+  # to 4.5min and these shards became the critical path again, with
+  # `e2e-cli`, so this ceiling argument needs re-measuring before it is
+  # quoted again.
   #
   # ⚠️ Vitest shards by sha1 of the spec's path, sorted, sliced into equal
   # COUNTS - not by duration, and not per project. With 868 spec files that
@@ -244,8 +247,20 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      # `yarn copy` minus its `yarn lint`, which is `checks`' job. The lint half
+      # is oxlint (19s) then oxfmt (6s), measured on run 35669284608, and every
+      # runner but `checks` repeated it for nothing.
+      #
+      # oxfmt stays: the generators write unformatted pages (`docs/framework`,
+      # every package README) and the committed copies are the formatted ones,
+      # so without it the suite would run on a tree `yarn v` never sees.
+      #
+      # ⚠️ **`--exclude alepha-monorepo` is load-bearing**, for the reason the
+      # `e2e-apps` step spells out: the root has a `copy` script of its own,
+      # and it is `foreach run copy && yarn lint`, so `-A` without the exclude
+      # runs every generator twice, concurrently, and the lint after all.
       - name: Prepare
-        run: yarn copy
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # No `--coverage`. That flag is what `coverage.yml` runs nightly, and it
       # carries five of the nine numbers Lore stores, not four: it also turns
@@ -280,10 +295,20 @@ jobs:
   # `apps/lore` is already safe for: `fullyParallel` with one Lore instance
   # per worker and no shared `webServer`).
   #
-  # All three pay `yarn build` (149s) rather than sharing one through an
-  # artifact, and that is arithmetic, not laziness: a serialised build job
-  # costs its own ~82s of setup before anything can start, which is more than
-  # the download saves. Three builds in parallel are cheaper than one in front.
+  # Each builds its own rather than sharing one through an artifact, and that
+  # is arithmetic, not laziness: a serialised build job costs its own ~82s of
+  # setup before anything can start, which is more than the download saves.
+  # Three builds in parallel are cheaper than one in front.
+  #
+  # ⚠️ **And each builds only what it tests.** Until 2026-09-22 all three ran
+  # `yarn build`, every workspace, 164s of a 6.5min `e2e-apps` on run
+  # 35669284608. An app does not need a single package built: every
+  # framework package's `exports` points at `src/`, the `alepha` bin is
+  # `src/bin/index.ts`, and `alepha build` compiles the framework from source
+  # into the app's own `dist/`. The `docker` job had already been proving it,
+  # building Lore with no `yarn build` in front. `e2e-cli` is the exception
+  # and keeps `yarn build`: it runs `yarn pack`, and the tarball carries each
+  # package's `dist/`.
   #
   # The suites are bounded on the STEP, not just the job. Playwright's
   # `globalTimeout` covers the tests but not teardown, and teardown is where
@@ -313,11 +338,15 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      # See `test` above: the generators and oxfmt, not `yarn lint`.
       - name: Prepare
-        run: yarn copy
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
+      # The four apps the step below runs, and nothing else: Lore alone was
+      # 59s of the old `yarn build` here, the last thing it finished, for a
+      # suite this job excludes. Their suites read their own `dist/` only.
       - name: Build Project
-        run: yarn build
+        run: yarn workspaces foreach -Apt --include '{docs,ui,shop,ssr}' run build
 
       - name: Setup Playwright
         uses: ./.github/actions/playwright
@@ -365,11 +394,14 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      # See `test` above: the generators and oxfmt, not `yarn lint`.
       - name: Prepare
-        run: yarn copy
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
+      # Lore alone, as the `docker` job has always built it: the suite starts
+      # each worker's Lore from `apps/lore/dist` and reads no other workspace's.
       - name: Build Project
-        run: yarn build
+        run: yarn w lore build
 
       - name: Setup Playwright
         uses: ./.github/actions/playwright
@@ -385,7 +417,9 @@ jobs:
       # 14.8min unsharded: only 2x, because ~218s of each shard is checkout,
       # setup, `yarn copy`, `yarn build` and the browser install before one
       # test runs. Six takes it to ~6.3min and eight would take it to ~5.5,
-      # which is under `e2e-apps` and therefore worth nothing.
+      # which is under `e2e-apps` and therefore worth nothing. (Measured
+      # before the build step shrank to Lore alone: the floor is lower now,
+      # so re-measure before arguing the shard count from these numbers.)
       #
       # ⚠️ Playwright shards by test COUNT, and lore's tests vary a lot in
       # duration - hence the 5.7 to 7.4 spread above from an even split of
@@ -419,8 +453,9 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      # See `test` above: the generators and oxfmt, not `yarn lint`.
       - name: Prepare
-        run: yarn copy
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # The tarball carries `dist/`, so the build has to have happened: see
       # the header of `apps/e2e-cli/src/lore.e2e.spec.ts`, which fails with a
