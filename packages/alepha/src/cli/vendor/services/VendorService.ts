@@ -377,6 +377,18 @@ export class VendorService {
    * ⚠️ **Order matters.** `packages/alepha`'s build GENERATES its own
    * `exports` map, pointing at `src`, so the transform has to come after the
    * build or the build undoes it.
+   *
+   * ## Why no package tsconfig extends the monorepo root
+   *
+   * In the consumer, `.vendor/alepha/../../tsconfig.json` is the CONSUMER's
+   * root config: no `allowImportingTsExtensions`, and possibly
+   * `exactOptionalPropertyTypes` or `noUncheckedIndexedAccess`. So every
+   * package tsconfig extends `alepha/tsconfig.base` (or, in `alepha` itself,
+   * `./tsconfig.base.json`), which travels with the package (#Q2490).
+   *
+   * A package that fails to build is returned in `errors`, and
+   * `alepha vendor sync` exits non-zero on it: its manifest still points at
+   * `src`, which is the state this build exists to prevent.
    */
   async build(options: VendorBuildOptions): Promise<VendorBuildResult> {
     const built: string[] = [];

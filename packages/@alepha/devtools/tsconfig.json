@@ -1,4 +1,7 @@
 {
-  "extends": "../../../tsconfig.json",
+  "extends": "alepha/tsconfig.base",
+  "compilerOptions": {
+    "types": ["node", "bun"]
+  },
   "include": ["src"]
 }
