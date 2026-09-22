@@ -11,6 +11,7 @@ import {
   NotFoundError,
 } from "alepha/server";
 
+import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
@@ -25,6 +26,7 @@ import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import { ResourceNameService } from "../services/ResourceNameService.ts";
 
 export type { EstateCommandListItem, EstateCommandResource };
 
@@ -61,6 +63,8 @@ export class EstateCommandController {
   protected readonly files = $inject(FileService);
   protected readonly users = $repository(users);
   protected readonly limits = $inject(ProjectLimits);
+  protected readonly instances = $repository(appInstances);
+  protected readonly names = $inject(ResourceNameService);
 
   /**
    * The queue and its history, newest first.
@@ -249,6 +253,33 @@ export class EstateCommandController {
         );
       }
 
+      // ⚠️ The copy this deploy is FOR, resolved from the artifact's project,
+      // app and the environment named. Its stored name is what keeps a
+      // project rename from moving the Bay instance: the slug is read once,
+      // on the copy's first deploy, and never again (#Q2475).
+      // Asked first: the name below is stored, and a deploy this estate
+      // refuses must not leave one behind.
+      this.commands.assertAccepts(estate, "deploy");
+      const instance = await this.instances.findOne({
+        where: {
+          projectId: { eq: artifact.projectId },
+          app: { eq: artifact.app },
+          env: { eq: body.environment },
+        },
+      });
+      if (!instance) {
+        throw new BadRequestError(
+          `${project?.title ?? "This project"} has no copy named ${artifact.app}/${body.environment}. Create it on the project's Apps page and choose "${estate.slug}" as its estate, then deploy.`,
+        );
+      }
+      if (instance.estateId !== estate.id) {
+        throw new BadRequestError(
+          `${artifact.app}/${body.environment} deploys to another estate. Choose "${estate.slug}" on its Settings tab to deploy it here.`,
+        );
+      }
+      const name = await this.names.resolve(instance, estate);
+      const segment = this.names.projectSegmentOf(instance, name);
+
       return this.commands.enqueue(
         estate,
         {
@@ -256,11 +287,12 @@ export class EstateCommandController {
           payload: {
             app: artifact.app,
             environment: body.environment,
-            // ⚠️ Resolved from the ARTIFACT's project, which is the one the
-            // lending was just checked against - not from anything the caller
-            // sent. A client that could name its own project segment could
-            // land a copy on another project's directory.
-            ...(project?.slug ? { project: project.slug } : {}),
+            // ⚠️ From the copy's STORED name, never from the project's current
+            // slug, and never from anything the caller sent: a client that
+            // could name its own project segment could land a copy on another
+            // project's directory, and a recomputed one moves the copy after a
+            // project rename.
+            ...(segment ? { project: segment } : {}),
             artifact: {
               id: artifact.id,
               sha256: artifact.sha256,

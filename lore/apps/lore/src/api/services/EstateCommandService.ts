@@ -92,6 +92,32 @@ export class EstateCommandService {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
+   * Refuse a command this estate cannot take, before anything is written.
+   *
+   * Public so a caller with work to do BEFORE queueing can ask first: a Bay
+   * deploy stores the copy's name ahead of the command, and a deploy the
+   * estate refuses must not leave a name behind.
+   */
+  public assertAccepts(estate: Estate, kind: EstateCommandKind): void {
+    if (estate.type !== "bay") {
+      // The queue exists because a bay machine dials in and asks for work.
+      // A cloudflare estate has no connector to come for it, so without this
+      // the command would sit `pending` until the sweep failed it a day
+      // later as "the machine never came for it", which is a true sentence
+      // about the wrong thing. Epic #1 deploys to a cloudflare estate over
+      // HTTP, not through this queue.
+      throw new ForbiddenError(
+        `Estate "${estate.slug}" is a Cloudflare account, which is deployed to directly rather than through the command queue`,
+      );
+    }
+    if (kind === "deploy" && !estate.deployAllowed) {
+      throw new ForbiddenError(
+        `Estate "${estate.slug}" does not accept deploys; its owner has to allow them first`,
+      );
+    }
+  }
+
+  /**
    * Queue a command for an estate and push it if the machine is connected.
    *
    * `deploy` is refused here, server-side, while the estate's `deployAllowed`
@@ -105,22 +131,7 @@ export class EstateCommandService {
     input: { kind: EstateCommandKind; payload: EstateCommandPayload },
     requestedBy?: string,
   ): Promise<EstateCommand> {
-    if (estate.type !== "bay") {
-      // The queue exists because a bay machine dials in and asks for work.
-      // A cloudflare estate has no connector to come for it, so without this
-      // the command would sit `pending` until the sweep failed it a day
-      // later as "the machine never came for it", which is a true sentence
-      // about the wrong thing. Epic #1 deploys to a cloudflare estate over
-      // HTTP, not through this queue.
-      throw new ForbiddenError(
-        `Estate "${estate.slug}" is a Cloudflare account, which is deployed to directly rather than through the command queue`,
-      );
-    }
-    if (input.kind === "deploy" && !estate.deployAllowed) {
-      throw new ForbiddenError(
-        `Estate "${estate.slug}" does not accept deploys; its owner has to allow them first`,
-      );
-    }
+    this.assertAccepts(estate, input.kind);
     const created = await this.commands.create({
       estateId: estate.id,
       kind: input.kind,

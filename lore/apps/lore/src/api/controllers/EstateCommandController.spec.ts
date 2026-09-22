@@ -11,9 +11,11 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
+import { projects } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { EstateCommandController } from "./EstateCommandController.ts";
 import { EstateController } from "./EstateController.ts";
@@ -22,6 +24,8 @@ class Repos {
   estates = $repository(estates);
   artifacts = $repository(artifacts);
   grants = $repository(estateProjects);
+  instances = $repository(appInstances);
+  projects = $repository(projects);
 }
 
 interface TestContext {
@@ -84,21 +88,51 @@ const storeArtifact = (ctx: TestContext, projectId: number) =>
   });
 
 /**
- * An owner with a project, an estate lent to it, and an artifact in it: the
- * whole of what a deploy names.
+ * An owner with a project, an estate lent to it, an artifact in it, and the
+ * `demo/production` copy pointed at that estate: the whole of what a deploy
+ * names.
  */
-const lentSetup = async (ctx: TestContext, deployAllowed: boolean) => {
-  const owner = await createUser(ctx);
+const lentSetup = async (
+  ctx: TestContext,
+  deployAllowed: boolean,
+  estate?: Estate,
+) => {
+  const owner = estate
+    ? { id: estate.ownerUserId, roles: ["user"] }
+    : await createUser(ctx);
   const project = await createTestProject(ctx.alepha, { createdBy: owner.id });
-  const estate = await createEstate(ctx, owner, "ovh-1", deployAllowed);
+  const target =
+    estate ?? (await createEstate(ctx, owner, "ovh-1", deployAllowed));
   await ctx.repos.grants.create({
-    estateId: estate.id,
+    estateId: target.id,
     projectId: project.id,
     createdBy: owner.id,
   });
   const artifact = await storeArtifact(ctx, project.id);
-  return { owner, project, estate, artifact };
+  const instance = await ctx.repos.instances.create({
+    projectId: project.id,
+    app: "demo",
+    env: "production",
+    estateId: target.id,
+  });
+  return { owner, project, estate: target, artifact, instance };
 };
+
+const deployOf = (
+  ctx: TestContext,
+  setup: Awaited<ReturnType<typeof lentSetup>>,
+) =>
+  ctx.commands.enqueueEstateCommand(
+    {
+      params: { estateId: setup.estate.id },
+      body: {
+        kind: "deploy",
+        artifactId: setup.artifact.id,
+        environment: "production",
+      },
+    },
+    { user: setup.owner },
+  );
 
 describe("EstateCommandController, enqueuing by hand", () => {
   let ctx: TestContext;
@@ -135,7 +169,7 @@ describe("EstateCommandController, enqueuing by hand", () => {
   it("queues a deploy naming the artifact by digest, the app from the artifact row", async ({
     expect,
   }) => {
-    const { owner, estate, artifact } = await lentSetup(ctx, true);
+    const { owner, project, estate, artifact } = await lentSetup(ctx, true);
 
     const queued = await ctx.commands.enqueueEstateCommand(
       {
@@ -154,6 +188,7 @@ describe("EstateCommandController, enqueuing by hand", () => {
       payload: {
         app: "demo",
         environment: "production",
+        project: project.slug,
         artifact: { id: artifact.id, sha256: "a".repeat(64), size: 42 },
       },
     });
@@ -179,6 +214,17 @@ describe("EstateCommandController, enqueuing by hand", () => {
     expect(
       await ctx.repos.estates.getOne({ where: { id: { eq: estate.id } } }),
     ).toBeDefined();
+  });
+
+  it("stores no name for a deploy the estate refuses", async ({ expect }) => {
+    // The name is stored before the command is queued, so the estate's own
+    // gates have to be asked first: a refused deploy must not fix a name.
+    const setup = await lentSetup(ctx, false);
+
+    await expect(deployOf(ctx, setup)).rejects.toThrow(ForbiddenError);
+
+    const after = await ctx.repos.instances.findById(setup.instance.id);
+    expect(after?.resourceName).toBeUndefined();
   });
 
   it("refuses a deploy when the estate is not lent to the artifact's project", async ({
@@ -255,6 +301,129 @@ describe("EstateCommandController, enqueuing by hand", () => {
         { user: owner },
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+/**
+ * The name a Bay copy is deployed under.
+ *
+ * ⚠️ Bay composes its instance key, its directory under `apps/` and its
+ * default subdomain from `<project>-<app>` and the environment. Sending the
+ * project's CURRENT slug meant a rename started a new, empty instance beside
+ * the live one. The segment now comes from the copy's stored name (#Q2475).
+ */
+describe("EstateCommandController, the name a Bay deploy sends", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("stores <project>-<app>-<env> on the copy's first deploy", async ({
+    expect,
+  }) => {
+    const setup = await lentSetup(ctx, true);
+
+    await deployOf(ctx, setup);
+
+    const after = await ctx.repos.instances.findById(setup.instance.id);
+    expect(after?.resourceName).toBe(`${setup.project.slug}-demo-production`);
+  });
+
+  it("sends the stored project segment after the project is renamed", async ({
+    expect,
+  }) => {
+    const setup = await lentSetup(ctx, true);
+    await deployOf(ctx, setup);
+    const original = setup.project.slug;
+
+    await ctx.repos.projects.updateById(setup.project.id, {
+      slug: "renamed-project",
+    });
+    const queued = await deployOf(ctx, setup);
+
+    expect(queued.payload).toMatchObject({ project: original });
+  });
+
+  it("refuses a deploy for a copy the project does not have", async ({
+    expect,
+  }) => {
+    const setup = await lentSetup(ctx, true);
+    await ctx.repos.instances.deleteById(setup.instance.id);
+
+    await expect(deployOf(ctx, setup)).rejects.toThrow(
+      /has no copy named demo\/production/,
+    );
+  });
+
+  it("refuses a deploy for a copy pointed at another estate", async ({
+    expect,
+  }) => {
+    const setup = await lentSetup(ctx, true);
+    const other = await createEstate(ctx, setup.owner, "ovh-2", true);
+    await ctx.repos.instances.updateById(setup.instance.id, {
+      estateId: other.id,
+    });
+
+    await expect(deployOf(ctx, setup)).rejects.toThrow(
+      /deploys to another estate/,
+    );
+  });
+
+  it("refuses a copy whose env was renamed since its first deploy", async ({
+    expect,
+  }) => {
+    // The command carries the env as it is NOW, and Bay would compose a new
+    // key from it: a new, empty instance beside the one the name belongs to.
+    const setup = await lentSetup(ctx, true);
+    await ctx.repos.instances.updateById(setup.instance.id, {
+      resourceName: `${setup.project.slug}-demo-staging`,
+    });
+
+    await expect(deployOf(ctx, setup)).rejects.toThrow(
+      /was first deployed to this machine as/,
+    );
+  });
+
+  it("refuses a name another copy on the same machine already holds", async ({
+    expect,
+  }) => {
+    // A rename frees a slug. A project that takes it derives the very same
+    // name, and its deploy would replace the first project's instance.
+    const first = await lentSetup(ctx, true);
+    await deployOf(ctx, first);
+    const second = await lentSetup(ctx, true, first.estate);
+    await ctx.repos.projects.updateById(first.project.id, {
+      slug: "moved-on",
+    });
+    await ctx.repos.projects.updateById(second.project.id, {
+      slug: first.project.slug,
+    });
+
+    await expect(deployOf(ctx, second)).rejects.toThrow(
+      /Another copy on this Bay machine is already named/,
+    );
+    const after = await ctx.repos.instances.findById(second.instance.id);
+    expect(after?.resourceName).toBeUndefined();
+  });
+
+  it("sends no project for a copy first deployed without one", async ({
+    expect,
+  }) => {
+    // A project with no slug always sent no segment, so Bay composed
+    // `<app>`: its live instance must not move now.
+    const setup = await lentSetup(ctx, true);
+    await ctx.repos.instances.updateById(setup.instance.id, {
+      resourceName: "demo-production",
+    });
+
+    const queued = await deployOf(ctx, setup);
+
+    expect(queued.payload).not.toHaveProperty("project");
   });
 });
 

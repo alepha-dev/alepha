@@ -1561,11 +1561,10 @@ describe("the deploy limits", () => {
         },
         assertRuntime: () => {},
       },
-      instances: {
-        findById: async () => ({ id: "i", app: "a", env: "e" }),
-        // The first deploy stores the copy's name before the run.
-        updateById: async () => ({}),
-      },
+      instances: { findById: async () => ({ id: "i", app: "a", env: "e" }) },
+      // The invented copy has no row to store a name on, and naming is not
+      // what this test is about.
+      names: { resolve: async () => "p-a-e" },
       artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
       seal: { open: () => "token" },
       // Stubbed like every other collaborator here: this test is about the
