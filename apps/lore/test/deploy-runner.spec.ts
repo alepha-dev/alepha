@@ -185,10 +185,11 @@ describe("deploying an artifact from inside the Worker", () => {
       fileId: "file-1",
     },
     env: "b14-preview",
-    // ⚠️ The project is the FIRST segment of every resource name, which is what
-    // keeps two Lore projects that both call an app `my-app` off each other's
-    // database. `DeployService.prefixOf` composes it; here it is given.
-    project: "acme",
+    // ⚠️ The copy's stored name, `<project>-<app>-<env>`. The project segment
+    // is what keeps two Lore projects that both call an app `my-app` off each
+    // other's database. `DeployService.resourceNameOf` decides it once; here it
+    // is given.
+    name: "acme-my-app-b14-preview",
     credential: { apiToken: "estate-token", accountId: "estate-account" },
     ...over,
   });
@@ -245,9 +246,53 @@ describe("deploying an artifact from inside the Worker", () => {
     // no rebuild. The manifest here declares no environments at all.
     const { runner, calls } = await withFakeCloudflare(await packed());
 
-    await runner.run(request({ env: "pr-482" }) as never);
+    await runner.run(
+      request({ env: "pr-482", name: "acme-my-app-pr-482" }) as never,
+    );
 
     expect(calls).toContain("deploy:acme-my-app-pr-482");
+  });
+
+  describe("the name it provisions under", () => {
+    /**
+     * ⚠️ Cloudflare has no rename. A copy keeps the name its first deploy
+     * gave it, so the runner must use it as is: recomposing it from the
+     * current project, app or env would create an empty database beside the
+     * live one and report success.
+     */
+    it("is the stored one, even when the project it names was renamed", async ({
+      expect,
+    }) => {
+      const { runner, calls } = await withFakeCloudflare(
+        await packed({ hasBucket: true }),
+      );
+
+      await runner.run(
+        request({ name: "old-slug-my-app-b14-preview" }) as never,
+      );
+
+      expect(calls).toEqual([
+        "provision:d1:old-slug-my-app-b14-preview",
+        "provision:r2:old-slug-my-app-b14-preview",
+        "migrate:CREATE TABLE t (id i",
+        "deploy:old-slug-my-app-b14-preview",
+      ]);
+    });
+
+    it("is the stored one when the copy's env was renamed since", async ({
+      expect,
+    }) => {
+      // `app_instance_update` renames `env`. The copy's resources do not move
+      // with it, so the stored name no longer ends in the env the row says.
+      const { runner, calls } = await withFakeCloudflare(await packed());
+
+      await runner.run(
+        request({ env: "staging", name: "acme-my-app-b14-preview" }) as never,
+      );
+
+      expect(calls).toContain("provision:d1:acme-my-app-b14-preview");
+      expect(calls).toContain("deploy:acme-my-app-b14-preview");
+    });
   });
 
   /**

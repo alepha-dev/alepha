@@ -1,10 +1,11 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { FileService } from "alepha/api/files";
 import {
   AlephaPlatformLibPlugin,
   type CloudflareAssetEntry,
   CloudflareAssetManifest,
   type CloudflareDeployAssets,
+  NamingService,
   PlatformAdapterRegistry,
   PlatformOrchestrator,
   platformOptions,
@@ -19,6 +20,7 @@ import { ArtifactService } from "./ArtifactService.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
+import { StoredNamingService } from "./StoredNamingService.ts";
 
 /**
  * What one deploy is about: which bytes, where they go, and under whose
@@ -33,23 +35,20 @@ export interface DeployRequest {
   artifact: Artifact;
 
   /**
-   * The Lore project's slug, which is the first segment of every resource name
-   * this deploy provisions.
+   * The name every resource this deploy provisions carries,
+   * `<project>-<app>-<env>`, as stored on the copy (`appInstances.resourceName`).
    *
-   * ⚠️ **This is what keeps two projects off each other's infrastructure.**
-   * `NamingService` composes `<name>-<env>`, and with `name` as the app alone
-   * two Lore projects that each call an app `api` and deploy `production` onto
-   * the same estate compute one `api-production` - one Worker, one database,
-   * one bucket, silently shared and each deploy overwriting the other.
+   * ⚠️ **Read, never recomputed here.** It was decided on the copy's first
+   * deploy, from the project's slug at that moment, and a project rename since
+   * then must not move it: Cloudflare has no rename, so a new prefix is an
+   * empty database beside the live one.
    *
-   * ⚠️ `alepha platform` does NOT do this and must not: it has no project, it
-   * runs against the operator's own account, and changing its scheme would
-   * point every existing deploy at a database that does not exist yet.
-   * Cloudflare has no rename, so a prefix change is a data migration - which
-   * is exactly why this landed while the only copies deployed through Lore
-   * were throwaway ones.
+   * ⚠️ `alepha platform` names `<name>-<env>` from its config and must keep
+   * doing so: it has no project, it runs against the operator's own account,
+   * and changing its scheme would point every existing deploy at a database
+   * that does not exist yet.
    */
-  project: string;
+  name: string;
 
   /**
    * The environment, from the `app_instances` row. ⚠️ Not from the artifact:
@@ -193,13 +192,16 @@ export class DeployRunner {
         `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB), ${unpacked.skipped} assets streamed`,
       );
 
+      // ⚠️ The stored name, handed to the naming the container substituted.
+      // `platformOptions.name` is only a label past this point: nothing that
+      // names a resource reads it once `NamingService` is replaced.
+      this.naming(alepha).use(request.name);
+
       // ⚠️ Before the orchestrator resolves anything. The environment is a
       // Lore row, and this atom is how it reaches an engine that otherwise
       // reads a config file the artifact does not carry.
       alepha.set(platformOptions, {
-        // `<project>-<app>`, so `NamingService` composes
-        // `<project>-<app>-<env>`. See `DeployRequest.project`.
-        name: `${request.project}-${request.artifact.app}`,
+        name: request.name,
         environments: {
           [request.env]: {
             adapter: "cloudflare",
@@ -252,12 +254,35 @@ export class DeployRunner {
   }
 
   /**
+   * The container's naming, which must be the stored one.
+   *
+   * ⚠️ Checked rather than cast. If the substitution in {@link container} ever
+   * stopped taking, the original would compose `<project>-<env>` from the
+   * platform name and the deploy would provision a fresh, empty set of
+   * resources beside the copy's own, reporting success.
+   */
+  protected naming(alepha: Alepha): StoredNamingService {
+    const naming = alepha.inject(NamingService);
+    if (!(naming instanceof StoredNamingService)) {
+      throw new AlephaError(
+        "The deploy container is not using the copy's stored name, so it will not provision anything.",
+      );
+    }
+    return naming;
+  }
+
+  /**
    * A container of its own for this deploy.
    */
   protected container(): Alepha {
-    return Alepha.create({ env: { LOG_LEVEL: "error" } })
-      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with(AlephaPlatformLibPlugin);
+    return (
+      Alepha.create({ env: { LOG_LEVEL: "error" } })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        // ⚠️ Before the plugin, which registers `NamingService` itself: a
+        // substitution recorded after it would lose to the original.
+        .with({ provide: NamingService, use: StoredNamingService })
+        .with(AlephaPlatformLibPlugin)
+    );
   }
 
   /**

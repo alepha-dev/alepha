@@ -118,6 +118,29 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
           </>
         )}
 
+        {/* The name the estate knows this copy by, once a deploy has fixed
+            it. Worth a row because it can differ from what the page shows: a
+            renamed project keeps its copies' names, so `project1-…` under
+            `project2` is expected, not stale. */}
+        {instance.resourceName && (
+          <>
+            <span className="text-muted-foreground">
+              {tr("app.dashboard.resourceName")}
+            </span>
+            <span className="flex flex-col gap-0.5">
+              <code
+                className="font-mono text-xs"
+                data-testid="app-resource-name"
+              >
+                {instance.resourceName}
+              </code>
+              <span className="text-muted-foreground text-xs">
+                {tr("app.dashboard.resourceName.hint")}
+              </span>
+            </span>
+          </>
+        )}
+
         <span className="text-muted-foreground">
           {tr("app.dashboard.lastReport")}
         </span>

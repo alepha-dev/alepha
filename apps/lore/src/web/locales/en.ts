@@ -1335,6 +1335,9 @@ export default {
   "app.dashboard.identity": "Identity",
   "app.dashboard.created": "Created",
   "app.dashboard.deploysTo": "Deploys to",
+  "app.dashboard.resourceName": "Resources",
+  "app.dashboard.resourceName.hint":
+    "The name its Worker, database and bucket carry. Set on the first deploy, it stays the same when the project is renamed.",
   "app.switcher.label": "Switch environment",
   "app.nextSteps.title": "Next steps",
   "app.nextSteps.description":

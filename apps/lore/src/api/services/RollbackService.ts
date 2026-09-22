@@ -117,6 +117,21 @@ export class RollbackService {
       };
     }
 
+    // ⚠️ The stored name, never one rebuilt from the app and env: the Worker is
+    // `<project>-<app>-<env>` as it was when the copy first deployed, and a
+    // rebuilt name misses it (it read `<app>-<env>` until #Q2473, so the fast
+    // path was never offered). A copy with no stored name has no Worker Lore
+    // can point at.
+    if (!instance.resourceName) {
+      return {
+        path: "artifact",
+        deployment: target,
+        migrationsSince,
+        reason:
+          "Lore has no record of this copy's Worker name, so a rollback redeploys the stored artifact.",
+      };
+    }
+
     // ⚠️ Asked of Cloudflare rather than assumed from the row. A version can be
     // gone - the Worker was deleted and recreated, or the account pruned it -
     // and offering a fast rollback onto a version that is not there fails after
@@ -128,9 +143,8 @@ export class RollbackService {
       ),
       accountId: estate.accountId as string,
     });
-    const worker = `${target.app}-${instance.env}`;
     const versions = await client
-      .listVersions(worker)
+      .listVersions(instance.resourceName)
       .catch(() => [] as Array<{ id: string }>);
 
     if (!versions.some((it) => it.id === target.versionId)) {
@@ -203,7 +217,7 @@ export class RollbackService {
         `Rolling back to version ${plan.deployment.versionId}`,
       );
       await client.rollbackTo(
-        `${plan.deployment.app}-${(instance as { env: string }).env}`,
+        instance?.resourceName as string,
         plan.deployment.versionId as string,
         `Rolled back by Lore to ${plan.deployment.tag}`,
       );

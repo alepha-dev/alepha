@@ -181,6 +181,29 @@ export const appInstances = $entity({
      */
     resources: z.string().max(4_096).optional(),
     /**
+     * The name this copy's resources carry in its estate, e.g.
+     * `club-shop-production`: the Worker, the D1 database, the bucket, the
+     * cache namespace and the queue all share it.
+     *
+     * ## ⚠️ Decided once, before the first deploy, and never recomputed
+     *
+     * It is `<project>-<app>-<env>` from the project's slug at that moment. A
+     * project rename moves the slug, and Cloudflare has no rename, so a name
+     * recomputed on every deploy would create an empty database beside the one
+     * the copy is using. Stored, a rename moves nothing: the copy keeps
+     * `project1-…` and only copies first deployed afterwards take the new slug.
+     *
+     * ⚠️ **Kept by a destroy**, unlike {@link resources}, which strikes the
+     * Worker. A destroy keeps the database and the bucket, and `ensureD1` /
+     * `ensureR2` resolve by name, so a copy deployed again reattaches its data
+     * only if it comes back under this name.
+     *
+     * Not an opaque id: it is what an operator reads in the Cloudflare
+     * dashboard, in the logs and in the `workers.dev` URL, and `APP_NAME`
+     * defaults to it.
+     */
+    resourceName: z.string().max(100).optional(),
+    /**
      * Whether this copy's data may be deleted with it.
      *
      * ## ⚠️ Decided at CREATE and never afterwards
