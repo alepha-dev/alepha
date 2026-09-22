@@ -1166,8 +1166,13 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     const queue = alepha.inject(QueueProvider) as NoDelayQueueProvider;
     await alepha.start();
 
+    // Two seconds, not a few hundred milliseconds (#Q2414). The delay handed
+    // to the queue is what is left of it once the row is inserted, and an
+    // insert on a loaded CI runner took the whole of a 150 ms window: the
+    // queue saw 0, had nothing to decline, and the run was dispatched now.
+    // Right for a past-due row, and the reason no insert may eat the delay.
     const started = Date.now();
-    const id = await app.work.push({ v: 1 }, { delay: [150, "millisecond"] });
+    const id = await app.work.push({ v: 1 }, { delay: [2, "seconds"] });
     expect(queue.declined).toBe(1);
     expect(calls).toBe(0);
 
@@ -1177,9 +1182,9 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     await waitFor(
       () => calls,
       (n) => n === 1,
-      { label: "local timer delivered the declined delay" },
+      { timeout: 5000, label: "local timer delivered the declined delay" },
     );
-    expect(Date.now() - started).toBeGreaterThanOrEqual(140);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(1990);
 
     // `calls` ticks inside the handler, but the row only goes once the
     // handler has resolved, in a DELETE of its own. A read landing in between
