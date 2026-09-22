@@ -432,6 +432,18 @@ export class ResourceService {
   }
 
   /**
+   * Every claim one order line took, whatever became of it: what a kind
+   * handler reads to stay idempotent on `item.id`.
+   */
+  public async claimsOfItem(
+    orderItemId: string,
+  ): Promise<ResourceReservationEntity[]> {
+    return this.claims.findMany({
+      where: { orderItemId: { eq: orderItemId } },
+    });
+  }
+
+  /**
    * Every live claim on a resource over a window, and what each one is: the
    * order that bought it, or the label of the closure that took it.
    *

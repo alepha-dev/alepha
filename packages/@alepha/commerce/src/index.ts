@@ -26,6 +26,7 @@ export * from "./errors/CommerceError.ts";
 export * from "./interfaces/ProductKindHandler.ts";
 export * from "./kinds/DigitalKindHandler.ts";
 export * from "./kinds/GoodKindHandler.ts";
+export * from "./kinds/ResourceKindHandler.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
 export * from "./services/ClaimLock.ts";
