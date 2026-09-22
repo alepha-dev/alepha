@@ -551,6 +551,75 @@ describe("StripePaymentProvider", () => {
       });
     });
 
+    it("moves a subscription off the inactive product Checkout created, to a new active one", async () => {
+      const provider = make();
+      const calls: Array<{ call: string; id?: string; params: unknown }> = [];
+      (provider as unknown as { stripe: unknown }).stripe = {
+        subscriptions: {
+          retrieve: async (id: string, params: unknown) => {
+            calls.push({ call: "retrieve", id, params });
+            return {
+              id,
+              items: {
+                data: [
+                  {
+                    id: "si_1",
+                    price: {
+                      currency: "eur",
+                      product: {
+                        id: "prod_auto",
+                        name: "Alepha Club",
+                        active: false,
+                      },
+                      tax_behavior: "unspecified",
+                      recurring: { interval: "month", interval_count: 1 },
+                    },
+                  },
+                ],
+              },
+            };
+          },
+          update: async (id: string, params: unknown) => {
+            calls.push({ call: "update", id, params });
+            return { id };
+          },
+        },
+        prices: {
+          create: async (params: unknown) => {
+            calls.push({ call: "prices.create", params });
+            return { id: "price_new" };
+          },
+        },
+      };
+
+      await provider.updateSubscriptionPrice("sub_1", 0);
+
+      expect(calls).toEqual([
+        {
+          call: "retrieve",
+          id: "sub_1",
+          params: { expand: ["items.data.price.product"] },
+        },
+        {
+          call: "prices.create",
+          params: {
+            currency: "eur",
+            unit_amount: 0,
+            recurring: { interval: "month", interval_count: 1 },
+            product_data: { name: "Alepha Club" },
+          },
+        },
+        {
+          call: "update",
+          id: "sub_1",
+          params: {
+            items: [{ id: "si_1", price: "price_new" }],
+            proration_behavior: "none",
+          },
+        },
+      ]);
+    });
+
     it("refuses to change the price of a multi-item subscription", async () => {
       const provider = make();
       (provider as unknown as { stripe: unknown }).stripe = {
