@@ -6,7 +6,9 @@ import { $cookie } from "alepha/server/cookies";
 import { CartService } from "../services/CartService.ts";
 
 const cartLineSchema = z.object({
+  lineId: z.uuid(),
   productId: z.uuid(),
+  lineConfig: z.record(z.text(), z.any()).optional(),
   name: z.text(),
   kind: z.text(),
   unitPrice: z.integer(),
@@ -62,45 +64,55 @@ export class CartController {
       body: z.object({
         productId: z.uuid(),
         quantity: z.integer().min(1).max(999).optional(),
+        /**
+         * What the line chooses beyond the product, for a kind that takes
+         * it (a court and an interval). Validated by the kind's handler.
+         */
+        lineConfig: z.record(z.text(), z.any()).optional(),
       }),
       response: pricedCartSchema,
     },
     handler: async ({ body }) => {
       const cart = await this.resolveCart();
-      await this.carts.add(cart.id, body.productId, body.quantity ?? 1);
+      await this.carts.add(
+        cart.id,
+        body.productId,
+        body.quantity ?? 1,
+        body.lineConfig,
+      );
       return this.priceOf(cart.id);
     },
   });
 
   public readonly commerceCartSetQuantity = $action({
     method: "PUT",
-    path: `${this.url}/items/:productId`,
+    path: `${this.url}/items/:lineId`,
     group: this.group,
     description: "Set a line's quantity, or remove it at zero",
     schema: {
-      params: z.object({ productId: z.uuid() }),
+      params: z.object({ lineId: z.uuid() }),
       body: z.object({ quantity: z.integer().min(0).max(999) }),
       response: pricedCartSchema,
     },
     handler: async ({ params, body }) => {
       const cart = await this.resolveCart();
-      await this.carts.setQuantity(cart.id, params.productId, body.quantity);
+      await this.carts.setQuantity(cart.id, params.lineId, body.quantity);
       return this.priceOf(cart.id);
     },
   });
 
   public readonly commerceCartRemove = $action({
     method: "DELETE",
-    path: `${this.url}/items/:productId`,
+    path: `${this.url}/items/:lineId`,
     group: this.group,
     description: "Remove a line from the cart",
     schema: {
-      params: z.object({ productId: z.uuid() }),
+      params: z.object({ lineId: z.uuid() }),
       response: pricedCartSchema,
     },
     handler: async ({ params }) => {
       const cart = await this.resolveCart();
-      await this.carts.remove(cart.id, params.productId);
+      await this.carts.remove(cart.id, params.lineId);
       return this.priceOf(cart.id);
     },
   });
@@ -166,7 +178,9 @@ export class CartController {
     return {
       cartId,
       lines: priced.lines.map((l) => ({
+        lineId: l.lineId,
         productId: l.productId,
+        lineConfig: l.lineConfig,
         name: l.name,
         kind: l.kind,
         unitPrice: l.unitPrice,

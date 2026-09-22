@@ -6,7 +6,10 @@ import { DigitalKindHandler } from "./kinds/DigitalKindHandler.ts";
 import { GoodKindHandler } from "./kinds/GoodKindHandler.ts";
 import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
+import { ClaimLock } from "./services/ClaimLock.ts";
+import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
+import { ResourceService } from "./services/ResourceService.ts";
 import { StockService } from "./services/StockService.ts";
 import { VatCalculator } from "./services/VatCalculator.ts";
 
@@ -16,15 +19,20 @@ export * from "./entities/orderItems.ts";
 export * from "./entities/orders.ts";
 export * from "./schemas/orderStatusSchema.ts";
 export * from "./entities/products.ts";
+export * from "./entities/resourceReservations.ts";
 export * from "./entities/stockMovements.ts";
 export * from "./entities/stockReservations.ts";
 export * from "./errors/CommerceError.ts";
 export * from "./interfaces/ProductKindHandler.ts";
 export * from "./kinds/DigitalKindHandler.ts";
 export * from "./kinds/GoodKindHandler.ts";
+export * from "./kinds/ResourceKindHandler.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
+export * from "./services/ClaimLock.ts";
+export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
+export * from "./services/ResourceService.ts";
 export * from "./services/StockService.ts";
 export * from "./services/VatCalculator.ts";
 
@@ -111,7 +119,13 @@ declare module "alepha" {
 }
 
 /**
- * Headless commerce core: catalog, orders, stock ledger.
+ * Headless commerce core: catalog, orders, and two inventory ledgers.
+ *
+ * - **Fungible stock** (`StockService`): a quantity on a product, sold by the
+ *   `good` kind.
+ * - **Interval claims on named resources** (`ResourceService`): a court, a
+ *   seat on a leg, a room on a night, sold by an application's subclass of
+ *   `ResourceKindHandler`.
  *
  * Ships two product kinds — `good` (stock-tracked) and `digital` — and the
  * registry that lets any other module add more without editing this package.
@@ -126,8 +140,11 @@ export const AlephaCommerce = $module({
   services: [
     ProductKindRegistry,
     CatalogService,
+    LineConfigService,
     OrderService,
+    ClaimLock,
     StockService,
+    ResourceService,
     // Core, not invoicing: a receipt needs this arithmetic and never issues an
     // invoice. See the note on the class.
     VatCalculator,

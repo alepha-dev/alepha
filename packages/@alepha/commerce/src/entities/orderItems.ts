@@ -50,6 +50,13 @@ export const orderItems = $entity({
      * The product's `config` at order time — what `fulfil` consumes.
      */
     config: z.json().optional(),
+
+    /**
+     * The buyer's line config, validated by the kind's handler: which court
+     * and when, for a resource kind. Kept apart from {@link config}, which is
+     * the merchant's, so a buyer's line can never override a product's keys.
+     */
+    lineConfig: z.json().optional(),
   }),
   indexes: [{ columns: ["orderId"] }, { columns: ["productId"] }],
 });

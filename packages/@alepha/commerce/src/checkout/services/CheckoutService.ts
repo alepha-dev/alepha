@@ -4,7 +4,10 @@ import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
 
 import { CartService } from "../../cart/services/CartService.ts";
-import { CommerceError } from "../../errors/CommerceError.ts";
+import {
+  CommerceError,
+  ResourceUnavailableError,
+} from "../../errors/CommerceError.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import type { AddressInput } from "../entities/addresses.ts";
 import {
@@ -250,6 +253,7 @@ export class CheckoutService {
       lines: priced.lines.map((l) => ({
         productId: l.productId,
         quantity: l.quantity,
+        lineConfig: l.lineConfig,
       })),
       shippingMethod: session.shippingMethod,
       shippingAddress: session.shippingAddress as
@@ -331,10 +335,47 @@ export class CheckoutService {
    * Idempotent: a re-delivered webhook finds the session already `completed`
    * and returns it untouched. Fulfilment itself is idempotent one level down,
    * in {@link OrderService.markPaid}.
+   *
+   * ### A capture that lands after its slot was lost
+   *
+   * A hold lives 30 minutes, and nothing guarantees the capture lands inside
+   * them: the sweep releases the hold but leaves the order `pending`, so the
+   * capture reaches `markPaid`, and the slot may have been sold to somebody
+   * else meanwhile. Fulfilment then refuses (`ResourceUnavailableError`)
+   * rather than double-book, and throwing that out of here would make the
+   * webhook re-deliver and throw again forever, with the money taken and
+   * nothing recorded. So the failed settlement is rolled back first (no line
+   * of it stays fulfilled), and then, in a transaction of its own, the order
+   * is cancelled and the money recorded as a stray capture, exactly as for a
+   * capture on an order cancelled behind the session. A re-delivery finds the
+   * order cancelled and takes that path directly. Nobody is refunded
+   * automatically; see {@link recordStrayCapture}.
    */
   public async settle(
     sessionId: string,
     options: { paymentIntentId?: string } = {},
+  ): Promise<CheckoutSessionEntity> {
+    try {
+      return await this.settleOnce(sessionId, options);
+    } catch (error) {
+      if (!(error instanceof ResourceUnavailableError)) {
+        throw error;
+      }
+      return this.db.transactional(async () => {
+        const session = await this.repo.getById(sessionId);
+        let order = await this.orders.getById(session.orderId!);
+        if (order.status === "pending") {
+          order = await this.orders.cancel(order.id);
+        }
+        await this.recordStrayCapture(order, options.paymentIntentId);
+        return session;
+      });
+    }
+  }
+
+  protected async settleOnce(
+    sessionId: string,
+    options: { paymentIntentId?: string },
   ): Promise<CheckoutSessionEntity> {
     return this.db.transactional(async () => {
       const session = await this.repo.getById(sessionId);

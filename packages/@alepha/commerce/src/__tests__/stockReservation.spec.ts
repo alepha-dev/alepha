@@ -216,7 +216,7 @@ describe("stock reservation", () => {
     /*
      * Sweep, but do not assert how many *this* call released.
      *
-     * `AlephaCommerceCheckout` registers `StockReservationSweeper`, whose `$job`
+     * `AlephaCommerceCheckout` registers `HoldSweeper`, whose `$job`
      * runs the very same method every fifteen minutes. `CronProvider` schedules
      * with `dateTime.wait()`, so the travel above — 31 minutes, two cron
      * boundaries — fires that job rather than waiting out real time. Whether its

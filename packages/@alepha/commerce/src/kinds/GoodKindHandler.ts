@@ -2,6 +2,7 @@ import { $inject, z } from "alepha";
 
 import type { OrderItemEntity } from "../entities/orderItems.ts";
 import { ProductKindHandler } from "../interfaces/ProductKindHandler.ts";
+import type { ClaimLockKey } from "../services/ClaimLock.ts";
 import { StockService } from "../services/StockService.ts";
 
 /**
@@ -30,6 +31,16 @@ export class GoodKindHandler extends ProductKindHandler {
   public readonly configSchema = goodConfigSchema;
 
   protected readonly stock = $inject(StockService);
+
+  /**
+   * The product's stock lock, unless the product sells without the ledger.
+   */
+  public lockKeys(item: OrderItemEntity): ClaimLockKey[] {
+    if (!this.tracksStock(item)) {
+      return [];
+    }
+    return [{ namespace: StockService.LOCK_NAMESPACE, key: item.productId }];
+  }
 
   /**
    * Hold the units while the payment is in flight, so a second buyer cannot

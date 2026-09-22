@@ -42,7 +42,7 @@ const Panier = () => {
 
       <ul className="mt-10">
         {panier.lines.map((line) => (
-          <li key={line.productId} className="trait border-t first:border-t-0">
+          <li key={line.lineId} className="trait border-t first:border-t-0">
             <div className="grid grid-cols-[4rem_1fr_auto] items-center gap-5 py-5">
               <Dessin image={line.image} nom={line.name} />
 
@@ -71,7 +71,7 @@ const Panier = () => {
                           10,
                         );
                         if (!Number.isInteger(quantity) || quantity < 1) return;
-                        void definirQuantite(line.productId, quantity);
+                        void definirQuantite(line.lineId, quantity);
                       }}
                       className="border-border bg-background w-14 border px-2 py-1 text-center"
                       aria-label={tr("cart.quantityFor", { args: [line.name] })}
@@ -79,7 +79,7 @@ const Panier = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => void retirer(line.productId)}
+                    onClick={() => void retirer(line.lineId)}
                     disabled={enCours}
                     className="hover:text-destructive underline transition-colors disabled:opacity-50"
                   >

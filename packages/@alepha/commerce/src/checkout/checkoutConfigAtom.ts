@@ -12,7 +12,7 @@ export const checkoutConfig = $atom({
     stockSweepCron: z
       .text()
       .describe(
-        "Cron expression for the expired-hold release sweep. Safe to make coarse: `StockService.reserved` already excludes holds by `expiresAt`, so availability is correct whether or not the sweep has run. A late tick delays tidying the `status` column, it never oversells.",
+        "Cron expression for the expired-hold release sweep, stock holds and interval holds alike. Safe to make coarse: `StockService` and `ResourceService` already exclude holds by `expiresAt` from every read, so availability is correct whether or not the sweep has run. A late tick delays tidying the `status` column, it never oversells.",
       ),
   }),
   default: {

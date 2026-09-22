@@ -18,7 +18,7 @@ import {
 import { AddressService } from "./services/AddressService.ts";
 import { CheckoutService } from "./services/CheckoutService.ts";
 import { CheckoutSettlementListener } from "./services/CheckoutSettlementListener.ts";
-import { StockReservationSweeper } from "./services/StockReservationSweeper.ts";
+import { HoldSweeper } from "./services/HoldSweeper.ts";
 import { TaxService } from "./services/TaxService.ts";
 
 export * from "./checkoutConfigAtom.ts";
@@ -34,7 +34,7 @@ export * from "./providers/ShippingQuoteProvider.ts";
 export * from "./services/AddressService.ts";
 export * from "./services/CheckoutService.ts";
 export * from "./services/CheckoutSettlementListener.ts";
-export * from "./services/StockReservationSweeper.ts";
+export * from "./services/HoldSweeper.ts";
 export * from "./services/TaxService.ts";
 
 declare module "alepha" {
@@ -101,7 +101,7 @@ export const AlephaCommerceCheckout = $module({
     AddressService,
     CheckoutService,
     CheckoutSettlementListener,
-    StockReservationSweeper,
+    HoldSweeper,
     CheckoutController,
     TaxService,
   ],

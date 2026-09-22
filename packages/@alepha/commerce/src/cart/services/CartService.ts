@@ -3,8 +3,9 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
-import { products } from "../../entities/products.ts";
+import { type ProductEntity, products } from "../../entities/products.ts";
 import { CommerceError } from "../../errors/CommerceError.ts";
+import { LineConfigService } from "../../services/LineConfigService.ts";
 import { type CartItemEntity, cartItems } from "../entities/cartItems.ts";
 import { type CartEntity, carts } from "../entities/carts.ts";
 
@@ -23,7 +24,17 @@ export interface PricedCart {
 
 export interface PricedCartLine {
   item: CartItemEntity;
+  /**
+   * The line's id: what a storefront names to change or remove it, since two
+   * lines of one product (two slots) cannot be told apart by the product.
+   */
+  lineId: string;
   productId: string;
+  /**
+   * What this line chooses beyond the product (the court and the interval),
+   * as validated when it was added.
+   */
+  lineConfig?: Record<string, any>;
   name: string;
   kind: string;
   unitPrice: number;
@@ -33,7 +44,8 @@ export interface PricedCartLine {
   rateBps?: number;
   quantity: number;
   /**
-   * `unitPrice * quantity`.
+   * `unitPrice * quantity`. The unit price comes from the kind's `unitPrice`
+   * hook when it has one, else from the catalogue, and never from the client.
    */
   lineTotal: number;
   /**
@@ -60,6 +72,7 @@ export class CartService {
   protected readonly itemRepo = $repository(cartItems);
   protected readonly productRepo = $repository(products);
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly lines = $inject(LineConfigService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -122,12 +135,20 @@ export class CartService {
 
   /**
    * Add a quantity of a product, merging with an existing line for the same
-   * product rather than creating a second one.
+   * product and the same line config rather than creating a second one.
+   *
+   * `lineConfig` is untrusted: it is parsed and judged by the kind's handler
+   * (`lineSchema`, `validateLine`) before anything is written, and refused
+   * outright for a kind that takes none. Adding holds nothing, whatever the
+   * kind: the hold is taken at `pay()`.
+   *
+   * @throws InvalidLineError when the handler refuses the line.
    */
   public async add(
     cartId: string,
     productId: string,
     quantity = 1,
+    lineConfig?: unknown,
   ): Promise<CartItemEntity> {
     if (quantity < 1) {
       throw new CommerceError(`Quantity must be at least 1, got ${quantity}.`);
@@ -140,44 +161,72 @@ export class CartService {
       throw new CommerceError(`Product is not purchasable: ${productId}`);
     }
 
+    const config = await this.lines.accept(product, lineConfig, quantity);
+    const lineKey = this.lineKey(config);
+
     const line = await this.itemRepo.findOne({
-      where: { cartId: { eq: cartId }, productId: { eq: productId } },
+      where: {
+        cartId: { eq: cartId },
+        productId: { eq: productId },
+        lineKey: { eq: lineKey },
+      },
     });
 
-    await this.touch(cartId);
-
     if (line) {
+      // Judged again at the quantity the line is about to hold: a court
+      // takes one booking per slot, however many adds it arrives in.
+      await this.lines.accept(product, config, line.quantity + quantity);
+      await this.touch(cartId);
       return this.itemRepo.updateById(line.id, {
         quantity: line.quantity + quantity,
       });
     }
-    return this.itemRepo.create({ cartId, productId, quantity });
+
+    await this.touch(cartId);
+    return this.itemRepo.create({
+      cartId,
+      productId,
+      quantity,
+      lineConfig: config,
+      lineKey,
+    });
   }
 
   /**
    * Set a line's quantity, or remove it when the quantity reaches zero.
+   *
+   * By line id, scoped to the cart: an id from another cart is ignored, so a
+   * visitor cannot edit a stranger's basket by guessing one.
    */
   public async setQuantity(
     cartId: string,
-    productId: string,
+    lineId: string,
     quantity: number,
   ): Promise<void> {
     const line = await this.itemRepo.findOne({
-      where: { cartId: { eq: cartId }, productId: { eq: productId } },
+      where: { cartId: { eq: cartId }, id: { eq: lineId } },
     });
     if (!line) {
       return;
     }
-    await this.touch(cartId);
     if (quantity <= 0) {
+      await this.touch(cartId);
       await this.itemRepo.deleteById(line.id);
       return;
     }
+
+    const product = await this.productRepo.findOne({
+      where: { id: { eq: line.productId } },
+    });
+    if (product) {
+      await this.lines.accept(product, line.lineConfig, quantity);
+    }
+    await this.touch(cartId);
     await this.itemRepo.updateById(line.id, { quantity });
   }
 
-  public async remove(cartId: string, productId: string): Promise<void> {
-    await this.setQuantity(cartId, productId, 0);
+  public async remove(cartId: string, lineId: string): Promise<void> {
+    await this.setQuantity(cartId, lineId, 0);
   }
 
   public async clear(cartId: string): Promise<void> {
@@ -192,14 +241,23 @@ export class CartService {
   /**
    * Price a cart against the catalog as it stands now.
    *
-   * A line whose product has been unpublished or deleted since it was added is
-   * dropped from the result — silently, because the alternative is a storefront
-   * that cannot render a cart at all once a product retires.
+   * A line that can no longer be sold is dropped from the result, silently,
+   * because the alternative is a storefront that cannot render a cart at all:
+   * a product unpublished or deleted since it was added, and a line its kind
+   * now refuses (a slot whose start has passed). That is also what keeps cart
+   * recovery, which mails these lines, from offering last week's slot.
    */
   public async price(cartId: string): Promise<PricedCart> {
     const cart = await this.cartRepo.getById(cartId);
+    // In the order the lines were added: with several lines of one product
+    // (two slots), a cart whose rows came back in any order would reshuffle
+    // under the buyer's cursor.
     const items = await this.itemRepo.findMany({
       where: { cartId: { eq: cartId } },
+      orderBy: [
+        { column: "createdAt", direction: "asc" },
+        { column: "id", direction: "asc" },
+      ],
     });
 
     if (items.length === 0) {
@@ -217,15 +275,22 @@ export class CartService {
       if (!product?.published) {
         continue;
       }
+      const lineConfig = await this.stillSellable(product, item);
+      if (lineConfig === false) {
+        continue;
+      }
+      const unitPrice = await this.lines.unitPrice(product, lineConfig);
       lines.push({
         item,
+        lineId: item.id,
         productId: product.id,
+        lineConfig,
         name: product.name,
         kind: product.kind,
-        unitPrice: product.price,
+        unitPrice,
         rateBps: product.vatRateBps,
         quantity: item.quantity,
-        lineTotal: product.price * item.quantity,
+        lineTotal: unitPrice * item.quantity,
         image: product.images[0],
       });
     }
@@ -240,15 +305,76 @@ export class CartService {
 
   /**
    * Fold an anonymous cart into the one belonging to a user who just signed in.
+   *
+   * Each line goes through {@link add}, line config included, so it is judged
+   * again. A line that can no longer be sold (a product unpublished, a slot
+   * already past) is left behind rather than failing the sign-in that
+   * triggered the merge.
    */
   public async merge(fromCartId: string, toCartId: string): Promise<void> {
     const lines = await this.itemRepo.findMany({
       where: { cartId: { eq: fromCartId } },
     });
     for (const line of lines) {
-      await this.add(toCartId, line.productId, line.quantity);
+      try {
+        await this.add(
+          toCartId,
+          line.productId,
+          line.quantity,
+          line.lineConfig,
+        );
+      } catch (error) {
+        if (!(error instanceof CommerceError)) {
+          throw error;
+        }
+      }
     }
     await this.cartRepo.deleteById(fromCartId);
+  }
+
+  /**
+   * The line key of a validated line config: `""` without one, else the
+   * sha-256 of its canonical JSON (keys sorted at every depth), so the same
+   * choice written in a different key order is the same line.
+   */
+  public lineKey(lineConfig: Record<string, any> | undefined): string {
+    if (lineConfig === undefined) {
+      return "";
+    }
+    return this.crypto.hash(JSON.stringify(this.canonical(lineConfig)));
+  }
+
+  protected canonical(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((it) => this.canonical(it));
+    }
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.keys(value)
+          .sort()
+          .map((key) => [key, this.canonical((value as any)[key])]),
+      );
+    }
+    return value;
+  }
+
+  /**
+   * The line's config if its kind still sells it, `false` when the kind now
+   * refuses it. Only a refusal (a `CommerceError`) drops the line; any other
+   * failure is a fault and propagates.
+   */
+  protected async stillSellable(
+    product: ProductEntity,
+    item: CartItemEntity,
+  ): Promise<Record<string, any> | undefined | false> {
+    try {
+      return await this.lines.accept(product, item.lineConfig, item.quantity);
+    } catch (error) {
+      if (error instanceof CommerceError) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   /**

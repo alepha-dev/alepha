@@ -12,11 +12,21 @@ import {
 import { products } from "../entities/products.ts";
 import { CommerceError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
+import { ClaimLock } from "./ClaimLock.ts";
+import { LineConfigService } from "./LineConfigService.ts";
+import { ResourceService } from "./ResourceService.ts";
 import { StockService } from "./StockService.ts";
 
 export interface OrderLineInput {
   productId: string;
   quantity: number;
+  /**
+   * What the line chooses beyond the product, for a kind that takes it (a
+   * court and an interval). Validated again by the kind's handler before the
+   * order is written, whatever validated it before: without that, a client
+   * could book any resource for any interval at the product's price.
+   */
+  lineConfig?: Record<string, any>;
 }
 
 export interface CreateOrderInput {
@@ -75,6 +85,9 @@ export class OrderService {
   protected readonly productRepo = $repository(products);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly stock = $inject(StockService);
+  protected readonly resources = $inject(ResourceService);
+  protected readonly lines = $inject(LineConfigService);
+  protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -134,10 +147,30 @@ export class OrderService {
       );
     }
 
+    // Each line judged by its kind and priced on the server, before the
+    // transaction opens: the same two calls `CartService.price` made, so the
+    // order charges what the cart showed.
+    const accepted: Array<{
+      lineConfig: Record<string, any> | undefined;
+      unitPrice: number;
+    }> = [];
+    for (const line of input.lines) {
+      const product = byId.get(line.productId)!;
+      const lineConfig = await this.lines.accept(
+        product,
+        line.lineConfig,
+        line.quantity,
+      );
+      accepted.push({
+        lineConfig,
+        unitPrice: await this.lines.unitPrice(product, lineConfig),
+      });
+    }
+
     const shippingTotal = input.shippingTotal ?? 0;
     let itemsTotal = 0;
-    for (const line of input.lines) {
-      itemsTotal += byId.get(line.productId)!.price * line.quantity;
+    for (const [index, line] of input.lines.entries()) {
+      itemsTotal += accepted[index]!.unitPrice * line.quantity;
     }
 
     return this.db.transactional(async () => {
@@ -156,28 +189,34 @@ export class OrderService {
       });
 
       const items = await this.itemRepo.createMany(
-        input.lines.map((line) => {
+        input.lines.map((line, index) => {
           const product = byId.get(line.productId)!;
           return {
             orderId: order.id,
             productId: product.id,
             kind: product.kind,
             name: product.name,
-            unitPrice: product.price,
+            unitPrice: accepted[index]!.unitPrice,
             rateBps: product.vatRateBps,
             quantity: line.quantity,
             config: product.config,
+            lineConfig: accepted[index]!.lineConfig,
           };
         }),
       );
 
-      if (status === "paid") {
-        // A counter sale: the money is already in, so skip the hold and go
-        // straight to fulfilment.
-        await this.fulfilAll(items);
-      } else {
-        // An online order: hold what it consumes until the payment settles.
-        await this.reserveAll(items);
+      try {
+        if (status === "paid") {
+          // A counter sale: the money is already in, so skip the hold and go
+          // straight to fulfilment.
+          await this.fulfilAll(items);
+        } else {
+          // An online order: hold what it consumes until the payment settles.
+          await this.reserveAll(items);
+        }
+      } catch (error) {
+        await this.undoWithoutTransaction(order.id);
+        throw error;
       }
 
       return order;
@@ -223,7 +262,14 @@ export class OrderService {
       const items = await this.itemRepo.findMany({
         where: { orderId: { eq: id } },
       });
-      await this.fulfilAll(items);
+      try {
+        await this.fulfilAll(items);
+      } catch (error) {
+        // Where there is no transaction, the lines fulfilled before the one
+        // that threw stay sold. The order is not paid, so they come back.
+        await this.undoWithoutTransaction(id);
+        throw error;
+      }
 
       const order = await this.orderRepo.updateById(id, {
         status: "paid",
@@ -254,7 +300,15 @@ export class OrderService {
   }
 
   /**
-   * Cancel an unpaid order, giving back whatever it was holding.
+   * Cancel an unpaid order, giving back whatever it was holding: its stock
+   * holds and its interval holds, at once rather than when the sweep runs.
+   *
+   * The release is all this package does. Cancellation policy (a fee, a
+   * free-cancel window, a weather rule, how close to the slot's start the
+   * cancellation came) is the application's, built on this release. So is
+   * cancelling one line of a multi-line order: there is no item-level
+   * cancellation here, and if one is needed it is an `OrderService.cancelItems`
+   * releasing by `orderItemId`, which the claims already carry.
    */
   public async cancel(id: string): Promise<OrderEntity> {
     return this.db.transactional(async () => {
@@ -262,6 +316,7 @@ export class OrderService {
       // to release units that were sold and leave the money taken.
       await this.assertTransition(id, ["pending"], "cancelled");
       await this.stock.releaseFor(id);
+      await this.resources.releaseFor(id);
       const order = await this.orderRepo.updateById(id, {
         status: "cancelled",
       });
@@ -333,8 +388,11 @@ export class OrderService {
       // Stock comes back only when the sale is undone. A partial refund is a
       // price adjustment on goods the customer keeps, so releasing units here
       // would put things back on the shelf that never returned.
+      // The same for intervals: a full refund gives the court back, a partial
+      // one leaves it booked.
       if (full) {
         await this.stock.releaseOrder(id);
+        await this.resources.releaseOrder(id);
       }
 
       const order = await this.orderRepo.updateById(id, {
@@ -461,6 +519,34 @@ export class OrderService {
   }
 
   /**
+   * Give back what a failed create or settlement took, on a database that has
+   * no transaction to roll it back.
+   *
+   * D1 and PGlite run `transactional()` in place, so when line 3's claim
+   * throws, lines 1 and 2 keep their holds (and, for a counter sale, their
+   * sales) until somebody notices: half an hour of a court nobody can book.
+   * Where there IS a transaction nothing is written here: the rollback
+   * already undoes it all, and a write into a transaction that a failed
+   * statement aborted would only replace the real error with its own.
+   */
+  protected async undoWithoutTransaction(orderId: string): Promise<void> {
+    if (this.db.supportsTransactions) {
+      return;
+    }
+    try {
+      await this.stock.releaseOrder(orderId);
+      await this.resources.releaseOrder(orderId);
+    } catch (cleanup) {
+      // The error being rethrown is the one the caller needs; this one only
+      // means the sweep will tidy up instead.
+      this.log.error("Could not release a failed order's holds", {
+        orderId,
+        error: cleanup,
+      });
+    }
+  }
+
+  /**
    * Refuse a status change that does not come from an expected state.
    */
   protected async assertTransition(
@@ -533,11 +619,12 @@ export class OrderService {
    * Hand each line to the handler that owns its kind.
    *
    * Sequential on purpose: two lines of the same product must not race each
-   * other on the stock ledger. In {@link inLockOrder}, for the reason given
+   * other on the stock ledger. After {@link lockAll}, for the reason given
    * there.
    */
   protected async fulfilAll(items: OrderItemEntity[]): Promise<void> {
-    for (const item of this.inLockOrder(items)) {
+    await this.lockAll(items);
+    for (const item of items) {
       await this.kinds.get(item.kind).fulfil(item);
     }
   }
@@ -551,23 +638,33 @@ export class OrderService {
    * money for a ring that has just been sold.
    */
   protected async reserveAll(items: OrderItemEntity[]): Promise<void> {
-    for (const item of this.inLockOrder(items)) {
+    await this.lockAll(items);
+    for (const item of items) {
       await this.kinds.get(item.kind).reserve?.(item);
     }
   }
 
   /**
-   * An order's lines by product id, the order their stock claims must run in.
+   * Take every claim lock the order's lines need, up front and in one global
+   * order, before any handler claims anything.
    *
-   * On Postgres every claim holds its product's lock until the order's
-   * transaction commits. Two orders walking the same two products in cart
-   * order, one each way, would each hold one lock and wait on the other, and
-   * Postgres would break that deadlock by failing one of the checkouts. In
-   * one global order, the second order waits for the first instead.
+   * On Postgres every claim holds its lock until the order's transaction
+   * commits. Two orders taking the same locks in different orders (court 2
+   * then court 1 against court 1 then court 2, a stock line against a
+   * resource line, the two legs of a seat listed backwards) would each hold
+   * one lock and wait on the other, and Postgres would break that deadlock by
+   * failing one of the checkouts. Sorted by `(namespace, key)` across the
+   * whole order, the second order waits for the first instead. Walking the
+   * lines by product id, as this used to, only ordered stock: one product
+   * sells many resources.
+   *
+   * The handlers' own claims then take locks this transaction already holds,
+   * which Postgres grants at once. Elsewhere there are no locks to take, and
+   * this does nothing.
    */
-  protected inLockOrder(items: OrderItemEntity[]): OrderItemEntity[] {
-    return [...items].sort((a, b) =>
-      a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
+  protected async lockAll(items: OrderItemEntity[]): Promise<void> {
+    await this.lock.acquire(
+      items.flatMap((item) => this.kinds.get(item.kind).lockKeys?.(item) ?? []),
     );
   }
 }

@@ -1,4 +1,5 @@
 import {
+  type ClaimLockKey,
   type OrderItemEntity,
   ProductKindHandler,
   StockService,
@@ -40,6 +41,14 @@ export class EngravedKindHandler extends ProductKindHandler {
   protected readonly log = $logger();
   protected readonly stock = $inject(StockService);
   protected readonly workshop = $inject(WorkshopQueue);
+
+  /**
+   * The blank's stock lock, so an order takes it in the same sorted pass as
+   * every other lock it needs.
+   */
+  public lockKeys(item: OrderItemEntity): ClaimLockKey[] {
+    return [{ namespace: StockService.LOCK_NAMESPACE, key: item.productId }];
+  }
 
   /**
    * Hold the blank while the payment is in flight, like a plain `good`:
