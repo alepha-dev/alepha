@@ -245,12 +245,11 @@ const QuestViewRail = (props: QuestViewRailProps) => {
       <QuestViewRailTags quest={quest} />
 
       {/* Ruled off from the tags above, the same way the action rows below
-          are. Reminder is a control and tags are a readout, so without the
-          rule the two blocks ran together as one list. */}
+          are: reminder is a control and tags are a readout. The rule is the
+          component's own, since it renders nothing on a quest nobody has
+          accepted. */}
       {questReminderEnabled && !quest.completedAt && (
-        <div className="border-t pt-4">
-          <QuestViewSettings quest={quest} onUpdate={props.onUpdate} />
-        </div>
+        <QuestViewSettings quest={quest} onUpdate={props.onUpdate} />
       )}
 
       {/* Action rows: the icon is muted and the label is body text, so the

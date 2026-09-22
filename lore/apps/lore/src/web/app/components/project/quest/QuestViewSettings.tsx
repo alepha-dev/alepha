@@ -88,8 +88,18 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
     !props.quest.completedAt &&
     client.setQuestReminder.can();
 
+  // Nothing at all when the reminder cannot be set (#Q2424). It used to draw
+  // the heading and a sentence saying why, a whole block on every unassigned
+  // quest that offered nothing to do.
+  if (!canEditReminder) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col gap-2 px-1">
+    // Ruled off from the tags above. The border lives here rather than on a
+    // wrapper at the call site for the reason `QuestViewRailTags` gives:
+    // this returns `null`, and a wrapper would leave the rule behind.
+    <div className="flex flex-col gap-2 border-t px-1 pt-4">
       <div className="flex items-center gap-1.5">
         {activePreset.key === "off" ? (
           <BellOff className="text-muted-foreground size-3.5" />
@@ -100,26 +110,18 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
           {tr("quest.view.reminder.title")}
         </span>
       </div>
-      {!canEditReminder ? (
-        <p className="text-muted-foreground text-xs italic">
-          {tr("quest.view.reminder.unavailable")}
-        </p>
-      ) : (
-        <>
-          <Segmented
-            size="sm"
-            fullWidth
-            value={activePreset.key}
-            disabled={reminderAction.loading}
-            onChange={(key) => void reminderAction.run(key)}
-            options={REMINDER_PRESETS.map((preset) => ({
-              value: preset.key,
-              label: tr(preset.labelKey),
-            }))}
-          />
-          <p className="text-muted-foreground text-xs">{nextLabel}</p>
-        </>
-      )}
+      <Segmented
+        size="sm"
+        fullWidth
+        value={activePreset.key}
+        disabled={reminderAction.loading}
+        onChange={(key) => void reminderAction.run(key)}
+        options={REMINDER_PRESETS.map((preset) => ({
+          value: preset.key,
+          label: tr(preset.labelKey),
+        }))}
+      />
+      <p className="text-muted-foreground text-xs">{nextLabel}</p>
     </div>
   );
 };
