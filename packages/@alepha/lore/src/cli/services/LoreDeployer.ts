@@ -19,6 +19,20 @@ export interface LoreInstance {
   id: string;
   estateId?: string;
   ephemeral?: boolean;
+  /**
+   * The address Lore serves the copy at, once a deploy has given it one.
+   */
+  url?: string;
+  /**
+   * The name the estate knows the copy by.
+   */
+  resourceName?: string;
+  /**
+   * The tag of the copy's newest successful deploy: what it runs.
+   */
+  version?: string;
+  estate?: { slug?: string; type?: string };
+  updatedAt?: string;
 }
 
 /**
@@ -422,6 +436,34 @@ export class LoreDeployer {
       params: { projectId, app, env },
       body: { confirm },
     })) as LoreDestroyResult;
+  }
+
+  /**
+   * Say what a teardown did, and fail on anything it could not do.
+   *
+   * The `kept` line is printed on every run: the point of a teardown that
+   * keeps the data is that the data survives it, and an operator who assumes
+   * otherwise will go looking for a backup that was never needed. A resource
+   * in `failed` is an error, never swallowed, so a partial teardown exits
+   * non-zero.
+   */
+  public report(result: LoreDestroyResult, label: string): void {
+    this.log.info(
+      result.removed.length > 0
+        ? `Removed ${result.removed.join(", ")} for ${label}`
+        : `Nothing left to remove for ${label}`,
+    );
+    if (result.kept.length > 0) {
+      this.log.info(`Kept: ${result.kept.join(", ")}`);
+    }
+    for (const failure of result.failed) {
+      this.log.warn(`${failure.resource} was not removed: ${failure.message}`);
+    }
+    if (result.failed.length > 0) {
+      throw new AlephaError(
+        `${result.failed.length} resource(s) could not be removed. What did go is no longer recorded, so running this again retries only the rest.`,
+      );
+    }
   }
 
   /**
