@@ -713,6 +713,105 @@ describe("Lore MCP — epics", () => {
       });
     });
 
+    it("without a directory, files the folio beside the epic's oldest folio held in one", async ({
+      expect,
+    }) => {
+      // The "Work on it" prompt files its outcome folio with `epic_number`
+      // alone, and it used to land at the root, away from the spec (#Q2474).
+      const { alepha, repos, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const specs = await call(folioTools.directory_create, {
+        project: project.id,
+        name: "specs",
+      });
+      const later = await call(folioTools.directory_create, {
+        project: project.id,
+        name: "later",
+      });
+      // A root folio of the epic is skipped, and the older of the two held in
+      // a directory decides, whatever order the rows were written in.
+      await createTestFolio(alepha, project, {
+        epicId: epic.id,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      await createTestFolio(alepha, project, {
+        epicId: epic.id,
+        directoryId: later.id,
+        createdAt: "2026-03-01T00:00:00.000Z",
+      });
+      await createTestFolio(alepha, project, {
+        epicId: epic.id,
+        directoryId: specs.id,
+        createdAt: "2026-02-01T00:00:00.000Z",
+      });
+
+      const created = await call(folioTools.folio_create, {
+        project: project.id,
+        title: "Outcome",
+        epic_number: epic.number,
+      });
+
+      expect((await repos.folios.getById(created.id)).directoryId).toBe(
+        specs.id,
+      );
+    });
+
+    it("an explicit directory wins over the epic's", async ({ expect }) => {
+      const { alepha, repos, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const specs = await call(folioTools.directory_create, {
+        project: project.id,
+        name: "specs",
+      });
+      const elsewhere = await call(folioTools.directory_create, {
+        project: project.id,
+        name: "elsewhere",
+      });
+      await createTestFolio(alepha, project, {
+        epicId: epic.id,
+        directoryId: specs.id,
+      });
+
+      const created = await call(folioTools.folio_create, {
+        project: project.id,
+        title: "Outcome",
+        epic_number: epic.number,
+        directory_shortId: elsewhere.shortId,
+      });
+
+      expect((await repos.folios.getById(created.id)).directoryId).toBe(
+        elsewhere.id,
+      );
+    });
+
+    it("stays at the root when no folio of the epic sits in a directory", async ({
+      expect,
+    }) => {
+      const { alepha, repos, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const other = await createTestEpic(alepha, project);
+      const specs = await call(folioTools.directory_create, {
+        project: project.id,
+        name: "specs",
+      });
+      // Another epic's directory is not this one's.
+      await createTestFolio(alepha, project, {
+        epicId: other.id,
+        directoryId: specs.id,
+      });
+      await createTestFolio(alepha, project, { epicId: epic.id });
+
+      const created = await call(folioTools.folio_create, {
+        project: project.id,
+        title: "Outcome",
+        epic_number: epic.number,
+      });
+
+      expect(
+        (await repos.folios.getById(created.id)).directoryId,
+      ).toBeUndefined();
+    });
+
     it("a refused attach leaves no folio row behind", async ({ expect }) => {
       // Same cleanup contract as quest_create: no orphaned, unlinked folio
       // for an agent to duplicate on retry. Failure injected, see
