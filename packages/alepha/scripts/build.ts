@@ -361,7 +361,7 @@ class AlephaPackageBuilderCli {
       // bundled ones. TypeScript resolves the `.ts` specifiers they carry to
       // the adjacent `.d.ts`, which is why the extensions can stay as written.
       //
-      // `--noEmit false` is not optional: the root tsconfig sets `noEmit`, and
+      // `--noEmit false` is not optional: the base tsconfig sets `noEmit`, and
       // without this the command exits 0 having written nothing at all.
       await run("declarations", async () => {
         await run(

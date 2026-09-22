@@ -1,6 +1,6 @@
 import { $inject, $store, AlephaError, z } from "alepha";
 import { PackageManagerUtils } from "alepha/cli";
-import { $command } from "alepha/command";
+import { $command, CommandError } from "alepha/command";
 import { ConsoleColorProvider } from "alepha/logger";
 
 import { vendorOptions } from "../atoms/vendorOptions.ts";
@@ -155,6 +155,16 @@ export class VendorCommand {
       }
 
       process.stdout.write("\n");
+
+      // ⚠️ A failed build fails the sync. The copy is on disk, but its
+      // manifest still points at `src`, so anything loading it outside Vite
+      // gets raw TypeScript: the exact state the build exists to prevent.
+      // Reporting success over it is how #Q2490 went unnoticed.
+      if (buildResult.errors.length > 0) {
+        throw new CommandError(
+          `${buildResult.errors.length} vendored ${buildResult.errors.length === 1 ? "package" : "packages"} failed to build (see the errors above)`,
+        );
+      }
     },
   });
 
