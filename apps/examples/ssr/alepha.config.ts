@@ -1,5 +1,5 @@
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     }),
   ],

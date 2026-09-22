@@ -37,11 +37,11 @@ describe("the worker-side Cloudflare adapter", () => {
   const context = (
     naming: NamingService,
     resources: Partial<PlatformContext["resources"]> = {},
-  ): PlatformContext =>
+  ): PlatformContext<any> =>
     ({
       project: "my-app",
       env: "staging",
-      envConfig: { adapter: "cloudflare" },
+      options: {},
       root: "/deploy",
       entry: { root: "/deploy", server: "" },
       naming: naming.forContext("my-app", "staging"),
@@ -54,7 +54,7 @@ describe("the worker-side Cloudflare adapter", () => {
         hasCron: false,
         ...resources,
       },
-    }) as PlatformContext;
+    }) as PlatformContext<any>;
 
   type Task = { name: string; handler: () => Promise<void> };
 
@@ -898,7 +898,7 @@ describe("the worker-side Cloudflare adapter", () => {
       const calls = recordingDeployer(adapter);
 
       const ctx = context(naming);
-      ctx.envConfig.domain = "app.example.com";
+      ctx.options.domain = "app.example.com";
       await adapter.deploy(ctx, run);
 
       expect(calls[0]!.secrets).toEqual({
@@ -918,7 +918,7 @@ describe("the worker-side Cloudflare adapter", () => {
       const calls = recordingDeployer(adapter);
 
       const ctx = context(naming);
-      ctx.envConfig.domain = "app.example.com";
+      ctx.options.domain = "app.example.com";
       await adapter.deploy(ctx, run);
 
       expect(calls[0]!.secrets.PUBLIC_URL).toBe("https://vanity.example");
@@ -970,7 +970,7 @@ describe("the worker-side Cloudflare adapter", () => {
       recordingDeployer(adapter);
 
       const ctx = context(naming);
-      ctx.envConfig.domain = "api.example.com";
+      ctx.options.domain = "api.example.com";
       const url = await adapter.deploy(ctx, run);
 
       // And the subdomain is never read: there is nothing to compose.

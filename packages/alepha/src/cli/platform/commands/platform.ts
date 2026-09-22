@@ -12,7 +12,6 @@ import {
   D1MigrationsService,
   type DetectedResources,
   NamingService,
-  type PlatformContext,
   PlatformInspector,
   PlatformOrchestrator,
   type PlatformPlanOutput,
@@ -66,16 +65,13 @@ export class PlatformCommand {
     description: "Show project topology and resource names",
     flags: this.envFlags,
     handler: async ({ flags, root }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
-      const adapterName = envConfig?.adapter ?? "cloudflare";
-
-      const app = await this.resolveApp(
+      const target = await this.orchestrator.resolveEnvironment(
         root,
-        config,
-        this.isServerless(adapterName),
+        flags.env,
       );
+      const { config, env, adapter } = target;
+
+      const app = await this.resolveApp(root, config, adapter.serverless);
       const namingCtx = this.naming.forContext(config.project, env);
 
       // --- Data collection ---
@@ -88,7 +84,7 @@ export class PlatformCommand {
 
       resources.push({ label: "Worker", value: namingCtx.worker() });
 
-      if (adapterName === "cloudflare") {
+      if (adapter.cloudflareResources) {
         if (hasDB) {
           const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
           if (dbUrl?.startsWith("postgres:")) {
@@ -131,9 +127,10 @@ export class PlatformCommand {
           { adapter: string; domain?: string }
         > = {};
         for (const [key, val] of Object.entries(config.environments)) {
+          const domain = this.inspector.domainOf(val);
           environments[key] = {
-            adapter: val.adapter,
-            ...(val.domain ? { domain: val.domain } : {}),
+            adapter: val.adapter.id,
+            ...(domain ? { domain } : {}),
           };
         }
 
@@ -173,17 +170,16 @@ export class PlatformCommand {
       process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Environments:")}\n`);
       const envKeys = Object.keys(config.environments);
       for (const [i, envKey] of envKeys.entries()) {
-        const envConfig = config.environments[envKey];
+        const descriptor = config.environments[envKey];
         const prefix =
           i === envKeys.length - 1
             ? "\u2514\u2500\u2500"
             : "\u251C\u2500\u2500";
-        const domain = envConfig.domain
-          ? `     ${c.set("GREY_DARK", envConfig.domain)}`
-          : "";
+        const envDomain = this.inspector.domainOf(descriptor);
+        const domain = envDomain ? `     ${c.set("GREY_DARK", envDomain)}` : "";
         const marker = envKey === env ? `  ${c.set("GREEN", "\u25C0")}` : "";
         process.stdout.write(
-          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", envConfig.adapter)}${domain}${marker}\n`,
+          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", descriptor.adapter.id)}${domain}${marker}\n`,
         );
       }
 
@@ -228,15 +224,11 @@ export class PlatformCommand {
     handler: async ({ flags, root, run }) => {
       process.env.NODE_ENV = "production";
 
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const adapter = config.environments[env]?.adapter ?? "cloudflare";
-      const app = await this.resolveApp(
-        root,
-        config,
-        this.isServerless(adapter),
-        { prebuilt: flags.prebuilt },
-      );
+      const { config, env, adapter } =
+        await this.orchestrator.resolveEnvironment(root, flags.env);
+      const app = await this.resolveApp(root, config, adapter.serverless, {
+        prebuilt: flags.prebuilt,
+      });
 
       const result = await this.orchestrator.up({
         root,
@@ -292,13 +284,11 @@ export class PlatformCommand {
         );
       }
 
-      const config = await this.inspector.resolveConfig(root);
-      const adapter = config.environments[flags.env]?.adapter ?? "cloudflare";
-      const app = await this.resolveApp(
+      const { config, adapter } = await this.orchestrator.resolveEnvironment(
         root,
-        config,
-        this.isServerless(adapter),
+        flags.env,
       );
+      const app = await this.resolveApp(root, config, adapter.serverless);
 
       const completed = await this.orchestrator.down({
         root,
@@ -356,14 +346,11 @@ export class PlatformCommand {
         "--env is required: each environment has its own credential.",
       );
     }
-    const config = await this.inspector.resolveConfig(ctx.root);
-    const app = await this.resolveApp(
+    const { config, adapter } = await this.orchestrator.resolveEnvironment(
       ctx.root,
-      config,
-      this.isServerless(
-        config.environments[ctx.flags.env]?.adapter ?? "cloudflare",
-      ),
+      ctx.flags.env,
     );
+    const app = await this.resolveApp(ctx.root, config, adapter.serverless);
     await this.orchestrator.auth({
       root: ctx.root,
       env: ctx.flags.env,
@@ -423,14 +410,9 @@ export class PlatformCommand {
     description: "Show deployed state",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const adapter = config.environments[env]?.adapter ?? "cloudflare";
-      const app = await this.resolveApp(
-        root,
-        config,
-        this.isServerless(adapter),
-      );
+      const { config, env, descriptor, adapter } =
+        await this.orchestrator.resolveEnvironment(root, flags.env);
+      const app = await this.resolveApp(root, config, adapter.serverless);
 
       const { state } = await this.orchestrator.status({
         root,
@@ -449,7 +431,7 @@ export class PlatformCommand {
         const output: PlatformStatusOutput = {
           project: config.project,
           env,
-          adapter: config.environments[env].adapter,
+          adapter: descriptor.adapter.id,
           ...state,
         };
 
@@ -464,7 +446,7 @@ export class PlatformCommand {
       const c = this.color;
 
       process.stdout.write(
-        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)} ${c.set("GREY_DARK", `(${config.environments[env].adapter})`)}\n\n`,
+        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)} ${c.set("GREY_DARK", `(${descriptor.adapter.id})`)}\n\n`,
       );
 
       const hasDB = state.databases.length > 0;
@@ -602,27 +584,13 @@ export class PlatformCommand {
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
       process.env.NODE_ENV = "production";
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
-      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const app = await this.resolveApp(
+      const target = await this.orchestrator.resolveEnvironment(
         root,
-        config,
-        this.isServerless(envConfig.adapter),
+        flags.env,
       );
-      const namingCtx = this.naming.forContext(config.project, env);
-
-      const ctx = {
-        project: config.project,
-        env,
-        envConfig,
-        entry: app.entry,
-        resources: app.resources,
-
-        root,
-        naming: namingCtx,
-      };
+      const { config, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
 
       await adapter.build(ctx, run);
     },
@@ -633,27 +601,13 @@ export class PlatformCommand {
     description: "Deploy apps to cloud",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
-      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const app = await this.resolveApp(
+      const target = await this.orchestrator.resolveEnvironment(
         root,
-        config,
-        this.isServerless(envConfig.adapter),
+        flags.env,
       );
-      const namingCtx = this.naming.forContext(config.project, env);
-
-      const ctx = {
-        project: config.project,
-        env,
-        envConfig,
-        entry: app.entry,
-        resources: app.resources,
-
-        root,
-        naming: namingCtx,
-      };
+      const { config, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
 
       await adapter.authenticate(ctx, run);
       await adapter.deploy(ctx, run);
@@ -665,27 +619,13 @@ export class PlatformCommand {
     description: "Run database migrations",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
-      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const app = await this.resolveApp(
+      const target = await this.orchestrator.resolveEnvironment(
         root,
-        config,
-        this.isServerless(envConfig.adapter),
+        flags.env,
       );
-      const namingCtx = this.naming.forContext(config.project, env);
-
-      const ctx = {
-        project: config.project,
-        env,
-        envConfig,
-        entry: app.entry,
-        resources: app.resources,
-
-        root,
-        naming: namingCtx,
-      };
+      const { config, env, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
 
       await adapter.authenticate(ctx, run);
       await adapter.migrate(ctx, run);
@@ -726,27 +666,13 @@ export class PlatformCommand {
         .optional(),
     }),
     handler: async ({ flags, root, run }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
-      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const app = await this.resolveApp(
+      const target = await this.orchestrator.resolveEnvironment(
         root,
-        config,
-        this.isServerless(envConfig.adapter),
+        flags.env,
       );
-      const namingCtx = this.naming.forContext(config.project, env);
-
-      const ctx = {
-        project: config.project,
-        env,
-        envConfig,
-        entry: app.entry,
-        resources: app.resources,
-
-        root,
-        naming: namingCtx,
-      };
+      const { config, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
 
       await adapter.authenticate(ctx, run);
       await adapter.exportDb(ctx, run, {
@@ -783,13 +709,15 @@ export class PlatformCommand {
         .optional(),
     }),
     handler: async ({ flags, root, run }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, env, descriptor, adapter } = target;
 
-      if (envConfig.adapter !== "cloudflare") {
+      if (!adapter.cloudflareResources) {
         throw new AlephaError(
-          `'platform db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${envConfig.adapter}' adapter.`,
+          `'platform db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${descriptor.adapter.id}' adapter.`,
         );
       }
 
@@ -809,7 +737,6 @@ export class PlatformCommand {
         );
       }
 
-      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
       const namingCtx = this.naming.forContext(config.project, env);
       const dbName = namingCtx.d1();
 
@@ -817,10 +744,7 @@ export class PlatformCommand {
       // this command never calls an adapter method that reads `entry` or
       // `resources`, so those are stubbed rather than paying for a Vite
       // boot (or requiring dist/manifest.json) just to baseline-mark.
-      const ctx: PlatformContext = {
-        project: config.project,
-        env,
-        envConfig,
+      const ctx = this.orchestrator.createContext(target, {
         root,
         entry: { root, server: "" },
         resources: {
@@ -832,8 +756,7 @@ export class PlatformCommand {
           hasCron: false,
           hasWebSocket: false,
         },
-        naming: namingCtx,
-      };
+      });
 
       await adapter.authenticate(ctx, run);
 
@@ -959,10 +882,6 @@ export class PlatformCommand {
     const resources = this.detectResources(appAlepha);
 
     return { entry, resources };
-  }
-
-  protected isServerless(adapter: string): boolean {
-    return adapter === "cloudflare";
   }
 
   /**

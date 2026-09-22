@@ -8,13 +8,13 @@ Register the plugin in `alepha.config.ts` with the `platform()` helper:
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: { adapter: "cloudflare", domain: "myapp.com" },
+        production: cloudflare({ domain: "myapp.com" }),
       },
     }),
   ],
@@ -77,14 +77,14 @@ Common flags accepted by most subcommands:
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: { adapter: "cloudflare", domain: "myapp.com" },
-        staging: { adapter: "cloudflare", domain: "staging.myapp.com" },
+        production: cloudflare({ domain: "myapp.com" }),
+        staging: cloudflare({ domain: "staging.myapp.com" }),
       },
     }),
   ],
@@ -363,16 +363,15 @@ Deploys via `wrangler deploy` using the generated `dist/wrangler.jsonc`. Returns
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: {
-          adapter: "cloudflare",
+        production: cloudflare({
           domain: "myapp.com",
-        },
+        }),
       },
     }),
   ],
@@ -395,9 +394,9 @@ Prefix an environment name with `tmp` to create a throwaway deployment. Teardown
 
 ```typescript
 environments: {
-  production: { adapter: "cloudflare", domain: "myapp.com" },
-  staging: { adapter: "cloudflare", domain: "staging.myapp.com" },
-  "tmp-pr-42": { adapter: "cloudflare" },
+  production: cloudflare({ domain: "myapp.com" }),
+  staging: cloudflare({ domain: "staging.myapp.com" }),
+  "tmp-pr-42": cloudflare(),
 }
 ```
 

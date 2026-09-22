@@ -13,8 +13,7 @@ import {
   type PlatformState,
 } from "../adapters/PlatformAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
-import { AlephaPlatformLibPlugin } from "../index.ts";
-import { PlatformAdapterRegistry } from "../services/PlatformAdapterRegistry.ts";
+import { AlephaPlatformLibPlugin, bay, cloudflare } from "../index.ts";
 import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
 
 describe("PlatformOrchestrator", () => {
@@ -22,11 +21,6 @@ describe("PlatformOrchestrator", () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      // ⚠️ The module, not just the service. Adapters are entries in
-      // `PlatformAdapterRegistry` now, filled by whichever module registered,
-      // so an orchestrator injected on its own genuinely knows no adapter -
-      // which is the property that lets the `workerd` entry ship a container
-      // with only the adapters a Worker can bundle.
       .with(AlephaPlatformLibPlugin);
 
     const fs = alepha.inject(MemoryFileSystemProvider);
@@ -36,8 +30,8 @@ describe("PlatformOrchestrator", () => {
     // Default config
     alepha.set(platformOptions, {
       environments: {
-        production: { adapter: "cloudflare" },
-        staging: { adapter: "cloudflare" },
+        production: cloudflare(),
+        staging: cloudflare(),
       },
     });
 
@@ -72,7 +66,7 @@ describe("PlatformOrchestrator", () => {
         .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
         .with({ provide: ShellProvider, use: MemoryShellProvider });
       alepha.set(platformOptions, {
-        environments: { production: { adapter: "bay", domain: "named.test" } },
+        environments: { production: bay({ domain: "named.test" }) },
       });
       const fs = alepha.inject(MemoryFileSystemProvider);
       await fs.writeFile(
@@ -111,40 +105,25 @@ describe("PlatformOrchestrator", () => {
   });
 
   describe("resolveAdapter", () => {
-    test("returns CloudflareAdapter for cloudflare env", async ({ expect }) => {
+    test("returns the instance of the class the descriptor names", async ({
+      expect,
+    }) => {
       const { orchestrator } = createTestEnv();
-      const adapter = orchestrator.resolveAdapter("cloudflare");
+      const adapter = orchestrator.resolveAdapter(cloudflare());
       expect(adapter).toBeInstanceOf(CloudflareAdapter);
     });
 
-    test("throws for unknown adapter, naming the ones it has", ({ expect }) => {
-      const { orchestrator } = createTestEnv();
-      // The registry can legitimately be missing an adapter now - a Worker
-      // container has only what a Worker can bundle - so the refusal has to
-      // say what IS available rather than read as a typo in the config.
-      expect(() => orchestrator.resolveAdapter("aks")).toThrow(
-        /Unknown adapter: "aks"\. This container knows "bay", "cloudflare"\./,
-      );
-    });
-
-    /*
-      Asserted on the registry rather than through an orchestrator, because an
-      empty one is not reachable from here: `[MODULE]` is a static
-      back-reference, so the moment ANY file in the process imports the barrel
-      an injected orchestrator registers the whole module and gets both
-      adapters. That is the behaviour we want in the CLI. The empty case is
-      what a `workerd` container has before an adapter it can bundle exists,
-      and the message is the only thing that tells its operator so.
-    */
-    test("says so plainly when no adapter is registered at all", ({
+    test("resolves an environment to its adapter and validated options", async ({
       expect,
     }) => {
-      const registry = new PlatformAdapterRegistry();
-
-      expect(registry.names()).toEqual([]);
-      expect(() => registry.get("cloudflare")).toThrow(
-        /no platform adapter registered at all/,
+      const { orchestrator } = createTestEnv();
+      const target = await orchestrator.resolveEnvironment(
+        "/project",
+        "staging",
       );
+      expect(target.adapter).toBeInstanceOf(CloudflareAdapter);
+      expect(target.options).toEqual({});
+      expect(target.config.project).toBe("my-app");
     });
   });
 

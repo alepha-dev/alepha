@@ -21,11 +21,10 @@ manifest, so the target-specific story is one line of configuration:
 ```typescript
 platform({
   environments: {
-    production: {
-      adapter: "bay",
+    production: bay({
       host: "deploy@bay.example.com",
       domain: "myapp.com",
-    },
+    }),
   },
 });
 ```

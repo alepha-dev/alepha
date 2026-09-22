@@ -29,11 +29,10 @@ run, so one reaching Bay would deploy, never boot, and report only "never became
 ```typescript
 platform({
   environments: {
-    production: {
-      adapter: "bay",
+    production: bay({
       host: "deploy@bay.example.com",
       domain: "myapp.com",
-    },
+    }),
   },
 });
 ```
@@ -53,7 +52,7 @@ Host bay-prod
 ```
 
 ```typescript
-{ adapter: "bay", host: "bay-prod" }
+bay({ host: "bay-prod" });
 ```
 
 That is deliberate. There is no port, identity-file, jump-host or ssh-flags field here, because
@@ -69,7 +68,7 @@ leading `/`, since the value is passed straight through as `--control-socket <pa
 resolution against a working directory:
 
 ```typescript
-{ adapter: "bay", host: "deploy@bay.example.com", socket: "/var/lib/bay/control.sock" }
+bay({ host: "deploy@bay.example.com", socket: "/var/lib/bay/control.sock" });
 ```
 
 Bay's own guess at its control socket is `<root>/control.sock`, but every command this adapter sends
@@ -274,21 +273,19 @@ maintain infrastructure config by hand on either.
 ```typescript
 // alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { bay, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: {
-          adapter: "bay",
+        production: bay({
           host: "deploy@bay.example.com",
           domain: "myapp.com",
-        },
-        staging: {
-          adapter: "bay",
+        }),
+        staging: bay({
           host: "deploy@bay.example.com",
-        },
+        }),
       },
     }),
   ],

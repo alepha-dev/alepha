@@ -1,5 +1,5 @@
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 
@@ -55,19 +55,16 @@ export default defineConfig({
       // (every `$env`-declared key), so no `secrets.keys` is needed: CI
       // delivers them through the deploy job's `env:` block.
       environments: {
-        production: {
-          // A Custom Domain, NOT a Worker Route (the only binding `alepha
-          // platform` makes since the `zone` field was removed).
-          //
-          // Docs once needed a Route because the apex still holds the GitHub Pages A
-          // and AAAA records, and a Custom Domain owns its DNS record, so
-          // Cloudflare would refuse to create one without deleting those first.
-          // None of that applies here: `ui.alepha.dev` is a fresh subdomain with
-          // no records to preserve, so the simpler form is the correct one and
-          // Cloudflare manages the record and the certificate itself.
-          domain: "ui.alepha.dev",
-          adapter: "cloudflare",
-        },
+        // A Custom Domain, NOT a Worker Route (the only binding `alepha
+        // platform` makes since the `zone` field was removed).
+        //
+        // Docs once needed a Route because the apex still holds the GitHub Pages A
+        // and AAAA records, and a Custom Domain owns its DNS record, so
+        // Cloudflare would refuse to create one without deleting those first.
+        // None of that applies here: `ui.alepha.dev` is a fresh subdomain with
+        // no records to preserve, so the simpler form is the correct one and
+        // Cloudflare manages the record and the certificate itself.
+        production: cloudflare({ domain: "ui.alepha.dev" }),
       },
     }),
   ],

@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import {
+  cloudflare,
   MemorySecretStore,
   platformOptions,
   type SecretStoreProvider,
@@ -40,7 +41,7 @@ describe("SecretsCommand", () => {
 
     alepha.set(platformOptions, {
       name: "my-app",
-      environments: { production: { adapter: "cloudflare" } },
+      environments: { production: cloudflare() },
       ...config,
     } as any);
 

@@ -9,6 +9,10 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { platformOptions } from "../atoms/platformOptions.ts";
 import {
+  type BayEnvironmentOptions,
+  bayEnvironmentOptionsSchema,
+} from "../schemas/bayEnvironmentOptions.ts";
+import {
   BAY_OWNED_SECRET_KEYS,
   EXCLUDED_SECRET_KEYS,
   readManifestEnvKeys,
@@ -39,7 +43,10 @@ import {
  * the same app is exactly the code↔infra drift the derived manifest prevents,
  * which is why `provision` stays empty.
  */
-export class BayAdapter extends PlatformAdapter {
+export class BayAdapter extends PlatformAdapter<BayEnvironmentOptions> {
+  static readonly id = "bay";
+  static readonly options = bayEnvironmentOptionsSchema;
+
   protected readonly slices = $inject(BuildSlices);
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
@@ -110,12 +117,12 @@ export class BayAdapter extends PlatformAdapter {
    * identity file or a jump host belong. `$BAY_HOST` wins so CI needs no edit
    * to a committed config.
    */
-  protected host(ctx: PlatformContext): string {
-    const configured = process.env.BAY_HOST ?? ctx.envConfig.host;
+  protected host(ctx: PlatformContext<BayEnvironmentOptions>): string {
+    const configured = process.env.BAY_HOST ?? ctx.options.host;
     if (!configured) {
       throw new AlephaError(
         `No Bay host for environment "${ctx.env}". Set it in alepha.config.ts — ` +
-          `platform({ environments: { ${ctx.env}: { adapter: "bay", host: "deploy@bay.example.com" } } }) — ` +
+          `platform({ environments: { ${ctx.env}: bay({ host: "deploy@bay.example.com" }) } }) — ` +
           "or export BAY_HOST.",
       );
     }
@@ -143,8 +150,10 @@ export class BayAdapter extends PlatformAdapter {
    * case: with nothing configured, Bay's own default-root guess is left to
    * work or fail on its own.
    */
-  protected socket(ctx: PlatformContext): string | undefined {
-    const configured = process.env.BAY_SOCKET ?? ctx.envConfig.socket;
+  protected socket(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+  ): string | undefined {
+    const configured = process.env.BAY_SOCKET ?? ctx.options.socket;
     if (!configured) {
       return undefined;
     }
@@ -199,7 +208,7 @@ export class BayAdapter extends PlatformAdapter {
    * reason this shells out to `ssh` instead of speaking the protocol.
    */
   protected async remote(
-    ctx: PlatformContext,
+    ctx: PlatformContext<BayEnvironmentOptions>,
     argv: string[],
     options: { stdin?: Uint8Array } = {},
   ): Promise<string> {
@@ -224,7 +233,10 @@ export class BayAdapter extends PlatformAdapter {
    * membership before ever asking `bay` anything, is NOT a Bay command and
    * must never be built with this — the flag would be meaningless to it.
    */
-  protected bayArgv(ctx: PlatformContext, args: string[]): string[] {
+  protected bayArgv(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    args: string[],
+  ): string[] {
     const socket = this.socket(ctx);
     return socket
       ? ["bay", ...args, "--control-socket", socket]
@@ -242,8 +254,8 @@ export class BayAdapter extends PlatformAdapter {
    * `<name>[-<env>].<baseDomain>` itself, so a workspace that configures
    * nothing still lands somewhere predictable.
    */
-  protected domains(ctx: PlatformContext): string[] {
-    const configured = ctx.envConfig.domain;
+  protected domains(ctx: PlatformContext<BayEnvironmentOptions>): string[] {
+    const configured = ctx.options.domain;
     if (!configured) {
       return [];
     }
@@ -395,7 +407,10 @@ export class BayAdapter extends PlatformAdapter {
    * Runs first in `up` precisely so a bad host costs a second rather than a
    * two-minute build.
    */
-  async authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async authenticate(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     const host = this.host(ctx);
     await run({
       name: `check ${host}`,
@@ -422,7 +437,10 @@ export class BayAdapter extends PlatformAdapter {
    * uses — so the closing message is actually earned rather than inferred
    * from `id -nG` alone.
    */
-  async login(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async login(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     const host = this.host(ctx);
     await run({
       name: `check ${host}`,
@@ -461,7 +479,10 @@ export class BayAdapter extends PlatformAdapter {
    * been revoked. SSH keys are not Alepha's to revoke, so this says where they
    * actually live.
    */
-  async logout(ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
+  async logout(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    _run: RunnerMethod,
+  ): Promise<void> {
     const host = this.host(ctx);
     throw new AlephaError(
       `Nothing to log out of — this adapter stores no credential. Access to ${host} is your SSH ` +
@@ -485,7 +506,10 @@ export class BayAdapter extends PlatformAdapter {
    * and is wrong for a different reason: `run` looks for a package.json SCRIPT
    * named `alepha`, which an app has no reason to declare.
    */
-  protected async cli(ctx: PlatformContext, args: string): Promise<string> {
+  protected async cli(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    args: string,
+  ): Promise<string> {
     const pm = await this.pm.getPackageManager(ctx.root);
     switch (pm) {
       case "yarn":
@@ -506,7 +530,10 @@ export class BayAdapter extends PlatformAdapter {
    * Cloudflare's export conditions and has no node-runnable entry point, so Bay
    * refuses it at deploy time: better to never produce one.
    */
-  async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async build(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     if (ctx.prebuilt) {
       // Nothing target-specific to regenerate: there is no wrangler.jsonc
       // equivalent, because everything Bay needs is already in the manifest.
@@ -553,7 +580,7 @@ export class BayAdapter extends PlatformAdapter {
    * three round trips instead of one.
    */
   async deploy(
-    ctx: PlatformContext,
+    ctx: PlatformContext<BayEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const host = this.host(ctx);
@@ -682,7 +709,7 @@ export class BayAdapter extends PlatformAdapter {
    * guard that replaces the quoting.
    */
   protected async stageSecrets(
-    ctx: PlatformContext,
+    ctx: PlatformContext<BayEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const { secrets, platformOwned } = await this.selectAppSecrets(ctx);
@@ -737,7 +764,7 @@ export class BayAdapter extends PlatformAdapter {
    * explains the deploy — replacing it with an `rm` failure would bury it.
    */
   protected async sweepSecrets(
-    ctx: PlatformContext,
+    ctx: PlatformContext<BayEnvironmentOptions>,
     path: string,
   ): Promise<void> {
     try {
@@ -827,7 +854,9 @@ export class BayAdapter extends PlatformAdapter {
    * With no readable manifest the `.env.<env>` file's own keys are the
    * allowlist, which is equally bounded.
    */
-  protected async selectAppSecrets(ctx: PlatformContext): Promise<{
+  protected async selectAppSecrets(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+  ): Promise<{
     secrets: Record<string, string>;
     platformOwned: string[];
   }> {
@@ -911,7 +940,7 @@ export class BayAdapter extends PlatformAdapter {
    * listing them as this app's secrets would drown the two the author set.
    */
   protected async instanceSecrets(
-    ctx: PlatformContext,
+    ctx: PlatformContext<BayEnvironmentOptions>,
     host: string,
   ): Promise<SecretState[]> {
     let answer: string;
@@ -938,7 +967,7 @@ export class BayAdapter extends PlatformAdapter {
   }
 
   async inspect(
-    ctx: PlatformContext,
+    ctx: PlatformContext<BayEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<PlatformState> {
     const host = this.host(ctx);
@@ -1017,7 +1046,10 @@ export class BayAdapter extends PlatformAdapter {
    * would delete them with no way back. "Stop serving this" is the usual intent,
    * and destroying data has to be asked for — `bay remove --purge`, on the host.
    */
-  async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async teardown(
+    ctx: PlatformContext<BayEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     const host = this.host(ctx);
     this.assertSafe("app name", ctx.project, this.appKeyPattern);
     this.assertSafe("environment", ctx.env, this.appKeyPattern);

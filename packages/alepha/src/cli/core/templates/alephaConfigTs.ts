@@ -6,7 +6,7 @@
  */
 export const alephaConfigTs = () => {
   return `import { defineConfig } from "alepha/cli/config";
-// import { platform } from "alepha/cli/platform";
+// import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   //
@@ -52,8 +52,8 @@ export default defineConfig({
   // plugins: [
   //   platform({
   //     environments: {
-  //       production: { adapter: "cloudflare", domain: "myapp.com" },
-  //       preview:    { adapter: "cloudflare" }, // workers.dev subdomain
+  //       production: cloudflare({ domain: "myapp.com" }),
+  //       preview: cloudflare(), // workers.dev subdomain
   //     },
   //   }),
   // ],

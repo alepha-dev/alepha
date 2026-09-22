@@ -1,8 +1,7 @@
-import { AlephaError } from "alepha";
+import { AlephaError, type InstantiableClass, type ZType } from "alepha";
 import type { AppEntry } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 
-import type { EnvironmentConfig } from "../atoms/platformOptions.ts";
 import type { NamingContext } from "../services/NamingService.ts";
 
 /**
@@ -59,9 +58,9 @@ export interface DetectedResources {
  * monorepo-aware orchestrator; flattened into `PlatformContext` after
  * the `apps:` field was removed from platform options.
  */
-export interface PlatformContext {
+export interface PlatformContext<TOptions = unknown> {
   /**
-   * Slugified project name (from package.json or platform config).
+   * Slugified app name (`platform().name`, else the workspace package.json).
    */
   project: string;
 
@@ -71,9 +70,10 @@ export interface PlatformContext {
   env: string;
 
   /**
-   * Environment configuration from alepha.config.ts.
+   * The environment's options, as its factory declared them and validated
+   * against the adapter's `static options` schema.
    */
-  envConfig: EnvironmentConfig;
+  options: TOptions;
 
   /**
    * Workspace root path.
@@ -138,21 +138,65 @@ export interface PlatformState {
 }
 
 // ---------------------------------------------------------------------------
+// Environment descriptor
+// ---------------------------------------------------------------------------
+
+/**
+ * An adapter class, with the two statics every adapter declares.
+ *
+ * They are statics because they are needed before an adapter is resolved:
+ * `options` validates an environment when it is resolved, and `id` names the
+ * adapter in `plan` and `status` output. `id` is display only, never a lookup
+ * key: the class itself is the adapter's identity.
+ */
+export type PlatformAdapterClass<TOptions = any> = InstantiableClass<
+  PlatformAdapter<TOptions>
+> & {
+  /**
+   * Display name, e.g. `"cloudflare"`. Emitted as `adapter` by
+   * `platform plan --json` and `platform status --json`.
+   */
+  readonly id: string;
+  /**
+   * The schema of the options this adapter reads from `ctx.options`.
+   */
+  readonly options: ZType;
+};
+
+/**
+ * One environment of `platform({ environments })`, as an adapter factory
+ * returns it: the adapter class and its own options.
+ *
+ * A third-party factory declares this as its return type, so the published
+ * `.d.ts` names neither its adapter class nor anything that class injects.
+ */
+export interface EnvironmentDescriptor<TOptions = any> {
+  adapter: PlatformAdapterClass<TOptions>;
+  options: TOptions;
+}
+
+// ---------------------------------------------------------------------------
 // Adapter contract
 // ---------------------------------------------------------------------------
 
 /**
  * Abstract platform adapter.
  *
- * Each cloud provider (Cloudflare, AKS, docker-compose) implements this.
+ * Each provider implements this, and names itself to `alepha.config.ts`
+ * through a factory returning an {@link EnvironmentDescriptor}. A subclass
+ * declares `static readonly id` and `static readonly options` (see
+ * {@link PlatformAdapterClass}), and reads its options from `ctx.options`.
  * The PlatformOrchestrator calls these methods in the correct order.
  */
-export abstract class PlatformAdapter {
+export abstract class PlatformAdapter<TOptions = unknown> {
   /**
    * Ensure the user is authenticated with the cloud provider.
    * May use cached credentials to avoid slow checks.
    */
-  abstract authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void>;
+  abstract authenticate(
+    ctx: PlatformContext<TOptions>,
+    run: RunnerMethod,
+  ): Promise<void>;
 
   /**
    * Interactively obtain a credential and store it.
@@ -166,7 +210,10 @@ export abstract class PlatformAdapter {
    * interactive login has some other way in, and saying so beats a command that
    * appears to succeed and changes nothing.
    */
-  async login(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
+  async login(
+    _ctx: PlatformContext<TOptions>,
+    _run: RunnerMethod,
+  ): Promise<void> {
     throw new AlephaError(
       `The '${this.constructor.name}' adapter has no interactive login. ` +
         "Authenticate with the provider's own CLI, or supply its token through " +
@@ -177,7 +224,10 @@ export abstract class PlatformAdapter {
   /**
    * Discard the stored credential.
    */
-  async logout(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
+  async logout(
+    _ctx: PlatformContext<TOptions>,
+    _run: RunnerMethod,
+  ): Promise<void> {
     throw new AlephaError(
       `The '${this.constructor.name}' adapter has no interactive logout. ` +
         "Its credential is held by the provider's own CLI or by the environment.",
@@ -187,14 +237,17 @@ export abstract class PlatformAdapter {
   /**
    * Build artifacts for a single app.
    */
-  abstract build(ctx: PlatformContext, run: RunnerMethod): Promise<void>;
+  abstract build(
+    ctx: PlatformContext<TOptions>,
+    run: RunnerMethod,
+  ): Promise<void>;
 
   /**
    * Deploy a single app (upload + activate atomically, e.g., wrangler deploy).
    * Returns the live URL if the platform provides one.
    */
   abstract deploy(
-    ctx: PlatformContext,
+    ctx: PlatformContext<TOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined>;
 
@@ -216,22 +269,43 @@ export abstract class PlatformAdapter {
   readonly controlsDomain: boolean = true;
 
   /**
+   * Whether the app runs serverless on this adapter, so resource detection
+   * boots it with `ALEPHA_SERVERLESS` set (Cloudflare Workers).
+   */
+  readonly serverless: boolean = false;
+
+  /**
+   * Whether this adapter provisions the app's resources as Cloudflare ones
+   * named by `NamingService`: a D1 database (or Hyperdrive), R2, KV,
+   * Analytics and queues. `plan` lists those names, and
+   * `platform db baseline mark`, which writes D1's own bookkeeping, refuses
+   * any adapter without it.
+   */
+  readonly cloudflareResources: boolean = false;
+
+  /**
    * Create/ensure cloud resources exist (DB, buckets, queues).
    * Not all adapters provision -- AKS defers to Helm.
    */
-  async provision(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {}
+  async provision(
+    _ctx: PlatformContext<TOptions>,
+    _run: RunnerMethod,
+  ): Promise<void> {}
 
   /**
    * Run database migrations.
    */
-  async migrate(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {}
+  async migrate(
+    _ctx: PlatformContext<TOptions>,
+    _run: RunnerMethod,
+  ): Promise<void> {}
 
   /**
    * Export the deployed database to a local file — the remote → local dev
    * snapshot workflow. Adapter/dialect specific; the default refuses.
    */
   async exportDb(
-    _ctx: PlatformContext,
+    _ctx: PlatformContext<TOptions>,
     _run: RunnerMethod,
     _options: ExportDbOptions = {},
   ): Promise<void> {
@@ -247,19 +321,25 @@ export abstract class PlatformAdapter {
    * filters out vars already handled by bindings (DATABASE_URL, R2, etc.),
    * and pushes the rest via the platform's secret management.
    */
-  async secrets(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {}
+  async secrets(
+    _ctx: PlatformContext<TOptions>,
+    _run: RunnerMethod,
+  ): Promise<void> {}
 
   /**
    * Detect existing resources and their state.
    * Used by `plan` and `status` commands.
    */
   abstract inspect(
-    ctx: PlatformContext,
+    ctx: PlatformContext<TOptions>,
     run: RunnerMethod,
   ): Promise<PlatformState>;
 
   /**
    * Tear down all resources for an environment.
    */
-  abstract teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void>;
+  abstract teardown(
+    ctx: PlatformContext<TOptions>,
+    run: RunnerMethod,
+  ): Promise<void>;
 }

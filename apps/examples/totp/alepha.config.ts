@@ -1,6 +1,6 @@
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
@@ -30,10 +30,7 @@ export default defineConfig({
        * under `migrations/sqlite/` are already the right dialect.
        */
       environments: {
-        production: {
-          domain: "totp-example.alepha.dev",
-          adapter: "cloudflare",
-        },
+        production: cloudflare({ domain: "totp-example.alepha.dev" }),
       },
     }),
   ],
