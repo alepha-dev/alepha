@@ -1,6 +1,7 @@
 {
-  "extends": "../../../tsconfig.json",
+  "extends": "alepha/tsconfig.base",
   "compilerOptions": {
+    "types": ["node", "bun"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": false,
