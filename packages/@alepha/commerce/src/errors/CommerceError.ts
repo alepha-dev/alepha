@@ -124,3 +124,43 @@ export class InsufficientStockError extends CommerceError {
     );
   }
 }
+
+/**
+ * A resource has no room left over the interval asked for: the court is
+ * booked, the course session is full, the seat is taken on one of the legs.
+ *
+ * The interval twin of {@link InsufficientStockError}.
+ */
+export class ResourceUnavailableError extends CommerceError {
+  override name = "ResourceUnavailableError";
+  /**
+   * 409 for the same reason as {@link InsufficientStockError}: the request was
+   * valid a moment ago, and what refuses it is the state of the world. A
+   * storefront re-reads availability rather than fixing its payload.
+   */
+  public readonly status = 409;
+
+  public readonly resourceId: string;
+
+  constructor(
+    resourceId: string,
+    interval: { startsAt: string; endsAt: string },
+    requested: number,
+    capacity: number,
+  ) {
+    super(
+      `Resource ${resourceId} has no room for ${requested} over [${interval.startsAt}, ${interval.endsAt}) at capacity ${capacity}.`,
+    );
+    this.resourceId = resourceId;
+  }
+}
+
+/**
+ * An interval that cannot be claimed as given: an instant that does not parse
+ * or carries no offset, an end that is not after its start, a capacity or
+ * quantity below one.
+ */
+export class InvalidIntervalError extends CommerceError {
+  override name = "InvalidIntervalError";
+  public readonly status = 400;
+}

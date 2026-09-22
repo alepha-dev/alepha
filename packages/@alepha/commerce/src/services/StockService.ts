@@ -1,7 +1,7 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, DatabaseProvider, type Page, sql } from "alepha/orm";
+import { $repository, type Page } from "alepha/orm";
 
 import {
   type StockMovementEntity,
@@ -12,6 +12,7 @@ import {
   stockReservations,
 } from "../entities/stockReservations.ts";
 import { InsufficientStockError } from "../errors/CommerceError.ts";
+import { ClaimLock } from "./ClaimLock.ts";
 
 /**
  * Stock, as an append-only ledger plus a set of temporary holds.
@@ -69,8 +70,7 @@ export class StockService {
   public static readonly LOCK_NAMESPACE = "alepha:commerce:stock";
 
   protected readonly log = $logger();
-  protected readonly alepha = $inject(Alepha);
-  protected readonly db = $inject(DatabaseProvider);
+  protected readonly lock = $inject(ClaimLock);
   protected readonly movements = $repository(stockMovements);
   protected readonly reservations = $repository(stockReservations);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -196,60 +196,19 @@ export class StockService {
   /**
    * Run one claim on a product's stock so that no other claim on the same
    * product decides at the same time, and tell it whether its own check is
-   * the decision.
+   * the decision. See {@link ClaimLock} for how, on each database.
    *
-   * On Postgres the claim runs in a transaction - the caller's, when there is
-   * one - holding `pg_advisory_xact_lock` on the product. Its check then sees
-   * every claim that committed before it, and no other claim on the product
-   * can check until this one commits: `locked` is true and the check decides.
-   * The lock outlives the claim until the transaction's COMMIT, never less,
-   * which is exactly what makes the next claim's read include this one's row.
-   *
-   * Two conditions come with the lock:
-   *
-   * - READ COMMITTED (the default) or SERIALIZABLE. REPEATABLE READ keeps the
-   *   snapshot taken before the wait, so the check misses every claim that
-   *   committed meanwhile and oversells; it is refused rather than trusted.
-   *   SERIALIZABLE is safe but turns every contended claim into a
-   *   serialization failure for the caller to retry.
-   * - Locks taken in one order when a transaction claims several products,
-   *   or two of them can each hold the lock the other waits for. That is why
-   *   `OrderService` walks an order's lines by product id.
-   *
-   * Everywhere else `locked` is false and the claim must replay: see
-   * {@link holdFits} and {@link movementFits}.
+   * Where `locked` is false the claim must replay: see {@link holdFits} and
+   * {@link movementFits}.
    */
   protected async claim<R>(
     productId: string,
     decide: (locked: boolean) => Promise<R>,
   ): Promise<R> {
-    if (this.db.dialect !== "postgresql" || !this.db.supportsTransactions) {
-      return decide(false);
-    }
-
-    return this.db.transactional(async () => {
-      const tx = this.alepha.get("alepha.orm.tx");
-      if (!tx) {
-        throw new AlephaError(
-          `No transaction to hold the stock lock on product ${productId} in.`,
-        );
-      }
-
-      const [row] = await tx.execute(sql`
-        SELECT
-          pg_advisory_xact_lock(
-            hashtext(${StockService.LOCK_NAMESPACE}),
-            hashtext(${productId})
-          ),
-          current_setting('transaction_isolation') AS isolation`);
-      if (row?.isolation === "repeatable read") {
-        throw new AlephaError(
-          `Stock for product ${productId} cannot be claimed under REPEATABLE READ: the transaction would check a snapshot older than the claims it waited for. Use READ COMMITTED or SERIALIZABLE.`,
-        );
-      }
-
-      return decide(true);
-    });
+    return this.lock.run(
+      { namespace: StockService.LOCK_NAMESPACE, key: productId },
+      decide,
+    );
   }
 
   /**

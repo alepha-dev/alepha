@@ -6,7 +6,9 @@ import { DigitalKindHandler } from "./kinds/DigitalKindHandler.ts";
 import { GoodKindHandler } from "./kinds/GoodKindHandler.ts";
 import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
+import { ClaimLock } from "./services/ClaimLock.ts";
 import { OrderService } from "./services/OrderService.ts";
+import { ResourceService } from "./services/ResourceService.ts";
 import { StockService } from "./services/StockService.ts";
 import { VatCalculator } from "./services/VatCalculator.ts";
 
@@ -16,6 +18,7 @@ export * from "./entities/orderItems.ts";
 export * from "./entities/orders.ts";
 export * from "./schemas/orderStatusSchema.ts";
 export * from "./entities/products.ts";
+export * from "./entities/resourceReservations.ts";
 export * from "./entities/stockMovements.ts";
 export * from "./entities/stockReservations.ts";
 export * from "./errors/CommerceError.ts";
@@ -24,7 +27,9 @@ export * from "./kinds/DigitalKindHandler.ts";
 export * from "./kinds/GoodKindHandler.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
+export * from "./services/ClaimLock.ts";
 export * from "./services/OrderService.ts";
+export * from "./services/ResourceService.ts";
 export * from "./services/StockService.ts";
 export * from "./services/VatCalculator.ts";
 
@@ -127,7 +132,9 @@ export const AlephaCommerce = $module({
     ProductKindRegistry,
     CatalogService,
     OrderService,
+    ClaimLock,
     StockService,
+    ResourceService,
     // Core, not invoicing: a receipt needs this arithmetic and never issues an
     // invoice. See the note on the class.
     VatCalculator,
