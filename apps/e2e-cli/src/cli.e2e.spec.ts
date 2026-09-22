@@ -808,6 +808,72 @@ describe("Alepha CLI E2E", () => {
     });
 
     /**
+     * Deno runs the `node` slice as it is: there is no `deno` runtime, by
+     * decision (#Q2456), so this is the only thing that says it still works.
+     *
+     * An SSR page, not `/api/hello`, because streaming is where Deno's
+     * `node:http` shim differs from node: JSON routes and static files take a
+     * plain `res.end`, while a page goes through the web-stream branch of
+     * `ServerProvider` and its socket. Before 2.9 that socket had no
+     * `setNoDelay`, and every page broke while JSON served fine.
+     *
+     * Against the current Deno 2 (the CI job installs `v2.x`): older releases
+     * are not supported, so a failure here means a new Deno broke the node
+     * slice, or Alepha started leaning on a node API the shim lacks.
+     *
+     * ⚠️ FAILS when `deno` is missing rather than skipping, like the Go build
+     * in `bay.e2e.spec.ts`: a skipped runtime test is how a green run lies.
+     * The `e2e-cli` job installs it.
+     *
+     * Runs on the build the test above left in `dist/`, and before the
+     * compile test below, which deletes `index.node.js`.
+     */
+    it("serves an SSR page from the node build under Deno", async () => {
+      const deno = await run("deno --version", PROJECT_DIR);
+      if (deno.exitCode !== 0) {
+        throw new Error(
+          "deno is not installed. Install Deno 2 rather than skipping: this test is the only " +
+            "check that a node build runs under it.",
+        );
+      }
+      expect(existsSync(join(PROJECT_DIR, "dist/index.node.js"))).toBe(true);
+
+      const port = await freePort();
+      // `-A` because the app reads its env, binds a port and opens SQLite, and
+      // a permission prompt with no TTY would hang the boot rather than fail.
+      const server = startProcess(
+        "deno run -A dist/index.node.js",
+        PROJECT_DIR,
+        {
+          SERVER_PORT: String(port),
+          SERVER_HOST: "127.0.0.1",
+          NODE_ENV: "production",
+          APP_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
+        },
+      );
+
+      try {
+        const page = await fetchWithRetry(`http://127.0.0.1:${port}/`, 60, 500);
+        // Read before asserting on the status: a page that fails mid-stream
+        // has flushed a 200 and its headers already, so the failure surfaces
+        // here as a broken body, not as a 500.
+        const html = await page.text();
+        expect(page.status).toBe(200);
+        // Rendered on the server, not an empty shell the client fills in: the
+        // Home page's loader called `/api/hello`, which names the app after
+        // its directory (`proj`), and the first slide prints it.
+        expect(html).toContain("App: Proj");
+        expect(html).toMatch(/<script[^>]*src="\/[^"]+\.js"/);
+      } catch (error) {
+        console.log("DENO STDOUT:", server.stdout().slice(-2000));
+        console.log("DENO STDERR:", server.stderr().slice(-2000));
+        throw error;
+      } finally {
+        await server.kill();
+      }
+    });
+
+    /**
      * `--compile` must produce ONE file that serves the whole app, its client
      * assets included. So the binary is copied into a directory that holds
      * nothing else: every asset it serves has to come from inside it.
