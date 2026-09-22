@@ -28,6 +28,15 @@ import { ClaimLock } from "./ClaimLock.ts";
  * column oversells: two concurrent sales read the same snapshot, both see
  * enough, both write.
  *
+ * ### One of two inventory shapes
+ *
+ * This is **fungible stock**: a quantity on a product, where any unit will do.
+ * Three padel balls, a t-shirt in size M. When what is sold is a particular
+ * thing for a particular time (court 3 on Saturday from 18:00, seat 12A on the
+ * Lyon leg, room 204 on the night of the 4th) a count cannot express it: use
+ * `ResourceService`, which holds claims on a named resource over an
+ * interval, through the same claim lock and the same hold lifecycle.
+ *
  * ### How the same race is closed here
  *
  * Checking before writing cannot close it on its own: on Postgres at READ

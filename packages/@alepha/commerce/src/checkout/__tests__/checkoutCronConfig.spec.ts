@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { AlephaCommerceCheckout, checkoutConfig } from "../index.ts";
 
 /**
- * Guards the declaration-order hazard: `StockReservationSweeper.config` must
+ * Guards the declaration-order hazard: `HoldSweeper.config` must
  * stay declared above the `$job` that reads it. Class fields initialize in
  * order, so moving it below leaves `this.config` undefined at `$job`
  * construction — a crash at inject time, not a type error.
@@ -15,11 +15,10 @@ describe("checkout cron configuration", () => {
     alepha
       .inject(CronProvider)
       .getCronJobs()
-      .find(
-        (job) => job.name === "system.commerce.release-expired-reservations",
-      )?.expression;
+      .find((job) => job.name === "system.commerce.release-expired-holds")
+      ?.expression;
 
-  it("should default the stock sweep to a quarter-hour tick", () => {
+  it("should default the hold sweep to a quarter-hour tick", () => {
     const alepha = Alepha.create().with(AlephaCommerceCheckout);
 
     expect(expressionOf(alepha)).toBe("*/15 * * * *");

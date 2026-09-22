@@ -119,7 +119,13 @@ declare module "alepha" {
 }
 
 /**
- * Headless commerce core: catalog, orders, stock ledger.
+ * Headless commerce core: catalog, orders, and two inventory ledgers.
+ *
+ * - **Fungible stock** (`StockService`): a quantity on a product, sold by the
+ *   `good` kind.
+ * - **Interval claims on named resources** (`ResourceService`): a court, a
+ *   seat on a leg, a room on a night, sold by an application's subclass of
+ *   `ResourceKindHandler`.
  *
  * Ships two product kinds — `good` (stock-tracked) and `digital` — and the
  * registry that lets any other module add more without editing this package.

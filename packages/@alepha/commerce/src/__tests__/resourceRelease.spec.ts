@@ -173,6 +173,45 @@ describe("releasing intervals", () => {
     expect(after!.updatedAt).toBe(swept!.updatedAt);
   });
 
+  it("releases expired stock and interval holds on the one sweep tick", async ({
+    expect,
+  }) => {
+    const ctx = await setup("sqlite");
+    const { product, courts } = await aClub(ctx);
+    const balls = await ctx.catalog.create({
+      slug: `balls-${randomUUID()}`,
+      name: "Balles de padel",
+      price: 900,
+      published: true,
+      config: { trackStock: true },
+    });
+    await ctx.alepha.inject(StockService).recordIntake(balls.id, 1);
+    // Straight to the order: the checkout's own jobs would abandon it during
+    // the travel below, releasing the holds for a reason other than the sweep.
+    const { id: orderId } = await ctx.orders.create({
+      lines: [
+        { productId: balls.id, quantity: 1 },
+        { productId: product.id, quantity: 1, lineConfig: line([courts[0]]) },
+      ],
+    });
+
+    // Past the TTL and over a sweep boundary: the job fires on its own. Only
+    // the end state is asserted, since which caller swept first is a race.
+    await ctx.dateTime.travel(
+      StockService.RESERVATION_TTL_MINUTES + 16,
+      "minutes",
+    );
+
+    await expect
+      .poll(async () => [
+        ...(await ctx.alepha.inject(StockService).reservationsOf(orderId)).map(
+          (it) => it.status,
+        ),
+        ...(await statuses(ctx, orderId)),
+      ])
+      .toEqual(["released", "released"]);
+  });
+
   /*
    * D1 runs `transactional()` in place: nothing rolls back the claims earlier
    * lines took when a later one loses, so the order must give them back
