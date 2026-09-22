@@ -35,6 +35,15 @@ describe("LoreAdapter", () => {
        * What Lore's destroy answers, or `undefined` to answer every resource
        * removed.
        */
+      /**
+       * The estates lent to the project, newest first as Lore lists them.
+       */
+      lent?: Array<{ id: string; slug: string; acceptedRuntimes?: string[] }>;
+      /**
+       * What `getApp` throws instead of answering, other than the 404 of a
+       * missing copy.
+       */
+      readError?: unknown;
       destroyed?: {
         removed: string[];
         kept: string[];
@@ -101,17 +110,33 @@ describe("LoreAdapter", () => {
       debug: () => {},
       trace: () => {},
     };
-    const instance =
+    let instance =
       options.instance === undefined
         ? { id: "inst-1", estateId: "cf-1" }
         : options.instance;
+    const lent = options.lent ?? [
+      { id: "cf-1", slug: "first", acceptedRuntimes: ["workerd"] },
+    ];
 
     Object.assign(alepha.inject(LoreDeployer) as unknown as object, {
       apps: {
         getApp: async () => {
+          if (options.readError) {
+            throw options.readError;
+          }
           if (!instance) {
             throw new HttpError({ status: 404, message: "App not found" });
           }
+          return instance;
+        },
+        createApp: async ({ body }: { body: Record<string, unknown> }) => {
+          events.push(`create ${JSON.stringify(body)}`);
+          instance = { id: "inst-new", app: "docs", env: "production" };
+          return instance;
+        },
+        updateApp: async ({ body }: { body: { estateId: string } }) => {
+          events.push(`link ${body.estateId}`);
+          instance = { ...instance, estateId: body.estateId };
           return instance;
         },
         // Lore's own check: the confirmation must be the copy's `app/env` as
@@ -143,7 +168,7 @@ describe("LoreAdapter", () => {
       },
       estates: {
         listProjectEstates: async () => ({
-          items: [{ id: "cf-1", acceptedRuntimes: ["workerd"] }],
+          items: lent.map((it) => ({ acceptedRuntimes: ["workerd"], ...it })),
         }),
       },
       deploys: {
@@ -259,16 +284,6 @@ describe("LoreAdapter", () => {
     expect(command.endsWith(" build --runtime workerd")).toBe(true);
     expect(command.startsWith(JSON.stringify(process.execPath))).toBe(true);
     expect(command).not.toContain("npx");
-  });
-
-  it("refuses a copy that does not exist, before building anything", async () => {
-    const { shell, events, up } = await create({ instance: null });
-
-    await expect(up()).rejects.toThrow(
-      /docs\/production is not a deployed copy of this project/,
-    );
-    expect(shell.calls).toEqual([]);
-    expect(events).toEqual([]);
   });
 
   it("refuses an environment that names no project, in config or LORE_PROJECT", async () => {
@@ -430,6 +445,74 @@ describe("LoreAdapter", () => {
           detail: "not a deployed copy of this project",
         },
       ]);
+    });
+  });
+
+  describe("a first up", () => {
+    it("creates the missing copy on the estate lent first, then deploys to it", async () => {
+      const { events, printed, up } = await create({
+        instance: null,
+        // Newest first, as Lore lists them: the one lent FIRST is the last.
+        lent: [
+          { id: "cf-2", slug: "newer" },
+          { id: "cf-1", slug: "first" },
+        ],
+      });
+
+      await up();
+
+      expect(events).toEqual([
+        // Nothing optional: no domain, not ephemeral, no sigil.
+        'create {"app":"docs","env":"production"}',
+        "link cf-1",
+        "push docs@latest",
+        "secret APP_SECRET on inst-new",
+        "start latest",
+      ]);
+      expect(printed).toContain("Created docs/production on estate 'first'");
+    });
+
+    it("creates it on the estate lore() names", async () => {
+      const { events, up } = await create({
+        instance: null,
+        descriptor: lore({ project: "alepha", estate: "newer" }),
+        lent: [
+          { id: "cf-2", slug: "newer" },
+          { id: "cf-1", slug: "first" },
+        ],
+      });
+
+      await up();
+
+      expect(events).toContain("link cf-2");
+    });
+
+    it("refuses when no estate is lent, and creates nothing", async () => {
+      const { events, shell, up } = await create({ instance: null, lent: [] });
+
+      await expect(up()).rejects.toThrow(/No estate is lent to this project/);
+      expect(events).toEqual([]);
+      expect(shell.calls).toEqual([]);
+    });
+
+    it("refuses an estate the project was not lent, before creating anything", async () => {
+      const { events, up } = await create({
+        instance: null,
+        descriptor: lore({ project: "alepha", estate: "elsewhere" }),
+      });
+
+      await expect(up()).rejects.toThrow(/No estate called 'elsewhere'/);
+      expect(events).toEqual([]);
+    });
+
+    it("rethrows a 403 and creates nothing: only a 404 means missing", async () => {
+      const { events, shell, up } = await create({
+        readError: new HttpError({ status: 403, message: "Forbidden" }),
+      });
+
+      await expect(up()).rejects.toThrow(/Forbidden/);
+      expect(events).toEqual([]);
+      expect(shell.calls).toEqual([]);
     });
   });
 });

@@ -120,16 +120,25 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
   }
 
   /**
-   * Find the copy this environment deploys to, before anything is built.
+   * Find the copy this environment deploys to, creating it on a first `up`.
    *
-   * A copy that does not exist is refused, by the same message `lore deploy`
-   * gives.
+   * ## ⚠️ Why creating is safe here when `lore deploy` refuses
+   *
+   * `lore deploy` refuses a missing copy because a typo in its free `--env`
+   * flag would create one nobody meant. `alepha platform up --env prdo` never
+   * reaches Lore: the orchestrator refuses any env that is not a key of
+   * `alepha.config.ts`. So the names this can create are exactly the committed
+   * config, and committing an environment key is the explicit act the refusal
+   * exists to require.
+   *
+   * Only a 404 creates: a 403, a revoked key or an unreachable Lore is thrown
+   * as it is, and never becomes a copy.
    */
   override async provision(
     ctx: PlatformContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
-    await this.target(ctx);
+    await this.target(ctx, { create: true });
   }
 
   /**
@@ -350,6 +359,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    */
   protected async target(
     ctx: PlatformContext<LoreEnvironmentOptions>,
+    options: { create?: boolean } = {},
   ): Promise<{ project: string; projectId: number; instance: LoreInstance }> {
     const project = this.configure(ctx);
     const key = `${project}\u0000${ctx.project}\u0000${ctx.env}`;
@@ -358,11 +368,18 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
       return known;
     }
     const projectId = await this.projects.resolve(project);
-    const instance = await this.deployer.loadInstance(
-      projectId,
-      ctx.project,
-      ctx.env,
-    );
+    // Created only from `provision`, the step `up` runs first. A granular
+    // `platform build` or `platform deploy` on a missing copy is refused,
+    // with `lore deploy`'s own message.
+    const instance = options.create
+      ? ((await this.deployer.findInstance(projectId, ctx.project, ctx.env)) ??
+        (await this.deployer.createInstance(
+          projectId,
+          ctx.project,
+          ctx.env,
+          ctx.options.estate,
+        )))
+      : await this.deployer.loadInstance(projectId, ctx.project, ctx.env);
     const target = { project, projectId, instance };
     this.targets.set(key, target);
     return target;

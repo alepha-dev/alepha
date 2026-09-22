@@ -9,6 +9,10 @@ import type { AppController } from "lore/api/controllers/AppController";
 import type { DeployController } from "lore/api/controllers/DeployController";
 import type { ProjectEstateController } from "lore/api/controllers/ProjectEstateController";
 
+import {
+  type LentEstate,
+  LoreEstateChoice,
+} from "../../client/services/LoreEstateChoice.ts";
 import { LoreArtifactPusher } from "./LoreArtifactPusher.ts";
 import { LoreClientService } from "./LoreClientService.ts";
 
@@ -206,6 +210,49 @@ export class LoreDeployer {
     throw new AlephaError(
       `${app}/${env} is not a deployed copy of this project, so there is nowhere to deploy it. Create it on the project's Apps page, or with the \`app_instance_create\` MCP tool - naming one here would not make it exist.`,
     );
+  }
+
+  /**
+   * Create the copy, on the estate the shared rule picks.
+   *
+   * ⚠️ `lore deploy` never calls this: its `--env` is free text, and a typo
+   * there must not become a copy. A caller whose env names come from a
+   * committed file (the platform adapter) may.
+   *
+   * Created with nothing optional: no domain (the estate owns the host), not
+   * ephemeral (a copy made this way keeps its data, which `platform down`
+   * relies on), and no sigil (the deploy mints one from the manifest). Two
+   * calls, because `createApp` takes no estate: pointing the row at one is a
+   * separate, validated act. The estate is chosen, and refused, before the
+   * first call, so a bad `estate` creates nothing.
+   */
+  public async createInstance(
+    projectId: number,
+    app: string,
+    env: string,
+    estate?: string,
+  ): Promise<LoreInstance> {
+    const lent = await this.estates.listProjectEstates({
+      params: { projectId },
+    });
+    const chosen = LoreEstateChoice.pick(
+      (lent?.items ?? []) as LentEstate[],
+      estate,
+      `${app}/${env}`,
+    );
+
+    const created = (await this.apps.createApp({
+      params: { projectId },
+      body: { app, env },
+    })) as LoreInstance & { app: string; env: string };
+    const linked = (await this.apps.updateApp({
+      params: { projectId, app: created.app, env: created.env },
+      body: { estateId: chosen.id },
+    })) as LoreInstance;
+
+    // On its own line: a first deploy made something that outlives it.
+    this.log.info(`Created ${app}/${env} on estate '${chosen.slug}'`);
+    return linked;
   }
 
   /**
