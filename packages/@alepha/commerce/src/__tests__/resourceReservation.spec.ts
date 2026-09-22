@@ -149,6 +149,41 @@ describe("resource reservation", () => {
         }),
       ).rejects.toThrow(/no room/);
     });
+
+    it("lets exactly one of a closure and a sale racing for a court stand", async ({
+      expect,
+    }) => {
+      const ctx = await setup(backend);
+      const courts = Array.from({ length: 8 }, aCourt);
+
+      const rounds = await Promise.all(
+        courts.map((court) =>
+          Promise.all([
+            outcome(
+              ctx.resources.claim(court, {
+                ...slot("08:00", "12:00"),
+                capacity: 1,
+                label: "maintenance",
+              }),
+            ),
+            outcome(
+              ctx.resources.reserve(court, {
+                ...slot("10:00", "11:00"),
+                capacity: 1,
+                orderId: randomUUID(),
+              }),
+            ),
+          ]),
+        ),
+      );
+
+      for (const [index, round] of rounds.entries()) {
+        expect(round.filter((it) => it === "held")).toHaveLength(1);
+        expect(
+          await ctx.resources.occupancy(courts[index]!, slot("00:00", "23:59")),
+        ).toHaveLength(1);
+      }
+    });
   });
 
   describe("the interval", () => {
@@ -377,6 +412,85 @@ describe("resource reservation", () => {
           [true, "released"],
           [false, "held"],
         ],
+      );
+    });
+  });
+
+  describe("closures", () => {
+    it("refuses to close over a booking, and says who is in the way", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const court = aCourt();
+      const orderId = randomUUID();
+      await ctx.resources.reserve(court, {
+        ...slot("10:00", "11:00"),
+        capacity: 1,
+        orderId,
+      });
+
+      await expect(
+        ctx.resources.claim(court, {
+          ...slot("08:00", "12:00"),
+          capacity: 1,
+          label: "maintenance",
+        }),
+      ).rejects.toThrow(/no room/);
+
+      const inTheWay = await ctx.resources.occupancy(
+        court,
+        slot("08:00", "12:00"),
+      );
+      expect(inTheWay.map((it) => [it.orderId, it.label])).toEqual([
+        [orderId, undefined],
+      ]);
+    });
+
+    it("takes the whole capacity by default, and gives it back when lifted", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const session = aCourt();
+      const room = [{ resourceId: session, capacity: 12 }];
+
+      const closure = await ctx.resources.claim(session, {
+        ...slot("18:00", "20:00"),
+        capacity: 12,
+        label: "Tournoi d'automne",
+      });
+      expect(closure).toMatchObject({
+        status: "consumed",
+        quantity: 12,
+        label: "Tournoi d'automne",
+      });
+      expect(closure.orderId).toBeUndefined();
+      expect(closure.expiresAt).toBeUndefined();
+      expect(
+        (await ctx.resources.availability(room, slot("18:00", "20:00"))).get(
+          session,
+        ),
+      ).toEqual([]);
+
+      await ctx.resources.lift(closure.id);
+      await ctx.resources.lift(closure.id);
+
+      expect(
+        (await ctx.resources.availability(room, slot("18:00", "20:00"))).get(
+          session,
+        ),
+      ).toEqual([{ ...slot("18:00", "20:00"), remaining: 12 }]);
+    });
+
+    it("never lifts a claim an order holds", async ({ expect }) => {
+      const ctx = await setup("sqlite");
+      const booking = await ctx.resources.reserve(aCourt(), {
+        ...slot("10:00", "11:00"),
+        capacity: 1,
+        orderId: randomUUID(),
+      });
+
+      await expect(ctx.resources.lift(booking.id)).rejects.toThrow(
+        /cancelling or refunding the order/,
       );
     });
   });

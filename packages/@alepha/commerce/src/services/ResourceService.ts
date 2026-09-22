@@ -8,6 +8,7 @@ import {
   resourceReservations,
 } from "../entities/resourceReservations.ts";
 import {
+  CommerceError,
   InvalidIntervalError,
   ResourceUnavailableError,
 } from "../errors/CommerceError.ts";
@@ -280,6 +281,71 @@ export class ResourceService {
   }
 
   // -------------------------------------------------------------------------
+  // Closures
+
+  /**
+   * Take a resource out of sale over an interval for a reason that is not a
+   * sale: maintenance, a private event, a course session holding a court, a
+   * coach off sick, a train set withdrawn.
+   *
+   * A closure is a claim like any other (`consumed`, no expiry, no order, a
+   * `label` saying why) and goes through the same claim path as
+   * {@link reserve}, so a closure and a sale racing for one court leave
+   * exactly one standing. That is what a check-then-write guard in front of a
+   * separate closures table cannot promise.
+   *
+   * `quantity` defaults to `capacity`: a closure normally takes the whole
+   * resource. There is no "exclusive" flag, because capacity is already the
+   * caller's contract and a flag would be a second way to say the same thing.
+   *
+   * **A closure loses to earlier claims like anything else.** Closing a court
+   * somebody has booked is refused with `ResourceUnavailableError`, and
+   * displacing those sales (cancelling or refunding their orders, then
+   * closing) is the application's job, not this package's: {@link occupancy}
+   * lists what is in the way.
+   *
+   * @throws ResourceUnavailableError when a live claim is in the way.
+   */
+  public async claim(
+    resourceId: string,
+    options: ResourceWindow & {
+      capacity: number;
+      quantity?: number;
+      label: string;
+    },
+  ): Promise<ResourceReservationEntity> {
+    const window = this.interval(options);
+    const capacity = this.amount(options.capacity, "capacity");
+    const quantity = this.amount(options.quantity ?? capacity, "quantity");
+
+    return this.lock.run(this.lockKey(resourceId), (locked) =>
+      this.place(locked, resourceId, window, capacity, quantity, {
+        status: "consumed",
+        label: options.label,
+      }),
+    );
+  }
+
+  /**
+   * Lift a closure, giving its interval back.
+   *
+   * Idempotent: a closure already lifted is left alone. Refuses a claim that
+   * belongs to an order, whose room comes back through the order itself
+   * (cancelled, or refunded) and never by deleting the booking under it.
+   */
+  public async lift(claimId: string): Promise<void> {
+    const claim = await this.claims.getById(claimId);
+    if (claim.orderId) {
+      throw new CommerceError(
+        `Claim ${claimId} belongs to order ${claim.orderId}: release it by cancelling or refunding the order, not by lifting it.`,
+      );
+    }
+    if (claim.status !== "released") {
+      await this.claims.updateById(claimId, { status: "released" });
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Releasing
 
   /**
@@ -366,6 +432,22 @@ export class ResourceService {
   }
 
   /**
+   * Every live claim on a resource over a window, and what each one is: the
+   * order that bought it, or the label of the closure that took it.
+   *
+   * The staff read, for a planning screen or for the refusal a closure met.
+   * Never hand it to a storefront: it names orders. The public read is
+   * {@link availability}, which says how much is left and nothing about who
+   * took the rest.
+   */
+  public async occupancy(
+    resourceId: string,
+    window: ResourceWindow,
+  ): Promise<ResourceReservationEntity[]> {
+    return this.live([resourceId], this.interval(window));
+  }
+
+  /**
    * The free intervals of each resource over a window, with the room left in
    * each: what a storefront renders as a calendar.
    *
@@ -376,7 +458,7 @@ export class ResourceService {
    *
    * **Anonymous on purpose.** The result carries no order, claim or label: a
    * public storefront renders it. Who holds what, and why a window is closed,
-   * is `occupancy()`, a staff read.
+   * is {@link occupancy}, a staff read.
    *
    * Read through the very code {@link reserve} decides with ({@link live} and
    * {@link profile}), so a live hold counts until the instant it expires,
