@@ -26,9 +26,9 @@ import {
   cloudflareEnvironmentOptionsSchema,
 } from "../schemas/cloudflareEnvironmentOptions.ts";
 import {
-  readManifestEnvKeys,
   readManifestVariables,
   EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS,
+  resolveSecretKeySet,
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
@@ -591,21 +591,6 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   static readonly EXCLUDED_SECRET_KEYS = SHARED_EXCLUDED_SECRET_KEYS;
 
   /**
-   * Read the build manifest's `env` list (every key the app declares via
-   * `$env`) from `dist/manifest.json`. Used as the default worker-secret
-   * allowlist. Returns `undefined` when the manifest is absent or predates
-   * the `env` field, so the caller falls back to the `.env` file keys.
-   *
-   * The body moved to `../secretKeys.ts` when `BayAdapter` needed the same
-   * allowlist; this stays as the adapter-shaped way in.
-   */
-  protected async readManifestEnvKeys(
-    root: string,
-  ): Promise<string[] | undefined> {
-    return await readManifestEnvKeys(this.fs, root);
-  }
-
-  /**
    * Read the build manifest's `variables`: the keys the app declared
    * `secret: false`. Everything else on the allowlist is a secret, so an
    * unreadable manifest encrypts everything.
@@ -629,35 +614,18 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     secrets: Record<string, string>;
     vars: Record<string, string>;
   }> {
-    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
-
-    // The key set to push, by precedence:
-    //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
-    //   2. otherwise the UNION of:
-    //      a. `dist/manifest.json` `env` — every key the app declares via
-    //         `$env`, captured at build time (or the `.env.<env>` file keys as
-    //         a legacy fallback for artifacts built before the manifest carried
-    //         `env`). Lets CI deliver declared secrets from `process.env` with
-    //         no file on the runner.
-    //      b. `.env.<env>.local` keys — the per-deploy override layer. External
-    //         orchestrators (Alepha Rocket) write injected `config.vars` +
-    //         `config.secrets` (e.g. CLUB_CONFIG_JSON, per-deploy OAuth) here,
-    //         and those must reach the worker even though the prebuilt app
-    //         never declared them. Only `.local` is unioned, NOT the base
-    //         `.env.<env>` — so local infra creds (CLOUDFLARE_API_TOKEN, …)
-    //         can't leak in.
-    // In every case the value resolves from `.env.<env>[.local]` first, then
-    // `process.env`; ambient runner vars (PATH, GITHUB_*, …) can never leak.
-    const declaredKeys = this.options?.secrets?.keys;
-    const manifestKeys = await this.readManifestEnvKeys(ctx.root);
-    const localKeys = Object.keys(
-      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}.local`]),
-    );
-    const keys =
-      declaredKeys ??
-      Array.from(
-        new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
-      );
+    // The key set: `platform.secrets.keys`, else the manifest's `env` (or the
+    // `.env.<env>` keys) unioned with the `.env.<env>.local` keys. Shared with
+    // every adapter (`../secretKeys.ts`); the value resolves from
+    // `.env.<env>[.local]` first, then `process.env`, so ambient runner vars
+    // (PATH, GITHUB_*, ...) can never leak.
+    const { keys, envVars } = await resolveSecretKeySet({
+      fs: this.fs,
+      envUtils: this.envUtils,
+      root: ctx.root,
+      env: ctx.env,
+      keys: this.options?.secrets?.keys,
+    });
 
     // Filter out binding/build vars, VITE_* vars, and empty values. Shared
     // with `BayAdapter` (`../secretKeys.ts`) because it is the security

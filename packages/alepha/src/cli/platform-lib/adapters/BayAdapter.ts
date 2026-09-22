@@ -15,7 +15,7 @@ import {
 import {
   BAY_OWNED_SECRET_KEYS,
   EXCLUDED_SECRET_KEYS,
-  readManifestEnvKeys,
+  resolveSecretKeySet,
   selectSecrets,
 } from "../secretKeys.ts";
 import {
@@ -860,24 +860,16 @@ export class BayAdapter extends PlatformAdapter<BayEnvironmentOptions> {
     secrets: Record<string, string>;
     platformOwned: string[];
   }> {
-    // The key set, by precedence — the same resolution
-    // `CloudflareAdapter.secrets` uses, deliberately, because a second shape
-    // for "which keys are this app's" is a second thing to get wrong:
-    //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
-    //   2. otherwise the UNION of the manifest's `env` list (or the
-    //      `.env.<env>` file's keys, when there is no manifest) and the
-    //      `.env.<env>.local` keys, which are the per-deploy override layer.
-    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
-    const declaredKeys = this.options?.secrets?.keys;
-    const manifestKeys = await readManifestEnvKeys(this.fs, ctx.root);
-    const localKeys = Object.keys(
-      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}.local`]),
-    );
-    const keys =
-      declaredKeys ??
-      Array.from(
-        new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
-      );
+    // The key set every adapter resolves the same way (`../secretKeys.ts`):
+    // `platform.secrets.keys`, else the manifest's `env` (or the `.env.<env>`
+    // keys) unioned with the `.env.<env>.local` keys.
+    const { keys, envVars } = await resolveSecretKeySet({
+      fs: this.fs,
+      envUtils: this.envUtils,
+      root: ctx.root,
+      env: ctx.env,
+      keys: this.options?.secrets?.keys,
+    });
 
     return selectSecrets({
       keys,
