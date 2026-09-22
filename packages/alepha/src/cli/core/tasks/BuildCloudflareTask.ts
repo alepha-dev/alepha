@@ -37,17 +37,6 @@ export class BuildCloudflareTask extends BuildTask {
   // (kept as a literal here because the CF provider isn't on the node barrel).
   protected readonly websocketDoClass = "AlephaWebSocketDurableObject";
 
-  /**
-   * Best-effort Cloudflare zone (registrable domain) for a wildcard Worker route:
-   * strip the leading `*.` and any subdomain labels, keep the last two — e.g.
-   * `*.club.alepha.dev` → `alepha.dev`, `*.alepha.club` → `alepha.club`. Correct
-   * for single-label TLDs (the common case); a multi-label public suffix
-   * (`.co.uk`) or a CF subdomain zone needs an explicit `CLOUDFLARE_ZONE`.
-   */
-  protected deriveZone(domain: string): string {
-    return domain.replace(/^\*\./, "").split(".").slice(-2).join(".");
-  }
-
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly log = $logger();
 
@@ -326,38 +315,15 @@ export class BuildCloudflareTask extends BuildTask {
       return;
     }
 
+    // A Custom Domain is the only binding: it cannot be a wildcard, and the
+    // zone Route that once served one is gone (#Q2482). Refused here rather
+    // than written, because Cloudflare would reject it at deploy with a
+    // message naming nothing about this configuration.
     if (domain.includes("*")) {
-      // A wildcard is a Worker *Route* (not a Custom Domain), and the CF API
-      // keys routes by zone. Default the zone to the registrable domain — the
-      // last two labels of the wildcard host (`*.club.alepha.dev` → `alepha.dev`,
-      // `*.alepha.club` → `alepha.club`). Set CLOUDFLARE_ZONE explicitly only to
-      // override (a subdomain zone, or a multi-label public suffix like `.co.uk`
-      // where "last two labels" is wrong).
-      const zone =
-        this.envOf(ctx, "CLOUDFLARE_ZONE") || this.deriveZone(domain);
-      wrangler.routes = [
-        {
-          pattern: domain.endsWith("/*") ? domain : `${domain}/*`,
-          zone_name: zone,
-        },
-      ];
-      return;
-    }
-
-    // An explicit CLOUDFLARE_ZONE forces a zone *Route* for a non-wildcard
-    // host too. Needed when the host is ALSO covered by another Worker's
-    // wildcard route on the same zone: Cloudflare evaluates Routes before
-    // Custom Domains, but among routes the most specific pattern wins — so
-    // `app.club.alepha.dev/*` beats the pooled `*.club.alepha.dev/*`, while a
-    // Custom Domain on that host would lose to the wildcard route entirely.
-    if (this.envOf(ctx, "CLOUDFLARE_ZONE")) {
-      wrangler.routes = [
-        {
-          pattern: `${domain}/*`,
-          zone_name: this.envOf(ctx, "CLOUDFLARE_ZONE"),
-        },
-      ];
-      return;
+      throw new AlephaError(
+        `CLOUDFLARE_DOMAIN '${domain}' is a wildcard, and a Cloudflare Custom Domain cannot be one. ` +
+          "Use a plain host, or deploy a multi-tenant app through Lore Deploy.",
+      );
     }
 
     wrangler.routes = [

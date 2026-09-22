@@ -315,13 +315,7 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     const host = ctx.envConfig.domain;
     if (host) {
-      // A wildcard host needs a CF zone for its Worker route, but `zone` is
-      // optional: when omitted the build derives it from the domain's last two
-      // labels (BuildCloudflareTask). Set it only to override that default.
       env.CLOUDFLARE_DOMAIN = host;
-      if (ctx.envConfig.zone) {
-        env.CLOUDFLARE_ZONE = ctx.envConfig.zone;
-      }
     }
 
     if (ctx.envConfig.jurisdiction) {
@@ -690,12 +684,11 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   /**
    * Public base URL for this deploy, derived from the configured domain.
-   * Returns undefined when no domain is set or
-   * the host is a wildcard — there's no single resolvable origin to point at.
+   * Returns undefined when no domain is set.
    */
   protected publicUrl(ctx: PlatformContext): string | undefined {
     const host = ctx.envConfig.domain;
-    if (!host || host.includes("*")) {
+    if (!host) {
       return undefined;
     }
     return `https://${host}`;

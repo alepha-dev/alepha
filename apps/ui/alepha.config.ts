@@ -56,10 +56,10 @@ export default defineConfig({
       // delivers them through the deploy job's `env:` block.
       environments: {
         production: {
-          // A Custom Domain, NOT a Worker Route - note the absent `zone`, which
-          // is what `apps/docs` sets to get a route instead.
+          // A Custom Domain, NOT a Worker Route (the only binding `alepha
+          // platform` makes since the `zone` field was removed).
           //
-          // Docs needed a Route because the apex still holds the GitHub Pages A
+          // Docs once needed a Route because the apex still holds the GitHub Pages A
           // and AAAA records, and a Custom Domain owns its DNS record, so
           // Cloudflare would refuse to create one without deleting those first.
           // None of that applies here: `ui.alepha.dev` is a fresh subdomain with

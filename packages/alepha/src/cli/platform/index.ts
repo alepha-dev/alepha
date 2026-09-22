@@ -80,8 +80,7 @@ export const platform = (options: PlatformOptions) => {
   const mode = process.env.NODE_ENV ?? process.env.MODE;
   if (!process.env.PUBLIC_URL && mode === "production") {
     const productionDomain = options?.environments?.production?.domain;
-    // A wildcard domain is a routing pattern, not a hostname.
-    if (productionDomain && !productionDomain.includes("*")) {
+    if (productionDomain) {
       process.env.PUBLIC_URL = `https://${productionDomain}`;
     }
   }

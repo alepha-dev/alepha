@@ -847,7 +847,7 @@ describe("CloudflareAdapter", () => {
           secrets: [
             { name: "APP_SECRET" },
             { name: "GOOGLE_CLIENT_ID" },
-            { name: "CLOUDFLARE_ZONE" },
+            { name: "HYPERDRIVE_ID" },
             { name: "LOG_LEVEL" },
           ],
           variables: [],
@@ -856,7 +856,7 @@ describe("CloudflareAdapter", () => {
 
       process.env.APP_SECRET = "s1";
       process.env.GOOGLE_CLIENT_ID = "g1";
-      process.env.CLOUDFLARE_ZONE = "example.com"; // declared but EXCLUDED
+      process.env.HYPERDRIVE_ID = "hd-1"; // declared but EXCLUDED
       // LOG_LEVEL is declared + ambient in the runner, but EXCLUDED (infra knob).
       try {
         const run = createMockRun();
@@ -864,7 +864,7 @@ describe("CloudflareAdapter", () => {
       } finally {
         delete process.env.APP_SECRET;
         delete process.env.GOOGLE_CLIENT_ID;
-        delete process.env.CLOUDFLARE_ZONE;
+        delete process.env.HYPERDRIVE_ID;
       }
 
       const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");

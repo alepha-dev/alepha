@@ -124,22 +124,17 @@ export const platformOptions = $atom({
            * workers.dev subdomain still deploys - it simply has no address to
            * show, and the deploy log says so.
            *
-           * Wildcards are supported for multi-tenant SaaS apps:
-           * `"*.club.alepha.dev"` routes every subdomain to the worker.
-           * Wildcard patterns require `zone` to be set, and the wildcard DNS
-           * record must already exist (proxied) in the Cloudflare zone.
+           * Always a plain host, attached as a Custom Domain. A wildcard
+           * (`*.example.com`) is refused: a Custom Domain cannot be one, and
+           * a multi-tenant app on wildcard hosts deploys through Lore Deploy.
            */
-          domain: z.text().optional(),
-          /**
-           * Cloudflare zone name (e.g. "alepha.dev") that owns `domain`.
-           *
-           * Required when `domain` contains a wildcard (`*`). For a plain
-           * host, setting `zone` switches the binding from a Custom Domain to
-           * a zone *Route* (`domain/*`) — needed when another Worker holds a
-           * wildcard route covering the host (routes win by specificity,
-           * while a Custom Domain would lose to the wildcard route).
-           */
-          zone: z.text().optional(),
+          domain: z
+            .text()
+            .refine((it) => !it.includes("*"), {
+              message:
+                "A wildcard domain cannot be a Cloudflare Custom Domain. Use a plain host, or deploy a multi-tenant app through Lore Deploy.",
+            })
+            .optional(),
           /**
            * Worker-to-worker service bindings, e.g.
            * `[{ binding: "CLUB", service: "club-staging" }]`.
@@ -204,7 +199,6 @@ export interface EnvironmentConfig {
    */
   socket?: string;
   domain?: string;
-  zone?: string;
   vars?: Record<string, string>;
   jurisdiction?: "eu" | "fedramp";
   accountId?: string;

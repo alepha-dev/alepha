@@ -170,9 +170,7 @@ export class PlatformOrchestrator {
     const c = this.color;
     if (result.domain) {
       this.log.info("");
-      const display = result.domain.includes("*")
-        ? `https://${result.domain} (wildcard route)`
-        : `https://${result.domain}`;
+      const display = `https://${result.domain}`;
       this.log.info(`  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", display)}`);
       this.log.info("");
     } else {

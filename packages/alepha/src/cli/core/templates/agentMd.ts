@@ -147,7 +147,6 @@ export default defineConfig({
         production: {
           adapter: "cloudflare",
           domain: "yourapp.com",
-          // zone: "yourapp.com",     // required only for wildcard domains
           // jurisdiction: "eu",       // optional: EU data residency
         },
       },
