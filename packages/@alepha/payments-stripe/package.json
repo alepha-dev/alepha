@@ -51,6 +51,8 @@
     "stripe": "^22.6.1"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.5.0",
     "alepha": "0.29.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",

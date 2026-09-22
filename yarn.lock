@@ -10,6 +10,8 @@ __metadata:
   resolution: "@alepha/commerce@workspace:packages/@alepha/commerce"
   dependencies:
     "@alepha/ui": "workspace:*"
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     "@types/react": "npm:^19.2.18"
     alepha: "npm:0.29.0"
     lucide-react: "npm:^1.43.0"
@@ -31,6 +33,8 @@ __metadata:
     "@alepha/ui": "workspace:^"
     "@fontsource-variable/archivo": "npm:^5.3.0"
     "@tailwindcss/vite": "npm:^4.3.3"
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     "@types/react": "npm:^19.2.18"
     "@xyflow/react": "npm:^12.11.6"
     alepha: "npm:0.29.0"
@@ -53,6 +57,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/discord@workspace:packages/@alepha/discord"
   dependencies:
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     alepha: "npm:0.29.0"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.2.2"
@@ -68,6 +74,8 @@ __metadata:
   dependencies:
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.3"
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     "@types/react": "npm:^19.2.18"
     "@types/react-dom": "npm:^19.2.7"
     alepha: "npm:^0.29.0"
@@ -97,6 +105,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe"
   dependencies:
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     alepha: "npm:0.29.0"
     stripe: "npm:^22.6.1"
     typescript: "npm:^7.0.2"
@@ -111,6 +121,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/protobuf@workspace:packages/@alepha/protobuf"
   dependencies:
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     alepha: "npm:0.29.0"
     protobufjs: "npm:^8.8.0"
     tsdown: "npm:^0.23.0"
@@ -135,6 +147,8 @@ __metadata:
     "@playwright/test": "npm:^1.63.0"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.3"
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     "@types/react": "npm:^19.2.18"
     alepha: "npm:0.29.0"
     class-variance-authority: "npm:^0.7.1"
@@ -4095,6 +4109,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "create-alepha@workspace:packages/create-alepha"
   dependencies:
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.5.0"
     alepha: "npm:0.29.0"
     tsdown: "npm:^0.23.0"
     vite: "npm:^8.2.2"
