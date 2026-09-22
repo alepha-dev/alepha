@@ -1306,7 +1306,7 @@ export default {
   "app.dashboard.deploysTo": "Déploie vers",
   "app.dashboard.resourceName": "Ressources",
   "app.dashboard.resourceName.hint":
-    "Le nom que portent son Worker, sa base et son bucket. Fixé au premier déploiement, il reste le même si le projet est renommé.",
+    "Le nom sous lequel son domaine le connaît : son Worker, sa base et son bucket sur Cloudflare, son instance sur une machine Bay. Fixé au premier déploiement, il reste le même si le projet est renommé.",
   "app.switcher.label": "Changer d\u2019environnement",
   "app.nextSteps.title": "Prochaines étapes",
   "app.nextSteps.description":

@@ -80,6 +80,15 @@ under a project now called `shop`, and only copies deployed for the first time
 after the rename take the new one. A destroy keeps it too, so a copy deployed
 again comes back to its own database.
 
+On a **Bay** machine the same name is the instance: its key in `bay list`, its
+directory under `apps/` and its default subdomain. A deploy to a Bay estate
+therefore names the copy it is for, `<app>/<env>` in the artifact's project,
+and is refused when that copy does not exist or points at another estate.
+Bay builds the instance name from the app and the environment it is sent, so
+a copy whose app or environment was renamed after its first Bay deploy is
+refused too, rather than started again as a new, empty instance: rename it
+back.
+
 ### Telemetry wires itself
 
 If your app bundles the reporting module, you do not have to do anything: the
@@ -308,6 +317,9 @@ the person running the command is often not the person who can fix it.
 | `… has no artifact tagged '…'`                               | Push one, or deploy a tag that exists.                                                                                 |
 | `… has no \`workerd\` build`                                 | Build for that runtime: the message names the exact command.                                                           |
 | `Another copy in this Cloudflare account is already named …` | Another copy already uses that name: point this copy at another estate, or rename the project before its first deploy. |
+| `Another copy on this Bay machine is already named …`        | The same, on one Bay machine.                                                                                          |
+| `… has no copy named …`                                      | Create the copy on the Apps page and choose this estate on its Settings tab.                                           |
+| `… was first deployed to this machine as …`                  | Rename the copy's app or environment back to the names it was deployed under.                                          |
 
 The last one is the one worth understanding. An artifact is identified by its
 app, its tag **and its runtime**, so `1.2.3` built for Cloudflare and `1.2.3`

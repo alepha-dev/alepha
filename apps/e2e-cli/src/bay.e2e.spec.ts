@@ -813,7 +813,15 @@ describe("Bay connector against a real Lore", () => {
 
   it("refuses a deploy at enqueue while deployAllowed is off, then runs one to done with an empty secret set", async () => {
     const project = await ok<{ id: number }>(
-      call(lore, owner, "createProject", { body: { title: "Bay E2E" } }),
+      call(lore, owner, "createProject", {
+        body: {
+          title: "Bay E2E",
+          // Apps with deploys on: a Bay deploy names the copy it is for.
+          capabilities: [
+            { key: "apps", options: { track: true, deploy: true } },
+          ],
+        },
+      }),
     );
     projectId = project.id;
 
@@ -829,6 +837,20 @@ describe("Bay connector against a real Lore", () => {
     await ok(
       call(lore, owner, "attachEstate", {
         params: { projectId },
+        body: { estateId: estate.id },
+      }),
+    );
+    // ⚠️ The copy the deploy is FOR (#Q2475). Its stored name is what Bay
+    // composes the instance from, so a deploy with no copy is refused.
+    await ok(
+      call(lore, owner, "createApp", {
+        params: { projectId },
+        body: { app: "demo", env: "production" },
+      }),
+    );
+    await ok(
+      call(lore, owner, "updateApp", {
+        params: { projectId, app: "demo", env: "production" },
         body: { estateId: estate.id },
       }),
     );
@@ -980,6 +1002,14 @@ describe("Bay connector against a real Lore", () => {
     expect(refused).toContain("down");
     expect(refused).not.toContain("est_");
 
+    // An estate that is still some copy's deploy target cannot be deleted,
+    // and the deploy test above pointed `demo/production` at this one.
+    await ok(
+      call(lore, owner, "updateApp", {
+        params: { projectId, app: "demo", env: "production" },
+        body: { estateId: null },
+      }),
+    );
     const gone = await call(lore, owner, "deleteEstate", {
       params: { estateId: estate.id },
     });

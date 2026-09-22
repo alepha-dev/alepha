@@ -6,8 +6,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import { type Estate, estates } from "../entities/estates.ts";
-import { projects } from "../entities/projects.ts";
+import { estates } from "../entities/estates.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
@@ -17,6 +16,7 @@ import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { DeployRunner } from "./DeployRunner.ts";
 import { EstateService } from "./EstateService.ts";
+import { ResourceNameService } from "./ResourceNameService.ts";
 
 /**
  * Starting a deploy, and running one.
@@ -31,7 +31,6 @@ export class DeployService {
   protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
   protected readonly estates = $repository(estates);
-  protected readonly projects = $repository(projects);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly secrets = $inject(AppSecretService);
   protected readonly apps = $inject(AppService);
@@ -40,6 +39,7 @@ export class DeployService {
   protected readonly estateService = $inject(EstateService);
   protected readonly runner = $inject(DeployRunner);
   protected readonly registry = $inject(DeployRegistry);
+  protected readonly names = $inject(ResourceNameService);
 
   /**
    * Write the row a deploy will be followed through.
@@ -275,7 +275,9 @@ export class DeployService {
         );
       }
 
-      const name = await this.resourceNameOf(instance, estate);
+      // Stored before the run, and read back on every deploy after: see
+      // `ResourceNameService` for why a rename must not move it.
+      const name = await this.names.resolve(instance, estate);
 
       // ⚠️ A wedged deploy that holds a `$job` execution open forever is worse
       // than a failed one: the row stays `running`, the UI follows it, and the
@@ -345,99 +347,6 @@ export class DeployService {
   }
 
   /**
-   * The name every resource this copy provisions carries, deciding it on the
-   * first deploy and reading it back on every one after.
-   *
-   * `<project>-<app>-<env>`, from the project's slug at the moment the copy
-   * first deploys. See `appInstances.resourceName` for why it is stored.
-   *
-   * ## ⚠️ Why the project is in the name at all
-   *
-   * `NamingService` composes `<name>-<env>`. With the app alone as the name,
-   * two Lore projects that each call an app `api` and deploy `production` onto
-   * one estate compute a single `api-production` - one Worker, one database,
-   * one bucket, silently shared, each deploy overwriting the other and either
-   * project's teardown taking the other's Worker down.
-   *
-   * ## ⚠️ Stored BEFORE the run, not after it
-   *
-   * A deploy that fails halfway may already have created the database under
-   * this name. Written first, the retry comes back to it even if the project
-   * was renamed in between; written after success, it would not.
-   */
-  protected async resourceNameOf(
-    instance: AppInstance,
-    estate: Estate,
-  ): Promise<string> {
-    const name = instance.resourceName ?? (await this.derivedNameOf(instance));
-    await this.assertNameIsFree(instance, estate, name);
-    if (!instance.resourceName) {
-      await this.instances.updateById(instance.id, { resourceName: name });
-    }
-    return name;
-  }
-
-  /**
-   * The name a copy would take if it deployed for the first time now.
-   *
-   * ⚠️ Composed the way `NamingService.forContext` composes it: the runner
-   * hands `<project>-<app>` in as the platform name, and the service slugifies
-   * that and the env separately, then joins them. Slugifying the whole string
-   * in one go truncates at a different place once it passes 63 characters.
-   */
-  protected async derivedNameOf(instance: AppInstance): Promise<string> {
-    const project = await this.projects.findById(instance.projectId);
-    // `slug` is optional on the column; the id is the stable fallback the rest
-    // of the app already uses when a title produces nothing sluggable.
-    const slug = project?.slug || `project-${instance.projectId}`;
-    return `${this.slugify(`${slug}-${instance.app}`)}-${this.slugify(instance.env)}`;
-  }
-
-  /**
-   * Refuse a name another copy already holds in the same Cloudflare account.
-   *
-   * ## ⚠️ A rename frees a slug, and the next project may take it
-   *
-   * `project1` renamed to `project2` keeps `project1-app1-env1`. A new project
-   * called `project1` would then derive the very same name, and `ensureD1` /
-   * `ensureR2` resolve by NAME: its first deploy would attach to the other
-   * project's live database and overwrite its Worker. Moving a copy to an
-   * estate that already holds its name ends the same way.
-   *
-   * Compared by account rather than by estate, because two estates may lend
-   * the same Cloudflare account. The other copy is not named: it may belong to
-   * a project the caller cannot see.
-   */
-  protected async assertNameIsFree(
-    instance: AppInstance,
-    estate: Estate,
-    name: string,
-  ): Promise<void> {
-    if (!estate.accountId) {
-      return;
-    }
-    const sameAccount = await this.estates.findMany({
-      where: { accountId: { eq: estate.accountId } },
-      columns: ["id"],
-    });
-    if (sameAccount.length === 0) {
-      return;
-    }
-    const holder = await this.instances.findOne({
-      where: {
-        estateId: { inArray: sameAccount.map((it) => it.id) },
-        resourceName: { eq: name },
-        id: { ne: instance.id },
-      },
-    });
-    if (holder) {
-      throw new BadRequestError(
-        `Another copy in this Cloudflare account is already named \`${name}\`, and deploying would share its Worker, database and bucket. Point ${instance.app}/${instance.env} at another estate, or rename this project before its first deploy.`,
-      );
-    }
-  }
-
-  /**
    * The Worker name a previous deploy recorded, when there was one.
    */
   protected recordedWorker(instance: AppInstance): string | undefined {
@@ -450,20 +359,6 @@ export class DeployService {
     } catch {
       return undefined;
     }
-  }
-
-  /**
-   * ⚠️ Must match `NamingService.slugify`, which is what actually names the
-   * resources. It lives in `alepha/cli/platform-lib` beside a class that pulls
-   * a Cloudflare client in, so it is restated rather than imported - and the
-   * 63-character slice is part of the contract, not a detail.
-   */
-  protected slugify(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 63);
   }
 
   /**
