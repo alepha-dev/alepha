@@ -7,6 +7,7 @@ import { GoodKindHandler } from "./kinds/GoodKindHandler.ts";
 import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
 import { ClaimLock } from "./services/ClaimLock.ts";
+import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
 import { ResourceService } from "./services/ResourceService.ts";
 import { StockService } from "./services/StockService.ts";
@@ -28,6 +29,7 @@ export * from "./kinds/GoodKindHandler.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
 export * from "./services/ClaimLock.ts";
+export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
 export * from "./services/ResourceService.ts";
 export * from "./services/StockService.ts";
@@ -131,6 +133,7 @@ export const AlephaCommerce = $module({
   services: [
     ProductKindRegistry,
     CatalogService,
+    LineConfigService,
     OrderService,
     ClaimLock,
     StockService,

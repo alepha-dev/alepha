@@ -35,12 +35,14 @@ export const usePanier = () => {
     [client, setPanier],
   );
 
-  const miseAJour = useAction<[productId: string, quantity: number], boolean>(
+  // By line id, not product id: two lines of one product (two slots of a
+  // court booking) are told apart only by the line.
+  const miseAJour = useAction<[lineId: string, quantity: number], boolean>(
     {
-      handler: async (productId: string, quantity: number) => {
+      handler: async (lineId: string, quantity: number) => {
         setPanier(
           await client.commerceCartSetQuantity({
-            params: { productId },
+            params: { lineId },
             body: { quantity },
           }),
         );
@@ -50,10 +52,10 @@ export const usePanier = () => {
     [client, setPanier],
   );
 
-  const retrait = useAction<[productId: string], boolean>(
+  const retrait = useAction<[lineId: string], boolean>(
     {
-      handler: async (productId: string) => {
-        setPanier(await client.commerceCartRemove({ params: { productId } }));
+      handler: async (lineId: string) => {
+        setPanier(await client.commerceCartRemove({ params: { lineId } }));
         return true;
       },
     },

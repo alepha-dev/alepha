@@ -164,3 +164,13 @@ export class InvalidIntervalError extends CommerceError {
   override name = "InvalidIntervalError";
   public readonly status = 400;
 }
+
+/**
+ * A cart or order line whose line config this product cannot sell: malformed,
+ * sent for a kind that takes none, missing where one is required, or refused
+ * by the kind's own `validateLine`.
+ */
+export class InvalidLineError extends CommerceError {
+  override name = "InvalidLineError";
+  public readonly status = 400;
+}

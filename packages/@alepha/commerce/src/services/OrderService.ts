@@ -12,11 +12,19 @@ import {
 import { products } from "../entities/products.ts";
 import { CommerceError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
+import { LineConfigService } from "./LineConfigService.ts";
 import { StockService } from "./StockService.ts";
 
 export interface OrderLineInput {
   productId: string;
   quantity: number;
+  /**
+   * What the line chooses beyond the product, for a kind that takes it (a
+   * court and an interval). Validated again by the kind's handler before the
+   * order is written, whatever validated it before: without that, a client
+   * could book any resource for any interval at the product's price.
+   */
+  lineConfig?: Record<string, any>;
 }
 
 export interface CreateOrderInput {
@@ -75,6 +83,7 @@ export class OrderService {
   protected readonly productRepo = $repository(products);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly stock = $inject(StockService);
+  protected readonly lines = $inject(LineConfigService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -134,10 +143,30 @@ export class OrderService {
       );
     }
 
+    // Each line judged by its kind and priced on the server, before the
+    // transaction opens: the same two calls `CartService.price` made, so the
+    // order charges what the cart showed.
+    const accepted: Array<{
+      lineConfig: Record<string, any> | undefined;
+      unitPrice: number;
+    }> = [];
+    for (const line of input.lines) {
+      const product = byId.get(line.productId)!;
+      const lineConfig = await this.lines.accept(
+        product,
+        line.lineConfig,
+        line.quantity,
+      );
+      accepted.push({
+        lineConfig,
+        unitPrice: await this.lines.unitPrice(product, lineConfig),
+      });
+    }
+
     const shippingTotal = input.shippingTotal ?? 0;
     let itemsTotal = 0;
-    for (const line of input.lines) {
-      itemsTotal += byId.get(line.productId)!.price * line.quantity;
+    for (const [index, line] of input.lines.entries()) {
+      itemsTotal += accepted[index]!.unitPrice * line.quantity;
     }
 
     return this.db.transactional(async () => {
@@ -156,17 +185,18 @@ export class OrderService {
       });
 
       const items = await this.itemRepo.createMany(
-        input.lines.map((line) => {
+        input.lines.map((line, index) => {
           const product = byId.get(line.productId)!;
           return {
             orderId: order.id,
             productId: product.id,
             kind: product.kind,
             name: product.name,
-            unitPrice: product.price,
+            unitPrice: accepted[index]!.unitPrice,
             rateBps: product.vatRateBps,
             quantity: line.quantity,
             config: product.config,
+            lineConfig: accepted[index]!.lineConfig,
           };
         }),
       );

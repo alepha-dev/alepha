@@ -250,6 +250,7 @@ export class CheckoutService {
       lines: priced.lines.map((l) => ({
         productId: l.productId,
         quantity: l.quantity,
+        lineConfig: l.lineConfig,
       })),
       shippingMethod: session.shippingMethod,
       shippingAddress: session.shippingAddress as
