@@ -310,5 +310,6 @@ React hooks:
 
 ## Docs
 
-- [Full Docs](https://alepha.dev/llms-full.txt): Complete documentation of Alepha with all details.
+Every page listed below is plain markdown: the HTML page at `https://alepha.dev/docs/<slug>` is served as markdown at `https://alepha.dev/docs/<slug>.md`. Fetch only the pages you need.
+
 - [Examples](https://github.com/alepha-dev/alepha/tree/main/apps): Example applications

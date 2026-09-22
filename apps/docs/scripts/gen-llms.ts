@@ -1,11 +1,11 @@
 import { promises as fs } from "node:fs";
-import path, { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { AlephaError } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
-import type { DocNode } from "./interfaces.ts";
+import type { DocNode, DocProduct } from "./interfaces.ts";
 
 interface DocItem {
   product: string;
@@ -14,195 +14,152 @@ interface DocItem {
 }
 
 /**
- * Command for generating llms.txt and llms-full.txt files from documentation
+ * What heads each product's own `llms.txt`, and describes it from the
+ * framework's. The framework's preamble lives in `public/llms-index.md`, long
+ * enough to deserve a file and audited by `check:docs`; Bay and Lore need a
+ * title and a sentence. Same sentences as their home pages in `AppRouter`.
+ */
+const PRODUCTS: Record<
+  Exclude<DocProduct, "">,
+  { title: string; summary: string }
+> = {
+  bay: {
+    title: "Bay",
+    summary:
+      "A self-hosted application server for Alepha apps, with TLS, rollback and process isolation handled for you.",
+  },
+  lore: {
+    title: "Lore",
+    summary:
+      "An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, readable and writable over MCP.",
+  },
+};
+
+/**
+ * Generates one `llms.txt` per doc set, and the raw markdown every one of
+ * them links to.
+ *
+ * - `/llms.txt`: the framework, `public/llms-index.md` followed by its page
+ *   list, and a pointer to each product's own index.
+ * - `/bay/llms.txt`, `/lore/llms.txt`: the products, each at the root of its
+ *   own URL space, beside `/bay/docs/*` and `/lore/docs/*`.
+ *
+ * ⚠️ There is no `llms-full.txt` any more, deliberately. It concatenated every
+ * page into ~1.2 MB (~290k tokens): larger than most context windows, and a
+ * fetch tool that summarises what it reads kept almost none of it. An index of
+ * links to plain-markdown pages lets an agent fetch exactly the pages it needs.
  */
 export class LlmsCommand {
   protected log = $logger();
 
   llms = $command({
     name: "gen:llms",
-    description: "Generate llms.txt index and llms-full.txt from documentation",
+    description:
+      "Generate one llms.txt per doc set, and the raw markdown pages they link to",
     handler: async ({ run }) => {
-      this.log.debug("Starting llms generation");
       const docsDir = join(import.meta.dirname, "../.gen");
       const publicDir = join(import.meta.dirname, "../public");
       const outputDir = join(import.meta.dirname, "../dist/public");
-      const llmsIndexFile = join(publicDir, "llms-index.md");
-      const outputFileFull = join(outputDir, "llms-full.txt");
-      const outputFileIndex = join(outputDir, "llms.txt");
 
-      this.log.debug(`Docs directory: ${docsDir}`);
-      this.log.debug(`Public directory: ${publicDir}`);
-      this.log.debug(`Output files: ${outputFileIndex}, ${outputFileFull}`);
-
-      await run("scan markdown files", async () => {
+      await run("check generated docs", async () => {
         try {
           await fs.access(docsDir);
-          this.log.trace("Docs directory exists");
         } catch {
-          this.log.error(`Docs directory not found: ${docsDir}`);
           throw new AlephaError(`Docs directory not found: ${docsDir}`);
         }
       });
 
-      let markdownFiles: string[] = [];
+      const indexModule = await import("../.gen/index.ts");
+      const trees = indexModule.trees as Record<DocProduct, DocNode[]>;
+      const products = (
+        Object.keys(PRODUCTS) as Array<keyof typeof PRODUCTS>
+      ).filter((product) => (trees[product] ?? []).length > 0);
 
-      await run("find markdown files", async () => {
-        const files = await fs.readdir(docsDir);
-        markdownFiles = files
-          .filter((file) => file.endsWith(".md"))
-          .map((file) => join(docsDir, file))
-          .sort();
-        this.log.debug(`Found ${markdownFiles.length} markdown files`);
-      });
-
-      let concatenatedContent = "";
-
-      await run("concatenate markdown files", async () => {
-        for (const file of markdownFiles) {
-          this.log.trace(`Reading file: ${file}`);
-          const content = await fs.readFile(file, "utf-8");
-          const fileName = path.basename(file);
-          concatenatedContent += `# ${fileName}\n\n${content}\n\n---\n\n`;
-          this.log.trace(`Added ${content.length} chars from ${fileName}`);
-        }
-        this.log.debug(
-          `Total concatenated content: ${concatenatedContent.length} chars`,
+      await run("write llms.txt", async () => {
+        const preamble = await fs.readFile(
+          join(publicDir, "llms-index.md"),
+          "utf-8",
         );
-      });
 
-      let indexContent = "";
-      let baseContent = "";
+        await this.write(
+          join(outputDir, "llms.txt"),
+          [
+            preamble.trimEnd(),
+            "",
+            this.renderTree(trees[""] ?? []),
+            "## Other products",
+            "",
+            ...products.map(
+              (product) =>
+                `- [${PRODUCTS[product].title}](https://alepha.dev/${product}/llms.txt): ${PRODUCTS[product].summary}`,
+            ),
+            "",
+          ].join("\n"),
+        );
 
-      await run("read llms-index.md", async () => {
-        try {
-          baseContent = await fs.readFile(llmsIndexFile, "utf-8");
-          this.log.debug(`Read llms-index.md: ${baseContent.length} chars`);
-        } catch {
-          this.log.warn(
-            `llms-index.md not found at ${llmsIndexFile}, using empty base`,
+        for (const product of products) {
+          const { title, summary } = PRODUCTS[product];
+          await this.write(
+            join(outputDir, product, "llms.txt"),
+            [
+              `# ${title}`,
+              "",
+              `> ${summary}`,
+              "",
+              "Framework documentation: https://alepha.dev/llms.txt",
+              "",
+              this.renderTree(trees[product]),
+            ].join("\n"),
           );
         }
       });
 
-      await run("generate index", async () => {
-        // Generate doc tree links
-        const indexModule = await import("../.gen/index.ts");
-        // ⚠️ `trees`, plural, and keyed by product. It was a single `tree`
-        // until quest #1603 gave Bay and Lore their own doc sets; this file
-        // kept reading the old name through an `as DocNode[]` cast, which is
-        // why nothing typechecked it and the whole task died on
-        // "tree is not iterable" the first time it actually ran.
-        const trees = indexModule.trees;
-        const docLinks = this.generateDocLinks(trees);
-
-        // Combine base content with generated doc links
-        indexContent = `${baseContent}\n${docLinks}`;
-        this.log.debug(`Generated index: ${indexContent.length} chars`);
-      });
-
-      await run("write files", async () => {
-        await fs.mkdir(outputDir, { recursive: true });
-        this.log.trace(`Created/verified output directory: ${outputDir}`);
-
-        const fullContent = `${baseContent}\n\n---\n\n${concatenatedContent}`;
-        await fs.writeFile(outputFileFull, fullContent, "utf-8");
-        this.log.debug(
-          `Wrote ${fullContent.length} chars to ${outputFileFull}`,
-        );
-
-        await fs.writeFile(outputFileIndex, indexContent, "utf-8");
-        this.log.debug(
-          `Wrote ${indexContent.length} chars to ${outputFileIndex}`,
-        );
-      });
-
       await run("copy markdown files to dist", async () => {
-        // Import docs metadata to get slug → path mapping
-        const indexModule = await import("../.gen/index.ts");
         const docs = indexModule.docs as DocItem[];
         const rootDir = join(import.meta.dirname, "../../..");
-        const docsOutputDir = join(outputDir, "docs");
-
-        await fs.mkdir(docsOutputDir, { recursive: true });
-        this.log.trace(`Created docs output directory: ${docsOutputDir}`);
 
         let copiedCount = 0;
         for (const doc of docs) {
-          const sourcePath = join(rootDir, doc.path);
           // The product goes in the PATH, mirroring the URL these files
           // stand in for: `/docs/x.md`, `/bay/docs/x.md`. A slug is unique
           // only within a product now, so a flat directory would have kept
           // whichever of the three was written last (quest #1603).
           const destDir = doc.product
             ? join(outputDir, doc.product, "docs")
-            : docsOutputDir;
-          await fs.mkdir(destDir, { recursive: true });
-          const destPath = join(destDir, `${doc.slug}.md`);
+            : join(outputDir, "docs");
           const label = doc.product ? `${doc.product}/${doc.slug}` : doc.slug;
 
           try {
-            const content = await fs.readFile(sourcePath, "utf-8");
-            await fs.writeFile(destPath, content, "utf-8");
+            const content = await fs.readFile(join(rootDir, doc.path), "utf-8");
+            await this.write(join(destDir, `${doc.slug}.md`), content);
             copiedCount++;
-            this.log.trace(`Copied: ${label}.md`);
           } catch (error) {
             this.log.warn(`Failed to copy ${label}:`, error);
           }
         }
 
-        this.log.debug(
-          `Copied ${copiedCount} markdown files to ${docsOutputDir}`,
-        );
+        this.log.debug(`Copied ${copiedCount} markdown files`);
       });
-
-      this.log.debug(
-        `Successfully created: ${outputFileIndex}, ${outputFileFull}`,
-      );
-      this.log.debug(
-        `Full docs: ${baseContent.length + concatenatedContent.length} characters`,
-      );
-      this.log.debug(`Index: ${indexContent.length} characters`);
-      this.log.debug(`Files processed: ${markdownFiles.length}`);
     },
   });
 
+  protected async write(file: string, content: string): Promise<void> {
+    await fs.mkdir(dirname(file), { recursive: true });
+    await fs.writeFile(file, content, "utf-8");
+    this.log.trace(`Wrote ${content.length} chars to ${file}`);
+  }
+
   /**
-   * The whole site's page list, one section per doc set.
-   *
-   * `llms.txt` covers every product rather than the framework alone, so all
-   * three trees are walked. The framework keeps the bare category headings it
-   * has always had (`## Guides`, `## Reference`, …) and each product gets a
-   * heading of its own instead: all three name their root category `guides`,
-   * so without one the file would carry three `## Guides` sections and read
-   * as one doc set repeated.
+   * One doc set's page list: a `##` per top-level category, one link per page.
    *
    * Every `href` already carries its product prefix (`/bay/docs/…`), so the
    * absolute URLs need nothing done to them here.
    */
-  protected generateDocLinks(trees: Record<string, DocNode[]>): string {
+  protected renderTree(tree: DocNode[]): string {
     const lines: string[] = [];
-
-    for (const [product, tree] of Object.entries(trees)) {
-      if (tree.length === 0) continue;
-
-      if (product) {
-        lines.push(`## ${this.formatTitle(product)}`);
-        lines.push("");
-      }
-
-      for (const node of tree) {
-        // Depth 1 under a product heading, so the root category does not emit
-        // a competing `##` of its own — it becomes the parent name on each
-        // leaf instead ("Guides - Introduction").
-        this.renderNode(node, lines, product ? 1 : 0);
-      }
-
-      if (product) {
-        lines.push("");
-      }
+    for (const node of tree) {
+      this.renderNode(node, lines, 0);
     }
-
     return lines.join("\n");
   }
 

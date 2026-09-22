@@ -1,5 +1,5 @@
 import { $env, z } from "alepha";
-import { $head, type Head } from "alepha/react/head";
+import { $head, type Head, type HeadLink } from "alepha/react/head";
 import { $page, NotFound, Redirection } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
 import { HttpError, NotFoundError } from "alepha/server";
@@ -13,6 +13,16 @@ import BayHome from "./components/product/BayHome.tsx";
 import LoreHome from "./components/product/LoreHome.tsx";
 import type { DocProduct } from "./config/docs.ts";
 import { changelog, docs, docsHref, docsOf } from "./config/docs.ts";
+
+/**
+ * `<link rel="alternate">` to a doc set's `llms.txt`, the index an agent
+ * should read instead of the HTML around it.
+ */
+const llmsLink = (product: DocProduct): HeadLink => ({
+  rel: "alternate",
+  type: "text/plain",
+  href: product ? `/${product}/llms.txt` : "/llms.txt",
+});
 
 declare module "alepha/react/router" {
   interface PagePrimitiveOptions {
@@ -30,7 +40,12 @@ export class AppRouter {
     }),
   );
 
-  sitemap = $sitemap({ hostname: this.env.PUBLIC_URL });
+  // The `llms.txt` files are written by `gen:llms` after the build, so no
+  // page knows about them; listing them here is how a crawler does.
+  sitemap = $sitemap({
+    hostname: this.env.PUBLIC_URL,
+    urls: ["/llms.txt", "/bay/llms.txt", "/lore/llms.txt"],
+  });
 
   head = $head(() => {
     // This string is the one social unfurlers and search results show, so it
@@ -70,6 +85,9 @@ export class AppRouter {
           rel: "apple-touch-icon",
           href: "/apple-touch-icon.png",
         },
+        // For agents that land on any page: the index they should read
+        // instead of the HTML. Bay and Lore pages add their own beside it.
+        llmsLink(""),
       ],
       // One `theme-color` per scheme, so the phone's address bar matches the
       // page it is framing instead of guessing. Both values are `--color-bg`
@@ -120,6 +138,7 @@ export class AppRouter {
       title: "Lore. Project management, for agents too.",
       description:
         "An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, readable and writable over MCP.",
+      link: [llmsLink("lore")],
     }),
   });
 
@@ -132,6 +151,7 @@ export class AppRouter {
       title: "Bay. Your own VPS, without the yak shaving.",
       description:
         "A self-hosted application server for Alepha apps, with TLS, rollback and process isolation handled for you.",
+      link: [llmsLink("bay")],
     }),
   });
 
@@ -256,7 +276,18 @@ export class AppRouter {
     throw new NotFoundError("Document not found");
   }
 
-  protected docHead(args: { slug: string; name: string; keywords?: string[] }) {
+  /**
+   * ⚠️ The `.md` alternate is the page an agent should read. It is the same
+   * source `gen-llms.ts` copies to `dist/public`, served as `text/markdown`,
+   * so an agent that reached the HTML from a search finds its way to the
+   * markdown without knowing the site's URL scheme.
+   */
+  protected docHead(args: {
+    product: DocProduct;
+    slug: string;
+    name: string;
+    keywords?: string[];
+  }): Head {
     const title = args.slug.startsWith("packages")
       ? args.slug
           .replace("packages-alepha-", "")
@@ -266,8 +297,16 @@ export class AppRouter {
 
     const keywords = args.keywords ? args.keywords.join(",") : undefined;
 
+    const link: HeadLink[] = [
+      { rel: "alternate", type: "text/markdown", href: `${docsHref(args)}.md` },
+    ];
+    if (args.product) {
+      link.push(llmsLink(args.product));
+    }
+
     return {
       title,
+      link,
       meta: keywords
         ? [
             {
