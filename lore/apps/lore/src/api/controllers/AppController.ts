@@ -613,6 +613,9 @@ export class AppController {
       // Exposed on purpose: whether a destroy may take this copy's database is
       // a property somebody should be able to READ before asking for one.
       ephemeral: instance.ephemeral,
+      // The name the estate knows this copy by, which a renamed project no
+      // longer spells: shown so `project1-…` under `project2` reads as expected.
+      resourceName: instance.resourceName,
       ...(sigil
         ? {
             sigil: {

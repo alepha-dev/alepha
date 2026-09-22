@@ -65,6 +65,21 @@ want to.
 Then open that copy's **Settings** tab and choose the estate it deploys to.
 Doing so is what makes its **Deploy** and **Environment** tabs appear.
 
+### The name it gets in your estate
+
+A copy's first deploy names everything it creates: the Worker, the D1 database,
+the bucket, the cache namespace and the queue are all
+`<project>-<app>-<env>`, such as `club-shop-production`. The copy's Overview
+shows it under **Resources**.
+
+⚠️ **That name is fixed on the first deploy and never changes.** Cloudflare
+cannot rename a database, so a name that followed the project would create an
+empty one beside the live one. Renaming the project, the app or the
+environment afterwards moves nothing: `club-shop-production` keeps its name
+under a project now called `shop`, and only copies deployed for the first time
+after the rename take the new one. A destroy keeps it too, so a copy deployed
+again comes back to its own database.
+
 ### Telemetry wires itself
 
 If your app bundles the reporting module, you do not have to do anything: the
@@ -284,14 +299,15 @@ that warning exists for.
 Every refusal names the thing that is missing rather than a status code, because
 the person running the command is often not the person who can fix it.
 
-| It says                                          | What to do                                                   |
-| ------------------------------------------------ | ------------------------------------------------------------ |
-| `… has no estate`                                | Choose one on the copy's Settings tab.                       |
-| `… is no longer lent to this project`            | Ask its owner to lend it again.                              |
-| `… does not accept deploys`                      | Its owner turns that on from their Estates page.             |
-| `… does not have a usable Cloudflare credential` | Its owner checks the token from their Estates page.          |
-| `… has no artifact tagged '…'`                   | Push one, or deploy a tag that exists.                       |
-| `… has no \`workerd\` build`                     | Build for that runtime: the message names the exact command. |
+| It says                                                      | What to do                                                                                                             |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `… has no estate`                                            | Choose one on the copy's Settings tab.                                                                                 |
+| `… is no longer lent to this project`                        | Ask its owner to lend it again.                                                                                        |
+| `… does not accept deploys`                                  | Its owner turns that on from their Estates page.                                                                       |
+| `… does not have a usable Cloudflare credential`             | Its owner checks the token from their Estates page.                                                                    |
+| `… has no artifact tagged '…'`                               | Push one, or deploy a tag that exists.                                                                                 |
+| `… has no \`workerd\` build`                                 | Build for that runtime: the message names the exact command.                                                           |
+| `Another copy in this Cloudflare account is already named …` | Another copy already uses that name: point this copy at another estate, or rename the project before its first deploy. |
 
 The last one is the one worth understanding. An artifact is identified by its
 app, its tag **and its runtime**, so `1.2.3` built for Cloudflare and `1.2.3`

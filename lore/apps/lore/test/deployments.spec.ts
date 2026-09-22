@@ -18,6 +18,7 @@ import { artifacts } from "../src/api/entities/artifacts.ts";
 import { deployments } from "../src/api/entities/deployments.ts";
 import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { DeployJobs } from "../src/api/jobs/DeployJobs.ts";
 import { AppSecretService } from "../src/api/services/AppSecretService.ts";
@@ -54,6 +55,7 @@ class TestRows {
   public readonly grants = $repository(estateProjects);
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
+  public readonly projects = $repository(projects);
 }
 
 /**
@@ -1076,6 +1078,228 @@ describe("a deployment", () => {
     });
   });
 
+  /**
+   * The name a copy's resources carry, decided on its first deploy.
+   *
+   * ⚠️ Cloudflare has no rename. A name recomputed from the project's slug on
+   * every deploy moves when the project is renamed, and the deploy that
+   * follows creates an empty database beside the live one. So the name is
+   * stored before the first run and read back on every one after.
+   */
+  describe("the name its resources carry", () => {
+    /**
+     * An estate on `accountId`, lent to the project, with the copy pointed at
+     * it, and a queued run. The runner is replaced by one that records what it
+     * was asked for, so the assertion is on the request itself.
+     */
+    const deployable = async (
+      w: Awaited<ReturnType<typeof world>>,
+      accountId = "acct",
+    ) => {
+      const rows = alepha.inject(TestRows);
+      const estate = await rows.estates.create({
+        ownerUserId: w.user.id,
+        type: "cloudflare",
+        slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
+        deployAllowed: true,
+        credentialStatus: "valid",
+        accountId,
+        credential: "sealed",
+      } as never);
+      await rows.grants.create({
+        estateId: estate.id,
+        projectId: w.project.id,
+      } as never);
+      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      return estate;
+    };
+
+    const deploy = async (w: Awaited<ReturnType<typeof world>>) => {
+      const rows = alepha.inject(TestRows);
+      const row = await rows.deployments.create({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      } as never);
+      const asked: Array<{ name: string }> = [];
+      const service = alepha.inject(DeployService);
+      Object.assign(service as unknown as Record<string, unknown>, {
+        seal: { open: () => "token" },
+        artifacts: {
+          findOne: async () => ({ id: "x", sha256: "y", runtime: "workerd" }),
+        },
+        secrets: {
+          ensureGenerated: async () => {},
+          ensureDefault: async () => {},
+          open: async () => ({}),
+        },
+        runner: {
+          run: async (request: { name: string }) => {
+            asked.push(request);
+            return {
+              urls: ["https://example.test"],
+              resources: { worker: request.name },
+            };
+          },
+        },
+      });
+      await service.run(row as never);
+      return asked;
+    };
+
+    it("is <project>-<app>-<env> on the first deploy, stored on the copy", async ({
+      expect,
+    }) => {
+      const w = await world();
+      await deployable(w);
+
+      const asked = await deploy(w);
+
+      const expected = `${w.project.slug}-my-app-b14-preview`;
+      expect(asked.map((it) => it.name)).toEqual([expected]);
+      const after = await alepha
+        .inject(TestRows)
+        .instances.findById(w.instance.id);
+      expect(after?.resourceName).toBe(expected);
+    });
+
+    it("stays the same when the project is renamed", async ({ expect }) => {
+      // Until #Q2473 this deploy was REFUSED, naming both names: renaming a
+      // project blocked every deploy of every copy it had.
+      const w = await world();
+      await deployable(w);
+      await deploy(w);
+      const original = `${w.project.slug}-my-app-b14-preview`;
+
+      await alepha
+        .inject(TestRows)
+        .projects.updateById(w.project.id, { slug: "renamed-project" });
+      const asked = await deploy(w);
+
+      expect(asked.map((it) => it.name)).toEqual([original]);
+    });
+
+    it("survives a destroy, so a copy deployed again reattaches its data", async ({
+      expect,
+    }) => {
+      // A destroy strikes the Worker from `resources` and keeps the database
+      // and bucket. `ensureD1` resolves by NAME, so the redeploy finds its
+      // rows only if it comes back under the same one, rename or not.
+      const w = await world();
+      await deployable(w);
+      await deploy(w);
+      const original = `${w.project.slug}-my-app-b14-preview`;
+      const rows = alepha.inject(TestRows);
+      await rows.instances.updateById(w.instance.id, {
+        resources: JSON.stringify({
+          d1: { name: original, id: "db-uuid" },
+          r2: original,
+        }),
+      });
+      await rows.projects.updateById(w.project.id, { slug: "renamed-project" });
+
+      const asked = await deploy(w);
+
+      expect(asked.map((it) => it.name)).toEqual([original]);
+    });
+
+    it("is stored before the run, so a failed first deploy keeps it", async ({
+      expect,
+    }) => {
+      // A deploy that fails halfway may already have created the database.
+      // The retry must come back to that name even after a rename.
+      const w = await world();
+      await deployable(w);
+      const service = alepha.inject(DeployService);
+      const row = await alepha.inject(TestRows).deployments.create({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      } as never);
+      Object.assign(service as unknown as Record<string, unknown>, {
+        seal: { open: () => "token" },
+        artifacts: {
+          findOne: async () => ({ id: "x", sha256: "y", runtime: "workerd" }),
+        },
+        secrets: {
+          ensureGenerated: async () => {},
+          ensureDefault: async () => {},
+          open: async () => ({}),
+        },
+        runner: {
+          run: async () => {
+            throw new Error("the upload failed after provisioning");
+          },
+        },
+      });
+
+      await expect(service.run(row as never)).rejects.toThrow(
+        /the upload failed/,
+      );
+
+      const after = await alepha
+        .inject(TestRows)
+        .instances.findById(w.instance.id);
+      expect(after?.resourceName).toBe(`${w.project.slug}-my-app-b14-preview`);
+    });
+
+    it("is refused when another copy in the same account already holds it", async ({
+      expect,
+    }) => {
+      // `project1` renamed keeps `project1-…`. A new project that takes the
+      // freed slug derives the very same name, and would attach to the first
+      // project's live database: `ensureD1` resolves by name.
+      const first = await world();
+      await deployable(first, "shared-account");
+      await deploy(first);
+
+      const second = await world();
+      await deployable(second, "shared-account");
+      const rows = alepha.inject(TestRows);
+      await rows.projects.updateById(first.project.id, { slug: "moved-on" });
+      await rows.projects.updateById(second.project.id, {
+        slug: first.project.slug,
+      });
+
+      const asked = await deploy(second).catch((error: Error) => error);
+
+      expect(asked).toBeInstanceOf(Error);
+      expect((asked as Error).message).toMatch(
+        /Another copy in this Cloudflare account is already named/,
+      );
+      const after = await rows.instances.findById(second.instance.id);
+      expect(after?.resourceName).toBeUndefined();
+    });
+
+    it("is not refused for the same name in another account", async ({
+      expect,
+    }) => {
+      const first = await world();
+      await deployable(first, "account-one");
+      await deploy(first);
+
+      const second = await world();
+      await deployable(second, "account-two");
+      const rows = alepha.inject(TestRows);
+      await rows.projects.updateById(first.project.id, { slug: "moved-on" });
+      await rows.projects.updateById(second.project.id, {
+        slug: first.project.slug,
+      });
+
+      const asked = await deploy(second);
+
+      expect(asked.map((it) => it.name)).toEqual([
+        `${first.project.slug}-my-app-b14-preview`,
+      ]);
+    });
+  });
+
   describe("the row's shape", () => {
     it("carries the snapshot, not just the artifact id", async ({ expect }) => {
       // ⚠️ Pushing `latest` REPLACES the artifact row, so a deployment carrying
@@ -1337,7 +1561,11 @@ describe("the deploy limits", () => {
         },
         assertRuntime: () => {},
       },
-      instances: { findById: async () => ({ id: "i", app: "a", env: "e" }) },
+      instances: {
+        findById: async () => ({ id: "i", app: "a", env: "e" }),
+        // The first deploy stores the copy's name before the run.
+        updateById: async () => ({}),
+      },
       artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
       seal: { open: () => "token" },
       // Stubbed like every other collaborator here: this test is about the
@@ -1652,7 +1880,7 @@ describe("rolling back", () => {
     // ⚠️ Asked of Cloudflare rather than assumed from the row: a version can be
     // gone, and offering a fast rollback onto one that is not there fails after
     // the operator has already confirmed.
-    const { project, deployment } = await world(
+    const { project, instance, deployment } = await world(
       {
         slug: "zug",
         type: "cloudflare",
@@ -1661,6 +1889,9 @@ describe("rolling back", () => {
       },
       { versionId: "v-gone" },
     );
+    await alepha
+      .inject(TestRows)
+      .instances.updateById(instance.id, { resourceName: "zug-my-app" });
     const service = alepha.inject(RollbackService);
     Object.assign(service as unknown as Record<string, unknown>, {
       seal: { open: () => "token" },
@@ -1704,6 +1935,9 @@ describe("rolling back", () => {
       status: "succeeded",
       versionId: "v2",
     } as never);
+    await rows.instances.updateById(instance.id, {
+      resourceName: "zug-my-app",
+    });
 
     const service = alepha.inject(RollbackService);
     Object.assign(service as unknown as Record<string, unknown>, {
@@ -1725,6 +1959,63 @@ describe("rolling back", () => {
     } finally {
       CloudflareDeployClient.prototype.listVersions = original;
     }
+  });
+
+  it("asks Cloudflare about the copy's stored Worker name", async ({
+    expect,
+  }) => {
+    // It asked about `<app>-<env>` until #Q2473, a name no deploy produces,
+    // so the fast path was never offered on a copy Lore had deployed.
+    const { project, instance, deployment, rows } = await world(
+      {
+        slug: "zug",
+        type: "cloudflare",
+        accountId: "acct",
+        credential: "sealed",
+      },
+      { versionId: "v1" },
+    );
+    await rows.instances.updateById(instance.id, {
+      resourceName: "old-slug-my-app-b14-preview",
+    });
+    const service = alepha.inject(RollbackService);
+    Object.assign(service as unknown as Record<string, unknown>, {
+      seal: { open: () => "token" },
+    });
+    const asked: string[] = [];
+    const original = CloudflareDeployClient.prototype.listVersions;
+    CloudflareDeployClient.prototype.listVersions = async (worker: string) => {
+      asked.push(worker);
+      return [{ id: "v1" }] as never;
+    };
+    try {
+      const plan = await service.plan(project.id, deployment.id);
+      expect(plan.path).toBe("version");
+      expect(asked).toEqual(["old-slug-my-app-b14-preview"]);
+    } finally {
+      CloudflareDeployClient.prototype.listVersions = original;
+    }
+  });
+
+  it("falls back when the copy has no stored Worker name", async ({
+    expect,
+  }) => {
+    const { project, deployment } = await world(
+      {
+        slug: "zug",
+        type: "cloudflare",
+        accountId: "acct",
+        credential: "sealed",
+      },
+      { versionId: "v1" },
+    );
+
+    const plan = await alepha
+      .inject(RollbackService)
+      .plan(project.id, deployment.id);
+
+    expect(plan.path).toBe("artifact");
+    expect(plan.reason).toMatch(/no record of this copy's Worker name/);
   });
 
   it("refuses a run that did not succeed", async ({ expect }) => {

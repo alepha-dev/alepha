@@ -6,7 +6,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import { estates } from "../entities/estates.ts";
+import { type Estate, estates } from "../entities/estates.ts";
 import { projects } from "../entities/projects.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
@@ -275,7 +275,7 @@ export class DeployService {
         );
       }
 
-      const project = await this.projectSegmentOf(instance);
+      const name = await this.resourceNameOf(instance, estate);
 
       // ⚠️ A wedged deploy that holds a `$job` execution open forever is worse
       // than a failed one: the row stays `running`, the UI follows it, and the
@@ -285,7 +285,7 @@ export class DeployService {
         row,
         this.runner.run({
           artifact,
-          project,
+          name,
           env: instance.env,
           domain: instance.url ? new URL(instance.url).host : undefined,
           deploymentId: row.id,
@@ -295,7 +295,7 @@ export class DeployService {
           // a Worker shipped without one of its variables boots half
           // configured and fails as whatever that variable was holding
           // together.
-          secrets: await this.openSecrets(instance, project),
+          secrets: await this.openSecrets(instance, name),
           credential: {
             apiToken: this.seal.open(
               estate.credential,
@@ -345,19 +345,11 @@ export class DeployService {
   }
 
   /**
-   * The run, or a refusal once it has taken too long.
+   * The name every resource this copy provisions carries, deciding it on the
+   * first deploy and reading it back on every one after.
    *
-   * ⚠️ The deploy is NOT cancelled - nothing in a fetch chain offers a
-   * cancellation point this could reach, and abandoning a half-uploaded Worker
-   * mid-flight would be worse than letting it finish. What the timeout
-   * guarantees is that the ROW reaches a terminal state, which is what stops
-   * the UI following a deploy forever.
-   */
-  /**
-   * The project segment of every resource name this copy provisions.
-   *
-   * Just the slug: the runner joins it to the app and `NamingService` joins
-   * that to the environment, so the whole is `<project>-<app>-<env>`.
+   * `<project>-<app>-<env>`, from the project's slug at the moment the copy
+   * first deploys. See `appInstances.resourceName` for why it is stored.
    *
    * ## ⚠️ Why the project is in the name at all
    *
@@ -367,47 +359,82 @@ export class DeployService {
    * one bucket, silently shared, each deploy overwriting the other and either
    * project's teardown taking the other's Worker down.
    *
-   * ## ⚠️ A rename must never move a copy's infrastructure
+   * ## ⚠️ Stored BEFORE the run, not after it
    *
-   * The slug moves when a project is renamed, and Cloudflare has no rename -
-   * so a deploy under a new prefix would CREATE an empty database and leave
-   * the old one behind, with the app coming up blank and nothing saying why.
-   *
-   * So the recorded Worker name wins whenever there is one: it IS the prefix
-   * this copy was built under, and a deploy that would target a different one
-   * is refused rather than silently re-pointed. The refusal names both, which
-   * is the only way an operator can tell a rename from a bug.
+   * A deploy that fails halfway may already have created the database under
+   * this name. Written first, the retry comes back to it even if the project
+   * was renamed in between; written after success, it would not.
    */
-  protected async projectSegmentOf(instance: AppInstance): Promise<string> {
+  protected async resourceNameOf(
+    instance: AppInstance,
+    estate: Estate,
+  ): Promise<string> {
+    const name = instance.resourceName ?? (await this.derivedNameOf(instance));
+    await this.assertNameIsFree(instance, estate, name);
+    if (!instance.resourceName) {
+      await this.instances.updateById(instance.id, { resourceName: name });
+    }
+    return name;
+  }
+
+  /**
+   * The name a copy would take if it deployed for the first time now.
+   *
+   * ⚠️ Composed the way `NamingService.forContext` composes it: the runner
+   * hands `<project>-<app>` in as the platform name, and the service slugifies
+   * that and the env separately, then joins them. Slugifying the whole string
+   * in one go truncates at a different place once it passes 63 characters.
+   */
+  protected async derivedNameOf(instance: AppInstance): Promise<string> {
     const project = await this.projects.findById(instance.projectId);
     // `slug` is optional on the column; the id is the stable fallback the rest
     // of the app already uses when a title produces nothing sluggable.
     const slug = project?.slug || `project-${instance.projectId}`;
-
-    const recorded = this.recordedWorker(instance);
-    if (!recorded) {
-      return slug;
-    }
-
-    const wanted = this.workerNameOf(slug, instance);
-    if (recorded !== wanted) {
-      throw new BadRequestError(
-        `${instance.app}/${instance.env} was deployed as \`${recorded}\` and this deploy would target \`${wanted}\`. Cloudflare cannot rename, so deploying would create empty resources beside the ones this copy is using. Rename the project back, or destroy this copy and deploy it again to move it deliberately.`,
-      );
-    }
-    return slug;
+    return `${this.slugify(`${slug}-${instance.app}`)}-${this.slugify(instance.env)}`;
   }
 
   /**
-   * The Worker name this copy deploys under, `<project>-<app>-<env>`.
+   * Refuse a name another copy already holds in the same Cloudflare account.
    *
-   * ⚠️ The full name the runner and `NamingService` will compose between
-   * them: the runner joins the project segment to the app, and
-   * `NamingService` joins that to the env. Restated here so a comparison is
-   * against what will actually be created, not against a piece of it.
+   * ## ⚠️ A rename frees a slug, and the next project may take it
+   *
+   * `project1` renamed to `project2` keeps `project1-app1-env1`. A new project
+   * called `project1` would then derive the very same name, and `ensureD1` /
+   * `ensureR2` resolve by NAME: its first deploy would attach to the other
+   * project's live database and overwrite its Worker. Moving a copy to an
+   * estate that already holds its name ends the same way.
+   *
+   * Compared by account rather than by estate, because two estates may lend
+   * the same Cloudflare account. The other copy is not named: it may belong to
+   * a project the caller cannot see.
    */
-  protected workerNameOf(project: string, instance: AppInstance): string {
-    return this.slugify(`${project}-${instance.app}-${instance.env}`);
+  protected async assertNameIsFree(
+    instance: AppInstance,
+    estate: Estate,
+    name: string,
+  ): Promise<void> {
+    if (!estate.accountId) {
+      return;
+    }
+    const sameAccount = await this.estates.findMany({
+      where: { accountId: { eq: estate.accountId } },
+      columns: ["id"],
+    });
+    if (sameAccount.length === 0) {
+      return;
+    }
+    const holder = await this.instances.findOne({
+      where: {
+        estateId: { inArray: sameAccount.map((it) => it.id) },
+        resourceName: { eq: name },
+        id: { ne: instance.id },
+      },
+    });
+    if (holder) {
+      throw new BadRequestError(
+        `Another copy in this Cloudflare account is already named \`${name}\`, and deploying would share its Worker, database and bucket. Point ${instance.app}/${instance.env} at another estate, or rename this project before its first deploy.`,
+      );
+    }
   }
 
   /**
@@ -581,14 +608,14 @@ export class DeployService {
    */
   protected async openSecrets(
     instance: AppInstance,
-    project: string,
+    name: string,
   ): Promise<Record<string, string>> {
     await this.secrets.ensureGenerated(instance.id);
     if (!(await this.hasBeenDeployed(instance))) {
       await this.secrets.ensureDefault(
         instance.id,
         DeployService.APP_NAME,
-        this.workerNameOf(project, instance),
+        name,
       );
     }
     return await this.secrets.open(instance.id);
@@ -627,6 +654,9 @@ export class DeployService {
    * ({@link recordResources} and `DeployRegistry.succeeded` each swallow a
    * failed write), so either can be missing from a copy that is live. Asking
    * both means a copy is misread as new only when both writes were lost.
+   *
+   * ⚠️ `resourceName` is NOT a signal: it is written before the first run, so
+   * a copy whose first deploy failed has one and has never gone live.
    */
   protected async hasBeenDeployed(instance: AppInstance): Promise<boolean> {
     if (this.recordedWorker(instance)) {
@@ -641,6 +671,15 @@ export class DeployService {
     return !!succeeded;
   }
 
+  /**
+   * The run, or a refusal once it has taken too long.
+   *
+   * ⚠️ The deploy is NOT cancelled - nothing in a fetch chain offers a
+   * cancellation point this could reach, and abandoning a half-uploaded Worker
+   * mid-flight would be worse than letting it finish. What the timeout
+   * guarantees is that the ROW reaches a terminal state, which is what stops
+   * the UI following a deploy forever.
+   */
   protected async withTimeout<T>(
     row: Deployment,
     work: Promise<T>,
