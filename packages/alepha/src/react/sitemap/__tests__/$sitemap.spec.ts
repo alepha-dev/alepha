@@ -143,6 +143,33 @@ describe("$sitemap", () => {
     expect(body).toContain("<loc>/</loc>");
   });
 
+  it("lists extra urls after the pages", async ({ expect }) => {
+    class ExtraApp {
+      sitemap = $sitemap({
+        hostname: "https://example.com/",
+        urls: ["/llms.txt", "feed.xml", "https://cdn.example.com/a.txt"],
+      });
+      home = $page({ path: "/", static: true, component: () => "home" });
+    }
+    const alepha = Alepha.create()
+      .with(AlephaReactRouter)
+      .with(AlephaReactSitemap);
+    alepha.inject(ExtraApp);
+    await alepha.start();
+
+    const locs = [
+      ...sitemapOf(alepha)
+        .prerender()
+        .body.matchAll(/<loc>(.*?)<\/loc>/g),
+    ].map((it) => it[1]);
+    expect(locs).toEqual([
+      "https://example.com/",
+      "https://example.com/llms.txt",
+      "https://example.com/feed.xml",
+      "https://cdn.example.com/a.txt",
+    ]);
+  });
+
   it("uses DateTimeProvider for lastmod (travel-able)", async ({ expect }) => {
     const { alepha } = await start();
     const dateTime = alepha.inject(DateTimeProvider);

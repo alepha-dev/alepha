@@ -12,7 +12,8 @@ import { type ServerRequest, ServerRouterProvider } from "alepha/server";
  * while SSR runtimes also serve it live.
  *
  * The hostname comes from `options.hostname`, falling back to `PUBLIC_URL`, then
- * to `""` (relative URLs).
+ * to `""` (relative URLs). URLs that no page answers, a feed or an
+ * `llms.txt`, are listed through `options.urls`.
  *
  * @example
  * ```ts
@@ -38,6 +39,15 @@ export interface SitemapPrimitiveOptions {
    * Defaults to `PUBLIC_URL`, then to `""` (relative URLs).
    */
   hostname?: string;
+
+  /**
+   * Extra URLs to list after the pages: files and routes that are not a
+   * `$page`, such as `/llms.txt`. A path is joined to the hostname like a
+   * page's; an absolute URL is listed as is.
+   *
+   * @example ["/llms.txt", "/feed.xml"]
+   */
+  urls?: string[];
 
   /**
    * Route path the sitemap is served at.
@@ -163,6 +173,14 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
           urls.push(url);
         }
       }
+    }
+
+    for (const url of this.options.urls ?? []) {
+      urls.push(
+        /^https?:\/\//.test(url)
+          ? url
+          : `${normalizedBaseUrl}${url.startsWith("/") ? url : `/${url}`}`,
+      );
     }
 
     return this.buildSitemapXml(urls);
