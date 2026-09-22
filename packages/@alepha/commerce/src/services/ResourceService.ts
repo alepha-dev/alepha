@@ -364,6 +364,23 @@ export class ResourceService {
   }
 
   /**
+   * Give back every claim an order took, held or sold: the order was refunded
+   * in full, or its creation failed where no transaction could undo it.
+   *
+   * Idempotent, like {@link releaseFor}.
+   */
+  public async releaseOrder(orderId: string): Promise<void> {
+    await this.releaseAll(
+      await this.claims.findMany({
+        where: {
+          orderId: { eq: orderId },
+          status: { inArray: ["held", "consumed"] },
+        },
+      }),
+    );
+  }
+
+  /**
    * Give back every claim an order line took, held or consumed: what a kind
    * handler calls to undo its own line when one of several claims loses, so an
    * item that needs two legs never keeps one.

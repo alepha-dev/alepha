@@ -14,6 +14,7 @@ import { CommerceError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { ClaimLock } from "./ClaimLock.ts";
 import { LineConfigService } from "./LineConfigService.ts";
+import { ResourceService } from "./ResourceService.ts";
 import { StockService } from "./StockService.ts";
 
 export interface OrderLineInput {
@@ -84,6 +85,7 @@ export class OrderService {
   protected readonly productRepo = $repository(products);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly stock = $inject(StockService);
+  protected readonly resources = $inject(ResourceService);
   protected readonly lines = $inject(LineConfigService);
   protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -203,13 +205,18 @@ export class OrderService {
         }),
       );
 
-      if (status === "paid") {
-        // A counter sale: the money is already in, so skip the hold and go
-        // straight to fulfilment.
-        await this.fulfilAll(items);
-      } else {
-        // An online order: hold what it consumes until the payment settles.
-        await this.reserveAll(items);
+      try {
+        if (status === "paid") {
+          // A counter sale: the money is already in, so skip the hold and go
+          // straight to fulfilment.
+          await this.fulfilAll(items);
+        } else {
+          // An online order: hold what it consumes until the payment settles.
+          await this.reserveAll(items);
+        }
+      } catch (error) {
+        await this.undoWithoutTransaction(order.id);
+        throw error;
       }
 
       return order;
@@ -286,7 +293,15 @@ export class OrderService {
   }
 
   /**
-   * Cancel an unpaid order, giving back whatever it was holding.
+   * Cancel an unpaid order, giving back whatever it was holding: its stock
+   * holds and its interval holds, at once rather than when the sweep runs.
+   *
+   * The release is all this package does. Cancellation policy (a fee, a
+   * free-cancel window, a weather rule, how close to the slot's start the
+   * cancellation came) is the application's, built on this release. So is
+   * cancelling one line of a multi-line order: there is no item-level
+   * cancellation here, and if one is needed it is an `OrderService.cancelItems`
+   * releasing by `orderItemId`, which the claims already carry.
    */
   public async cancel(id: string): Promise<OrderEntity> {
     return this.db.transactional(async () => {
@@ -294,6 +309,7 @@ export class OrderService {
       // to release units that were sold and leave the money taken.
       await this.assertTransition(id, ["pending"], "cancelled");
       await this.stock.releaseFor(id);
+      await this.resources.releaseFor(id);
       const order = await this.orderRepo.updateById(id, {
         status: "cancelled",
       });
@@ -365,8 +381,11 @@ export class OrderService {
       // Stock comes back only when the sale is undone. A partial refund is a
       // price adjustment on goods the customer keeps, so releasing units here
       // would put things back on the shelf that never returned.
+      // The same for intervals: a full refund gives the court back, a partial
+      // one leaves it booked.
       if (full) {
         await this.stock.releaseOrder(id);
+        await this.resources.releaseOrder(id);
       }
 
       const order = await this.orderRepo.updateById(id, {
@@ -490,6 +509,34 @@ export class OrderService {
       { where },
       { count: true },
     );
+  }
+
+  /**
+   * Give back what a failed create took, on a database that has no
+   * transaction to roll it back.
+   *
+   * D1 and PGlite run `transactional()` in place, so when line 3's claim
+   * throws, lines 1 and 2 keep their holds (and, for a counter sale, their
+   * sales) until somebody notices: half an hour of a court nobody can book.
+   * Where there IS a transaction nothing is written here: the rollback
+   * already undoes it all, and a write into a transaction that a failed
+   * statement aborted would only replace the real error with its own.
+   */
+  protected async undoWithoutTransaction(orderId: string): Promise<void> {
+    if (this.db.supportsTransactions) {
+      return;
+    }
+    try {
+      await this.stock.releaseOrder(orderId);
+      await this.resources.releaseOrder(orderId);
+    } catch (cleanup) {
+      // The error being rethrown is the one the caller needs; this one only
+      // means the sweep will tidy up instead.
+      this.log.error("Could not release a failed order's holds", {
+        orderId,
+        error: cleanup,
+      });
+    }
   }
 
   /**
