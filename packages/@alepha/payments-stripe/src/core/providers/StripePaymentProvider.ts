@@ -745,6 +745,14 @@ export class StripePaymentProvider implements PaymentProvider {
    * credits nor bills the rest of the current period (or trial), so the new
    * amount simply appears on the next invoice. `0` is a valid amount: the
    * subscription keeps running on free invoices.
+   *
+   * ⚠️ A subscription made by Checkout with an inline `product_data` sits on
+   * a product Stripe created itself and marked INACTIVE: Stripe refuses a
+   * `price_data` on it ("marked as inactive") and refuses to reactivate it
+   * ("created by Stripe automatically and cannot be updated"). For such a
+   * product (or a deleted one) the new price is created with `prices.create`
+   * and `product_data` of the same name, which gives an active product, and
+   * the item moves to that price.
    */
   public async updateSubscriptionPrice(
     subscriptionId: string,
@@ -756,7 +764,7 @@ export class StripePaymentProvider implements PaymentProvider {
       : undefined;
     const subscription = await this.stripe.subscriptions.retrieve(
       subscriptionId,
-      undefined,
+      { expand: ["items.data.price.product"] },
       account,
     );
     const items = subscription.items?.data ?? [];
@@ -772,8 +780,38 @@ export class StripePaymentProvider implements PaymentProvider {
         `Subscription ${subscriptionId} holds a non-recurring price`,
       );
     }
-    const product =
-      typeof price.product === "string" ? price.product : price.product.id;
+    const recurring = {
+      interval: price.recurring.interval,
+      interval_count: price.recurring.interval_count,
+    };
+    const taxBehavior =
+      price.tax_behavior && price.tax_behavior !== "unspecified"
+        ? { tax_behavior: price.tax_behavior }
+        : {};
+    const ref = price.product;
+    const usable =
+      typeof ref === "string" || ("active" in ref && ref.active !== false);
+    if (!usable) {
+      const name = "name" in ref && ref.name ? ref.name : "Subscription";
+      const created = await this.stripe.prices.create(
+        {
+          currency: price.currency,
+          unit_amount: unitAmount,
+          recurring,
+          product_data: { name },
+          ...taxBehavior,
+        },
+        account,
+      );
+      return this.stripe.subscriptions.update(
+        subscriptionId,
+        {
+          items: [{ id: item.id, price: created.id }],
+          proration_behavior: "none",
+        },
+        account,
+      );
+    }
     return this.stripe.subscriptions.update(
       subscriptionId,
       {
@@ -782,15 +820,10 @@ export class StripePaymentProvider implements PaymentProvider {
             id: item.id,
             price_data: {
               currency: price.currency,
-              product,
+              product: typeof ref === "string" ? ref : ref.id,
               unit_amount: unitAmount,
-              recurring: {
-                interval: price.recurring.interval,
-                interval_count: price.recurring.interval_count,
-              },
-              ...(price.tax_behavior && price.tax_behavior !== "unspecified"
-                ? { tax_behavior: price.tax_behavior }
-                : {}),
+              recurring,
+              ...taxBehavior,
             },
           },
         ],
