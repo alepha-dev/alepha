@@ -44,7 +44,10 @@ const QuestViewRailRow = (props: QuestViewRailRowProps) => {
    * than level with its first line. Checked at 1440 and at 491.
    */
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
+    <div
+      data-slot="quest-rail-row"
+      className="flex items-center justify-between gap-3 py-1.5"
+    >
       <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
         <Icon className="size-3.5" />
         {props.label}

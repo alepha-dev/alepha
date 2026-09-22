@@ -82,10 +82,14 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
     // escape hatch. That second one is a real design question about the whole
     // component and does not belong inside a rail row's quest.
     <DropdownMenu>
+      {/* `-my-0.5` cancels the `py-0.5` hover pad, as `-mx-1` cancels the
+          `px-1`, and `align-top` drops the baseline gap an inline-flex box
+          leaves under itself: together they took the row from 34px to the
+          rail's 28 (#Q2424). */}
       <DropdownMenuTrigger
         disabled={pending || users.length === 0 || !questApi.assignQuest.can()}
         data-testid="quest-assignee-picker"
-        className="hover:bg-hover -mx-1 inline-flex items-center gap-1.5 rounded px-1 py-0.5 disabled:opacity-60"
+        className="hover:bg-hover -mx-1 -my-0.5 inline-flex items-center gap-1.5 rounded px-1 py-0.5 align-top disabled:opacity-60"
       >
         {quest.acceptedBy ? (
           <UserAvatar

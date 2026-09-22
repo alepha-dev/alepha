@@ -22,7 +22,7 @@ export class OAuthJobs {
   protected readonly clientService = $inject(OAuthClientService);
 
   /**
-   * Delete dynamically-registered clients nobody ever authorized.
+   * Delete dynamically-registered clients that never received a token.
    *
    * ## Why the table grows at all
    *
@@ -33,7 +33,7 @@ export class OAuthJobs {
    * none. Dedupe stops new ones accumulating; this collects what is already
    * there and anything a future client abandons.
    *
-   * ## ⚠️ Three conditions, and the grace period is the subtle one
+   * ## ⚠️ Four conditions, and "never used" is the one that matters
    *
    * - `source = 'dcr'` only. A client Platform seeded with an explicit id is
    *   configuration, not litter, and may legitimately have no session yet.
@@ -42,15 +42,28 @@ export class OAuthJobs {
    *   survive the wait - and somebody may leave that tab open over lunch.
    *   A tighter window deletes a registration mid-flow, which the client
    *   then cannot complete and cannot diagnose.
-   * - **No session references it.** That is what "abandoned" means here.
-   *   A client whose sessions have all expired is left alone by this job:
-   *   the sessions are `UserJobs.purgeExpiredSessions`'s to remove, and the
-   *   client becomes collectable on a later pass once they are gone.
+   * - **`lastUsedAt` is null**: no grant ever succeeded for it. That is what
+   *   "abandoned" means. The job used to read "no session right now"
+   *   instead (#Q2413), and that deleted clients in use: ChatGPT registers
+   *   once and keeps its `client_id` for the life of the connector, so when
+   *   its session ended (the idle timeout, a revoke, the absolute ceiling)
+   *   the next night removed the client, and every sign-in after it was
+   *   answered `unknown client_id` until a human removed and re-added the
+   *   connector. A client used once is kept: a row is cheap, a connector
+   *   that cannot sign in again is not.
+   * - **No session references it.** For a row whose grant predates
+   *   `lastUsedAt` being written: while it still holds a session it is left
+   *   alone. Once its sessions are gone it is collected, the pre-v1 cost of
+   *   rows older than the column.
+   *
+   * Each deletion is logged with the client's id, name and dates. It is the
+   * only trace one leaves: a cron run keeps no `job_executions.logs`, and a
+   * count cannot say whose connector just stopped working.
    */
   public readonly purgeAbandonedClients = $job({
     name: "system.oauth.purge-abandoned-clients",
     description:
-      "Deletes dynamically registered OAuth clients older than a day that no session uses.",
+      "Deletes dynamically registered OAuth clients older than a day that never received a token.",
     // `0 3 * * *`, shared with the other daily purges rather than given a
     // minute of its own. Cloudflare counts cron triggers per account and
     // shares them across every Worker on it, so a distinct expression for
@@ -70,6 +83,7 @@ export class OAuthJobs {
         where: {
           source: { eq: "dcr" },
           createdAt: { lt: cutoff },
+          lastUsedAt: { isNull: true },
         },
       });
       if (candidates.length === 0) {
@@ -88,6 +102,12 @@ export class OAuthJobs {
 
       for (const client of abandoned) {
         await this.clients.deleteById(client.id);
+        this.log.info("Abandoned OAuth client purged", {
+          clientId: client.clientId,
+          clientName: client.clientName,
+          createdAt: client.createdAt,
+          lastUsedAt: client.lastUsedAt ?? null,
+        });
       }
 
       this.log.info("Abandoned OAuth clients purged", {
