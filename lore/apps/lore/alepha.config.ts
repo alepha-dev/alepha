@@ -1,7 +1,7 @@
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 // The FRAMEWORK's manifest, not Lore's own - the same source `apps/docs` uses.
 // Lore is private and therefore carries no version of its own: the release job
@@ -206,10 +206,7 @@ export default defineConfig({
       // CI delivers them via the deploy job's `env:` and the deploy step
       // resolves each from `process.env`. Set `secrets.keys` only to override.
       environments: {
-        production: {
-          domain: "lore.alepha.dev",
-          adapter: "cloudflare",
-        },
+        production: cloudflare({ domain: "lore.alepha.dev" }),
       },
     }),
     i18n({
