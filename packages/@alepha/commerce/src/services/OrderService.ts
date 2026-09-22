@@ -12,6 +12,7 @@ import {
 import { products } from "../entities/products.ts";
 import { CommerceError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
+import { ClaimLock } from "./ClaimLock.ts";
 import { LineConfigService } from "./LineConfigService.ts";
 import { StockService } from "./StockService.ts";
 
@@ -84,6 +85,7 @@ export class OrderService {
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly stock = $inject(StockService);
   protected readonly lines = $inject(LineConfigService);
+  protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -563,11 +565,12 @@ export class OrderService {
    * Hand each line to the handler that owns its kind.
    *
    * Sequential on purpose: two lines of the same product must not race each
-   * other on the stock ledger. In {@link inLockOrder}, for the reason given
+   * other on the stock ledger. After {@link lockAll}, for the reason given
    * there.
    */
   protected async fulfilAll(items: OrderItemEntity[]): Promise<void> {
-    for (const item of this.inLockOrder(items)) {
+    await this.lockAll(items);
+    for (const item of items) {
       await this.kinds.get(item.kind).fulfil(item);
     }
   }
@@ -581,23 +584,33 @@ export class OrderService {
    * money for a ring that has just been sold.
    */
   protected async reserveAll(items: OrderItemEntity[]): Promise<void> {
-    for (const item of this.inLockOrder(items)) {
+    await this.lockAll(items);
+    for (const item of items) {
       await this.kinds.get(item.kind).reserve?.(item);
     }
   }
 
   /**
-   * An order's lines by product id, the order their stock claims must run in.
+   * Take every claim lock the order's lines need, up front and in one global
+   * order, before any handler claims anything.
    *
-   * On Postgres every claim holds its product's lock until the order's
-   * transaction commits. Two orders walking the same two products in cart
-   * order, one each way, would each hold one lock and wait on the other, and
-   * Postgres would break that deadlock by failing one of the checkouts. In
-   * one global order, the second order waits for the first instead.
+   * On Postgres every claim holds its lock until the order's transaction
+   * commits. Two orders taking the same locks in different orders (court 2
+   * then court 1 against court 1 then court 2, a stock line against a
+   * resource line, the two legs of a seat listed backwards) would each hold
+   * one lock and wait on the other, and Postgres would break that deadlock by
+   * failing one of the checkouts. Sorted by `(namespace, key)` across the
+   * whole order, the second order waits for the first instead. Walking the
+   * lines by product id, as this used to, only ordered stock: one product
+   * sells many resources.
+   *
+   * The handlers' own claims then take locks this transaction already holds,
+   * which Postgres grants at once. Elsewhere there are no locks to take, and
+   * this does nothing.
    */
-  protected inLockOrder(items: OrderItemEntity[]): OrderItemEntity[] {
-    return [...items].sort((a, b) =>
-      a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
+  protected async lockAll(items: OrderItemEntity[]): Promise<void> {
+    await this.lock.acquire(
+      items.flatMap((item) => this.kinds.get(item.kind).lockKeys?.(item) ?? []),
     );
   }
 }

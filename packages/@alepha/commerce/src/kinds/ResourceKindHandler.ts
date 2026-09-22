@@ -115,7 +115,7 @@ export abstract class ResourceKindHandler extends ProductKindHandler {
    * One lock key per resource the line claims, so an order can take every
    * lock it needs up front, in one global order.
    */
-  public lockKeys(item: OrderItemEntity): ClaimLockKey[] {
+  public override lockKeys(item: OrderItemEntity): ClaimLockKey[] {
     return this.resolve(item).map((claim) => ({
       namespace: ResourceService.LOCK_NAMESPACE,
       key: claim.resourceId,

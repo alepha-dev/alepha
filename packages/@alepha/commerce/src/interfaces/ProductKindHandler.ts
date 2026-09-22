@@ -2,6 +2,7 @@ import type { ZType } from "alepha";
 
 import type { OrderItemEntity } from "../entities/orderItems.ts";
 import type { ProductEntity } from "../entities/products.ts";
+import type { ClaimLockKey } from "../services/ClaimLock.ts";
 
 /**
  * What a module must implement to teach the catalog a new kind of sellable
@@ -72,6 +73,24 @@ export abstract class ProductKindHandler {
     product: ProductEntity,
     lineConfig: Record<string, any> | undefined,
   ): Promise<number>;
+
+  /**
+   * The claim locks this line will take, so `OrderService` can take every lock
+   * of an order up front, sorted, before any handler runs.
+   *
+   * On Postgres each claim holds a lock until the order commits, and two
+   * orders taking the same locks in different orders deadlock, which Postgres
+   * breaks by failing one checkout. Walking the lines in some order is not
+   * enough: one product sells many resources, and one line can claim several
+   * (a seat over two legs). So every key of every line is collected, sorted by
+   * `(namespace, key)` and taken first; the handler's own claims then find
+   * their locks already held.
+   *
+   * A kind that claims through `StockService` or `ResourceService` implements
+   * this (`good` returns its product's stock key, a resource kind one key per
+   * resource); a kind that claims nothing leaves it unset.
+   */
+  lockKeys?(item: OrderItemEntity): ClaimLockKey[];
 
   /**
    * Optionally hold whatever this line consumes, while its payment is in flight.
