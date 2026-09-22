@@ -60,7 +60,7 @@ Push the branch as you go rather than only at the end. If the project verifies o
 
 1. Push, and wait for CI this time. Fix and push again until it is green.
 2. Only when it is green: merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.
-3. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left.
+3. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left. It lands in the directory of the epic's other folios; pass \`directory_shortId\` only to put it somewhere else.
 
 There is no status to set: the epic completed on its own when its last open quest was completed or shelved.
 

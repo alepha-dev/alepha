@@ -143,6 +143,41 @@ export class FolioTools {
   }
 
   /**
+   * The directory a new folio of this epic defaults to: the one holding the
+   * epic's oldest folio that sits in a directory, normally its spec or
+   * design folio. `undefined` when none does, which files at the root.
+   *
+   * Epics carry no directory of their own, and the "Work on it" prompt files
+   * its outcome folio with `epic_number` alone (#Q2474). Without this, every
+   * finished epic left that folio at the root of the tree, away from its
+   * spec. Read here rather than asked of the agent, so it holds whatever
+   * prompt or agent makes the call.
+   *
+   * One page of the epic's folios, the list's maximum: an epic holding more
+   * than a hundred folios is not a case worth a query of its own.
+   */
+  protected async resolveEpicDirectoryId(
+    projectId: number,
+    epicId: number,
+  ): Promise<string | undefined> {
+    const folios = await this.folioController.list({
+      query: { projectId, epicId, limit: 100 },
+    });
+    let oldest: (typeof folios)[number] | undefined;
+    for (const folio of folios) {
+      if (folio.directoryId == null) continue;
+      if (
+        oldest == null ||
+        folio.createdAt < oldest.createdAt ||
+        (folio.createdAt === oldest.createdAt && folio.shortId < oldest.shortId)
+      ) {
+        oldest = folio;
+      }
+    }
+    return oldest?.directoryId ?? undefined;
+  }
+
+  /**
    * Resolve a `attachment_shortId` MCP input to the global file UUID, scoped to
    * the given project. Delegates to a public controller endpoint — no
    * reach into private state.
@@ -319,7 +354,7 @@ export class FolioTools {
         directory_shortId: z
           .integer()
           .describe(
-            "Place the folio in this directory (by per-project shortId). Omit to create at the project root. Directories organize folios into a tree (#66) — list available ones via `directory_list`.",
+            "Place the folio in this directory (by per-project shortId). Omit to create at the project root, or, with `epic_number`, in the directory holding that epic's oldest folio that sits in one (the root if none does). Directories organize folios into a tree (#66) — list available ones via `directory_list`.",
           )
           .optional(),
         pinned: z
@@ -331,7 +366,7 @@ export class FolioTools {
         epic_number: z
           .integer()
           .describe(
-            "Per-project number of the epic to file this folio under (see epic_list). A design or outcome folio of an epic belongs here; left unattached it never shows on the epic.",
+            "Per-project number of the epic to file this folio under (see epic_list). A design or outcome folio of an epic belongs here; left unattached it never shows on the epic. Without `directory_shortId`, the folio lands beside the epic's other folios: in the directory of its oldest folio that sits in one.",
           )
           .optional(),
       }),
@@ -342,7 +377,7 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const directoryId = await this.resolveDirectoryShortId(
+      const explicitDirectoryId = await this.resolveDirectoryShortId(
         params.directory_shortId,
         projectId,
       );
@@ -352,6 +387,13 @@ export class FolioTools {
         params.epic_number != null
           ? await this.resolveEpicId(projectId, params.epic_number)
           : undefined;
+      // An explicit directory wins; an epic folio without one joins its
+      // epic's other folios rather than the root (#Q2474).
+      const directoryId =
+        explicitDirectoryId ??
+        (epicId != null
+          ? await this.resolveEpicDirectoryId(projectId, epicId)
+          : undefined);
       const folio = await this.folioController.create({
         body: {
           projectId,
