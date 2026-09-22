@@ -57,8 +57,9 @@ export { OAuthJobs } from "./jobs/OAuthJobs.ts";
  * `OAuthJobs.purgeAbandonedClients` collects DCR rows older than a day that
  * never received a token (`lastUsedAt` null) and no session references. A
  * client used once is never collected: some clients (ChatGPT) register once
- * and reuse that `client_id` for the life of the connector. Register it the way `$realm` does; a job that
- * mounted itself would run in every application that imports this module.
+ * and reuse that `client_id` for the life of the connector. Register it the
+ * way `$realm` does; a job that mounted itself would run in every
+ * application that imports this module.
  *
  * **The `refresh_token` grant requires `client_id`.** The client is looked up
  * and - when confidential - must present its secret, exactly as on the
