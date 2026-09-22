@@ -381,6 +381,161 @@ describe("resource reservation", () => {
     });
   });
 
+  describe("availability", () => {
+    const hold = (
+      ctx: Awaited<ReturnType<typeof setup>>,
+      resourceId: string,
+      window: { startsAt: string; endsAt: string },
+      capacity = 1,
+    ) =>
+      ctx.resources.reserve(resourceId, {
+        ...window,
+        capacity,
+        orderId: randomUUID(),
+      });
+
+    it("lists the free intervals with the room left in each", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const session = aCourt();
+      await hold(ctx, session, slot("10:00", "11:00"), 2);
+      await hold(ctx, session, slot("10:30", "12:00"), 2);
+
+      const free = await ctx.resources.availability(
+        [{ resourceId: session, capacity: 2 }],
+        slot("09:00", "13:00"),
+      );
+
+      expect(free.get(session)).toEqual([
+        { ...slot("09:00", "10:00"), remaining: 2 },
+        { ...slot("10:00", "10:30"), remaining: 1 },
+        { ...slot("11:00", "12:00"), remaining: 1 },
+        { ...slot("12:00", "13:00"), remaining: 2 },
+      ]);
+
+      // Asking for two places leaves only the stretches with two left.
+      const forTwo = await ctx.resources.availability(
+        [{ resourceId: session, capacity: 2 }],
+        slot("09:00", "13:00"),
+        { quantity: 2 },
+      );
+      expect(forTwo.get(session)).toEqual([
+        { ...slot("09:00", "10:00"), remaining: 2 },
+        { ...slot("12:00", "13:00"), remaining: 2 },
+      ]);
+    });
+
+    it("reads every resource in one call, a full one included", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const [free, full] = [aCourt(), aCourt()];
+      await hold(ctx, full, slot("08:00", "14:00"));
+
+      const result = await ctx.resources.availability(
+        [
+          { resourceId: free, capacity: 1 },
+          { resourceId: full, capacity: 1 },
+        ],
+        slot("09:00", "13:00"),
+      );
+
+      expect(result.get(free)).toEqual([
+        { ...slot("09:00", "13:00"), remaining: 1 },
+      ]);
+      expect(result.get(full)).toEqual([]);
+    });
+
+    it("stops counting a hold the moment it expires, sweep or no sweep", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const court = aCourt();
+      await hold(ctx, court, slot("10:00", "11:00"));
+      const read = async () =>
+        (
+          await ctx.resources.availability(
+            [{ resourceId: court, capacity: 1 }],
+            slot("09:00", "12:00"),
+          )
+        ).get(court);
+
+      expect(await read()).toHaveLength(2);
+
+      await ctx.dateTime.travel(
+        StockService.RESERVATION_TTL_MINUTES + 1,
+        "minutes",
+      );
+
+      expect(await read()).toEqual([
+        { ...slot("09:00", "12:00"), remaining: 1 },
+      ]);
+    });
+
+    it("says nothing about who holds what", async ({ expect }) => {
+      const ctx = await setup("sqlite");
+      const court = aCourt();
+      await ctx.resources.reserve(court, {
+        ...slot("10:00", "11:00"),
+        capacity: 2,
+        orderId: randomUUID(),
+        orderItemId: randomUUID(),
+      });
+
+      const free = await ctx.resources.availability(
+        [{ resourceId: court, capacity: 2 }],
+        slot("09:00", "12:00"),
+      );
+
+      for (const interval of free.get(court)!) {
+        expect(Object.keys(interval).sort()).toEqual([
+          "endsAt",
+          "remaining",
+          "startsAt",
+        ]);
+      }
+    });
+
+    it("lays the slots on the caller's grid, inside the free intervals", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const court = aCourt();
+      await hold(ctx, court, slot("10:00", "11:00"));
+
+      const slots = await ctx.resources.slots(
+        [{ resourceId: court, capacity: 1 }],
+        slot("09:00", "13:00"),
+        { granularityMinutes: 30, durationMinutes: 60 },
+      );
+
+      expect(slots.get(court)?.map((it) => it.startsAt)).toEqual([
+        at("09:00"),
+        at("11:00"),
+        at("11:30"),
+        at("12:00"),
+      ]);
+    });
+
+    it("offers a slot across two stretches that each have room", async ({
+      expect,
+    }) => {
+      const ctx = await setup("sqlite");
+      const session = aCourt();
+      await hold(ctx, session, slot("10:00", "11:00"), 2);
+
+      // 09:30-10:30 crosses from two places left into one: bookable for one.
+      const slots = await ctx.resources.slots(
+        [{ resourceId: session, capacity: 2 }],
+        slot("09:30", "10:30"),
+        { granularityMinutes: 60, durationMinutes: 60 },
+      );
+
+      expect(slots.get(session)).toEqual([slot("09:30", "10:30")]);
+    });
+  });
+
   /*
    * The window the racers above only hit by luck: a claim written but not
    * yet committed. Replaying by `(createdAt, id)` let a racer stamped later

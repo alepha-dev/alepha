@@ -366,6 +366,142 @@ export class ResourceService {
   }
 
   /**
+   * The free intervals of each resource over a window, with the room left in
+   * each: what a storefront renders as a calendar.
+   *
+   * An interval is listed when at least `quantity` (default 1) is left across
+   * all of it; adjacent stretches with the same room left are one interval.
+   * Capacity comes with each resource, as on every claim: what is free on a
+   * course session depends on its 12.
+   *
+   * **Anonymous on purpose.** The result carries no order, claim or label: a
+   * public storefront renders it. Who holds what, and why a window is closed,
+   * is `occupancy()`, a staff read.
+   *
+   * Read through the very code {@link reserve} decides with ({@link live} and
+   * {@link profile}), so a live hold counts until the instant it expires,
+   * sweep or no sweep. What it shows is a snapshot: a slot free now can be
+   * taken before it is reserved, and {@link reserve} is still the decision.
+   *
+   * @returns every requested resource, with an empty list when it is full.
+   */
+  public async availability(
+    resources: Array<{ resourceId: string; capacity: number }>,
+    window: ResourceWindow,
+    options: { quantity?: number } = {},
+  ): Promise<Map<string, Array<ResourceWindow & { remaining: number }>>> {
+    const clipped = this.interval(window);
+    const quantity = this.amount(options.quantity ?? 1, "quantity");
+    const capacityOf = new Map(
+      resources.map((it) => [
+        it.resourceId,
+        this.amount(it.capacity, "capacity"),
+      ]),
+    );
+
+    const byResource = new Map<string, ResourceReservationEntity[]>();
+    for (const claim of await this.live([...capacityOf.keys()], clipped)) {
+      const list = byResource.get(claim.resourceId) ?? [];
+      list.push(claim);
+      byResource.set(claim.resourceId, list);
+    }
+
+    const result = new Map<
+      string,
+      Array<ResourceWindow & { remaining: number }>
+    >();
+    for (const [resourceId, capacity] of capacityOf) {
+      const free: Array<ResourceWindow & { remaining: number }> = [];
+      for (const segment of this.profile(
+        byResource.get(resourceId) ?? [],
+        clipped,
+      )) {
+        const remaining = capacity - segment.taken;
+        if (remaining < quantity) {
+          continue;
+        }
+        const last = free.at(-1);
+        if (last?.endsAt === segment.startsAt && last.remaining === remaining) {
+          last.endsAt = segment.endsAt;
+        } else {
+          free.push({
+            startsAt: segment.startsAt,
+            endsAt: segment.endsAt,
+            remaining,
+          });
+        }
+      }
+      result.set(resourceId, free);
+    }
+    return result;
+  }
+
+  /**
+   * The bookable slots of each resource on a grid: what a booking UI lays out
+   * as buttons.
+   *
+   * Slots start every `granularityMinutes` from the window's own start (the
+   * caller chooses the anchor by choosing the window) and last
+   * `durationMinutes`; a slot is listed when it lies inside a stretch of
+   * {@link availability} with at least `quantity` left all along, and ends
+   * within the window. Built on {@link availability}, never beside it.
+   */
+  public async slots(
+    resources: Array<{ resourceId: string; capacity: number }>,
+    window: ResourceWindow,
+    options: {
+      granularityMinutes: number;
+      durationMinutes: number;
+      quantity?: number;
+    },
+  ): Promise<Map<string, ResourceWindow[]>> {
+    const step = this.amount(options.granularityMinutes, "granularityMinutes");
+    const duration = this.amount(options.durationMinutes, "durationMinutes");
+    const clipped = this.interval(window);
+    const free = await this.availability(resources, clipped, {
+      quantity: options.quantity,
+    });
+
+    const first = Date.parse(clipped.startsAt);
+    const last = Date.parse(clipped.endsAt);
+    const result = new Map<string, ResourceWindow[]>();
+    for (const [resourceId, intervals] of free) {
+      // Every interval here already has room for the quantity, so contiguous
+      // ones are one bookable run whatever room each has left.
+      const runs: Array<[number, number]> = [];
+      for (const it of intervals) {
+        const [startsAt, endsAt] = [
+          Date.parse(it.startsAt),
+          Date.parse(it.endsAt),
+        ];
+        const run = runs.at(-1);
+        if (run && run[1] === startsAt) {
+          run[1] = endsAt;
+        } else {
+          runs.push([startsAt, endsAt]);
+        }
+      }
+
+      const slots: ResourceWindow[] = [];
+      for (
+        let startsAt = first;
+        startsAt + duration * 60_000 <= last;
+        startsAt += step * 60_000
+      ) {
+        const endsAt = startsAt + duration * 60_000;
+        if (runs.some(([from, to]) => from <= startsAt && endsAt <= to)) {
+          slots.push({
+            startsAt: new Date(startsAt).toISOString(),
+            endsAt: new Date(endsAt).toISOString(),
+          });
+        }
+      }
+      result.set(resourceId, slots);
+    }
+    return result;
+  }
+
+  /**
    * Every live claim on these resources overlapping the window, in the order
    * they were written.
    *
@@ -428,27 +564,47 @@ export class ResourceService {
     claims: Array<ResourceWindow & { quantity: number }>,
     window: ResourceWindow,
   ): number {
-    const events: Array<[at: string, delta: number]> = [];
+    return Math.max(0, ...this.profile(claims, window).map((it) => it.taken));
+  }
+
+  /**
+   * How much room the claims take over the window, as consecutive segments
+   * that cover it end to end: the sweep both {@link fits} and
+   * {@link availability} read, so a storefront and a claim can never disagree
+   * about what is free.
+   *
+   * Each claim is clipped to the window and adds its quantity at its start and
+   * takes it back at its end. Deltas at one instant are summed before the
+   * segment is cut, which is the half-open rule: a claim ending at 10:00 and
+   * one starting at 10:00 never stack.
+   */
+  protected profile(
+    claims: Array<ResourceWindow & { quantity: number }>,
+    window: ResourceWindow,
+  ): Array<ResourceWindow & { taken: number }> {
+    const deltas = new Map<string, number>([
+      [window.startsAt, 0],
+      [window.endsAt, 0],
+    ]);
     for (const claim of claims) {
       const startsAt =
         claim.startsAt > window.startsAt ? claim.startsAt : window.startsAt;
       const endsAt =
         claim.endsAt < window.endsAt ? claim.endsAt : window.endsAt;
       if (startsAt < endsAt) {
-        events.push([startsAt, claim.quantity], [endsAt, -claim.quantity]);
+        deltas.set(startsAt, (deltas.get(startsAt) ?? 0) + claim.quantity);
+        deltas.set(endsAt, (deltas.get(endsAt) ?? 0) - claim.quantity);
       }
     }
-    events.sort((a, b) =>
-      a[0] !== b[0] ? (a[0] < b[0] ? -1 : 1) : a[1] - b[1],
-    );
 
-    let running = 0;
-    let peak = 0;
-    for (const [, delta] of events) {
-      running += delta;
-      peak = Math.max(peak, running);
+    const points = [...deltas.keys()].sort();
+    const segments: Array<ResourceWindow & { taken: number }> = [];
+    let taken = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      taken += deltas.get(points[i]!)!;
+      segments.push({ startsAt: points[i]!, endsAt: points[i + 1]!, taken });
     }
-    return peak;
+    return segments;
   }
 
   // -------------------------------------------------------------------------
