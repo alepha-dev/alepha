@@ -262,7 +262,14 @@ export class OrderService {
       const items = await this.itemRepo.findMany({
         where: { orderId: { eq: id } },
       });
-      await this.fulfilAll(items);
+      try {
+        await this.fulfilAll(items);
+      } catch (error) {
+        // Where there is no transaction, the lines fulfilled before the one
+        // that threw stay sold. The order is not paid, so they come back.
+        await this.undoWithoutTransaction(id);
+        throw error;
+      }
 
       const order = await this.orderRepo.updateById(id, {
         status: "paid",
@@ -512,8 +519,8 @@ export class OrderService {
   }
 
   /**
-   * Give back what a failed create took, on a database that has no
-   * transaction to roll it back.
+   * Give back what a failed create or settlement took, on a database that has
+   * no transaction to roll it back.
    *
    * D1 and PGlite run `transactional()` in place, so when line 3's claim
    * throws, lines 1 and 2 keep their holds (and, for a counter sale, their
