@@ -128,7 +128,7 @@ describe("the Lore CLI command surface", () => {
         "objective",
         "complete",
       ],
-      releases: ["publish"],
+      releases: ["cut", "changelog", "publish"],
       secrets: ["set", "list", "unset"],
     });
   });
