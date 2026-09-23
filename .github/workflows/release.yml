@@ -315,15 +315,23 @@ jobs:
       # slotting it into the npm/git window would widen the one tear this
       # ordering exists to keep narrow.
       #
-      # It reuses the `yarn build` above, so there is no second build
-      # anywhere. The context is `apps/lore/dist`, but the Dockerfile is not
-      # in it: `alepha image` (#Q2433) keeps it committed in `apps/lore/`, so
-      # `--file ../Dockerfile` names it. Without the flag buildx looks in the
-      # context, which is how 0.30.0 failed here (#Q2492). The
-      # config-driven OCI labels — `source` above all, which is what links the
-      # published package to this repository — are `LABEL` lines inside that
-      # file, so they survive a build the Alepha CLI did not run. Only the
-      # three that describe THIS build are passed here.
+      # It reuses the `yarn build` above, so there is no second build of the
+      # app, and it builds the image with `alepha image`: the command the
+      # `docker` job in `verify.yml` runs on every push. One build path, so
+      # release day is never the first time it runs. 0.30.0 died here on a
+      # hand-written `buildx` call that still looked for the Dockerfile in
+      # `dist/` after #Q2433 moved it to `apps/lore/` (#Q2492, #Q2493).
+      #
+      # ⚠️ amd64 only (#Q2493). The image was multi-arch until then, which is
+      # what needed buildx and QEMU, and what kept Release on a build of its
+      # own. Apple Silicon still runs it through Rosetta; an ARM server does
+      # not. Bringing arm64 back belongs in `alepha image` (a `--platform`
+      # flag), never in a second hand-written build here.
+      #
+      # The OCI labels come from `alepha image` too: `source`, `title` and the
+      # rest are `LABEL` lines in the committed Dockerfile, and `version`,
+      # `revision` and `created` are passed by the CLI because Lore's config
+      # sets `oci: true`.
       # ──────────────────────────────────────────────────────────────────
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -332,47 +340,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # ⚠️ Neither is optional, and they fail in unhelpful ways when missing.
-      # The default builder on a runner uses the `docker` driver, which
-      # REFUSES a multi-platform build and says so in terms of the driver
-      # rather than of platforms. And the generated Dockerfile is not
-      # RUN-free: `mkdir -p /data && chown` prepares the volume, so building
-      # for the other architecture executes a shell command under emulation
-      # and needs the binfmt handlers QEMU registers.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      # One buildx invocation for both architectures rather than two native
-      # runners. Nothing is compiled: Vite bundles everything, so the image
-      # has no dependency install, and the only thing emulation runs is the
-      # two-command volume prep. Two native jobs would also be the harder
-      # build here: the version commit is only pushed at the very end, so a
-      # second job would have nothing to check out and `dist` would have to
-      # travel as an artifact.
-      #
-      # The `docker` job in `verify.yml` runs this same two-platform build on
-      # every push and PR, so it is not first exercised on release day.
-      #
       # Two tags, both fixed. Nothing floating: Lore's version IS the
       # framework's, so a `:0` tag would move across unrelated framework
       # majors.
       - name: Build and Push the Lore Image
-        working-directory: apps/lore/dist
+        working-directory: apps/lore
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          docker buildx build \
-            --file ../Dockerfile \
-            --platform linux/amd64,linux/arm64 \
-            --label "org.opencontainers.image.version=${VERSION}" \
-            --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
-            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --tag "ghcr.io/alepha-dev/lore:${VERSION}" \
-            --tag "ghcr.io/alepha-dev/lore:latest" \
-            --push .
+          yarn alepha image --tag "ghcr.io/alepha-dev/lore:${VERSION}"
+          docker tag "ghcr.io/alepha-dev/lore:${VERSION}" "ghcr.io/alepha-dev/lore:latest"
+          docker push "ghcr.io/alepha-dev/lore:${VERSION}"
+          docker push "ghcr.io/alepha-dev/lore:latest"
 
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
