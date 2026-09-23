@@ -840,10 +840,9 @@ export class DbCommand {
       }
 
       const after = await this.fs.ls(migrationsDir).catch(() => []);
-      await this.assertNoDestructiveMigrations(
-        migrationsDir,
-        after.filter((file) => !before.has(file)),
-      );
+      const created = after.filter((file) => !before.has(file));
+      await this.formatGeneratedMigrations(rootDir, migrationsDir, created);
+      await this.assertNoDestructiveMigrations(migrationsDir, created);
     }
   }
 
@@ -987,6 +986,45 @@ if (typeof registerHooks === "function") {
         await this.fs.writeFile(sqlPath, cleaned);
         this.log.debug(`Stripped "public". qualifiers from ${entry}`);
       }
+    }
+  }
+
+  /**
+   * Run oxfmt over the migration entries this run created.
+   *
+   * drizzle-kit writes `snapshot.json` with every array expanded, one element
+   * per line, and oxfmt does not ignore `migrations/`. Left alone, the next
+   * `alepha lint` rewrites the snapshot and leaves a diff on whichever
+   * checkout happens to run it, unrelated to the work there. Formatting here
+   * means the committed file is already the one lint agrees with.
+   *
+   * Only the new entries, never the whole folder: an older snapshot committed
+   * raw is somebody else's diff. A formatter failure is a warning, not a
+   * failed command, since the migration itself was generated and is valid.
+   */
+  protected async formatGeneratedMigrations(
+    rootDir: string,
+    migrationsDir: string,
+    entries: string[],
+  ): Promise<void> {
+    if (entries.length === 0) {
+      return;
+    }
+
+    const oxfmt = this.utils.resolveBin("oxfmt");
+    const paths = entries
+      .map((entry) => this.quoteShellArg(this.fs.join(migrationsDir, entry)))
+      .join(" ");
+
+    try {
+      await this.utils.exec(`node "${oxfmt}" ${paths}`, {
+        root: rootDir,
+        global: true,
+      });
+    } catch (error) {
+      this.log.warn(
+        `Could not format the generated migration files, run 'alepha lint' before committing them: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
