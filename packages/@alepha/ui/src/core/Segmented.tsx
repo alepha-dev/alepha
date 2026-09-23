@@ -336,11 +336,13 @@ export const Segmented = (props: SegmentedProps) => {
                 className={cn(
                   "ml-1.5 tabular-nums",
                   // Derived from the segment's own foreground rather than
-                  // from the resting muted token. `/70` keeps the count
-                  // secondary to the label on both sides instead of dropping
-                  // it to a colour chosen for a different background.
+                  // from the resting muted token, which is chosen for a
+                  // different background. At FULL strength: white at `/70`
+                  // over the Blueprint blue primary measured 3.2:1, under
+                  // the 4.5 the Epics e2e holds it to, and at `/85` it is
+                  // still 4.0. `font-normal` keeps it secondary to the label.
                   active
-                    ? "text-primary-foreground/70"
+                    ? "text-primary-foreground font-normal"
                     : "text-muted-foreground",
                 )}
               >
