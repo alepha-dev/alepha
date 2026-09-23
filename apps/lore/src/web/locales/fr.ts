@@ -514,6 +514,12 @@ export default {
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",
+  "project.create.name.taken": "Ce nom est déjà pris.",
+  "project.create.name.reserved": "Ce nom est réservé. Choisissez-en un autre.",
+  "project.create.name.tooLong": "24 caractères au maximum.",
+  "project.create.name.firstChar": "Commencez par une lettre ou un chiffre.",
+  "project.create.name.badChar":
+    "Le caractère $1 n'est pas autorisé. Utilisez des lettres, des chiffres, des espaces, - et _.",
   "project.update.repositoryUrl.label": "Dépôt",
   "project.update.repositoryUrl.helper":
     "Le dépôt où vivent les commits de ce projet. Renseignez-le et les références de commit d'une quête deviennent des liens.",

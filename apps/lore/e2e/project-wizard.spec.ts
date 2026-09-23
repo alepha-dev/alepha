@@ -1,7 +1,11 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
-import { apiPath, registerAndVerify } from "./_helpers.ts";
+import {
+  apiPath,
+  createProjectViaWizard,
+  registerAndVerify,
+} from "./_helpers.ts";
 
 /**
  * The capability set the server actually stored, by slug.
@@ -189,5 +193,48 @@ test.describe("Project wizard", () => {
     await expect(
       page.getByRole("button", { name: /create project|^next$/i }),
     ).toBeDisabled();
+  });
+
+  test("a taken name is refused on the first step, before Next", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    await registerAndVerify(
+      page,
+      `wiz-taken-${stamp}@example.com`,
+      "GoodPassw0rd",
+    );
+    const taken = `Taken${stamp}`.slice(0, 24);
+    await createProjectViaWizard(page, taken);
+
+    await page.goto("/new-project");
+    const name = page.locator('input[type="text"]').first();
+    const next = page.getByRole("button", { name: /^next$/i });
+
+    // Refused here rather than by the create call three steps later, which
+    // answers the same question with a 409.
+    await name.fill(taken);
+    await expect(page.getByText("That name is already taken.")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(next).toBeDisabled();
+
+    // A malformed title says which rule it broke as it is typed, rather than
+    // leaving Next greyed out with nothing saying why.
+    await name.fill('aleph"');
+    await expect(page.getByText(/The character " is not allowed/)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(next).toBeDisabled();
+
+    // A name the router owns is refused the same way, for its own reason.
+    await name.fill("bay");
+    await expect(
+      page.getByText("That name is reserved. Pick another one."),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(next).toBeDisabled();
+
+    await name.fill(`Free${stamp}`.slice(0, 24));
+    await expect(next).toBeEnabled({ timeout: 15_000 });
   });
 });

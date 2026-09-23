@@ -330,6 +330,45 @@ describe("useQuery keyed cache", () => {
     expect(calls).toBe(1);
   });
 
+  /**
+   * A key that changes while the cache does not. `useSelector` used to keep
+   * the slice it had selected for the previous key until the cache atom next
+   * mutated, so the new key rendered the old key's data - and, under a
+   * `staleTime`, took that entry as fresh and never fetched at all.
+   */
+  test("reads and fetches the new entry when the key changes", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+
+    const handler = vi.fn(async (id: number) => `folio-${id}`);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(
+      (props: { id: number }) =>
+        useQuery(
+          {
+            key: ["folio-by-id", props.id],
+            handler: () => handler(props.id),
+            staleTime: [1, "minute"],
+          },
+          [props.id],
+        ),
+      { wrapper, initialProps: { id: 1 } },
+    );
+    await waitFor(() => expect(result.current.data).toBe("folio-1"));
+
+    rerender({ id: 2 });
+
+    expect(result.current.data).not.toBe("folio-1");
+    await waitFor(() => expect(result.current.data).toBe("folio-2"));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
   test("refetches when a mutation invalidates the key", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
     await alepha.start();
