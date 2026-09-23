@@ -40,6 +40,23 @@ on:
           - patch
           - major
         default: "minor"
+      # Finishes a release that tore AFTER its push: the tag exists and npm
+      # has the version, but a later step failed. 0.30.0 died at the image
+      # build this way (#Q2492). "Re-run failed jobs" cannot finish one: it
+      # replays the workflow file of the dispatching commit, the broken one,
+      # and bumps again onto a tag that already exists.
+      #
+      # With a tag here the job checks that tag out, skips the bump, the
+      # changelog, the commit, npm and the push, takes the release notes from
+      # the tag's CHANGELOG.md, and runs every other step as usual. Each of
+      # those is safe to repeat (see the comment above the Lore pushes), and
+      # the workflow file is the one on the dispatched branch, so the fix that
+      # unblocks the release is the one that runs.
+      resume_tag:
+        description: "Resume an existing release tag (skips bump, npm and push); version_bump is ignored"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   release:
@@ -49,6 +66,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Empty on a normal release, which checks out the dispatched branch.
+          ref: ${{ inputs.resume_tag }}
           # Fetch full history for proper versioning
           fetch-depth: 0
           # Use a token that can push to protected branches
@@ -95,6 +114,7 @@ jobs:
       # violation surfaces in `yarn v` instead of here, in a release someone
       # dispatched by hand.
       - name: Bump Version
+        if: inputs.resume_tag == ''
         env:
           VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
@@ -102,9 +122,15 @@ jobs:
 
       - name: Get New Version
         id: version
+        env:
+          RESUME_TAG: ${{ inputs.resume_tag }}
         run: |
           VERSION=$(node -p "require('./packages/alepha/package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [ -n "$RESUME_TAG" ] && [ "$VERSION" != "$RESUME_TAG" ]; then
+            echo "::error::Tag ${RESUME_TAG} carries version ${VERSION}, not a release commit"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Released version: $VERSION"
 
       # The file IS the release body — `action-gh-release` reads it through
@@ -112,10 +138,26 @@ jobs:
       # under an `EOF` delimiter, which put a commit message in charge of where
       # the value ended: one line reading exactly `EOF` truncates the notes, and
       # everything after it is parsed as more `key=value` output lines.
+      #
+      # On a resume the tag's commit already holds the section, so it is read
+      # back out of CHANGELOG.md: the generator would diff the tag against
+      # itself.
       - name: Generate Release Notes
+        env:
+          RESUME_TAG: ${{ inputs.resume_tag }}
         run: |
-          # Straight to a file, so backticks survive the shell.
-          yarn alepha gen changelog > /tmp/release_notes.txt
+          if [ -n "$RESUME_TAG" ]; then
+            awk -v head="## [${RESUME_TAG}]" \
+              'index($0, head) == 1 { found = 1; next } /^## \[/ && found { exit } found' \
+              CHANGELOG.md > /tmp/release_notes.txt
+            if [ ! -s /tmp/release_notes.txt ]; then
+              echo "::error::CHANGELOG.md has no section for ${RESUME_TAG}"
+              exit 1
+            fi
+          else
+            # Straight to a file, so backticks survive the shell.
+            yarn alepha gen changelog > /tmp/release_notes.txt
+          fi
 
       # Prepend-only, and that is load-bearing rather than incidental: the new
       # section goes on top and `cat CHANGELOG.md >>` carries every existing one
@@ -131,6 +173,7 @@ jobs:
       # CHANGELOG.md for French and fails the build, so it surfaces in `yarn v`
       # rather than in the release notes.
       - name: Update CHANGELOG.md
+        if: inputs.resume_tag == ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -157,6 +200,7 @@ jobs:
       # It stays ahead of `yarn copy` / `yarn build` so `git add -A` sees the
       # same tree it always has: the bump and the changelog, no build output.
       - name: Commit and Tag Release
+        if: inputs.resume_tag == ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -246,6 +290,7 @@ jobs:
       # `npm publish` would otherwise strand a published version.
       # ──────────────────────────────────────────────────────────────────
       - name: Publish to NPM
+        if: inputs.resume_tag == ''
         run: |
           yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public
 
@@ -258,6 +303,7 @@ jobs:
       # by hand fixes that.
       # ──────────────────────────────────────────────────────────────────
       - name: Push Changes and Tags
+        if: inputs.resume_tag == ''
         run: |
           git push --follow-tags
 
@@ -269,9 +315,11 @@ jobs:
       # slotting it into the npm/git window would widen the one tear this
       # ordering exists to keep narrow.
       #
-      # It reuses the `yarn build` above. With `target: "docker"` in Lore's
-      # config that step already leaves `apps/lore/dist` complete with its
-      # generated Dockerfile, so there is no second build anywhere. The
+      # It reuses the `yarn build` above, so there is no second build
+      # anywhere. The context is `apps/lore/dist`, but the Dockerfile is not
+      # in it: `alepha image` (#Q2433) keeps it committed in `apps/lore/`, so
+      # `--file ../Dockerfile` names it. Without the flag buildx looks in the
+      # context, which is how 0.30.0 failed here (#Q2492). The
       # config-driven OCI labels — `source` above all, which is what links the
       # published package to this repository — are `LABEL` lines inside that
       # file, so they survive a build the Alepha CLI did not run. Only the
@@ -317,6 +365,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           docker buildx build \
+            --file ../Dockerfile \
             --platform linux/amd64,linux/arm64 \
             --label "org.opencontainers.image.version=${VERSION}" \
             --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
