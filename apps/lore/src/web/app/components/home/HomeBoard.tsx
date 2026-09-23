@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { HomeController } from "@/api/controllers/HomeController.ts";
 
+import { homeBoardAtom } from "../../atoms/homeBoardAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HomeHeader from "./HomeHeader.tsx";
@@ -19,11 +20,14 @@ import { HomeSearch } from "./HomeSearch.tsx";
  * area. The bars, the last-activity stamps and the open counts come from
  * `getHomeBoard`, which is this page's alone - an aggregate over the audit
  * log on every route change is a cost the atom's other readers never asked
- * for.
+ * for. The `home` route loader reads it into `homeBoardAtom` so it is in the
+ * first paint; this page fetches it itself only when that read was late or
+ * failed.
  *
  * ## One resolve, no polling
  *
- * `useQuery` fetches on mount and when something asks it to refetch. There is
+ * The loader reads once per entry, and the fallback `useQuery` fetches on
+ * mount and when something asks it to refetch. There is
  * deliberately no interval: the QuestGraph incident (folio #1057) was a loader
  * revalidating once per second for 51 minutes, producing 4,009 identical
  * requests from one browser tab - roughly 35% of that day's account-wide
@@ -40,14 +44,20 @@ const HomeBoard = () => {
    * project: the rows are already in memory. `onError` keeps the failure out
    * of the toaster and in error reporting.
    */
-  const board = useQuery(
+  const [preloaded] = useStore(homeBoardAtom);
+  const fetched = useQuery(
     {
       key: ["home-board"],
       handler: () => homeApi.getHomeBoard(),
       onError: () => {},
+      // The `home` loader read it within its budget: nothing to fetch. It is
+      // empty when that read was late or failed, and only then does the page
+      // fetch the board itself.
+      enabled: preloaded === undefined,
     },
-    [homeApi],
+    [homeApi, preloaded === undefined],
   );
+  const board = { data: preloaded ?? fetched.data };
 
   const days = board.data?.days ?? [];
   const lastActivity = new Map(
