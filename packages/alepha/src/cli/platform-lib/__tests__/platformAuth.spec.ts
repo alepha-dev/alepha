@@ -57,8 +57,8 @@ class LoginlessAdapter extends PlatformAdapter {
 const run: RunnerMethod = (async (task: { handler: () => Promise<unknown> }) =>
   await task.handler()) as unknown as RunnerMethod;
 
-const context = (): PlatformContext =>
-  ({ env: "production", root: "/app", envConfig: {} }) as PlatformContext;
+const context = (): PlatformContext<any> =>
+  ({ env: "production", root: "/app", options: {} }) as PlatformContext<any>;
 
 describe("platform auth", () => {
   it("hands Cloudflare's login to wrangler", async () => {

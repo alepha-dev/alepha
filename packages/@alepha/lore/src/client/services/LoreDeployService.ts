@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { LoreApiClient } from "./LoreApiClient.ts";
+import { LoreEstateChoice } from "./LoreEstateChoice.ts";
 
 /**
  * One deployed copy, as this client reports it.
@@ -434,31 +435,19 @@ export class LoreDeployService {
     }>("GET", `/api/projects/${projectId}/estates`);
     const items = lent?.items ?? [];
 
-    if (items.length === 0) {
-      throw new AlephaError(
-        `No estate is lent to this project, so ${input.app}/${input.env} would have nowhere to deploy. Lend one on the project's Estates page first.`,
+    // The rule itself is shared with the CLI's platform adapter, which creates
+    // copies too: see `LoreEstateChoice`.
+    const chosen = LoreEstateChoice.pick(
+      items,
+      input.estate,
+      `${input.app}/${input.env}`,
+    );
+    if (chosen.defaulted && items.length > 1) {
+      this.log.info(
+        `Creating ${input.app}/${input.env} on '${chosen.slug}', the first estate lent to this project`,
+        { lent: items.map((it) => it.slug) },
       );
     }
-
-    const named = input.estate?.trim();
-    if (!named) {
-      // Oldest last, because the list is newest first.
-      const oldest = items[items.length - 1];
-      if (items.length > 1) {
-        this.log.info(
-          `Creating ${input.app}/${input.env} on '${oldest.slug}', the first estate lent to this project`,
-          { lent: items.map((it) => it.slug) },
-        );
-      }
-      return oldest.id;
-    }
-
-    const found = items.find((it) => it.slug === named);
-    if (!found) {
-      throw new AlephaError(
-        `No estate called '${named}' is lent to this project. Lent here: ${items.map((it) => it.slug).join(", ")}.`,
-      );
-    }
-    return found.id;
+    return chosen.id;
   }
 }

@@ -1,4 +1,5 @@
 import type { BuildManifest } from "alepha/cli";
+import type { EnvUtils } from "alepha/command";
 import type { FileSystemProvider } from "alepha/system";
 
 /**
@@ -26,7 +27,6 @@ export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
   "R2_BUCKET_NAME",
   "CLOUDFLARE_ANALYTICS_DATASET",
   "CLOUDFLARE_DOMAIN",
-  "CLOUDFLARE_ZONE",
   "CLOUDFLARE_JURISDICTION",
   "HYPERDRIVE_ID",
   "POSTGRES_SCHEMA",
@@ -144,6 +144,70 @@ async function readManifestEnv(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The key set an app's deploy pushes, and the `.env.<env>` values to resolve
+ * it from.
+ */
+export interface SecretKeySet {
+  /**
+   * The allowlist: which keys are this app's secrets. Never derived from
+   * `process.env`.
+   */
+  keys: string[];
+  /**
+   * The parsed `.env.<env>` file, handed to {@link selectSecrets} as the first
+   * source of each value.
+   */
+  envVars: Record<string, string>;
+}
+
+/**
+ * Which keys are this app's secrets, resolved once for every adapter.
+ *
+ * By precedence:
+ *
+ * 1. `keys`, the explicit `platform().secrets.keys` override.
+ * 2. Otherwise the UNION of:
+ *    - the manifest's `env` list (every key the app declares via `$env`,
+ *      captured at build time), or the `.env.<env>` file's own keys when there
+ *      is no readable manifest. This is what lets CI deliver declared secrets
+ *      from `process.env` with no file on the runner.
+ *    - the `.env.<env>.local` keys, the per-deploy override layer an external
+ *      orchestrator writes injected values into. Only `.local` is unioned,
+ *      never the base file, so local infra credentials cannot leak in.
+ *
+ * The excluded set is NOT applied here: it is each caller's own (Cloudflare's,
+ * Bay's, and for Lore the keys its `AppSecretService` refuses), passed to
+ * {@link selectSecrets} with this result.
+ *
+ * ⚠️ One function rather than a copy per adapter: this was written twice, and
+ * a third adapter was about to make it three. A copy that drifts does not fail,
+ * it pushes a different set of secrets, and nothing says so.
+ */
+export async function resolveSecretKeySet(options: {
+  fs: FileSystemProvider;
+  envUtils: EnvUtils;
+  root: string;
+  env: string;
+  keys?: string[];
+}): Promise<SecretKeySet> {
+  const { fs, envUtils, root, env } = options;
+  const envVars = await envUtils.parseEnv(root, [`.env.${env}`]);
+  if (options.keys) {
+    return { keys: options.keys, envVars };
+  }
+  const manifestKeys = await readManifestEnvKeys(fs, root);
+  const localKeys = Object.keys(
+    await envUtils.parseEnv(root, [`.env.${env}.local`]),
+  );
+  return {
+    keys: Array.from(
+      new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
+    ),
+    envVars,
+  };
 }
 
 /**

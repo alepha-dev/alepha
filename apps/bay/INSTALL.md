@@ -168,11 +168,10 @@ In the deploying project's `alepha.config.ts`:
 ```typescript
 platform({
   environments: {
-    production: {
-      adapter: "bay",
+    production: bay({
       host: "bay-prod",
       socket: "/run/bay/control.sock",
-    },
+    }),
   },
 });
 ```

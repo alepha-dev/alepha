@@ -3,6 +3,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, test } from "vitest";
 
 import { platformOptions } from "../atoms/platformOptions.ts";
+import { cloudflare } from "../index.ts";
 import { PlatformInspector } from "../services/PlatformInspector.ts";
 
 describe("PlatformInspector", () => {
@@ -42,7 +43,7 @@ describe("PlatformInspector", () => {
   test("throws when project name is missing", async ({ expect }) => {
     const { inspector } = createTestEnv({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     });
 
@@ -54,7 +55,7 @@ describe("PlatformInspector", () => {
   test("reads project name from package.json", async ({ expect }) => {
     const { inspector, fs } = createTestEnv({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     });
 
@@ -71,7 +72,7 @@ describe("PlatformInspector", () => {
     const { inspector, fs } = createTestEnv({
       name: "my-custom-name",
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     });
 
@@ -87,7 +88,7 @@ describe("PlatformInspector", () => {
   test("resolves default env to production", async ({ expect }) => {
     const { inspector, fs } = createTestEnv({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     });
 
@@ -104,7 +105,7 @@ describe("PlatformInspector", () => {
     const { inspector, fs } = createTestEnv({
       default: "staging",
       environments: {
-        staging: { adapter: "cloudflare" },
+        staging: cloudflare(),
       },
     });
 
@@ -120,7 +121,7 @@ describe("PlatformInspector", () => {
   test("throws on unknown environment", async ({ expect }) => {
     const { inspector, fs } = createTestEnv({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     });
 
@@ -139,7 +140,7 @@ describe("PlatformInspector", () => {
   }) => {
     const { inspector, fs } = createTestEnv({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     });
 
@@ -150,6 +151,6 @@ describe("PlatformInspector", () => {
 
     const config = await inspector.resolveConfig("/project");
     expect(config.project).toBe("my-app");
-    expect(config.environments.production.adapter).toBe("cloudflare");
+    expect(config.environments.production.adapter.id).toBe("cloudflare");
   });
 });

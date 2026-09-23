@@ -1,5 +1,7 @@
 import { $atom, type Infer, z } from "alepha";
 
+import type { EnvironmentDescriptor } from "../adapters/PlatformAdapter.ts";
+
 /**
  * Platform deployment configuration atom.
  *
@@ -12,7 +14,9 @@ export const platformOptions = $atom({
   schema: z
     .object({
       /**
-       * Project name override. Defaults to root package.json "name".
+       * The APP name: one workspace is one app, and every resource an adapter
+       * names derives from it. Defaults to the workspace package.json "name".
+       * There is no project concept in `alepha platform`.
        */
       name: z.text().optional(),
 
@@ -63,117 +67,30 @@ export const platformOptions = $atom({
         .optional(),
 
       /**
-       * Named environments with their adapter and configuration.
+       * Named environments, each a descriptor returned by an adapter factory:
+       * `cloudflare({ domain })`, `bay({ host })`, or a third party's own
+       * (`lore()` from `@alepha/lore/cli`).
+       *
+       * The factory is how an environment names its adapter, so there is no
+       * closed list of names to extend: an adapter is an import. `platform()`
+       * registers each descriptor's adapter class when the config loads, which
+       * is also what brings that adapter's module and services along.
        */
       environments: z.record(
         z.text({
           description:
             "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
         }),
-        z.object({
-          adapter: z.enum(["cloudflare", "bay"]),
-          /**
-           * SSH destination of the Bay this environment deploys to, e.g.
-           * `"deploy@bay.example.com"`. Only read by the `bay` adapter, where
-           * it is **required**.
-           *
-           * Passed to the machine's own `ssh` binary verbatim, so it may be an
-           * alias defined in `~/.ssh/config` (`"bay-prod"`). That is the point
-           * of shelling out rather than speaking the protocol: `ProxyJump`,
-           * `IdentityAgent`, `ControlMaster` and a per-host `User` are already
-           * configured there, and stay in one place.
-           *
-           * There is deliberately no port, identity-file or extra-flags field
-           * for the same reason. Committing this is fine — it is a hostname,
-           * and the SSH key is what protects it.
-           *
-           * `$BAY_HOST` overrides, so CI needs no edit to a committed config.
-           */
-          host: z.text().optional(),
-          /**
-           * Absolute path to Bay's control socket on the host, e.g.
-           * `"/var/lib/bay/control.sock"`. Only read by the `bay` adapter.
-           *
-           * Bay's default root is the *relative* path `./bay-data`, and an ssh
-           * command runs non-interactively with cwd `$HOME` — so on any host
-           * whose Bay root is not `$HOME/bay-data` (every `--root
-           * /var/lib/bay` install, for one), Bay's own guess at the socket
-           * path misses and every command this adapter sends fails to find
-           * it. `$BAY_SOCKET` on the Bay host is Bay's own escape hatch for
-           * this, but it cannot be relied on here: a non-interactive ssh
-           * command reads neither `~/.profile` nor, on Debian/Ubuntu's
-           * default, `~/.bashrc`, so there is nowhere reliable to export it
-           * from.
-           *
-           * `$BAY_SOCKET` in the CLI's own environment overrides this value,
-           * the same way `$BAY_HOST` overrides `host`.
-           */
-          socket: z.text().optional(),
-          /**
-           * Custom domain for the deployed worker (e.g. "api.example.com").
-           *
-           * On Cloudflare this is attached as a custom-domain route.
-           *
-           * Omit it and the Worker answers on
-           * `<script>.<subdomain>.workers.dev` instead, where `<subdomain>` is
-           * the one your Cloudflare account registered: the build writes
-           * `workers_dev: true`, the deploy enables it, and the address comes
-           * back as the deploy's URL. Setting a domain writes `workers_dev:
-           * false`, so an app that gains one stops answering on the host it
-           * used to be reachable at. An account that never registered a
-           * workers.dev subdomain still deploys - it simply has no address to
-           * show, and the deploy log says so.
-           *
-           * Wildcards are supported for multi-tenant SaaS apps:
-           * `"*.club.alepha.dev"` routes every subdomain to the worker.
-           * Wildcard patterns require `zone` to be set, and the wildcard DNS
-           * record must already exist (proxied) in the Cloudflare zone.
-           */
-          domain: z.text().optional(),
-          /**
-           * Cloudflare zone name (e.g. "alepha.dev") that owns `domain`.
-           *
-           * Required when `domain` contains a wildcard (`*`). For a plain
-           * host, setting `zone` switches the binding from a Custom Domain to
-           * a zone *Route* (`domain/*`) — needed when another Worker holds a
-           * wildcard route covering the host (routes win by specificity,
-           * while a Custom Domain would lose to the wildcard route).
-           */
-          zone: z.text().optional(),
-          /**
-           * Worker-to-worker service bindings, e.g.
-           * `[{ binding: "CLUB", service: "club-staging" }]`.
-           *
-           * Exposed on the runtime `env` (Alepha store key `cloudflare.env`).
-           * Use a binding to fetch() a sibling Worker on the same zone —
-           * plain subrequests to a host served by a same-zone Worker route
-           * bypass the route and 522.
-           */
-          services: z
-            .array(
-              z.object({
-                binding: z.text(),
-                service: z.text(),
-              }),
-            )
-            .optional(),
-          /**
-           * Cloudflare data jurisdiction for R2 buckets and D1 databases.
-           * - "eu": data stays within the EU
-           * - "fedramp": FedRAMP-authorized regions
-           *
-           * Omit for the default (global) jurisdiction.
-           */
-          jurisdiction: z.enum(["eu", "fedramp"]).optional(),
-          /**
-           * Cloudflare account ID to deploy into.
-           *
-           * Falls back to `CLOUDFLARE_ACCOUNT_ID` env var, then to the
-           * token's account when the token is scoped to exactly one.
-           * Required when the token has access to multiple accounts.
-           */
-          accountId: z.text().optional(),
-        }),
+        z.custom<EnvironmentDescriptor>(
+          (value) =>
+            typeof value === "object" &&
+            value !== null &&
+            typeof (value as { adapter?: unknown }).adapter === "function",
+          {
+            message:
+              'An environment is a descriptor from an adapter factory, e.g. `cloudflare({ domain })` or `bay({ host })`. The `adapter: "..."` string form is gone.',
+          },
+        ),
       ),
     })
     .optional(),
@@ -184,29 +101,3 @@ export const platformOptions = $atom({
  * Type for platform options.
  */
 export type PlatformOptions = Infer<typeof platformOptions.schema>;
-
-/**
- * Configuration for a single named environment.
- */
-export interface EnvironmentConfig {
-  adapter: "cloudflare" | "bay";
-  /**
-   * SSH destination of the Bay this environment deploys to (`bay` adapter).
-   * May be an alias from `~/.ssh/config`. `$BAY_HOST` overrides.
-   */
-  host?: string;
-  /**
-   * Absolute path to Bay's control socket on the host (`bay` adapter only).
-   * Needed because Bay's default root is relative and an ssh command's cwd is
-   * `$HOME`; `$BAY_SOCKET` on the host is the alternative but is unreliable
-   * for non-interactive shells. `$BAY_SOCKET` in the CLI's own environment
-   * overrides.
-   */
-  socket?: string;
-  domain?: string;
-  zone?: string;
-  vars?: Record<string, string>;
-  jurisdiction?: "eu" | "fedramp";
-  accountId?: string;
-  services?: Array<{ binding: string; service: string }>;
-}

@@ -11,6 +11,7 @@ import { describe, test } from "vitest";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
+import { cloudflare } from "../index.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { NamingService } from "../services/NamingService.ts";
 
@@ -172,7 +173,7 @@ class MemoryCloudflareApi extends CloudflareApi {
  * build path can be asserted without driving a full bundle.
  */
 class AdapterProbe extends CloudflareAdapter {
-  public resolveIds(ctx: PlatformContext) {
+  public resolveIds(ctx: PlatformContext<any>) {
     return this.resolveExistingResourceIds(ctx);
   }
   public d1Id() {
@@ -245,11 +246,11 @@ describe("CloudflareAdapter", () => {
 
   const makeCtx = (
     naming: NamingService,
-    overrides: Partial<PlatformContext> = {},
-  ): PlatformContext => ({
+    overrides: Partial<PlatformContext<any>> = {},
+  ): PlatformContext<any> => ({
     project: "acme-portal",
     env: "production",
-    envConfig: { adapter: "cloudflare" },
+    options: {},
     entry: { root: "/project", server: "src/main.ts" },
     resources: {
       hasDatabase: false,
@@ -652,7 +653,7 @@ describe("CloudflareAdapter", () => {
     const deployed = async (
       adapter: CloudflareAdapter,
       fs: MemoryFileSystemProvider,
-      ctx: PlatformContext,
+      ctx: PlatformContext<any>,
       run: ReturnType<typeof createMockRun>,
     ) => {
       await fs.writeFile(
@@ -741,7 +742,7 @@ describe("CloudflareAdapter", () => {
       // job environment, there is no .env.production on the runner.
       alepha.set(platformOptions, {
         secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID", "EMAIL_FROM"] },
-        environments: { production: { adapter: "cloudflare" } },
+        environments: { production: cloudflare() },
       } as any);
 
       const ctx = makeCtx(naming, {
@@ -781,7 +782,7 @@ describe("CloudflareAdapter", () => {
       const { adapter, alepha, fs, naming, shell } = createTestEnv();
       alepha.set(platformOptions, {
         secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID"] },
-        environments: { production: { adapter: "cloudflare" } },
+        environments: { production: cloudflare() },
       } as any);
 
       const ctx = makeCtx(naming, {
@@ -847,7 +848,7 @@ describe("CloudflareAdapter", () => {
           secrets: [
             { name: "APP_SECRET" },
             { name: "GOOGLE_CLIENT_ID" },
-            { name: "CLOUDFLARE_ZONE" },
+            { name: "HYPERDRIVE_ID" },
             { name: "LOG_LEVEL" },
           ],
           variables: [],
@@ -856,7 +857,7 @@ describe("CloudflareAdapter", () => {
 
       process.env.APP_SECRET = "s1";
       process.env.GOOGLE_CLIENT_ID = "g1";
-      process.env.CLOUDFLARE_ZONE = "example.com"; // declared but EXCLUDED
+      process.env.HYPERDRIVE_ID = "hd-1"; // declared but EXCLUDED
       // LOG_LEVEL is declared + ambient in the runner, but EXCLUDED (infra knob).
       try {
         const run = createMockRun();
@@ -864,7 +865,7 @@ describe("CloudflareAdapter", () => {
       } finally {
         delete process.env.APP_SECRET;
         delete process.env.GOOGLE_CLIENT_ID;
-        delete process.env.CLOUDFLARE_ZONE;
+        delete process.env.HYPERDRIVE_ID;
       }
 
       const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
@@ -918,7 +919,7 @@ describe("CloudflareAdapter", () => {
       const { adapter, alepha, fs, naming, shell } = createTestEnv();
       alepha.set(platformOptions, {
         secrets: { keys: ["APP_SECRET"] }, // narrow override
-        environments: { production: { adapter: "cloudflare" } },
+        environments: { production: cloudflare() },
       } as any);
 
       const ctx = makeCtx(naming, {
@@ -961,7 +962,7 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
-        envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+        options: { domain: "lore.alepha.dev" },
       });
 
       await fs.writeFile(
@@ -982,7 +983,7 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
-        envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+        options: { domain: "lore.alepha.dev" },
       });
 
       await fs.writeFile(
@@ -1132,7 +1133,7 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, shell } = createTestEnv();
       const ctx = makeCtx(naming, {
-        envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+        options: { domain: "lore.alepha.dev" },
       });
 
       // No manifest at all: PUBLIC_URL is invented by the adapter from the
@@ -1251,7 +1252,7 @@ describe("CloudflareAdapter", () => {
       }) => {
         const { adapter, fs, naming } = createTestEnv();
         const ctx = makeCtx(naming, {
-          envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+          options: { domain: "lore.alepha.dev" },
         });
         await fs.writeFile(
           "/project/dist/wrangler.jsonc",

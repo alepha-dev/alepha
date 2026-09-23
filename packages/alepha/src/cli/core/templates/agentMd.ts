@@ -138,18 +138,16 @@ provisioning, deploy, secrets, and DB migrations end-to-end:
 
 \`\`\`ts
 import { defineConfig } from "alepha/cli/config";
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: {
-          adapter: "cloudflare",
+        production: cloudflare({
           domain: "yourapp.com",
-          // zone: "yourapp.com",     // required only for wildcard domains
           // jurisdiction: "eu",       // optional: EU data residency
-        },
+        }),
       },
     }),
   ],

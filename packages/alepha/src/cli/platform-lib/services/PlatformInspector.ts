@@ -2,16 +2,14 @@ import { $inject, $store, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import {
-  type EnvironmentConfig,
-  platformOptions,
-} from "../atoms/platformOptions.ts";
+import type { EnvironmentDescriptor } from "../adapters/PlatformAdapter.ts";
+import { platformOptions } from "../atoms/platformOptions.ts";
 import { NamingService } from "./NamingService.ts";
 
 export interface ResolvedPlatformConfig {
   project: string;
   defaultEnv: string;
-  environments: Record<string, EnvironmentConfig>;
+  environments: Record<string, EnvironmentDescriptor>;
 }
 
 /**
@@ -48,21 +46,21 @@ export class PlatformInspector {
       return {
         project: this.naming.slugify(project),
         defaultEnv: opts.default ?? "production",
-        environments: opts.environments as Record<string, EnvironmentConfig>,
+        environments: opts.environments,
       };
     }
 
-    // Fallback: read dist/manifest.json. Lets prebuilt artifacts deploy
-    // without shipping alepha.config.ts in the tarball.
+    // Fallback: read dist/manifest.json, for the project name of a prebuilt
+    // artifact shipped without alepha.config.ts. It carries no environments:
+    // no build writes them, and an environment names an adapter CLASS, which
+    // cannot be serialised into a manifest anyway. A caller that deploys from
+    // one sets `platformOptions` itself, as Lore's `DeployRunner` does.
     const manifest = await this.readManifest(root);
     if (manifest) {
       return {
         project: this.naming.slugify(manifest.project),
         defaultEnv: manifest.defaultEnv ?? "production",
-        environments: manifest.environments as Record<
-          string,
-          EnvironmentConfig
-        >,
+        environments: {},
       };
     }
 
@@ -70,13 +68,13 @@ export class PlatformInspector {
 
 Please register the platform plugin in alepha.config.ts:
 
-import { platform } from "alepha/cli/platform";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: { adapter: "cloudflare" },
+        production: cloudflare(),
       },
     }),
   ],
@@ -92,7 +90,6 @@ export default defineConfig({
   protected async readManifest(root: string): Promise<{
     project: string;
     defaultEnv?: string;
-    environments?: Record<string, unknown>;
   } | null> {
     try {
       const fs = await import("node:fs/promises");
@@ -113,18 +110,33 @@ export default defineConfig({
   public async resolveEnvironment(
     root: string,
     envName: string,
-  ): Promise<EnvironmentConfig> {
+  ): Promise<EnvironmentDescriptor> {
     const config = await this.resolveConfig(root);
-    const envConfig = config.environments[envName];
+    const descriptor = config.environments[envName];
 
-    if (!envConfig) {
+    if (!descriptor) {
       const available = Object.keys(config.environments).join(", ");
       throw new AlephaError(
         `Unknown environment "${envName}". Available: ${available}`,
       );
     }
 
-    return envConfig;
+    return descriptor;
+  }
+
+  /**
+   * The `domain` an environment's options carry, when its adapter takes one.
+   *
+   * Read structurally rather than typed: `domain` is on the options every
+   * built-in adapter that attaches a host shares, and a descriptor from
+   * another factory (`lore()`) has none.
+   */
+  public domainOf(
+    descriptor: EnvironmentDescriptor | undefined,
+  ): string | undefined {
+    const domain = (descriptor?.options as { domain?: unknown } | undefined)
+      ?.domain;
+    return typeof domain === "string" && domain ? domain : undefined;
   }
 
   protected async resolveProjectName(

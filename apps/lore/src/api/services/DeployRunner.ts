@@ -6,7 +6,6 @@ import {
   CloudflareAssetManifest,
   type CloudflareDeployAssets,
   NamingService,
-  PlatformAdapterRegistry,
   PlatformOrchestrator,
   platformOptions,
   WorkerCloudflareAdapter,
@@ -204,15 +203,12 @@ export class DeployRunner {
         name: request.name,
         environments: {
           [request.env]: {
-            adapter: "cloudflare",
-            domain: request.domain,
+            adapter: WorkerCloudflareAdapter,
+            options: { domain: request.domain },
           },
         },
-      } as never);
+      });
 
-      alepha
-        .inject(PlatformAdapterRegistry)
-        .set("cloudflare", WorkerCloudflareAdapter);
       const adapter = alepha
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)

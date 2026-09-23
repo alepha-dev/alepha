@@ -12,7 +12,6 @@ import {
 import { WorkerCloudflareAdapter } from "../adapters/WorkerCloudflareAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import { AlephaPlatformLibPlugin } from "../index.ts";
-import { PlatformAdapterRegistry } from "../services/PlatformAdapterRegistry.ts";
 import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
 
 /**
@@ -117,12 +116,12 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
     alepha.set(platformOptions, {
       name: "acme-notes",
       environments: {
-        production: { adapter: "cloudflare", domain: "notes.example.com" },
+        production: {
+          adapter: WorkerCloudflareAdapter,
+          options: { domain: "notes.example.com" },
+        },
       },
-    } as never);
-    alepha
-      .inject(PlatformAdapterRegistry)
-      .set("cloudflare", WorkerCloudflareAdapter);
+    });
     const adapter = alepha
       .inject(WorkerCloudflareAdapter)
       .use(credential)

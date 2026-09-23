@@ -55,21 +55,15 @@ export class AppRouter {
   },
   platform: {
     uncheckable:
-      "an excerpt of `alepha.config.ts`, shown without its `defineConfig` / `platform` imports so the shape is what the reader sees",
+      "an excerpt of `alepha.config.ts`, shown without its `defineConfig` / `platform` / adapter factory imports so the shape is what the reader sees",
     filename: "alepha.config.ts",
     content: `
 export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: {
-          adapter: "cloudflare",
-          domain: "lore.alepha.dev",
-        },
-        staging: {
-          adapter: "bay",
-          host: "deploy@bay.example.com",
-        },
+        production: cloudflare({ domain: "lore.alepha.dev" }),
+        staging: bay({ host: "deploy@bay.example.com" }),
       },
     }),
   ],

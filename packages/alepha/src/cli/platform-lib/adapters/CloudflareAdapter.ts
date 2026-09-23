@@ -22,9 +22,13 @@ import { S3mini } from "s3mini";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import {
-  readManifestEnvKeys,
+  type CloudflareEnvironmentOptions,
+  cloudflareEnvironmentOptionsSchema,
+} from "../schemas/cloudflareEnvironmentOptions.ts";
+import {
   readManifestVariables,
   EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS,
+  resolveSecretKeySet,
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
@@ -46,7 +50,13 @@ import {
  * and teardown, and wrangler CLI (via WranglerApi) for login and deploy.
  * The deploy carries the secrets, see `deploy`.
  */
-export class CloudflareAdapter extends PlatformAdapter {
+export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOptions> {
+  static readonly id = "cloudflare";
+  static readonly options = cloudflareEnvironmentOptionsSchema;
+
+  override readonly serverless = true;
+  override readonly cloudflareResources = true;
+
   protected readonly log = $logger();
   protected readonly naming = $inject(NamingService);
   protected readonly fs = $inject(FileSystemProvider);
@@ -72,7 +82,9 @@ export class CloudflareAdapter extends PlatformAdapter {
    *
    * Reads from `.env.{env}` first, falls back to `process.env`.
    */
-  protected async isPostgres(ctx: PlatformContext): Promise<boolean> {
+  protected async isPostgres(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+  ): Promise<boolean> {
     const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
     const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
     return !!dbUrl?.startsWith("postgres:");
@@ -85,9 +97,11 @@ export class CloudflareAdapter extends PlatformAdapter {
    * deploy, secrets, provision, migrate, inspect, teardown) because
    * CloudflareApi is a singleton reused across env invocations.
    */
-  protected configureApi(ctx: PlatformContext): void {
-    this.api.setJurisdiction(ctx.envConfig.jurisdiction);
-    this.api.setAccountId(ctx.envConfig.accountId);
+  protected configureApi(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+  ): void {
+    this.api.setJurisdiction(ctx.options.jurisdiction);
+    this.api.setAccountId(ctx.options.accountId);
   }
 
   protected async runShell(
@@ -116,7 +130,10 @@ export class CloudflareAdapter extends PlatformAdapter {
    * scopes the token, and a second store would drift from the one every other
    * wrangler invocation reads.
    */
-  async login(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async login(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     await run({
       name: "wrangler login",
       handler: async () => {
@@ -126,7 +143,10 @@ export class CloudflareAdapter extends PlatformAdapter {
     });
   }
 
-  async logout(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async logout(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     await run({
       name: "wrangler logout",
       handler: async () => {
@@ -136,7 +156,10 @@ export class CloudflareAdapter extends PlatformAdapter {
     });
   }
 
-  async authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async authenticate(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     this.configureApi(ctx);
     await run({
       name: "authenticate",
@@ -193,7 +216,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    * a silently missing binding.
    */
   protected async resolveExistingResourceIds(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
   ): Promise<void> {
     if (ctx.resources.hasDatabase && !this.provisionedD1Id) {
       if (this.provisionedHyperdriveId) {
@@ -235,7 +258,10 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
   }
 
-  async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async build(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     this.configureApi(ctx);
     await this.resolveExistingResourceIds(ctx);
     const appDir = ctx.root;
@@ -313,24 +339,18 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue();
     }
 
-    const host = ctx.envConfig.domain;
+    const host = ctx.options.domain;
     if (host) {
-      // A wildcard host needs a CF zone for its Worker route, but `zone` is
-      // optional: when omitted the build derives it from the domain's last two
-      // labels (BuildCloudflareTask). Set it only to override that default.
       env.CLOUDFLARE_DOMAIN = host;
-      if (ctx.envConfig.zone) {
-        env.CLOUDFLARE_ZONE = ctx.envConfig.zone;
-      }
     }
 
-    if (ctx.envConfig.jurisdiction) {
-      env.CLOUDFLARE_JURISDICTION = ctx.envConfig.jurisdiction;
+    if (ctx.options.jurisdiction) {
+      env.CLOUDFLARE_JURISDICTION = ctx.options.jurisdiction;
     }
 
     // Worker-to-worker service bindings (see EnvironmentConfig.services).
-    if (ctx.envConfig.services?.length) {
-      env.CLOUDFLARE_SERVICES = JSON.stringify(ctx.envConfig.services);
+    if (ctx.options.services?.length) {
+      env.CLOUDFLARE_SERVICES = JSON.stringify(ctx.options.services);
     }
 
     // Two paths:
@@ -482,7 +502,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    * new value in the file, and wins.
    */
   async deploy(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     this.configureApi(ctx);
@@ -571,21 +591,6 @@ export class CloudflareAdapter extends PlatformAdapter {
   static readonly EXCLUDED_SECRET_KEYS = SHARED_EXCLUDED_SECRET_KEYS;
 
   /**
-   * Read the build manifest's `env` list (every key the app declares via
-   * `$env`) from `dist/manifest.json`. Used as the default worker-secret
-   * allowlist. Returns `undefined` when the manifest is absent or predates
-   * the `env` field, so the caller falls back to the `.env` file keys.
-   *
-   * The body moved to `../secretKeys.ts` when `BayAdapter` needed the same
-   * allowlist; this stays as the adapter-shaped way in.
-   */
-  protected async readManifestEnvKeys(
-    root: string,
-  ): Promise<string[] | undefined> {
-    return await readManifestEnvKeys(this.fs, root);
-  }
-
-  /**
    * Read the build manifest's `variables`: the keys the app declared
    * `secret: false`. Everything else on the allowlist is a secret, so an
    * unreadable manifest encrypts everything.
@@ -603,39 +608,24 @@ export class CloudflareAdapter extends PlatformAdapter {
    * ⚠️ Read by {@link deploy}, which carries both in the one upload. There is
    * no `secrets()` step on this adapter any more; see `deploy`.
    */
-  protected async resolveSecrets(ctx: PlatformContext): Promise<{
+  protected async resolveSecrets(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+  ): Promise<{
     secrets: Record<string, string>;
     vars: Record<string, string>;
   }> {
-    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
-
-    // The key set to push, by precedence:
-    //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
-    //   2. otherwise the UNION of:
-    //      a. `dist/manifest.json` `env` — every key the app declares via
-    //         `$env`, captured at build time (or the `.env.<env>` file keys as
-    //         a legacy fallback for artifacts built before the manifest carried
-    //         `env`). Lets CI deliver declared secrets from `process.env` with
-    //         no file on the runner.
-    //      b. `.env.<env>.local` keys — the per-deploy override layer. External
-    //         orchestrators (Alepha Rocket) write injected `config.vars` +
-    //         `config.secrets` (e.g. CLUB_CONFIG_JSON, per-deploy OAuth) here,
-    //         and those must reach the worker even though the prebuilt app
-    //         never declared them. Only `.local` is unioned, NOT the base
-    //         `.env.<env>` — so local infra creds (CLOUDFLARE_API_TOKEN, …)
-    //         can't leak in.
-    // In every case the value resolves from `.env.<env>[.local]` first, then
-    // `process.env`; ambient runner vars (PATH, GITHUB_*, …) can never leak.
-    const declaredKeys = this.options?.secrets?.keys;
-    const manifestKeys = await this.readManifestEnvKeys(ctx.root);
-    const localKeys = Object.keys(
-      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}.local`]),
-    );
-    const keys =
-      declaredKeys ??
-      Array.from(
-        new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
-      );
+    // The key set: `platform.secrets.keys`, else the manifest's `env` (or the
+    // `.env.<env>` keys) unioned with the `.env.<env>.local` keys. Shared with
+    // every adapter (`../secretKeys.ts`); the value resolves from
+    // `.env.<env>[.local]` first, then `process.env`, so ambient runner vars
+    // (PATH, GITHUB_*, ...) can never leak.
+    const { keys, envVars } = await resolveSecretKeySet({
+      fs: this.fs,
+      envUtils: this.envUtils,
+      root: ctx.root,
+      env: ctx.env,
+      keys: this.options?.secrets?.keys,
+    });
 
     // Filter out binding/build vars, VITE_* vars, and empty values. Shared
     // with `BayAdapter` (`../secretKeys.ts`) because it is the security
@@ -690,12 +680,13 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   /**
    * Public base URL for this deploy, derived from the configured domain.
-   * Returns undefined when no domain is set or
-   * the host is a wildcard — there's no single resolvable origin to point at.
+   * Returns undefined when no domain is set.
    */
-  protected publicUrl(ctx: PlatformContext): string | undefined {
-    const host = ctx.envConfig.domain;
-    if (!host || host.includes("*")) {
+  protected publicUrl(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+  ): string | undefined {
+    const host = ctx.options.domain;
+    if (!host) {
       return undefined;
     }
     return `https://${host}`;
@@ -723,7 +714,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   override async provision(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     this.configureApi(ctx);
@@ -797,7 +788,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   override async migrate(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     this.configureApi(ctx);
@@ -814,7 +805,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   override async exportDb(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
     options: ExportDbOptions = {},
   ): Promise<void> {
@@ -921,7 +912,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   protected async migrateD1(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     const dbName = ctx.naming.d1();
@@ -975,7 +966,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   protected async migratePostgres(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     if (ctx.prebuilt) {
@@ -1017,7 +1008,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async inspect(
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<PlatformState> {
     this.configureApi(ctx);
@@ -1183,7 +1174,10 @@ export class CloudflareAdapter extends PlatformAdapter {
   // teardown (REST API)
   // -------------------------------------------------------------------------
 
-  async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async teardown(
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     this.configureApi(ctx);
     if (ctx.resources.hasQueue) {
       const workerName = ctx.naming.worker();
@@ -1418,7 +1412,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    */
   protected async deleteR2Bucket(
     name: string,
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
   ): Promise<void> {
     try {
       await this.api.deleteR2(name);
@@ -1463,7 +1457,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    */
   protected async wipeR2Bucket(
     bucketName: string,
-    ctx: PlatformContext,
+    ctx: PlatformContext<CloudflareEnvironmentOptions>,
   ): Promise<void> {
     let creds = this.resolveR2Credentials();
     let mintedTokenId: string | undefined;
@@ -1502,7 +1496,7 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     try {
       const accountId = await this.api.resolveAccountId();
-      const jur = ctx.envConfig.jurisdiction;
+      const jur = ctx.options.jurisdiction;
       const host = jur
         ? `${accountId}.${jur}.r2.cloudflarestorage.com`
         : `${accountId}.r2.cloudflarestorage.com`;

@@ -10,6 +10,10 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
 import {
+  type EnvironmentOptions,
+  environmentOptionsSchema,
+} from "../schemas/environmentOptions.ts";
+import {
   type CloudflareAssetEntry,
   CloudflareAssetManifest,
 } from "../services/CloudflareAssetManifest.ts";
@@ -76,7 +80,21 @@ export interface WorkerCloudflareCredential {
  * which is #288's other half: two deploys share an isolate, and a global that
  * is saved and restored around a call is a race the second deploy wins.
  */
-export class WorkerCloudflareAdapter extends PlatformAdapter {
+export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions> {
+  /**
+   * The same display name as the wrangler-driven adapter: to an operator both
+   * deploy to Cloudflare, and which one ran is a question of runtime.
+   */
+  static readonly id = "cloudflare";
+  /**
+   * `domain` only: the account, the jurisdiction and the bindings come from
+   * the estate's credential, never from a config file.
+   */
+  static readonly options = environmentOptionsSchema;
+
+  override readonly serverless = true;
+  override readonly cloudflareResources = true;
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
@@ -175,7 +193,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * parallel while still logging one line per resource.
    */
   override async provision(
-    ctx: PlatformContext,
+    ctx: PlatformContext<EnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     const api = this.provisioner();
@@ -251,8 +269,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       this.provisioned.CLOUDFLARE_JURISDICTION =
         this.jurisdictionOf() as string;
     }
-    if (ctx.envConfig.domain) {
-      this.provisioned.CLOUDFLARE_DOMAIN = ctx.envConfig.domain;
+    if (ctx.options.domain) {
+      this.provisioned.CLOUDFLARE_DOMAIN = ctx.options.domain;
     }
   }
 
@@ -267,7 +285,10 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * Always prebuilt: Lore's Worker cannot run Vite, so the client always builds
    * elsewhere and this step only ever emits config.
    */
-  async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+  async build(
+    ctx: PlatformContext<EnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
     const manifestPath = this.fs.join(ctx.root, "manifest.json");
     let raw: unknown;
     try {
@@ -330,7 +351,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   }
 
   override async migrate(
-    ctx: PlatformContext,
+    ctx: PlatformContext<EnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     if (!ctx.resources.hasDatabase) {
@@ -424,7 +445,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   } = {};
 
   async deploy(
-    ctx: PlatformContext,
+    ctx: PlatformContext<EnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const worker = ctx.naming.worker();
@@ -514,8 +535,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       },
     });
 
-    if (ctx.envConfig.domain) {
-      return `https://${ctx.envConfig.domain}`;
+    if (ctx.options.domain) {
+      return `https://${ctx.options.domain}`;
     }
 
     return await this.workersDevUrl(worker, subdomainError, run);
@@ -608,8 +629,10 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * set on the copy, and a copy deployed behind a proxy or under a vanity host
    * has to be able to say so.
    */
-  protected secretsFor(ctx: PlatformContext): Record<string, string> {
-    const domain = ctx.envConfig.domain;
+  protected secretsFor(
+    ctx: PlatformContext<EnvironmentOptions>,
+  ): Record<string, string> {
+    const domain = ctx.options.domain;
     if (!domain || this.appSecrets.PUBLIC_URL) {
       return this.appSecrets;
     }

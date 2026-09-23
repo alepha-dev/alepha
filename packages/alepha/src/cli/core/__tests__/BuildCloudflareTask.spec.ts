@@ -82,7 +82,6 @@ describe("BuildCloudflareTask", () => {
     "CLOUDFLARE_EMAIL_EVENTS_QUEUE",
     "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME",
     "CLOUDFLARE_DOMAIN",
-    "CLOUDFLARE_ZONE",
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
@@ -130,16 +129,16 @@ describe("BuildCloudflareTask", () => {
       ]);
     });
 
-    it("turns it off for a wildcard route too", () => {
+    it("refuses a wildcard domain rather than writing a Custom Domain Cloudflare rejects", () => {
+      // The zone Route that once served `*.club.alepha.dev` is gone (#Q2482):
+      // a Custom Domain is the only binding, and it cannot be a wildcard.
       process.env.CLOUDFLARE_DOMAIN = "*.club.alepha.dev";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceDomain(ambient(), wrangler);
-
-      expect(wrangler.workers_dev).toBe(false);
-      expect(wrangler.routes).toEqual([
-        { pattern: "*.club.alepha.dev/*", zone_name: "alepha.dev" },
-      ]);
+      expect(() => createTask().testEnhanceDomain(ambient(), wrangler)).toThrow(
+        /wildcard/,
+      );
+      expect(wrangler.routes).toBeUndefined();
     });
   });
 

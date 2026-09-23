@@ -63,7 +63,6 @@ export const platformPlanAppSchema = z.object({
 export const platformPlanEnvironmentSchema = z.object({
   adapter: z.string(),
   domain: z.string().optional(),
-  zone: z.string().optional(),
 });
 
 export const platformPlanResourceSchema = z.object({

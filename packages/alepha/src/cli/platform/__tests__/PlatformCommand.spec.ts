@@ -2,9 +2,11 @@ import { join as nodeJoin } from "node:path";
 
 import { Alepha } from "alepha";
 import {
+  bay,
+  cloudflare,
   CloudflareAdapter,
-  platformOptions,
   D1MigrationsService,
+  platformOptions,
 } from "alepha/cli/platform-lib";
 import { CliProvider } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
@@ -128,7 +130,7 @@ describe("PlatformCommand", () => {
 
       alepha.set(platformOptions, {
         name: "my-app",
-        environments: { production: { adapter: "cloudflare" } },
+        environments: { production: cloudflare() },
         ...config,
       } as any);
 
@@ -260,7 +262,7 @@ describe("PlatformCommand", () => {
       expect,
     }) => {
       const { cli, cmd } = await create({
-        environments: { production: { adapter: "bay" } },
+        environments: { production: bay() },
       });
 
       await expect(

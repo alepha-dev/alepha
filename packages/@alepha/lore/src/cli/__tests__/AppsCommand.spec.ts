@@ -10,6 +10,9 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { AppsCommand } from "../commands/AppsCommand.ts";
+import { ArtifactCommand } from "../commands/ArtifactCommand.ts";
+import { LoreArtifactPusher } from "../services/LoreArtifactPusher.ts";
+import { LoreDeployer } from "../services/LoreDeployer.ts";
 
 /**
  * `lore apps`: which targets a build produces, and what a deploy is allowed to
@@ -61,6 +64,11 @@ const create = (
   const shell = alepha.inject(MemoryShellProvider);
   const cli = alepha.inject(CliProvider);
   const command = alepha.inject(AppsCommand);
+  // The deploy path lives in `LoreDeployer`, shared with the platform
+  // adapter, so the API is faked there, at the same `$client` seam.
+  const deployer = alepha.inject(LoreDeployer);
+  // Kept before the fake replaces it, for the one case about WHICH pusher.
+  const pusher = (deployer as unknown as { artifacts: unknown }).artifacts;
 
   /**
    * What the deploy half did, in the order it did it.
@@ -88,7 +96,15 @@ const create = (
   // to its end, and to its timeout, without a real second passing.
   let clock = 0;
 
-  Object.assign(command as unknown as Record<string, unknown>, {
+  const log = {
+    info: (message: string) => printed.push(message),
+    warn: () => {},
+    error: () => {},
+    debug: () => {},
+    trace: () => {},
+  };
+
+  Object.assign(deployer as unknown as Record<string, unknown>, {
     apps: {
       // Every faked instance, as copies of the one app `resolveApp` names.
       listApps: async () => ({
@@ -135,15 +151,14 @@ const create = (
       },
       getDeployment: async () => runs[Math.min(read++, runs.length - 1)],
     },
-    cli: {
-      run: async (
-        nested: { name: string },
-        options: { argv?: string } = {},
-      ) => {
+    // The push, recorded rather than packed: what the deploy hands the one
+    // artifact push `lore artifacts push` uses too.
+    artifacts: {
+      push: async (input: { project: string; app: string; tag: string }) => {
         ran.push({
-          command: nested,
-          name: nested.name,
-          argv: options.argv,
+          command: "push",
+          name: "push",
+          argv: `--project ${input.project} --app ${input.app} --tag ${input.tag}`,
           shellCalls: shell.calls.length,
         });
       },
@@ -154,13 +169,11 @@ const create = (
         clock += ms;
       },
     },
-    log: {
-      info: (message: string) => printed.push(message),
-      warn: () => {},
-      error: () => {},
-      debug: () => {},
-      trace: () => {},
-    },
+    log,
+  });
+
+  Object.assign(command as unknown as Record<string, unknown>, {
+    log,
     projects: {
       resolve: async () => 1,
       resolveApp: async () => "docs",
@@ -174,7 +187,7 @@ const create = (
     },
   });
 
-  return { alepha, fs, shell, cli, command, started, ran, printed };
+  return { alepha, fs, shell, cli, command, started, ran, printed, pusher };
 };
 
 /**
@@ -446,8 +459,8 @@ describe("lore apps deploy", () => {
     expect(started[0].instanceId).toBe("inst-1");
   });
 
-  it("pushes through `lore artifacts push` rather than a second uploader", async () => {
-    const { fs, cli, command, ran } = aCloudflareCopy();
+  it("pushes through `lore artifacts push`'s own pusher rather than a second uploader", async () => {
+    const { alepha, fs, cli, command, ran, pusher } = aCloudflareCopy();
     await aWorkspace(fs);
 
     await cli.run(command.deploy, {
@@ -457,11 +470,12 @@ describe("lore apps deploy", () => {
 
     expect(ran).toHaveLength(1);
     expect(ran[0].name).toBe("push");
-    // Identity, not just the name: this is the artifacts command's own child.
-    expect(ran[0].command).toBe(
-      (command as unknown as { artifactCommand: { push: unknown } })
-        .artifactCommand.push,
-    );
+    // Identity, not just the name: the deploy and `lore artifacts push` hold
+    // the one pusher, so there is one packing and one upload.
+    expect(pusher).toBe(alepha.inject(LoreArtifactPusher));
+    expect(
+      (alepha.inject(ArtifactCommand) as unknown as { pusher: unknown }).pusher,
+    ).toBe(pusher);
     expect(ran[0].argv).toBe("--project alepha --app docs --tag latest");
   });
 
