@@ -5886,7 +5886,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lore@workspace:apps/lore"
   dependencies:
-    "@alepha/devtools": "workspace:*"
     "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@codemirror/autocomplete": "npm:^6.20.3"
