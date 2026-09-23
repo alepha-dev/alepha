@@ -22,6 +22,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import { ActivityDetails } from "./ActivityDetails.tsx";
 import { activityResourceHref } from "./activityResourceHref.ts";
+import { activityResourceIcon } from "./activityResourceIcon.ts";
 import { activityResourceLabel, capitalize } from "./activityResourceLabel.ts";
 
 export interface ProjectActivityPageProps {
@@ -103,7 +104,7 @@ const ProjectActivityPage = ({
       onError: () => {},
     },
     [projectApi, project?.id],
-  ).data ?? { types: [], actions: [] };
+  ).data ?? { types: [], actions: [], pairs: [] };
 
   /**
    * Whether the people filter is offered at all (feedback #P2178).
@@ -154,10 +155,14 @@ const ProjectActivityPage = ({
       label: tr("activity.col.resource"),
       icon: Layers,
       mode: "default",
-      items: options.types.map((type) => ({
-        label: activityResourceLabel(tr, type),
-        value: type,
-      })),
+      items: options.types.map((type) => {
+        const Icon = activityResourceIcon(type);
+        return {
+          label: activityResourceLabel(tr, type),
+          value: type,
+          icon: <Icon className="text-muted-foreground size-4" />,
+        };
+      }),
       control: {
         clearLabel: tr("activity.filter.allResources"),
       },
@@ -170,10 +175,28 @@ const ProjectActivityPage = ({
       // the resource one, whose entries are all labels, and `create` between
       // `Epic` and `Quest` reads as a leaked column value. `value` stays the
       // stored verb, which is what the query filters on.
-      items: options.actions.map((action) => ({
-        label: capitalize(action),
-        value: action,
-      })),
+      // Narrowed to the actions the picked resource types declare, so
+      // "Epic" does not offer "Rotate". Every action while no type is picked.
+      // An action already picked stays listed even when the types move away
+      // from it, so the control can still show and clear it.
+      items: (values) => {
+        const types = (values.type as string[] | undefined) ?? [];
+        const picked = (values.action as string[] | undefined) ?? [];
+        const possible =
+          types.length === 0
+            ? options.actions
+            : [
+                ...new Set(
+                  options.pairs
+                    .filter((pair) => types.includes(pair.type))
+                    .map((pair) => pair.action),
+                ),
+              ].sort();
+        return [...new Set([...possible, ...picked])].map((action) => ({
+          label: capitalize(action),
+          value: action,
+        }));
+      },
       control: {
         clearLabel: tr("activity.filter.allActions"),
       },

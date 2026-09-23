@@ -823,6 +823,11 @@ export class ProjectController {
       response: z.object({
         types: z.array(z.text()),
         actions: z.array(z.text()),
+        /**
+         * Which action each type declares, so the "What" list can narrow to
+         * the actions of the resource types picked beside it.
+         */
+        pairs: z.array(z.object({ type: z.text(), action: z.text() })),
       }),
     },
     handler: async ({ params }) => {
@@ -837,6 +842,7 @@ export class ProjectController {
       return {
         types: [...new Set(pairs.map((pair) => pair.type))].sort(),
         actions: [...new Set(pairs.map((pair) => pair.action))].sort(),
+        pairs: pairs.map((pair) => ({ type: pair.type, action: pair.action })),
       };
     },
   });
