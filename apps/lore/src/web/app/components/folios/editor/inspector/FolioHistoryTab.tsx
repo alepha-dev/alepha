@@ -321,7 +321,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                       <DropdownMenuTrigger
                         render={
                           <Button
-                            variant="ghost"
+                            variant="minimal"
                             size="icon"
                             className="size-6"
                             aria-label={tr("folios.history.actions")}

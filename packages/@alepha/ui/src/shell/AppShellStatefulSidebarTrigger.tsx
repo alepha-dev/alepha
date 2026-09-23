@@ -13,7 +13,7 @@ export const AppShellStatefulSidebarTrigger = () => {
   const Icon = open ? PanelLeftClose : PanelLeftOpen;
   return (
     <Button
-      variant="ghost"
+      variant="minimal"
       size="icon"
       onClick={toggleSidebar}
       aria-label={open ? "Collapse sidebar" : "Expand sidebar"}

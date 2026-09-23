@@ -9,7 +9,7 @@ import {
 } from "@alepha/ui/chart";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import { Bug, Inbox, Laptop, Server } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
@@ -230,15 +230,11 @@ const AppErrors = () => {
       {project && (
         <div className="flex justify-end">
           <Button
-            variant="outline"
+            variant="outlined"
             size="sm"
-            render={
-              <Link
-                href={router.path("projectBlights", {
-                  params: { projectSlug: project.slug },
-                })}
-              />
-            }
+            href={router.path("projectBlights", {
+              params: { projectSlug: project.slug },
+            })}
           >
             <Inbox className="size-4" />
             {tr("insights.errors.inbox")}

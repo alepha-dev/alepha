@@ -77,7 +77,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
          */}
         <Button
           type="button"
-          variant="ghost"
+          variant="minimal"
           size="icon"
           disabled={props.disabled}
           onClick={() => setReveal((r) => !r)}

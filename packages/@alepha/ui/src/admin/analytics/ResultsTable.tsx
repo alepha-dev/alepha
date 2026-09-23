@@ -78,7 +78,12 @@ export const ResultsTable = (props: ResultsTableProps) => {
               })}
         </span>
         <span className="flex-1" />
-        <Button type="button" variant="outline" size="sm" onClick={downloadCsv}>
+        <Button
+          type="button"
+          variant="outlined"
+          size="sm"
+          onClick={downloadCsv}
+        >
           <Download className="size-3.5" />
           {tr("admin.analytics.csv", { default: "Download CSV" })}
         </Button>

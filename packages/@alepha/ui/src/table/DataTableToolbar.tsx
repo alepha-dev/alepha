@@ -239,7 +239,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
                         <Button
                           type="button"
                           size="sm"
-                          variant="ghost"
+                          variant="minimal"
                           className="h-9 w-9 p-0"
                           aria-label={action.label}
                           disabled={action.disabled}
@@ -307,7 +307,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
                   <Button
                     type="button"
                     size="sm"
-                    variant="ghost"
+                    variant="minimal"
                     className="h-9 w-9 p-0"
                     aria-label={tr("dataTable.refresh", {
                       default: "Refresh",

@@ -51,7 +51,7 @@ const PaginationLink = (props: PaginationLinkProps) => {
   const { className, isActive, size = "icon", ...rest } = props;
   return (
     <Button
-      variant={isActive ? "outline" : "ghost"}
+      variant={isActive ? "outlined" : "minimal"}
       size={size}
       className={cn(className)}
       nativeButton={false}

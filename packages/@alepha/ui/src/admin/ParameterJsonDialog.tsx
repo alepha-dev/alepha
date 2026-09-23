@@ -66,7 +66,7 @@ export const ParameterJsonDialog = (props: ParameterJsonDialogProps) => {
             <span className="truncate">{props.title}</span>
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               size="sm"
               className="h-7 px-2"
               onClick={onCopy}

@@ -116,7 +116,7 @@ export const AdminJobDetail = (props: AdminJobDetailProps) => {
         actions={
           canTrigger ? (
             <Button
-              variant="outline"
+              variant="outlined"
               size="lg"
               loading={trigger.loading}
               onClick={() => void trigger.run()}

@@ -94,7 +94,8 @@ const ProjectSettingsDangerZoneSection = () => {
               </div>
               <div className="flex justify-start sm:justify-end">
                 <Button
-                  variant="destructive"
+                  variant="outlined"
+                  intent="danger"
                   onClick={() => setDeleteModalOpen(true)}
                 >
                   {tr("project.settings.actions.delete")}
@@ -113,7 +114,8 @@ const ProjectSettingsDangerZoneSection = () => {
               </div>
               <div className="flex justify-start sm:justify-end">
                 <Button
-                  variant="destructive"
+                  variant="outlined"
+                  intent="danger"
                   onClick={() => setLeaveDialogOpen(true)}
                 >
                   {tr("project.settings.actions.leave")}
@@ -153,7 +155,7 @@ const ProjectSettingsDangerZoneSection = () => {
             <AlertDialogAction
               disabled={leaveAction.loading}
               onClick={() => void leaveAction.run()}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              intent="danger"
             >
               {tr("project.settings.leave.modal.submit")}
             </AlertDialogAction>

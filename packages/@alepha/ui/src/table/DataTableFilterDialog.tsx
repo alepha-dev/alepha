@@ -90,7 +90,7 @@ export const DataTableFilterDialog = (props: DataTableFilterDialogProps) => {
           <Button
             type="button"
             size="sm"
-            variant="ghost"
+            variant="minimal"
             className="h-9 gap-1.5 px-2"
             aria-label={label}
           />
@@ -139,7 +139,7 @@ export const DataTableFilterDialog = (props: DataTableFilterDialogProps) => {
           {props.onShare && (
             <Button
               type="button"
-              variant="outline"
+              variant="outlined"
               disabled={props.activeCount === 0}
               onClick={props.onShare}
             >
@@ -149,7 +149,7 @@ export const DataTableFilterDialog = (props: DataTableFilterDialogProps) => {
           )}
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             disabled={!props.canReset}
             onClick={props.onReset}
           >

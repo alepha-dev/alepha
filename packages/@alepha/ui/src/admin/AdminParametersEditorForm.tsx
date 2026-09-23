@@ -117,14 +117,14 @@ export const AdminParametersEditorForm = (
               default: "Factory reset",
             }),
             icon: "wrench",
-            variant: "outline",
+            variant: "outlined",
             onClick: props.onFactoryReset,
             disabled: props.factoryResetLoading,
           },
           {
             label: tr("admin.parameters.export", { default: "Export" }),
             icon: "download",
-            variant: "outline",
+            variant: "outlined",
             onClick: props.onExport,
           },
         ]}

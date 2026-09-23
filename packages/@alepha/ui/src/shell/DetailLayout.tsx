@@ -121,7 +121,7 @@ export const DetailLayout = (props: DetailLayoutProps) => {
         <p className="text-muted-foreground text-sm">
           {props.notFound.message}
         </p>
-        <Button variant="outline" onClick={props.notFound.onBack}>
+        <Button variant="outlined" onClick={props.notFound.onBack}>
           <ArrowLeft className="size-4" />
           {props.notFound.backLabel}
         </Button>

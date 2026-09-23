@@ -473,7 +473,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       actions={
         <>
           <Button
-            variant="outline"
+            variant="outlined"
             size="lg"
             loading={togglePublished.loading}
             onClick={() => togglePublished.run()}
@@ -493,7 +493,8 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
             )}
           </Button>
           <Button
-            variant="destructive"
+            variant="outlined"
+            intent="danger"
             size="lg"
             loading={deleteProduct.loading}
             onClick={() => deleteProduct.run()}

@@ -86,7 +86,7 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
           render={
             <Button
               type="button"
-              variant="outline"
+              variant="outlined"
               className={cn(
                 "h-8 w-full min-w-0 justify-between rounded-lg font-normal",
                 !selected && "text-muted-foreground",
@@ -142,7 +142,7 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
       {props.value != null && (
         <Button
           type="button"
-          variant="ghost"
+          variant="minimal"
           size="sm"
           onClick={() => props.onChange(null)}
           aria-label={tr("quest.create.dependsOn.clear")}

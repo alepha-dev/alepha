@@ -112,7 +112,7 @@ export const AdminProductDetailDetailsTab = (
               />
               <Button
                 type="button"
-                variant="ghost"
+                variant="minimal"
                 size="icon-xs"
                 onClick={() =>
                   setRows((current) => current.filter((_, i) => i !== index))
@@ -137,7 +137,7 @@ export const AdminProductDetailDetailsTab = (
           <div className="flex items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="outlined"
               size="sm"
               onClick={() =>
                 setRows((current) => [...current, { key: "", value: "" }])

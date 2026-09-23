@@ -76,7 +76,7 @@ const SheetContent = (props: SheetContentProps) => {
             data-slot="sheet-close"
             render={
               <Button
-                variant="ghost"
+                variant="minimal"
                 className="absolute top-3 right-3"
                 size="icon-sm"
               />

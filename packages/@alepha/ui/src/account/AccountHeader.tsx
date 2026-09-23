@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "../core/Button.tsx";
@@ -46,15 +46,10 @@ export const AccountHeader = (props: AccountHeaderProps) => {
   return (
     <div className="flex items-center justify-between gap-4 border-b pb-3">
       <Button
-        variant="ghost"
+        variant="minimal"
         size="sm"
         className="text-muted-foreground hover:text-foreground -ml-2"
-        render={<Link href={router.path(home)} />}
-        // A link wearing a button's clothes: `nativeButton={false}` stops Base UI
-        // assuming a native <button> (it warns otherwise), and `role` puts back the
-        // link semantics its non-native branch would overwrite with `role="button"`.
-        nativeButton={false}
-        role="link"
+        href={router.path(home)}
       >
         <ArrowLeft className="size-4" />
         {props.backLabel ??

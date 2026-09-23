@@ -43,7 +43,7 @@ export const NodeDetails = (props: NodeDetailsProps) => {
             </span>
           )}
         </div>
-        <Button size="sm" variant="ghost" onClick={props.onClose}>
+        <Button size="sm" variant="minimal" onClick={props.onClose}>
           <X className="size-3.5" />
         </Button>
       </div>

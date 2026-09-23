@@ -117,7 +117,7 @@ const ProjectSettingsRoadmapSection = () => {
           <Button
             disabled={!projectApi.updateProjectById.can()}
             size="sm"
-            variant="outline"
+            variant="outlined"
             aria-label={tr("project.settings.roadmap.url.copy")}
             onClick={async () => {
               // The toast only after the write resolved: the clipboard call

@@ -130,7 +130,8 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
             </div>
 
             <Button
-              variant="secondary"
+              variant="solid"
+              intent="none"
               onClick={() => {
                 void navigator.clipboard?.writeText(recoveryCodes.join("\n"));
                 toaster.show(

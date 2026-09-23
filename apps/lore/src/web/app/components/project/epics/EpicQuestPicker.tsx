@@ -75,7 +75,7 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
         render={
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             size="sm"
             disabled={props.disabled}
           />

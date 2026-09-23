@@ -639,7 +639,7 @@ const ProjectFeedbackRequest = () => {
                     />
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="outlined"
                       size="sm"
                       disabled={uploading || attachments.length >= maxFiles}
                       onClick={() => inputRef.current?.click()}

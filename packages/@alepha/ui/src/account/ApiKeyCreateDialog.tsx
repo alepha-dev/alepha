@@ -332,7 +332,7 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
           <DialogFooter>
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               onClick={() => props.onOpenChange(false)}
             >
               {tr("account.keys.cancel", { default: "Cancel" })}

@@ -176,10 +176,10 @@ const Detail = () => {
                     {/* `sm`, which is what all three real consumers pass. The
                         tab selector beside it is `lg` on purpose: see
                         DetailLayout for why the two no longer match. */}
-                    <Button variant="outline" size="sm">
+                    <Button variant="outlined" size="sm">
                       <Pencil /> Edit
                     </Button>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="outlined" intent="danger" size="sm">
                       <Trash2 /> Delete
                     </Button>
                   </>

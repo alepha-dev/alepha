@@ -68,7 +68,7 @@ export const RequestDialog = (props: RequestDialogProps) => {
           </span>
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             onClick={() => props.onOpenChange(false)}
           >
             {tr("admin.analytics.close", { default: "Close" })}

@@ -99,7 +99,7 @@ const AppDeploy = () => {
           </CardHeader>
           <CardContent>
             <Button
-              variant="outline"
+              variant="outlined"
               onClick={() =>
                 router.push("appSettings", {
                   params: {
@@ -163,7 +163,7 @@ const AppDeploy = () => {
           return (
             <Button
               size="sm"
-              variant={usable ? "default" : "outline"}
+              variant={usable ? "solid" : "outlined"}
               disabled={!usable || deployAction.loading}
               title={
                 usable

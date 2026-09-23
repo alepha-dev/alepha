@@ -99,7 +99,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
             <DropdownMenuTrigger
               render={
                 <Button
-                  variant="ghost"
+                  variant="minimal"
                   size="icon"
                   className="size-6"
                   aria-label={tr("admin.parameters.versionActions", {

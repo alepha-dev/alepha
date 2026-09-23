@@ -1,6 +1,5 @@
 import { BrandIcon, Button } from "@alepha/ui";
 import { useAlepha } from "alepha/react";
-import { Link } from "alepha/react/router";
 import { ArrowUpRight } from "lucide-react";
 
 import { NavPaletteField } from "../components/NavPaletteField.tsx";
@@ -65,18 +64,15 @@ const Home = () => {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Button
-            size="lg"
-            nativeButton={false}
-            render={<Link href="/blocks/shell" />}
-          >
+          <Button size="lg" href="/blocks/shell">
             Get started
           </Button>
           <Button
             size="lg"
-            variant="outline"
-            nativeButton={false}
-            render={<a href={GITHUB_URL} target="_blank" rel="noreferrer" />}
+            variant="outlined"
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
           >
             <BrandIcon provider="github" />
             GitHub

@@ -35,7 +35,7 @@ export const AutoFormErrorPopover = (props: AutoFormErrorPopoverProps) => {
         render={
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="icon"
             aria-label={tr("autoForm.errors", { default: "Form errors" })}
             className="text-destructive"

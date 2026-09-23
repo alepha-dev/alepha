@@ -37,7 +37,7 @@ export const AdminParametersTreeFooterActions = (
       />
       <Button
         type="button"
-        variant="ghost"
+        variant="minimal"
         size="sm"
         disabled={props.disabled || props.exporting}
         onClick={() => props.onExportAll()}
@@ -48,7 +48,7 @@ export const AdminParametersTreeFooterActions = (
       <span aria-hidden className="bg-border h-4 w-px rotate-12" />
       <Button
         type="button"
-        variant="ghost"
+        variant="minimal"
         size="sm"
         disabled={props.importing}
         onClick={() => fileInput.current?.click()}

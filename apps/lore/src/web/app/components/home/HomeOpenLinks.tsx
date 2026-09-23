@@ -1,5 +1,5 @@
 import { Button, ButtonGroup, cn } from "@alepha/ui";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import type { LucideIcon } from "lucide-react";
 
 import type { AppRouter } from "../../AppRouter.ts";
@@ -32,11 +32,9 @@ export interface HomeOpenLinksProps {
  * The Home table's Open column: one button per kind of open work, joined in
  * a group, each a link to that kind's page in the project.
  *
- * Real anchors (`Link` rendered through `Button`), so each shows its URL on
- * hover, opens in a new tab on a modified click and offers "copy link
- * address", while a plain click still routes in place. `nativeButton={false}`
- * and `role="link"` for the reason the table's "New project" button gives:
- * Base UI otherwise assumes a `<button>` and overwrites the role.
+ * Real anchors (`Button`'s `href` renders a `Link`), so each shows its URL
+ * on hover, opens in a new tab on a modified click and offers "copy link
+ * address", while a plain click still routes in place.
  *
  * The group stops the click from reaching the row, which carries
  * `onRowClick` to the project's own page: without it a plain click would
@@ -58,19 +56,13 @@ export const HomeOpenLinks = (props: HomeOpenLinksProps) => {
         return (
           <Button
             key={link.kind}
-            variant="outline"
+            variant="outlined"
             size="sm"
-            nativeButton={false}
-            role="link"
             aria-label={link.label}
             title={link.label}
-            render={
-              <Link
-                href={router.path(link.route, {
-                  params: { projectSlug: props.projectSlug },
-                })}
-              />
-            }
+            href={router.path(link.route, {
+              params: { projectSlug: props.projectSlug },
+            })}
             className={cn(
               "gap-1.5 font-semibold tabular-nums",
               link.count === 0 && "text-muted-foreground",

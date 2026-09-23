@@ -121,14 +121,14 @@ export const OrganizationTransferOwnershipDialog = (
         </div>
         <DialogFooter>
           <Button
-            variant="ghost"
+            variant="minimal"
             disabled={transfer.loading}
             onClick={() => props.onOpenChange(false)}
           >
             {tr("organizations.members.cancel", { default: "Cancel" })}
           </Button>
           <Button
-            variant="destructive"
+            intent="danger"
             data-testid="transfer-submit"
             disabled={transfer.loading}
             onClick={() => void transfer.run()}

@@ -8,6 +8,7 @@ import { type FormModel, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { type ReactNode, useEffect, useMemo } from "react";
 
+import type { ButtonIntent, ButtonVariant } from "../core/Button.tsx";
 import {
   Card,
   CardContent,
@@ -501,7 +502,8 @@ export interface AutoFormGroup {
 export interface AutoFormAction {
   label: string;
   icon?: string;
-  variant?: "default" | "outline" | "ghost" | "destructive" | "secondary";
+  variant?: ButtonVariant;
+  intent?: ButtonIntent;
   onClick: () => void | Promise<void>;
   disabled?: boolean;
 }

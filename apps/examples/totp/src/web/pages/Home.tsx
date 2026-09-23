@@ -1,5 +1,5 @@
 import {
-  buttonVariants,
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@alepha/ui";
 import { useAuth } from "alepha/react/auth";
-import { Link } from "alepha/react/router";
 import { KeyRound, ShieldCheck, SmartphoneNfc } from "lucide-react";
 
 /**
@@ -40,21 +39,16 @@ const Home = () => {
 
         <div className="flex flex-wrap gap-3">
           {auth.user ? (
-            <Link href="/account/security" className={buttonVariants()}>
+            <Button href="/account/security">
               <ShieldCheck className="size-4" />
               Set up two-factor authentication
-            </Link>
+            </Button>
           ) : (
             <>
-              <Link href="/auth/register" className={buttonVariants()}>
-                Create an account
-              </Link>
-              <Link
-                href="/auth/login"
-                className={buttonVariants({ variant: "secondary" })}
-              >
+              <Button href="/auth/register">Create an account</Button>
+              <Button href="/auth/login" intent="none">
                 Sign in
-              </Link>
+              </Button>
             </>
           )}
         </div>

@@ -96,7 +96,7 @@ export const OrganizationInviteDialog = (
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => props.onOpenChange(false)}>
+          <Button variant="outlined" onClick={() => props.onOpenChange(false)}>
             {tr("organizations.members.cancel", { default: "Cancel" })}
           </Button>
           <Button onClick={() => void submit()} disabled={invite.loading}>

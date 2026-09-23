@@ -181,7 +181,7 @@ const Plate = () => {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outlined" size="sm">
                         <Pencil /> Edit
                       </Button>
                       <Button size="sm">

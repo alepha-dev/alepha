@@ -45,13 +45,17 @@ const Toast = () => {
       {(v) => (
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button onClick={() => fire("success", v)}>Success</Button>
-          <Button variant="secondary" onClick={() => fire("info", v)}>
+          <Button variant="solid" intent="none" onClick={() => fire("info", v)}>
             Info
           </Button>
-          <Button variant="outline" onClick={() => fire("warning", v)}>
+          <Button variant="outlined" onClick={() => fire("warning", v)}>
             Warning
           </Button>
-          <Button variant="destructive" onClick={() => fire("error", v)}>
+          <Button
+            variant="outlined"
+            intent="danger"
+            onClick={() => fire("error", v)}
+          >
             Error
           </Button>
           {/*
@@ -61,7 +65,7 @@ const Toast = () => {
             is the caller's own affair.
           */}
           <Button
-            variant="ghost"
+            variant="minimal"
             onClick={() =>
               toast.success(v.message, {
                 description: v.description || undefined,
@@ -72,7 +76,7 @@ const Toast = () => {
             With an action
           </Button>
           <Button
-            variant="ghost"
+            variant="minimal"
             onClick={() =>
               toast.info(v.message, {
                 description: "Stays for ten seconds.",

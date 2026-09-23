@@ -33,7 +33,7 @@ export interface ToggleChipProps {
 export const ToggleChip = (props: ToggleChipProps) => (
   <Button
     type="button"
-    variant={props.pressed ? "default" : "outline"}
+    variant={props.pressed ? "solid" : "outlined"}
     aria-pressed={props.pressed}
     aria-disabled={props.locked || undefined}
     title={props.title}

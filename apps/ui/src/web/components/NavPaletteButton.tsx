@@ -35,7 +35,7 @@ export const NavPaletteButton = () => {
       <TooltipTrigger
         render={
           <Button
-            variant="ghost"
+            variant="minimal"
             size="icon"
             // "Search", not "Search blocks and pages": an action keeps one
             // name through the whole flow, and the tooltip beside it says

@@ -117,13 +117,17 @@ const AreaRenameDialog = (props: AreaRenameDialogProps) => {
           />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={props.onClose} disabled={submitting}>
+          <Button
+            variant="minimal"
+            onClick={props.onClose}
+            disabled={submitting}
+          >
             {tr("common.cancel")}
           </Button>
           <Button
             onClick={() => void submit()}
             disabled={submitting || !areaApi.renameArea.can()}
-            variant={collision ? "destructive" : "default"}
+            intent={collision ? "danger" : "primary"}
           >
             {collision
               ? tr("area.detail.rename.submitMerge")

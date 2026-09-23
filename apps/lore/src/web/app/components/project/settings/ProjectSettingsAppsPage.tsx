@@ -82,7 +82,7 @@ const ProjectSettingsAppsPage = () => {
                 </span>
               </div>
               <div className="flex justify-start sm:justify-end">
-                <Button variant="outline" onClick={() => setRulesOpen(true)}>
+                <Button variant="outlined" onClick={() => setRulesOpen(true)}>
                   <Ban className="size-4" />
                   {tr("blights.rules.manage")}
                 </Button>

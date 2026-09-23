@@ -283,7 +283,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="outline" size="sm" aria-label="Create rank" />
+              <Button variant="outlined" size="sm" aria-label="Create rank" />
             }
           >
             <Plus className="size-3.5" />
@@ -330,7 +330,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
       {dirty && (
         <div className="flex justify-end gap-2">
           <Button
-            variant="ghost"
+            variant="minimal"
             disabled={saving}
             onClick={() => setDraft(organizationRankDraft(ranks))}
           >

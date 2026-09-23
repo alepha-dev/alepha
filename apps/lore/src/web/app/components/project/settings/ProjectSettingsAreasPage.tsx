@@ -210,7 +210,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                     <TableCell className="text-right">
                       {area.questCount === 0 && canManage && (
                         <Button
-                          variant="ghost"
+                          variant="minimal"
                           size="sm"
                           disabled={removeAction.loading}
                           onClick={() => void removeAction.run(area)}

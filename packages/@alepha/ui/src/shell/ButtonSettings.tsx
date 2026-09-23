@@ -97,9 +97,9 @@ export interface ButtonSettingsProps {
   compact?: boolean;
 
   /**
-   * Visual variant of every button. Defaults to `"ghost"`.
+   * Visual variant of every button. Defaults to `"minimal"`.
    */
-  variant?: "ghost" | "outline";
+  variant?: "minimal" | "outlined";
 
   className?: string;
 }
@@ -163,7 +163,7 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
       given.colorModeLight ??
       tr("shell.settings.colorModeLight", { default: "Light" }),
   };
-  const variant = props.variant ?? "ghost";
+  const variant = props.variant ?? "minimal";
   const inMenu = !!auth.user && (props.placement ?? "menu") === "menu";
 
   return (

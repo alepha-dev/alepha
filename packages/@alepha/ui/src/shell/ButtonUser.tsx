@@ -51,10 +51,10 @@ export interface ButtonUserProps {
    */
   menuLabel?: string;
   /**
-   * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
+   * Visual variant. Defaults to `"minimal"`. Pass `"outlined"` for a
    * bordered toolbar look.
    */
-  variant?: "ghost" | "outline";
+  variant?: "minimal" | "outlined";
 
   /**
    * Overrides what the signed-in button shows. Rarely needed: by default the
@@ -116,7 +116,7 @@ export const ButtonUser = (props: ButtonUserProps) => {
         <TooltipTrigger
           render={
             <Button
-              variant={props.variant ?? "ghost"}
+              variant={props.variant ?? "minimal"}
               size="icon"
               aria-label={signInLabel}
               disabled={!props.onSignIn}
@@ -147,7 +147,7 @@ export const ButtonUser = (props: ButtonUserProps) => {
             <DropdownMenuTrigger
               render={
                 <Button
-                  variant={props.variant ?? "ghost"}
+                  variant={props.variant ?? "minimal"}
                   size="icon"
                   aria-label={menuLabel}
                 />

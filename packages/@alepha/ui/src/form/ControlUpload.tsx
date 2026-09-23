@@ -346,7 +346,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
         render={
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             size="sm"
             disabled={props.disabled || uploading}
             onClick={() => fileInputRef.current?.click()}

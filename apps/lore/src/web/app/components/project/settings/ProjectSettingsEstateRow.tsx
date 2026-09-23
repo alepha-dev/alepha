@@ -100,7 +100,7 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
       </Badge>
       {props.canDetach && (
         <Button
-          variant="ghost"
+          variant="minimal"
           size="sm"
           aria-label={tr("estates.detach.action")}
           disabled={props.busy}

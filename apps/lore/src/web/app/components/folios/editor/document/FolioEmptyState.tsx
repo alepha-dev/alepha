@@ -38,7 +38,7 @@ const FolioEmptyState = (props: FolioEmptyStateProps): ReactElement => {
         </p>
       </div>
       {props.onCreate && (
-        <Button variant="outline" size="sm" onClick={props.onCreate}>
+        <Button variant="outlined" size="sm" onClick={props.onCreate}>
           <FilePlus className="size-4" />
           {tr("folios.editor.tree.new-folio")}
         </Button>

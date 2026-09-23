@@ -99,7 +99,7 @@ const InputGroupButton = (props: InputGroupButtonProps) => {
   const {
     className,
     type = "button",
-    variant = "ghost",
+    variant = "minimal",
     size = "xs",
     ...rest
   } = props;

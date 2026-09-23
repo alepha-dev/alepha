@@ -132,7 +132,8 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
           <DialogFooter>
             <Button
               type="button"
-              variant="secondary"
+              variant="solid"
+              intent="none"
               disabled={busy}
               onClick={() => props.onOpenChange(false)}
             >

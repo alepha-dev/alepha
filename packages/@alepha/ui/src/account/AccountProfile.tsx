@@ -250,7 +250,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                 </button>
                 {profile.picture ? (
                   <Button
-                    variant="ghost"
+                    variant="minimal"
                     size="sm"
                     onClick={removeAvatar}
                     disabled={uploading}

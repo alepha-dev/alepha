@@ -101,7 +101,7 @@ export const AdminProductDetailMediaTab = (
                   <div className="flex items-center justify-between gap-1">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="minimal"
                       size="icon-xs"
                       disabled={index === 0}
                       onClick={() => move(index, index - 1)}
@@ -113,7 +113,7 @@ export const AdminProductDetailMediaTab = (
                     </Button>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="minimal"
                       size="icon-xs"
                       disabled={index === props.images.length - 1}
                       onClick={() => move(index, index + 1)}

@@ -211,7 +211,7 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
         <Button
           type="button"
-          variant="outline"
+          variant="outlined"
           disabled={submitting}
           onClick={props.onCancel}
         >

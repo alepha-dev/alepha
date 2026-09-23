@@ -189,7 +189,7 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
         <div className="flex items-center gap-2">
           {canInvite && (
             <Button
-              variant="outline"
+              variant="outlined"
               size="sm"
               disabled={busy}
               onClick={() => setInviteOpen(true)}
@@ -202,7 +202,7 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
           )}
           {mine && mine.rank !== "owner" && (
             <Button
-              variant="outline"
+              variant="outlined"
               size="sm"
               disabled={busy}
               onClick={() => void leave.run()}
@@ -239,7 +239,7 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
                   <DropdownMenuTrigger
                     render={
                       <Button
-                        variant="ghost"
+                        variant="minimal"
                         size="icon"
                         data-testid="member-actions"
                         disabled={busy}

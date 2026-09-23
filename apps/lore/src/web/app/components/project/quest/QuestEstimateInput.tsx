@@ -100,7 +100,7 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
           key={minutes}
           type="button"
           size="sm"
-          variant={value === minutes ? "default" : "outline"}
+          variant={value === minutes ? "solid" : "outlined"}
           onClick={() => props.onChange?.(minutes)}
         >
           {formatEstimate(minutes)}
@@ -113,7 +113,7 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
             <Button
               type="button"
               size="sm"
-              variant={isCustom ? "default" : "outline"}
+              variant={isCustom ? "solid" : "outlined"}
             />
           }
         >
@@ -159,7 +159,7 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
         <Button
           type="button"
           size="sm"
-          variant="ghost"
+          variant="minimal"
           aria-label={tr("quest.create.estimate.clear")}
           onClick={() => {
             setCount("");

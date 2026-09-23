@@ -170,7 +170,7 @@ const ProjectActionsCreateButton = () => {
               <DropdownMenuTrigger
                 render={
                   <Button
-                    variant="ghost"
+                    variant="minimal"
                     size="icon"
                     aria-label={menuLabel}
                     data-testid="project-create-menu"
@@ -353,7 +353,7 @@ const ProjectActionsCreateButton = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInvite(false)}>
+            <Button variant="outlined" onClick={() => setShowInvite(false)}>
               {tr("organizations.members.cancel")}
             </Button>
             <Button onClick={handleInvite} disabled={inviteMember.loading}>

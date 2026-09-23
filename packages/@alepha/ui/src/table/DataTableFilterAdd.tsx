@@ -87,7 +87,7 @@ export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
                 <Button
                   type="button"
                   size="icon-sm"
-                  variant="ghost"
+                  variant="minimal"
                   // A small, bare "+": it ends the row of filters it adds
                   // to, so it reads as "one more of these" rather than as a
                   // fourth toolbar tool beside the column picker, which is

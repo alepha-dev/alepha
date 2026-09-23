@@ -44,7 +44,7 @@ export const TruncationBanner = (props: TruncationBannerProps) => {
       {props.limit !== ANALYTICS_MAX_LIMIT && (
         <Button
           type="button"
-          variant="outline"
+          variant="outlined"
           size="xs"
           className="flex-none whitespace-nowrap"
           onClick={() => props.onRaise(next)}

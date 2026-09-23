@@ -228,7 +228,7 @@ export const AuthRegisterFormPhase = (props: AuthRegisterFormPhaseProps) => {
             return (
               <Button
                 key={method.name}
-                variant="outline"
+                variant="outlined"
                 onClick={() =>
                   props.auth.login(method.name as never, {
                     redirect,

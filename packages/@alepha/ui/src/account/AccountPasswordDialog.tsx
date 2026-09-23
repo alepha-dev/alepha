@@ -170,7 +170,7 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
             required
           />
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={close}>
+            <Button type="button" variant="minimal" onClick={close}>
               {tr("account.password.cancel", { default: "Cancel" })}
             </Button>
             <Button type="submit" disabled={submitting}>

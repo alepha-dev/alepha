@@ -123,12 +123,12 @@ export const AppActions = (props: AppActionsProps) => {
           keep its `gap-1`; `hidden` wins over `display: contents`, which is
           what makes the whole group disappear below the breakpoint. */}
       <div className={cn(props.compact ? "hidden sm:contents" : "contents")}>
-        <ButtonLanguage variant="ghost" label={props.labels?.language} />
-        <ButtonTheme variant="ghost" />
-        <ButtonDark variant="ghost" />
+        <ButtonLanguage variant="minimal" label={props.labels?.language} />
+        <ButtonTheme variant="minimal" />
+        <ButtonDark variant="minimal" />
       </div>
       <ButtonUser
-        variant="ghost"
+        variant="minimal"
         avatar={props.avatar}
         signInLabel={props.labels?.signIn}
         onSignIn={() => router.push(props.loginRouteName ?? "login")}

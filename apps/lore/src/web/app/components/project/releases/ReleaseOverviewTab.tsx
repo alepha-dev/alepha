@@ -176,7 +176,7 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
           </span>
           <div className="bg-border h-px flex-1" />
           {!published && (
-            <Button variant="ghost" size="sm" onClick={props.onEdit}>
+            <Button variant="minimal" size="sm" onClick={props.onEdit}>
               <Pencil className="size-3.5" />
               {tr("release.detail.edit")}
             </Button>

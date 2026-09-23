@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
@@ -88,11 +88,8 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
       </ul>
       {props.projects.length > RECENT && (
         <Button
-          render={<Link href={router.path("accountProjects")} />}
-          // A link wearing a button's clothes, as on the hero's CTA.
-          nativeButton={false}
-          role="link"
-          variant="ghost"
+          href={router.path("accountProjects")}
+          variant="minimal"
           size="sm"
           className="text-muted-foreground mt-4 self-center"
         >

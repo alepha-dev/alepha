@@ -94,7 +94,7 @@ export const AdminUserDetailSecurityTab = (
             </p>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" onClick={props.onChangePassword}>
+            <Button variant="outlined" onClick={props.onChangePassword}>
               <KeyRound className="size-4" />
               {props.hasPassword
                 ? tr("admin.userDetail.changePassword", {
@@ -135,7 +135,8 @@ export const AdminUserDetailSecurityTab = (
           {totpIdentity ? (
             <CardFooter>
               <Button
-                variant="destructive"
+                variant="outlined"
+                intent="danger"
                 loading={props.clearTotp.loading}
                 onClick={() => props.clearTotp.run(totpIdentity)}
               >
@@ -189,7 +190,8 @@ export const AdminUserDetailSecurityTab = (
                         </div>
                       </div>
                       <Button
-                        variant="destructive"
+                        variant="outlined"
+                        intent="danger"
                         size="sm"
                         loading={props.removeIdentity.loading}
                         onClick={() => props.removeIdentity.run(id)}

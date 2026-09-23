@@ -93,7 +93,7 @@ export const AdminKeysTokenDialog = (props: AdminKeysTokenDialogProps) => {
                 render={
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="outlined"
                     size="sm"
                     className="h-9 w-9 shrink-0 p-0"
                     aria-label={tr("admin.keys.copy", { default: "Copy" })}

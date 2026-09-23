@@ -21,10 +21,10 @@ export interface ButtonDarkProps {
    */
   withSystem?: boolean;
   /**
-   * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
+   * Visual variant. Defaults to `"minimal"`. Pass `"outlined"` for a
    * bordered toolbar look.
    */
-  variant?: "ghost" | "outline";
+  variant?: "minimal" | "outlined";
 }
 
 const NEXT: Record<"light" | "dark" | "system", "light" | "dark" | "system"> = {
@@ -99,7 +99,7 @@ export const ButtonDark = (props: ButtonDarkProps) => {
       <TooltipTrigger
         render={
           <Button
-            variant={props.variant ?? "ghost"}
+            variant={props.variant ?? "minimal"}
             size="icon"
             aria-label={label}
             onClick={onClick}

@@ -42,7 +42,7 @@ const Primitives = () => (
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button variant="outline" data-testid="primitives-tooltip">
+                  <Button variant="outlined" data-testid="primitives-tooltip">
                     <Info /> Hover me
                   </Button>
                 }
@@ -58,7 +58,7 @@ const Primitives = () => (
               <DropdownMenuTrigger
                 render={
                   <Button
-                    variant="outline"
+                    variant="outlined"
                     size="icon"
                     aria-label="More actions"
                     data-testid="primitives-menu"

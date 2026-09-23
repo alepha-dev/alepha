@@ -80,7 +80,7 @@ export const OrganizationPendingInvitations = (
                   <DropdownMenuTrigger
                     render={
                       <Button
-                        variant="ghost"
+                        variant="minimal"
                         size="icon"
                         data-testid="invitation-actions"
                         disabled={revoke.loading}

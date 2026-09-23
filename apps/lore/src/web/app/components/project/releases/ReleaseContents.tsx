@@ -238,7 +238,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
               </span>
               {!readOnly && (
                 <Button
-                  variant="ghost"
+                  variant="minimal"
                   size="icon-sm"
                   aria-label={tr("release.contents.remove")}
                   disabled={detachAction.loading}

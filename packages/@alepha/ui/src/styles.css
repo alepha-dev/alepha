@@ -104,6 +104,16 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-text: var(--warning-text);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-text: var(--danger-text);
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
   --color-hover: var(--hover);
@@ -162,8 +172,28 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /*
+   * 🧪 Experimental: Blueprint's core palette, one colour per intent.
+   *
+   * The fill is Blueprint's step 3 (`#2D72D2`, `#238551`, `#CD4246`; warning
+   * is its step 5, `#FBB360`, the one intent filled light and written dark).
+   * `-text` is the intent drawn as text on the page: step 2 in light, step 5
+   * in dark. `--primary-text` is DERIVED from `--primary` rather than a
+   * value of its own, so a theme that retints `--primary` retints its text
+   * with it. `--danger` is the new name `--destructive` will fold into.
+   */
+  --primary: #2d72d2;
+  --primary-foreground: #ffffff;
+  --primary-text: color-mix(in oklch, var(--primary), black 20%);
+  --success: #238551;
+  --success-foreground: #ffffff;
+  --success-text: #1c6e42;
+  --warning: #fbb360;
+  --warning-foreground: #111418;
+  --warning-text: #935610;
+  --danger: #cd4246;
+  --danger-foreground: #ffffff;
+  --danger-text: #ac2f33;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -308,8 +338,18 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #2d72d2;
+  --primary-foreground: #ffffff;
+  --primary-text: color-mix(in oklch, var(--primary), white 45%);
+  --success: #238551;
+  --success-foreground: #ffffff;
+  --success-text: #72ca9b;
+  --warning: #fbb360;
+  --warning-foreground: #111418;
+  --warning-text: #fbb360;
+  --danger: #cd4246;
+  --danger-foreground: #ffffff;
+  --danger-text: #fa999c;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);

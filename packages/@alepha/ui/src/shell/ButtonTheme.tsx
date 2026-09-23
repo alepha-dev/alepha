@@ -30,10 +30,10 @@ export interface ButtonThemeProps {
    */
   heading?: string;
   /**
-   * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
+   * Visual variant. Defaults to `"minimal"`. Pass `"outlined"` for a
    * bordered toolbar look.
    */
-  variant?: "ghost" | "outline";
+  variant?: "minimal" | "outlined";
 }
 
 /**
@@ -70,7 +70,7 @@ export const ButtonTheme = (props: ButtonThemeProps) => {
             <DropdownMenuTrigger
               render={
                 <Button
-                  variant={props.variant ?? "ghost"}
+                  variant={props.variant ?? "minimal"}
                   size="icon"
                   aria-label={label}
                 />

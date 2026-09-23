@@ -313,7 +313,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
                 return (
                   <Button
                     key={method.name}
-                    variant="outline"
+                    variant="outlined"
                     onClick={() =>
                       auth.login(method.name, {
                         redirect,
@@ -347,7 +347,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
           )}
         </CardContent>
       </Card>
-      <Button variant="ghost" nativeButton={false} render={<a href="/" />}>
+      <Button variant="minimal" nativeButton={false} render={<a href="/" />}>
         {tr("auth.login.cancel", { default: "Cancel" })}
       </Button>
     </div>

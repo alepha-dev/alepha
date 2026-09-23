@@ -43,7 +43,7 @@ export const AutoFormBottomBar = (props: AutoFormBottomBarProps) => {
       {props.onCancel && (
         <Button
           type="button"
-          variant="ghost"
+          variant="minimal"
           onClick={props.onCancel}
           disabled={props.disabled}
         >
@@ -54,7 +54,7 @@ export const AutoFormBottomBar = (props: AutoFormBottomBarProps) => {
       {!props.skipReset && (
         <Button
           type="button"
-          variant="ghost"
+          variant="minimal"
           onClick={() => props.form.reset()}
           disabled={props.disabled || !props.dirty}
         >
@@ -73,7 +73,8 @@ export const AutoFormBottomBar = (props: AutoFormBottomBarProps) => {
           <Button
             key={i}
             type="button"
-            variant={action.variant ?? "ghost"}
+            variant={action.variant ?? "minimal"}
+            intent={action.intent}
             onClick={() => action.onClick()}
             disabled={props.disabled || action.disabled}
           >

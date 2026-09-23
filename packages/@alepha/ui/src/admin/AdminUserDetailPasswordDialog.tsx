@@ -66,7 +66,7 @@ export const AdminUserDetailPasswordDialog = (
         <DialogFooter>
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             onClick={() => props.onOpenChange(false)}
           >
             {tr("admin.userDetail.cancel", { default: "Cancel" })}

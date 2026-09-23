@@ -228,10 +228,8 @@ export const DialogProvider = (props: DialogProviderProps) => {
                   resolve(true);
                 }
               }}
-              className={
-                (opts as ConfirmOptions)?.destructive
-                  ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                  : undefined
+              intent={
+                (opts as ConfirmOptions)?.destructive ? "danger" : "primary"
               }
             >
               {opts?.confirmLabel ??

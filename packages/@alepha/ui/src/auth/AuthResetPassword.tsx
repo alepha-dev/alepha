@@ -342,7 +342,7 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
                   />
                 )}
                 <Button
-                  variant="ghost"
+                  variant="minimal"
                   onClick={handleResend}
                   loading={submitting}
                   disabled={!!captchaSiteKey && !captchaToken}
@@ -421,7 +421,7 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
           </CardContent>
         </Card>
         <Button
-          variant="ghost"
+          variant="minimal"
           nativeButton={false}
           render={<a href={redirect} />}
         >

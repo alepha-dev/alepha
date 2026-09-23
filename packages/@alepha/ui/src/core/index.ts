@@ -89,7 +89,13 @@ export {
   BreadcrumbSeparator,
   type BreadcrumbSeparatorProps,
 } from "./Breadcrumb.tsx";
-export { Button, type ButtonProps, buttonVariants } from "./Button.tsx";
+export {
+  Button,
+  type ButtonIntent,
+  type ButtonProps,
+  type ButtonVariant,
+  buttonVariants,
+} from "./Button.tsx";
 export {
   ButtonGroup,
   type ButtonGroupProps,

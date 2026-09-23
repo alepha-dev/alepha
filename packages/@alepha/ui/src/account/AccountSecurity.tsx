@@ -191,7 +191,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
           >
             {signInMethods.length > 1 ? (
               <Button
-                variant="ghost"
+                variant="minimal"
                 size="sm"
                 onClick={() => unlink(identity)}
                 aria-label={tr("account.security.unlinkAria", {
@@ -236,13 +236,19 @@ const AccountSecurity = (props: AccountSecurityProps) => {
             }
           >
             {mfa?.totp.enabled ? (
-              <Button variant="secondary" size="sm" onClick={disableMfa}>
+              <Button
+                variant="solid"
+                intent="none"
+                size="sm"
+                onClick={disableMfa}
+              >
                 <ShieldOff className="size-4" />
                 {tr("account.security.mfaTurnOff", { default: "Turn off" })}
               </Button>
             ) : (
               <Button
-                variant="secondary"
+                variant="solid"
+                intent="none"
                 size="sm"
                 onClick={() => setMfaOpen(true)}
               >
@@ -267,7 +273,8 @@ const AccountSecurity = (props: AccountSecurityProps) => {
           }
         >
           <Button
-            variant="secondary"
+            variant="solid"
+            intent="none"
             size="sm"
             onClick={() => setPasswordOpen(true)}
           >
@@ -298,7 +305,8 @@ const AccountSecurity = (props: AccountSecurityProps) => {
           })}
         >
           <Button
-            variant="destructive"
+            variant="outlined"
+            intent="danger"
             size="sm"
             onClick={() => setDeleteOpen(true)}
           >

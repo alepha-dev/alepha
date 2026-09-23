@@ -152,7 +152,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
                   {rule.pattern}
                 </span>
                 <Button
-                  variant="ghost"
+                  variant="minimal"
                   size="icon"
                   className="text-destructive shrink-0"
                   disabled={saving || !canManage}

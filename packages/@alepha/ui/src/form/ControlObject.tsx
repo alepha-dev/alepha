@@ -145,7 +145,7 @@ export const ControlObject = (props: ControlObjectProps) => {
         {!isInitialized && !props.disabled ? (
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             size="icon"
             className="size-8 shrink-0"
             aria-label={tr("controlObject.initialize", {
@@ -158,7 +158,7 @@ export const ControlObject = (props: ControlObjectProps) => {
         ) : showClear ? (
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="icon"
             className="size-8 shrink-0"
             aria-label={tr("controlObject.clear", { default: "Clear" })}
@@ -192,7 +192,7 @@ export const ControlObject = (props: ControlObjectProps) => {
         {isInitialized && (
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="icon"
             className="size-8 shrink-0"
             aria-label={

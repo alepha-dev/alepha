@@ -621,7 +621,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               that needs no picker, so it gets a button of its own rather
               than a row in the assignee menu. */}
           <Button
-            variant={assigneeFilter === "me" ? "secondary" : "ghost"}
+            variant={assigneeFilter === "me" ? "solid" : "minimal"}
+            intent="none"
             size="sm"
             className="h-7 text-xs"
             aria-pressed={assigneeFilter === "me"}
@@ -637,7 +638,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           </Button>
 
           <Button
-            variant={dueFilter ? "secondary" : "ghost"}
+            variant={dueFilter ? "solid" : "minimal"}
+            intent="none"
             size="sm"
             className="h-7 text-xs"
             aria-pressed={Boolean(dueFilter)}
@@ -665,7 +667,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               readable past a hundred cards, and lanes put the shape of the
               work back without changing what a column means. */}
           <Button
-            variant={laneMode === "none" ? "ghost" : "secondary"}
+            variant={laneMode === "none" ? "minimal" : "solid"}
+            intent="none"
             size="sm"
             className="h-7 text-xs"
             aria-pressed={laneMode !== "none"}
@@ -686,7 +689,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
 
           {filtersActive && (
             <Button
-              variant="ghost"
+              variant="minimal"
               size="sm"
               className="text-muted-foreground h-7 text-xs"
               data-testid="kanban-filter-reset"

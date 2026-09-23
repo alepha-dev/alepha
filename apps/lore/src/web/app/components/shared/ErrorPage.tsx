@@ -40,16 +40,16 @@ const ErrorPage = () => {
           </span>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.history.back()}>
+          <Button variant="outlined" onClick={() => window.history.back()}>
             <ArrowLeft className="size-4" />
             {tr("error.back")}
           </Button>
-          <Button variant="outline" onClick={() => window.location.reload()}>
+          <Button variant="outlined" onClick={() => window.location.reload()}>
             <RotateCw className="size-4" />
             {tr("error.reload")}
           </Button>
           <Button
-            variant="outline"
+            variant="outlined"
             onClick={() => {
               window.location.href = "/";
             }}

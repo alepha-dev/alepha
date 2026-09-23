@@ -32,7 +32,7 @@ const Calendar = (props: CalendarProps) => {
     classNames,
     showOutsideDays = true,
     captionLayout = "label",
-    buttonVariant = "ghost",
+    buttonVariant = "minimal",
     locale,
     formatters,
     components,
@@ -214,7 +214,7 @@ const CalendarDayButton = (props: CalendarDayButtonProps) => {
 
   return (
     <Button
-      variant="ghost"
+      variant="minimal"
       size="icon"
       data-day={day.date.toLocaleDateString(locale?.code)}
       data-selected-single={

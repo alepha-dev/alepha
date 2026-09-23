@@ -103,7 +103,7 @@ const AppAnalyticsDimension = () => {
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex items-center gap-3">
         <Button
-          variant="ghost"
+          variant="minimal"
           size="sm"
           onClick={() =>
             void router.push("appAnalytics", { params, query: filters })

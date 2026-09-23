@@ -44,7 +44,7 @@ export const DataTableRowActionsMenu = <T,>(
       <DropdownMenuTrigger
         render={
           <Button
-            variant="ghost"
+            variant="minimal"
             size="icon"
             aria-label={tr("dataTable.openRowActions", {
               default: "Open row actions",

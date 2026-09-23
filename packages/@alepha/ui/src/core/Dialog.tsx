@@ -68,7 +68,7 @@ const DialogContent = (props: DialogContentProps) => {
             data-slot="dialog-close"
             render={
               <Button
-                variant="ghost"
+                variant="minimal"
                 className="absolute top-2 right-2"
                 size="icon-sm"
               />
@@ -113,7 +113,7 @@ const DialogFooter = (props: DialogFooterProps) => {
     >
       {children}
       {showCloseButton && (
-        <DialogPrimitive.Close render={<Button variant="outline" />}>
+        <DialogPrimitive.Close render={<Button variant="outlined" />}>
           Close
         </DialogPrimitive.Close>
       )}

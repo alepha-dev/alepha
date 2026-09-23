@@ -145,7 +145,8 @@ const MyEstates = () => {
           description={tr("account.estates.create.description")}
         >
           <Button
-            variant="secondary"
+            variant="solid"
+            intent="none"
             size="sm"
             onClick={() => setCreateOpen(true)}
             data-testid="estate-create-open"

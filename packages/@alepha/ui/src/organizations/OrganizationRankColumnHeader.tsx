@@ -36,7 +36,7 @@ export const OrganizationRankColumnHeader = (
           <DropdownMenuTrigger
             render={
               <Button
-                variant="ghost"
+                variant="minimal"
                 size="icon"
                 className="size-6"
                 aria-label={tr("organizations.ranks.actions", {

@@ -369,7 +369,7 @@ const Commande = () => {
 
               <div className="mt-8 flex gap-3">
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   className="estampe text-xs"
                   onClick={() => setEtape(1)}
                 >
@@ -397,7 +397,7 @@ const Commande = () => {
 
               <div className="mt-8 flex gap-3">
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   className="estampe text-xs"
                   onClick={() => setEtape(2)}
                 >

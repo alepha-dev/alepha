@@ -34,7 +34,7 @@ const ReleaseSaveToFolioDialog = (props: ReleaseSaveToFolioDialogProps) => {
         />
       </div>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={props.onCancel}>
+        <Button variant="outlined" onClick={props.onCancel}>
           {tr("release.start.cancel")}
         </Button>
         <Button

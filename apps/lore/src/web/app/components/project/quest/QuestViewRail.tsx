@@ -263,7 +263,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           {quest.heldAt ? (
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               className="[&_svg]:text-muted-foreground justify-start gap-3"
               disabled={props.unholdDisabled}
               onClick={props.onUnhold}
@@ -278,7 +278,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             !quest.shelvedAt && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="minimal"
                 className="[&_svg]:text-muted-foreground justify-start gap-3"
                 disabled={props.holdDisabled}
                 onClick={props.onHold}
@@ -292,7 +292,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           {quest.shelvedAt ? (
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               className="[&_svg]:text-muted-foreground justify-start gap-3"
               disabled={props.unshelveDisabled}
               onClick={props.onUnshelve}
@@ -307,7 +307,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             !quest.heldAt && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="minimal"
                 className="[&_svg]:text-muted-foreground justify-start gap-3"
                 disabled={props.shelveDisabled}
                 onClick={props.onShelve}
@@ -321,7 +321,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           {quest.acceptedAt && (
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               className="text-destructive hover:text-destructive justify-start gap-3"
               disabled={props.unassignDisabled}
               onClick={props.onUnassign}

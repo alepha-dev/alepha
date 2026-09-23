@@ -226,11 +226,11 @@ const Shell = () => {
             topbarActions={
               v.topbar ? (
                 <>
-                  <Button variant="ghost" size="icon-sm" aria-label="Search">
+                  <Button variant="minimal" size="icon-sm" aria-label="Search">
                     <Search />
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="minimal"
                     size="icon-sm"
                     aria-label="Notifications"
                   >

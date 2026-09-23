@@ -60,7 +60,7 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
           here and stays: it is what names it to a reader, at every width. */}
       <Button
         type="button"
-        variant="ghost"
+        variant="minimal"
         size="icon"
         aria-label={tr("quest.view.edit")}
         title={tr("quest.view.edit")}

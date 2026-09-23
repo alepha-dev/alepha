@@ -239,7 +239,7 @@ export const Showcase = <T extends ZObject>(props: ShowcaseProps<T>) => {
 
           {props.schema ? (
             <Button
-              variant="ghost"
+              variant="minimal"
               size="icon"
               aria-label={open ? "Hide props" : "Show props"}
               onClick={() => setOpen((v) => !v)}

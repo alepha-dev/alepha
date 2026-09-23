@@ -553,7 +553,7 @@ export const ControlArray = (props: ControlArrayProps) => {
     <div className="flex shrink-0 flex-col gap-1">
       <Button
         type="button"
-        variant="ghost"
+        variant="minimal"
         size="icon"
         className="size-7"
         disabled={props.disabled || index === 0 || items.length < 2}
@@ -564,7 +564,7 @@ export const ControlArray = (props: ControlArrayProps) => {
       </Button>
       <Button
         type="button"
-        variant="ghost"
+        variant="minimal"
         size="icon"
         className="size-7"
         disabled={props.disabled || items.length <= min}
@@ -575,7 +575,7 @@ export const ControlArray = (props: ControlArrayProps) => {
       </Button>
       <Button
         type="button"
-        variant="ghost"
+        variant="minimal"
         size="icon"
         className="size-7"
         disabled={
@@ -610,7 +610,7 @@ export const ControlArray = (props: ControlArrayProps) => {
           <Button
             key={item.key}
             type="button"
-            variant={i === activeTab ? "default" : "ghost"}
+            variant={i === activeTab ? "solid" : "minimal"}
             size="sm"
             onClick={() => setActiveTab(i)}
           >
@@ -643,7 +643,7 @@ export const ControlArray = (props: ControlArrayProps) => {
             <Button
               key={variantLabel(variant, discriminant, index)}
               type="button"
-              variant="outline"
+              variant="outlined"
               size="sm"
               className="h-8"
               disabled={props.disabled || items.length >= max}
@@ -657,7 +657,7 @@ export const ControlArray = (props: ControlArrayProps) => {
       ) : (
         <Button
           type="button"
-          variant="outline"
+          variant="outlined"
           size="icon"
           className="size-8 shrink-0"
           disabled={props.disabled || items.length >= max}
@@ -689,7 +689,7 @@ export const ControlArray = (props: ControlArrayProps) => {
       {items.length > 0 && (
         <Button
           type="button"
-          variant="ghost"
+          variant="minimal"
           size="icon"
           className="size-8 shrink-0"
           aria-label={
@@ -737,11 +737,12 @@ export const ControlArray = (props: ControlArrayProps) => {
             <DialogDescription>{message}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+            <Button variant="minimal" onClick={() => setPendingDelete(null)}>
               {tr("controlArray.cancel", { default: "Cancel" })}
             </Button>
             <Button
-              variant="destructive"
+              variant="outlined"
+              intent="danger"
               onClick={() => {
                 doRemove(pendingDelete);
                 setPendingDelete(null);

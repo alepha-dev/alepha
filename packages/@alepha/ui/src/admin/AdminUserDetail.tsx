@@ -620,7 +620,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         actions={
           <>
             <Button
-              variant="outline"
+              variant="outlined"
               size="lg"
               loading={toggleEnabled.loading}
               disabled={isSelf}
@@ -639,7 +639,8 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
               )}
             </Button>
             <Button
-              variant="destructive"
+              variant="outlined"
+              intent="danger"
               size="lg"
               loading={deleteUser.loading}
               disabled={isSelf}

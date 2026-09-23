@@ -88,7 +88,7 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
       />
 
       <Button
-        variant="outline"
+        variant="outlined"
         size="sm"
         loading={busy}
         data-testid="admin-avatar-replace"
@@ -100,7 +100,7 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
 
       {props.user.picture && client.deleteUserAvatar.can() && (
         <Button
-          variant="ghost"
+          variant="minimal"
           size="sm"
           loading={busy}
           data-testid="admin-avatar-remove"

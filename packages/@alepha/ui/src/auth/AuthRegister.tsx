@@ -458,7 +458,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
                     })}
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="minimal"
                     onClick={() => setState({ phase: "form" })}
                   >
                     {tr("auth.register.verifyBack", {
@@ -496,7 +496,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
       </Card>
       {!isVerifying && (
         <Button
-          variant="ghost"
+          variant="minimal"
           nativeButton={false}
           render={<a href={props.cancelPath ?? "/"} />}
         >

@@ -252,7 +252,7 @@ const AppSettingsSigil = () => {
                 )}
               >
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   render={
                     <a
                       href={router.path("projectSettingsSupport", {
@@ -272,7 +272,7 @@ const AppSettingsSigil = () => {
             >
               {isOwner ? (
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   disabled={busy}
                   aria-label={tr("sigils.action.rotate")}
                   onClick={() => void rotate()}
@@ -283,7 +283,7 @@ const AppSettingsSigil = () => {
               ) : (
                 ownerOnly(
                   <Button
-                    variant="outline"
+                    variant="outlined"
                     disabled
                     aria-label={tr("sigils.action.rotate")}
                   >
@@ -300,7 +300,7 @@ const AppSettingsSigil = () => {
             >
               {isOwner ? (
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   disabled={busy}
                   aria-label={tr("sigils.action.delete")}
                   onClick={() => void remove()}
@@ -311,7 +311,7 @@ const AppSettingsSigil = () => {
               ) : (
                 ownerOnly(
                   <Button
-                    variant="outline"
+                    variant="outlined"
                     disabled
                     aria-label={tr("sigils.action.delete")}
                   >

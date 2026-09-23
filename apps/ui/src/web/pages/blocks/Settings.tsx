@@ -191,7 +191,7 @@ const Settings = () => (
               <Switch id="showcase-settings-digest" defaultChecked />
             </SettingsRow>
             <SettingsRow label="Plan">
-              <Button variant="outline" size="sm">
+              <Button variant="outlined" size="sm">
                 Change plan
               </Button>
             </SettingsRow>
@@ -218,7 +218,7 @@ const Settings = () => (
                 label="Transfer ownership"
                 description="Hand this workspace to another member."
               >
-                <Button variant="destructive" size="sm">
+                <Button variant="outlined" intent="danger" size="sm">
                   Transfer
                 </Button>
               </SettingsRow>
@@ -226,7 +226,7 @@ const Settings = () => (
                 label="Delete this workspace"
                 description="Every project, folio and quest goes with it."
               >
-                <Button variant="destructive" size="sm">
+                <Button variant="outlined" intent="danger" size="sm">
                   Delete
                 </Button>
               </SettingsRow>

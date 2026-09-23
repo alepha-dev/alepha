@@ -131,7 +131,7 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
           </DialogDescription>
         )}
         <DialogFooter>
-          <Button variant="ghost" onClick={close} disabled={submitting}>
+          <Button variant="minimal" onClick={close} disabled={submitting}>
             {tr("common.cancel")}
           </Button>
           <Button

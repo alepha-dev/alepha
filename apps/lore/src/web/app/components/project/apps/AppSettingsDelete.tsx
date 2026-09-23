@@ -105,7 +105,8 @@ const AppSettingsDelete = () => {
       >
         {isOwner ? (
           <Button
-            variant="destructive"
+            variant="outlined"
+            intent="danger"
             disabled={busy}
             aria-label={tr("app.settings.delete.action")}
             onClick={() => void removeAction.run()}
@@ -119,7 +120,8 @@ const AppSettingsDelete = () => {
           <Tooltip>
             <TooltipTrigger render={<span className="inline-flex" />}>
               <Button
-                variant="destructive"
+                variant="outlined"
+                intent="danger"
                 disabled
                 aria-label={tr("app.settings.delete.action")}
               >

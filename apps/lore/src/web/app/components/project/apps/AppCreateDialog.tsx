@@ -244,7 +244,7 @@ const AppCreateDialog = (props: AppCreateDialogProps) => {
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="outlined"
                 onClick={() => close(false)}
               >
                 {tr("apps.create.cancel")}

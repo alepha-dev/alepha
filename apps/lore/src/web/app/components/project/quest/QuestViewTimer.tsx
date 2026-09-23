@@ -118,7 +118,7 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
           render={
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               size="sm"
               className="h-6 px-1"
               onClick={() => void toggleAction.run()}

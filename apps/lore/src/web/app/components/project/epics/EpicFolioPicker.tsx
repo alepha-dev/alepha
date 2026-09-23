@@ -64,7 +64,7 @@ const EpicFolioPicker = (props: EpicFolioPickerProps) => {
         render={
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             size="sm"
             disabled={props.disabled}
           />

@@ -158,7 +158,7 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
       {isEmail && (
         <Button
           type="button"
-          variant="ghost"
+          variant="minimal"
           loading={resending}
           onClick={resend}
         >
@@ -166,7 +166,7 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
         </Button>
       )}
 
-      <Button type="button" variant="ghost" onClick={props.onCancel}>
+      <Button type="button" variant="minimal" onClick={props.onCancel}>
         {tr("auth.mfa.back", { default: "Back to sign in" })}
       </Button>
     </div>

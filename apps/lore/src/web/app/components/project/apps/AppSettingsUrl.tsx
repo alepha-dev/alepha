@@ -120,7 +120,7 @@ const AppSettingsUrl = () => {
         />
         {isOwner ? (
           <Button
-            variant="outline"
+            variant="outlined"
             disabled={busy || !changed}
             onClick={() => void save()}
           >
@@ -129,7 +129,7 @@ const AppSettingsUrl = () => {
         ) : (
           <Tooltip>
             <TooltipTrigger render={<span className="inline-flex" />}>
-              <Button variant="outline" disabled>
+              <Button variant="outlined" disabled>
                 {tr("app.settings.url.save")}
               </Button>
             </TooltipTrigger>

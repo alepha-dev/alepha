@@ -145,7 +145,11 @@ const AccountConnections = (props: AccountConnectionsProps) => {
               : "")
           }
         >
-          <Button variant="ghost" size="sm" onClick={() => revoke(connection)}>
+          <Button
+            variant="minimal"
+            size="sm"
+            onClick={() => revoke(connection)}
+          >
             {tr("account.connections.revoke", { default: "Disconnect" })}
           </Button>
         </SettingsRow>

@@ -42,7 +42,7 @@ const ComboboxClear = (props: ComboboxClearProps) => {
   return (
     <ComboboxPrimitive.Clear
       data-slot="combobox-clear"
-      render={<InputGroupButton variant="ghost" size="icon-xs" />}
+      render={<InputGroupButton variant="minimal" size="icon-xs" />}
       className={cn(className)}
       {...rest}
     >
@@ -75,7 +75,7 @@ const ComboboxInput = (props: ComboboxInputProps) => {
         {showTrigger && (
           <InputGroupButton
             size="icon-xs"
-            variant="ghost"
+            variant="minimal"
             render={<ComboboxTrigger />}
             data-slot="input-group-button"
             className="group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent"
@@ -270,7 +270,7 @@ const ComboboxChip = (props: ComboboxChipProps) => {
       {children}
       {showRemove && (
         <ComboboxPrimitive.ChipRemove
-          render={<Button variant="ghost" size="icon-xs" />}
+          render={<Button variant="minimal" size="icon-xs" />}
           className="-ml-1 opacity-50 hover:opacity-100"
           data-slot="combobox-chip-remove"
         >

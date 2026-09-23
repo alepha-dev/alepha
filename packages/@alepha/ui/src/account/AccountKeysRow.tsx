@@ -69,7 +69,7 @@ export const AccountKeysRow = (props: AccountKeysRowProps) => {
 
         {key.status === "revoked" ? null : (
           <Button
-            variant="ghost"
+            variant="minimal"
             size="sm"
             onClick={() => props.onRotate(key)}
             aria-label={tr("account.keys.rotateAria", {
@@ -83,7 +83,7 @@ export const AccountKeysRow = (props: AccountKeysRowProps) => {
 
         {dead ? null : (
           <Button
-            variant="ghost"
+            variant="minimal"
             size="sm"
             onClick={() => props.onRevoke(key)}
             aria-label={tr("account.keys.revokeAria", {

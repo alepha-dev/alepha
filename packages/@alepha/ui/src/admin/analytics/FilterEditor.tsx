@@ -71,7 +71,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
             </code>
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               size="icon-xs"
               className="size-[18px] opacity-75 hover:opacity-100"
               title={tr("admin.analytics.changeValues", {
@@ -89,7 +89,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="minimal"
               size="icon-xs"
               className="size-[18px] opacity-75 hover:opacity-100"
               title={tr("admin.analytics.removeFilter", { default: "Remove" })}
@@ -102,7 +102,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
         <div data-filter-picker className="w-full min-w-0">
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             onClick={() => {
               setOpen((current) => !current);
               setEditing(null);

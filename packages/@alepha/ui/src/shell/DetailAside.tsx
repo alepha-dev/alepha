@@ -189,7 +189,7 @@ export const DetailAside = (props: DetailAsideProps) => {
                   )}
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="minimal"
                     size="icon-xs"
                     onClick={() => copy(row)}
                     aria-label={tr("admin.detail.copyValue", {

@@ -43,7 +43,7 @@ export const AdminParametersTreePane = (
         {props.orphanCount > 0 && (
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="sm"
             className="ml-auto h-6 gap-1 px-1.5 text-[11px] tracking-normal normal-case"
             aria-pressed={props.showOrphans}

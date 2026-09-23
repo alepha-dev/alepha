@@ -69,7 +69,7 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
   if (!open) {
     return (
       <Button
-        variant="ghost"
+        variant="minimal"
         size="sm"
         disabled={props.disabled}
         data-testid={`kanban-composer-open-${props.position}`}
@@ -120,7 +120,7 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
           {tr("kanban.composer.submit")}
         </Button>
         <Button
-          variant="ghost"
+          variant="minimal"
           size="sm"
           className="h-7 text-xs"
           onClick={() => {

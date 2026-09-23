@@ -126,7 +126,7 @@ export const MyOrganizationInvitations = (
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   size="sm"
                   disabled={busy}
                   onClick={() => void decline.run(invitation.id)}

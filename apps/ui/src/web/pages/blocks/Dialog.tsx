@@ -45,7 +45,7 @@ const Dialog = () => {
         <div className="flex flex-col items-center gap-4">
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
-              variant={v.destructive ? "destructive" : "default"}
+              intent={v.destructive ? "danger" : "primary"}
               onClick={async () => {
                 const ok = await dialog.confirm({
                   title: v.title,
@@ -61,7 +61,8 @@ const Dialog = () => {
             </Button>
 
             <Button
-              variant="secondary"
+              variant="solid"
+              intent="none"
               onClick={async () => {
                 await dialog.alert({
                   title: v.title,
@@ -74,7 +75,7 @@ const Dialog = () => {
             </Button>
 
             <Button
-              variant="outline"
+              variant="outlined"
               onClick={async () => {
                 const value = await dialog.prompt({
                   title: v.title,

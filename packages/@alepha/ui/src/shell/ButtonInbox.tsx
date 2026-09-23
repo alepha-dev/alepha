@@ -57,7 +57,7 @@ export interface ButtonInboxProps {
     markAllRead?: string;
     seeAll?: string;
   };
-  variant?: "ghost" | "outline";
+  variant?: "minimal" | "outlined";
   /**
    * Called with the message's `href` when a row is clicked, after it has
    * been marked read. Defaults to a full navigation, which is correct for an
@@ -181,7 +181,7 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
             <DropdownMenuTrigger
               render={
                 <Button
-                  variant={props.variant ?? "ghost"}
+                  variant={props.variant ?? "minimal"}
                   size="icon"
                   aria-label={label}
                   className="relative"

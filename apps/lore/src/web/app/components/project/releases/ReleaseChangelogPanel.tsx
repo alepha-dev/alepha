@@ -60,16 +60,16 @@ const ReleaseChangelogPanel = (props: ReleaseChangelogPanelProps) => {
           {props.statusLabel}
         </Badge>
         <div className="flex-1" />
-        <Button variant="outline" size="sm" onClick={props.onCopy}>
+        <Button variant="outlined" size="sm" onClick={props.onCopy}>
           <Copy className="size-3.5" />
           {tr("release.changelog.copy")}
         </Button>
-        <Button variant="outline" size="sm" onClick={props.onDownload}>
+        <Button variant="outlined" size="sm" onClick={props.onDownload}>
           <Download className="size-3.5" />
           {tr("release.changelog.md")}
         </Button>
         {props.onSaveToFolio && (
-          <Button variant="outline" size="sm" onClick={props.onSaveToFolio}>
+          <Button variant="outlined" size="sm" onClick={props.onSaveToFolio}>
             <BookMarked className="size-3.5" />
             {tr("release.changelog.saveToFolio")}
           </Button>

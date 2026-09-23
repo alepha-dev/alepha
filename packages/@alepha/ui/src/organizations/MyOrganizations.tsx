@@ -129,7 +129,7 @@ export const MyOrganizations = (props: MyOrganizationsProps) => {
               <CardContent>
                 <Button
                   className="w-full justify-between"
-                  variant="outline"
+                  variant="outlined"
                   disabled={busy}
                   aria-label={tr("organizations.mine.openLabel", {
                     default: "Open $1",

@@ -51,7 +51,7 @@ export const FilterValuePicker = (props: FilterValuePickerProps) => {
       <div className="flex items-center gap-2 px-1 pt-0.5 pb-2">
         <Button
           type="button"
-          variant="outline"
+          variant="outlined"
           size="icon-xs"
           onClick={props.onBack}
           aria-label={tr("admin.analytics.backToDimensions", {
@@ -139,7 +139,7 @@ export const FilterValuePicker = (props: FilterValuePickerProps) => {
         </span>
         <Button
           type="button"
-          variant="outline"
+          variant="outlined"
           size="xs"
           onClick={() => setSelected([])}
         >

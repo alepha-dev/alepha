@@ -183,12 +183,12 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={close}>
+            <Button type="button" variant="minimal" onClick={close}>
               {tr("account.delete.cancel", { default: "Cancel" })}
             </Button>
             <Button
               type="submit"
-              variant="destructive"
+              intent="danger"
               disabled={submitting || !ready}
             >
               {tr("account.delete.submit", { default: "Delete account" })}

@@ -69,7 +69,7 @@ export const DataTableColumnPicker = <T,>(
                 <Button
                   type="button"
                   size="sm"
-                  variant="ghost"
+                  variant="minimal"
                   className="h-9 w-9 p-0"
                   aria-label={label}
                 />

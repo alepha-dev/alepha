@@ -67,7 +67,7 @@ const MarkdownFormatToolbar = (props: MarkdownFormatToolbarProps) => {
                       <Button
                         type="button"
                         size="icon-xs"
-                        variant="ghost"
+                        variant="minimal"
                         aria-label={label}
                         // No `title`: a real tooltip and the browser's own
                         // would both fire. See the selection toolbar.

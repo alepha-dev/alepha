@@ -1,4 +1,4 @@
-import { buttonVariants } from "@alepha/ui";
+import { Button } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -100,15 +100,16 @@ const ProjectFeedbackEmptyState = (
           destination, so it keeps middle-click and open-in-new-tab. The
           owner most often wants the URL itself, to hand to somebody else.
         */
-        <a
+        <Button
           href={router.path("projectFeedbackRequest", {
             params: { projectSlug: project.slug },
           })}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
+          variant="outlined"
+          size="sm"
         >
           <SquareArrowOutUpRight className="size-3.5" />
           {tr("feedback.empty.detail.openForm")}
-        </a>
+        </Button>
       )}
     </div>
   );

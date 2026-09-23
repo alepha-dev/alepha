@@ -169,7 +169,8 @@ const AccountKeys = (props: AccountKeysProps) => {
           })}
         >
           <Button
-            variant="secondary"
+            variant="solid"
+            intent="none"
             size="sm"
             onClick={() => setCreateOpen(true)}
           >
@@ -196,7 +197,7 @@ const AccountKeys = (props: AccountKeysProps) => {
             })}
           >
             <Button
-              variant="ghost"
+              variant="minimal"
               size="sm"
               aria-expanded={showInactive}
               onClick={() => setShowInactive((open) => !open)}
@@ -262,7 +263,7 @@ const AccountKeys = (props: AccountKeysProps) => {
               {freshToken}
             </code>
             <DialogFooter>
-              <Button variant="secondary" onClick={copy}>
+              <Button variant="solid" intent="none" onClick={copy}>
                 {copied ? (
                   <Check className="size-4" />
                 ) : (

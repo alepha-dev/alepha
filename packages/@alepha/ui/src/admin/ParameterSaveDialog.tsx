@@ -107,7 +107,7 @@ export const ParameterSaveDialog = (props: ParameterSaveDialogProps) => {
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             disabled={save.loading}
             onClick={() => props.onOpenChange(false)}
           >

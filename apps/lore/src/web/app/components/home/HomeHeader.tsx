@@ -1,7 +1,7 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { ButtonInbox } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import { Sparkles } from "lucide-react";
 
 import type { AppRouter } from "../../AppRouter.ts";
@@ -53,15 +53,7 @@ const HomeHeader = () => {
         <TooltipTrigger
           render={
             <Button
-              render={
-                <Link href={router.path("projectCreate")} />
-                // A link wearing a button's clothes: `nativeButton={false}`
-                // stops Base UI assuming a native <button> (it warns
-                // otherwise), and `role` puts back the link semantics its
-                // non-native branch would overwrite with `role="button"`.
-              }
-              nativeButton={false}
-              role="link"
+              href={router.path("projectCreate")}
               data-testid="home-new-project"
               className="max-sm:size-8 max-sm:px-0"
             />

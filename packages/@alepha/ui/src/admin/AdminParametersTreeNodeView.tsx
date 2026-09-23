@@ -57,7 +57,7 @@ export const AdminParametersTreeNodeView = (
         {orphan && (
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="icon-sm"
             className="text-muted-foreground hover:text-destructive shrink-0"
             aria-label={tr("admin.parameters.orphanDeleteAction", {

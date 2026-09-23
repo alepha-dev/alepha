@@ -165,7 +165,7 @@ export type AlertDialogCancelProps = AlertDialogPrimitive.Close.Props &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">;
 
 const AlertDialogCancel = (props: AlertDialogCancelProps) => {
-  const { className, variant = "outline", size = "default", ...rest } = props;
+  const { className, variant = "outlined", size = "default", ...rest } = props;
   return (
     <AlertDialogPrimitive.Close
       data-slot="alert-dialog-cancel"

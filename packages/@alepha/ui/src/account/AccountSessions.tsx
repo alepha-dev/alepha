@@ -188,7 +188,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
           description={description(session)}
         >
           {session.current ? null : (
-            <Button variant="ghost" size="sm" onClick={() => revoke(session)}>
+            <Button variant="minimal" size="sm" onClick={() => revoke(session)}>
               {tr("account.sessions.revoke", { default: "Revoke" })}
             </Button>
           )}
@@ -204,7 +204,12 @@ const AccountSessions = (props: AccountSessionsProps) => {
             default: "Ends every session except this one.",
           })}
         >
-          <Button variant="destructive" size="sm" onClick={revokeOthers}>
+          <Button
+            variant="outlined"
+            intent="danger"
+            size="sm"
+            onClick={revokeOthers}
+          >
             {others === 1
               ? tr("account.sessions.signOutOne", {
                   default: "Sign out 1 other",

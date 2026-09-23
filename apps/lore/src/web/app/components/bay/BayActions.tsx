@@ -128,7 +128,8 @@ const BayActions = (props: BayActionsProps) => {
         {canStop && (
           <>
             <Button
-              variant="secondary"
+              variant="solid"
+              intent="none"
               size="sm"
               disabled={busy}
               onClick={() => void enqueue("restart")}
@@ -138,7 +139,8 @@ const BayActions = (props: BayActionsProps) => {
               {tr("bay.actions.restart")}
             </Button>
             <Button
-              variant="secondary"
+              variant="solid"
+              intent="none"
               size="sm"
               disabled={busy}
               onClick={() => void confirmStop()}
@@ -151,7 +153,8 @@ const BayActions = (props: BayActionsProps) => {
         )}
         {canStart && (
           <Button
-            variant="secondary"
+            variant="solid"
+            intent="none"
             size="sm"
             disabled={busy}
             onClick={() => void enqueue("start")}
@@ -163,7 +166,8 @@ const BayActions = (props: BayActionsProps) => {
         )}
         {canBackup && (
           <Button
-            variant="secondary"
+            variant="solid"
+            intent="none"
             size="sm"
             disabled={busy}
             onClick={() => void enqueue("backup")}
@@ -174,7 +178,7 @@ const BayActions = (props: BayActionsProps) => {
           </Button>
         )}
         <Button
-          variant="ghost"
+          variant="minimal"
           size="sm"
           // Refuses offline rather than queueing, so it is disabled and the
           // sentence below says which of the two behaviours this is.

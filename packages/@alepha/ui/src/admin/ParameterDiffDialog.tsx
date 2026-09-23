@@ -99,14 +99,14 @@ export const ParameterDiffDialog = (props: ParameterDiffDialogProps) => {
           <DialogFooter>
             <DialogClose
               render={
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outlined">
                   {tr("admin.parameters.diffCancel", { default: "Cancel" })}
                 </Button>
               }
             />
             <Button
               type="button"
-              variant={props.confirm.destructive ? "destructive" : "default"}
+              intent={props.confirm.destructive ? "danger" : "primary"}
               loading={props.confirm.loading}
               onClick={() => props.confirm?.onConfirm()}
             >
