@@ -7,33 +7,16 @@ import {
 
 /**
  * Home is the only SSR'd route, and a signed-in visitor with projects gets the
- * board there: the rows come from the bootstrap atom, so the table IS in the
- * server HTML, and its Last activity column is a relative time.
+ * list there: the rows come from the bootstrap atom, so they ARE in the server
+ * HTML, while the momentum strip and the open counts come from `getHomeBoard`,
+ * a `useQuery` that fetches from an effect and fills after hydration.
  *
- * A relative time computed with `fromNow()` mismatches between the server
- * render and client hydration (clock drift, or a unit boundary crossed between
- * the two) → React #418. `TimeAgo` is what avoids it: the absolute form is
- * what it renders on the server, and the relative one appears after hydration.
- *
- * The mismatch itself is timing-dependent (it only fires on a unit boundary),
- * so a "no console error" check would be a false green. This asserts the
- * deterministic mechanism instead: the relative time is NOT server-rendered
- * but DOES appear after hydration.
- *
- * ⚠️ It used to assert the same thing about the dashboard header's "Refreshed
- * <time>" standfirst. That board is gone; the hazard it guarded is not, and it
- * now sits in a column on every row.
- *
- * The column is now "today" / "3d ago", counted from `getHomeBoard`'s last
- * activity. That request is a `useQuery`, which fetches from an effect, so the
- * cell is empty in the server HTML by construction and fills after
- * hydration: the same guarantee, reached another way, and asserted the same
- * way. A project made seconds ago reads "today".
+ * The row renders no relative time any more ("today", "3d ago"): the Last
+ * activity column went with the table. This still pins the half that
+ * survived, that the list itself is server-rendered.
  */
 test.describe("Home (SSR)", () => {
-  test("relative times are client-only, not in the SSR HTML", async ({
-    page,
-  }) => {
+  test("the recent projects are in the SSR HTML", async ({ page }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
@@ -46,21 +29,7 @@ test.describe("Home (SSR)", () => {
     // Raw server-rendered HTML for the authenticated home page (page.request
     // shares the browser context's session cookie).
     const html = await (await page.request.get("/")).text();
-
-    // The table IS server-rendered (the project title is in the SSR HTML)...
     expect(html).toContain(projectTitle);
-    // ...but no relative time is: not the old `fromNow` wording, and not the
-    // Last activity cell, which reads "today" once the client has it.
-    expect(html).not.toContain("seconds ago");
-    expect(html).not.toContain("minute ago");
-    expect(html).not.toMatch(/>today</i);
-
-    // After hydration it appears client-side.
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/^today$/i).first()).toBeVisible({
-      timeout: 15_000,
-    });
   });
 });
 
@@ -151,19 +120,20 @@ test.describe("Home (mobile chrome)", () => {
 });
 
 /**
- * The landing page itself: the table of projects and the bars beside them.
- *
- * Two things here cannot be covered anywhere else.
+ * The landing page itself: the recent projects, the bars beside them, and the
+ * search across every project.
  *
  * **The bars are one request, the rows are another.** The rows come from the
  * bootstrap atom and the bars from `getHomeBoard`, so a page that renders its
  * rows proves nothing about the aggregate behind them.
  *
- * **The table is the list at every width.** #1754, from feedback #2084 on
+ * **The list is there at every width.** #1754, from feedback #2084 on
  * Chrome/Android at 412x924: the landing page had no way to reach a project
- * at all, because the one surface carrying the list was `lg:flex`. The table
- * is not breakpoint-gated, which is what those widths pin. The Recent
- * activity panel that used to sit beside it was deleted in #E64.
+ * at all, because the one surface carrying the list was `lg:flex`. The list
+ * is not breakpoint-gated, which is what those widths pin.
+ *
+ * **The search runs once per project.** There is no cross-project action, so
+ * a hit proves the fan-out reached the project that holds it.
  */
 test.describe("Home (board)", () => {
   test("lists projects and draws momentum", async ({ page }) => {
@@ -196,22 +166,18 @@ test.describe("Home (board)", () => {
       });
     }
 
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    const table = page.getByRole("table");
-    await expect(
-      table.getByRole("row").filter({ hasText: `Busy${t}`.slice(0, 20) }),
-    ).toBeVisible({ timeout: 15_000 });
-    // Three projects and the header row.
-    await expect(table.getByRole("row")).toHaveCount(4);
+    const rows = page.getByTestId("home-project-row");
+    const busyRow = rows.filter({ hasText: `Busy${t}`.slice(0, 20) });
+    await expect(busyRow).toBeVisible({ timeout: 15_000 });
+    await expect(rows).toHaveCount(3);
 
-    // The open-quest count is the project's own, not the account's.
-    const busyRow = table
-      .getByRole("row")
-      .filter({ hasText: `Busy${t}`.slice(0, 20) });
-    // The Open column is a link per feature, to that feature's page; the
-    // quest link names its count.
+    // The open-quest count is the project's own, not the account's. The Open
+    // column is a link per feature, to that feature's page; the quest link
+    // names its count.
     const openQuests = busyRow.getByRole("link", { name: "3 open quests" });
     await expect(openQuests).toBeVisible();
     await expect(openQuests).toHaveAttribute("href", /\/quests$/);
@@ -222,99 +188,92 @@ test.describe("Home (board)", () => {
       busyRow.getByRole("img", { name: /events over the last 14 days/i }),
     ).toBeVisible();
 
-    // A row is a link to its project, which is the page's primary job.
-    await table
-      .getByRole("row")
+    // A row opens its project, which is the page's primary job.
+    await rows
       .filter({ hasText: `Board${t}`.slice(0, 20) })
+      .getByRole("link", { name: `Board${t}`.slice(0, 20) })
       .click();
     await page.waitForURL(`**/${firstSlug}**`, { timeout: 15_000 });
   });
 
-  test("narrows the table by ownership and by activity", async ({ page }) => {
+  test("finds a quest in any project and opens it", async ({ page }) => {
     test.setTimeout(120_000);
-    /*
-     * The wiring only: both filters are on the bar from the start, and each
-     * value reaches the table. What counts as dormant, and the fallback
-     * before the board arrives, are `homeProjectsFilter.spec.ts`'s: a fresh
-     * account owns every project it has, and nothing here is a week old.
-     */
-    const t = Date.now();
-    await registerAndVerify(page, `filt${t}@example.com`, "FilterTest123!");
-    const title = `Filt${t}`.slice(0, 20);
-    await createProjectViaWizard(page, title);
 
-    await page.setViewportSize({ width: 1440, height: 900 });
+    const t = Date.now();
+    await registerAndVerify(page, `find${t}@example.com`, "FindTest123!");
+    await createProjectViaWizard(page, `Find${t}`.slice(0, 20));
+    const other = await apiPost<{ id: number; slug: string }>(
+      page,
+      "createProject",
+      { title: `Other${t}`.slice(0, 20) },
+    );
+    await apiPost(page, "createQuest", {
+      projectId: other.id,
+      title: `Needle ${t}`,
+      area: "general",
+      priority: "medium",
+    });
+
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    const row = page.getByRole("table").getByRole("row").filter({
-      hasText: title,
+    const box = page.getByRole("combobox", {
+      name: "Search quests, folios and projects",
     });
-    await expect(row).toBeVisible({ timeout: 15_000 });
+    // Focus alone opens the dropdown, on the recent projects.
+    await box.click();
+    await expect(
+      page.getByRole("option", { name: new RegExp(`Other${t}`.slice(0, 20)) }),
+    ).toBeVisible({ timeout: 15_000 });
 
-    const pick = async (filter: string, option: string) => {
-      await page.getByRole("combobox", { name: filter }).click();
-      await page.getByRole("option", { name: option }).click();
-      // Base UI parks `pointer-events: none` on <body> for a beat after a
-      // popup closes, and the next click in that window does nothing.
-      await page.waitForFunction(
-        () => document.body.style.pointerEvents !== "none",
-      );
-    };
+    await box.fill(`Needle ${t}`);
+    await expect(
+      page.getByRole("option", { name: new RegExp(`Needle ${t}`) }),
+    ).toBeVisible({ timeout: 15_000 });
 
-    await pick("Ownership", "Shared");
-    await expect(row).toHaveCount(0);
-    await pick("Ownership", "Mine");
-    await expect(row).toBeVisible();
-
-    await pick("Activity", "Dormant (7d+)");
-    await expect(row).toHaveCount(0);
-    await pick("Activity", "Active (7d)");
-    await expect(row).toBeVisible();
+    // Enter opens the highlighted row, which is the only one.
+    await box.press("Enter");
+    await page.waitForURL(/\/quests\/\d+$/, { timeout: 15_000 });
+    expect(page.url()).toContain(`/${other.slug}/quests/`);
   });
 
-  test("keeps the table at every width", async ({ page }) => {
+  test("keeps the list at every width", async ({ page }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
     await registerAndVerify(page, `land${t}@example.com`, "GoodPassw0rd");
-    const { slug } = await createProjectViaWizard(page, `LD${t}`.slice(0, 20));
+    const title = `LD${t}`.slice(0, 20);
+    const { slug } = await createProjectViaWizard(page, title);
 
     // ⚠️ 768 is asserted alongside 412 on purpose. `useIsMobile` flips at
     // 767, so anything hung off it would leave 768-1023 in neither state -
     // the same bug in a narrower band, found months later.
-    for (const width of [412, 768]) {
+    for (const width of [412, 768, 1280]) {
       await page.setViewportSize({ width, height: 924 });
       await page.goto("/");
       await page.waitForLoadState("networkidle");
 
       await expect(
-        page.getByRole("row").filter({ hasText: `LD${t}` }),
+        page.getByTestId("home-project-row").filter({ hasText: title }),
         `no project row at ${width}px`,
       ).toBeVisible({ timeout: 15_000 });
     }
 
-    // And the point of all of it: a project is one tap away.
+    // And the point of all of it: a project is one tap away on a phone.
+    await page.setViewportSize({ width: 412, height: 924 });
+    await page.goto("/");
     await page
-      .getByRole("row")
-      .filter({ hasText: `LD${t}` })
+      .getByTestId("home-project-row")
+      .filter({ hasText: title })
+      .getByRole("link", { name: title })
       .click();
     await page.waitForURL(`**/${slug}**`, { timeout: 15_000 });
-
-    // And at desktop width, still the same list.
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-    await expect(
-      page.getByRole("row").filter({ hasText: `LD${t}` }),
-    ).toBeVisible({ timeout: 15_000 });
   });
 });
 
 /**
- * The switcher's own cap, which is the last one left: the landing page lists
- * every project and pages them, so `RECENT_PROJECTS_CAP` narrows the switcher
- * menu alone.
+ * The switcher's own cap: the landing page shows eight projects and the rest
+ * one click away, so `RECENT_PROJECTS_CAP` is the switcher menu's own.
  *
  * Eleven is the fixture on purpose - the smallest number that truncates a cap
  * of ten. A test built on ten would pass against a cap that had stopped
@@ -350,13 +309,14 @@ test.describe("Home (switcher cap)", () => {
       });
     }
 
-    // The landing page lists every one of them: no cap, and the footer counts
-    // what the table holds.
+    // The landing page shows the eight most recent, and every one of them a
+    // click later, in place.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("table").getByRole("row")).toHaveCount(12, {
-      timeout: 15_000,
-    });
+    const rows = page.getByTestId("home-project-row");
+    await expect(rows).toHaveCount(8, { timeout: 15_000 });
+    await page.getByRole("button", { name: "Show all 11 projects" }).click();
+    await expect(rows).toHaveCount(11);
 
     await page.goto("/account/projects");
     await expect(page.getByTestId("account-project-row")).toHaveCount(11);

@@ -1,10 +1,13 @@
 import { useClient, useQuery, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 
 import type { HomeController } from "@/api/controllers/HomeController.ts";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
 import HomeHeader from "./HomeHeader.tsx";
-import { HomeProjectsTable } from "./HomeProjectsTable.tsx";
+import { HomeRecentProjects } from "./HomeRecentProjects.tsx";
+import { HomeSearch } from "./HomeSearch.tsx";
 
 /**
  * The signed-in landing page: your projects, and how each of them is moving.
@@ -27,10 +30,9 @@ import { HomeProjectsTable } from "./HomeProjectsTable.tsx";
  * Worker invocations - and the landing page is the worst place to repeat it.
  */
 const HomeBoard = () => {
+  const { tr } = useI18n<I18n, "en">();
   const homeApi = useClient<HomeController>();
   const [overview] = useStore(userProjectsAtom);
-
-  const projects = overview?.projects ?? [];
 
   /**
    * Quiet on purpose. A board that cannot be read costs the bars, the
@@ -74,29 +76,29 @@ const HomeBoard = () => {
       )
     : undefined;
 
+  /**
+   * Most recently active first: the board's last activity, or the project
+   * row's own `updatedAt` until the board arrives, so the order is already
+   * close and does not reshuffle from nothing.
+   */
+  const recency = (project: { id: number; updatedAt: string }) =>
+    Date.parse(lastActivity.get(project.id) ?? project.updatedAt);
+  const projects = [...(overview?.projects ?? [])].sort(
+    (a, b) => recency(b) - recency(a),
+  );
+
   return (
     /*
       The page is a grid of four rules and nothing else: two rails down the
       full height at the gutters, and a full-width line under the header and
       above the footer. Header, main and footer are the three bands between
-      them, and `S` is the page background left and right of the rails.
-
-      ⚠️ The table inside main draws NO frame of its own (`flat`): its edges
-      are these rules, and a border on it would be a second line one pixel
-      away.
+      them.
     */
     <div className="relative flex h-svh flex-col">
       {/*
-        The rails, drawn OVER the table's own background: main is flush to
-        `mx-4`, exactly where they sit, so a rail under it would be painted
-        out. `pointer-events-none` and `aria-hidden`: they are rules on a
-        page, not something to click or announce.
-
-        ⚠️ `z-20`, not `z-10`: the table's column header is `sticky z-10`, so
-        at equal z-index the later element in the DOM won and its band
-        covered the rail beside it - a gap in the line for exactly the height
-        of the header. Anything that floats (a popover, a dropdown) is
-        portalled at `z-50` and is unaffected.
+        The rails. `pointer-events-none` and `aria-hidden`: they are rules on
+        a page, not something to click or announce. `z-20` keeps them above
+        anything in main that paints a background.
       */}
       <div
         aria-hidden
@@ -108,23 +110,30 @@ const HomeBoard = () => {
       />
       <HomeHeader />
       {/*
-        The table, full width between the rails. It shared this band with a
-        Recent activity panel until #E64: that panel read 15,989 audit rows
-        per load to draw twenty lines, 59% of every row D1 read for Lore, and
-        no index fixes a nine-way merge over `scope_id`. The table is the
-        whole of main now.
+        One centred column between the rails: a greeting, the search box with
+        its dropdown, and the recent projects. The search box's rule runs rail to rail, which
+        is why main is flush to `mx-4` and the column carries its own width.
 
-        `mx-4` puts its edges exactly on the rails. The page dots are painted
-        here, behind it.
+        No Recent activity panel: it read 15,989 audit rows per load to draw
+        twenty lines until #E64, and no index fixes a nine-way merge over
+        `scope_id`.
       */}
-      <main className="lore-page-dots bg-background mx-4 flex min-h-0 flex-1 flex-row">
-        <HomeProjectsTable
-          projects={projects}
-          momentum={momentum}
-          days={days}
-          lastActivity={lastActivity}
-          openCounts={openCounts}
-        />
+      <main className="lore-page-dots bg-background mx-4 min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-8 pt-14 pb-16 sm:pt-20">
+          <h1 className="px-4 text-center text-3xl font-semibold tracking-tight">
+            {tr("home.greeting")}
+          </h1>
+          <HomeSearch projects={projects} />
+          <div className="mx-auto w-full max-w-5xl px-4 sm:px-8">
+            <HomeRecentProjects
+              projects={projects}
+              momentum={momentum}
+              days={days}
+              lastActivity={lastActivity}
+              openCounts={openCounts}
+            />
+          </div>
+        </div>
       </main>
       {/*
         The footer band: `h-4`, exactly the space the rails leave left and
