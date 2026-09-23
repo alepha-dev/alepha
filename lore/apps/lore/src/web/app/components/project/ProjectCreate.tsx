@@ -2,7 +2,13 @@ import { Button, Card, CardContent, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import {
+  useAlepha,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -11,10 +17,13 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  Check,
   Hammer,
   Inbox,
+  LoaderCircle,
   Swords,
   Tag,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -31,6 +40,7 @@ import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { capabilityRegistry as registry } from "../../services/capabilityRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
+import ProjectCreateBackdrop from "./ProjectCreateBackdrop.tsx";
 
 const MIN_BUILD_DURATION_MS = 1500;
 
@@ -181,7 +191,78 @@ const ProjectCreate = () => {
   const formState = useFormState(form, ["values", "loading"]);
   const submitting = formState.loading;
   const titleValue = String(formState.values?.title ?? "").trim();
-  const canAdvanceFromName = titleValue.length >= 3;
+  const titleValid = projectTitleSchema.safeParse(titleValue).success;
+
+  /*
+   * Why the title is refused, said as it is typed. The form's own error only
+   * exists after a submit, and Next is not one, so a title with a quote in it
+   * used to sit there with Next greyed out and nothing saying why.
+   *
+   * One message per rule of `projectTitleSchema`, in its words rather than
+   * zod's ("Invalid string: must match pattern ..."). Too short is the one
+   * rule not reported: it is true of every name for its first two keystrokes,
+   * and Next staying disabled says enough.
+   */
+  const titleError = (() => {
+    if (!titleValue || titleValid) return undefined;
+    if (titleValue.length > 24) return tr("project.create.name.tooLong");
+    if (!/^[\p{L}\p{N}]/u.test(titleValue)) {
+      return tr("project.create.name.firstChar");
+    }
+    const bad = titleValue.match(/[^\p{L}\p{N} _-]/u)?.[0];
+    if (bad) {
+      return tr("project.create.name.badChar", { args: [bad] });
+    }
+    return undefined;
+  })();
+
+  /*
+   * Asked as the name is typed, so Next refuses a taken name on this step
+   * rather than the create call refusing it three steps later. The server's
+   * check is the same one `createProject` runs, so the two cannot disagree;
+   * a race between here and submit still lands on the 409 in `onError`.
+   *
+   * Only a title the schema accepts is asked about: anything else is refused
+   * by the form itself, and a cross beside an invalid title would claim the
+   * name is taken when it is merely malformed.
+   */
+  const nameCheck = useQuery(
+    {
+      key: ["project-name-availability", titleValue],
+      enabled: titleValid,
+      debounce: 250,
+      staleTime: [10, "seconds"],
+      handler: async () => ({
+        title: titleValue,
+        ...(await client.checkProjectName({ query: { title: titleValue } })),
+      }),
+    },
+    [titleValue],
+  );
+  const nameResult =
+    titleValid && nameCheck.data?.title === titleValue
+      ? nameCheck.data
+      : undefined;
+  const canAdvanceFromName = nameResult?.available === true;
+
+  /*
+   * One error for the field, whichever rule refused it: the title's own
+   * shape first, then what the server said about the slug.
+   */
+  const nameError =
+    titleError ??
+    (nameResult?.reason === "taken"
+      ? tr("project.create.name.taken")
+      : nameResult?.reason === "reserved"
+        ? tr("project.create.name.reserved")
+        : undefined);
+  const nameStatus: StepNameProps["nameStatus"] = nameError
+    ? "unavailable"
+    : !titleValid
+      ? undefined
+      : nameResult
+        ? "available"
+        : "checking";
 
   /**
    * The step actually on screen.
@@ -240,7 +321,8 @@ const ProjectCreate = () => {
    */
   if (overview && !overview.canCreate) {
     return (
-      <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
+      <div className="bg-background relative isolate flex h-screen w-full flex-col items-center justify-center">
+        <ProjectCreateBackdrop />
         <PageHeader />
         <div className="mx-auto flex w-full max-w-xl flex-col items-start gap-4 px-4">
           <h1 className="text-lg font-semibold">
@@ -261,7 +343,8 @@ const ProjectCreate = () => {
 
   if (activeStep === forgingStep) {
     return (
-      <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
+      <div className="bg-background relative isolate flex h-screen w-full flex-col items-center justify-center">
+        <ProjectCreateBackdrop />
         <PageHeader showHome={false} />
         <BuildingScreen message={tr("project.create.building")} />
       </div>
@@ -269,7 +352,8 @@ const ProjectCreate = () => {
   }
 
   return (
-    <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
+    <div className="bg-background relative isolate flex h-screen w-full flex-col items-center justify-center">
+      <ProjectCreateBackdrop />
       <PageHeader />
       <div className="mx-auto w-full max-w-xl px-4">
         <StepIndicator current={activeStep} total={totalSteps} />
@@ -302,6 +386,8 @@ const ProjectCreate = () => {
                     title={tr("project.create.step.name")}
                     nameLabel={tr("project.create.name")}
                     nameHelper={tr("project.create.name.helper")}
+                    nameError={nameError}
+                    nameStatus={nameStatus}
                     input={form.input.title}
                   />
                 )}
@@ -414,7 +500,7 @@ const StepIndicator = (props: StepIndicatorProps) => {
               ? "bg-primary w-8"
               : n < props.current
                 ? "bg-primary/60 w-4"
-                : "bg-muted w-4"
+                : "bg-foreground/15 w-4"
           }`}
         />
       ))}
@@ -426,6 +512,15 @@ interface StepNameProps {
   title: string;
   nameLabel: string;
   nameHelper: string;
+  /**
+   * Why the typed name is refused, drawn as the field's error.
+   */
+  nameError?: string;
+  /**
+   * Whether the typed name is free, drawn at the right end of the field.
+   * Absent while the title is too short or malformed to be asked about.
+   */
+  nameStatus?: "checking" | "available" | "unavailable";
   input: any;
 }
 
@@ -438,6 +533,16 @@ const StepName = (props: StepNameProps) => {
         icon={Tag}
         label={props.nameLabel}
         description={props.nameHelper}
+        error={props.nameError}
+        trailing={
+          props.nameStatus === "checking" ? (
+            <LoaderCircle className="text-muted-foreground size-4 animate-spin" />
+          ) : props.nameStatus === "available" ? (
+            <Check className="text-success-text size-4" />
+          ) : props.nameStatus === "unavailable" ? (
+            <X className="text-destructive size-4" />
+          ) : undefined
+        }
       />
     </div>
   );
