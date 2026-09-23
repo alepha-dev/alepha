@@ -20,6 +20,7 @@ import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
+import type { HomeController } from "../../api/controllers/HomeController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
@@ -48,6 +49,7 @@ import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
+import { homeBoardAtom } from "./atoms/homeBoardAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
@@ -114,6 +116,7 @@ export class AppRouter {
   auth = $inject(ReactAuth);
   account = $inject(AccountRouter);
   realmApi = $client<RealmController>();
+  homeApi = $client<HomeController>();
   dateTime = $inject(DateTimeProvider);
 
   /**
@@ -356,6 +359,34 @@ export class AppRouter {
     },
   });
 
+  /**
+   * How long the `home` loader waits for the board before painting without
+   * it. Enough for the database half and a healthy Analytics Engine read, and
+   * short enough that a slow one costs a pop-in rather than a slow page.
+   */
+  protected static readonly HOME_BOARD_BUDGET_MS = 300;
+
+  /**
+   * The board within its budget, or `undefined` past it or on a failure.
+   */
+  protected async readHomeBoard() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<undefined>((resolve) => {
+      timer = setTimeout(
+        () => resolve(undefined),
+        AppRouter.HOME_BOARD_BUDGET_MS,
+      );
+    });
+    try {
+      return await Promise.race([
+        this.homeApi.getHomeBoard().catch(() => undefined),
+        late,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   home = $page({
     path: "/",
     animation: (state) => {
@@ -367,34 +398,39 @@ export class AppRouter {
     },
     lazy: () => import("./components/home/Home.tsx"),
     /**
-     * What an ANONYMOUS visitor needs before the first paint, and nothing
-     * else.
+     * What the first paint needs: the realm's signup switch for an anonymous
+     * visitor, the board for a signed-in one.
      *
-     * A signed-in visitor's landing page is `HomeBoard`, whose rows are
-     * `userProjectsAtom` (already filled by the bootstrap) and whose bars and
-     * activity lines are one `getHomeBoard` call it makes itself. So there is
-     * nothing left to load here for them.
+     * The board (bars, last activity, open counts) used to be fetched by
+     * `HomeBoard` after mount, so the rows painted alone and the rest popped
+     * in a second later. It is read here now, within
+     * `HOME_BOARD_BUDGET_MS`: the momentum half is an HTTP call into
+     * Analytics Engine, and a slow one must not hold the page. Past the
+     * budget, or on a failure, `homeBoardAtom` stays empty and `HomeBoard`
+     * fetches it itself, as it always did.
      *
      * ⚠️ It runs on ENTRY only, and whatever is added here must keep that
      * shape: a loader that revalidates on its own dependencies is the
      * QuestGraph incident (folio #1057).
      */
     loader: async ({ user }) => {
-      if (!user) {
-        // An anonymous visitor gets the hero, whose primary button is the
-        // only thing on the page. Which button that should be depends on
-        // whether signups are open, so the answer has to be here rather than
-        // in a client fetch that lands after the first paint and swaps the
-        // CTA under the cursor. `getRealmConfig` carries an `$etag`, so a
-        // returning visitor pays a 304.
-        const realmConfig = await this.realmApi
-          .getRealmConfig()
-          .catch(() => undefined);
-        this.alepha.store.set(realmSettingsAtom, {
-          registrationAllowed:
-            realmConfig?.settings.registrationAllowed !== false,
-        });
+      if (user) {
+        this.alepha.store.set(homeBoardAtom, await this.readHomeBoard());
+        return;
       }
+      // An anonymous visitor gets the hero, whose primary button is the
+      // only thing on the page. Which button that should be depends on
+      // whether signups are open, so the answer has to be here rather than
+      // in a client fetch that lands after the first paint and swaps the
+      // CTA under the cursor. `getRealmConfig` carries an `$etag`, so a
+      // returning visitor pays a 304.
+      const realmConfig = await this.realmApi
+        .getRealmConfig()
+        .catch(() => undefined);
+      this.alepha.store.set(realmSettingsAtom, {
+        registrationAllowed:
+          realmConfig?.settings.registrationAllowed !== false,
+      });
     },
   });
 
