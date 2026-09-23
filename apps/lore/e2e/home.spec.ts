@@ -272,8 +272,8 @@ test.describe("Home (board)", () => {
 });
 
 /**
- * The switcher's own cap: the landing page shows eight projects and the rest
- * one click away, so `RECENT_PROJECTS_CAP` is the switcher menu's own.
+ * The switcher's own cap: the landing page shows five projects and links to
+ * the rest, so `RECENT_PROJECTS_CAP` is the switcher menu's own.
  *
  * Eleven is the fixture on purpose - the smallest number that truncates a cap
  * of ten. A test built on ten would pass against a cap that had stopped
@@ -309,16 +309,14 @@ test.describe("Home (switcher cap)", () => {
       });
     }
 
-    // The landing page shows the eight most recent, and every one of them a
-    // click later, in place.
+    // The landing page shows the five most recent, and "Show more" links to
+    // the account page that lists every one of them.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     const rows = page.getByTestId("home-project-row");
-    await expect(rows).toHaveCount(8, { timeout: 15_000 });
-    await page.getByRole("button", { name: "Show all 11 projects" }).click();
-    await expect(rows).toHaveCount(11);
-
-    await page.goto("/account/projects");
+    await expect(rows).toHaveCount(5, { timeout: 15_000 });
+    await page.getByRole("link", { name: "Show more" }).click();
+    await expect(page).toHaveURL(/\/account\/projects$/);
     await expect(page.getByTestId("account-project-row")).toHaveCount(11);
 
     // Every one of them was created by this account, so every row says Owner.
