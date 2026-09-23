@@ -57,6 +57,25 @@ const capabilitiesOf = async (
  * two-step path is exercised here rather than assumed.
  */
 test.describe("Project wizard", () => {
+  test("Back on the first step leaves the wizard for Home", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    await registerAndVerify(
+      page,
+      `wiz-back-${stamp}@example.com`,
+      "GoodPassw0rd",
+    );
+    await page.goto("/new-project");
+
+    // The first step has no step behind it: Back is a live link, not a
+    // disabled button.
+    const back = page.getByRole("link", { name: "Back" });
+    await expect(back).toBeEnabled({ timeout: 15_000 });
+    await back.click();
+    await page.waitForURL((url) => url.pathname === "/", { timeout: 15_000 });
+  });
+
   test("picks capabilities, sets them up, and the draft survives submit", async ({
     page,
   }) => {
