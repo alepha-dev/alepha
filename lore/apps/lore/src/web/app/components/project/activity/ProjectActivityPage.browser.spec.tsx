@@ -304,8 +304,10 @@ describe("ProjectActivityPage", () => {
         expect(screen.getByText("Wire it")).toBeTruthy();
         expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
       });
+      // Resource is on the bar from the start (a `default` filter), so the
+      // menu offers the rest: What, When, and Who only from two members up.
       const items = await offered(screen);
-      expect(items.some((item) => item.startsWith("Resource"))).toBe(true);
+      expect(items.some((item) => item.startsWith("What"))).toBe(true);
       expect(items.some((item) => item.startsWith("Who"))).toBe(false);
     });
 
