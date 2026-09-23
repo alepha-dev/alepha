@@ -179,6 +179,22 @@ export interface ControlProps {
    */
   bottom?: ReactNode;
   /**
+   * A status drawn inside the right end of a text input, such as a tick or a
+   * cross saying whether the value is accepted. Decoration only: it takes no
+   * pointer events, so put anything the reader must act on in `bottom`.
+   *
+   * The auto-save tick and the clear button own that corner when they show,
+   * and hide it meanwhile. The input reserves its gutter while it is drawn.
+   */
+  trailing?: ReactNode;
+  /**
+   * An error to show now, drawn exactly like a validation error. Wins over
+   * the form's own, which only exists once the form has been submitted: a
+   * multi-step wizard whose Next is not a submit uses this to refuse a value
+   * the moment it is typed.
+   */
+  error?: string;
+  /**
    * Width slot inside an `<AutoForm>` group (mapped to a CSS grid column
    * span). Read by the parent group; ignored when rendering standalone.
    */
@@ -338,11 +354,12 @@ export const Control = (props: ControlProps) => {
 
   if (!props.input?.props) return null;
 
-  const meta = parseField(props.input, {
+  const parsed = parseField(props.input, {
     label: props.label,
     description: props.description,
     error: form.error,
   });
+  const meta = props.error ? { ...parsed, error: props.error } : parsed;
 
   // ── Resolve $control (object | function | false) ─────────────────
   const resolved = resolveSchemaControl(meta.control, {
@@ -727,7 +744,8 @@ export const Control = (props: ControlProps) => {
   // cut placeholders short for a button that was not there ("Rechercher
   // client, terr…"). The input is border-box, so the padding arriving with
   // the button never changes its width.
-  const reserveGutter = showSave || showClear;
+  const showTrailing = !showSave && !showClear && merged.trailing != null;
+  const reserveGutter = showSave || showClear || showTrailing;
 
   return wrapWithSlots(
     merged,
@@ -826,6 +844,14 @@ export const Control = (props: ControlProps) => {
           >
             <X className="size-3.5" />
           </button>
+        )}
+        {showTrailing && (
+          <span
+            data-slot="control-trailing"
+            className="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 items-center"
+          >
+            {merged.trailing}
+          </span>
         )}
       </div>
     </FormField>,

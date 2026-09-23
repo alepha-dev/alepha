@@ -54,6 +54,23 @@ describe("useSelector", () => {
     expect(result.current).toBe("dark");
   });
 
+  it("re-selects when the selector changes and the atom does not", async () => {
+    const { wrapper } = await setup();
+
+    const { result, rerender } = renderHook(
+      (props: { field: "theme" | "collapsed" }) =>
+        useSelector(prefsAtom, (s) =>
+          props.field === "theme" ? s.theme : String(s.sidebar.collapsed),
+        ),
+      { wrapper, initialProps: { field: "theme" as "theme" | "collapsed" } },
+    );
+    expect(result.current).toBe("light");
+
+    rerender({ field: "collapsed" });
+
+    expect(result.current).toBe("false");
+  });
+
   it("does not re-render when an unselected field changes", async () => {
     const { alepha, wrapper } = await setup();
     let renders = 0;

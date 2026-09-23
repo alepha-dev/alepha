@@ -171,17 +171,22 @@ export function useQuery<Result>(
   // Refetch when the entry we were rendering is invalidated out from under us.
   // Gated on a defined → undefined transition so the initial mount (which has
   // no entry yet) does not double-fire alongside `runOnInit`.
-  const hadEntryRef = useRef(false);
+  //
+  // Remembers WHICH key held the entry. A key change also reads as defined →
+  // undefined (the new key has no entry yet), and treating that as an
+  // invalidation fired a second fetch beside the one the key change itself
+  // starts, aborting it: two requests for every change of key.
+  const hadEntryRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!serializedKey || !enabled) {
       return;
     }
-    if (hadEntryRef.current && entry === undefined) {
-      hadEntryRef.current = false;
+    if (hadEntryRef.current === serializedKey && entry === undefined) {
+      hadEntryRef.current = undefined;
       void action.refetch();
       return;
     }
-    hadEntryRef.current = entry !== undefined;
+    hadEntryRef.current = entry !== undefined ? serializedKey : undefined;
   }, [entry, serializedKey, enabled, action.refetch]);
 
   const data = serializedKey

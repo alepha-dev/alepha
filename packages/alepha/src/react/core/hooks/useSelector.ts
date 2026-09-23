@@ -26,7 +26,11 @@ function useSelector<T extends TAtomObject, R>(
   // Refs, not state: the memoized snapshot must survive re-renders without
   // scheduling them, and `getSnapshot` must return a referentially stable
   // value for unchanged slices or `useSyncExternalStore` re-renders forever.
-  const cache = useRef<{ input: unknown; selected: R } | null>(null);
+  const cache = useRef<{
+    input: unknown;
+    select: unknown;
+    selected: R;
+  } | null>(null);
   const selectRef = useRef(select);
   selectRef.current = select;
   const equalityRef = useRef(equality);
@@ -49,16 +53,25 @@ function useSelector<T extends TAtomObject, R>(
 
   const getSnapshot = useCallback(() => {
     const input = alepha.store.get(target);
+    const select = selectRef.current;
     const prev = cache.current;
-    if (prev && Object.is(prev.input, input)) {
+    // Keyed on the selector too, not the state alone. A selector that closes
+    // over a prop (`useQuery` reading `state[key]`) selects a different slice
+    // when the prop changes while the atom does not, and a state-only memo
+    // kept serving the old slice until the atom next mutated: the new key
+    // rendered the previous key's data. An inline selector is a new function
+    // every render, so this re-selects once per render at most, and the
+    // `equality` check below still hands back the previous reference when
+    // the slice has not actually moved.
+    if (prev && Object.is(prev.input, input) && prev.select === select) {
       return prev.selected;
     }
-    const selected = selectRef.current(input);
+    const selected = select(input);
     if (prev && equalityRef.current(prev.selected, selected)) {
-      cache.current = { input, selected: prev.selected };
+      cache.current = { input, select, selected: prev.selected };
       return prev.selected;
     }
-    cache.current = { input, selected };
+    cache.current = { input, select, selected };
     return selected;
   }, [alepha, key]);
 
