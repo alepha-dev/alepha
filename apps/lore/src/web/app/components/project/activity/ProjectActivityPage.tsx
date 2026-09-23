@@ -153,6 +153,7 @@ const ProjectActivityPage = ({
       schema: z.array(z.string()),
       label: tr("activity.col.resource"),
       icon: Layers,
+      mode: "default",
       items: options.types.map((type) => ({
         label: activityResourceLabel(tr, type),
         value: type,
