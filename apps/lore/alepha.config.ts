@@ -1,5 +1,4 @@
 import { defineConfig } from "alepha/cli/config";
-import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
 import { cloudflare, platform } from "alepha/cli/platform";
 
@@ -199,7 +198,6 @@ export default defineConfig({
     },
   },
   plugins: [
-    devtools(),
     platform({
       // Worker secrets are auto-detected from the build manifest's `env`
       // list (every `$env`-declared key), so no `secrets.keys` is needed —
