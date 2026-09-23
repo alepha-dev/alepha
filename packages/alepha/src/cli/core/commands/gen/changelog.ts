@@ -131,8 +131,18 @@ export class ChangelogCommand {
    * read. Backslashes are escaped first so an existing `\*` in a subject
    * stays a backslash followed by a star.
    *
+   * ## ⚠️ Why an `@word` goes in a code span
+   *
+   * This output is the GitHub release body, and GitHub turns every `@name`
+   * in it into a mention and lists that account under the release's
+   * Contributors: `@file values on flags` put the organization `file` there
+   * (#Q2494). A backslash does not stop it, `\@file` is still a mention;
+   * only a code span does. `@alepha/ui` is left as written, since an
+   * `@org/name` is a team reference rather than a mention, and so is an
+   * address (`ni@example.com`), which GitHub never links.
+   *
    * The docs changelog page shows subjects as plain text, so `gen-tree.ts`
-   * undoes this when it reads the file.
+   * undoes the escapes when it reads the file.
    */
   public escapeMarkdown(text: string): string {
     // A capturing split keeps the code spans, at the odd indices.
@@ -144,7 +154,11 @@ export class ChangelogCommand {
           : part
               .replace(/\\/g, "\\\\")
               .replace(/\*/g, "\\*")
-              .replace(/(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])/g, "\\_"),
+              .replace(/(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])/g, "\\_")
+              .replace(
+                /(?<![A-Za-z0-9._/-])@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?![A-Za-z0-9/-])/g,
+                "`$&`",
+              ),
       )
       .join("");
   }

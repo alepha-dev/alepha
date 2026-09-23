@@ -543,6 +543,26 @@ describe("changelog", () => {
       );
     });
 
+    /**
+     * #Q2494: the output is the GitHub release body, where a raw `@file`
+     * mentions the organization `file` and lists it under Contributors.
+     * Only a code span stops that; a scoped package and an address are not
+     * mentions and stay as written.
+     */
+    test("puts an @word in a code span, so the release mentions nobody", async () => {
+      const output = await render([
+        "abc12345 feat(command): @file values, and @alepha/ui for ni@example.com",
+        "def45678 fix(lore): the owner can @mention-me (`@already` quoted)",
+      ]);
+
+      expect(output).toContain(
+        "- **command**: `@file` values, and @alepha/ui for ni@example.com (`abc12345`)",
+      );
+      expect(output).toContain(
+        "- **lore**: the owner can `@mention-me` (`@already` quoted) (`def45678`)",
+      );
+    });
+
     test("escapes a breaking change's prose the same way", async () => {
       const output = await render([
         {
