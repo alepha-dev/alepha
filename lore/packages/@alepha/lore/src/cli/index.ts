@@ -1,6 +1,9 @@
 import { $module } from "alepha";
+import type { EnvironmentDescriptor } from "alepha/cli/platform-lib";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
+import { LoreAdapter } from "./adapters/LoreAdapter.ts";
+import { AlephaLoreDeploy } from "./AlephaLoreDeploy.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
@@ -11,15 +14,11 @@ import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
-import { ArtifactUploader } from "./services/ArtifactUploader.ts";
+import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
-import { GitContextService } from "./services/GitContextService.ts";
-import { LoreClientService } from "./services/LoreClientService.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
-import { LoreProjectResolver } from "./services/LoreProjectResolver.ts";
 import { LoreReferences } from "./services/LoreReferences.ts";
 import { LoreRefusals } from "./services/LoreRefusals.ts";
-import { LoreTokenStore } from "./services/LoreTokenStore.ts";
 import { QualityReportReader } from "./services/QualityReportReader.ts";
 
 // ---------------------------------------------------------------------------
@@ -70,25 +69,24 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
  */
 export const AlephaLoreCli = $module({
   name: "alepha.lore.cli",
-  imports: [AlephaServerLinksClient],
+  // ⚠️ The deploy path's services are declared in `AlephaLoreDeploy`, not
+  // here, so the platform adapter can inject them without registering this
+  // module and its twelve commands. See that module's doc.
+  imports: [AlephaServerLinksClient, AlephaLoreDeploy],
   services: [
-    LoreClientService,
     QualityReportReader,
-    GitContextService,
-    ArtifactUploader,
-    LoreTokenStore,
     // ⚠️ None of the services below is re-exported. Each names, directly or
     // through what it injects, a type from the private `lore` workspace, and
     // an exported signature carrying one would put that workspace in the
     // published `.d.ts`. `scripts/check-dts.ts` fails the build if it does.
     //
-    // `AttachmentUploader` is on this side and `ArtifactUploader` is not,
-    // which is the difference between them worth seeing: the artifact push
-    // addresses its one endpoint by path and names nothing, while an
+    // `AttachmentUploader` is in this group and `ArtifactUploader` (declared
+    // in `AlephaLoreDeploy`) is not, which is the difference between them
+    // worth seeing: the artifact push addresses its one endpoint by path and
+    // names nothing, while an
     // attachment push resolves a shortId and registers a file through
     // `$client<QuestController>` / `$client<FolioAttachmentController>`.
     AttachmentUploader,
-    LoreProjectResolver,
     // These three name nothing private, and are unexported anyway: how a
     // `lore project`, `quest` or `folio` command refuses, renders and reads a
     // reference is the binary's behaviour, not an API.
@@ -110,6 +108,39 @@ export const AlephaLoreCli = $module({
 
 // ---------------------------------------------------------------------------
 
+/**
+ * An `alepha platform` environment that deploys through Lore.
+ *
+ * ```ts
+ * import { platform } from "alepha/cli/platform";
+ * import { lore } from "@alepha/lore/cli";
+ *
+ * platform({
+ *   name: "docs",
+ *   environments: {
+ *     production: lore({ project: "alepha" }),
+ *   },
+ * });
+ * ```
+ *
+ * `alepha platform up --env production` then builds the runtime the copy's
+ * estate accepts, pushes it as `latest`, seals the local secrets into the copy
+ * and deploys, following the run. The copy is `platform().name` and the
+ * environment's key; `LORE_PROJECT` and `LORE_URL` override `project` and
+ * `url`, so `lore()` with no arguments is legal in CI.
+ *
+ * ⚠️ The declared return type is the generic descriptor, so the published
+ * `.d.ts` names neither the adapter class nor anything it injects.
+ */
+export const lore = (
+  options: LoreEnvironmentOptions = {},
+): EnvironmentDescriptor<LoreEnvironmentOptions> => ({
+  adapter: LoreAdapter,
+  options,
+});
+
+export * from "./AlephaLoreDeploy.ts";
+export * from "./schemas/loreEnvironmentOptions.ts";
 export * from "./services/GitContextService.ts";
 export * from "./services/LoreClientService.ts";
 export * from "./services/LoreTokenStore.ts";

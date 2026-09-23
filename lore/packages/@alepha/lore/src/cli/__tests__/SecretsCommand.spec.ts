@@ -10,6 +10,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SecretsCommand } from "../commands/SecretsCommand.ts";
+import { LoreSecretsService } from "../services/LoreSecretsService.ts";
 
 /**
  * `lore secrets`: the copy's secret store, from a terminal or a CI job.
@@ -43,6 +44,38 @@ describe("lore secrets", () => {
     const removed: string[] = [];
     const printed: string[] = [];
 
+    const log = {
+      info: (message: string) => printed.push(message),
+      warn: () => {},
+      error: () => {},
+      debug: () => {},
+      trace: () => {},
+    };
+
+    // `set` writes through `LoreSecretsService`, shared with the platform
+    // adapter, so its `$client` is faked there.
+    Object.assign(
+      alepha.inject(LoreSecretsService) as unknown as Record<string, unknown>,
+      {
+        secrets: {
+          setAppSecret: async ({
+            params,
+            body,
+          }: {
+            params: { instanceId: string };
+            body: { key: string; value: string };
+          }) => {
+            if (refused[body.key]) {
+              throw new HttpError({ status: 400, message: refused[body.key] });
+            }
+            sent.push({ instanceId: params.instanceId, ...body });
+            return { id: "s", key: body.key };
+          },
+        },
+        log,
+      },
+    );
+
     Object.assign(command as unknown as Record<string, unknown>, {
       apps: {
         getApp: async ({ params }: { params: { env: string } }) => {
@@ -53,19 +86,6 @@ describe("lore secrets", () => {
         },
       },
       secrets: {
-        setAppSecret: async ({
-          params,
-          body,
-        }: {
-          params: { instanceId: string };
-          body: { key: string; value: string };
-        }) => {
-          if (refused[body.key]) {
-            throw new HttpError({ status: 400, message: refused[body.key] });
-          }
-          sent.push({ instanceId: params.instanceId, ...body });
-          return { id: "s", key: body.key };
-        },
         listAppSecrets: async () => ({
           items: [{ id: "1", key: "APP_SECRET", valuePrefix: "abcd" }],
         }),
@@ -78,13 +98,7 @@ describe("lore secrets", () => {
         resolve: async () => 45,
         resolveApp: async (flag?: string) => flag || "platform",
       },
-      log: {
-        info: (message: string) => printed.push(message),
-        warn: () => {},
-        error: () => {},
-        debug: () => {},
-        trace: () => {},
-      },
+      log,
     });
 
     return { fs, cli, command, sent, removed, printed };

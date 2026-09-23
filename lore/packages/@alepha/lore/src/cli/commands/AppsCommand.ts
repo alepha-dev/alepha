@@ -1,17 +1,10 @@
 import { $inject, AlephaError, z } from "alepha";
-import { $command, type CommandHandlerArgs, CliProvider } from "alepha/command";
-import { DateTimeProvider } from "alepha/datetime";
+import { $command, type CommandHandlerArgs } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { HttpError } from "alepha/server";
-import { $client } from "alepha/server/links";
-import { FileSystemProvider, ShellProvider } from "alepha/system";
-import type { AppController } from "lore/api/controllers/AppController";
-import type { DeployController } from "lore/api/controllers/DeployController";
-import type { ProjectEstateController } from "lore/api/controllers/ProjectEstateController";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreDeployer } from "../services/LoreDeployer.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
-import { ArtifactCommand } from "./ArtifactCommand.ts";
 
 /**
  * `lore apps build` and `lore deploy` - produce the bytes, and place them.
@@ -23,6 +16,12 @@ import { ArtifactCommand } from "./ArtifactCommand.ts";
  *
  * `deploy` is registered twice, at the top level and under `apps`, over one
  * flags schema and one handler - see {@link deployCommand}.
+ *
+ * The deploy itself - loading the copy, resolving its runtime, building,
+ * pushing, starting and following, tearing down - is {@link LoreDeployer},
+ * shared with the platform adapter so there is one deploy with two front doors.
+ * This command keeps what is its own: flags, refusals worded for a terminal,
+ * and output.
  *
  * ## ⚠️ The tag is the switch, and that is what makes the registry real
  *
@@ -116,92 +115,15 @@ import { ArtifactCommand } from "./ArtifactCommand.ts";
  */
 export class AppsCommand {
   protected readonly log = $logger();
-  protected readonly fs = $inject(FileSystemProvider);
-  protected readonly shell = $inject(ShellProvider);
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
-  protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly cli = $inject(CliProvider);
+  protected readonly deployer = $inject(LoreDeployer);
 
   /**
-   * The push step, as the command an operator would have typed.
-   *
-   * ⚠️ **Not a second uploader.** `lore artifacts push` shipped in epic #27 and
-   * six CI invocations already use it; a `lore apps push` beside it would be a
-   * duplicate rather than a feature, and two commands that both upload an
-   * artifact is how the tarball on disk and the build in `dist/` start
-   * disagreeing. Reaching for the command object rather than for
-   * `ArtifactUploader` keeps the packing, the maps sibling, the `--force`
-   * semantics and the cleanup on one path.
+   * The tag a build carries when nobody names one: `latest`, the one tag
+   * whose bytes may change. See {@link LoreDeployer.DEFAULT_TAG}.
    */
-  protected readonly artifactCommand = $inject(ArtifactCommand);
-
-  /**
-   * ⚠️ Declared after `client`: a field initializer reading another field sees
-   * `undefined` if that field is declared below it.
-   */
-  protected readonly apps = $client<AppController>(this.client.scope());
-  protected readonly estates = $client<ProjectEstateController>(
-    this.client.scope(),
-  );
-  protected readonly deploys = $client<DeployController>(this.client.scope());
-
-  /**
-   * The tag a build carries when nobody names one.
-   *
-   * `latest` is `ArtifactService.MUTABLE_TAG`: the one tag whose bytes may
-   * change, and replacing it in place IS the retention policy. Every other tag
-   * is write-once.
-   */
-  public static readonly DEFAULT_TAG = "latest";
-
-  /**
-   * The statuses a deploy run stops at, matching `deployments.status`.
-   */
-  protected static readonly TERMINAL = ["succeeded", "failed", "cancelled"];
-
-  /**
-   * How often the follower asks, and how long it is willing to wait.
-   *
-   * ⚠️ The timeout is a CLIENT giving up, never a deploy being cancelled. The
-   * run keeps going server-side, so the message says where to look rather than
-   * pretending anything was stopped.
-   */
-  protected static readonly POLL_INTERVAL_MS = 2_000;
-  protected static readonly FOLLOW_TIMEOUT_MS = 15 * 60 * 1_000;
-
-  /**
-   * Which of THIS command's `--target` values an artifact's runtime implies.
-   *
-   * ⚠️ **The `node` row is an inference, not a lookup.** A manifest carries a
-   * RUNTIME and never a target, and `runtime: node` is producible by `bare`
-   * and by `docker` alike. `bare` is chosen because epic #1 removed the
-   * container and `buildManifest`'s own doc describes the node case as "spawn
-   * a process against a directory with no entry point".
-   * **If Bay ever consumes a docker image, this table is where that changes.**
-   */
-  protected static readonly TARGET_FOR_RUNTIME: Record<string, string> = {
-    workerd: "cloudflare",
-    node: "bare",
-    bun: "bare",
-    static: "static",
-  };
-
-  /**
-   * Which runtime each `--target` asks `alepha build` for.
-   *
-   * ⚠️ **`alepha build` has no `--target` any more**: the build is described
-   * by what it produces, so this command translates its own vocabulary into a
-   * runtime on the way out. The flag here stays a TARGET because it names a
-   * deploy destination - an estate type - which is a different question from
-   * which slice to link, and the two only happen to line up one-to-one today.
-   */
-  protected static readonly RUNTIME_FOR_TARGET: Record<string, string> = {
-    cloudflare: "workerd",
-    bare: "node",
-    docker: "node",
-    static: "static",
-  };
+  public static readonly DEFAULT_TAG = LoreDeployer.DEFAULT_TAG;
 
   public readonly build = $command({
     name: "build",
@@ -250,7 +172,7 @@ export class AppsCommand {
         await run({
           name: `build ${target || "(config)"} → dist/`,
           handler: async () => {
-            await this.buildOnce(root, target);
+            await this.deployer.buildOnce(root, target);
           },
         });
       }
@@ -326,36 +248,20 @@ export class AppsCommand {
       const expected = `${app}/${env}`;
       if (flags.confirm?.trim() !== expected) {
         throw new AlephaError(
-          `Pass --confirm "${expected}" to destroy it.${await this.destroyWarning(projectId, app, env)}`,
+          `Pass --confirm "${expected}" to destroy it.${await this.deployer.destroyWarning(projectId, app, env)}`,
         );
       }
 
-      const result = await this.apps.destroyAppResources({
-        params: { projectId, app, env },
-        body: { confirm: flags.confirm.trim() },
-      });
-
-      this.log.info(
-        result.removed.length > 0
-          ? `Removed ${result.removed.join(", ")} for ${app}/${env}`
-          : `Nothing left to remove for ${app}/${env}`,
+      const result = await this.deployer.destroy(
+        projectId,
+        app,
+        env,
+        flags.confirm.trim(),
       );
-      if (result.kept.length > 0) {
-        // Said out loud on every run: the point of this command is that the
-        // data survives it, and an operator who assumes otherwise will go
-        // looking for a backup that was never needed.
-        this.log.info(`Kept: ${result.kept.join(", ")}`);
-      }
-      for (const failure of result.failed) {
-        this.log.warn(
-          `${failure.resource} was not removed: ${failure.message}`,
-        );
-      }
-      if (result.failed.length > 0) {
-        throw new AlephaError(
-          `${result.failed.length} resource(s) could not be removed. What did go is no longer recorded, so running this again retries only the rest.`,
-        );
-      }
+
+      // The same report `alepha platform down` prints for a Lore copy:
+      // `kept` on every run, and a failed resource exits non-zero.
+      this.deployer.report(result, `${app}/${env}`);
     },
   });
 
@@ -515,7 +421,7 @@ export class AppsCommand {
       const app = await this.projects.resolveApp(flags.app, root);
       const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
 
-      const { items } = await this.apps.listApps({ params: { projectId } });
+      const items = await this.deployer.listInstances(projectId);
       const copies = items.filter(
         (item) => item.app === app && item.env.endsWith(suffix),
       );
@@ -533,8 +439,8 @@ export class AppsCommand {
       const failed: string[] = [];
       for (const copy of copies) {
         try {
-          const started = await this.start(projectId, copy.id, tag);
-          const finished = await this.follow(projectId, started.id);
+          const started = await this.deployer.start(projectId, copy.id, tag);
+          const finished = await this.deployer.follow(projectId, started.id);
           if (finished.status === "succeeded") {
             this.log.info(`Deployed ${app}@${tag} to ${app}/${copy.env}`);
           } else {
@@ -583,12 +489,12 @@ export class AppsCommand {
     // ⚠️ First, and before anything is built. An app or env that was never
     // enrolled is a refusal, not a creation: minting a deploy target as a
     // side effect of a typo in `--env` is how `clbu` gets deployed to.
-    const instance = await this.loadInstance(projectId, app, env);
+    const instance = await this.deployer.loadInstance(projectId, app, env);
     const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
 
     // ⚠️ The switch. A named tag never builds - see the class doc.
     if (!flags.tag) {
-      await this.buildAndPush({
+      await this.deployer.buildAndPush({
         project,
         projectId,
         app,
@@ -600,12 +506,17 @@ export class AppsCommand {
       });
     }
 
-    const started = await this.start(projectId, instance.id, tag, flags.sigil);
+    const started = await this.deployer.start(
+      projectId,
+      instance.id,
+      tag,
+      flags.sigil,
+    );
     this.log.info(`Deploying ${app}@${tag} to ${app}/${env}`, {
       deployment: started.id,
     });
 
-    const finished = await this.follow(projectId, started.id);
+    const finished = await this.deployer.follow(projectId, started.id);
     if (finished.status !== "succeeded") {
       // ⚠️ Non-zero, because this runs in CI. Throwing is what sets
       // `process.exitCode`; returning here would report a failed deploy as a
@@ -673,301 +584,16 @@ export class AppsCommand {
     const projectId = await this.projects.resolve(project);
     const app = await this.projects.resolveApp(flags.app, root);
 
-    const instance = await this.apps.getApp({
-      params: { projectId, app, env: flags.env as string },
-    });
-    return await this.targetForInstance(
+    const instance = await this.deployer.readInstance(
+      projectId,
+      app,
+      flags.env as string,
+    );
+    return await this.deployer.targetForInstance(
       projectId,
       app,
       flags.env as string,
       instance,
     );
-  }
-
-  /**
-   * The same answer, for a caller that already holds the instance row.
-   *
-   * `lore apps deploy` has to load it anyway - it needs the id to start a run,
-   * and its absence is the refusal that must come before anything is built - so
-   * asking Lore for it a second time would be a request bought with nothing.
-   */
-  protected async targetForInstance(
-    projectId: number,
-    app: string,
-    env: string,
-    instance: { estateId?: string } | undefined,
-  ): Promise<string> {
-    if (!instance?.estateId) {
-      // ⚠️ Refused, not fallen back on. Building every target for an
-      // environment that names no estate produces bytes nobody asked for and
-      // hides the real problem, which is that the copy has nowhere to deploy.
-      throw new AlephaError(
-        `${app}/${env} has no estate, so there is nothing to say what it can run. Choose one on its Settings tab, or pass --target.`,
-      );
-    }
-
-    const lent = await this.estates.listProjectEstates({
-      params: { projectId },
-    });
-    const estate = lent?.items?.find(
-      (it: { id: string }) => it.id === instance.estateId,
-    ) as { acceptedRuntimes?: string[]; type?: string } | undefined;
-    const runtime = estate?.acceptedRuntimes?.[0];
-    if (!runtime) {
-      throw new AlephaError(
-        `Could not tell what ${app}/${env} can run. Its estate is not lent to this project any more, or Lore did not say what it accepts.`,
-      );
-    }
-
-    const target = AppsCommand.TARGET_FOR_RUNTIME[runtime];
-    if (!target) {
-      throw new AlephaError(
-        `${app}/${env} runs \`${runtime}\`, which this CLI has no build target for.`,
-      );
-    }
-    return target;
-  }
-
-  /**
-   * The deployed copy this invocation is about, or a refusal saying where to
-   * make one.
-   *
-   * ## ⚠️ A missing instance is refused, never created
-   *
-   * `app_instances` is unique on `(projectId, app, env)` and `AppService`
-   * lowercases and pattern-checks each half, so `--env Production` normalises
-   * onto an existing row while `--env prod` does not. The near-miss is the case
-   * that matters: creating a deploy target as a side effect of a typo is how
-   * `clbu` gets deployed to, and epic #30 accepted the typo cost precisely
-   * because creation is always an explicit act.
-   *
-   * ⚠️ Only a 404 becomes this message. An expired key, an unreachable Lore or
-   * a 403 are different problems and must not be reported as "no such app".
-   */
-  protected async loadInstance(
-    projectId: number,
-    app: string,
-    env: string,
-  ): Promise<{ id: string; estateId?: string }> {
-    try {
-      const instance = await this.apps.getApp({
-        params: { projectId, app, env },
-      });
-      if (instance?.id) {
-        return instance as { id: string; estateId?: string };
-      }
-    } catch (error) {
-      if (!HttpError.is(error, 404)) {
-        throw error;
-      }
-    }
-    throw new AlephaError(
-      `${app}/${env} is not a deployed copy of this project, so there is nowhere to deploy it. Create it on the project's Apps page, or with the \`app_instance_create\` MCP tool - naming one here would not make it exist.`,
-    );
-  }
-
-  /**
-   * What the operator is about to lose, in the refusal that asks them to
-   * confirm.
-   *
-   * ⚠️ An **ephemeral** copy loses its database and its bucket, and that is the
-   * one fact a person needs before typing the name. It is read rather than
-   * assumed: the flag was set when the copy was created, possibly by somebody
-   * else, possibly months ago.
-   *
-   * Best-effort. A read that fails must not stop somebody destroying a copy -
-   * it just means the warning is the generic one.
-   */
-  protected async destroyWarning(
-    projectId: number,
-    app: string,
-    env: string,
-  ): Promise<string> {
-    try {
-      const instance = await this.apps.getApp({
-        params: { projectId, app, env },
-      });
-      return instance.ephemeral
-        ? `\n\n⚠️  ${app}/${env} is EPHEMERAL: this also deletes its database and its bucket, and there is no backup.`
-        : `\n\nIts database and bucket are kept; the Worker, queue and cache go.`;
-    } catch {
-      return "";
-    }
-  }
-
-  /**
-   * Ask Lore to give this copy a sigil and store its key.
-   *
-   * ⚠️ The token is never in this process. Lore mints it and seals it into the
-   * copy's environment in one server-side step, because `sigils` keeps only a
-   * hash - so a client that received the token could not have given it back
-   * later anyway, and one that never sees it cannot leak it.
-   */
-  protected async ensureSigil(
-    projectId: number,
-    app: string,
-    env: string,
-  ): Promise<{ minted: boolean }> {
-    try {
-      return await this.apps.ensureAppSigil({
-        params: { projectId, app, env },
-      });
-    } catch (error) {
-      if (error instanceof HttpError) {
-        throw new AlephaError(error.message);
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * The first two thirds of the zero-flag cascade, stopping on the first
-   * failure because each step is the input of the next.
-   *
-   * ⚠️ **It builds ONE target, straight into `dist/`.** `WorkspacePacker` tars
-   * the whole of `dist/`, so anything else left in there rides inside the
-   * artifact - which is what a `collect` step used to do here, copying `dist/`
-   * into `dist/<app>_<target>_<tag>` and doubling every push that followed.
-   * {@link buildOnce} is the same method `lore apps build` runs, so there is
-   * still no second build path.
-   */
-  protected async buildAndPush(input: {
-    project: string;
-    projectId: number;
-    app: string;
-    env: string;
-    tag: string;
-    root: string;
-    run: (task: { name: string; handler: () => Promise<void> }) => Promise<any>;
-    instance: { estateId?: string };
-  }): Promise<void> {
-    const target = await this.targetForInstance(
-      input.projectId,
-      input.app,
-      input.env,
-      input.instance,
-    );
-
-    await input.run({
-      name: `build ${target}`,
-      handler: async () => {
-        await this.buildOnce(input.root, target);
-      },
-    });
-
-    await this.cli.run(this.artifactCommand.push, {
-      root: input.root,
-      argv: `--project ${input.project} --app ${input.app} --tag ${input.tag}`,
-    });
-  }
-
-  /**
-   * Ask Lore to start a run.
-   *
-   * ⚠️ The body carries a tag and, when the operator overrode it, whether this
-   * copy should have a sigil. It never carries an estate - that is the
-   * server's to resolve from the instance, see the class doc.
-   *
-   * ⚠️ `sigil` is forwarded ONLY when the flag was actually typed. Absent is a
-   * meaningful third state on the server - "do what the build declares" - so
-   * sending `false` for an unset flag would silently disable the detection
-   * this command exists to make unnecessary.
-   */
-  protected async start(
-    projectId: number,
-    instanceId: string,
-    tag: string,
-    sigil?: boolean,
-  ): Promise<{ id: string; status: string }> {
-    try {
-      return await this.deploys.startDeploy({
-        params: { projectId, instanceId },
-        body: { tag, ...(sigil === undefined ? {} : { sigil }) },
-      });
-    } catch (error) {
-      // ⚠️ The reason in words, not a status code. Every refusal on this path
-      // is written to be read by somebody who often cannot fix it themselves -
-      // the runtime gate names the build to produce, and the credential and
-      // kill-switch clauses name whose estate it is - so the message is the
-      // deliverable and swallowing it for an HTTP number would waste it.
-      if (HttpError.is(error)) {
-        throw new AlephaError(error.message);
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * Follow one run, printing its log as it arrives.
-   *
-   * ⚠️ The log is the SERVER's, printed verbatim and never composed here: a
-   * secret this command holds must not reach a record every member of the
-   * project can read. It is bounded by `DeployRegistry.MAX_LOG_LINES`, so this
-   * cannot print without limit either.
-   */
-  protected async follow(
-    projectId: number,
-    deploymentId: string,
-  ): Promise<{ status: string; error?: string; url?: string }> {
-    const startedAt = this.dateTime.nowMillis();
-    let printed = 0;
-
-    for (;;) {
-      const row = (await this.deploys.getDeployment({
-        params: { projectId, deploymentId },
-      })) as {
-        status?: string;
-        error?: string;
-        url?: string;
-        log?: Array<{ text: string }>;
-      };
-
-      const log = row?.log ?? [];
-      for (const line of log.slice(printed)) {
-        this.log.info(line.text);
-      }
-      printed = log.length;
-
-      const status = row?.status ?? "";
-      if (AppsCommand.TERMINAL.includes(status)) {
-        return { status, error: row?.error, url: row?.url };
-      }
-
-      if (
-        this.dateTime.nowMillis() - startedAt >
-        AppsCommand.FOLLOW_TIMEOUT_MS
-      ) {
-        throw new AlephaError(
-          `Stopped following deploy ${deploymentId} after 15 minutes. It is still running - watch it on the copy's Deploy tab.`,
-        );
-      }
-
-      await this.dateTime.wait(AppsCommand.POLL_INTERVAL_MS);
-    }
-  }
-
-  /**
-   * One `alepha build`, as a subprocess.
-   *
-   * ⚠️ **No env-specific value is passed, ever.** The command line carries a
-   * runtime and nothing else: that is what keeps two envs on one estate type
-   * byte-identical, which is the property promotion depends on.
-   *
-   * ⚠️ **No target means a bare `alepha build`**, so the workspace's own
-   * `build.runtime` decides. Passing a runtime there would override the config
-   * with a guess, which is the opposite of the offline path's whole point.
-   *
-   * When a target IS named, its runtime is said out loud even where it matches
-   * the default: a manifest naming the wrong one lands the push under the
-   * wrong identity, and the artifact's `(app, tag, runtime)` key makes that a
-   * silent overwrite rather than an error.
-   */
-  protected async buildOnce(root: string, target: string): Promise<void> {
-    if (!target) {
-      await this.shell.run("npx alepha build", { root });
-      return;
-    }
-    const runtime = AppsCommand.RUNTIME_FOR_TARGET[target] ?? "node";
-    await this.shell.run(`npx alepha build --runtime ${runtime}`, { root });
   }
 }
