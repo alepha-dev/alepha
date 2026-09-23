@@ -362,7 +362,7 @@ const ProjectInbox = () => {
       {cursor && (
         <div className="flex justify-center pt-3">
           <Button
-            variant="outline"
+            variant="outlined"
             size="sm"
             disabled={busy}
             onClick={() => void loadMoreAction.run(cursor)}

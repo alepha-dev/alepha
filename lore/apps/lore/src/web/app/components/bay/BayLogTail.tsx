@@ -102,7 +102,8 @@ const BayLogTail = (props: BayLogTailProps) => {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">{tr("bay.logs.title")}</h3>
           <Button
-            variant="secondary"
+            variant="solid"
+            intent="none"
             size="sm"
             // Said before the click rather than refused after it. The enqueue
             // refuses too, server-side, which is what actually holds.

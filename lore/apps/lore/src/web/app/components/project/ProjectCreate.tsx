@@ -335,7 +335,7 @@ const ProjectCreate = () => {
               <div className="flex items-center justify-between gap-3">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="minimal"
                   size="sm"
                   onClick={goBack}
                   disabled={activeStep === 1 || submitting}

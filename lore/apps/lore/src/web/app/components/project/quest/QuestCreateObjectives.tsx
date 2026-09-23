@@ -59,7 +59,7 @@ const QuestCreateObjectives = (props: QuestCreateObjectivesProps) => {
           />
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="sm"
             className="text-red-500 hover:text-red-600"
             onClick={() => removeObjective(index)}
@@ -95,7 +95,7 @@ const QuestCreateObjectives = (props: QuestCreateObjectivesProps) => {
           </div>
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             size="sm"
             onClick={addObjective}
             disabled={!newObjective.trim()}

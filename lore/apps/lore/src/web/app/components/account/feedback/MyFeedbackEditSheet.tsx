@@ -235,7 +235,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
         </div>
 
         <SheetFooter>
-          <Button variant="outline" onClick={props.onClose} disabled={saving}>
+          <Button variant="outlined" onClick={props.onClose} disabled={saving}>
             {readOnly ? tr("common.close") : tr("common.cancel")}
           </Button>
           {!readOnly && (

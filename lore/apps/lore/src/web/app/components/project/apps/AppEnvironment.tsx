@@ -112,7 +112,7 @@ const AppEnvironment = () => {
           </div>
           {canDeploy ? (
             <Button
-              variant="outline"
+              variant="outlined"
               size="sm"
               onClick={() => setImporting(true)}
               data-testid="app-environment-import"

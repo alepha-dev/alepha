@@ -41,11 +41,11 @@ const ProjectSettingsAreaHeader = (props: ProjectSettingsAreaHeaderProps) => {
             here. */}
         {canManage && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={props.onRename}>
+            <Button variant="outlined" size="sm" onClick={props.onRename}>
               {tr("area.detail.rename")}
             </Button>
             {props.area.questCount === 0 && (
-              <Button variant="ghost" size="sm" onClick={props.onDelete}>
+              <Button variant="minimal" size="sm" onClick={props.onDelete}>
                 {tr("project.settings.areas.delete.action")}
               </Button>
             )}

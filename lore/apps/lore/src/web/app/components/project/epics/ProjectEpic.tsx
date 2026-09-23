@@ -400,7 +400,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           {epicApi.updateEpic.can() &&
             (epic.status === "draft" || epic.status === "ready") && (
               <Button
-                variant="outline"
+                variant="outlined"
                 size="lg"
                 onClick={() => setEditOpen(true)}
               >

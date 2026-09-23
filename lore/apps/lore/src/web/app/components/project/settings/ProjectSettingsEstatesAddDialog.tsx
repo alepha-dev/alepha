@@ -197,7 +197,7 @@ const ProjectSettingsEstatesAddDialog = (
 
         <div className="flex gap-2">
           <Button
-            variant={activeMode === "existing" ? "default" : "outline"}
+            variant={activeMode === "existing" ? "solid" : "outlined"}
             size="sm"
             disabled={nothingToPick}
             onClick={() => setMode("existing")}
@@ -205,7 +205,7 @@ const ProjectSettingsEstatesAddDialog = (
             {tr("estates.add.existing")}
           </Button>
           <Button
-            variant={activeMode === "new" ? "default" : "outline"}
+            variant={activeMode === "new" ? "solid" : "outlined"}
             size="sm"
             onClick={() => setMode("new")}
           >
@@ -269,7 +269,11 @@ const ProjectSettingsEstatesAddDialog = (
         )}
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => close(false)} disabled={busy}>
+          <Button
+            variant="minimal"
+            onClick={() => close(false)}
+            disabled={busy}
+          >
             {tr("common.cancel")}
           </Button>
           <Button

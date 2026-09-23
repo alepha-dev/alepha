@@ -178,7 +178,7 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
                     <Button
                       type="button"
                       size="icon-xs"
-                      variant="ghost"
+                      variant="minimal"
                       aria-label={label}
                       // ⚠️ No `title`. A real tooltip and the browser's own
                       // would both fire, and the native one draws a second

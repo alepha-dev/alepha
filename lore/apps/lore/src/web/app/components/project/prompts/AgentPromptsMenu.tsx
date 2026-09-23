@@ -87,7 +87,7 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
       <DropdownMenuTrigger
         render={
           <Button
-            variant="ghost"
+            variant="minimal"
             size="icon"
             aria-label={tr("agentPrompts.menu")}
             title={tr("agentPrompts.menu")}

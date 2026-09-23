@@ -227,8 +227,8 @@ const BaySettings = () => {
                   size="sm"
                   variant={
                     estate.statsIntervalSeconds === seconds
-                      ? "default"
-                      : "outline"
+                      ? "solid"
+                      : "outlined"
                   }
                   disabled={busy}
                   aria-pressed={estate.statsIntervalSeconds === seconds}
@@ -278,7 +278,7 @@ const BaySettings = () => {
                 <span className="truncate">{loan.title}</span>
               )}
               <Button
-                variant="ghost"
+                variant="minimal"
                 size="sm"
                 disabled={busy}
                 aria-label={tr("estates.detach.action")}
@@ -299,7 +299,7 @@ const BaySettings = () => {
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
-              variant="outline"
+              variant="outlined"
               size="sm"
               disabled={busy}
               onClick={() => void rotate()}
@@ -309,7 +309,8 @@ const BaySettings = () => {
               {tr("account.estates.rotate")}
             </Button>
             <Button
-              variant="destructive"
+              variant="outlined"
+              intent="danger"
               size="sm"
               disabled={busy}
               onClick={() => void remove()}

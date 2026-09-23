@@ -103,7 +103,7 @@ const FolioMoveDialog = (props: FolioMoveDialogProps): ReactElement => {
           ))}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => handleOpenChange(false)}>
+          <Button variant="minimal" onClick={() => handleOpenChange(false)}>
             {tr("folio.move.cancel")}
           </Button>
           <Button onClick={handleConfirm} disabled={picked === undefined}>

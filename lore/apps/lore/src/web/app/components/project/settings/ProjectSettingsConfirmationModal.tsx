@@ -72,7 +72,7 @@ const ProjectSettingsConfirmationModal = (
               }
               props.onConfirm();
             }}
-            className="bg-destructive hover:bg-destructive/90 text-white"
+            intent="danger"
           >
             {tr("project.settings.delete.modal.submit")}
           </AlertDialogAction>

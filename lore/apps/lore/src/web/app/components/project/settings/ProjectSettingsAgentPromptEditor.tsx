@@ -136,7 +136,7 @@ export const ProjectSettingsAgentPromptEditor = (
         {props.stored !== undefined && (
           <Button
             size="sm"
-            variant="outline"
+            variant="outlined"
             disabled={pending}
             onClick={reset}
             data-testid={`prompt-reset-${props.kind}`}

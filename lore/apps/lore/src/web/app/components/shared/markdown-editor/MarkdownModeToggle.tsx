@@ -63,7 +63,7 @@ const MarkdownModeToggle = (props: MarkdownModeToggleProps) => {
     <Button
       type="button"
       size={props.iconOnly ? "icon-sm" : "xs"}
-      variant="ghost"
+      variant="minimal"
       className={props.className}
       disabled={props.disabled}
       data-testid="markdown-mode-toggle"

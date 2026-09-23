@@ -179,7 +179,7 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
         />
         {isOwner ? (
           <Button
-            variant="outline"
+            variant="outlined"
             disabled={busy || !changed}
             onClick={() => void save()}
           >
@@ -190,7 +190,7 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
           // control swallows the pointer events the tooltip listens for.
           <Tooltip>
             <TooltipTrigger render={<span className="inline-flex" />}>
-              <Button variant="outline" disabled>
+              <Button variant="outlined" disabled>
                 {tr("app.settings.rename.save")}
               </Button>
             </TooltipTrigger>

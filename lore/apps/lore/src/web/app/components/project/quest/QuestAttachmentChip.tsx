@@ -50,7 +50,8 @@ const QuestAttachmentChip = (props: QuestAttachmentChipProps) => (
     {!props.disabled && props.onRemove && (
       <Button
         type="button"
-        variant="secondary"
+        variant="solid"
+        intent="none"
         size="icon-xs"
         aria-label={`Remove ${props.name}`}
         className="absolute -top-1.5 -right-1.5 opacity-0 shadow transition-opacity group-hover/chip:opacity-100 focus-visible:opacity-100"

@@ -73,7 +73,7 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         {hasQuery ? count : ""}
       </span>
       <Button
-        variant="ghost"
+        variant="minimal"
         size="icon"
         className="size-7"
         disabled={props.find.total === 0}
@@ -84,7 +84,7 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         <ChevronUp className="size-4" />
       </Button>
       <Button
-        variant="ghost"
+        variant="minimal"
         size="icon"
         className="size-7"
         disabled={props.find.total === 0}
@@ -95,7 +95,7 @@ const FolioFindBar = (props: FolioFindBarProps): ReactElement | null => {
         <ChevronDown className="size-4" />
       </Button>
       <Button
-        variant="ghost"
+        variant="minimal"
         size="icon"
         className="size-7"
         aria-label={tr("folios.editor.find.close")}

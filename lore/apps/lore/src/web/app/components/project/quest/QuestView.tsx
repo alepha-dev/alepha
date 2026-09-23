@@ -596,7 +596,7 @@ const QuestView = (props: QuestViewProps) => {
             {context === "card" && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="minimal"
                 size="sm"
                 className="h-7 w-7 shrink-0 p-0"
                 aria-label={tr("quest.view.back")}
@@ -720,7 +720,7 @@ const QuestView = (props: QuestViewProps) => {
                   // slot is state-dependent already; held is a state.
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="outlined"
                     disabled={unholdQuest.disabled}
                     onClick={unholdQuest.onClick}
                   >

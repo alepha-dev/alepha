@@ -64,23 +64,18 @@ const HeaderRepositoryButton = (): ReactElement | null => {
     <Tooltip>
       <TooltipTrigger
         render={
-          // `ghost` + `icon` and `nativeButton={false}`: it sits among
-          // `AppActions`'s own four buttons, so it has to look like one while
-          // actually being the anchor that opens the link.
+          // `minimal` + `icon` with an `href`: it sits among `AppActions`'s
+          // own four buttons, so it has to look like one while actually being
+          // the anchor that opens the link. `noreferrer` implies `noopener`;
+          // both are named because the destination is a URL the project owner
+          // typed.
           <Button
-            variant="ghost"
+            variant="minimal"
             size="icon"
-            nativeButton={false}
             aria-label={`${label}: ${host}`}
-            render={
-              <a
-                href={url}
-                target="_blank"
-                // `noreferrer` implies `noopener`; both are named because the
-                // destination is a URL the project owner typed.
-                rel="noreferrer noopener"
-              />
-            }
+            href={url}
+            target="_blank"
+            rel="noreferrer noopener"
           />
         }
       >

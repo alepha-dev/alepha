@@ -230,7 +230,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="outlined"
           disabled={!canUpload || busy}
           onClick={() => picker.current?.click()}
           className="h-7 text-xs"

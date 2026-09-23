@@ -238,7 +238,7 @@ const ProjectSettingsWorkPage = () => {
 
             <div>
               <Button
-                variant="outline"
+                variant="outlined"
                 size="sm"
                 disabled={
                   columns.length >= MAX_COLUMNS ||
@@ -432,7 +432,7 @@ const ColumnRow = (props: ColumnRowProps) => {
         }}
       />
       <Button
-        variant="ghost"
+        variant="minimal"
         size="sm"
         disabled={props.disabled}
         onClick={props.onDelete}

@@ -99,7 +99,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
           <PopoverTrigger
             render={
               <Button
-                variant="ghost"
+                variant="minimal"
                 size="sm"
                 className="text-muted-foreground ml-auto h-6 gap-1 px-2 text-[11.5px] font-normal"
               />
@@ -145,7 +145,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
         className="inline-flex items-center gap-0.5"
       >
         <Button
-          variant="ghost"
+          variant="minimal"
           size="icon-xs"
           aria-label={tr("questline.zoom.out")}
           onClick={props.zoom.onZoomOut}
@@ -159,7 +159,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
           {props.zoom.percent}%
         </span>
         <Button
-          variant="ghost"
+          variant="minimal"
           size="icon-xs"
           aria-label={tr("questline.zoom.in")}
           onClick={props.zoom.onZoomIn}
@@ -167,7 +167,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
           <Plus />
         </Button>
         <Button
-          variant="ghost"
+          variant="minimal"
           size="icon-xs"
           aria-label={tr("questline.zoom.fit")}
           onClick={props.zoom.onReset}

@@ -77,7 +77,7 @@ const MyEstateSecretDialog = (props: MyEstateSecretDialogProps) => {
             {props.secret}
           </code>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => void copy()}>
+            <Button variant="solid" intent="none" onClick={() => void copy()}>
               {copied ? (
                 <Check className="size-4" />
               ) : (

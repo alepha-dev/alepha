@@ -139,7 +139,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             <Button
               type="button"
               size="icon-sm"
-              variant="ghost"
+              variant="minimal"
               onClick={() => commands.createFolio()}
               aria-label={tr("folios.editor.tree.new-folio")}
               title={tr("folios.editor.tree.new-folio")}
@@ -149,7 +149,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             <Button
               type="button"
               size="icon-sm"
-              variant="ghost"
+              variant="minimal"
               onClick={() => commands.createDirectory()}
               aria-label={tr("folios.editor.tree.new-directory")}
               title={tr("folios.editor.tree.new-directory")}
@@ -165,7 +165,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         <Button
           type="button"
           size="icon-sm"
-          variant="ghost"
+          variant="minimal"
           onClick={props.onCollapse}
           aria-label={tr("folios.editor.tree.collapse")}
           title={tr("folios.editor.tree.collapse")}

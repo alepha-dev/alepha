@@ -1,6 +1,5 @@
 import { Alert, AlertDescription, Button, Card, CardContent } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
 import { AlertCircle } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
@@ -50,9 +49,7 @@ const AuthRegisterInvitationNotice = (
             {tr(`auth.invitation.${props.status}` as keyof I18n)}
           </AlertDescription>
         </Alert>
-        <Button nativeButton={false} render={<Link href={props.loginPath} />}>
-          {tr("auth.invitation.signIn")}
-        </Button>
+        <Button href={props.loginPath}>{tr("auth.invitation.signIn")}</Button>
       </CardContent>
     </Card>
   );

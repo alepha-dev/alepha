@@ -85,7 +85,7 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
                   {canAttach && (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="minimal"
                       size="sm"
                       className="h-7 w-7 shrink-0 p-0"
                       aria-label={tr("epic.folios.detach")}

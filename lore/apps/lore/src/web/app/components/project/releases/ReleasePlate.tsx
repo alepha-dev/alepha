@@ -259,7 +259,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
             without `release:manage`, the same rule as Publish below. */}
         {!published && defaultRelease.can && (
           <Button
-            variant="ghost"
+            variant="minimal"
             size="lg"
             disabled={submitting}
             onClick={() =>
@@ -275,7 +275,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
           </Button>
         )}
         {!published && releaseApi.updateRelease.can() && (
-          <Button variant="outline" size="lg" onClick={props.onEdit}>
+          <Button variant="outlined" size="lg" onClick={props.onEdit}>
             <Pencil className="size-4" />
             {tr("release.detail.edit")}
           </Button>
@@ -290,7 +290,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
           // it: reopening is what you do when you published by mistake, and
           // it clears the frozen record.
           <Button
-            variant="ghost"
+            variant="minimal"
             size="lg"
             disabled={submitting}
             onClick={() => void reopenAction.run()}

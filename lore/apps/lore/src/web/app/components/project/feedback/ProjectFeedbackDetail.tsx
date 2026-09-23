@@ -203,7 +203,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       <div className="border-border flex items-start gap-3 border-b p-4">
         {props.onBack && (
           <Button
-            variant="ghost"
+            variant="minimal"
             size="sm"
             onClick={props.onBack}
             className="md:hidden"
@@ -435,10 +435,10 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             <Plus className="size-4" />
             {tr("feedback.promote")}
           </Button>
-          <Button variant="outline" onClick={handleReject} disabled={busy}>
+          <Button variant="outlined" onClick={handleReject} disabled={busy}>
             {tr("feedback.reject")}
           </Button>
-          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
+          <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
           <AgentPromptsMenu items={promptItems} />
@@ -453,7 +453,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             <Plus className="size-4" />
             {tr("feedback.createQuest")}
           </Button>
-          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
+          <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
           <AgentPromptsMenu items={promptItems} />
@@ -462,7 +462,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
       {feedback.status === "rejected" && (
         <div className="border-border flex justify-start gap-2 border-t p-3">
-          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
+          <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
           {/* ⚠️ This footer had no menu at all, and gains one rather than

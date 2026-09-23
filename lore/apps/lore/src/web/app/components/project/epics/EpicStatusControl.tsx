@@ -122,7 +122,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
         <Button
           type="button"
           size="lg"
-          variant="outline"
+          variant="outlined"
           disabled={submitting}
           onClick={() => void changeAction.run("draft")}
         >

@@ -88,7 +88,7 @@ const QuestLog = (props: QuestLogProps) => {
               render={
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="minimal"
                   size="icon"
                   className="size-6"
                   onClick={toggleAll}
@@ -122,7 +122,7 @@ const QuestLog = (props: QuestLogProps) => {
               render={
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="minimal"
                   size="icon"
                   className="size-6"
                   data-testid="quest-log-collapse"
@@ -149,7 +149,7 @@ const QuestLog = (props: QuestLogProps) => {
           />
           {searchValue && (
             <Button
-              variant="ghost"
+              variant="minimal"
               size="icon"
               onClick={handleClearSearch}
               // `inset-y-0 my-auto`, not `-translate-y-1/2`: Button's press

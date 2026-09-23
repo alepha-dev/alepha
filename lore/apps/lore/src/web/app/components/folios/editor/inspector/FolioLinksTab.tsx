@@ -1,7 +1,7 @@
 import { Button } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import { ArrowUpRight, File as FileIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
@@ -149,19 +149,15 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
         return (
           <li key={`${ref.kind}-${ref.shortId}`}>
             <Button
-              variant="ghost"
+              variant="minimal"
               size="sm"
               className="h-auto w-full justify-start gap-2 px-2 py-1.5"
-              render={
-                <Link
-                  href={router.path(route, {
-                    params: {
-                      projectSlug,
-                      [idParam]: idValue,
-                    },
-                  })}
-                />
-              }
+              href={router.path(route, {
+                params: {
+                  projectSlug,
+                  [idParam]: idValue,
+                },
+              })}
             >
               <ArrowUpRight className="text-muted-foreground size-3.5 shrink-0" />
               {label}

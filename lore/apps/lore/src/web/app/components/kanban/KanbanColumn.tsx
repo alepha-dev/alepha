@@ -317,7 +317,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
           {hasMore && (
             <div className="flex justify-center py-2">
               <Button
-                variant="ghost"
+                variant="minimal"
                 size="sm"
                 className="h-7 text-xs"
                 onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}

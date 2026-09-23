@@ -75,7 +75,7 @@ const HeaderSearchButton = (): ReactElement | null => {
           // exactly: it sits among them, so any other variant would read as
           // a different kind of control wedged into the cluster.
           <Button
-            variant="ghost"
+            variant="minimal"
             size="icon"
             aria-label={label}
             onClick={open}

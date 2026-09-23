@@ -331,7 +331,8 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
             {estate.type === "bay" && (
               <div className="px-4">
                 <Button
-                  variant="secondary"
+                  variant="solid"
+                  intent="none"
                   size="sm"
                   data-testid="estate-open-console"
                   onClick={() =>
@@ -397,8 +398,8 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                         size="sm"
                         variant={
                           estate.statsIntervalSeconds === seconds
-                            ? "default"
-                            : "outline"
+                            ? "solid"
+                            : "outlined"
                         }
                         disabled={busy}
                         aria-pressed={estate.statsIntervalSeconds === seconds}
@@ -485,7 +486,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
 
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    variant="outline"
+                    variant="outlined"
                     size="sm"
                     disabled={busy || token.trim().length < 40}
                     onClick={() => {
@@ -497,7 +498,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                     {tr("estates.credential.replace")}
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="minimal"
                     size="sm"
                     disabled={busy}
                     onClick={() => {
@@ -537,7 +538,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                     <span className="truncate">{loan.title}</span>
                   )}
                   <Button
-                    variant="ghost"
+                    variant="minimal"
                     size="sm"
                     disabled={busy}
                     aria-label={tr("estates.detach.action")}
@@ -570,7 +571,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
             <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 pt-4 pb-4">
               {estate.type === "bay" && (
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   size="sm"
                   disabled={busy}
                   onClick={() => {
@@ -583,7 +584,8 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                 </Button>
               )}
               <Button
-                variant="destructive"
+                variant="outlined"
+                intent="danger"
                 size="sm"
                 disabled={busy}
                 onClick={() => {

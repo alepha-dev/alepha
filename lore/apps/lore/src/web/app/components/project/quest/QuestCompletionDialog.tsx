@@ -147,7 +147,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
         <DialogFooter className="shrink-0 gap-2">
           <Button
             type="button"
-            variant="ghost"
+            variant="minimal"
             onClick={() => confirm(false)}
             disabled={props.submitting || waiversIncomplete}
           >

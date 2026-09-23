@@ -171,13 +171,13 @@ const AppDeployRun = (props: AppDeployRunProps) => {
 
         <span className="ml-auto flex items-center gap-2">
           {log.length > 0 ? (
-            <Button variant="ghost" size="sm" onClick={() => setOpen(!open)}>
+            <Button variant="minimal" size="sm" onClick={() => setOpen(!open)}>
               {open ? tr("app.deploy.log.hide") : tr("app.deploy.log.show")}
             </Button>
           ) : null}
           {props.canWrite && status === "succeeded" ? (
             <Button
-              variant="outline"
+              variant="outlined"
               size="sm"
               disabled={rollbackAction.loading}
               onClick={() => void rollbackAction.run()}

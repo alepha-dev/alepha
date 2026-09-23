@@ -195,7 +195,8 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
           <div className="flex items-center justify-center gap-3">
             <Button
               type="button"
-              variant="secondary"
+              variant="solid"
+              intent="none"
               size="icon-sm"
               aria-label={tr("common.previous")}
               onClick={() => go(-1)}
@@ -209,7 +210,8 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
             </p>
             <Button
               type="button"
-              variant="secondary"
+              variant="solid"
+              intent="none"
               size="icon-sm"
               aria-label={tr("common.next")}
               onClick={() => go(1)}

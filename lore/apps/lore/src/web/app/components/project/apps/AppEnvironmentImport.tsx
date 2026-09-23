@@ -210,7 +210,7 @@ const AppEnvironmentImport = (props: AppEnvironmentImportProps) => {
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             onClick={() => props.onOpenChange(false)}
           >
             {tr("app.environment.import.cancel")}
