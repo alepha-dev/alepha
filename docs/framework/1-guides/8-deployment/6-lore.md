@@ -18,6 +18,32 @@ anywhere. Reach for Lore when the list stops being fixed: a preview environment
 per branch, or one copy per customer, is not a thing a committed file expresses
 well.
 
+## From `alepha platform`
+
+A committed environment can deploy through Lore without a second command to
+learn: `lore()` from `@alepha/lore/cli` is an `alepha platform` adapter.
+
+```typescript
+import { platform } from "alepha/cli/platform";
+import { lore } from "@alepha/lore/cli";
+
+platform({
+  name: "docs",
+  environments: {
+    production: lore({ project: "alepha" }),
+  },
+});
+```
+
+`alepha platform up --env production` then builds the runtime the copy's
+estate accepts, pushes it as `latest`, seals your secrets into the copy and
+deploys, following the run. A first `up` creates the copy on the estate lent to
+the project first. The details, and how `down` treats an ephemeral copy, are in
+[the platform plugin](/docs/cli-plugins-platform#the-lore-adapter).
+
+⚠️ `up` always builds. Deploying a stored tag without building is promotion,
+and that stays `lore deploy --tag`.
+
 ## The binary
 
 `lore` ships in `@alepha/lore` and is a separate binary from `alepha`.
@@ -283,11 +309,10 @@ A deploy target that exists only as a row has no `.env.<env>` on anybody's
 machine, so Lore holds the variables. They are encrypted at rest and no read
 path ever returns one, to anybody.
 
-They go up **with** the script, in the same upload, rather than after it.
-`alepha platform up` runs `deploy` then `secrets` in that order only because
-`wrangler secret put` needs the worker to exist first, and that ordering leaves
-a window in which the new build runs against the previous secret set. Lore does
-the upload itself, so the window does not exist - first deploy included.
+They go up **with** the script, in the same upload, rather than after it, so
+the new build never runs against the previous secret set - first deploy
+included. A `lore()` environment of `alepha platform` seals its local secrets
+into this set before it starts the run, for the same reason.
 
 `DATABASE_URL`, `R2_BUCKET_NAME` and the `CLOUDFLARE_*` names are refused by
 name: the deploy provisions those resources and derives the values from the ids
