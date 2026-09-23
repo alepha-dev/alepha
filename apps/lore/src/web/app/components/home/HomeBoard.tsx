@@ -77,12 +77,16 @@ const HomeBoard = () => {
     : undefined;
 
   /**
-   * Most recently active first: the board's last activity, or the project
-   * row's own `updatedAt` until the board arrives, so the order is already
-   * close and does not reshuffle from nothing.
+   * Most recently active first: the board's last activity, or the overview's
+   * `lastActivityAt` until the board arrives. Both come from the same read
+   * (`ProjectRecencyService`), so a fresh load paints the final order on the
+   * first frame; the board only moves a row when something happened since
+   * the overview was read, such as a return to Home after working in a
+   * project. Sorting that first frame by `updatedAt` reshuffled the list a
+   * second after every load.
    */
-  const recency = (project: { id: number; updatedAt: string }) =>
-    Date.parse(lastActivity.get(project.id) ?? project.updatedAt);
+  const recency = (project: { id: number; lastActivityAt: string }) =>
+    Date.parse(lastActivity.get(project.id) ?? project.lastActivityAt);
   const projects = [...(overview?.projects ?? [])].sort(
     (a, b) => recency(b) - recency(a),
   );

@@ -65,6 +65,7 @@ import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
+import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { ProjectSlugService } from "../services/ProjectSlugService.ts";
@@ -138,6 +139,7 @@ export class ProjectController {
   audits = $inject(LoreAudits);
   auditService = $inject(AuditService);
   areaService = $inject(AreaService);
+  recency = $inject(ProjectRecencyService);
   rankPresets = $inject(ProjectRankPresets);
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
@@ -590,30 +592,45 @@ export class ProjectController {
       // the Home page's "N areas" stat is re-sourced from the `areas` table
       // here instead, one batched query rather than one per card.
       const projectIds = result.map((it) => it.id);
-      const [areaCounts, openQuestCounts, capabilityRows, ownedIds] =
-        await Promise.all([
-          this.areaService.countByProjectIds(projectIds),
-          // The dashboard rail's per-project number. Counted through the same
-          // scope as the sidebar badge and the Active Quests tile: all three are
-          // visible together, and a disagreement between them is one of them
-          // lying rather than a rounding difference.
-          this.openQuests.countByProject(projectIds),
-          // Third batched read on the same id list. The Home cards, the create
-          // menu and the sidebar all read the capability set, and one query per
-          // card is N round trips on D1 for a list already in memory.
-          this.projectSecurity.capabilityRowsForProjects(projectIds),
-          // Fourth batched read on the same id list, and the one that answers
-          // the Owner badge. Off `members.rank`, not `projects.createdBy`: the
-          // creator column stopped being an authorization input in epic #E39,
-          // and after an ownership transfer the two disagree.
-          //
-          // ⚠️ Short-circuited on an empty list: `inArray: []` THROWS rather
-          // than matching nothing, and a brand-new account with no projects is
-          // exactly the request that hits it.
-          projectIds.length === 0
-            ? Promise.resolve(new Set<number>())
-            : this.projectSecurity.ownedProjectIds(user.id),
-        ]);
+      const [
+        areaCounts,
+        openQuestCounts,
+        capabilityRows,
+        ownedIds,
+        lastActivity,
+      ] = await Promise.all([
+        this.areaService.countByProjectIds(projectIds),
+        // The dashboard rail's per-project number. Counted through the same
+        // scope as the sidebar badge and the Active Quests tile: all three are
+        // visible together, and a disagreement between them is one of them
+        // lying rather than a rounding difference.
+        this.openQuests.countByProject(projectIds),
+        // Third batched read on the same id list. The Home cards, the create
+        // menu and the sidebar all read the capability set, and one query per
+        // card is N round trips on D1 for a list already in memory.
+        this.projectSecurity.capabilityRowsForProjects(projectIds),
+        // Fourth batched read on the same id list, and the one that answers
+        // the Owner badge. Off `members.rank`, not `projects.createdBy`: the
+        // creator column stopped being an authorization input in epic #E39,
+        // and after an ownership transfer the two disagree.
+        //
+        // ⚠️ Short-circuited on an empty list: `inArray: []` THROWS rather
+        // than matching nothing, and a brand-new account with no projects is
+        // exactly the request that hits it.
+        projectIds.length === 0
+          ? Promise.resolve(new Set<number>())
+          : this.projectSecurity.ownedProjectIds(user.id),
+        // Fifth, and the one Home orders its list by: the same read
+        // `getHomeBoard` makes, so the first frame and the board agree.
+        // Short-circuited like the one above: an empty `VALUES` list is
+        // not valid SQL.
+        projectIds.length === 0
+          ? Promise.resolve([])
+          : this.recency.lastActivity(result),
+      ]);
+      const lastActivityAt = new Map(
+        lastActivity.map((entry) => [entry.projectId, entry.at]),
+      );
 
       // ⚠️ The badge read IS the quota read, and it is now literally the same
       // call `createProject` makes - `ownedProjectIds`. Deriving the count
@@ -628,6 +645,7 @@ export class ProjectController {
           areaCount: areaCounts.get(it.id) ?? 0,
           openQuestCount: openQuestCounts.get(it.id) ?? 0,
           owner: ownedIds.has(it.id),
+          lastActivityAt: lastActivityAt.get(it.id) ?? it.updatedAt,
         })),
         totalCount: result.length,
         ownedCount,
