@@ -419,16 +419,31 @@ const ProjectCreate = () => {
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  variant="minimal"
-                  size="sm"
-                  onClick={goBack}
-                  disabled={activeStep === 1 || submitting}
-                >
-                  <ArrowLeft className="size-4" />
-                  {tr("project.create.back")}
-                </Button>
+                {activeStep === 1 ? (
+                  // The first step has no step behind it, so Back leaves the
+                  // wizard for Home rather than sitting there disabled.
+                  <Button
+                    key="back-home"
+                    href={router.path("home")}
+                    variant="minimal"
+                    size="sm"
+                  >
+                    <ArrowLeft className="size-4" />
+                    {tr("project.create.back")}
+                  </Button>
+                ) : (
+                  <Button
+                    key="back-step"
+                    type="button"
+                    variant="minimal"
+                    size="sm"
+                    onClick={goBack}
+                    disabled={submitting}
+                  >
+                    <ArrowLeft className="size-4" />
+                    {tr("project.create.back")}
+                  </Button>
+                )}
 
                 <div className="flex items-center gap-2">
                   {activeStep < totalSteps ? (
