@@ -42,6 +42,10 @@ export interface HomeRecentProjectRowProps {
  * Open buttons the project has. Below `md` the strip is hidden and the row is
  * two columns; on a phone the Open buttons drop under the name, which would
  * otherwise be truncated to a letter or two.
+ *
+ * From `md` the row has a fixed height, tall enough for the momentum strip:
+ * the strip arrives with the board, after the list, and a row sized by its
+ * content grew by twenty pixels under the reader when it did.
  */
 export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -51,7 +55,7 @@ export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
   return (
     <li
       data-testid="home-project-row"
-      className="hover:bg-muted/40 relative grid grid-cols-1 items-center gap-x-4 gap-y-1.5 border-b px-3 py-1.5 transition-colors last:border-b-0 sm:grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr]"
+      className="hover:bg-muted/40 relative grid grid-cols-1 items-center gap-x-4 gap-y-1.5 border-b px-3 py-1.5 transition-colors last:border-b-0 sm:grid-cols-[1fr_auto] md:h-16 md:grid-cols-[1fr_auto_1fr] md:py-0"
     >
       <div className="flex min-w-0 items-center gap-3">
         <ProjectIcon
