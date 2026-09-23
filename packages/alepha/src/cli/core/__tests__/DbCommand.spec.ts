@@ -6,7 +6,10 @@ import { $entity, $repository, db } from "alepha/orm";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
+  MemoryShellProvider,
   NodeFileSystemProvider,
+  NodeShellProvider,
+  ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
@@ -28,6 +31,8 @@ class TestDbCommand extends DbCommand {
   public testResolveMigrationSqlPath = this.resolveMigrationSqlPath.bind(this);
   public testStripPublicSchemaFromMigrations =
     this.stripPublicSchemaFromMigrations.bind(this);
+  public testFormatGeneratedMigrations =
+    this.formatGeneratedMigrations.bind(this);
   public testPrepareDrizzleOrmResolution =
     this.prepareDrizzleOrmResolution.bind(this);
   public readonly testBaselineMark = this.baselineMark;
@@ -997,6 +1002,96 @@ describe("DbCommand", () => {
         safeParse: (value: unknown) => { success: boolean };
       };
       expect(flags.safeParse({ hints }).success).toBe(true);
+    });
+  });
+
+  /**
+   * drizzle-kit writes `snapshot.json` with every array expanded, and the
+   * next `alepha lint` collapsed them, leaving a diff on whichever checkout
+   * ran it. `generate` now formats what it created, and only that.
+   */
+  describe("formatGeneratedMigrations", () => {
+    const rawSnapshot = [
+      "{",
+      '  "prevIds": [',
+      '    "d098d407-9a24-43e3-b31f-d65532e9aed1"',
+      "  ]",
+      "}",
+      "",
+    ].join("\n");
+
+    it("formats the snapshot of a new migration with the real oxfmt, and leaves older ones alone", async () => {
+      const { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } =
+        await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+
+      const root = mkdtempSync(join(tmpdir(), "alepha-db-format-"));
+      const migrationsDir = join(root, "migrations", "sqlite");
+      for (const name of ["0000_old", "0001_new"]) {
+        mkdirSync(join(migrationsDir, name), { recursive: true });
+        writeFileSync(join(migrationsDir, name, "snapshot.json"), rawSnapshot);
+      }
+
+      try {
+        // Tests default to the memory backends for both; this one is only
+        // worth anything if oxfmt really runs, on a real file.
+        const alepha = Alepha.create()
+          .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
+          .with({ provide: ShellProvider, use: NodeShellProvider });
+        const db = alepha.inject(TestDbCommand);
+
+        await db.testFormatGeneratedMigrations(root, migrationsDir, [
+          "0001_new",
+        ]);
+
+        expect(
+          readFileSync(
+            join(migrationsDir, "0001_new", "snapshot.json"),
+            "utf8",
+          ),
+        ).toBe('{\n  "prevIds": ["d098d407-9a24-43e3-b31f-d65532e9aed1"]\n}\n');
+        expect(
+          readFileSync(
+            join(migrationsDir, "0000_old", "snapshot.json"),
+            "utf8",
+          ),
+        ).toBe(rawSnapshot);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("runs nothing when the run created nothing", async () => {
+      const alepha = Alepha.create()
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        .with({ provide: ShellProvider, use: MemoryShellProvider });
+      const db = alepha.inject(TestDbCommand);
+
+      await db.testFormatGeneratedMigrations(
+        "/app",
+        "/app/migrations/sqlite",
+        [],
+      );
+
+      expect(alepha.inject(MemoryShellProvider).calls).toHaveLength(0);
+    });
+
+    it("warns rather than fails when the formatter does, since the migration is already written", async () => {
+      const alepha = Alepha.create()
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        .with({ provide: ShellProvider, use: MemoryShellProvider });
+      const db = alepha.inject(TestDbCommand);
+      const shell = alepha.inject(MemoryShellProvider);
+      const command = `node "${alepha.inject(AlephaCliUtils).resolveBin("oxfmt")}" '/app/migrations/sqlite/0001_new'`;
+      shell.configure({ errors: { [command]: "oxfmt exploded" } });
+
+      await expect(
+        db.testFormatGeneratedMigrations("/app", "/app/migrations/sqlite", [
+          "0001_new",
+        ]),
+      ).resolves.toBeUndefined();
+      expect(shell.wasCalled(command)).toBe(true);
     });
   });
 
