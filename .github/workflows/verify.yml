@@ -526,27 +526,19 @@ jobs:
       # `alepha build` + `alepha image --tag`: the bundle, the generated
       # Dockerfile and `docker build` in one step, with the tag and the OCI
       # labels coming from `apps/lore/alepha.config.ts`.
+      #
+      # ⚠️ `alepha image` is also how Release builds the published image, so
+      # this step is the release build, run on every push. Keep it the only
+      # one: 0.30.0 failed on a second, hand-written build that nothing here
+      # exercised (#Q2492, #Q2493). The image is amd64 only, so there is no
+      # QEMU and no buildx to set up.
       - name: Build the image
         run: yarn w lore build:docker
 
       - name: Smoke test the image
         run: bash scripts/docker-smoke.sh
 
-      # ⚠️ Both are needed by the size check below, and by nothing else here.
-      # The generated Dockerfile is not RUN-free: `mkdir -p /data && chown`
-      # prepares the volume, so building for the other architecture executes
-      # a shell command under emulation and needs the binfmt handlers.
-      # `setup-buildx` is separately required because the default `docker`
-      # driver refuses a multi-platform build outright.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      # Builds BOTH architectures, which is the only place outside a
-      # dispatched Release where the multi-arch build the release performs is
-      # exercised at all. The size gate rides along on the result.
+      # Measures the image built above rather than building one of its own.
       - name: Check the image size budget
         run: node scripts/docker-size.ts
 

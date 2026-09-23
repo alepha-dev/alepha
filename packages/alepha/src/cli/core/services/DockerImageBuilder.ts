@@ -516,9 +516,9 @@ ${userLine}CMD ["${command}", "${entry}"]
    *
    * They belong in the file rather than on the `docker build` command,
    * because they describe the image the Dockerfile defines and must survive
-   * a build the CLI did not run — the release workflow drives
-   * `docker buildx build` on this file directly, and `source` is what links
-   * the published package to its repository on a registry like GHCR.
+   * a build the CLI did not run, such as a hand-written `docker buildx build`
+   * on this file. `source` is what links the published package to its
+   * repository on a registry like GHCR.
    *
    * A field left unset emits no label, never an empty one.
    */

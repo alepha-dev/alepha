@@ -5,9 +5,9 @@
  * ## What "200 MB" means here
  *
  * It is the COMPRESSED size: the number of bytes `docker pull` actually
- * downloads, summed over the layer blobs in the OCI manifest. That is the
- * only figure a self-hoster experiences, and it is the only one this script
- * gates on.
+ * downloads, summed over the image's layers once gzipped, which is how a
+ * push stores them. That is the only figure a self-hoster experiences, and it
+ * is the only one this script gates on.
  *
  * The alternative reading, the unpacked size on disk, would already be blown
  * by the base image alone, so a budget expressed that way is not a ceiling,
@@ -22,31 +22,36 @@
  * image read as 314 MB (`docker images`), 75.6 MB (`inspect .Size`) and
  * 77.6 MB (this script). Only the last one is what a pull costs.
  *
- * Building both platforms is not only a measurement: it is the only place
- * outside a dispatched Release where the multi-arch build the release
- * performs is exercised at all.
+ * ## It measures, it does not build
  *
- * Usage:  node scripts/docker-size.ts [--budget-mb 200] [--context apps/lore/dist]
+ * The image is the one `alepha image` built (`yarn w lore build:docker`), the
+ * same command Release runs. This script used to run a `buildx` build of its
+ * own for amd64 and arm64, and that second build path is how a moved
+ * Dockerfile reached release day unnoticed (#Q2492). The image is amd64 only
+ * since #Q2493, so there is nothing left for a build here to add.
+ *
+ * `docker save` hands the layers over as the store keeps them: uncompressed
+ * tars under the classic store, possibly gzip under containerd. A layer that
+ * is already gzip counts as is, any other is gzipped here at the default
+ * level, which is what a push does. The figure is within a few percent of the
+ * registry's, and it no longer depends on the daemon's store.
+ *
+ * Usage:  node scripts/docker-size.ts [--budget-mb 200] [--image ghcr.io/alepha-dev/lore:latest]
  */
-import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
+import { createGzip } from "node:zlib";
 
 /**
- * One OCI index or image manifest document. The two shapes share a reader
- * (`readJson`/`readBlob`), so both sets of fields are optional here rather
- * than split into two types.
+ * The `manifest.json` every `docker save` archive carries, whichever store
+ * wrote it. Only the layer paths are read.
  */
-interface OciDoc {
-  manifests?: Array<{
-    digest: string;
-    platform?: { architecture?: string };
-  }>;
-  layers?: Array<{ size: number }>;
+interface SaveManifest {
+  Layers: string[];
 }
 
-const PLATFORMS = ["linux/amd64", "linux/arm64"];
 const MB = 1_000_000;
 
 const args = process.argv.slice(2);
@@ -56,108 +61,82 @@ const flag = (name: string, fallback: string): string => {
 };
 
 const budgetMb = Number(flag("budget-mb", "200"));
-const context = flag("context", "apps/lore/dist");
-/*
-  ⚠️ The Dockerfile no longer lives in the build context.
-
-  `alepha image` generates it into the APP directory, beside
-  `alepha.config.ts`, so it can be committed and edited: `dist/` is wiped by
-  every build. The context stays `dist/` because the Dockerfile's `COPY . .`
-  means the built output, so the two are named separately.
-*/
-const dockerfile = flag("dockerfile", join(context, "..", "Dockerfile"));
-
-const run = (
-  cmd: string,
-  cmdArgs: string[],
-  opts: ExecFileSyncOptions = {},
-): string =>
-  execFileSync(cmd, cmdArgs, { encoding: "utf8", ...opts }) as string;
-
-/** One file out of a tar, without unpacking the archive. */
-const readEntry = (tarball: string, name: string): string =>
-  run("tar", ["-xOf", tarball, name], { maxBuffer: 64 * MB });
-
-const readJson = (tarball: string, name: string): OciDoc =>
-  JSON.parse(readEntry(tarball, name));
-
-const readBlob = (tarball: string, digest: string): OciDoc => {
-  const [algo, hex] = digest.split(":");
-  return readJson(tarball, `blobs/${algo}/${hex}`);
-};
+const image = flag("image", "ghcr.io/alepha-dev/lore:latest");
 
 /**
- * The image manifest, following the index buildx wraps single-platform
- * output in. Attestation manifests carry no `platform.architecture` and are
- * skipped: they are metadata, not something a runtime pulls.
+ * The bytes one layer costs a pull: its size if the archive already holds it
+ * gzipped, else the size of its gzip, streamed so a large layer never sits in
+ * memory.
  */
-const findManifest = (tarball: string): OciDoc => {
-  let entry = readJson(tarball, "index.json").manifests?.[0];
-  if (!entry) {
-    throw new Error(`no manifests in ${tarball}`);
-  }
-  let doc = readBlob(tarball, entry.digest);
-  while (Array.isArray(doc.manifests)) {
-    entry = doc.manifests.find(
-      (it) =>
-        it.platform?.architecture && it.platform.architecture !== "unknown",
-    );
-    if (!entry) {
-      throw new Error(`no image manifest in ${tarball}`);
-    }
-    doc = readBlob(tarball, entry.digest);
-  }
-  return doc;
-};
+const compressedSize = (tarball: string, entry: string): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const tar = spawn("tar", ["-xOf", tarball, entry]);
+    const gzip = createGzip();
+    let raw = 0;
+    let packed = 0;
+    let gzipped: boolean | undefined;
+
+    tar.stdout.on("data", (chunk: Buffer) => {
+      if (gzipped === undefined) {
+        gzipped = chunk[0] === 0x1f && chunk[1] === 0x8b;
+      }
+      raw += chunk.length;
+      if (!gzipped) {
+        gzip.write(chunk);
+      }
+    });
+    tar.stdout.on("end", () => gzip.end());
+    gzip.on("data", (chunk: Buffer) => {
+      packed += chunk.length;
+    });
+    gzip.on("end", () => resolve(gzipped ? raw : packed));
+    gzip.on("error", reject);
+    tar.on("error", reject);
+    tar.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`tar exited ${code} reading ${entry}`));
+      }
+    });
+  });
 
 const workDir = mkdtempSync(join(tmpdir(), "lore-size-"));
 let failed = false;
 
 try {
-  for (const platform of PLATFORMS) {
-    const arch = platform.split("/")[1];
-    const tarball = join(workDir, `${arch}.tar`);
+  const tarball = join(workDir, "image.tar");
+  process.stdout.write(`── saving ${image}\n`);
+  execFileSync("docker", ["save", "--output", tarball, image], {
+    stdio: ["ignore", "inherit", "inherit"],
+  });
 
-    process.stdout.write(`── building ${platform}\n`);
-    run(
-      "docker",
-      [
-        "buildx",
-        "build",
-        "--platform",
-        platform,
-        "--output",
-        `type=oci,dest=${tarball},compression=gzip`,
-        "-f",
-        resolve(dockerfile),
-        ".",
-      ],
-      { cwd: context, stdio: ["ignore", "inherit", "inherit"] },
-    );
+  const [manifest] = JSON.parse(
+    execFileSync("tar", ["-xOf", tarball, "manifest.json"], {
+      encoding: "utf8",
+    }),
+  ) as SaveManifest[];
+  if (!manifest?.Layers?.length) {
+    throw new Error(`no layers in the saved ${image}`);
+  }
 
-    const manifest = findManifest(tarball);
-    const layers = manifest.layers;
-    if (!layers) {
-      throw new Error(`image manifest for ${platform} has no layers`);
-    }
-    const compressed = layers.reduce((sum, it) => sum + it.size, 0);
+  const sizes: number[] = [];
+  for (const layer of manifest.Layers) {
+    sizes.push(await compressedSize(tarball, layer));
+  }
+  const compressed = sizes.reduce((sum, it) => sum + it, 0);
 
-    console.log(`\n── ${platform}`);
-    layers.forEach((layer, i) => {
-      // Layer 0 and 1 are the base image; the app arrives in one COPY.
-      console.log(
-        `   layer ${i}: ${(layer.size / MB).toFixed(1).padStart(7)} MB`,
-      );
-    });
-    const verdict = compressed / MB <= budgetMb ? "OK" : "OVER BUDGET";
-    console.log(
-      `   compressed (what a pull downloads): ${(compressed / MB).toFixed(1)} MB` +
-        ` / ${budgetMb} MB  → ${verdict}`,
-    );
+  console.log(`\n── ${image}`);
+  sizes.forEach((size, i) => {
+    // The first layers are the base image; the app arrives in one COPY.
+    console.log(`   layer ${i}: ${(size / MB).toFixed(1).padStart(7)} MB`);
+  });
+  const verdict = compressed / MB <= budgetMb ? "OK" : "OVER BUDGET";
+  console.log(
+    `   compressed (what a pull downloads): ${(compressed / MB).toFixed(1)} MB` +
+      ` / ${budgetMb} MB  → ${verdict}`,
+  );
 
-    if (compressed / MB > budgetMb) {
-      failed = true;
-    }
+  if (compressed / MB > budgetMb) {
+    failed = true;
   }
 } finally {
   rmSync(workDir, { recursive: true, force: true });
