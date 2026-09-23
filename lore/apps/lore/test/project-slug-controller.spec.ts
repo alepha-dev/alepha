@@ -114,6 +114,57 @@ describe("project slug lifecycle", () => {
     await expect(create(user, "admin")).rejects.toThrow(HttpError);
   });
 
+  describe("name availability, as the wizard asks it", () => {
+    const check = async (
+      user: { id: string; roles: string[] },
+      title: string,
+    ) =>
+      (
+        await ctx.projectController.checkProjectName.fetch(
+          { query: { title } },
+          { user },
+        )
+      ).data;
+
+    it("answers taken for a slug another owner holds", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const other = await createTestUser(ctx);
+      await create(owner, "Hello World");
+      // Same slug from a different spelling, as `createProject` would refuse.
+      expect(await check(other, "hello world")).toEqual({
+        slug: "hello-world",
+        available: false,
+        reason: "taken",
+      });
+    });
+
+    it("answers reserved for a segment the router owns", async ({ expect }) => {
+      const user = await createTestUser(ctx);
+      expect(await check(user, "admin")).toEqual({
+        slug: "admin",
+        available: false,
+        reason: "reserved",
+      });
+    });
+
+    it("answers available for a free name", async ({ expect }) => {
+      const user = await createTestUser(ctx);
+      expect(await check(user, "Hello World")).toEqual({
+        slug: "hello-world",
+        available: true,
+      });
+    });
+
+    it("answers available when nothing transliterates", async ({ expect }) => {
+      // `createProject` gives such a title `project-<id>`, which is always free.
+      const user = await createTestUser(ctx);
+      expect(await check(user, "日本語")).toEqual({
+        slug: "",
+        available: true,
+      });
+    });
+  });
+
   it("falls back to the id namespace when nothing transliterates", async ({
     expect,
   }) => {

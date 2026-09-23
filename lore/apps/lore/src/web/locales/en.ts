@@ -535,6 +535,12 @@ export default {
   "project.create.name": "Name",
   "project.create.name.helper":
     "Set a short name for identifying your project.",
+  "project.create.name.taken": "That name is already taken.",
+  "project.create.name.reserved": "That name is reserved. Pick another one.",
+  "project.create.name.tooLong": "At most 24 characters.",
+  "project.create.name.firstChar": "Start with a letter or a digit.",
+  "project.create.name.badChar":
+    "The character $1 is not allowed. Use letters, digits, spaces, - and _.",
   "project.update.repositoryUrl.label": "Repository",
   "project.update.repositoryUrl.helper":
     "The repository this project's commits live in. Set it and a quest's commit references become links.",

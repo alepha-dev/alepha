@@ -802,6 +802,147 @@ body::before {
   opacity: 0.08;
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+ * The new-project backdrop (`ProjectCreate`): the quest log's diamond
+ * lattice, drifting, under two slow pools of the theme's primary.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/*
+ * Same material as the rest of the app on purpose: `var(--primary)` shown
+ * through a mask, so every theme tints it with no rule here. What this page
+ * adds is motion, and it is kept slow enough to read as a room breathing
+ * rather than as something to watch: the lattice travels one tile in 40s,
+ * the pools cross the page in half a minute.
+ *
+ * The container is the stacking context's bottom layer (`z-index: -1`
+ * inside the wrapper's `isolate`), and carries the vignette as its own
+ * mask, so the texture is densest around the card and dissolves before
+ * the edges. That fade is what keeps a full-bleed pattern from reading as
+ * wallpaper.
+ */
+.lore-create-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: radial-gradient(
+    ellipse 70% 65% at 50% 50%,
+    black 25%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 70% 65% at 50% 50%,
+    black 25%,
+    transparent 100%
+  );
+}
+
+/*
+ * One tile of overhang on every side, so translating by exactly one tile
+ * loops without a seam and never uncovers an edge. `transform` rather than
+ * an animated `mask-position`, which would repaint the full viewport on
+ * every frame.
+ */
+.lore-create-backdrop-lattice {
+  position: absolute;
+  inset: -32px;
+  background-color: var(--primary);
+  opacity: 0.07;
+  mask-image: url("data:image/svg+xml,%3Csvg width='28' height='28' viewBox='0 0 28 28' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 0 L28 14 L14 28 L0 14 Z' fill='none' stroke='black' stroke-width='1'/%3E%3Cpath d='M14 12 L16 14 L14 16 L12 14 Z' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='28' height='28' viewBox='0 0 28 28' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 0 L28 14 L14 28 L0 14 Z' fill='none' stroke='black' stroke-width='1'/%3E%3Cpath d='M14 12 L16 14 L14 16 L12 14 Z' fill='black'/%3E%3C/svg%3E");
+  mask-size: 32px 32px;
+  -webkit-mask-size: 32px 32px;
+  mask-repeat: repeat;
+  -webkit-mask-repeat: repeat;
+  animation: loreCreateLattice 40s linear infinite;
+  will-change: transform;
+}
+
+.dark .lore-create-backdrop-lattice {
+  opacity: 0.08;
+}
+
+/*
+ * The pools: plain radial gradients, no `filter: blur()`, which would cost
+ * a full-size offscreen pass per frame for a softness the gradient already
+ * has. Two of them on different periods so the light never settles into a
+ * visible loop.
+ */
+.lore-create-backdrop::before,
+.lore-create-backdrop::after {
+  content: "";
+  position: absolute;
+  width: min(48rem, 90vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--primary) 16%, transparent) 0%,
+    transparent 65%
+  );
+  will-change: transform;
+}
+
+.lore-create-backdrop::before {
+  top: -12%;
+  left: 8%;
+  animation: loreCreatePoolA 26s ease-in-out infinite alternate;
+}
+
+.lore-create-backdrop::after {
+  bottom: -18%;
+  right: 4%;
+  animation: loreCreatePoolB 34s ease-in-out infinite alternate;
+}
+
+.dark .lore-create-backdrop::before,
+.dark .lore-create-backdrop::after {
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--primary) 22%, transparent) 0%,
+    transparent 65%
+  );
+}
+
+@keyframes loreCreateLattice {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(32px, 32px, 0);
+  }
+}
+
+@keyframes loreCreatePoolA {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(18vw, 14vh, 0) scale(1.15);
+  }
+}
+
+@keyframes loreCreatePoolB {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-20vw, -12vh, 0) scale(0.95);
+  }
+}
+
+/*
+ * Motion is the only thing dropped: the lattice and the pools stay, still.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .lore-create-backdrop-lattice,
+  .lore-create-backdrop::before,
+  .lore-create-backdrop::after {
+    animation: none;
+  }
+}
+
 /*
  * The dashboard's canvas: a 16px dot grid, as the mockup draws it.
  *

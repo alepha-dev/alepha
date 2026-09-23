@@ -47,6 +47,7 @@ import {
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
+import { projectNameAvailabilitySchema } from "../schemas/projectNameAvailabilitySchema.ts";
 import { projectRepositoryUrlSchema } from "../schemas/projectRepositoryUrlSchema.ts";
 import {
   projectOverviewResourceSchema,
@@ -211,8 +212,26 @@ export class ProjectController {
     slug: string,
     exceptProjectId?: number,
   ): Promise<void> {
-    if (this.slugs.isReserved(slug)) {
+    const status = await this.slugAvailability(slug, exceptProjectId);
+    if (status === "reserved") {
       throw new BadRequestError(`The name "${slug}" is reserved`);
+    }
+    if (status === "taken") {
+      throw new ConflictError("That name is already taken");
+    }
+  }
+
+  /**
+   * The one answer to "can this slug be claimed", shared by the gate above
+   * and {@link checkProjectName}, so the wizard's tick and the create call
+   * are the same question asked twice rather than two rules that can drift.
+   */
+  protected async slugAvailability(
+    slug: string,
+    exceptProjectId?: number,
+  ): Promise<"available" | "taken" | "reserved"> {
+    if (this.slugs.isReserved(slug)) {
+      return "reserved";
     }
 
     const existing = await this.projects.findOne({
@@ -220,9 +239,42 @@ export class ProjectController {
     });
 
     if (existing && existing.id !== exceptProjectId) {
-      throw new ConflictError("That name is already taken");
+      return "taken";
     }
+
+    return "available";
   }
+
+  /**
+   * Whether a title is free, asked by the creation wizard as the name is
+   * typed so Next can refuse a taken name on step 1 instead of at submit.
+   *
+   * Reveals nothing `createProject` does not: a taken slug is already a 409
+   * there, to the same callers, under the same permission. The title is not
+   * validated against `projectTitleSchema` here, because the field asks while
+   * it is still being typed; the form's own schema owns that refusal.
+   */
+  checkProjectName = $action({
+    use: [$secure({ permissions: ["project:create"] })],
+    method: "GET",
+    path: "/project-name-availability",
+    schema: {
+      query: z.object({
+        title: z.text(),
+      }),
+      response: projectNameAvailabilitySchema,
+    },
+    handler: async ({ query }) => {
+      const slug = this.slugs.slugify(query.title);
+      if (!slug) {
+        return { slug, available: true };
+      }
+      const status = await this.slugAvailability(slug);
+      return status === "available"
+        ? { slug, available: true }
+        : { slug, available: false, reason: status };
+    },
+  });
 
   /**
    * Project icons (avatars). Image-only, 2 MB cap.
