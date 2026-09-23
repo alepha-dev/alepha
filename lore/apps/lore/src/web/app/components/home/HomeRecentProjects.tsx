@@ -2,10 +2,11 @@ import { Button } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
+import { Link, useRouter } from "alepha/react/router";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
+import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import {
   activityAgeInDays,
@@ -33,17 +34,16 @@ export interface HomeRecentProjectsProps {
  * Home's one column: the projects you touched last, one row each.
  *
  * A glance, not a table: no sorting, no filters, no paging. The first
- * `RECENT` rows show, and the rest are one click away in place, since the
- * list is already complete in memory (`userProjectsAtom`).
+ * `RECENT` rows show, and "Show more" is a link to `/account/projects`,
+ * which lists every project, rather than growing this list in place.
  */
 export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const openTags = useHomeOpenTags(props.openCounts);
-  const [expanded, setExpanded] = useState(false);
+  const router = useRouter<AppRouter>();
 
-  const shown = expanded ? props.projects : props.projects.slice(0, RECENT);
-  const hidden = props.projects.length - RECENT;
+  const shown = props.projects.slice(0, RECENT);
 
   /**
    * The tallest day across every project, so one scale serves the column.
@@ -86,18 +86,17 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
           />
         ))}
       </ul>
-      {hidden > 0 && (
+      {props.projects.length > RECENT && (
         <Button
+          render={<Link href={router.path("accountProjects")} />}
+          // A link wearing a button's clothes, as on the hero's CTA.
+          nativeButton={false}
+          role="link"
           variant="ghost"
           size="sm"
           className="text-muted-foreground mt-4 self-center"
-          onClick={() => setExpanded(!expanded)}
         >
-          {expanded
-            ? tr("home.recent.showLess")
-            : tr("home.recent.showAll", {
-                args: [String(props.projects.length)],
-              })}
+          {tr("home.recent.showMore")}
         </Button>
       )}
     </section>
@@ -105,6 +104,6 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
 };
 
 /**
- * Rows the list shows before "Show all".
+ * Rows the list shows before "Show more".
  */
-const RECENT = 8;
+const RECENT = 5;

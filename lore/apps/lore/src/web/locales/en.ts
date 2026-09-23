@@ -69,8 +69,7 @@ export default {
   "home.search.navigate": "to navigate",
   "home.search.select": "to open",
   "home.recent.title": "Recent projects",
-  "home.recent.showAll": "Show all $1 projects",
-  "home.recent.showLess": "Show less",
+  "home.recent.showMore": "Show more",
   // The window is in the label because the bars carry no axis: without it,
   // "Momentum" is a shape with no unit of time.
   "home.table.owner": "You own this project",
