@@ -28,7 +28,6 @@
     "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "@alepha/devtools": "workspace:*",
     "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@codemirror/autocomplete": "^6.20.3",
