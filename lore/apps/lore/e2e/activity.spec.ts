@@ -117,11 +117,9 @@ test.describe("Activity", () => {
         { timeout: 15_000 },
       );
 
-      // Every filter here is optional, so it starts off the bar (#E58) and is
-      // added from the "+" menu. Adding one opens its list, which is
-      // why the option is the next click.
-      await page.getByRole("button", { name: "Add filters" }).click();
-      await page.getByRole("menuitem", { name: /^Resource/ }).click();
+      // Resource is on the bar from the start (a `default` filter), so its
+      // list is opened in place rather than added from the "+" menu.
+      await page.locator('[data-filter="type"] [role="combobox"]').click();
       await page.getByRole("option", { name: "Folio", exact: true }).click();
       await request;
 
