@@ -184,7 +184,15 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
       )}
     >
       {props.filters && form && !isMobile ? (
-        <form {...form.props} className="flex flex-1 flex-wrap items-end gap-2">
+        // `self-stretch`: the form spans the bar's full row, so the "+" (whose
+        // own `self-center` targets this form) sits on the row's midline. It
+        // used to shrink to its content and, under the bar's `items-end`, sat
+        // at the bottom: with no filter shown the form was just the 28px "+"
+        // against 36px actions, 4px under the midline.
+        <form
+          {...form.props}
+          className="flex flex-1 flex-wrap items-end gap-2 self-stretch"
+        >
           {filterControls("bar")}
         </form>
       ) : (

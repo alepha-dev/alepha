@@ -386,8 +386,14 @@ export interface DataTableFilterFieldOptions {
   /**
    * The options of a list filter, for live data (an atom, a fetch). Without
    * it, an enum schema gives the options. Read every render.
+   *
+   * A function receives the bar's current values, so one filter's options can
+   * follow another's choice: an "action" list narrowed to the actions the
+   * picked resource types actually have.
    */
-  items?: SelectOption[];
+  items?:
+    | SelectOption[]
+    | ((values: Record<string, unknown>) => SelectOption[]);
   /**
    * The label of one option an enum schema gives. Its argument is `any` in
    * the hoisted form; annotate it where a label map needs the literal type.

@@ -468,6 +468,30 @@ describe("DataTable (the filter bar drawn from fields)", () => {
     });
   });
 
+  describe("the add button", () => {
+    it("carries a visible label while no filter is on screen, then turns back into a bare +", async () => {
+      await mount({
+        fields: {
+          team: filterFields.team,
+          owner: filterFields.owner,
+        },
+      });
+
+      // Nothing locked and nothing default: the bar holds the button alone,
+      // so it says what it adds, and needs no tooltip to say it.
+      const labeled = screen.getByRole("button", { name: "Add filter" });
+      expect(labeled.textContent).toContain("Add filter");
+
+      fireEvent.keyDown(labeled, { key: "ArrowDown" });
+      fireEvent.click(await screen.findByRole("menuitem", { name: /Owner/ }));
+      await waitFor(() => expect(slot("owner")).toBeTruthy());
+
+      // A filter now sits beside it: back to the small "+".
+      const bare = screen.getByRole("button", { name: "Add filters" });
+      expect(bare.textContent).not.toContain("Add filter");
+    });
+  });
+
   describe("render", () => {
     it("draws no bar when the caller renders the filters", async () => {
       const app = await start();

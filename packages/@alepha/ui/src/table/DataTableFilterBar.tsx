@@ -2,7 +2,7 @@ import { type ZObject, type ZType, z } from "alepha";
 import type { FormModel } from "alepha/react/form";
 import { useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Search } from "lucide-react";
+import { Calendar, List, Search, Type } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { FilterSlot } from "../core/FilterSlot.tsx";
@@ -201,6 +201,7 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
   const itemsOf = (
     field: DataTableFilterBarField,
   ): SelectOption[] | undefined => {
+    if (typeof field.items === "function") return field.items(values);
     if (field.items) return field.items;
     const options = enumValuesOf(field);
     if (options.length === 0) return undefined;
@@ -236,8 +237,19 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
   const labelOf = (field: DataTableFilterBarField) =>
     field.label ?? placeholderOf(field) ?? field.key;
 
-  const iconOf = (field: DataTableFilterBarField) =>
-    field.icon ?? (field.preset === "search" ? Search : undefined);
+  // Every filter has an icon, as every `Control` does: the caller's, the
+  // search glyph for the search preset, else its kind's (the same glyphs the
+  // controls fall back to). Without the last step a filter the caller gave no
+  // icon was the one bare row of the add menu ("When", beside "Resource" and
+  // "What").
+  const iconOf = (field: DataTableFilterBarField) => {
+    if (field.icon) return field.icon;
+    if (field.preset === "search") return Search;
+    const kind = kindOf(field);
+    if (kind === "date") return Calendar;
+    if (kind === "list") return List;
+    return Type;
+  };
 
   // A filter goes back to its default operator as its value goes: an
   // operator standing with nothing to qualify still counts as a filter in the
@@ -440,6 +452,7 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
 
       {!dialog && (
         <DataTableFilterAdd
+          labeled={!ordered.some((field) => drawn(field))}
           items={props.fields
             .filter(
               (field) =>

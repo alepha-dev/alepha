@@ -21,6 +21,13 @@ export interface DataTableFilterAddProps {
    */
   items: DataTableFilterAddItem[];
   onAdd: (key: string) => void;
+  /**
+   * Draw the button with a visible "Add filter" label instead of the bare
+   * "+" and its tooltip. The bar passes it while no filter is on screen:
+   * alone in the bar, a "+" has no row of filters beside it to say what it
+   * adds.
+   */
+  labeled?: boolean;
 }
 
 /**
@@ -51,6 +58,9 @@ export interface DataTableFilterAddProps {
 export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
   const { tr } = useI18n();
   const label = tr("dataTable.addFilter", { default: "Add filters" });
+  const visibleLabel = tr("dataTable.addFilterLabel", {
+    default: "Add filter",
+  });
   const groupLabel = tr("dataTable.filterBy", { default: "Filter by" });
 
   // Spelled out case by case rather than built from the type: the i18n check
@@ -73,39 +83,59 @@ export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
 
   return (
     <DropdownMenu>
-      {/*
+      {props.labeled ? (
+        // Labelled, so no tooltip: it would repeat the label. The visible
+        // text is also the accessible name.
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              size="sm"
+              variant="minimal"
+              className="text-muted-foreground hover:text-foreground shrink-0 self-center"
+            />
+          }
+        >
+          <Plus className="size-4" />
+          {visibleLabel}
+        </DropdownMenuTrigger>
+      ) : (
+        <>
+          {/*
         The dropdown trigger AND a tooltip trigger, composed the way
         `DataTableColumnPicker` does it: without the tooltip this was the one
         icon-only button in the bar that never said what it does. The
         `TooltipProvider` is the toolbar's.
       */}
-      <Tooltip>
-        <DropdownMenuTrigger
-          render={
-            <TooltipTrigger
+          <Tooltip>
+            <DropdownMenuTrigger
               render={
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="minimal"
-                  // A small, bare "+": it ends the row of filters it adds
-                  // to, so it reads as "one more of these" rather than as a
-                  // fourth toolbar tool beside the column picker, which is
-                  // what the 36px funnel-plus looked like. Ghost, because an
-                  // outlined box beside the outlined filters read as an
-                  // empty filter. `self-center` holds it on the row's
-                  // midline, since it is shorter than the controls.
-                  className="text-muted-foreground hover:text-foreground shrink-0 self-center"
-                  aria-label={label}
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="minimal"
+                      // A small, bare "+": it ends the row of filters it adds
+                      // to, so it reads as "one more of these" rather than as a
+                      // fourth toolbar tool beside the column picker, which is
+                      // what the 36px funnel-plus looked like. Ghost, because an
+                      // outlined box beside the outlined filters read as an
+                      // empty filter. `self-center` holds it on the row's
+                      // midline, since it is shorter than the controls.
+                      className="text-muted-foreground hover:text-foreground shrink-0 self-center"
+                      aria-label={label}
+                    />
+                  }
                 />
               }
-            />
-          }
-        >
-          <Plus className="size-4" />
-        </DropdownMenuTrigger>
-        <TooltipContent>{label}</TooltipContent>
-      </Tooltip>
+            >
+              <Plus className="size-4" />
+            </DropdownMenuTrigger>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>
+        </>
+      )}
       <DropdownMenuContent align="start">
         {/*
           A real `DropdownMenuGroup`, not a bare label above the items.
