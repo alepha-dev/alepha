@@ -47,13 +47,24 @@ export const widthFor = (input: BaseInputField, override?: number): number => {
 
 /**
  * Maps a percentage width to a Tailwind `col-span-N` class on a 12-col grid.
+ *
+ * A partial width applies from `sm` (640px) up: below that every field takes
+ * the whole row. A third of a phone-width form is a field too narrow to type
+ * in, which is what a stacked form on mobile showed ("Name" at 180px beside
+ * an empty two thirds).
+ *
+ * ⚠️ A viewport breakpoint, not a container query, although a container
+ * query would also catch a narrow drawer on a desktop. `container-type:
+ * inline-size` on the grid zeroes its intrinsic width, so a form inside a
+ * shrink-to-fit parent (a `shrink-0` flex item, the showcase's knob panel)
+ * would collapse to nothing.
  */
 export const spanClass = (width: number): string => {
   if (width >= 100) return "col-span-12";
-  if (width >= 75) return "col-span-9";
-  if (width >= 66) return "col-span-8";
-  if (width >= 50) return "col-span-6";
-  if (width >= 33) return "col-span-4";
-  if (width >= 25) return "col-span-3";
-  return "col-span-4";
+  if (width >= 75) return "col-span-12 sm:col-span-9";
+  if (width >= 66) return "col-span-12 sm:col-span-8";
+  if (width >= 50) return "col-span-12 sm:col-span-6";
+  if (width >= 33) return "col-span-12 sm:col-span-4";
+  if (width >= 25) return "col-span-12 sm:col-span-3";
+  return "col-span-12 sm:col-span-4";
 };

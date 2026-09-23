@@ -10,15 +10,28 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * SSR. Each call returns a promise, so the calling code still reads top to
  * bottom.
  */
+/*
+ * `clearable: false` on the four texts: a dialog always has them, so an empty
+ * knob is not a state worth a button. They are optional only because
+ * `.default()` makes them so, which is what put a (x) on each.
+ */
 const KNOBS = z.object({
-  title: z.string().default("Delete project").meta({ title: "Title" }),
+  title: z
+    .string()
+    .default("Delete project")
+    .meta({ title: "Title", $control: { clearable: false } }),
   description: z
     .string()
     .default("This permanently removes the project and its history.")
-    .meta({ title: "Description" })
-    .optional(),
-  confirmLabel: z.string().default("Delete").meta({ title: "Confirm label" }),
-  cancelLabel: z.string().default("Cancel").meta({ title: "Cancel label" }),
+    .meta({ title: "Description", $control: { clearable: false } }),
+  confirmLabel: z
+    .string()
+    .default("Delete")
+    .meta({ title: "Confirm label", $control: { clearable: false } }),
+  cancelLabel: z
+    .string()
+    .default("Cancel")
+    .meta({ title: "Cancel label", $control: { clearable: false } }),
   destructive: z.boolean().default(true).meta({ title: "Destructive" }),
 });
 

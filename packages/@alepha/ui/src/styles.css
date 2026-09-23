@@ -167,6 +167,14 @@
    */
   --font-heading: var(--font-sans);
   --background: oklch(1 0 0);
+  /*
+   * The colour of the surface a control sits on: the page by default, and
+   * re-declared by every element painting one of the surface tokens (the
+   * rules after `.dark` below). Read by an overlay that has to fade INTO
+   * what is behind it, such as a text field's clear button over the end of
+   * its value. It holds a `var()`, so it follows `.dark` and every theme.
+   */
+  --surface: var(--background);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -387,6 +395,34 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: var(--border);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/*
+ * `--surface` follows the surface utilities rather than being set by hand
+ * in each component: a hand-written `bg-card` panel is as much a surface as
+ * `Card`, and a per-component declaration missed it (the clear button's
+ * fade showed as a darker patch on the showcase's knob panel). Keyed on the
+ * class names Tailwind emits, so any element painting one of these declares
+ * the colour its descendants sit on. A translucent fill (`bg-muted/40`) is
+ * not a surface an overlay can match, and is left out on purpose.
+ */
+.bg-background {
+  --surface: var(--background);
+}
+.bg-card {
+  --surface: var(--card);
+}
+.bg-popover {
+  --surface: var(--popover);
+}
+.bg-sidebar {
+  --surface: var(--sidebar);
+}
+.bg-muted {
+  --surface: var(--muted);
+}
+.bg-secondary {
+  --surface: var(--secondary);
 }
 
 @layer base {

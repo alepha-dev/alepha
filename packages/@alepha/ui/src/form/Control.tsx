@@ -535,7 +535,15 @@ export const Control = (props: ControlProps) => {
         combobox={merged.combobox}
         searchable={merged.searchable}
         items={items as never}
-        icon={resolveIcon(merged.icon)}
+        // Every field carries a leading icon, a select included: the list
+        // glyph unless the caller names one or passes `null`. Not on a
+        // `minimal` trigger, the toolbar filter chip, which names itself with
+        // a `triggerPrefix` and would only get noisier.
+        icon={
+          merged.minimal
+            ? resolveIcon(merged.icon)
+            : resolveIcon(merged.icon, "list")
+        }
         disabled={merged.disabled}
         createNewEntry={
           merged.createNewEntry as boolean | ((q: string) => never) | undefined
@@ -739,13 +747,16 @@ export const Control = (props: ControlProps) => {
   // `clearable !== false`, not `clearable === true`: an optional text field
   // offers the button by default and a caller opts *out* of it. See the prop.
   const showClear = !showSave && isNullable && merged.clearable !== false;
-  // The right gutter is reserved only while the tick or the cross is drawn.
-  // Kept on every editable field, it took 36px from the text of each one and
-  // cut placeholders short for a button that was not there ("Rechercher
-  // client, terr…"). The input is border-box, so the padding arriving with
-  // the button never changes its width.
+  // The right gutter is reserved only while the tick is drawn, or while the
+  // cross is drawn AND the field has focus. Kept on every editable field, it
+  // took 36px from the text of each one and cut placeholders short for a
+  // button that was not there ("Rechercher client, terr…"). At rest the cross
+  // floats over the end of the value on a fade instead, so a settings row
+  // shows "Delete project" rather than "Delete proj"; once focused the gutter
+  // comes back, since the caret must never sit under the button. The input
+  // is border-box, so the padding never changes its width.
   const showTrailing = !showSave && !showClear && merged.trailing != null;
-  const reserveGutter = showSave || showClear || showTrailing;
+  const reserveGutter = showSave || showTrailing;
 
   return wrapWithSlots(
     merged,
@@ -795,6 +806,7 @@ export const Control = (props: ControlProps) => {
             merged.inputProps?.className,
             Icon && "pl-9",
             reserveGutter && "pr-9",
+            showClear && "focus:pr-9",
           )}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -840,7 +852,13 @@ export const Control = (props: ControlProps) => {
             // would have matched nothing. Purely an identification hook: no
             // style and no behaviour rides on it here.
             data-slot="control-clear"
-            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
+            // Over the value, inside the border (`inset-y-px right-px`), on a
+            // fade into the surface behind the field (`--surface`, which any
+            // element painting a surface token declares, see `styles.css`).
+            // In dark the input carries its own
+            // `bg-input/30` tint, so the fade stacks that tint over the
+            // surface to match it exactly.
+            className="text-muted-foreground hover:text-foreground absolute inset-y-px right-px flex items-center rounded-r-[calc(var(--radius-lg)-1px)] bg-[linear-gradient(to_right,transparent,var(--surface)_1.25rem)] pr-2.5 pl-6 dark:bg-[linear-gradient(to_right,transparent,color-mix(in_oklab,var(--input)_30%,transparent)_1.25rem),linear-gradient(to_right,transparent,var(--surface)_1.25rem)]"
           >
             <X className="size-3.5" />
           </button>

@@ -165,8 +165,9 @@ export interface ControlSelectProps {
   /**
    * Leading icon rendered on the left of the trigger, matching the
    * text-input controls. Resolved by the parent `Control` from its `icon`
-   * prop — unlike text inputs there is no schema-hint fallback, so a select
-   * only shows an icon when one is explicitly set.
+   * prop, falling back to the list glyph like a text input falls back to
+   * its schema hint; `icon={null}` on the `Control` removes it, and a
+   * `minimal` trigger gets none by default.
    */
   icon?: IconComponent;
   /**
