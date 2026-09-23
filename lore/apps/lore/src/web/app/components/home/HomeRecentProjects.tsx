@@ -54,12 +54,13 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
   );
 
   /**
-   * Never muted before the board arrives: muting first then lighting up
-   * would flicker every row that turns out to be busy.
+   * Muted from the first frame, off the overview's `lastActivityAt`, which
+   * is the same read the board makes: waiting for the board greyed the quiet
+   * rows a second after load.
    */
   const isInactive = (project: ProjectOverviewResource) => {
-    const at = props.lastActivity.get(project.id);
-    return !!at && activityAgeInDays(dt, at) >= HOME_INACTIVE_AFTER_DAYS;
+    const at = props.lastActivity.get(project.id) ?? project.lastActivityAt;
+    return activityAgeInDays(dt, at) >= HOME_INACTIVE_AFTER_DAYS;
   };
 
   return (

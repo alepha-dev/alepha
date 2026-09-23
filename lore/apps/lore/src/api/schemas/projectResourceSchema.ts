@@ -78,6 +78,16 @@ export const projectOverviewResourceSchema = projectResourceSchema.extend({
    * counted through the shared scope rather than derived here.
    */
   openQuestCount: z.integer(),
+  /**
+   * When the project last moved: its newest audit event, or the project
+   * row's own `updatedAt` when that is later (`ProjectRecencyService`).
+   *
+   * The order of Home's list. On the overview rather than on `getHomeBoard`
+   * alone because the overview paints first: sorting that first frame by
+   * `updatedAt` and the board's frame by this reshuffled the list a second
+   * after load, since a quest or a folio edit never touches the project row.
+   */
+  lastActivityAt: z.datetime(),
 });
 
 export type ProjectOverviewResource = Infer<
