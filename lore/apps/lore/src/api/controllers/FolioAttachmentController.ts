@@ -95,6 +95,8 @@ export class FolioAttachmentController {
   folioBucket = $storage({
     name: FolioAttachmentService.BUCKET,
     description: "Folio attachments",
+    // The folio editor uploads here straight from the browser.
+    clientUploads: true,
   });
 
   /**

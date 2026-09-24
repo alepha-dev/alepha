@@ -4,6 +4,7 @@ import {
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
 import { AuditService } from "alepha/api/audits";
+import { filesOptions } from "alepha/api/files";
 import { AlephaApiJobsQueue } from "alepha/api/jobs";
 import {
   AlephaApiOrganizations,
@@ -449,6 +450,17 @@ export const LoreApi = $module({
       memberPermissions: LorePermissions.MEMBER_DEFAULT,
       floor: LorePermissions.FLOOR,
       ownerOnly: LorePermissions.OWNER_ONLY,
+    });
+    // Lore's own upload quotas (#Q2508). Registration is open and every
+    // account holds `file:create`, so the per-user cap is what keeps one
+    // account from filling the shared total and turning every other upload
+    // into a 413. 250 MB is a hundred folio images at the largest; builds
+    // are uploaded with no user and count against the total only.
+    // `FILES_MAX_TOTAL_SIZE` / `FILES_MAX_USER_SIZE` still win over both.
+    alepha.store.set(filesOptions, {
+      ...alepha.store.get(filesOptions),
+      maxTotalSize: 10 * 1024,
+      maxUserSize: 250,
     });
   },
 });
