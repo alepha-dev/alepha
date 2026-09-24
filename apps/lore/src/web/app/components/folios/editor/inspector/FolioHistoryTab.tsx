@@ -236,7 +236,10 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
     [folioApi, props.folio.id, props.onReverted, dialog, tr],
   );
 
-  const pinAction = useAction<[revision: FolioRevision], void>(
+  const pinAction = useAction<
+    [revision: Pick<FolioRevision, "id" | "pinned">],
+    void
+  >(
     {
       handler: async (revision) => {
         await folioApi.pinHistory({

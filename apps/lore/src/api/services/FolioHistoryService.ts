@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
@@ -109,7 +109,10 @@ export class FolioHistoryService {
   ): Promise<FolioRevision | undefined> {
     const [head] = await this.revisions.findMany({
       where: { folioId: { eq: folioId } },
-      orderBy: [{ column: "at", direction: "desc" }],
+      orderBy: [
+        { column: "at", direction: "desc" },
+        { column: "id", direction: "desc" },
+      ],
       limit: 1,
     });
     if (!head) return undefined;
@@ -149,11 +152,23 @@ export class FolioHistoryService {
    * began as `create` still reads as `create` however much was typed into
    * it afterwards. The alternative — relabelling to the latest action —
    * would report a brand-new folio as an `edit`.
+   *
+   * ## The head holds no copy of the body
+   *
+   * The row this writes is the newest, so its body would be byte-identical
+   * to `folio.content`: it is written with `snapshotIsLive` and an empty
+   * snapshot instead, and {@link FolioHistoryService.contentOf} answers the
+   * live content for it (#Q2491). Before that, any OTHER live row is filled
+   * in with `previousContent`, the body the folio held before this write,
+   * which is exactly what that row documented. `previousContent` is
+   * therefore required on every call but a folio's first: pass the body as
+   * it was read BEFORE the write.
    */
   public async appendRevision(
     folio: Folio,
     byUserId: string,
     action: RevisionAction,
+    previousContent: string | undefined,
   ): Promise<AppendedRevision> {
     // A revert always gets its own row, in BOTH directions. Blocking only
     // the "fold into a revert" side was a bug: the revert's own write would
@@ -164,12 +179,16 @@ export class FolioHistoryService {
       action === "revert"
         ? undefined
         : await this.findOpenRevision(folio.id, byUserId);
+
+    await this.materializeLive(folio.id, previousContent, open?.id);
+
     if (open) {
       return {
         created: false,
         revision: await this.revisions.updateById(open.id, {
           at: this.dateTime.now().toISOString(),
-          contentSnapshot: folio.content,
+          contentSnapshot: "",
+          snapshotIsLive: true,
           titleSnapshot: folio.title,
           summarySnapshot: folio.summary,
         }),
@@ -181,7 +200,8 @@ export class FolioHistoryService {
       at: this.dateTime.now().toISOString(),
       byUserId,
       action,
-      contentSnapshot: folio.content,
+      contentSnapshot: "",
+      snapshotIsLive: true,
       titleSnapshot: folio.title,
       summarySnapshot: folio.summary,
       pinned: false,
@@ -205,6 +225,48 @@ export class FolioHistoryService {
     }
 
     return { created: true, revision: inserted };
+  }
+
+  /**
+   * Fill in every live revision of a folio but `keep` with the body the
+   * folio held before the write in progress.
+   *
+   * Every live row documents the content the folio had until now, so this
+   * is exact. It covers more than the head on purpose: a tie on `at` could
+   * otherwise leave a second live row reading content written after it.
+   *
+   * ⚠️ A live row with no `previousContent` to fill it with is a caller
+   * bug that would silently rewrite history, so it throws rather than
+   * guessing.
+   */
+  protected async materializeLive(
+    folioId: string,
+    previousContent: string | undefined,
+    keep: string | undefined,
+  ): Promise<void> {
+    const live = await this.revisions.findMany({
+      where: { folioId: { eq: folioId }, snapshotIsLive: { eq: true } },
+      columns: ["id"],
+    });
+    const stale = live.filter((row) => row.id !== keep);
+    if (stale.length === 0) return;
+    if (previousContent === undefined) {
+      throw new AlephaError(
+        "A live folio revision needs the previous content to be filled in",
+      );
+    }
+    await this.revisions.updateMany(
+      { id: { inArray: stale.map((row) => row.id) } },
+      { contentSnapshot: previousContent, snapshotIsLive: false },
+    );
+  }
+
+  /**
+   * The body a revision documents: its snapshot, or the live folio's
+   * content while it is the head. The one way to read a revision's body.
+   */
+  public contentOf(revision: FolioRevision, liveContent: string): string {
+    return revision.snapshotIsLive ? liveContent : revision.contentSnapshot;
   }
 
   /**

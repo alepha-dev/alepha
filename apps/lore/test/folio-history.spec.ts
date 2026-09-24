@@ -519,6 +519,7 @@ describe("FolioController history (#63)", () => {
       { ...stored.data, content: "v2" },
       other.id,
       "edit",
+      stored.data.content,
     );
 
     const history = await ctx.folioController.listHistory.fetch(
