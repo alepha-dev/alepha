@@ -15,7 +15,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { useAgentPromptSubject } from "./useAgentPromptSubject.ts";
 
 /**
- * The one route the subject builds a URL from. `router.path` resolves
+ * The routes the subject builds URLs from. `router.path` resolves
  * against the real page table, so a stub is what lets this spec run without
  * booting `AppRouter`.
  */
@@ -33,6 +33,11 @@ class Routes {
   blights = $page({
     name: "projectBlights",
     path: "/blights",
+    component: () => null,
+  });
+  quests = $page({
+    name: "projectQuests",
+    path: "/quests",
     component: () => null,
   });
 }
@@ -227,6 +232,15 @@ describe("useAgentPromptSubject", () => {
 
     expect(Object.keys(subject).sort()).toEqual(["project", "slug", "url"]);
     expect(subject.url).toContain("/blights");
+    expect(subject).not.toHaveProperty("reference");
+  });
+
+  it("builds a Quests page subject of the same three fields", async () => {
+    const handle = await handleFor();
+    const subject = handle.forQuestList();
+
+    expect(Object.keys(subject).sort()).toEqual(["project", "slug", "url"]);
+    expect(subject.url).toMatch(/\/quests$/);
     expect(subject).not.toHaveProperty("reference");
   });
 });

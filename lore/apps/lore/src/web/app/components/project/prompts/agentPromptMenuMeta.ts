@@ -2,6 +2,7 @@ import {
   Bug,
   ClipboardCheck,
   ListChecks,
+  ListTodo,
   type LucideIcon,
   Wrench,
 } from "lucide-react";
@@ -81,5 +82,12 @@ export const AGENT_PROMPT_MENU_META: Record<
   blightTriage: {
     Icon: Bug,
     labelKey: "agentPrompts.triageBlights",
+  },
+  // `ListTodo`, not `Wrench`: "Work on it" hands over ONE item, and this
+  // hands over a list. A wrench here would read as working the quest the
+  // page happens to show.
+  questLoop: {
+    Icon: ListTodo,
+    labelKey: "agentPrompts.workLooseQuests",
   },
 };

@@ -151,7 +151,7 @@ Settings ▸ Work and turns it on, `lore.alepha.dev` included.
 
 | piece          | where                                                                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the four kinds | `src/api/schemas/agentPromptKindSchema.ts` - `epicReview`, `epicActivate`, `questWork`, `feedbackWork`                                                                                                        |
+| the kinds      | `src/api/schemas/agentPromptKindSchema.ts` - item-scoped `epicReview`, `epicActivate`, `questWork`, `feedbackWork`; surface-scoped `feedbackLoop`, `blightTriage`, `questLoop` (the Quests page toolbar)      |
 | the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default |
 | the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                            |
 | the defaults   | `src/web/app/prompts/` - one file per kind, mapped by `agentPromptDefaults.ts`                                                                                                                                |

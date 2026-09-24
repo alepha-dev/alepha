@@ -142,6 +142,13 @@ class Routes {
     component: () => null,
   });
 
+  // The toolbar's Agent Prompts entry links the run to the list itself.
+  quests = $page({
+    name: "projectQuests",
+    path: "/quests",
+    component: () => null,
+  });
+
   // The Epic column anchors here. ⚠️ The param is `epicNumber` and the path
   // takes the epic's per-project NUMBER, which is the whole point of the
   // column resolving the id rather than printing it.
@@ -581,6 +588,54 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       expect(written[0]).toContain("Loose quest");
       expect(written[0]).toContain("shortId 1");
       expect(written[0]).not.toContain("sg_");
+    });
+  });
+
+  /**
+   * #Q2512: the Quests page hands the whole loose backlog to an agent, the
+   * way the epic page hands over an epic and the inboxes hand over a triage.
+   */
+  describe("the Agent Prompts toolbar menu", () => {
+    const trigger = () =>
+      screen.queryByRole("button", { name: "Agent Prompts" });
+
+    it("sits in the toolbar and copies the loose-quests run", async () => {
+      const written: string[] = [];
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            written.push(text);
+          },
+        },
+      });
+      await mount([questOf(1, "Loose quest")]);
+
+      fireEvent.click(await waitFor(() => trigger()!));
+      const entry = await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (it) => it.textContent?.includes("Work the loose quests"),
+        );
+        if (!found) throw new Error("menu not open yet");
+        return found;
+      });
+      fireEvent.click(entry);
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain("Work every loose quest");
+      expect(written[0]).toMatch(/\/quests\b/);
+      // Surface-scoped: no item placeholder survives into the clipboard.
+      expect(written[0]).not.toMatch(/\{\{/);
+    });
+
+    it("is absent when the project has agent prompts off", async () => {
+      await mount(
+        [questOf(1, "Loose quest")],
+        projectFixture({ options: { work: { agentPrompts: false } } }),
+      );
+
+      await screen.findByRole("link", { name: /^#Q1 - / });
+      expect(trigger()).toBe(null);
     });
   });
 
