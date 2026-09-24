@@ -606,3 +606,41 @@ export const confirmDialog = async (
   await expect(dialog).toBeHidden({ timeout: 10_000 });
   await releasePointerEvents(page);
 };
+
+/**
+ * Create a rank from one of the presets, the way an owner does it: Settings >
+ * Ranks > Create rank > Start from <preset>, then confirm the name.
+ *
+ * A project starts with Owner and Member only since #Q2511, so a spec that
+ * invites somebody as a Contributor or a Viewer creates that rank first.
+ * Returns the new rank's key, read off the save request: the editor mints
+ * `r<time>` rather than reusing the preset's key, so a spec that talks to the
+ * API has to be told which one it got.
+ */
+export const createRankFromPreset = async (
+  page: Page,
+  slug: string,
+  presetName: string,
+): Promise<string> => {
+  await page.goto(`/${slug}/settings/ranks`);
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Create rank" }).click();
+  await page
+    .getByRole("menuitem", { name: `Start from ${presetName}`, exact: true })
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("textbox")).toHaveValue(presetName, {
+    timeout: 10_000,
+  });
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === "PUT" && /\/ranks\/[^/?]+$/.test(r.url()),
+    { timeout: 15_000 },
+  );
+  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+  const response = await saved;
+  expect(response.ok()).toBe(true);
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await releasePointerEvents(page);
+  return decodeURIComponent(response.url().split("/").pop()!);
+};

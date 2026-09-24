@@ -50,8 +50,9 @@ export class QualityJobs {
     // per project and unbounded, so the headroom is for growth; the prune
     // is idempotent and the next night resumes.
     timeout: [2, "minutes"],
-    // Daily, so a failed tick otherwise waits a day. See
-    // `ProjectRankJobs.seedMissingPresetRanks` for the same reasoning.
+    // Daily, so a failed tick otherwise waits a day. With `retry` the tick
+    // writes an outbox row and the sweep picks it up within `sweepCron`, so a
+    // transient database error costs fifteen minutes rather than a day.
     retry: { retries: 2 },
     handler: async () => {
       const cap = await this.limits.maxQualityRunsPerProject();

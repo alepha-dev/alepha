@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { expect, test } from "./_fixtures.ts";
 import {
   createProjectViaWizard,
+  createRankFromPreset,
   extractInviteUrl,
   findLatestEmail,
   newUserContext,
@@ -103,6 +104,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     // Never registered, so there is no account behind this address and the
     // only way in is the link.
     const guestEmail = `linkguest-${Date.now()}@example.com`;
+    await createRankFromPreset(page, projectSlug, "Contributor");
 
     await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");

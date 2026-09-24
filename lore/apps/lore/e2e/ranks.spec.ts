@@ -4,6 +4,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   createProjectViaWizard,
+  createRankFromPreset,
   newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -184,6 +185,7 @@ test.describe("Ranks", () => {
 
     const b = await newUserContext(browser, baseURL!, "contributor");
     try {
+      await createRankFromPreset(page, slug, "Contributor");
       await inviteWithRank(page, slug, b.email, /^contributor$/i);
       await accept(b.page, title);
 
@@ -279,6 +281,7 @@ test.describe("Ranks", () => {
 
     const c = await newUserContext(browser, baseURL!, "viewer");
     try {
+      await createRankFromPreset(page, slug, "Viewer");
       await inviteWithRank(page, slug, c.email, /^viewer$/i);
       await accept(c.page, title);
 
@@ -340,6 +343,8 @@ test.describe("Ranks", () => {
 
     const d = await newUserContext(browser, baseURL!, "successor");
     try {
+      await createRankFromPreset(page, slug, "Contributor");
+      const viewerKey = await createRankFromPreset(page, slug, "Viewer");
       await inviteWithRank(page, slug, d.email, /^contributor$/i);
       await accept(d.page, title);
 
@@ -384,7 +389,7 @@ test.describe("Ranks", () => {
       }, membersUrl);
 
       expect(after.filter((rank) => rank === "owner")).toHaveLength(1);
-      expect(after).toContain("viewer");
+      expect(after).toContain(viewerKey);
 
       // ── The former owner loses access in the same session ─────────────
       await page.goto(`/${slug}/settings/members`);

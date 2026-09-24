@@ -39,7 +39,7 @@ apps/lore/                # This app
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
 │   │   ├── providers/    # AppSecurityProvider (the `$realm`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report)
-│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), ActivityBackfillJob (the one-shot fill of `project_activity` from the audit log, guarded by its row in `analytics_backfills`; deletable once that row exists on production), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep), ProjectRankJobs (preset-rank backfill)
+│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), ActivityBackfillJob (the one-shot fill of `project_activity` from the audit log, guarded by its row in `analytics_backfills`; deletable once that row exists on production), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
@@ -454,21 +454,21 @@ dropping it on D1 triggers a cascade-wipe.
 The vocabulary is `LorePermissions` (38 declarations, names that can never
 change - they are stored as data in every rank definition), the active rank
 resource and services live in `alepha/api/organizations`, and the presets are
-`ProjectRankPresets`. A new project is seeded with Admin, Contributor and
-Viewer as ordinary custom ranks, computed from the capabilities it actually
-has.
+`ProjectRankPresets`. A new project starts with the two built-ins, **Owner
+and Member, and nothing else** (#Q2511, the GitHub model). Admin, Contributor
+and Viewer are created on purpose from Settings > Ranks > Create rank, which
+offers them (`ProjectRankController.getRankPresets`, computed from the
+capabilities the project actually has) beside a blank rank; each lands as an
+ordinary custom rank.
 
-⚠️ **A project holding NO definition rows is seeded nightly**
-(`ProjectRankJobs.seedMissingPresetRanks`). `createProject` is the only other
-writer of the presets, so every project older than epic #E39 held the two
-built-ins and nothing else - and its owner's rank picker offered `Member`
-alone (feedback #P2122). The predicate is deliberately "no rows at all"
-rather than "no row for this key": a project with rows has been through the
-rank editor, and an owner who deleted Admin must not find it back in the
-morning. The sweep writes through `RankService.save` as the project's OWNER,
-so the module's invariants run, and it names the ranks in **English**,
-decided rather than defaulted - a sweep has no `Accept-Language`, and
-`projects.preferredLanguage` says of itself that it does not affect the UI.
+⚠️ **This reverses #Q2001.** `createProject` used to seed the three presets,
+and a nightly sweep (`ranks.seed-missing-presets`) filled any project holding
+no definition rows, because an owner opened the members page and asked where
+Admin was (feedback #P2122). The owner then asked for the opposite, so both
+are gone, and so is the Built-in badge on Owner and Member in the rank matrix:
+those two are told apart by having no Delete. Presets already seeded in a
+project stay: they are that owner's ranks now. A spec that needs one creates
+it with `test/fixtures/presetRanks.ts`, an e2e with `createRankFromPreset`.
 
 ⚠️ **Where a rank is read on the client.** `currentProjectAtom.permissions` is
 the effective set, filled by `getProjectBySlug`, and `canInProject` answers

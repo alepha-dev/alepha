@@ -41,9 +41,7 @@ import { ProjectDashboardCardService } from "../services/ProjectDashboardCardSer
  * shared board is curated by the people who configure the project and read by
  * everybody else. A project that wants otherwise ticks the box in its own
  * rank matrix - which is the same click a minted `dashboard:manage` would
- * have needed anyway, since `ProjectRankJobs.seedMissingPresetRanks` only
- * seeds projects holding zero rank rows and would have reached none of the
- * existing ones.
+ * have needed anyway.
  *
  * ## ⚠️ No reset
  *

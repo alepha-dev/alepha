@@ -3,6 +3,7 @@ import {
   apiPath,
   apiPost,
   createProjectViaWizard,
+  createRankFromPreset,
   newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -177,6 +178,11 @@ test.describe("Project dashboard", () => {
 
     const reader = await newUserContext(browser, baseURL!, "pbreader");
     try {
+      const contributorKey = await createRankFromPreset(
+        page,
+        slug,
+        "Contributor",
+      );
       await test.step("the owner fills the board and invites a reader", async () => {
         await page.goto(`/${slug}`);
         await page.waitForLoadState("networkidle");
@@ -225,7 +231,8 @@ test.describe("Project dashboard", () => {
         // the members page's picker. Driving a Base UI select here would test
         // the picker, which `members.spec.ts` owns; what this spec is about
         // is what the BOARD does for somebody holding that rank. The preset
-        // is seeded on create, so `contributor` names a real definition.
+        // was created from Settings > Ranks above, so its key names a real
+        // definition.
         // Both URLs come from the action registry rather than being written
         // out here: an `$action` path is no more typecheck-protected than a
         // `$page` name, so a hand-written one rots silently.
@@ -238,7 +245,7 @@ test.describe("Project dashboard", () => {
         ).replace(":organizationId", organizationId);
 
         const assigned = await page.evaluate(
-          async ({ usersUrl, assignUrl, email }) => {
+          async ({ usersUrl, assignUrl, email, key }) => {
             const users = (await fetch(usersUrl, {
               credentials: "include",
             }).then((r) => r.json())) as Array<{ id: string; email?: string }>;
@@ -248,11 +255,11 @@ test.describe("Project dashboard", () => {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({ key: "contributor" }),
+              body: JSON.stringify({ key }),
             });
             return { ok: put.ok, reason: await put.text() };
           },
-          { usersUrl, assignUrl, email: reader.email },
+          { usersUrl, assignUrl, email: reader.email, key: contributorKey },
         );
         expect(assigned.ok, assigned.reason).toBe(true);
       });

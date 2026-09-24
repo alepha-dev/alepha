@@ -3,6 +3,7 @@ import {
   apiPath,
   apiPost,
   createProjectViaWizard,
+  createRankFromPreset,
   newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -73,6 +74,7 @@ test.describe("Members settings page", () => {
     const member = await newUserContext(browser, baseURL!, "leaver");
 
     try {
+      await createRankFromPreset(page, slug, "Contributor");
       await page.goto(`/${slug}/settings/members`);
       await page.waitForLoadState("networkidle");
       await page.getByRole("button", { name: /^invite$/i }).click();

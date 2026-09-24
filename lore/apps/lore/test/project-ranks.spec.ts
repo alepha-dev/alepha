@@ -16,6 +16,7 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
+import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 interface Ctx {
   alepha: Alepha;
@@ -180,32 +181,26 @@ describe("Lore's rank resource", () => {
     expect(viewer.permissions.every((it) => it.endsWith(":read"))).toBe(true);
   });
 
-  it("seeds a new project with the three presets, and leaves old ones alone", async ({
+  it("starts a new project with Owner and Member only, the presets offered to create", async ({
     expect,
   }) => {
+    // #Q2511, the GitHub model: Admin, Contributor and Viewer are created on
+    // purpose from Create rank, never seeded. This test asserted the
+    // opposite until then (#Q2001, feedback #P2122).
     const account = await ctx.repos.users.create({});
     const user: UserAccountToken = { id: account.id, roles: ["user"] };
 
     const created = await ctx.projects.createProject(
-      { body: { title: "Seeded Project" } },
+      { body: { title: "Bare Project" } },
       { user },
     );
 
     const organizationId = await organizationIdOf(ctx, created.id);
     const ranks = await ctx.ranks.ranksOf(organizationId);
-    expect(ranks.map((it) => it.key).sort()).toEqual([
-      "admin",
-      "contributor",
-      "member",
-      "owner",
-      "viewer",
-    ]);
+    expect(ranks.map((it) => it.key)).toEqual(["owner", "member"]);
 
-    // Ordinary custom ranks from now on: editable, deletable, the owner's.
-    expect(ranks.find((it) => it.key === "admin")?.builtin).toBe(false);
-
-    // The creator's membership row says owner, which is what makes the seeding
-    // pass the subset rule and what the whole epic reads afterwards.
+    // The creator's membership row says owner, which is what the whole epic
+    // reads afterwards.
     const membership = await ctx.repos.members.findOne({
       where: {
         organizationId: { eq: organizationId },
@@ -214,10 +209,19 @@ describe("Lore's rank resource", () => {
     });
     expect(membership?.rank).toBe("owner");
 
-    // An older project - one the fixture built directly - keeps zero rows.
-    const old = await createTestProject(ctx.alepha);
-    const oldRanks = await ctx.ranks.ranksOf(old.organizationId!);
-    expect(oldRanks.map((it) => it.key)).toEqual(["owner", "member"]);
+    // Create rank still offers all three, and creating one gives an ordinary
+    // custom rank: editable, deletable, the owner's.
+    const offered = await ctx.alepha
+      .inject(ProjectRankController)
+      .getRankPresets({ params: { projectId: created.id } }, { user });
+    expect(offered.items.map((it) => it.key)).toEqual([
+      "admin",
+      "contributor",
+      "viewer",
+    ]);
+    await createPresetRanks(ctx.alepha, created.id);
+    const after = await ctx.ranks.ranksOf(organizationId);
+    expect(after.find((it) => it.key === "admin")?.builtin).toBe(false);
   });
 
   it("lets an owner tune the built-in member rank, and reads it back", async ({
@@ -347,6 +351,7 @@ describe("Lore's rank resource", () => {
       { body: { title: "Not yours" } },
       { user },
     );
+    await createPresetRanks(ctx.alepha, created.id);
     await ctx.repos.members.create({
       organizationId: await organizationIdOf(ctx, created.id),
       userId: other.id,
@@ -487,6 +492,7 @@ describe("Lore's rank resource", () => {
       },
       { user },
     );
+    await createPresetRanks(ctx.alepha, created.id);
 
     const member = await ctx.repos.users.create({});
     await ctx.repos.members.create({
