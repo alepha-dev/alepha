@@ -161,12 +161,8 @@ describe("alepha/api/organizations - organization and member services", () => {
       { name: "Acme" },
       { id: ctx.owner.id },
     );
-    await ctx.members.add(organization.id, ctx.other.id, undefined, {
-      id: ctx.owner.id,
-    });
-
     await expect(
-      ctx.members.setRank(organization.id, ctx.other.id, "owner", {
+      ctx.members.add(organization.id, ctx.other.id, "owner", {
         id: ctx.owner.id,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);

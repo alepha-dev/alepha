@@ -61,6 +61,13 @@ export class MemberService {
     });
   }
 
+  /**
+   * Write a membership row, with no guard of its own.
+   *
+   * The caller is the guard: invitation acceptance, which checked the rank
+   * when the invitation was sent and checks the member cap when it is
+   * accepted. No route calls this directly (see `MemberController`).
+   */
   public async add(
     organizationId: string,
     userId: string,
@@ -71,19 +78,6 @@ export class MemberService {
       throw new ForbiddenError("Ownership must be transferred");
     }
     return this.members.create({ organizationId, userId, rank });
-  }
-
-  public async setRank(
-    organizationId: string,
-    userId: string,
-    rank: string | undefined,
-    _actor: Pick<UserAccountToken, "id">,
-  ): Promise<OrganizationMember> {
-    if (rank === MemberService.OWNER) {
-      throw new ForbiddenError("Ownership must be transferred");
-    }
-    const member = await this.member(organizationId, userId);
-    return this.members.updateById(member.id, { rank });
   }
 
   public async remove(

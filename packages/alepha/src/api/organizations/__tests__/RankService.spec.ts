@@ -190,6 +190,58 @@ describe("alepha/api/organizations - RankService", () => {
     ).rejects.toThrow("Ownership is transferred, not assigned");
   });
 
+  it("refuses a self-promotion, an unknown rank and a rank beyond the writer's own", async ({
+    expect,
+  }) => {
+    // #Q2506: the member routes that skipped these checks are gone, so
+    // assign is the one way a rank changes, and these are its guards.
+    const ctx = await setup();
+    await ctx.ranks.save(
+      ctx.organization.id,
+      {
+        key: "steward",
+        name: "Steward",
+        permissions: ["organization:read", "member:manage", "rank:manage"],
+      },
+      ctx.owner,
+    );
+    await ctx.ranks.save(
+      ctx.organization.id,
+      {
+        key: "admin",
+        name: "Admin",
+        permissions: [
+          "organization:read",
+          "member:manage",
+          "rank:manage",
+          "quest:write",
+        ],
+      },
+      ctx.owner,
+    );
+    await ctx.ranks.assign(
+      ctx.organization.id,
+      ctx.member.id,
+      "steward",
+      ctx.owner,
+    );
+
+    await expect(
+      ctx.ranks.assign(ctx.organization.id, ctx.member.id, "admin", ctx.member),
+    ).rejects.toThrow("You cannot change your own rank");
+    await expect(
+      ctx.ranks.assign(
+        ctx.organization.id,
+        ctx.member.id,
+        "no-such-rank",
+        ctx.owner,
+      ),
+    ).rejects.toThrow('No rank "no-such-rank"');
+    await expect(
+      ctx.ranks.assertAssignable(ctx.organization.id, "admin", ctx.member),
+    ).rejects.toThrow();
+  });
+
   it("refuses self-lockout and deleting a held rank", async ({ expect }) => {
     const ctx = await setup();
     await ctx.ranks.save(
