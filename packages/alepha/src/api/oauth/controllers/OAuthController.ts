@@ -144,6 +144,40 @@ export class OAuthController {
   }
 
   /**
+   * The scope ids in `scopes` the application never declared, or none when it
+   * declares no scope at all (#Q2514).
+   *
+   * Once an application declares its scopes, a request for any other one is
+   * refused rather than granted: an undeclared scope used to leave the whole
+   * grant unrestricted. An application that declares none keeps accepting
+   * anything, as before.
+   */
+  protected undeclaredScopes(scopes: string[]): string[] {
+    const declared = this.options.scopes ?? {};
+    if (Object.keys(declared).length === 0) {
+      return [];
+    }
+    return scopes.filter((scope) => !(scope in declared));
+  }
+
+  /**
+   * Send the browser back to the client with `error=invalid_scope` (RFC 6749
+   * §4.1.2.1): the redirect URI is already verified, so the client can be
+   * told, and a request whose scopes all fall outside what the client is
+   * registered for is refused rather than granted an empty, or wider, set.
+   */
+  protected rejectScope(
+    reply: { redirect: (url: string, status: number) => void },
+    redirectUri: string,
+    state: string | undefined,
+  ): void {
+    const redirect = new URL(redirectUri);
+    redirect.searchParams.set("error", "invalid_scope");
+    if (state) redirect.searchParams.set("state", state);
+    reply.redirect(redirect.toString(), 302);
+  }
+
+  /**
    * Absolute origin of the current request, e.g. https://app.com.
    */
   protected baseUrl(url: URL): string {
@@ -378,13 +412,29 @@ export class OAuthController {
         });
       }
 
+      const requestedScopes = body.scope
+        ? body.scope.split(" ").filter(Boolean)
+        : ["mcp"];
+      const undeclared = this.undeclaredScopes(requestedScopes);
+      if (undeclared.length > 0) {
+        // Registered, a scope nobody declared would sit on the client and be
+        // granted later; refused here, the client learns it at once.
+        reply.status = 400;
+        reply.headers["content-type"] = "application/json";
+        reply.body = JSON.stringify({
+          error: "invalid_client_metadata",
+          error_description: `Unknown scope: ${undeclared.join(" ")}`,
+        });
+        return;
+      }
+
       let client: OAuthClientEntity;
       try {
         client = await this.clients.register({
           realm: this.options.realm,
           clientName: body.client_name ?? "MCP Client",
           redirectUris: body.redirect_uris,
-          scopes: body.scope ? body.scope.split(" ") : ["mcp"],
+          scopes: requestedScopes,
           source: "dcr",
         });
       } catch (error) {
@@ -464,6 +514,15 @@ export class OAuthController {
         reply.body = "redirect_uri not registered";
         return;
       }
+      // What this grant would carry. A request naming scopes none of which
+      // the client is registered for used to come out as an empty list,
+      // which the resolver read as unrestricted (#Q2514).
+      const requested = query.scope?.split(" ").filter(Boolean) ?? [];
+      const granted = this.clients.intersectScopes(requested, client.scopes);
+      if (requested.length > 0 && granted.length === 0) {
+        this.rejectScope(reply, query.redirect_uri, query.state);
+        return;
+      }
       const silent = query.prompt === "none";
       // Consent is skipped ONLY for trusted first-party clients (the AS's own
       // product — consent is for third-party apps). A non-silent trusted client
@@ -515,10 +574,7 @@ export class OAuthController {
             clientId: query.client_id,
             redirectUri: query.redirect_uri,
             codeChallenge: query.code_challenge,
-            scopes: this.clients.intersectScopes(
-              query.scope?.split(" "),
-              client.scopes,
-            ),
+            scopes: granted,
             resource: query.resource || undefined,
             nonce: query.nonce,
           },
@@ -536,9 +592,7 @@ export class OAuthController {
         userName: user.name ?? user.email ?? "your account",
         // Show the user the scopes they will actually grant, not the raw
         // (possibly over-broad) request.
-        scopes: this.describeScopes(
-          this.clients.intersectScopes(query.scope?.split(" "), client.scopes),
-        ),
+        scopes: this.describeScopes(granted),
         productName: this.options.productName,
         redirectHost: this.redirectHost(query.redirect_uri),
         connectionsUrl: this.options.connectionsPath,
@@ -596,6 +650,12 @@ export class OAuthController {
         reply.redirect(redirect.toString(), 302);
         return;
       }
+      const requested = body.scope?.split(" ").filter(Boolean) ?? [];
+      const granted = this.clients.intersectScopes(requested, client.scopes);
+      if (requested.length > 0 && granted.length === 0) {
+        this.rejectScope(reply, body.redirect_uri, body.state);
+        return;
+      }
       const code = await this.clients.createAuthorizationCode(
         this.options.realm,
         {
@@ -603,10 +663,7 @@ export class OAuthController {
           clientId: body.client_id,
           redirectUri: body.redirect_uri,
           codeChallenge: body.code_challenge,
-          scopes: this.clients.intersectScopes(
-            body.scope?.split(" "),
-            client.scopes,
-          ),
+          scopes: granted,
           resource: body.resource || undefined,
           nonce: body.nonce,
         },
@@ -646,9 +703,34 @@ export class OAuthController {
         reply.body = JSON.stringify({ error: "invalid_client" });
         return;
       }
+      // The device grant is the one flow with no registration behind it
+      // (`lore login` starts as `alepha-cli`, which no table holds), so the
+      // scope is what bounds it (#Q2514). Once the application declares its
+      // scopes, a device must name at least one and only declared ones: an
+      // empty or unknown scope used to mint an unrestricted token. A
+      // registered client stays within the scopes it registered for.
+      const requested = (body.scope ?? "").split(" ").filter(Boolean);
+      const declares = Object.keys(this.options.scopes ?? {}).length > 0;
+      const scopes = client
+        ? this.clients.intersectScopes(requested, client.scopes)
+        : requested;
+      if (
+        (declares || client) &&
+        (scopes.length === 0 || this.undeclaredScopes(scopes).length > 0)
+      ) {
+        reply.status = 400;
+        reply.body = JSON.stringify({
+          error: "invalid_scope",
+          error_description:
+            scopes.length === 0
+              ? "Name at least one scope this server declares"
+              : `Unknown scope: ${this.undeclaredScopes(scopes).join(" ")}`,
+        });
+        return;
+      }
       const record = await this.deviceCodes.start({
         clientId,
-        scopes: (body.scope ?? "").split(" ").filter(Boolean),
+        scopes,
         resource: body.resource,
       });
       const base = this.baseUrl(url);

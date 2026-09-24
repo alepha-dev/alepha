@@ -45,17 +45,35 @@ describe("OAuthScopeResolver", () => {
     ]);
   });
 
-  it("leaves the whole grant unrestricted when any scope declares no permissions", async () => {
+  it("leaves the whole grant unrestricted when a DECLARED scope declares no permissions", async () => {
     const { resolver } = await setup(declared);
 
     expect(resolver.resolve(["quests", "copyOnly"])).toBeUndefined();
-    expect(resolver.resolve(["quests", "never-declared"])).toBeUndefined();
   });
 
-  it("leaves a grant naming no scope unrestricted", async () => {
+  it("fails closed on a scope the application never declared (#Q2514)", async () => {
     const { resolver } = await setup(declared);
 
+    // It used to leave the grant unrestricted: a self-registered client
+    // asking for a made-up scope got the user's full roles.
+    expect(resolver.resolve(["quests", "never-declared"])).toEqual([
+      "quest:read",
+      "quest:create",
+    ]);
+    expect(resolver.resolve(["never-declared"])).toEqual([]);
+  });
+
+  it("fails closed on a grant naming no scope, once scopes are declared (#Q2514)", async () => {
+    const { resolver } = await setup(declared);
+
+    expect(resolver.resolve([])).toEqual([]);
+  });
+
+  it("keeps an application that declares no scope unrestricted", async () => {
+    const { resolver } = await setup({});
+
     expect(resolver.resolve([])).toBeUndefined();
+    expect(resolver.resolve(["anything"])).toBeUndefined();
   });
 
   it("warns at boot about each declared scope that narrows nothing", async () => {

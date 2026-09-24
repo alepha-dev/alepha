@@ -950,6 +950,13 @@ alepha.set(oauthOptions, {
 - **A scope declared without `permissions` leaves the whole grant
   unrestricted**, as every grant was before scopes narrowed anything, and the
   server logs a warning at boot for each one. Declare them.
+- **Once any scope is declared, everything else fails closed.** Dynamic
+  registration refuses a scope nobody declared (`invalid_client_metadata`),
+  an authorization request whose scopes the client holds none of is sent back
+  with `error=invalid_scope`, and a device flow must name at least one
+  declared scope (a registered client, one of its own). A stored grant naming
+  an undeclared scope, or none, reaches no permission-checked route. An app
+  that declares no scope at all keeps granting unrestricted tokens.
 
 ## HTTP Basic Auth
 

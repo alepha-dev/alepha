@@ -226,6 +226,8 @@ something that worked before.
    grant reaches the union of its scopes. A scope declared without
    `permissions` leaves the whole grant unrestricted, as before, and the
    server warns at boot; `permissions: []` (for `openid`) reaches nothing.
+   An undeclared scope, or an empty grant, is refused or reaches nothing
+   once the app declares any scope (see the authentication guide).
 6. **Revoking a key frees its name**; an expired key keeps it until it is
    purged, and rotating it renews it under the same name.
 7. **The IP allowlist is API-only**, set at creation, shown read-only, and

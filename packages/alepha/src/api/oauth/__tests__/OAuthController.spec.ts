@@ -1914,3 +1914,113 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
     ).toBe(true);
   });
 });
+
+/**
+ * #Q2514: once the application declares its scopes, an unknown scope or an
+ * empty grant is refused at the door, instead of reaching the resolver,
+ * which used to read both as an unrestricted token.
+ */
+describe("OAuthController fails closed on scopes", () => {
+  const boot = async () => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+      scopes: {
+        mcp: { label: "Projects", permissions: ["project:read"] },
+        cli: { label: "Terminal", permissions: ["project:read"] },
+      },
+    });
+    await alepha.start();
+    const { hostname } = alepha.inject(ServerProvider);
+    return { hostname };
+  };
+
+  const register = (hostname: string, body: Record<string, unknown>) =>
+    fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Scoped Client",
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+        ...body,
+      }),
+    });
+
+  const startDevice = (hostname: string, form: Record<string, string>) =>
+    fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(form).toString(),
+    });
+
+  it("refuses to register a client for a scope nobody declared", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+
+    const resp = await register(hostname, { scope: "mcp admin" });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client_metadata");
+    expect(body.error_description).toContain("admin");
+  });
+
+  it("answers invalid_scope when no requested scope is one the client holds", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const redirectUri = "https://claude.ai/api/mcp/auth_callback";
+    const created = (await (await register(hostname, {})).json()) as Record<
+      string,
+      string
+    >;
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: created.client_id,
+      redirect_uri: redirectUri,
+      code_challenge: "x",
+      code_challenge_method: "S256",
+      scope: "admin",
+      state: "s1",
+    });
+    const resp = await fetch(`${hostname}/oauth/authorize?${params}`, {
+      redirect: "manual",
+    });
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    expect(`${location.origin}${location.pathname}`).toBe(redirectUri);
+    expect(location.searchParams.get("error")).toBe("invalid_scope");
+    expect(location.searchParams.get("state")).toBe("s1");
+  });
+
+  it("refuses a device flow naming no scope, or an undeclared one", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+
+    for (const scope of ["", "admin", "cli admin"]) {
+      const resp = await startDevice(hostname, {
+        client_id: "alepha-cli",
+        scope,
+      });
+      expect(resp.status).toBe(400);
+      expect(((await resp.json()) as { error: string }).error).toBe(
+        "invalid_scope",
+      );
+    }
+
+    const ok = await startDevice(hostname, {
+      client_id: "alepha-cli",
+      scope: "cli",
+    });
+    expect(ok.status).toBe(200);
+  });
+});
