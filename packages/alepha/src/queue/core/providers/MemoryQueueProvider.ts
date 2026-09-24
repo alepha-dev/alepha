@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
@@ -30,6 +30,17 @@ export class MemoryQueueProvider extends QueueProvider {
    */
   public pushCalls: Array<{ queue: string; message: string }> = [];
 
+  protected readonly alepha = $inject(Alepha);
+
+  /**
+   * Whether pushes are recorded in {@link pushCalls}: under test only
+   * (#Q2519). The log is never drained, and this is the default queue on
+   * Node, so a long-running server kept every message it ever enqueued.
+   */
+  protected get tracking(): boolean {
+    return this.alepha.isTest();
+  }
+
   /**
    * Takes ONE message, not a rest parameter.
    *
@@ -53,7 +64,9 @@ export class MemoryQueueProvider extends QueueProvider {
       message,
       dueAt: this.dt.nowMillis() + delayMs,
     });
-    this.pushCalls.push({ queue, message });
+    if (this.tracking) {
+      this.pushCalls.push({ queue, message });
+    }
   }
 
   public override async pushMany(

@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { DateTimeProvider, type Timeout } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
@@ -80,8 +80,22 @@ export interface MemoryCacheProviderOptions {
  * ```
  */
 export class MemoryCacheProvider extends CacheProvider {
+  protected readonly alepha = $inject(Alepha);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
+
+  /**
+   * Whether calls are recorded in {@link getCalls}, {@link setCalls} and
+   * {@link delCalls}: under test only (#Q2519).
+   *
+   * The logs were appended on every call and cleared only by `reset()`, and a
+   * set call holds the cached value, so a long-running server using this
+   * provider (`$cache({ provider: "memory" })`, `HttpClient`, `$etag`, API
+   * keys) grew its heap with every request. Nothing outside a spec reads them.
+   */
+  protected get tracking(): boolean {
+    return this.alepha.isTest();
+  }
 
   protected store: Record<CacheName, Record<CacheKey, CacheValue>> = {};
 
@@ -141,11 +155,13 @@ export class MemoryCacheProvider extends CacheProvider {
   // ─────────────────────────────────────────────────────────────────────────────
 
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {
-    this.getCalls.push({
-      name,
-      key,
-      timestamp: this.dateTimeProvider.nowMillis(),
-    });
+    if (this.tracking) {
+      this.getCalls.push({
+        name,
+        key,
+        timestamp: this.dateTimeProvider.nowMillis(),
+      });
+    }
 
     if (this.getError) {
       throw this.getError;
@@ -168,13 +184,15 @@ export class MemoryCacheProvider extends CacheProvider {
     value: Uint8Array,
     ttl?: number,
   ): Promise<Uint8Array> {
-    this.setCalls.push({
-      name,
-      key,
-      value,
-      ttl,
-      timestamp: this.dateTimeProvider.nowMillis(),
-    });
+    if (this.tracking) {
+      this.setCalls.push({
+        name,
+        key,
+        value,
+        ttl,
+        timestamp: this.dateTimeProvider.nowMillis(),
+      });
+    }
     this.counters.sets++;
 
     if (this.setError) {
@@ -215,11 +233,13 @@ export class MemoryCacheProvider extends CacheProvider {
   }
 
   public async del(name: string, ...keys: string[]): Promise<void> {
-    this.delCalls.push({
-      name,
-      keys,
-      timestamp: this.dateTimeProvider.nowMillis(),
-    });
+    if (this.tracking) {
+      this.delCalls.push({
+        name,
+        keys,
+        timestamp: this.dateTimeProvider.nowMillis(),
+      });
+    }
     this.counters.deletes++;
 
     if (this.delError) {
