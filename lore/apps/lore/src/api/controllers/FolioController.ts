@@ -833,7 +833,12 @@ export class FolioController {
       // Seed the revision log with a `create` entry. Snapshot is the
       // folio as it stands right after insert — gives the History tab a
       // baseline to diff later edits against.
-      await this.historyService.appendRevision(folio, user.id, "create");
+      await this.historyService.appendRevision(
+        folio,
+        user.id,
+        "create",
+        undefined,
+      );
       await this.logFolio("create", folio, user, { protected: isProtected });
 
       // Always true here: a brand-new folio has nothing to fold into. Sent
@@ -1020,7 +1025,12 @@ export class FolioController {
         { title, content, summary },
       );
       const appended = action
-        ? await this.historyService.appendRevision(updated, user.id, action)
+        ? await this.historyService.appendRevision(
+            updated,
+            user.id,
+            action,
+            existing.content,
+          )
         : undefined;
       // See `folioSavedSchema` for why the purge is an equal partner here
       // and why this is not named `revisionCreated`. A purge with no insert
@@ -1270,9 +1280,13 @@ export class FolioController {
       ),
     },
     handler: async ({ params }) => {
+      const live = this.owned.get<Folio>().content;
       const revisions = await this.revisionsWith.findMany({
         where: { folioId: { eq: params.id } },
-        orderBy: [{ column: "at", direction: "desc" }],
+        orderBy: [
+          { column: "at", direction: "desc" },
+          { column: "id", direction: "desc" },
+        ],
         include: {
           author: { select: ["id", "username", "email", "picture"] },
         },
@@ -1282,8 +1296,10 @@ export class FolioController {
         // Newest first, so the next entry is the older one - the state
         // this revision replaced.
         const previous = revisions[index + 1];
-        const before = previous?.contentSnapshot ?? "";
-        const after = revision.contentSnapshot;
+        const before = previous
+          ? this.historyService.contentOf(previous, live)
+          : "";
+        const after = this.historyService.contentOf(revision, live);
         const { added, removed } = this.revisionStats.lineDiff(before, after);
         const author = revision.author;
 
@@ -1345,26 +1361,32 @@ export class FolioController {
       }
 
       const isProtected = folio.protected;
+      // Read before the write: the head revision's body IS the live
+      // content, and so is what the revert's own revision fills it in with.
+      const previousContent = folio.content;
+      const content = this.historyService.contentOf(revision, previousContent);
       const updated = await this.folios.updateById(folio.id, {
         title: revision.titleSnapshot,
-        content: revision.contentSnapshot,
+        content,
         summary: revision.summarySnapshot,
         searchText: isProtected
           ? ""
           : buildFolioSearchText({
               title: revision.titleSnapshot,
               summary: revision.summarySnapshot,
-              content: revision.contentSnapshot,
+              content,
             }),
       });
 
       if (!isProtected) {
-        await this.linkService.syncLinks(
-          this.folioSource(updated),
-          revision.contentSnapshot,
-        );
+        await this.linkService.syncLinks(this.folioSource(updated), content);
       }
-      await this.historyService.appendRevision(updated, user.id, "revert");
+      await this.historyService.appendRevision(
+        updated,
+        user.id,
+        "revert",
+        previousContent,
+      );
       await this.logFolio("revert", updated, user, {
         revisionId: params.revisionId,
       });

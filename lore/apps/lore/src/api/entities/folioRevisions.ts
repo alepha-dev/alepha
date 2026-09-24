@@ -57,9 +57,31 @@ export const folioRevisions = $entity({
       .enum(["create", "edit", "rename", "tag-change", "revert"])
       .meta({ mode: "text" }),
     /**
-     * Snapshot of the folio's content at the time of the revision.
+     * Snapshot of the folio's content at the time of the revision, or `""`
+     * while {@link snapshotIsLive} says the live folio holds it.
+     *
+     * ⚠️ Never read this column directly: go through
+     * `FolioHistoryService.contentOf`, which answers the live content for the
+     * head revision.
      */
     contentSnapshot: z.string(),
+    /**
+     * The newest revision does not copy the body: it would be byte-identical
+     * to `folios.content`, which is the row it documents (#Q2491: 603 rows,
+     * 5 MB of production's 59 MB were exactly that). While this is true the
+     * snapshot is `""` and the live content IS the snapshot.
+     *
+     * Kept true only for the head: every write that inserts or folds a
+     * revision first fills in any other live row with the content the folio
+     * held before that write (`FolioHistoryService.appendRevision`). That is
+     * sound because the only three writers of `folios.content` (create,
+     * update, revert in `FolioController`) all append a revision when the
+     * body changes.
+     *
+     * An `ADD COLUMN` with a constant default, so no rebuild: this table is a
+     * cascade child of `folios`, which is a cascade child of `projects`.
+     */
+    snapshotIsLive: db.default(z.boolean(), false),
     titleSnapshot: z.string(),
     /**
      * @deprecated Dead column — frozen at `[]` for every revision written
