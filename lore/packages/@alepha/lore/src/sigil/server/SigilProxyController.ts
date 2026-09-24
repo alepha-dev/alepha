@@ -197,7 +197,22 @@ export class SigilProxyController {
       // the app's outbound request. Normalized here so the wire carries an
       // authority or nothing - and normalized AGAIN by the sink, which cannot
       // trust a sender holding a token any further than it can trust a browser.
-      await this.sink.ingest(request.body, {
+      // Every error arriving here came from a browser: the app's own server
+      // reports through the sink provider directly, never through this
+      // unauthenticated endpoint. The origin is the envelope's to claim, so
+      // it is overwritten rather than trusted; left alone, anyone could post
+      // blights that read as server failures.
+      const body = request.body.errors
+        ? {
+            ...request.body,
+            errors: request.body.errors.map((error) => ({
+              ...error,
+              origin: "client" as const,
+            })),
+          }
+        : request.body;
+
+      await this.sink.ingest(body, {
         country,
         visitor,
         device,
