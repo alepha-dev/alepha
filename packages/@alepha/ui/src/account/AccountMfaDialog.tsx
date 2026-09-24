@@ -14,6 +14,7 @@ import {
 } from "../core/Dialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
+import { AccountRecoveryCodes } from "./AccountRecoveryCodes.tsx";
 
 /**
  * What `enrollTotp` hands back: the secret in clear, the `otpauth://` URI,
@@ -97,8 +98,20 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
   };
 
   return (
-    <Dialog open={props.open} onOpenChange={setOpen}>
-      <DialogContent>
+    // While the codes are on screen the dialog closes only through "I have
+    // saved them" (#Q2518): no close button, and Escape or a backdrop click
+    // is ignored. Every close path used to clear the codes, which can never
+    // be shown again.
+    <Dialog
+      open={props.open}
+      onOpenChange={(open) => {
+        if (!open && recoveryCodes) {
+          return;
+        }
+        setOpen(open);
+      }}
+    >
+      <DialogContent showCloseButton={!recoveryCodes}>
         <DialogHeader>
           <DialogTitle>
             {recoveryCodes
@@ -112,43 +125,10 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
         </DialogHeader>
 
         {recoveryCodes ? (
-          <div className="flex flex-col gap-4">
-            <Alert>
-              <AlertTriangle className="size-4" />
-              <AlertDescription>
-                {tr("account.mfa.recoveryDescription", {
-                  default:
-                    "Keep these somewhere safe. Each one works once, and this is the only time they can be shown.",
-                })}
-              </AlertDescription>
-            </Alert>
-
-            <div className="bg-muted grid grid-cols-2 gap-2 rounded-lg p-4 font-mono text-sm">
-              {recoveryCodes.map((recovery) => (
-                <span key={recovery}>{recovery}</span>
-              ))}
-            </div>
-
-            <Button
-              variant="solid"
-              intent="none"
-              onClick={() => {
-                void navigator.clipboard?.writeText(recoveryCodes.join("\n"));
-                toaster.show(
-                  tr("account.mfa.recoveryCopied", {
-                    default: "Recovery codes copied",
-                  }),
-                  "success",
-                );
-              }}
-            >
-              {tr("account.mfa.copyCodes", { default: "Copy codes" })}
-            </Button>
-
-            <Button onClick={() => setOpen(false)}>
-              {tr("account.mfa.saved", { default: "I have saved them" })}
-            </Button>
-          </div>
+          <AccountRecoveryCodes
+            codes={recoveryCodes}
+            onSaved={() => setOpen(false)}
+          />
         ) : (
           <div className="flex flex-col gap-4">
             <p className="text-muted-foreground text-sm">

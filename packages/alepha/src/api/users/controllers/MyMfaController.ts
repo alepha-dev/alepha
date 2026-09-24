@@ -107,11 +107,22 @@ export class MyMfaController {
     use: [$secure({ sessionOnly: true })],
     description: "Issue a new set of recovery codes, retiring the old one",
     schema: {
+      body: z.object({
+        code: z
+          .text()
+          .describe(
+            "A current code, or a recovery code. New recovery codes are a way into the account, so a live session alone must not be able to mint them.",
+          ),
+      }),
       response: z.object({
         recoveryCodes: z.array(z.text()),
       }),
     },
-    handler: async ({ user }) => {
+    handler: async ({ body, user }) => {
+      // Same proof as turning the factor off (#Q2518): whoever holds only a
+      // borrowed session could otherwise mint recovery codes of their own
+      // and sign in later without the owner's phone.
+      await this.assertSecondFactor(user.id, body.code, user.realm);
       return this.mfaService.regenerateRecoveryCodes(user.id, user.realm);
     },
   });

@@ -5,10 +5,16 @@ import type {
   MyMfaStatus,
   RealmConfig,
 } from "alepha/api/users";
-import { useClient, useQuery } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { KeyRound, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import {
+  KeyRound,
+  RefreshCw,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
@@ -21,6 +27,7 @@ import { SettingsSection } from "../settings/SettingsSection.tsx";
 import { AccountDeleteDialog } from "./AccountDeleteDialog.tsx";
 import { AccountMfaDialog } from "./AccountMfaDialog.tsx";
 import { AccountPasswordDialog } from "./AccountPasswordDialog.tsx";
+import { AccountRecoveryCodesDialog } from "./AccountRecoveryCodesDialog.tsx";
 
 export interface AccountSecurityProps {
   identities?: MyIdentity[];
@@ -137,6 +144,42 @@ const AccountSecurity = (props: AccountSecurityProps) => {
     }
   };
 
+  const [newCodes, setNewCodes] = useState<string[]>();
+
+  /**
+   * A new set of recovery codes, for somebody who used some up or lost them
+   * (#Q2518). Asks for a code first, like turning the factor off: new codes
+   * are a way in, so a live session alone must not be able to mint them. A
+   * refusal (a wrong code) is toasted by the app's `ActionErrorToaster`.
+   */
+  const regenerateCodes = useAction<[], void>(
+    {
+      handler: async () => {
+        const code = await dialog.prompt({
+          title: tr("account.security.mfaRegenerateTitle", {
+            default: "Get new recovery codes?",
+          }),
+          description: tr("account.security.mfaRegenerateDescription", {
+            default:
+              "Your current recovery codes stop working. Enter a code from your authenticator app, or one of your recovery codes.",
+          }),
+          confirmLabel: tr("account.security.mfaRegenerate", {
+            default: "New recovery codes",
+          }),
+        });
+        if (!code) {
+          return;
+        }
+        const result = await mfaApi.regenerateRecoveryCodes({
+          body: { code: String(code) },
+        });
+        setNewCodes(result.recoveryCodes);
+        await reloadMfa();
+      },
+    },
+    [mfaApi, dialog],
+  );
+
   const unlink = async (identity: MyIdentity) => {
     const label = PROVIDER_LABELS[identity.provider] ?? identity.provider;
     const ok = await dialog.confirm({
@@ -236,15 +279,30 @@ const AccountSecurity = (props: AccountSecurityProps) => {
             }
           >
             {mfa?.totp.enabled ? (
-              <Button
-                variant="solid"
-                intent="none"
-                size="sm"
-                onClick={disableMfa}
-              >
-                <ShieldOff className="size-4" />
-                {tr("account.security.mfaTurnOff", { default: "Turn off" })}
-              </Button>
+              <div className="flex gap-2">
+                {!totpStranded ? (
+                  <Button
+                    variant="minimal"
+                    size="sm"
+                    loading={regenerateCodes.loading}
+                    onClick={() => void regenerateCodes.run()}
+                  >
+                    <RefreshCw className="size-4" />
+                    {tr("account.security.mfaRegenerate", {
+                      default: "New recovery codes",
+                    })}
+                  </Button>
+                ) : null}
+                <Button
+                  variant="solid"
+                  intent="none"
+                  size="sm"
+                  onClick={disableMfa}
+                >
+                  <ShieldOff className="size-4" />
+                  {tr("account.security.mfaTurnOff", { default: "Turn off" })}
+                </Button>
+              </div>
             ) : (
               <Button
                 variant="solid"
@@ -322,6 +380,11 @@ const AccountSecurity = (props: AccountSecurityProps) => {
         hasPassword={hasPassword}
         onOpenChange={setPasswordOpen}
         onDone={reload}
+      />
+
+      <AccountRecoveryCodesDialog
+        codes={newCodes}
+        onClose={() => setNewCodes(undefined)}
       />
 
       <AccountMfaDialog

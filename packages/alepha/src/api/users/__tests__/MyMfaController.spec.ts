@@ -192,8 +192,9 @@ describe("alepha/api/users - MyMfaController", () => {
       { user: ctx.caller },
     );
 
+    // Proven with a recovery code of the old set, which is spent by it.
     const second = await ctx.controller.regenerateRecoveryCodes(
-      {},
+      { body: { code: first.recoveryCodes[1]! } },
       { user: ctx.caller },
     );
 
@@ -209,5 +210,43 @@ describe("alepha/api/users - MyMfaController", () => {
         "default",
       ),
     ).toBe(false);
+  });
+
+  it("should refuse to regenerate recovery codes without a valid code (#Q2518)", async ({
+    expect,
+  }) => {
+    const ctx = await setup("ctl-recovery-proof");
+    const enrollment = await ctx.controller.enrollTotp(
+      {},
+      { user: ctx.caller },
+    );
+    const first = await ctx.controller.activateTotp(
+      {
+        body: {
+          code: ctx.totp.codeForCounter(
+            enrollment.secret,
+            ctx.totp.currentStep(),
+          ),
+        },
+      },
+      { user: ctx.caller },
+    );
+
+    await expect(
+      ctx.controller.regenerateRecoveryCodes(
+        { body: { code: "000000" } },
+        { user: ctx.caller },
+      ),
+    ).rejects.toThrow();
+
+    // The old set still works: nothing was regenerated.
+    expect(
+      await ctx.mfa.verify(
+        ctx.user.id,
+        "totp",
+        first.recoveryCodes[0]!,
+        "default",
+      ),
+    ).toBe(true);
   });
 });

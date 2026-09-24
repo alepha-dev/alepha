@@ -1042,6 +1042,7 @@ export const uiFr: Record<string, string> = {
     "Gardez-les en lieu sûr. Chacun ne fonctionne qu'une fois, et c'est la seule fois où ils peuvent être affichés.",
   "account.mfa.recoveryTitle": "Enregistrez vos codes de secours",
   "account.mfa.saved": "Je les ai enregistrés",
+  "account.mfa.newRecoveryTitle": "Enregistrez vos nouveaux codes de secours",
   "account.mfa.setupDescription":
     "Scannez ceci avec votre application d'authentification, puis saisissez le code à six chiffres qu'elle affiche.",
   "account.mfa.setupTitle": "Activer la double authentification",
@@ -1122,6 +1123,11 @@ export const uiFr: Record<string, string> = {
   "account.security.mfaOnOneCode": "Activée. $1 code de secours restant.",
   "account.security.mfaSetUp": "Activer",
   "account.security.mfaTurnOff": "Désactiver",
+  "account.security.mfaRegenerate": "Nouveaux codes de secours",
+  "account.security.mfaRegenerateTitle":
+    "Obtenir de nouveaux codes de secours ?",
+  "account.security.mfaRegenerateDescription":
+    "Vos codes de secours actuels ne fonctionneront plus. Saisissez un code de votre application d'authentification, ou l'un de vos codes de secours.",
   "account.security.password": "Mot de passe",
   "account.security.passwordChange": "Changer le mot de passe",
   "account.security.passwordChangeHint":
