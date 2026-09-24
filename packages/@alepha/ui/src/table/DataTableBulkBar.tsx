@@ -84,14 +84,20 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
           }
           const ActionIcon = action.icon;
           const count = action.count?.(selectedItems);
+          // Never the default solid primary: its darker-than-fill border,
+          // gradient and top highlight survive a `bg-*` override and draw a
+          // blue ring on this dark pill. `minimal` carries none of them, so a
+          // destructive action paints its red fill onto that instead.
           return (
             <Button
               key={action.label}
               size="sm"
+              variant="minimal"
+              intent={action.destructive ? "danger" : "none"}
               className={
                 action.destructive
-                  ? "h-8 bg-red-600 text-white hover:bg-red-500"
-                  : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
+                  ? "h-8 bg-red-600 text-white hover:bg-red-500 hover:text-white"
+                  : "h-8 text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
               }
               disabled={running !== undefined}
               onClick={() => void run(action)}
@@ -116,7 +122,8 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
         <span className="mx-1 h-4 w-px bg-white/20" />
         <Button
           size="icon"
-          className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
+          variant="minimal"
+          className="size-8 rounded-full text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
           onClick={clearSelection}
           aria-label={tr("dataTable.clearSelection", {
             default: "Clear selection",

@@ -115,7 +115,8 @@ export const DataTableBulkMenu = <T,>(props: DataTableBulkMenuProps<T>) => {
           <Button
             type="button"
             size="sm"
-            className="h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100 aria-expanded:bg-white/10 aria-expanded:text-zinc-100"
+            variant="minimal"
+            className="h-8 text-zinc-100 hover:bg-white/10 hover:text-zinc-100 aria-expanded:bg-white/10 aria-expanded:text-zinc-100"
             onPointerEnter={resolve}
             onFocus={resolve}
           />
