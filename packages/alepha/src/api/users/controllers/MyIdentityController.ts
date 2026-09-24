@@ -4,6 +4,7 @@ import { $action, BadRequestError, NotFoundError } from "alepha/server";
 
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { myIdentitySchema } from "../schemas/myIdentitySchema.ts";
+import { MfaService } from "../services/MfaService.ts";
 import { UserService } from "../services/UserService.ts";
 
 /**
@@ -17,13 +18,34 @@ import { UserService } from "../services/UserService.ts";
  * the provider and back with a return path, which is an authorization flow
  * rather than a CRUD action — it belongs with the OAuth module's own routes.
  * Unlinking is the half that is a plain mutation, so it lives here.
+ *
+ * **A TOTP enrollment is not a sign-in method.** It is stored as an identity
+ * row (see `MfaService.totpProvider`), but it is a second factor: it never
+ * appears here, cannot be unlinked here, and does not count as a way in.
+ * Removing it goes through `MyMfaController.disableTotp`, which asks for a
+ * code, so a stolen session cannot strip 2FA through this route.
  */
 export class MyIdentityController {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly userService = $inject(UserService);
+  protected readonly mfaService = $inject(MfaService);
 
   protected identities(realm?: string) {
     return this.realmProvider.identityRepository(realm);
+  }
+
+  /**
+   * The caller's identity rows that are a way to sign in: everything except
+   * the TOTP enrollment.
+   */
+  protected async signInIdentities(user: { id: string; realm?: string }) {
+    return this.identities(user.realm).findMany({
+      where: {
+        userId: { eq: user.id },
+        provider: { ne: this.mfaService.totpProvider },
+      },
+      orderBy: [{ column: "createdAt", direction: "asc" }],
+    });
   }
 
   listMyIdentities = $action({
@@ -35,10 +57,7 @@ export class MyIdentityController {
       response: z.array(myIdentitySchema),
     },
     handler: async ({ user }) => {
-      const rows = await this.identities(user.realm).findMany({
-        where: { userId: { eq: user.id } },
-        orderBy: [{ column: "createdAt", direction: "asc" }],
-      });
+      const rows = await this.signInIdentities(user);
 
       // Projected field by field rather than spread: a spread would publish
       // `password` and `providerData` the moment someone widened the
@@ -114,9 +133,11 @@ export class MyIdentityController {
     handler: async ({ params, user }) => {
       const repo = this.identities(user.realm);
 
-      const all = await repo.findMany({ where: { userId: { eq: user.id } } });
-      // Owner-scoped: someone else's identity id reads as missing, so this
-      // endpoint cannot be used to probe which ids exist.
+      // Sign-in methods only: the TOTP row reads as missing, like any id the
+      // caller cannot unlink here. Owner-scoped the same way: someone else's
+      // identity id reads as missing, so this endpoint cannot be used to
+      // probe which ids exist.
+      const all = await this.signInIdentities(user);
       const target = all.find((identity) => identity.id === params.id);
       if (!target) {
         throw new NotFoundError("Sign-in method not found");
@@ -129,6 +150,9 @@ export class MyIdentityController {
         locked, not disabled, simply unreachable forever, from a single
         click on a page that offers no undo. There is no recovery path
         either: password reset needs a credentials identity to reset.
+
+        Only sign-in methods count: a TOTP enrollment left alone is no way
+        in, so a password beside it is still the last one.
       */
       if (all.length <= 1) {
         throw new BadRequestError(

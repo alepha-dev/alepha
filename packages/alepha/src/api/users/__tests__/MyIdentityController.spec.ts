@@ -58,6 +58,17 @@ const addOauthIdentity = async (ctx: Ctx, provider = "github") =>
     providerData: { accessToken: "gho_secret", refreshToken: "ghr_secret" },
   });
 
+/**
+ * The row `MfaService` writes on TOTP enrollment: an identity, but a second
+ * factor rather than a sign-in method.
+ */
+const addTotpIdentity = async (ctx: Ctx) =>
+  ctx.realmProvider.identityRepository().create({
+    provider: "totp",
+    userId: ctx.user.id,
+    providerData: { secret: "JBSWY3DPEHPK3PXP" },
+  });
+
 const list = (ctx: Ctx) =>
   ctx.controller.listMyIdentities({}, { user: ctx.caller as never });
 
@@ -184,6 +195,50 @@ describe("alepha/api/users - MyIdentityController", () => {
     await expect(unlink(ctx, only.id)).rejects.toThrow(BadRequestError);
 
     expect(await list(ctx)).toHaveLength(1);
+  });
+
+  it("should leave the TOTP enrollment out of the list", async ({ expect }) => {
+    const ctx = await setup("id-totp-list");
+    await addPasswordIdentity(ctx);
+    await addTotpIdentity(ctx);
+
+    expect((await list(ctx)).map((i) => i.provider)).toEqual(["credentials"]);
+  });
+
+  it("should refuse to unlink a TOTP enrollment", async ({ expect }) => {
+    /*
+      Disabling TOTP asks for a code (MyMfaController.disableTotp). Deleting
+      the row here asked for nothing, so a stolen session could strip 2FA.
+    */
+    const ctx = await setup("id-totp-unlink");
+    await addPasswordIdentity(ctx);
+    await addOauthIdentity(ctx);
+    const totp = await addTotpIdentity(ctx);
+
+    await expect(unlink(ctx, totp.id)).rejects.toThrow(NotFoundError);
+
+    const survivor = await ctx.realmProvider
+      .identityRepository()
+      .findById(totp.id);
+    expect(survivor?.provider).toBe("totp");
+  });
+
+  it("should refuse to unlink the password when only TOTP remains beside it", async ({
+    expect,
+  }) => {
+    // TOTP is no way in: counted as one, it let the last sign-in method go.
+    const ctx = await setup("id-totp-last");
+    const password = await addPasswordIdentity(ctx);
+    await addTotpIdentity(ctx);
+
+    await expect(unlink(ctx, password.id)).rejects.toThrow(BadRequestError);
+
+    const result = await ctx.sessionService.login(
+      "credentials",
+      "id-totp-last",
+      PASSWORD,
+    );
+    expect(result?.id).toBe(ctx.user.id);
   });
 
   it("should read another account's identity as missing", async ({
