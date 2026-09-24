@@ -206,7 +206,7 @@ describe("Lore feedback comments", () => {
       asUser(REPORTER, () =>
         commentApi.deleteFeedbackComment({ params: { id: question.id } }),
       ),
-    ).rejects.toThrow(/owner/i);
+    ).rejects.toThrow(/triages feedback/i);
   });
 });
 

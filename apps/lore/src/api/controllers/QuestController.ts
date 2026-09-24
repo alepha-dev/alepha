@@ -3029,9 +3029,16 @@ export class QuestController {
         ["todo", "in_progress", "on_hold", "shelved"],
       );
 
-      if (quest.createdBy !== user.id && project.createdBy !== user.id) {
+      // The author, or somebody who may delete quests here: the same rule
+      // as `updateQuestById`. Never `project.createdBy`, which records who
+      // created the project and stopped deciding access in epic #E39 - an
+      // ownership transfer does not move it (#Q2515).
+      if (
+        quest.createdBy !== user.id &&
+        !(await this.ranks.can(project.organizationId!, "quest:delete", user))
+      ) {
         throw new ForbiddenError(
-          "Only the quest creator or project owner can edit objectives",
+          "Only the quest creator, or somebody who may delete quests here, can edit objectives",
         );
       }
 
@@ -3075,11 +3082,17 @@ export class QuestController {
       const quest = this.owned.get<Quest>();
       const project = this.owned.authority<Project>();
 
-      // Same narrowing as `updateQuestById`: membership is the gate,
-      // authorship or project ownership is what allows the delete.
-      if (quest.createdBy !== user.id && project.createdBy !== user.id) {
+      // Same narrowing as `updateQuestById`: the gate asks for `quest:delete`,
+      // and a quest's author may delete it too. The rank is asked again here
+      // because the gate's check is on the WORK scope, and this is the one
+      // place the OR with authorship lives. Never `project.createdBy`, which
+      // an ownership transfer does not move (#Q2515).
+      if (
+        quest.createdBy !== user.id &&
+        !(await this.ranks.can(project.organizationId!, "quest:delete", user))
+      ) {
         throw new ForbiddenError(
-          "Only the quest creator or project owner can delete this quest",
+          "Only the quest creator, or somebody who may delete quests here, can delete this quest",
         );
       }
 

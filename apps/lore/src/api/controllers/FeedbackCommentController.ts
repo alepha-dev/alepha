@@ -1,4 +1,5 @@
 import { $inject, z } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -60,6 +61,7 @@ export class FeedbackCommentController {
   mentions = $inject(MentionNotifier);
   reporterNotifier = $inject(FeedbackNotifier);
   security = $inject(ProjectSecurityService);
+  ranks = $inject(RankService);
   dt = $inject(DateTimeProvider);
 
   /**
@@ -309,22 +311,29 @@ export class FeedbackCommentController {
       const comment = await this.comments.getById(params.id);
       const row = await this.loadReadable(comment.feedbackId, user);
 
-      // Deleting IS moderation, so the project owner may do it too. The
-      // reporter cannot delete the owner's questions on their own item.
+      // Deleting IS moderation, so somebody who triages feedback here may do
+      // it too, through their rank (#Q2515). It was `project.createdBy`,
+      // which an ownership transfer never moves: the ex-creator, demoted to
+      // Viewer, could still delete anyone's comments, and the new owner
+      // could not. The reporter cannot delete the team's questions on their
+      // own item, since a reporter holds no rank here.
       //
-      // Compared against `createdBy` directly rather than through
-      // `assertOwner`, which also lets a privileged identity
-      // (`user.ownership === false`) through. That escape hatch is for
-      // administration, and it must not be the reason a reporter with an
-      // unusual token can delete the owner's question. Same explicit check
-      // `QuestCommentController.deleteQuestComment` makes.
+      // The author check comes first, so the rank is only asked for somebody
+      // else's words, the same order `QuestCommentController` uses.
       if (comment.authorId !== user.id) {
         const project = await this.projects.getOne({
           where: { id: { eq: row.projectId } },
         });
-        if (project.createdBy !== user.id) {
+        const mayModerate =
+          !!project.organizationId &&
+          (await this.ranks.can(
+            project.organizationId,
+            "feedback:triage",
+            user,
+          ));
+        if (!mayModerate) {
           throw new ForbiddenError(
-            "Only the author or the project owner can delete this comment",
+            "Only the author, or somebody who triages feedback here, can delete this comment",
           );
         }
       }
