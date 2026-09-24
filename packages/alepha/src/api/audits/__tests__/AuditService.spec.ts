@@ -564,6 +564,39 @@ describe("alepha/api/audits - AuditService", () => {
       expect(entry.description?.endsWith("…")).toBe(true);
     });
 
+    it("keeps an over-long User-Agent, request id and IP instead of failing the write", async ({
+      expect,
+    }) => {
+      const { alepha, auditService } = await setup();
+
+      // All three come from the client: an in-app browser's User-Agent runs
+      // past 255 characters, and `x-request-id` is whatever the caller sent.
+      const explicit = await auditService.create({
+        type: "test",
+        action: "create",
+        userAgent: "u".repeat(300),
+        requestId: "r".repeat(300),
+        ipAddress: "i".repeat(300),
+      });
+      expect(explicit.userAgent).toHaveLength(255);
+      expect(explicit.requestId).toHaveLength(255);
+      expect(explicit.ipAddress).toHaveLength(255);
+
+      // The same values read from the request context instead.
+      const fromRequest = await alepha.fork(async () => {
+        alepha.store.set("alepha.http.request", {
+          ip: "10.0.0.1",
+          headers: { "user-agent": "u".repeat(300) },
+          requestId: "r".repeat(300),
+        } as never);
+        return auditService.create({ type: "test", action: "update" });
+      });
+      expect(fromRequest.userAgent).toHaveLength(255);
+      expect(fromRequest.userAgent?.endsWith("…")).toBe(true);
+      expect(fromRequest.requestId).toHaveLength(255);
+      expect(fromRequest.ipAddress).toBe("10.0.0.1");
+    });
+
     it("finds only the rows of the scope it is asked for", async ({
       expect,
     }) => {

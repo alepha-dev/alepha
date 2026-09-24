@@ -261,8 +261,15 @@ export class AuditService {
       // and - since call sites await this inside their own transaction - roll
       // back the quest itself. The record is worth having truncated; it is not
       // worth breaking the write.
+      //
+      // The request columns are the same case with a worse source: the client
+      // writes them. An in-app browser's User-Agent runs past 255 characters,
+      // and `x-request-id` is whatever the caller sent.
       description: this.clamp(data.description),
       errorMessage: this.clamp(data.errorMessage),
+      ipAddress: this.clamp(data.ipAddress ?? contextData.ipAddress),
+      userAgent: this.clamp(data.userAgent ?? contextData.userAgent),
+      requestId: this.clamp(data.requestId ?? contextData.requestId),
       // Outcome drives severity: a failed audit (success:false) defaults to
       // `warning`, otherwise `info`. Explicit `severity` always wins. This is
       // the single place the OK/Failed → severity rule lives, so holders and
@@ -401,7 +408,7 @@ export class AuditService {
   }
 
   /**
-   * The `z.text()` cap both clamped columns are declared with.
+   * The `z.text()` cap every clamped column is declared with.
    */
   protected readonly maxTextLength = 255;
 

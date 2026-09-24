@@ -345,6 +345,17 @@ export class SessionService {
           realm: name,
         });
 
+        // Only increment IP counter (no user ID to track). Counted before
+        // the attempt is audited: an audit write that fails must never be
+        // what lets an attempt go uncounted.
+        const justLocked = ipKey
+          ? await this.recordFailedLogin(
+              ipKey,
+              loginRateLimit.ipMaxAttempts,
+              loginRateLimit.windowMs,
+            )
+          : false;
+
         await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
@@ -352,25 +363,17 @@ export class SessionService {
           metadata: { provider, username },
         });
 
-        // Only increment IP counter (no user ID to track)
-        if (ipKey) {
-          const justLocked = await this.recordFailedLogin(
-            ipKey,
-            loginRateLimit.ipMaxAttempts,
-            loginRateLimit.windowMs,
+        if (justLocked) {
+          await this.sessionAudits(userRealmName)?.security.log(
+            "rate_limited",
+            {
+              userRealm: name,
+              success: false,
+              description:
+                "IP temporarily locked due to too many failed login attempts",
+              metadata: { ip: request?.ip },
+            },
           );
-          if (justLocked) {
-            await this.sessionAudits(userRealmName)?.security.log(
-              "rate_limited",
-              {
-                userRealm: name,
-                success: false,
-                description:
-                  "IP temporarily locked due to too many failed login attempts",
-                metadata: { ip: request?.ip },
-              },
-            );
-          }
         }
 
         throw new InvalidCredentialsError();
@@ -438,6 +441,22 @@ export class SessionService {
           realm: name,
         });
 
+        // Record failed attempt on both IP and account counters, before the
+        // attempt is audited: an audit write that fails must never be what
+        // lets a password guess go uncounted and skip the lockout.
+        const ipJustLocked = ipKey
+          ? await this.recordFailedLogin(
+              ipKey,
+              loginRateLimit.ipMaxAttempts,
+              loginRateLimit.windowMs,
+            )
+          : false;
+        const accountJustLocked = await this.recordFailedLogin(
+          accountKey,
+          loginRateLimit.accountMaxAttempts,
+          loginRateLimit.windowMs,
+        );
+
         await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
@@ -446,32 +465,19 @@ export class SessionService {
           metadata: { provider, username },
         });
 
-        // Record failed attempt on both IP and account counters
-        if (ipKey) {
-          const ipJustLocked = await this.recordFailedLogin(
-            ipKey,
-            loginRateLimit.ipMaxAttempts,
-            loginRateLimit.windowMs,
+        if (ipJustLocked) {
+          await this.sessionAudits(userRealmName)?.security.log(
+            "rate_limited",
+            {
+              userRealm: name,
+              success: false,
+              description:
+                "IP temporarily locked due to too many failed login attempts",
+              metadata: { ip: request?.ip },
+            },
           );
-          if (ipJustLocked) {
-            await this.sessionAudits(userRealmName)?.security.log(
-              "rate_limited",
-              {
-                userRealm: name,
-                success: false,
-                description:
-                  "IP temporarily locked due to too many failed login attempts",
-                metadata: { ip: request?.ip },
-              },
-            );
-          }
         }
 
-        const accountJustLocked = await this.recordFailedLogin(
-          accountKey,
-          loginRateLimit.accountMaxAttempts,
-          loginRateLimit.windowMs,
-        );
         if (accountJustLocked) {
           await this.sessionAudits(userRealmName)?.security.log(
             "rate_limited",
