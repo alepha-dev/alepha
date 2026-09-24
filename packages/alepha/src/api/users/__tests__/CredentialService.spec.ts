@@ -283,6 +283,31 @@ describe("alepha/api/users - CredentialService", () => {
       ).rejects.toThrow(HttpError);
     });
 
+    it("should refuse completions past the per-IP cap with a 429", async ({
+      expect,
+    }) => {
+      // Each completion is a guess at a 6-digit code; the per-code budget
+      // bounds guesses per code, this bounds one address across intents.
+      const { alepha, credentialService } = await setup();
+      const complete = () =>
+        credentialService.completePasswordReset({
+          intentId: "550e8400-e29b-41d4-a716-446655440000",
+          code: "123456",
+          newPassword: "NewPassword456!",
+        });
+
+      await alepha.fork(async () => {
+        alepha.store.set("alepha.http.request", {
+          ip: `reset-cap-${crypto.randomUUID()}`,
+        } as never);
+
+        for (let i = 0; i < 30; i++) {
+          await expect(complete()).rejects.toMatchObject({ status: 410 });
+        }
+        await expect(complete()).rejects.toMatchObject({ status: 429 });
+      });
+    });
+
     it("should reject invalid verification code", async ({ expect }) => {
       const { credentialService, userService, cryptoProvider, emailProvider } =
         await setup();

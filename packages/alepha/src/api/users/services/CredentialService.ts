@@ -33,6 +33,15 @@ export class CredentialService {
    */
   protected readonly resetIpMaxAttempts = 20;
 
+  /**
+   * Per-IP cap on password-reset completions, in the same 15-minute window.
+   *
+   * Each completion is a guess at a 6-digit code. The code's own attempt
+   * budget bounds guesses per code; this bounds what one address can throw
+   * at the endpoint across intents.
+   */
+  protected readonly completeIpMaxAttempts = 30;
+
   protected readonly intentTtlMinutes = 10;
 
   /**
@@ -100,6 +109,16 @@ export class CredentialService {
   protected readonly resetIpCache = $cache<number>({
     provider: DatabaseCacheProvider,
     name: "api:users:password-reset-ip-rate-limit",
+    ttl: [15, "minutes"],
+  });
+
+  /**
+   * Per-IP throttle for password-reset completions. Its own bucket, so a
+   * user who requested a few resets is not locked out of completing one.
+   */
+  protected readonly completeIpCache = $cache<number>({
+    provider: DatabaseCacheProvider,
+    name: "api:users:password-reset-complete-ip-rate-limit",
     ttl: [15, "minutes"],
   });
 
@@ -316,6 +335,23 @@ export class CredentialService {
     body: CompletePasswordResetRequest,
   ): Promise<void> {
     this.log.trace("Completing password reset", { intentId: body.intentId });
+
+    // Per-IP cap, before any work. See `completeIpCache`.
+    const request = this.alepha.store.get("alepha.http.request");
+    if (request?.ip) {
+      const attempts = await this.completeIpCache.incr(
+        `reset-complete:ip:${request.ip}`,
+      );
+      if (attempts > this.completeIpMaxAttempts) {
+        this.log.warn("Password reset completion rate limit exceeded", {
+          ip: request.ip,
+        });
+        throw new HttpError({
+          status: 429,
+          message: "Too many password reset attempts, please try again later",
+        });
+      }
+    }
 
     // Fetch intent from cache
     const intent = await this.intentCache.get(body.intentId);

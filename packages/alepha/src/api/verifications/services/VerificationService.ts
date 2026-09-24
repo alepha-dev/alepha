@@ -4,7 +4,7 @@ import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DbEntityNotFoundError, sql } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import {
@@ -180,7 +180,7 @@ export class VerificationService {
       //
       // Wrong guesses burn the same attempt budget as unverified records —
       // without the counter this branch is brute-forceable forever.
-      if (verification.attempts >= settings.maxAttempts) {
+      if (!(await this.consumeAttempt(verification.id, settings.maxAttempts))) {
         this.log.warn("Verification locked due to max attempts", {
           id: verification.id,
           type: entry.type,
@@ -191,9 +191,6 @@ export class VerificationService {
         );
       }
       if (verification.code !== this.hashCode(code)) {
-        await this.verificationRepository.updateById(verification.id, {
-          attempts: verification.attempts + 1,
-        });
         this.log.warn("Invalid code submitted for already-verified entry", {
           id: verification.id,
           type: entry.type,
@@ -201,6 +198,7 @@ export class VerificationService {
         });
         throw new BadRequestError("Invalid verification code");
       }
+      await this.refundAttempt(verification.id);
       this.log.debug("Verification already verified", {
         id: verification.id,
         type: entry.type,
@@ -234,12 +232,11 @@ export class VerificationService {
       throw new BadRequestError("Verification code has expired");
     }
 
-    if (verification.attempts >= settings.maxAttempts) {
+    if (!(await this.consumeAttempt(verification.id, settings.maxAttempts))) {
       this.log.warn("Verification locked due to max attempts", {
         id: verification.id,
         type: entry.type,
         target: entry.target,
-        attempts: verification.attempts,
         maxAttempts: settings.maxAttempts,
       });
       throw new BadRequestError(
@@ -248,22 +245,19 @@ export class VerificationService {
     }
 
     if (verification.code !== this.hashCode(code)) {
-      const newAttempts = verification.attempts + 1;
       this.log.warn("Invalid verification code", {
         id: verification.id,
         type: entry.type,
         target: entry.target,
-        attempts: newAttempts,
         maxAttempts: settings.maxAttempts,
-      });
-      await this.verificationRepository.updateById(verification.id, {
-        attempts: newAttempts,
       });
       throw new BadRequestError("Invalid verification code");
     }
 
+    // The attempt taken above goes back: `attempts` counts wrong guesses.
     await this.verificationRepository.updateById(verification.id, {
       verifiedAt: this.dateTimeProvider.nowISOString(),
+      attempts: sql`${this.verificationRepository.table.attempts} - 1`,
     });
 
     this.log.info("Verification code verified", {
@@ -273,6 +267,45 @@ export class VerificationService {
     });
 
     return { ok: true };
+  }
+
+  /**
+   * Take one attempt from the budget, atomically, before the code is compared.
+   *
+   * One conditional `UPDATE ... SET attempts = attempts + 1 WHERE id = ? AND
+   * attempts < max RETURNING`, so concurrent guesses each take their own
+   * attempt. Reading `attempts` and writing `attempts + 1` back as a value let
+   * fifty parallel wrong guesses land as one counted attempt.
+   *
+   * Returns `false` when no attempt was left: the budget is spent, and the
+   * code must not be compared at all.
+   */
+  protected async consumeAttempt(
+    id: VerificationEntity["id"],
+    maxAttempts: number,
+  ): Promise<boolean> {
+    try {
+      await this.verificationRepository.updateOne(
+        { id: { eq: id }, attempts: { lt: maxAttempts } },
+        { attempts: sql`${this.verificationRepository.table.attempts} + 1` },
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Give back the attempt {@link consumeAttempt} took, once the code matched:
+   * `attempts` counts wrong guesses, so a right one costs nothing.
+   */
+  protected async refundAttempt(id: VerificationEntity["id"]): Promise<void> {
+    await this.verificationRepository.updateById(id, {
+      attempts: sql`${this.verificationRepository.table.attempts} - 1`,
+    });
   }
 
   public hashCode(code: string): string {

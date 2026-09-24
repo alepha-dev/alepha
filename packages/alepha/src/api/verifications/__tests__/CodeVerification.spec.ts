@@ -146,6 +146,57 @@ describe("Code Verification", () => {
     ).rejects.toThrow(/maximum|locked/i);
   });
 
+  it("counts every one of 50 parallel wrong guesses, then refuses the right code", async ({
+    expect,
+  }) => {
+    // Read-then-write let concurrent guesses collapse into one counted
+    // attempt: 50 parallel guesses stored `attempts: 1` (#Q2507).
+    const { service, parameters } = await createTest();
+    const target = "+33600000050";
+    const request = await service.createVerification({ type: "code", target });
+    const wrong = request.token === "000000" ? "000001" : "000000";
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 50 }, () =>
+        service.verifyCode({ type: "code", target }, wrong),
+      ),
+    );
+    expect(results.every((it) => it.status === "rejected")).toBe(true);
+
+    const verification = await service.findByEntry({ type: "code", target });
+    expect(verification.attempts).toBe(parameters.maxAttempts);
+
+    await expect(
+      service.verifyCode({ type: "code", target }, request.token),
+    ).rejects.toThrow("Maximum number of attempts reached");
+  });
+
+  it("does not spend the budget on right codes", async ({ expect }) => {
+    // A flow that re-checks a verified code (reset, then complete) must not
+    // lock the user out for having typed it right.
+    const { service, parameters } = await createTest();
+    const target = "+33600000051";
+    const request = await service.createVerification({ type: "code", target });
+    const wrong = request.token === "000000" ? "000001" : "000000";
+
+    for (let i = 0; i < parameters.maxAttempts - 1; i++) {
+      await expect(
+        service.verifyCode({ type: "code", target }, wrong),
+      ).rejects.toThrow("Invalid verification code");
+    }
+    expect(
+      await service.verifyCode({ type: "code", target }, request.token),
+    ).toEqual({ ok: true });
+    for (let i = 0; i < 3; i++) {
+      expect(
+        await service.verifyCode({ type: "code", target }, request.token),
+      ).toEqual({ ok: true, alreadyVerified: true });
+    }
+
+    const verification = await service.findByEntry({ type: "code", target });
+    expect(verification.attempts).toBe(parameters.maxAttempts - 1);
+  });
+
   it("should handle invalid code", async ({ expect }) => {
     const { controller, target, service } = await createTest();
 
