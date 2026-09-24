@@ -69,7 +69,10 @@ const FolioPinnedBudget = (
     (f) => f.pinned && !f.protected && f.id !== props.folio.id,
   );
   const ownChars = props.content.length;
-  const otherChars = otherPinned.reduce((sum, f) => sum + f.content.length, 0);
+  const otherChars = otherPinned.reduce(
+    (sum, f) => sum + (f.content?.length ?? 0),
+    0,
+  );
   const totalChars = ownChars + otherChars;
   const overCap = totalChars > PINNED_CAP_CHARS;
 

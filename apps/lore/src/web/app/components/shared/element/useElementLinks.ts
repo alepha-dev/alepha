@@ -6,7 +6,7 @@ import type { FeedbackController } from "@/api/controllers/FeedbackController.ts
 import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioTreeEntry } from "@/api/schemas/folioTreeEntrySchema.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
@@ -142,14 +142,16 @@ export const useElementLinks = (
 
   // Fetched, not atom-read, only outside the folio workspace. `enabled`
   // does the gating so the hook order never changes between renders.
-  const { data: fetchedFolios } = useQuery<Folio[]>(
+  // Every folio, not a page of 100 (#Q2510): the `[[` picker cannot
+  // suggest a folio it was never sent.
+  const { data: fetchedFolios } = useQuery<FolioTreeEntry[]>(
     {
       key: ["elementLinks:folios", projectId],
       enabled: !inFolioWorkspace && projectId > 0,
       staleTime: [5, "minutes"],
       handler: async () =>
-        await folioApi.list({
-          query: { projectId, limit: 100 },
+        await folioApi.tree({
+          params: { projectId },
         }),
       onError: () => {},
     },
