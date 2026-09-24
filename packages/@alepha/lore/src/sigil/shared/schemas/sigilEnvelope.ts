@@ -121,8 +121,13 @@ export const sigilEnvelope = z.object({
          *
          * The whole point of aggregating before sending: a crash loop is one
          * line with a count, not a thousand identical events. Absent means one.
+         *
+         * Capped: the sink adds it to a stored total, and an unbounded count
+         * from one anonymous post (the proxy has no `$secure`) pushed that
+         * total past the safe-integer range, after which every read of the
+         * project's blight list threw.
          */
-        count: z.integer().min(1).optional(),
+        count: z.integer().min(1).max(1_000_000).optional(),
       }),
     )
     .max(20)

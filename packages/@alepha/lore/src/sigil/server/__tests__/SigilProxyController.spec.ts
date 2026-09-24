@@ -145,6 +145,59 @@ describe("SigilProxyController.ingest", () => {
     expect(fwd.ingested[0].env.vitals).toBeDefined();
   });
 
+  it("marks every error as a client error, whatever the envelope claims", async () => {
+    // The endpoint is unauthenticated, and the app's own server reports
+    // through the sink provider directly: a browser post naming itself
+    // "server" is a forgery (#Q2503).
+    const alepha = make();
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    await ctrl.ingest.run({
+      body: {
+        errors: [
+          {
+            name: "E",
+            message: "m",
+            stack: "",
+            sourceUrl: "",
+            origin: "server",
+          },
+          { name: "F", message: "n", stack: "", sourceUrl: "" },
+        ],
+      },
+      headers: {},
+    });
+
+    const fwd = alepha.inject(SigilSinkProvider) as FakeSink;
+    expect(
+      fwd.ingested[0].env.errors.map((error: any) => error.origin),
+    ).toEqual(["client", "client"]);
+  });
+
+  it("refuses a count past the envelope cap", async () => {
+    const alepha = make();
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    await expect(
+      ctrl.ingest.run({
+        body: {
+          errors: [
+            {
+              name: "E",
+              message: "m",
+              stack: "",
+              sourceUrl: "",
+              count: Number.MAX_SAFE_INTEGER,
+            },
+          ],
+        },
+        headers: {},
+      }),
+    ).rejects.toThrow();
+  });
+
   it("salts the visitor hash with the host, so one sink cannot join two apps", async () => {
     const alepha = make();
     const ctrl = alepha.inject(SigilProxyController);

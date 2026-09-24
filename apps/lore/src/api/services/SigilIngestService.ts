@@ -97,6 +97,17 @@ export class SigilIngestService {
    */
   protected readonly datasets = $inject(LoreAnalytics);
 
+  /**
+   * The most a stored `count` ever holds, on a group or a blight.
+   *
+   * The envelope caps what one report adds, but the sum still grows without
+   * bound across reports, and a row past the safe-integer range fails the
+   * `z.integer()` decode of every read that returns it: the whole blight
+   * list, `blight_list` and the blight page, with no way to delete the row
+   * from the UI. A billion occurrences reads the same in triage as more.
+   */
+  protected readonly maxCount = 1_000_000_000;
+
   protected readonly projects = $repository(projects);
   protected readonly sigils = $repository(sigils);
   protected readonly errorGroups = $repository(sigilErrorGroups);
@@ -328,7 +339,7 @@ export class SigilIngestService {
         // clause serves every row in the batch, so `+ ${seen}` would add one
         // row's count to all of them. `excluded` is the row being inserted.
         set: {
-          count: sql`${this.errorGroups.table.count} + excluded.count`,
+          count: this.cappedSum(this.errorGroups.table.count),
           lastSeenAt: now,
         },
       },
@@ -351,7 +362,7 @@ export class SigilIngestService {
       {
         target: ["projectId", "fingerprint"],
         set: {
-          count: sql`${this.blights.table.count} + excluded.count`,
+          count: this.cappedSum(this.blights.table.count),
           lastSeenAt: now,
           // Which app reported it last. Deliberately overwritten:
           // "still happening, most recently over there" is the useful fact
@@ -385,6 +396,16 @@ export class SigilIngestService {
         hour: this.hourBucket(now),
       })),
     );
+  }
+
+  /**
+   * `column + excluded.count`, never past {@link maxCount}.
+   *
+   * A `CASE` rather than `MIN(a, b)` / `LEAST(a, b)`: SQLite (D1) has only the
+   * first and Postgres only the second, and this runs on both.
+   */
+  protected cappedSum(column: typeof this.blights.table.count) {
+    return sql`CASE WHEN ${column} + excluded.count > ${this.maxCount} THEN ${this.maxCount} ELSE ${column} + excluded.count END`;
   }
 
   /**
@@ -423,7 +444,7 @@ export class SigilIngestService {
 
       const already = folded.get(fingerprint);
       if (already) {
-        already.count += seen;
+        already.count = Math.min(already.count + seen, this.maxCount);
         continue;
       }
 
