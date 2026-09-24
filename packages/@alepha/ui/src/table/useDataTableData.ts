@@ -122,11 +122,25 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   const fetchRef = useRef(props.fetch);
   fetchRef.current = props.fetch;
 
+  // The newest request, so an older one that answers late cannot put its
+  // rows back (#Q2517). A project switch, a filter keystroke or a refresh
+  // each start one; only the last may write, and it aborts the one before.
+  const latestRequest = useRef<
+    { id: number; abort: AbortController } | undefined
+  >(undefined);
+
   const load = useCallback(async () => {
     // Static mode owns no request. Bail before touching `loading` too, so a
     // table fed an array never flashes the skeleton over rows it already has.
     const fetcher = fetchRef.current;
     if (!fetcher) return;
+    latestRequest.current?.abort.abort();
+    const request = {
+      id: (latestRequest.current?.id ?? 0) + 1,
+      abort: new AbortController(),
+    };
+    latestRequest.current = request;
+    const isLatest = () => latestRequest.current === request;
     setLoading(true);
     const sent = form ? { ...form.currentValues } : undefined;
     try {
@@ -135,11 +149,16 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
         size,
         sort: sortParam,
         filters: form?.currentValues,
+        signal: request.abort.signal,
       });
+      if (!isLatest()) return;
       setData(res.content);
       setMeta(res.page);
       setFetchedFilters(sent);
     } catch (error) {
+      // A superseded request's failure (its own abort included) is nobody's
+      // news: a newer one is already answering.
+      if (!isLatest()) return;
       // Surface read failures through the same `react:action:error` channel
       // that useAction/useQuery use, so a mounted <ActionErrorToaster /> toasts
       // them. Keep the previous rows on screen rather than blanking the table.
@@ -149,7 +168,11 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
         error: error as Error,
       });
     } finally {
-      setLoading(false);
+      // Only the newest request clears `loading`: an older one finishing
+      // first used to hide the spinner while the table still waited.
+      if (isLatest()) {
+        setLoading(false);
+      }
     }
   }, [page, size, sortParam, refreshKey, form, alepha]);
 

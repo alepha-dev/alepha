@@ -687,6 +687,13 @@ export type TableFetcher<
   size: number;
   sort?: string;
   filters?: DataTableFilterValues<F>;
+  /**
+   * Aborted when a newer load supersedes this one (a filter keystroke, a
+   * project switch, a refresh). Pass it to the request to stop paying for an
+   * answer the table will discard anyway; ignoring it is safe, since a
+   * superseded answer is never written.
+   */
+  signal?: AbortSignal;
 }) => Promise<Page<T>>;
 
 /**

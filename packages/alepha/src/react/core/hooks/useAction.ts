@@ -358,7 +358,14 @@ export function useAction<Args extends any[], Result = void>(
           debounceTimerRef.current = dateTimeProvider.createTimeout(
             async () => {
               pendingDebounce.current = undefined;
-              const result = await executeAction(args, options_);
+              // A debounced call is by nature the newest input (a search box,
+              // a picker's query), so it supersedes one still in flight
+              // rather than being dropped by the double-submit guard (#Q2517).
+              // Dropped, the box read "abc" while the results were for "ab".
+              const result = await executeAction(args, {
+                ...options_,
+                supersede: true,
+              });
               resolve(result);
             },
             options.debounce ?? 0,

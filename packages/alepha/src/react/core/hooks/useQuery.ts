@@ -131,16 +131,29 @@ export function useQuery<Result>(
       // Keyed queries route through the cache's in-flight map, so two
       // components mounting on the same key in one tick share a single
       // request instead of both missing the not-yet-populated cache.
+      //
+      // The key is captured when the run STARTS, and the result is written
+      // under it here rather than in `onSuccess` (#Q2517). `onSuccess` reads
+      // the latest options: going K1, K2, then back to a still-fresh K1 starts
+      // no run for K1, so the K2 request finishing afterwards wrote K2's data
+      // under K1. Written here it lands under the key it was fetched for,
+      // which is always right, whatever the component shows by then.
       handler: options.key
-        ? (context) =>
-            cache!.dedupe(
-              options.key!,
+        ? async (context) => {
+            const key = optionsRef.current.key!;
+            const result = await cache!.dedupe(
+              key,
               async () => optionsRef.current.handler(context),
               // Without the signal, a run that superseded another was handed
               // back the promise it had just aborted, and the query settled
               // empty. See `QueryCache.dedupe`.
               { signal: context?.signal },
-            )
+            );
+            if (!context?.signal?.aborted) {
+              cache!.set(key, result);
+            }
+            return result;
+          }
         : options.handler,
       runOnInit: shouldRun,
       // A disabled query does not poll either. Passing `runEvery` through
@@ -152,9 +165,9 @@ export function useQuery<Result>(
       onError: options.onError,
       onSuccess: async (result) => {
         settledRef.current = true;
-        if (options.key && cache) {
-          cache.set(options.key, result);
-        } else {
+        // A keyed result is already in the cache, under the key its run
+        // started with (see the handler above).
+        if (!(options.key && cache)) {
           setLocalData(result);
         }
         if (options.onSuccess) {
