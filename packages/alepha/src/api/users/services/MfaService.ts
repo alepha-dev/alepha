@@ -469,7 +469,11 @@ export class MfaService {
     // while the number of guesses is bounded. Its own counter, separate from
     // the password one: a user who mistypes codes must not spend the budget
     // that protects their password, and vice versa.
-    if (await this.isLocked(key, accountMaxAttempts)) {
+    //
+    // The attempt is taken BEFORE the code is compared (#Q2529): checking
+    // first and counting after a failure let a burst of parallel guesses all
+    // read the counter under the cap. A pass gives the slot back.
+    if ((await this.takeAttempt(key, windowMs)) > accountMaxAttempts) {
       this.log.warn("Second factor blocked, too many attempts", { userId });
       return false;
     }
@@ -479,8 +483,8 @@ export class MfaService {
         ? await this.verifyTotp(userId, code, realm)
         : await this.verifyEmailCode(userId, code, realm);
 
-    if (!passed) {
-      await this.recordFailure(key, windowMs);
+    if (passed) {
+      await this.refundAttempt(key, windowMs);
     }
 
     return passed;
@@ -489,36 +493,41 @@ export class MfaService {
   protected static readonly RATE_LIMIT_CACHE = "mfa-rate-limit";
 
   /**
-   * Fails closed, for the same reason `SessionService.isLoginLocked` does: a
-   * counter store that cannot be read cannot report an attacker as under the
-   * threshold, and answering "not locked" would turn an outage into an open
-   * door.
+   * Take one attempt from the counter and answer its new value.
+   *
+   * Fails closed, for the same reason `SessionService.takeLoginAttempt`
+   * does: a counter store that cannot be written cannot report an attacker
+   * as under the threshold, and answering "not locked" would turn an outage
+   * into an open door.
    */
-  protected async isLocked(key: string, max: number): Promise<boolean> {
+  protected async takeAttempt(key: string, windowMs: number): Promise<number> {
     try {
-      const count = await this.cacheProvider.getTyped<number>(
-        MfaService.RATE_LIMIT_CACHE,
-        key,
-      );
-      return count != null && count >= max;
-    } catch (error) {
-      this.log.error("Could not read the second-factor attempt count", error);
-      return true;
-    }
-  }
-
-  protected async recordFailure(key: string, windowMs: number): Promise<void> {
-    try {
-      await this.cacheProvider.incr(
+      return await this.cacheProvider.incr(
         MfaService.RATE_LIMIT_CACHE,
         key,
         1,
         windowMs,
       );
     } catch (error) {
-      // Swallowed: the attempt is being refused either way, and the door this
-      // would leave open is closed by `isLocked` failing closed.
-      this.log.error("Could not record a failed second-factor attempt", error);
+      this.log.error("Could not take a second-factor attempt", error);
+      return Number.POSITIVE_INFINITY;
+    }
+  }
+
+  /**
+   * Give back the slot of a code that passed. Best effort: a refund that
+   * fails costs the user one slot of the window, never the limit.
+   */
+  protected async refundAttempt(key: string, windowMs: number): Promise<void> {
+    try {
+      await this.cacheProvider.incr(
+        MfaService.RATE_LIMIT_CACHE,
+        key,
+        -1,
+        windowMs,
+      );
+    } catch (error) {
+      this.log.warn("Could not refund a second-factor attempt", error);
     }
   }
 

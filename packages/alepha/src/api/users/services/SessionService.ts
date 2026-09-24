@@ -244,6 +244,59 @@ export class SessionService {
   }
 
   /**
+   * Take one attempt from a login counter BEFORE the password is compared,
+   * and answer the counter's new value (#Q2529).
+   *
+   * Checking first and counting after a failure let a burst of parallel
+   * guesses all read the counter under the cap and each get a compare: the
+   * lockout overshot by the burst's width. Taking first means every compare
+   * holds a slot, and a guess past the cap is refused before it is checked.
+   * A success gives its slot back ({@link refundLoginAttempt}), so the
+   * counter still counts failures only.
+   *
+   * Fails closed, like {@link isLoginLocked}: a counter that cannot be
+   * written answers "past any cap", so an outage refuses logins rather than
+   * removing the limit.
+   */
+  protected async takeLoginAttempt(
+    key: string,
+    windowMs: number,
+  ): Promise<number> {
+    try {
+      return await this.cacheProvider.incr(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+        1,
+        windowMs,
+      );
+    } catch (error) {
+      this.log.error("Failed to take a login attempt, denying", error);
+      return Number.POSITIVE_INFINITY;
+    }
+  }
+
+  /**
+   * Give back the slot {@link takeLoginAttempt} took, for an attempt that
+   * succeeded or was never compared. Best effort: a refund that fails costs
+   * the user one slot of the window, never the limit.
+   */
+  protected async refundLoginAttempt(
+    key: string,
+    windowMs: number,
+  ): Promise<void> {
+    try {
+      await this.cacheProvider.incr(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+        -1,
+        windowMs,
+      );
+    } catch (error) {
+      this.log.warn("Failed to refund a login attempt", error);
+    }
+  }
+
+  /**
    * Validate user credentials and return the user if valid.
    */
   public async login(
@@ -429,6 +482,34 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
+      // Both counters take this attempt before the password is compared,
+      // so concurrent guesses cannot all slip under the cap (#Q2529). The
+      // checks above are the cheap early refusal; these are the limit. And
+      // it happens before anything is audited, so an audit write that fails
+      // can never be what lets a guess go uncounted.
+      const accountCount = await this.takeLoginAttempt(
+        accountKey,
+        loginRateLimit.windowMs,
+      );
+      if (accountCount > loginRateLimit.accountMaxAttempts) {
+        this.log.warn("Login blocked — account rate limit exceeded", {
+          userId: user.id,
+          realm: name,
+        });
+        throw new InvalidCredentialsError();
+      }
+      const ipCount = ipKey
+        ? await this.takeLoginAttempt(ipKey, loginRateLimit.windowMs)
+        : 0;
+      if (ipKey && ipCount > loginRateLimit.ipMaxAttempts) {
+        // Never compared, so the account's slot goes back.
+        await this.refundLoginAttempt(accountKey, loginRateLimit.windowMs);
+        this.log.warn("Login blocked — IP rate limit exceeded", {
+          ip: request?.ip,
+        });
+        throw new InvalidCredentialsError();
+      }
+
       const valid = await this.cryptoProvider.verifyPassword(
         password,
         storedPassword,
@@ -441,21 +522,12 @@ export class SessionService {
           realm: name,
         });
 
-        // Record failed attempt on both IP and account counters, before the
-        // attempt is audited: an audit write that fails must never be what
-        // lets a password guess go uncounted and skip the lockout.
-        const ipJustLocked = ipKey
-          ? await this.recordFailedLogin(
-              ipKey,
-              loginRateLimit.ipMaxAttempts,
-              loginRateLimit.windowMs,
-            )
-          : false;
-        const accountJustLocked = await this.recordFailedLogin(
-          accountKey,
-          loginRateLimit.accountMaxAttempts,
-          loginRateLimit.windowMs,
-        );
+        // The attempt is already counted; this one filling the counter is
+        // what "just locked" means.
+        const ipJustLocked =
+          ipKey !== undefined && ipCount === loginRateLimit.ipMaxAttempts;
+        const accountJustLocked =
+          accountCount === loginRateLimit.accountMaxAttempts;
 
         await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
@@ -509,6 +581,12 @@ export class SessionService {
         }
 
         throw new InvalidCredentialsError();
+      }
+
+      // A right password costs nothing: both slots go back.
+      await this.refundLoginAttempt(accountKey, loginRateLimit.windowMs);
+      if (ipKey) {
+        await this.refundLoginAttempt(ipKey, loginRateLimit.windowMs);
       }
 
       await this.sessionAudits(userRealmName)?.auth.log("login", {
