@@ -309,15 +309,15 @@ export function $secure(options?: SecureOptions): Middleware {
         // user is never observable by the handler.
         securityProvider.storeUserInContext(user);
 
-        const httpRequest = alepha.store.get("alepha.http.request", "current");
+        // `"fork"`, not `"current"`: a layer `$transactional()` nests between
+        // the action and this middleware is the same unit of work, while an
+        // enclosing action's fork is not (#Q2538).
+        const httpRequest = alepha.store.get("alepha.http.request", "fork");
         if (httpRequest) {
           httpRequest.user = user;
         }
 
-        const actionRequest = alepha.store.get(
-          "alepha.action.request",
-          "current",
-        );
+        const actionRequest = alepha.store.get("alepha.action.request", "fork");
         if (actionRequest) {
           actionRequest.user = user;
         }
@@ -328,11 +328,13 @@ export function $secure(options?: SecureOptions): Middleware {
         // made the truthiness check always pass, so an async guard silently
         // allowed everyone through.
         if (options?.guard) {
-          // Resolved without the `"current"` scope: `$secure` may run inside a
-          // nested fork, and the HTTP request lives on an ancestor layer.
+          // The HTTP request is resolved without a scope: `$secure` may run
+          // inside a nested fork, and the HTTP request lives on an ancestor
+          // layer. The action's own request is `"fork"`: through a layer
+          // `$transactional()` nested, never up into an enclosing action's.
           const request = alepha.store.get("alepha.http.request");
           const source: any =
-            alepha.store.get("alepha.action.request", "current") ?? request;
+            alepha.store.get("alepha.action.request", "fork") ?? request;
 
           const allowed = await options.guard({
             user,

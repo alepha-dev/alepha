@@ -63,10 +63,11 @@ export const $etag = (options?: EtagMiddlewareOptions): Middleware => {
         // Cache-Control and ETag, and `checkCache` wrote this action's
         // cached body straight onto the outer reply, keyed by the OUTER
         // route. `run()` publishes its per-call request on its own fork
-        // layer, so `"current"` finds the action that actually declared this
-        // middleware and nothing else.
+        // layer, so `"fork"` finds the action that actually declared this
+        // middleware and nothing else, reading through any layer a
+        // `$transactional()` nested in between.
         const request =
-          alepha.store.get("alepha.action.request", "current") ??
+          alepha.store.get("alepha.action.request", "fork") ??
           alepha.get("alepha.http.request") ??
           args[0];
 

@@ -1,9 +1,27 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 
 export type AsyncLocalStorageData = any;
-export type StateScope = "current" | "app" | "parent";
+/**
+ * Which layers a read resolves through.
+ *
+ * - `undefined`: every layer up to the root, then the app store.
+ * - `"current"`: the innermost layer only.
+ * - `"fork"`: the innermost layer {@link AlsProvider.run} opened, reading
+ *   through any {@link AlsProvider.nest} layers above it. What a value
+ *   published on a unit of work (an action's request) needs: a nested layer
+ *   is the same unit of work, while an outer `run()` is a different one.
+ * - `"parent"`: the immediate parent layer only.
+ * - `"app"`: the app-level store only.
+ */
+export type StateScope = "current" | "fork" | "app" | "parent";
 
 export const ALS_PARENT = Symbol("als.parent");
+
+/**
+ * Marks a layer {@link AlsProvider.nest} opened, so a `"fork"` read knows it
+ * may read through it to the `run()` layer beneath.
+ */
+export const ALS_NESTED = Symbol("als.nested");
 
 export class AlsProvider {
   static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
@@ -63,7 +81,10 @@ export class AlsProvider {
     }
 
     const parent = this.als.getStore() ?? undefined;
-    const layer: AsyncLocalStorageData = { [ALS_PARENT]: parent };
+    const layer: AsyncLocalStorageData = {
+      [ALS_PARENT]: parent,
+      [ALS_NESTED]: true,
+    };
 
     if (!parent) {
       layer.context = this.createContextId();
@@ -94,6 +115,10 @@ export class AlsProvider {
       return key in store ? (store[key] as T) : undefined;
     }
 
+    if (scope === "fork") {
+      return this.forkLayerOf(store, key)?.[key] as T | undefined;
+    }
+
     if (scope === "parent") {
       return store[ALS_PARENT]?.[key] as T | undefined;
     }
@@ -111,6 +136,29 @@ export class AlsProvider {
       current = current[ALS_PARENT];
     }
 
+    return undefined;
+  }
+
+  /**
+   * The layer holding `key` for a `"fork"` read: the current layer, or one
+   * beneath it reached only through {@link nest} layers. The walk stops at
+   * the first layer `run()` opened, so a value an OUTER unit of work
+   * published (an enclosing action's request) is never answered for this one.
+   */
+  protected forkLayerOf(
+    store: AsyncLocalStorageData,
+    key: string,
+  ): AsyncLocalStorageData {
+    let layer = store;
+    while (layer) {
+      if (key in layer) {
+        return layer;
+      }
+      if (!layer[ALS_NESTED]) {
+        return undefined;
+      }
+      layer = layer[ALS_PARENT];
+    }
     return undefined;
   }
 
@@ -164,6 +212,10 @@ export class AlsProvider {
 
     if (scope === "current") {
       return key in store;
+    }
+
+    if (scope === "fork") {
+      return !!this.forkLayerOf(store, key);
     }
 
     if (scope === "parent") {

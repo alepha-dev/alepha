@@ -410,14 +410,13 @@ export abstract class DatabaseProvider {
     fn: () => Promise<R>,
   ): Promise<R> {
     const afterCommit: Array<() => void | Promise<void>> = [];
-    // With no async context at all, the marker used to land in the app-wide
-    // store, where every concurrent caller read it and joined this
-    // transaction without a BEGIN of its own (#Q2516). Such a call gets a
-    // context of its own. Inside a request it stays in the request's layer,
-    // as before: a layer added between an action and its guards hides the
-    // action's request from `$secure` (it reads `alepha.action.request` from
-    // the current layer only), which `$transactional()` ahead of `$owns`
-    // relies on.
+    // Always a layer of its own, like the async `transactional()`: the
+    // marker is private to this transaction and dies with it. With no async
+    // context at all it used to land in the app-wide store, where every
+    // concurrent caller read it and joined this transaction without a BEGIN
+    // of its own (#Q2516). Inside a request, the layer sits between an action
+    // and its guards, which `$secure` reads through with the `"fork"` scope
+    // (#Q2538), so `$transactional()` ahead of `$owns` still sees the body.
     const body = async (): Promise<R> => {
       // Set the tx marker to the drizzle db itself — SQLite transactions are
       // connection-scoped, so all operations on this connection participate.
@@ -444,8 +443,7 @@ export abstract class DatabaseProvider {
         });
       }
     };
-    const run = (): Promise<R> =>
-      this.alepha.context.exists() ? body() : this.alepha.context.nest(body);
+    const run = (): Promise<R> => this.alepha.context.nest(body);
 
     this.pendingExclusive += 1;
     const result = this.txMutex.then(run, run);

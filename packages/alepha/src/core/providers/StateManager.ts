@@ -382,6 +382,7 @@ export class StateManager<State extends object = AlephaState> {
    * @param scope - Optional scope to control resolution:
    *   - `undefined` (default): Walk up the fork tree from current layer to root, then fall back to the app store.
    *   - `"current"`: Read only from the current fork layer (no tree walking).
+   *   - `"fork"`: The innermost `run()` layer, read through any `nest()` layers above it.
    *   - `"parent"`: Read only from the immediate parent fork layer.
    *   - `"app"`: Read only from the root (app-level) store.
    */

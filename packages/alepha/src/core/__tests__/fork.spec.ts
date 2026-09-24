@@ -149,6 +149,46 @@ describe("fork", () => {
   });
 });
 
+describe("the fork scope", () => {
+  // #Q2538: what a guard needs to find its action's request. A `nest()`
+  // layer is the same unit of work as the `run()` beneath it; an outer
+  // `run()` is a different one.
+  it("reads through nested layers to the fork that holds the key", () => {
+    const alepha = new Alepha();
+
+    alepha.fork(
+      () => {
+        alepha.context.nest(() => {
+          alepha.context.nest(() => {
+            expect(alepha.get("unit" as any, "current")).toBeUndefined();
+            expect(alepha.get("unit" as any, "fork")).toBe("mine");
+            expect(alepha.context.has("unit", "fork")).toBe(true);
+          });
+        });
+      },
+      { unit: "mine" },
+    );
+  });
+
+  it("stops at the first fork, never answering with an outer one's value", () => {
+    const alepha = new Alepha();
+
+    alepha.fork(
+      () => {
+        alepha.fork(() => {
+          alepha.context.nest(() => {
+            expect(alepha.get("unit" as any, "fork")).toBeUndefined();
+            // The default walk still reaches it, which is exactly the leak
+            // the scope exists to avoid.
+            expect(alepha.get("unit" as any)).toBe("outer");
+          });
+        });
+      },
+      { unit: "outer" },
+    );
+  });
+});
+
 describe("nest", () => {
   it("should inherit the caller's state", () => {
     const alepha = new Alepha();
