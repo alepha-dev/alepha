@@ -84,8 +84,9 @@ which is the whole reason a registry exists. Two environments on one estate type
 produce byte-identical output, and a test exists to keep that true.
 
 The project's Artifacts table offers **Download** for stored tarballs. It uses
-an authenticated endpoint requiring `artifact:read`; deleting builds is a
-separate permission. Image variants are registry references and have no bytes
+an authenticated endpoint requiring `artifact:read`. Pushing a build takes
+`artifact:push`, which the Viewer preset does not hold, and deleting builds (or
+a forced push, which drops the archive it replaces) takes `artifact:delete`. Image variants are registry references and have no bytes
 to download from Lore.
 
 Deploys cache the server-computed asset manifest by the build's SHA-256, so

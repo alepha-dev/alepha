@@ -1,5 +1,7 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
+import { RankService } from "alepha/api/organizations";
+import type { UserAccountToken } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
@@ -9,6 +11,7 @@ import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts
 import { releaseTagSchema } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * The endpoint CI pushes a build into.
@@ -34,6 +37,8 @@ import { ArtifactService } from "../services/ArtifactService.ts";
 export class ArtifactController {
   protected readonly artifacts = $inject(ArtifactService);
   protected readonly files = $inject(FileService);
+  protected readonly ranks = $inject(RankService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -42,6 +47,27 @@ export class ArtifactController {
    */
   protected ownsProject = (requires: string | string[]) =>
     $ownsProject({ requires, param: "projectId" });
+
+  /**
+   * A forced push moves a pinned tag onto new bytes and drops the archive it
+   * superseded, which is a delete: it takes `artifact:delete` on top of
+   * `artifact:push`. Checked in the handler because the gate cannot read the
+   * body.
+   */
+  protected async assertCanForce(
+    projectId: number,
+    force: boolean | undefined,
+    user: UserAccountToken,
+  ): Promise<void> {
+    if (!force) {
+      return;
+    }
+    await this.ranks.assert(
+      await this.projectSecurity.organizationIdOf(projectId),
+      "artifact:delete",
+      user,
+    );
+  }
 
   /**
    * Where the tarballs live.
@@ -94,7 +120,7 @@ export class ArtifactController {
    * write-once and needs `force`. See {@link ArtifactService.push}.
    */
   pushArtifact = $action({
-    use: [this.ownsProject("artifact:read")],
+    use: [this.ownsProject("artifact:push")],
     method: "POST",
     path: "/projects/:projectId/artifacts",
     description: "Push a packed build into the project's artifact registry.",
@@ -127,7 +153,8 @@ export class ArtifactController {
       }),
       response: artifactPushResultSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
+      await this.assertCanForce(params.projectId, body.force, user);
       const { artifact, stored } = await this.artifacts.push({
         projectId: params.projectId,
         app: body.app,
@@ -153,8 +180,8 @@ export class ArtifactController {
    * cannot be mistaken for the sibling route's `:artifactId`, which is a
    * `z.uuid()`.
    *
-   * The gate is `artifact:read`, matching {@link pushArtifact}: that is what
-   * pushing an artifact already requires, and an image is an artifact.
+   * The gate is `artifact:push`, matching {@link pushArtifact}: an image is
+   * an artifact. `force` also needs `artifact:delete`, the same way.
    *
    * ⚠️ **No `runtime` field and no `platform` field, and there must never be
    * one.** The runtime is read from the image's own `dev.alepha.runtime`
@@ -166,7 +193,7 @@ export class ArtifactController {
    * bounded calls to a registry.
    */
   pushImage = $action({
-    use: [this.ownsProject("artifact:read")],
+    use: [this.ownsProject("artifact:push")],
     method: "POST",
     path: "/projects/:projectId/artifacts/image",
     description:
@@ -199,7 +226,8 @@ export class ArtifactController {
       }),
       response: artifactPushResultSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
+      await this.assertCanForce(params.projectId, body.force, user);
       const { artifact, stored } = await this.artifacts.pushImage({
         projectId: params.projectId,
         app: body.app,
