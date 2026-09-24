@@ -149,7 +149,7 @@ export class AppRouter {
       return;
     }
     const [folios, directories] = await Promise.all([
-      this.folioApi.list({ query: { projectId, limit: 100 } }),
+      this.folioApi.tree({ params: { projectId } }),
       this.directoryApi.listAllDirectories({ params: { projectId } }),
     ]);
     this.alepha.store.set(userFoliosAtom, folios);

@@ -12,7 +12,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioTreeEntry } from "@/api/schemas/folioTreeEntrySchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
@@ -32,8 +32,8 @@ export interface EpicFolioPickerProps {
 
 /**
  * Searchable popover that attaches a project folio to the epic. Lists every
- * project folio (capped at 100, same known limitation as
- * `QuestDependencyPicker`) — attaching moves it here, mirroring
+ * project folio, from the unpaged tree endpoint (#Q2510), where it used to
+ * stop at the first 100. Attaching moves it here, mirroring
  * `EpicController.attachFolio`, which reassigns `epicId` unconditionally.
  */
 const EpicFolioPicker = (props: EpicFolioPickerProps) => {
@@ -47,10 +47,10 @@ const EpicFolioPicker = (props: EpicFolioPickerProps) => {
   const folios =
     useQuery(
       {
-        key: ["folios", props.projectId, { limit: 100 }],
+        key: ["folio-tree", props.projectId],
         enabled: open,
         handler: () =>
-          folioApi.list({ query: { projectId: props.projectId, limit: 100 } }),
+          folioApi.tree({ params: { projectId: props.projectId } }),
         onError: () => {},
       },
       [folioApi, props.projectId],
@@ -74,7 +74,7 @@ const EpicFolioPicker = (props: EpicFolioPickerProps) => {
         {tr("epic.folios.attach")}
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
-        <Command<Folio>
+        <Command<FolioTreeEntry>
           items={available}
           itemToStringValue={(folio) =>
             `${formatReference("folio", folio.shortId)} ${folio.title}`
@@ -83,7 +83,7 @@ const EpicFolioPicker = (props: EpicFolioPickerProps) => {
           <CommandInput placeholder={tr("epic.folios.attach.search")} />
           <CommandEmpty>{tr("common.noResults")}</CommandEmpty>
           <CommandList>
-            {(folio: Folio) => (
+            {(folio: FolioTreeEntry) => (
               <CommandItem
                 key={folio.id}
                 value={folio}

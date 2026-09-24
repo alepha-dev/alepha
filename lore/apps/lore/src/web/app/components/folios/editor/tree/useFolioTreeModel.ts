@@ -283,7 +283,7 @@ export const useFolioTreeModel = (
       staleTime: [30, "seconds"],
       handler: async () => {
         const [folioList, dirList] = await Promise.all([
-          folioApi.list({ query: { projectId: input.projectId, limit: 100 } }),
+          folioApi.tree({ params: { projectId: input.projectId } }),
           directoryApi.listAllDirectories({
             params: { projectId: input.projectId },
           }),

@@ -23,6 +23,10 @@ import {
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
 import { folioSavedSchema } from "../schemas/folioSavedSchema.ts";
+import {
+  type FolioTreeEntry,
+  folioTreeEntrySchema,
+} from "../schemas/folioTreeEntrySchema.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
@@ -238,6 +242,68 @@ export class FolioController {
         }),
       );
       return rows.map((r) => ({ shortId: r.shortId, title: r.title }));
+    },
+  });
+
+  /**
+   * Every folio of the project, as the tree draws it, unpaged (#Q2510).
+   *
+   * `list` is a capped page of whole rows, and the tree, the router's seed
+   * and the pickers each asked it for 100: in a project past 100 folios the
+   * older ones were simply missing, directories looked emptier than they
+   * were, and the pickers could not offer them. This reads every row but
+   * only the columns of {@link folioTreeEntrySchema}, so the whole list of a
+   * large project weighs less than the old page of 100 bodies.
+   *
+   * The one body it carries is a pinned, unprotected folio's, in a second
+   * read bounded by what is pinned: the pinned-budget bar sums those.
+   */
+  tree = $action({
+    use: [this.ownsProject("folio:read")],
+    method: "GET",
+    description: "Every folio of the project, without bodies, for the tree.",
+    path: "/projects/:projectId/folios/tree",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.array(folioTreeEntrySchema),
+    },
+    handler: async ({ params }) => {
+      const [rows, pinned] = await Promise.all([
+        this.folios.findMany({
+          where: { projectId: { eq: params.projectId } },
+          columns: [
+            "id",
+            "shortId",
+            "createdAt",
+            "updatedAt",
+            "projectId",
+            "title",
+            "protected",
+            "tags",
+            "pinned",
+            "directoryId",
+            "epicId",
+            "summary",
+          ],
+          orderBy: [
+            { column: "pinned", direction: "desc" },
+            { column: "updatedAt", direction: "desc" },
+          ],
+        }),
+        this.folios.findMany({
+          where: {
+            projectId: { eq: params.projectId },
+            pinned: { eq: true },
+            protected: { eq: false },
+          },
+          columns: ["id", "content"],
+        }),
+      ]);
+      const bodies = new Map(pinned.map((row) => [row.id, row.content]));
+      return rows.map((row) => {
+        const content = bodies.get(row.id);
+        return content === undefined ? row : { ...row, content };
+      }) as FolioTreeEntry[];
     },
   });
 
