@@ -56,6 +56,22 @@ const envSchema = z.object({
       "Most megabytes all stored files may add up to, every storage together. 0 is unlimited.",
     )
     .optional(),
+
+  /**
+   * The most one user's uploads may add up to, in megabytes. Seeds
+   * `filesOptions.maxUserSize`, and wins over a value set in code.
+   *
+   * @example
+   * FILES_MAX_USER_SIZE=512
+   */
+  FILES_MAX_USER_SIZE: z
+    .number()
+    .min(0)
+    .meta({ secret: false })
+    .describe(
+      "Most megabytes the uploads of one user may add up to, every storage together. 0 is unlimited.",
+    )
+    .optional(),
 });
 
 declare module "alepha" {
@@ -116,12 +132,14 @@ export class FileService {
     on: "configure",
     handler: () => {
       const maxTotalSize = this.env.FILES_MAX_TOTAL_SIZE;
-      if (maxTotalSize === undefined) {
+      const maxUserSize = this.env.FILES_MAX_USER_SIZE;
+      if (maxTotalSize === undefined && maxUserSize === undefined) {
         return;
       }
       this.alepha.store.mut(filesOptions, (current) => ({
         ...current,
-        maxTotalSize,
+        ...(maxTotalSize === undefined ? {} : { maxTotalSize }),
+        ...(maxUserSize === undefined ? {} : { maxUserSize }),
       }));
     },
   });
@@ -350,7 +368,10 @@ export class FileService {
 
       // After the subscribers, unlike the storage's own cap: a resize can make
       // a file fit what is left, and the row will record the size it ends up.
-      this.assertWithinQuota(file.size, await this.remainingQuota());
+      this.assertWithinQuota(
+        file.size,
+        await this.remainingQuota(options.user?.id),
+      );
 
       checksum = this.hashBuffer(await file.arrayBuffer());
       blobId = await storage.provider.upload(storage.name, file);
@@ -363,7 +384,7 @@ export class FileService {
       // What was already read is checked here, before the backend sees a
       // byte, so a quota that is full leaves no partial object behind. The
       // rest is counted against it on the way through.
-      const remaining = await this.remainingQuota();
+      const remaining = await this.remainingQuota(options.user?.id);
       this.assertWithinQuota(
         peek.head.reduce((size, chunk) => size + chunk.length, 0),
         remaining,
@@ -390,9 +411,19 @@ export class FileService {
 
     let expirationDate: string | undefined;
     if (options.expirationDate) {
-      expirationDate = this.dateTimeProvider
-        .of(options.expirationDate)
-        .toISOString();
+      // An explicit date reaches here from the upload endpoint's query
+      // string, so it is the client's to choose. It may shorten a file's
+      // life, never outlive the storage's own TTL: a scratch storage that
+      // purges after a day is not made permanent by a date in the URL.
+      const requested = this.dateTimeProvider.of(options.expirationDate);
+      const ceiling = storage.options.ttl
+        ? this.dateTimeProvider
+            .now()
+            .add(this.dateTimeProvider.duration(storage.options.ttl))
+        : undefined;
+      expirationDate = (
+        ceiling && requested.isAfter(ceiling) ? ceiling : requested
+      ).toISOString();
     } else if (options.ttl) {
       expirationDate = this.getExpirationDate(options.ttl);
     } else if (storage.options.ttl) {
@@ -522,7 +553,7 @@ export class FileService {
    * big. The transport layer has already applied its own ceiling before this
    * one is reached, so getting here at all means two limits disagreed.
    *
-   * `remaining` is the total quota's share, in bytes, and is the one refusal
+   * `remaining` is what the quotas leave, in bytes, and is the one refusal
    * here that is expected rather than a disagreement: the transport cannot know
    * it, since it would need a database read before the first byte.
    */
@@ -530,12 +561,12 @@ export class FileService {
     file: FileLike,
     storage: StoragePrimitive,
     counter: { size: number },
-    remaining?: number,
+    remaining?: FileQuota,
   ): FileLike {
     const { maxSize } = storage;
     const ceiling = maxSize * 1024 * 1024;
     const source = file;
-    const overQuota = () => this.quotaExceeded(remaining ?? 0);
+    const overQuota = () => this.quotaExceeded(remaining as FileQuota);
 
     return {
       ...file,
@@ -552,7 +583,7 @@ export class FileService {
                     `File exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
                   );
                 }
-                if (remaining !== undefined && counter.size > remaining) {
+                if (remaining !== undefined && counter.size > remaining.left) {
                   throw overQuota();
                 }
                 controller.enqueue(chunk);
@@ -621,15 +652,33 @@ export class FileService {
    * Holding a lock across a transfer that may last minutes would cost more
    * than the overshoot it prevents.
    */
-  protected async remainingQuota(): Promise<number | undefined> {
-    const { maxTotalSize } = this.options;
-    if (!maxTotalSize) {
-      return undefined;
+  protected async remainingQuota(
+    userId?: string,
+  ): Promise<FileQuota | undefined> {
+    const { maxTotalSize, maxUserSize } = this.options;
+    const quotas: FileQuota[] = [];
+    if (maxTotalSize) {
+      const [row] = await this.fileRepository.aggregate({
+        select: { size: { sum: true } },
+      });
+      quotas.push({
+        left: maxTotalSize * 1024 * 1024 - Number(row?.size.sum ?? 0),
+        name: `the total storage quota of ${maxTotalSize} MB`,
+      });
     }
-    const [row] = await this.fileRepository.aggregate({
-      select: { size: { sum: true } },
-    });
-    return maxTotalSize * 1024 * 1024 - Number(row?.size.sum ?? 0);
+    // The per-user share of the same reading, with the same caveat: a
+    // reading, not a reservation. Whichever is tighter decides.
+    if (maxUserSize && userId) {
+      const [row] = await this.fileRepository.aggregate({
+        select: { size: { sum: true } },
+        where: { creator: { eq: userId } },
+      });
+      quotas.push({
+        left: maxUserSize * 1024 * 1024 - Number(row?.size.sum ?? 0),
+        name: `your storage quota of ${maxUserSize} MB`,
+      });
+    }
+    return quotas.sort((a, b) => a.left - b.left)[0];
   }
 
   /**
@@ -637,17 +686,17 @@ export class FileService {
    */
   protected assertWithinQuota(
     size: number,
-    remaining: number | undefined,
+    remaining: FileQuota | undefined,
   ): void {
-    if (remaining !== undefined && size > remaining) {
+    if (remaining !== undefined && size > remaining.left) {
       throw this.quotaExceeded(remaining);
     }
   }
 
-  protected quotaExceeded(remaining: number): FileTooLargeError {
-    const left = Math.max(0, remaining) / 1024 / 1024;
+  protected quotaExceeded(quota: FileQuota): FileTooLargeError {
+    const left = Math.max(0, quota.left) / 1024 / 1024;
     return new FileTooLargeError(
-      `Upload exceeds the total storage quota of ${this.options.maxTotalSize} MB (${left.toFixed(1)} MB left)`,
+      `Upload exceeds ${quota.name} (${left.toFixed(1)} MB left)`,
     );
   }
 
@@ -966,4 +1015,12 @@ export class FileService {
   public entityToResource(entity: FileEntity): FileResource {
     return entity;
   }
+}
+
+/**
+ * What one quota leaves, in bytes, and how a refusal names it.
+ */
+export interface FileQuota {
+  left: number;
+  name: string;
 }

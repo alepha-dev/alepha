@@ -53,6 +53,7 @@ Blobs _without_ a database are a `FileStorageProvider` concern - see
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable               | Type   | Default | Description                                                                            |
-| ---------------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
-| `FILES_MAX_TOTAL_SIZE` | number | -       | Most megabytes all stored files may add up to, every storage together. 0 is unlimited. |
+| Variable               | Type   | Default | Description                                                                                   |
+| ---------------------- | ------ | ------- | --------------------------------------------------------------------------------------------- |
+| `FILES_MAX_TOTAL_SIZE` | number | -       | Most megabytes all stored files may add up to, every storage together. 0 is unlimited.        |
+| `FILES_MAX_USER_SIZE`  | number | -       | Most megabytes the uploads of one user may add up to, every storage together. 0 is unlimited. |

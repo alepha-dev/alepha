@@ -1,7 +1,7 @@
 import { $inject, AlephaError, type FileLike, isFileLike, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $secure } from "alepha/security";
-import { $action, okSchema } from "alepha/server";
+import { $action, ForbiddenError, okSchema } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 import type { MultipartPart } from "alepha/server/multipart";
 
@@ -117,11 +117,22 @@ export class FileController {
       }),
       response: fileResourceSchema,
     },
-    handler: async ({ body, user, query }) =>
-      this.fileService.uploadFile(this.asFile(body.file), {
+    handler: async ({ body, user, query }) => {
+      // A client may only name a storage that opted in. Resolved (and a
+      // missing one refused with its 404) before a byte is read.
+      if (query.bucket) {
+        const storage = this.fileService.storage(query.bucket);
+        if (!storage.options.clientUploads) {
+          throw new ForbiddenError(
+            `Storage '${storage.name}' does not accept uploads from clients`,
+          );
+        }
+      }
+      return this.fileService.uploadFile(this.asFile(body.file), {
         user,
         ...query,
-      }),
+      });
+    },
   });
 
   /**

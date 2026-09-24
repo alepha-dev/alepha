@@ -21,8 +21,14 @@ const asAdmin = { user: adminUser };
 
 describe("FileController", () => {
   class App {
-    images = $storage({});
-    documents = $storage({ name: "documents" });
+    images = $storage({ clientUploads: true });
+    documents = $storage({ name: "documents", clientUploads: true });
+    serverOnly = $storage({ name: "server-only" });
+    scratch = $storage({
+      name: "scratch-ttl",
+      ttl: [1, "day"],
+      clientUploads: true,
+    });
   }
 
   let createFile: (
@@ -49,6 +55,67 @@ describe("FileController", () => {
     };
     return { alepha, app, ctrl, service, dtp, fs };
   };
+
+  describe("uploadFile, what the client may choose (#Q2508)", () => {
+    it("refuses a storage that did not opt in to client uploads", async () => {
+      const { app, ctrl, service } = await setup();
+
+      await expect(
+        ctrl.uploadFile.run(
+          { body: { file: createFile("x") }, query: { bucket: "server-only" } },
+          asAdmin,
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(
+        (await service.findFiles({ bucket: app.serverOnly.name })).content,
+      ).toHaveLength(0);
+
+      // Server code still writes there.
+      await app.serverOnly.upload(createFile("y"));
+    });
+
+    it("takes an upload with no bucket, into the default storage", async () => {
+      const { ctrl } = await setup();
+
+      const file = await ctrl.uploadFile.run(
+        { body: { file: createFile("x") }, query: {} },
+        asAdmin,
+      );
+      expect(file.bucket).toBe("default");
+    });
+
+    it("caps a client expiration date at the storage's TTL", async () => {
+      const { ctrl, dtp } = await setup();
+
+      const file = await ctrl.uploadFile.run(
+        {
+          body: { file: createFile("x") },
+          query: {
+            bucket: "scratch-ttl",
+            expirationDate: dtp.now().add(10, "years").toISOString(),
+          },
+        },
+        asAdmin,
+      );
+      const expires = dtp.of(file.expirationDate as string);
+      expect(expires.isAfter(dtp.now().add(1, "day").add(1, "minute"))).toBe(
+        false,
+      );
+
+      // A shorter one is the client's to choose.
+      const soon = dtp.now().add(1, "hour").toISOString();
+      const shorter = await ctrl.uploadFile.run(
+        {
+          body: { file: createFile("x") },
+          query: { bucket: "scratch-ttl", expirationDate: soon },
+        },
+        asAdmin,
+      );
+      expect(dtp.of(shorter.expirationDate as string).toISOString()).toBe(
+        dtp.of(soon).toISOString(),
+      );
+    });
+  });
 
   describe("findFiles", () => {
     it("should return files from specific bucket", async () => {

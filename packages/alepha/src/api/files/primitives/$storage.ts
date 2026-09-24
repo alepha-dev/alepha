@@ -104,6 +104,19 @@ export interface StoragePrimitiveOptions {
   ttl?: DurationLike;
 
   /**
+   * Let a client name this storage in `POST /files?bucket=`.
+   *
+   * Off by default: a storage an app declares for its own server-side writes
+   * (build artifacts, exports, backups) is not a place a signed-in user may
+   * drop files into just because the name is guessable. A storage the
+   * browser uploads to directly opts in. Server code calling
+   * `$storage.upload` or `FileService.uploadFile` is unaffected.
+   *
+   * @default false
+   */
+  clientUploads?: boolean;
+
+  /**
    * Storage backend.
    *
    * - `"memory"` — in-process, lost on restart (tests)

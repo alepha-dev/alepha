@@ -63,7 +63,10 @@ describe("AdminFileStatsController", () => {
 
     it("returns the total quota in bytes", async () => {
       const { alepha, ctrl } = await setup();
-      alepha.store.set(filesOptions, { maxTotalSize: 2048 });
+      alepha.store.mut(filesOptions, (current) => ({
+        ...current,
+        maxTotalSize: 2048,
+      }));
 
       const stats = await ctrl.getFileStats({}, { user: adminUser });
 

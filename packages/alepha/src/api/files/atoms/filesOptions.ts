@@ -17,6 +17,11 @@ import { $atom, type Infer, z } from "alepha";
  */
 export const DEFAULT_MAX_TOTAL_SIZE = 10 * 1024;
 
+/**
+ * The default per-user quota, in megabytes: 1 GB.
+ */
+export const DEFAULT_MAX_USER_SIZE = 1024;
+
 export const filesOptions = $atom({
   name: "alepha.api.files.options",
   schema: z.object({
@@ -42,9 +47,31 @@ export const filesOptions = $atom({
         "Most megabytes all stored files may add up to, every storage together. 0 is unlimited.",
       )
       .default(DEFAULT_MAX_TOTAL_SIZE),
+    /**
+     * The most one user's uploads may add up to, in **megabytes**, every
+     * storage together. `0` means unlimited.
+     *
+     * Counted over the rows the user created (`files.creator`). An upload
+     * with no user, from a job or a server-side call, is held to
+     * `maxTotalSize` only.
+     *
+     * ⚠️ **Why there is one at all.** `maxTotalSize` is shared: without a
+     * per-user cap, one account that holds `file:create` (every signed-in
+     * user, in an app with open registration) fills it and every other
+     * upload in the app answers 413. 1 GB by default; the environment wins
+     * (see `FILES_MAX_USER_SIZE`).
+     */
+    maxUserSize: z
+      .number()
+      .min(0)
+      .describe(
+        "Most megabytes the uploads of one user may add up to, every storage together. 0 is unlimited.",
+      )
+      .default(DEFAULT_MAX_USER_SIZE),
   }),
   default: {
     maxTotalSize: DEFAULT_MAX_TOTAL_SIZE,
+    maxUserSize: DEFAULT_MAX_USER_SIZE,
   },
   serverOnly: true,
 });

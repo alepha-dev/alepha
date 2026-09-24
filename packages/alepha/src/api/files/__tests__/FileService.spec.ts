@@ -44,6 +44,7 @@ const testFileServiceOperations = async (
     images = $storage({
       name: randomUUID(),
       ttl: 1000,
+      clientUploads: true,
     });
   }
 

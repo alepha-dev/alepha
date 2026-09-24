@@ -52,7 +52,10 @@ It is **10 GB** unless you say otherwise, and `0` is unlimited.
 ```typescript
 import { filesOptions } from "alepha/api/files";
 
-alepha.store.set(filesOptions, { maxTotalSize: 2048 }); // 2 GB
+alepha.store.mut(filesOptions, (current) => ({
+  ...current,
+  maxTotalSize: 2048, // 2 GB
+}));
 ```
 
 Or from the environment, which wins over a value set in code:
@@ -70,6 +73,30 @@ blob still takes the space.
 The check reads the current total, it does not reserve anything: two uploads
 running at the same time can each fit on their own and overshoot together, and
 the next upload after them is refused.
+
+### Per-user quota
+
+The total is shared, so one account could fill it and every other upload would
+answer 413. `maxUserSize` caps what one user's uploads add up to (counted over
+the rows they created), **1 GB** by default, `0` for unlimited, and
+`FILES_MAX_USER_SIZE` wins over it. An upload with no user, from a job or other
+server code, is held to the total only. Whichever quota is tighter refuses.
+
+## Which storage a client may upload to
+
+`POST /api/files` takes an optional `?bucket=`. With none, the upload lands in
+the `default` storage. Naming any other storage is refused with **403** unless
+it opted in:
+
+```typescript
+class Folios {
+  attachments = $storage({ name: "attachments", clientUploads: true });
+}
+```
+
+A storage the app writes to from server code (build artifacts, exports) stays
+closed to clients, whatever its name. `$storage.upload()` and
+`FileService.uploadFile()` are not affected.
 
 ## A storage is a prefix, not a bucket
 
@@ -149,7 +176,9 @@ await this.images.deleteMany([id1, id2]); // batched where supported
 A storage-level `ttl` stamps `expirationDate` on every row it accepts. The
 `system.files.purge-deleted` cron job (registered by `AlephaApiFiles`) sweeps expired
 rows and deletes their blobs. Override per upload with `ttl`, or set an exact
-`expirationDate`.
+`expirationDate`. An `expirationDate` may shorten a file's life but never
+outlive the storage's `ttl`: a later date is cut back to it, since the upload
+endpoint takes that date from the client.
 
 ## Storage providers
 

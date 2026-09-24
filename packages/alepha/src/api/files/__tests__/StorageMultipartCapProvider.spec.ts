@@ -14,9 +14,9 @@ import { $storage } from "../primitives/$storage.ts";
  * must not, without either one deciding for the other.
  */
 class Buckets {
-  releases = $storage({ name: "releases", maxSize: 100 });
-  avatars = $storage({ name: "avatars", maxSize: 5 });
-  scratch = $storage({ name: "scratch" });
+  releases = $storage({ name: "releases", maxSize: 100, clientUploads: true });
+  avatars = $storage({ name: "avatars", maxSize: 5, clientUploads: true });
+  scratch = $storage({ name: "scratch", clientUploads: true });
 }
 
 const uploadRoute = {

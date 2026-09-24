@@ -291,6 +291,8 @@ export class ProjectController {
   iconBucket = $storage({
     name: "campaign-icons",
     description: "Project icons",
+    // The project settings form uploads here straight from the browser.
+    clientUploads: true,
     // Megabytes. This read `2 * 1024 * 1024` — two million megabytes.
     maxSize: 2,
     mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
