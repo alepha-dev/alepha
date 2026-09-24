@@ -39,12 +39,12 @@ describe("AdminFilesUsageCard", () => {
     alepha = undefined;
   });
 
-  const mount = async (value: StorageStats) => {
+  const mount = async (value: StorageStats, persistenceKey?: string) => {
     alepha = Alepha.create().with(AlephaReactI18n);
     await alepha.start();
     return render(
       <AlephaContext.Provider value={alepha}>
-        <AdminFilesUsageCard stats={value} />
+        <AdminFilesUsageCard stats={value} persistenceKey={persistenceKey} />
       </AlephaContext.Provider>,
     );
   };
@@ -142,5 +142,55 @@ describe("AdminFilesUsageCard", () => {
     fireEvent.mouseLeave(screen.getByText("backups"));
 
     expect(segment(view, "artifacts")?.className).not.toContain("opacity-30");
+  });
+  describe("the bar's mode (#Q2500)", () => {
+    const shareOption = () => screen.getByRole("radio", { name: "Share" });
+    const quotaOption = () => screen.getByRole("radio", { name: "Of quota" });
+
+    it("draws against the quota by default, with the toggle at the top", async () => {
+      const view = await mount(stats(10 * GB));
+
+      expect(quotaOption().getAttribute("aria-checked")).toBe("true");
+      expect(segment(view, "artifacts")?.style.width).toBe(
+        `${((150 * MB) / (10 * GB)) * 100}%`,
+      );
+      expect(screen.queryAllByTestId("usage-share")).toEqual([]);
+    });
+
+    it("fills the bar with the used total in share mode, each bucket its percentage", async () => {
+      const view = await mount(stats(10 * GB));
+
+      fireEvent.click(shareOption());
+
+      const total = 150 * MB + 50 * MB + 1024;
+      const widths = ["artifacts", "backups", "seeds"].map((bucket) =>
+        Number.parseFloat(segment(view, bucket)?.style.width ?? "0"),
+      );
+      expect(widths[0]).toBeCloseTo(((150 * MB) / total) * 100, 5);
+      expect(widths.reduce((sum, width) => sum + width, 0)).toBeCloseTo(100, 5);
+      expect(
+        screen.getAllByTestId("usage-share").map((node) => node.textContent),
+      ).toEqual(["75%", "25%", "0%"]);
+    });
+
+    it("remembers the mode under the persistence key", async () => {
+      window.localStorage.removeItem("usage-spec.usageMode");
+      await mount(stats(10 * GB), "usage-spec");
+      fireEvent.click(shareOption());
+      expect(window.localStorage.getItem("usage-spec.usageMode")).toBe(
+        '"share"',
+      );
+
+      await alepha?.stop();
+      document.body.innerHTML = "";
+      await mount(stats(10 * GB), "usage-spec");
+      expect(shareOption().getAttribute("aria-checked")).toBe("true");
+      window.localStorage.removeItem("usage-spec.usageMode");
+    });
+
+    it("offers no toggle without a quota", async () => {
+      await mount(stats(0));
+      expect(screen.queryByRole("radio", { name: "Share" })).toBeNull();
+    });
   });
 });

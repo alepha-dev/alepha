@@ -17,6 +17,10 @@ export interface AdminFilesUsageProps {
    * figures.
    */
   refreshKey: number;
+  /**
+   * The table's `persistenceKey`, where the card remembers its bar mode.
+   */
+  persistenceKey?: string;
 }
 
 /**
@@ -70,7 +74,12 @@ export const AdminFilesUsage = (props: AdminFilesUsageProps) => {
   }, [props.refreshKey, queries]);
 
   if (stats) {
-    return <AdminFilesUsageCard stats={stats} />;
+    return (
+      <AdminFilesUsageCard
+        stats={stats}
+        persistenceKey={props.persistenceKey}
+      />
+    );
   }
   return loading ? <Skeleton className="h-[108px] rounded-md" /> : null;
 };

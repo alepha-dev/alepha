@@ -219,7 +219,10 @@ export const AdminFiles = () => {
           // same endpoint on mount, the price of the bucket filter not
           // depending on whether the panel is open.
           content: ({ refreshKey: reloads }) => (
-            <AdminFilesUsage refreshKey={reloads} />
+            <AdminFilesUsage
+              refreshKey={reloads}
+              persistenceKey="admin.files"
+            />
           ),
         }}
         bulkActions={[

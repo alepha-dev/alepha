@@ -3,11 +3,29 @@ import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
+import { Segmented } from "../core/Segmented.tsx";
 import { cn, formatBytes } from "../core/utils.ts";
+import {
+  readPersisted,
+  writePersisted,
+} from "../table/dataTablePersistence.ts";
 
 export interface AdminFilesUsageCardProps {
   stats: StorageStats;
+  /**
+   * Where the bar's mode is remembered: the table's own `persistenceKey`,
+   * beside its summary panel's open state. Without one the mode lasts as
+   * long as the card.
+   */
+  persistenceKey?: string;
 }
+
+/**
+ * What the bar is drawn against: the quota (its empty track is the free
+ * space) or the used total alone (the segments fill it and are each
+ * bucket's share).
+ */
+export type AdminFilesUsageMode = "quota" | "share";
 
 /**
  * The storage of every bucket in one tile: what is used, out of what quota,
@@ -27,15 +45,33 @@ export interface AdminFilesUsageCardProps {
  * entry.
  */
 export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
-  const { stats } = props;
+  const { stats, persistenceKey } = props;
   const { l, tr } = useI18n();
   const [active, setActive] = useState<string | undefined>();
+  const [mode, setMode] = useState<AdminFilesUsageMode>(() =>
+    persistenceKey &&
+    readPersisted<unknown>(persistenceKey, "usageMode") === "share"
+      ? "share"
+      : "quota",
+  );
+  const changeMode = (next: string) => {
+    const value: AdminFilesUsageMode = next === "share" ? "share" : "quota";
+    setMode(value);
+    if (persistenceKey) {
+      writePersisted(persistenceKey, "usageMode", value);
+    }
+  };
 
   const buckets = [...stats.byBucket].sort((a, b) => b.totalSize - a.totalSize);
   const hasQuota = stats.quota > 0;
+  // With 1.5% of the quota used, the bar against the quota is a sliver. The
+  // share mode draws it against the used total instead, so the split between
+  // buckets is readable. Without a quota there is only that mode.
+  const ofQuota = hasQuota && mode === "quota";
   // `max` rather than the quota alone: a quota lowered below what is already
   // stored would otherwise draw segments past the end of the bar.
-  const scale = Math.max(stats.quota, stats.totalSize) || 1;
+  const scale =
+    (ofQuota ? Math.max(stats.quota, stats.totalSize) : stats.totalSize) || 1;
   const percent = (ratio: number) =>
     l(ratio, { number: { style: "percent", maximumFractionDigits: 1 } });
 
@@ -66,6 +102,29 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
       className="bg-background flex flex-col gap-3 rounded-md border px-4 py-3"
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        {hasQuota && (
+          <Segmented
+            size="xs"
+            className="order-last ml-auto self-start"
+            aria-label={tr("admin.files.usageMode", { default: "Bar" })}
+            value={mode}
+            onChange={changeMode}
+            options={[
+              {
+                value: "quota",
+                label: tr("admin.files.usageModeQuota", {
+                  default: "Of quota",
+                }),
+              },
+              {
+                value: "share",
+                label: tr("admin.files.usageModeShare", {
+                  default: "Share",
+                }),
+              },
+            ]}
+          />
+        )}
         <span className="text-3xl leading-none font-semibold tabular-nums">
           {formatBytes(stats.totalSize)}
         </span>
@@ -196,6 +255,14 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
             <span className="text-muted-foreground font-mono text-xs">
               {formatBytes(bucket.totalSize)}
             </span>
+            {!ofQuota && (
+              <span
+                data-testid="usage-share"
+                className="text-muted-foreground text-xs tabular-nums"
+              >
+                {percent(bucket.totalSize / (stats.totalSize || 1))}
+              </span>
+            )}
           </li>
         ))}
       </ul>
