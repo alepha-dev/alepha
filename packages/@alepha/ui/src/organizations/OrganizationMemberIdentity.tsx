@@ -35,7 +35,10 @@ export const OrganizationMemberIdentity = (
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{name}</span>
           <Badge variant="secondary">
-            {props.rankName ?? props.member.rank ?? "member"}
+            {props.rankName ??
+              props.member.rankName ??
+              props.member.rank ??
+              "member"}
           </Badge>
         </div>
         {user.email && name !== user.email && (

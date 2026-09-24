@@ -4,6 +4,7 @@ import { $action, okSchema } from "alepha/server";
 import { organizationMemberResourceSchema } from "../schemas/organizationMemberResourceSchema.ts";
 import { $ownsOrganization } from "../security/$ownsOrganization.ts";
 import { MemberService } from "../services/MemberService.ts";
+import { RankService } from "../services/RankService.ts";
 
 /**
  * Membership routes: list, remove, leave, transfer.
@@ -20,6 +21,7 @@ import { MemberService } from "../services/MemberService.ts";
  */
 export class MemberController {
   protected readonly members = $inject(MemberService);
+  protected readonly ranks = $inject(RankService);
 
   public readonly getOrganizationMembers = $action({
     path: "/organizations/:organizationId/members",
@@ -30,7 +32,23 @@ export class MemberController {
       params: z.object({ organizationId: z.uuid() }),
       response: z.array(organizationMemberResourceSchema),
     },
-    handler: ({ params }) => this.members.listResources(params.organizationId),
+    handler: async ({ params }) => {
+      // ⚠️ The rank's NAME travels with each row. The rank list is behind
+      // `rank:manage`, so a member who may only read the roster cannot look
+      // a key up, and a rank created from the editor has a minted key
+      // (`r<time>`) that means nothing on screen. Resolved here rather than
+      // in `MemberService`, which `RankService` reaches through the policy
+      // provider: injecting it back would be a cycle.
+      const [rows, ranks] = await Promise.all([
+        this.members.listResources(params.organizationId),
+        this.ranks.ranksOf(params.organizationId),
+      ]);
+      const names = new Map(ranks.map((rank) => [rank.key, rank.name]));
+      return rows.map((row) => ({
+        ...row,
+        rankName: names.get(row.rank ?? MemberService.MEMBER),
+      }));
+    },
   });
 
   public readonly removeOrganizationMember = $action({

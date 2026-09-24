@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaApiUsers, RealmProvider } from "alepha/api/users";
+import { $realm, AlephaApiUsers, RealmProvider } from "alepha/api/users";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import {
   $permission,
@@ -10,6 +10,7 @@ import {
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
 
+import { MemberController } from "../controllers/MemberController.ts";
 import {
   AlephaApiOrganizations,
   MemberService,
@@ -18,12 +19,20 @@ import {
   RankService,
 } from "../index.ts";
 
+class Realm {
+  // A real realm, so a token's `user` role resolves: the roster test calls
+  // an action, and `$secure` checks the permission at application scope
+  // before the rank is ever read.
+  public readonly realm = $realm();
+}
+
 class Permissions {
   public readonly organizationRead = $permission({
     group: "organization",
     name: "read",
   });
   public readonly rankManage = $permission({ group: "rank", name: "manage" });
+  public readonly memberRead = $permission({ group: "member", name: "read" });
   public readonly questWrite = $permission({ group: "quest", name: "write" });
 }
 
@@ -51,7 +60,8 @@ const setup = async (options: { countDefinitions?: boolean } = {}) => {
     .with(AlephaOrmPostgres)
     .with(AlephaApiUsers)
     .with(AlephaApiOrganizations)
-    .with(Permissions);
+    .with(Permissions)
+    .with(Realm);
   alepha.store.set(organizationConfigAtom, {
     memberPermissions: ["organization:read"],
     floor: ["organization:read"],
@@ -188,6 +198,49 @@ describe("alepha/api/organizations - RankService", () => {
     await expect(
       ctx.ranks.assign(ctx.organization.id, ctx.member.id, "owner", ctx.owner),
     ).rejects.toThrow("Ownership is transferred, not assigned");
+  });
+
+  it("names each member's rank on the roster, a minted key included", async ({
+    expect,
+  }) => {
+    // A rank created from the editor gets a minted key (`r<time>`), and the
+    // rank list that would name it is `rank:manage`-gated. So the roster
+    // carries the name itself, or a plain member reads `rmug3p08h` beside a
+    // colleague's name (#Q2511 exposed it once presets stopped being seeded
+    // under readable keys).
+    const ctx = await setup();
+    await ctx.ranks.save(
+      ctx.organization.id,
+      {
+        key: "rmug3p08h",
+        name: "Contributor",
+        // Reads the roster, and cannot read the rank list.
+        permissions: ["organization:read", "member:read"],
+      },
+      ctx.owner,
+    );
+    await ctx.ranks.assign(
+      ctx.organization.id,
+      ctx.member.id,
+      "rmug3p08h",
+      ctx.owner,
+    );
+
+    const roster = await ctx.alepha
+      .inject(MemberController)
+      .getOrganizationMembers(
+        { params: { organizationId: ctx.organization.id } },
+        // The `user` role grants at application scope; the RANK is what
+        // this reads under, and it holds `member:read` and no `rank:manage`.
+        { user: { ...ctx.member, roles: ["user"] } },
+      );
+    const byUser = new Map(roster.map((row) => [row.userId, row]));
+
+    expect(byUser.get(ctx.member.id)?.rankName).toBe("Contributor");
+    const builtins = await ctx.ranks.ranksOf(ctx.organization.id);
+    expect(byUser.get(ctx.owner.id)?.rankName).toBe(
+      builtins.find((rank) => rank.key === "owner")?.name,
+    );
   });
 
   it("refuses a self-promotion, an unknown rank and a rank beyond the writer's own", async ({
