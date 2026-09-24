@@ -629,7 +629,8 @@ export const createRankFromPreset = async (
     .getByRole("menuitem", { name: `Start from ${presetName}`, exact: true })
     .click();
 
-  const dialog = page.getByRole("dialog");
+  // `useDialog().prompt` is an AlertDialog, so its role is `alertdialog`.
+  const dialog = page.getByRole("alertdialog");
   await expect(dialog.getByRole("textbox")).toHaveValue(presetName, {
     timeout: 10_000,
   });
