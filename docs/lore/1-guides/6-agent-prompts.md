@@ -1,7 +1,8 @@
 # Agent prompts
 
 Every surface that names a piece of work can hand it to a coding agent. An
-**Agent Prompts** menu appears on epics, quests and feedback, and a click
+**Agent Prompts** menu appears on epics, quests and feedback, and on the
+Quests page, the feedback inbox and the blights inbox, and a click
 copies a ready prompt for Claude Code, Codex or anything else that reads a
 paste.
 
@@ -14,14 +15,17 @@ Nothing is ever sent anywhere. The prompt is rendered in your browser and
 put on your clipboard, and Lore neither transmits it nor keeps a copy of
 what you pasted.
 
-## The four prompts
+## The prompts
 
-| Prompt                 | Where                                                              | Offered when                                                                         |
-| ---------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **Review**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                                |
-| **Work on it** (epic)  | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
-| **Work on it** (quest) | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
-| **Work on it**         | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
+| Prompt                    | Where                                                              | Offered when                                                                         |
+| ------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| **Review**                | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                                |
+| **Work on it** (epic)     | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
+| **Work on it** (quest)    | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
+| **Work on it**            | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
+| **Triage the inbox**      | the feedback detail panel                                          | Support is on                                                                        |
+| **Triage the blights**    | the blights inbox toolbar                                          | Apps is on                                                                           |
+| **Work the loose quests** | the Quests page toolbar                                            | always, with Work on                                                                 |
 
 **Review** asks an agent to sharpen a plan before anyone works it: take the
 decisions the spec left open, tighten the vague quests, and say plainly what
@@ -41,6 +45,20 @@ scope.
 **Work on it** on a feedback item starts before there is a quest: it accepts
 the report, creates the quest linked to it, does the work, and ends by
 telling the reporter what shipped.
+
+The last three name a **surface** rather than one item, so they carry no
+`{{number}}`, `{{id}}`, `{{reference}}` or `{{title}}`: there is nothing to
+number. Each one is a loop that re-reads its list every round, because it
+changes the list it reads. **Triage the inbox** accepts, rejects or asks
+about every pending report until none is left, and **Triage the blights**
+files a quest for each real defect and resolves the noise.
+
+**Work the loose quests** hands over every quest in `todo` that belongs to
+no epic, one at a time, under the same rules as an epic's **Work on it**:
+one worktree and one branch for the run, each quest accepted before its
+first commit and named in every commit, completed when it lands, and one
+merge at the end once CI is green. It reads the list again after each quest,
+so a quest filed during the run is picked up rather than missed.
 
 ## Writing your own
 

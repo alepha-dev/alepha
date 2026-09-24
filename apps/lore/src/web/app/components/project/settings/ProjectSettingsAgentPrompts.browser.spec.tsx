@@ -222,6 +222,23 @@ describe("ProjectSettingsAgentPrompts", () => {
     expect(screen.queryByTestId("prompt-reset-epicReview")).toBe(null);
   });
 
+  /**
+   * The two triage loops shipped without a Settings title or description, so
+   * their editors showed the raw i18n key (#Q2512 found it while adding the
+   * third surface-scoped kind). Every kind is checked, so the next one
+   * cannot repeat it.
+   */
+  it("gives every kind a real title and description, never a raw key", async () => {
+    await mount();
+
+    await waitFor(() => expect(editor("questLoop")).not.toBeNull());
+    expect(document.body.textContent).not.toContain("agentPrompts.settings.");
+    expect(screen.getByText("Feedback: Triage the inbox")).toBeDefined();
+    expect(screen.getByText("Blights: Triage")).toBeDefined();
+    expect(screen.getByText("Quests: Work the loose quests")).toBeDefined();
+    expect(editor("questLoop")!.value).toBe(AGENT_PROMPT_DEFAULTS.questLoop);
+  });
+
   it("names all seven placeholders, the title and the slug apart", async () => {
     await mount();
     await waitFor(() => expect(editor("epicReview")).not.toBeNull());

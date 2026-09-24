@@ -28,6 +28,7 @@ const KINDS: AgentPromptKind[] = [
   "feedbackWork",
   "feedbackLoop",
   "blightTriage",
+  "questLoop",
 ];
 
 /**

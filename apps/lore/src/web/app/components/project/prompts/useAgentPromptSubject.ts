@@ -124,5 +124,15 @@ export const useAgentPromptSubject = () => {
       slug: project?.slug ?? "",
       url: absolute(router.path("projectBlights")),
     }),
+
+    /**
+     * The Quests page, for the loose-quests run. Surface-scoped: the run
+     * reads its own list each round, so there is no item to name here.
+     */
+    forQuestList: (): AgentPromptProjectSubject => ({
+      project: project?.title ?? "",
+      slug: project?.slug ?? "",
+      url: absolute(router.path("projectQuests")),
+    }),
   };
 };

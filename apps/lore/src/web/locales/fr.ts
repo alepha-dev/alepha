@@ -2054,6 +2054,7 @@ export default {
   "agentPrompts.review": "Relire l’épopée",
   "agentPrompts.triageInbox": "Traiter la boîte",
   "agentPrompts.triageBlights": "Traiter les anomalies",
+  "agentPrompts.workLooseQuests": "Traiter les quêtes libres",
   "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
@@ -2094,6 +2095,15 @@ export default {
   "agentPrompts.settings.feedbackWork.title": "Retour : s’en charger",
   "agentPrompts.settings.feedbackWork.description":
     "Proposée sur un retour en attente ou accepté. Crée la quête, fait le travail, répond au rapporteur.",
+  "agentPrompts.settings.feedbackLoop.title": "Retours : traiter la boîte",
+  "agentPrompts.settings.feedbackLoop.description":
+    "Proposée sur la boîte des retours. Accepte, rejette ou questionne chaque retour en attente jusqu’à ce qu’il n’en reste aucun.",
+  "agentPrompts.settings.blightTriage.title": "Anomalies : traiter",
+  "agentPrompts.settings.blightTriage.description":
+    "Proposée sur la boîte des anomalies. Crée une quête pour chaque vrai défaut et résout le bruit.",
+  "agentPrompts.settings.questLoop.title": "Quêtes : traiter les quêtes libres",
+  "agentPrompts.settings.questLoop.description":
+    "Proposée sur la page Quêtes. Traite une à une chaque quête à faire qui n’appartient à aucune épopée, en une seule session.",
   "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":

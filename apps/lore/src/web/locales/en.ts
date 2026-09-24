@@ -2075,6 +2075,7 @@ export default {
   "agentPrompts.workOnIt": "Work on it",
   "agentPrompts.triageInbox": "Triage the inbox",
   "agentPrompts.triageBlights": "Triage the blights",
+  "agentPrompts.workLooseQuests": "Work the loose quests",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
   // A surface-scoped prompt has no reference to name, so it says nothing
@@ -2116,6 +2117,15 @@ export default {
   "agentPrompts.settings.feedbackWork.title": "Feedback: Work on it",
   "agentPrompts.settings.feedbackWork.description":
     "Offered on a pending or accepted report. Creates the quest, does the work, answers the reporter.",
+  "agentPrompts.settings.feedbackLoop.title": "Feedback: Triage the inbox",
+  "agentPrompts.settings.feedbackLoop.description":
+    "Offered on the feedback inbox. Accepts, rejects or asks about every pending report until none is left.",
+  "agentPrompts.settings.blightTriage.title": "Blights: Triage",
+  "agentPrompts.settings.blightTriage.description":
+    "Offered on the blights inbox. Files a quest for each real defect and resolves the noise.",
+  "agentPrompts.settings.questLoop.title": "Quests: Work the loose quests",
+  "agentPrompts.settings.questLoop.description":
+    "Offered on the Quests page. Works every to-do quest that belongs to no epic, one by one, in one run.",
   "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
