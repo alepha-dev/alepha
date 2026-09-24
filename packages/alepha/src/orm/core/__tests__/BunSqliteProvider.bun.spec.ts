@@ -178,4 +178,45 @@ describe("BunSqliteProvider", () => {
     const db = alepha.inject(DatabaseProvider);
     expect(db.dialect).toBe("sqlite");
   });
+  /**
+   * #Q2516: one shared connection, so a statement from another request run
+   * while a transaction awaited used to run inside it, and its rollback took
+   * that write with it.
+   */
+  it("keeps a write made during a rolled-back transaction", async () => {
+    const app = setup();
+    await alepha.start();
+    const provider = alepha.inject(DatabaseProvider);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let began!: () => void;
+    const begun = new Promise<void>((resolve) => {
+      began = resolve;
+    });
+
+    const a = alepha.context
+      .run(() =>
+        provider.transactional(async () => {
+          await app.userRepo.create({ name: "from-a" });
+          began();
+          await held;
+          throw new Error("A rolls back");
+        }),
+      )
+      .catch(() => "rolled back");
+    await begun;
+    const bWrite = alepha.context.run(() =>
+      app.userRepo.create({ name: "from-b" }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    release();
+    expect(await a).toBe("rolled back");
+    await bWrite;
+
+    const names = (await app.userRepo.findMany()).map((row) => row.name);
+    expect(names).toEqual(["from-b"]);
+  });
 });

@@ -340,6 +340,66 @@ export abstract class DatabaseProvider {
   protected txMutex: Promise<unknown> = Promise.resolve();
 
   /**
+   * How many transactions (and statements deferred behind them) are queued or
+   * running on {@link txMutex}. Zero is the common case, and then a statement
+   * runs at once, synchronously, exactly as it always did.
+   */
+  protected pendingExclusive = 0;
+
+  /**
+   * Hold every statement of a sync SQLite session behind an open transaction
+   * it is not part of (#Q2516).
+   *
+   * The connection is shared, and a transaction on it is connection-scoped:
+   * a plain write from another request, run while transaction A awaits
+   * between two of its statements, ran INSIDE A's `BEGIN`. When A rolled
+   * back, that acknowledged write vanished, and the request had read A's
+   * uncommitted rows. Only BEGIN blocks were serialized.
+   *
+   * Wrapped at the prepared query, the one path the repository, the
+   * relational query builder and `execute` all share. A statement runs at once
+   * when nothing is pending or when its caller is inside the running
+   * transaction (the tx marker is in its context); otherwise it is queued on
+   * the same chain as the transactions and returns a promise, which every
+   * caller already awaits.
+   */
+  protected gateSyncSession(session: {
+    prepareQuery: (...args: any[]) => any;
+  }): void {
+    const prepare = session.prepareQuery.bind(session);
+    session.prepareQuery = (...args: any[]) => {
+      const prepared = prepare(...args);
+      for (const method of ["run", "all", "get", "values"] as const) {
+        const original = prepared[method];
+        if (typeof original !== "function") continue;
+        prepared[method] = (...params: unknown[]) =>
+          this.deferBehindTransaction(() => original.apply(prepared, params));
+      }
+      return prepared;
+    };
+  }
+
+  /**
+   * Run `exec` now when no transaction stands in its way, or queue it behind
+   * the pending ones.
+   */
+  protected deferBehindTransaction<R>(exec: () => R): R | Promise<R> {
+    if (this.pendingExclusive === 0 || this.alepha.get("alepha.orm.tx")) {
+      return exec();
+    }
+    this.pendingExclusive += 1;
+    const result = this.txMutex.then(() => exec());
+    this.txMutex = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    void this.txMutex.then(() => {
+      this.pendingExclusive -= 1;
+    });
+    return result;
+  }
+
+  /**
    * Awaited BEGIN/COMMIT/ROLLBACK on a single shared native connection,
    * serialized so two concurrent contexts can't collide ("cannot start a
    * transaction within a transaction") or end each other's half-finished
@@ -350,7 +410,15 @@ export abstract class DatabaseProvider {
     fn: () => Promise<R>,
   ): Promise<R> {
     const afterCommit: Array<() => void | Promise<void>> = [];
-    const run = async (): Promise<R> => {
+    // With no async context at all, the marker used to land in the app-wide
+    // store, where every concurrent caller read it and joined this
+    // transaction without a BEGIN of its own (#Q2516). Such a call gets a
+    // context of its own. Inside a request it stays in the request's layer,
+    // as before: a layer added between an action and its guards hides the
+    // action's request from `$secure` (it reads `alepha.action.request` from
+    // the current layer only), which `$transactional()` ahead of `$owns`
+    // relies on.
+    const body = async (): Promise<R> => {
       // Set the tx marker to the drizzle db itself — SQLite transactions are
       // connection-scoped, so all operations on this connection participate.
       this.alepha.store.set("alepha.orm.tx", this.db as any, {
@@ -376,12 +444,18 @@ export abstract class DatabaseProvider {
         });
       }
     };
+    const run = (): Promise<R> =>
+      this.alepha.context.exists() ? body() : this.alepha.context.nest(body);
 
+    this.pendingExclusive += 1;
     const result = this.txMutex.then(run, run);
     this.txMutex = result.then(
       () => undefined,
       () => undefined,
     );
+    void this.txMutex.then(() => {
+      this.pendingExclusive -= 1;
+    });
     // Drained outside the mutex chain: a callback that opens a transaction of
     // its own must be able to take the mutex, and the next queued transaction
     // must not wait for callbacks that no longer hold the connection.

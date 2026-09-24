@@ -193,6 +193,7 @@ export class BunSqliteProvider extends DatabaseProvider {
         },
       },
     });
+    this.gateSyncSession((this.bunDb as any).session);
 
     this.log.info(`Using Bun SQLite database at ${filepath}`);
   }

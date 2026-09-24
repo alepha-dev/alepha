@@ -422,6 +422,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
       },
     );
 
+    this.gateSyncSession(session as never);
     this.drizzleDb = new SQLiteAsyncDatabase<
       "sync",
       BetterSQLite3RunResult,
