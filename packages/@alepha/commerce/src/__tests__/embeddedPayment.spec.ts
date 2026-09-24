@@ -164,6 +164,47 @@ describe("embedded payment", () => {
     expect(await ctx.stock.available(ring.id)).toBe(3);
   });
 
+  it("cancels the PSP intent when a payment fails, so a second card cannot pay a cancelled order (#Q2509)", async ({
+    expect,
+  }) => {
+    // A declined card left the Stripe PaymentIntent confirmable, the
+    // renderer re-enabled Pay, and a second card succeeded on an order the
+    // failure had already cancelled.
+    const ctx = await setup();
+    const { handoff } = await reachPayment(ctx);
+    const providerRef = await providerRefOf(ctx, handoff.intentId);
+
+    await ctx.payments.handleWebhook(pspWebhook(providerRef, "failed"));
+
+    const memory = ctx.alepha.inject(PaymentProvider) as MemoryPaymentProvider;
+    expect(memory.wasExpired(providerRef)).toBe(true);
+  });
+
+  it("records a capture that lands after the failure as a stray capture (#Q2509)", async ({
+    expect,
+  }) => {
+    // The race the cancel cannot close: the second card is confirmed before
+    // the cancel reaches the PSP. `failed -> captured` was not a valid
+    // transition, so the money was taken and nothing recorded it.
+    const ctx = await setup();
+    const { session, handoff } = await reachPayment(ctx);
+    const providerRef = await providerRefOf(ctx, handoff.intentId);
+
+    await ctx.payments.handleWebhook(pspWebhook(providerRef, "failed"));
+    expect((await ctx.orders.getById(session.orderId!)).status).toBe(
+      "cancelled",
+    );
+
+    await ctx.payments.handleWebhook(pspWebhook(providerRef, "captured"));
+
+    expect((await ctx.payments.getIntent(handoff.intentId)).status).toBe(
+      "captured",
+    );
+    const order = await ctx.orders.getById(session.orderId!);
+    expect(order.status).toBe("cancelled");
+    expect(order.strayCaptures).toHaveLength(1);
+  });
+
   it("refuses a second element session for the same intent", async ({
     expect,
   }) => {

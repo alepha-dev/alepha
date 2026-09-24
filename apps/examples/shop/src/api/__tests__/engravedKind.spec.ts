@@ -79,6 +79,18 @@ describe("shop: a product kind defined by the application", () => {
     const cart = await carts.resolve(carts.newToken());
     await carts.add(cart.id, piece.id, 1);
     const session = await checkout.start(cart.id);
+    // The shop delivers, so it takes no money before it knows where to.
+    await checkout.setAddress(session.id, {
+      fullName: "Camille Dupont",
+      line1: "12 rue des Orfèvres",
+      locality: "Paris",
+      postalCode: "75001",
+      country: "FR",
+    });
+    const [delivery] = await checkout.shippingOptions(session.id);
+    if (delivery) {
+      await checkout.setShippingMethod(session.id, delivery.code);
+    }
     const { handoff } = await checkout.pay(session.id, {
       returnUrl: "https://bijoux.example/merci",
     });

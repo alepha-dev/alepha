@@ -232,6 +232,28 @@ export class CheckoutService {
     // delivery price than the one they accepted is not a recoverable mistake.
     let quote: CheckoutShippingQuote | undefined;
     const country = this.countryOf(session);
+
+    // A shop that delivers charges for delivery, so it cannot take money
+    // before it knows where to and how. `setAddress` clears the method on
+    // purpose, and the preview shows the cheapest quote, so a direct
+    // `PUT /address` then `POST /pay` used to charge no delivery at all, and a
+    // `pay()` with no address made a physical order with nowhere to send it.
+    if (this.shipping.delivers) {
+      if (!country) {
+        throw new CommerceError(
+          `Checkout ${sessionId} has no delivery address yet. Call setAddress() before paying.`,
+        );
+      }
+      if (!session.shippingMethod) {
+        const offered = await this.shipping.quote(country, priced.subtotal);
+        if (offered.length > 0) {
+          throw new CommerceError(
+            `Checkout ${sessionId} has no delivery option chosen for ${country}. Call setShippingMethod() before paying.`,
+          );
+        }
+      }
+    }
+
     if (session.shippingMethod && country) {
       quote = await this.shipping.quoteFor(
         country,

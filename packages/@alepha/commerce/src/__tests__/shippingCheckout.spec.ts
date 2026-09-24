@@ -267,6 +267,49 @@ describe("shipping in the checkout", () => {
     ).rejects.toThrow(/no longer available/);
   });
 
+  it("refuses to pay before a delivery option is chosen (#Q2509)", async ({
+    expect,
+  }) => {
+    // `setAddress` clears the method, so `PUT /address` then `POST /pay`
+    // used to charge no delivery at all, for a DE address a 14.90 loss.
+    const { catalog, carts, checkout, shipping } = await withShipping();
+    await seedZones(shipping);
+
+    const ring = await aRing(catalog);
+    const cart = await carts.resolve(carts.newToken());
+    await carts.add(cart.id, ring.id, 1);
+    const opened = await checkout.start(cart.id);
+    await checkout.setAddress(opened.id, {
+      ...address,
+      locality: "Berlin",
+      postalCode: "10115",
+      country: "DE",
+    });
+
+    await expect(
+      checkout.pay(opened.id, { returnUrl: "https://bijoux.example/merci" }),
+    ).rejects.toThrow(/no delivery option chosen for DE/);
+    const refused = await checkout.getById(opened.id);
+    expect(refused.status).toBe("open");
+    expect(refused.orderId).toBeFalsy();
+  });
+
+  it("refuses to pay with no delivery address when the shop delivers (#Q2509)", async ({
+    expect,
+  }) => {
+    const { catalog, carts, checkout, shipping } = await withShipping();
+    await seedZones(shipping);
+
+    const ring = await aRing(catalog);
+    const cart = await carts.resolve(carts.newToken());
+    await carts.add(cart.id, ring.id, 1);
+    const opened = await checkout.start(cart.id);
+
+    await expect(
+      checkout.pay(opened.id, { returnUrl: "https://bijoux.example/merci" }),
+    ).rejects.toThrow(/no delivery address yet/);
+  });
+
   it("works with no shipping module at all", async ({ expect }) => {
     const { catalog, carts, checkout } = await withoutShipping();
 

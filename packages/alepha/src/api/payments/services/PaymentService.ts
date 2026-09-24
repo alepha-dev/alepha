@@ -69,6 +69,30 @@ export class PaymentService {
   });
 
   /**
+   * Ask the PSP to expire or cancel the object behind an intent, so it can no
+   * longer take money. Best effort: a PSP that cannot be reached must not
+   * turn a status change into an error, and a capture that gets through
+   * anyway is still recorded (see {@link VALID_WEBHOOK_TRANSITIONS}).
+   */
+  protected async closeProviderSession(
+    intent: PaymentIntentEntity,
+  ): Promise<void> {
+    if (!intent.providerRef) {
+      return;
+    }
+    try {
+      await this.provider.expireSession(
+        intent.providerRef,
+        this.accountOf(intent),
+      );
+    } catch (error) {
+      this.log.warn(`Failed to close the PSP session for intent ${intent.id}`, {
+        error,
+      });
+    }
+  }
+
+  /**
    * Expire a single stale intent with a status-guarded claim: a webhook may
    * capture the payment between the sweep's read and this write, and a
    * captured payment must never be stomped to "expired".
@@ -89,18 +113,7 @@ export class PaymentService {
       throw error;
     }
 
-    if (intent.providerRef) {
-      try {
-        await this.provider.expireSession(
-          intent.providerRef,
-          this.accountOf(intent),
-        );
-      } catch (error) {
-        this.log.warn(`Failed to expire session for intent ${intent.id}`, {
-          error,
-        });
-      }
-    }
+    await this.closeProviderSession(intent);
 
     this.log.info(`Expired stale intent ${intent.id}`);
 
@@ -324,6 +337,14 @@ export class PaymentService {
    * with the merchant, unrecorded, and out of reach of `refund()` and
    * `void()`, which need the intent to say what the PSP holds. A late
    * failure records nothing new, so it stays ignored.
+   *
+   * `failed` accepts them for the same reason. A declined card leaves a
+   * Stripe PaymentIntent confirmable, and a second card can succeed on it:
+   * the money is taken, and dropping the event would leave it unrecorded
+   * while the domain has already cancelled the order. Let through, it
+   * reaches the domain's stray-capture path. The PSP object is also cancelled
+   * on the failure itself (see {@link closeProviderSession}), so this is the
+   * backstop for the race, not the common path.
    */
   protected static readonly VALID_WEBHOOK_TRANSITIONS: Record<
     string,
@@ -332,6 +353,7 @@ export class PaymentService {
     processing: ["authorized", "captured", "failed"],
     authorized: ["captured", "failed"],
     expired: ["authorized", "captured"],
+    failed: ["authorized", "captured"],
   };
 
   /**
@@ -388,11 +410,18 @@ export class PaymentService {
       return;
     }
 
-    if (intent.status === "expired") {
+    if (intent.status === "expired" || intent.status === "failed") {
       this.log.warn(
-        `Late ${webhookStatus} on expired intent ${intent.id}: the PSP session outlived the expiry`,
+        `Late ${webhookStatus} on ${intent.status} intent ${intent.id}: the PSP session outlived it`,
         { intentId: intent.id },
       );
+    }
+
+    // A failure is final for this intent: the domain cancels what it was
+    // paying for. Close the PSP side too, or it stays payable (a declined
+    // card leaves a Stripe PaymentIntent open to a second one).
+    if (webhookStatus === "failed") {
+      await this.closeProviderSession(intent);
     }
 
     await this.alepha.events.emit(eventMap[webhookStatus], {

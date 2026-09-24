@@ -30,6 +30,18 @@ export interface CheckoutShippingQuote {
  */
 export abstract class ShippingQuoteProvider {
   /**
+   * Whether this shop delivers anything at all.
+   *
+   * `pay()` reads it before a destination is known: a shop that delivers
+   * needs an address before it can take money, and one that sells only
+   * downloads does not. `true` for every real provider, `false` for the
+   * default {@link NoShippingQuoteProvider}.
+   */
+  public get delivers(): boolean {
+    return true;
+  }
+
+  /**
    * Options for a destination, or an empty array when delivery does not apply.
    */
   abstract quote(
@@ -56,6 +68,10 @@ export abstract class ShippingQuoteProvider {
  * slot. A dematerialised shop never notices this class exists.
  */
 export class NoShippingQuoteProvider extends ShippingQuoteProvider {
+  public override get delivers(): boolean {
+    return false;
+  }
+
   public async quote(): Promise<CheckoutShippingQuote[]> {
     return [];
   }
