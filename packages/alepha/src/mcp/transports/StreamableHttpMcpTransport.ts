@@ -754,17 +754,28 @@ export class StreamableHttpMcpTransport {
    * POSTs and the only thing linking them is the JSON-RPC id, which is unique
    * per connection, not globally.
    *
-   * `Mcp-Session-Id` is used when the client sends one. It is a hint, not a
-   * credential: a caller who forges another's key can only cancel a request
-   * whose id it also guesses, and nothing else keys off this value. An app
-   * with authenticated MCP clients should override this to return the user id,
-   * which removes the guess entirely.
+   * The authenticated user comes first (#Q2513). Nothing here mints an
+   * `Mcp-Session-Id`, so keying on that header alone left the key
+   * `undefined` for every client, and JSON-RPC ids are small sequential
+   * numbers: client A's cancellation of its request 3 aborted client B's
+   * request 3. Keyed on the user, one account can reach only its own
+   * requests. The session header, when a client sends one, narrows it
+   * further to that connection; alone, it is a hint and not a credential.
+   *
+   * `undefined` when there is neither: such a request is never registered
+   * for cancellation at all (see `McpServerProvider.inFlightKey`).
    */
   protected buildClientKey(request: {
     headers: Record<string, any>;
+    user?: unknown;
   }): string | undefined {
     const raw = request.headers["mcp-session-id"];
-    const value = Array.isArray(raw) ? raw[0] : raw;
-    return typeof value === "string" ? value : undefined;
+    const header = Array.isArray(raw) ? raw[0] : raw;
+    const session = typeof header === "string" && header ? header : undefined;
+    const userId = (request.user as { id?: unknown } | undefined)?.id;
+    if (typeof userId === "string" && userId) {
+      return session ? `user:${userId}:${session}` : `user:${userId}`;
+    }
+    return session ? `session:${session}` : undefined;
   }
 }

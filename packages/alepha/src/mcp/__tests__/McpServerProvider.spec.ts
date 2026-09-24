@@ -618,18 +618,24 @@ describe("McpServerProvider", () => {
     it("aborts the handler's signal and suppresses the response", async () => {
       const { provider, release, observed } = await slowContainer();
 
-      const call = provider.handleMessage({
-        jsonrpc: "2.0",
-        id: 7,
-        method: "tools/call",
-        params: { name: "slow", arguments: {} },
-      });
+      const call = provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: { name: "slow", arguments: {} },
+        },
+        { clientKey: "alice" },
+      );
 
-      await provider.handleMessage({
-        jsonrpc: "2.0",
-        method: "notifications/cancelled",
-        params: { requestId: 7 },
-      });
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: { requestId: 7 },
+        },
+        { clientKey: "alice" },
+      );
 
       release();
       const response = await call;
@@ -670,6 +676,79 @@ describe("McpServerProvider", () => {
      * concept — so without a client key two callers both using `id: 1` would
      * share one cancellation slot.
      */
+    it("cancels nothing for a caller with no client key (#Q2513)", async () => {
+      // Every unkeyed caller would share one namespace of small ids: an
+      // unkeyed request is not cancellable, rather than cancellable by all.
+      const { provider, release, observed } = await slowContainer();
+
+      const call = provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "slow", arguments: {} },
+      });
+      await provider.handleMessage({
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: 3 },
+      });
+
+      release();
+      const response = await call;
+      expect(observed.aborted).toBe(false);
+      expect(response?.result).toBeDefined();
+    });
+
+    it("keeps two clients' same-id requests apart: cancelling one answers the other (#Q2513)", async () => {
+      let release: (() => void) | undefined;
+      const parked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const seen: Record<string, boolean> = {};
+
+      class Tools {
+        slow = $tool({
+          description: "Parks until released",
+          schema: { params: z.object({ who: z.text() }), result: z.text() },
+          handler: async ({ params, context }) => {
+            await parked;
+            seen[params.who] = context?.signal?.aborted ?? false;
+            return params.who;
+          },
+        });
+      }
+      const alepha = Alepha.create().with(AlephaMcp).with(Tools);
+      await alepha.start();
+      const provider = alepha.inject(McpServerProvider);
+
+      const call = (who: string) =>
+        provider.handleMessage(
+          {
+            jsonrpc: "2.0",
+            id: 3,
+            method: "tools/call",
+            params: { name: "slow", arguments: { who } },
+          },
+          { clientKey: `user:${who}` },
+        );
+      const alice = call("alice");
+      const bob = call("bob");
+
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: { requestId: 3 },
+        },
+        { clientKey: "user:alice" },
+      );
+
+      release!();
+      expect(await alice).toBeNull();
+      expect((await bob)?.result).toBeDefined();
+      expect(seen).toEqual({ alice: true, bob: false });
+    });
+
     it("does not let one client cancel another's request", async () => {
       const { provider, release, observed } = await slowContainer();
 

@@ -223,7 +223,11 @@ describe("StreamableHttpMcpTransport — SSE responses", () => {
 
     const pending = fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      // A key to cancel under: an unkeyed request is not cancellable (#Q2513).
+      headers: {
+        "content-type": "application/json",
+        "mcp-session-id": "sess-5",
+      },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 5,
@@ -238,7 +242,7 @@ describe("StreamableHttpMcpTransport — SSE responses", () => {
 
     // Give the request time to reach the handler and park.
     await new Promise((resolve) => setTimeout(resolve, 50));
-    alepha.inject(McpServerProvider).cancelRequest(5);
+    alepha.inject(McpServerProvider).cancelRequest(5, "session:sess-5");
     release!();
 
     const events = await readEvents(await pending);

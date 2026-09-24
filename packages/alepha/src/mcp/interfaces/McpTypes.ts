@@ -541,7 +541,8 @@ export interface McpContext<T = unknown> {
    *
    * JSON-RPC ids are unique per connection, not globally, and this server has
    * no session concept — so without a client key, two callers that both use
-   * `id: 1` share a cancellation slot and either could cancel the other.
+   * `id: 1` would share a cancellation slot. A request with no client key is
+   * therefore not cancellable at all.
    */
   clientKey?: string;
 

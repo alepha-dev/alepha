@@ -489,7 +489,14 @@ export class McpServerProvider {
 
     const key = this.inFlightKey(context?.clientKey, id);
     const controller = new AbortController();
-    this.inFlight.set(key, controller);
+    // Registered only under a real client key, and never over a request
+    // already running under the same one: a second request reusing a live id
+    // would otherwise take the first one's slot, and its `finally` would
+    // delete it (#Q2513).
+    const cancellable = key !== undefined && !this.inFlight.has(key);
+    if (cancellable) {
+      this.inFlight.set(key, controller);
+    }
 
     try {
       const result = await this.handleRequest(request, {
@@ -540,7 +547,9 @@ export class McpServerProvider {
         createInternalError((error as Error).message),
       );
     } finally {
-      this.inFlight.delete(key);
+      if (cancellable) {
+        this.inFlight.delete(key);
+      }
     }
   }
 
@@ -650,11 +659,17 @@ export class McpServerProvider {
   // Cancellation
   // -----------------------------------------------------------------------------------------------------------------
 
+  /**
+   * The slot a request is cancellable under, or `undefined` when it has no
+   * client key. An unkeyed request is not cancellable: every unkeyed caller
+   * would share one namespace of small sequential ids, so one of them could
+   * cancel, or clobber, another's request (#Q2513).
+   */
   protected inFlightKey(
     clientKey: string | undefined,
     id: string | number,
-  ): string {
-    return `${clientKey ?? ""}:${id}`;
+  ): string | undefined {
+    return clientKey ? `${clientKey}:${id}` : undefined;
   }
 
   /**
@@ -671,7 +686,8 @@ export class McpServerProvider {
    * cancellation arrived.
    */
   public cancelRequest(id: string | number, clientKey?: string): boolean {
-    const controller = this.inFlight.get(this.inFlightKey(clientKey, id));
+    const key = this.inFlightKey(clientKey, id);
+    const controller = key === undefined ? undefined : this.inFlight.get(key);
     controller?.abort();
     return !!controller;
   }
