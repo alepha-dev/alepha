@@ -64,7 +64,7 @@ export class QualityController {
    * a red push shows as a warning annotation rather than blocking anything.
    */
   pushQualityRun = $action({
-    use: [this.ownsProject("quality:read")],
+    use: [this.ownsProject("quality:push")],
     method: "POST",
     path: "/projects/:projectId/quality/runs",
     description: "Record coverage and test totals for one commit.",

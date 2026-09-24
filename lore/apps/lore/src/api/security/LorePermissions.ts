@@ -101,8 +101,10 @@ export class LorePermissions {
     "folio:write",
     "app:read",
     "artifact:read",
+    "artifact:push",
     "blight:read",
     "quality:read",
+    "quality:push",
     "estate:read",
     "feedback:read",
   ];
@@ -399,10 +401,25 @@ export class LorePermissions {
   });
 
   /**
+   * Pushing a build or a container image into the registry.
+   *
+   * A write, and a consequential one: the next deploy of `latest` ships
+   * whatever was pushed last, with every production secret. It used to ride
+   * on `artifact:read`, which let a Viewer replace `latest` (#Q2501). A member
+   * default, so CI keeps pushing, and in Admin and Contributor, never Viewer.
+   */
+  artifactPush = $permission({
+    group: "artifact",
+    name: "push",
+    label: "permission.artifact.push",
+  });
+
+  /**
    * Removing a build from the registry, with its stored bytes and source maps.
    *
-   * Not a member default, although pushing is: CI pushes under
-   * `artifact:read` and nothing a pipeline does needs to take a build away.
+   * Not a member default, although pushing is: nothing a pipeline does needs
+   * to take a build away. A forced push moves a pinned tag and drops the
+   * superseded archive, so it requires this too.
    * A delete is irreversible and can remove the bytes a deployed copy would
    * be rolled back to, so it sits with the configuration acts and the Admin
    * preset carries it.
@@ -437,6 +454,17 @@ export class LorePermissions {
     label: "permission.quality.read",
     groupLabel: "permission.group.quality",
     groupOrder: 34,
+  });
+
+  /**
+   * Recording a quality run (coverage and test totals) for a commit. Split
+   * from `quality:read` for the reason `artifact:push` is: a Viewer writing
+   * is a bug (#Q2501).
+   */
+  qualityPush = $permission({
+    group: "quality",
+    name: "push",
+    label: "permission.quality.push",
   });
 
   estateRead = $permission({

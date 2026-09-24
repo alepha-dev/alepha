@@ -1263,6 +1263,56 @@ describe("artifacts", () => {
       expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
     });
 
+    it("refuses a push from a Viewer, and takes one from a Contributor or a Member", async ({
+      expect,
+    }) => {
+      // #Q2501: the push used to be gated on `artifact:read`, which the
+      // Viewer preset holds, so a Viewer could replace `latest`.
+      const { projectId } = await anAppsProject();
+      const file = await packedArtifact();
+
+      const viewer = await joinAs(projectId, "viewer");
+      expect(await statusOf(push(projectId, viewer, { file }))).toBe(403);
+      expect(
+        await statusOf(pushImage(projectId, viewer, { reference: "x" })),
+      ).toBe(403);
+      expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
+
+      const contributor = await joinAs(projectId, "contributor");
+      expect(await statusOf(push(projectId, contributor, { file }))).toBe(200);
+      const member = await joinAs(projectId, "member");
+      expect(
+        await statusOf(push(projectId, member, { file, tag: "1.2.4" })),
+      ).toBe(200);
+    });
+
+    it("refuses a forced push from a rank that may push but not delete", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await anAppsProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+      const contributor = await joinAs(projectId, "contributor");
+
+      expect(
+        await statusOf(
+          push(projectId, contributor, {
+            file: await packedArtifact({ filler: "// the right commit" }),
+            force: true,
+          }),
+        ),
+      ).toBe(403);
+
+      const admin = await joinAs(projectId, "admin");
+      expect(
+        await statusOf(
+          push(projectId, admin, {
+            file: await packedArtifact({ filler: "// the right commit" }),
+            force: true,
+          }),
+        ),
+      ).toBe(200);
+    });
+
     it("lets a member holding the Admin preset delete", async ({ expect }) => {
       const { owner, projectId } = await anAppsProject();
       await push(projectId, owner, { file: await packedArtifact() });

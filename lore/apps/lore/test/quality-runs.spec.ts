@@ -16,6 +16,7 @@ import { QualityJobs } from "../src/api/jobs/QualityJobs.ts";
 import type { QualityRunPush } from "../src/api/schemas/qualityRunPushSchema.ts";
 import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
 import { QualityService } from "../src/api/services/QualityService.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * The Lore half of epic #15: a CI job pushes what a test run measured, and the
@@ -343,6 +344,27 @@ describe("quality runs", () => {
         where: { projectId: { eq: projectId } },
       });
       expect(rows).toHaveLength(1);
+    });
+
+    it("refuses a Viewer, and takes a Contributor's run", async ({
+      expect,
+    }) => {
+      // #Q2501: gated on `quality:read` before, which the Viewer preset
+      // holds. A Viewer who can write anything is a bug.
+      const { projectId } = await aProject(true);
+      const viewer = await createTestUser(ctx);
+      await createTestMemberByProjectId(ctx.alepha, projectId, viewer.id, {
+        rank: "viewer",
+      });
+      const contributor = await createTestUser(ctx);
+      await createTestMemberByProjectId(ctx.alepha, projectId, contributor.id, {
+        rank: "contributor",
+      });
+
+      await expect(push(projectId, viewer)).rejects.toMatchObject({
+        status: 403,
+      });
+      expect((await push(projectId, contributor)).status).toBe(200);
     });
 
     it("refuses a caller who is not a member", async ({ expect }) => {

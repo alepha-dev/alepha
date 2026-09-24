@@ -89,8 +89,10 @@ export class ProjectRankPresets {
     "folio:write",
     "app:read",
     "artifact:read",
+    "artifact:push",
     "blight:read",
     "quality:read",
+    "quality:push",
     "estate:read",
     "feedback:read",
   ];
