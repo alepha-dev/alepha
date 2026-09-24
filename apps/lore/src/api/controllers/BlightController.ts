@@ -219,25 +219,27 @@ export class BlightController {
         .join(": ");
       const title = `[Blight] ${summary}`.slice(0, 200);
 
-      // Description: attacker-controlled stack embedded as PLAIN TEXT.
-      // The quest description is markdown-rendered downstream, so the
-      // stack goes inside a fenced code block — fences make the content
-      // verbatim/escaped and a stray ``` inside the stack is harmless
-      // (it just ends the block early; no markup is interpreted).
+      // Description: attacker-controlled text, and the quest description is
+      // rendered as markdown downstream (and read by MCP agents). Anonymous
+      // ingest writes the stack and the source URL, so neither may become
+      // markup (#Q2520): the stack is fenced with more backticks than its
+      // longest run, so a stray ``` inside it cannot close the fence, and
+      // the source URL is a code span, never a link or an image. The stack
+      // is cut BEFORE fencing, so the length cap can never slice the closing
+      // fence off.
+      const stack = (blight.stack || "(no stack captured)").slice(0, 9_000);
       const description = [
         `Forwarded from blight #${blight.id} (${blight.fingerprint.slice(0, 12)}…).`,
         "",
         `Seen ${blight.count} time(s), last on ${blight.lastSeenAt}.`,
         "",
-        blight.sourceUrl ? `Source: ${blight.sourceUrl}` : "",
+        blight.sourceUrl
+          ? `Source: ${this.codeSpan(blight.sourceUrl.slice(0, 500))}`
+          : "",
         "",
         "Stack:",
-        "```",
-        blight.stack || "(no stack captured)",
-        "```",
-      ]
-        .join("\n")
-        .slice(0, 10_000);
+        this.codeFence(stack),
+      ].join("\n");
 
       // Blight-forwarded quests always land in a dedicated "Blights" area
       // (created on the project if absent) — predictable triage, not
@@ -460,5 +462,29 @@ export class BlightController {
       pattern: r.pattern,
       createdAt: r.createdAt,
     };
+  }
+
+  /**
+   * `text` as a fenced block no content can close: the fence is one backtick
+   * longer than the longest run of backticks in it, and at least three.
+   */
+  protected codeFence(text: string): string {
+    const fence = "`".repeat(Math.max(3, this.longestBacktickRun(text) + 1));
+    return `${fence}\n${text}\n${fence}`;
+  }
+
+  /**
+   * `text` as an inline code span, on one line, delimited by more backticks
+   * than it contains in a row, and padded so a leading or trailing backtick
+   * cannot merge with the delimiter.
+   */
+  protected codeSpan(text: string): string {
+    const line = text.replace(/[\r\n]+/g, " ");
+    const ticks = "`".repeat(this.longestBacktickRun(line) + 1);
+    return `${ticks} ${line} ${ticks}`;
+  }
+
+  protected longestBacktickRun(text: string): number {
+    return Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
   }
 }

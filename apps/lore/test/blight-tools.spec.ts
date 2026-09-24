@@ -207,6 +207,41 @@ describe("Lore MCP — blights", () => {
     expect(after.blights).toHaveLength(0);
   });
 
+  it("keeps a hostile stack inside its fence and the source URL a code span (#Q2520)", async () => {
+    // Anonymous ingest writes both fields. A plain ``` fence closed on the
+    // first ``` in the stack, and everything after it rendered as markdown
+    // for every reader of the quest: an image loaded from anywhere.
+    const { probe, blightTools, questTools, project, call } = await setup();
+    const stack =
+      "TypeError\n```\n![t](https://evil.example/t.png)\n```` and more";
+    const sourceUrl = "https://x.example/![u](https://evil.example/u.png)`";
+    const filed = await fileBlight(probe, project.id, { stack, sourceUrl });
+
+    const res = await call(blightTools.blight_forward, {
+      project: project.id,
+      blight_id: filed.id,
+    });
+    const quest = await call(questTools.quest_get, { id: res.questId });
+    const description: string = quest.description;
+
+    // The fence is longer than the longest run in the stack (4), and what
+    // it encloses is exactly the stack.
+    const fence = "`````";
+    const open = description.indexOf(`${fence}\n`);
+    const close = description.lastIndexOf(`\n${fence}`);
+    expect(open).toBeGreaterThan(-1);
+    expect(description.slice(open + fence.length + 1, close)).toBe(stack);
+    expect(description.endsWith(fence)).toBe(true);
+
+    // The source URL is a code span delimited by more backticks than it
+    // holds in a row, never bare markdown.
+    expect(description).toContain(`Source: \`\` ${sourceUrl} \`\``);
+    const outsideFence = description.slice(0, open);
+    expect(outsideFence.replace(`\`\` ${sourceUrl} \`\``, "")).not.toContain(
+      "![",
+    );
+  });
+
   it("should refuse a blight from another project", async () => {
     // Scoped by a WHERE clause on `projectId` rather than by walking the
     // project's sigils — one less step to get wrong. A real second project,
