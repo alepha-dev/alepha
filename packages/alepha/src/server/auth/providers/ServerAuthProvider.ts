@@ -76,6 +76,12 @@ export class ServerAuthProvider {
       return relative;
     }
 
+    // A browser strips a control character from a Location before resolving
+    // it, so the URL it follows is not the one checked below.
+    if (/[\u0000-\u001f\u007f]/.test(uri)) {
+      return "/";
+    }
+
     const parent = this.alepha.env.COOKIE_PARENT_DOMAIN;
     if (typeof parent === "string" && parent) {
       try {
