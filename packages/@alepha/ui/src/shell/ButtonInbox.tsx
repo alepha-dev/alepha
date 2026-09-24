@@ -207,7 +207,18 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
       </Tooltip>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex items-center justify-between gap-2">
+          {/*
+            The header is chrome, not a row: `bg-muted` under the `--bevel`
+            line, the pair `PlateTabBar` and the table header use, closed by
+            a border line below. Pulled out over the content's `p-1` so it
+            runs edge to edge; the rounded, overflow-clipped popover trims
+            its corners. The border replaces the separator that used to sit
+            under it, which would have drawn a second line.
+          */}
+          <DropdownMenuLabel
+            data-testid="inbox-header"
+            className="bg-muted text-foreground -mx-1 -mt-1 mb-1 flex items-center justify-between gap-2 px-2.5 py-2 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]"
+          >
             <span>{props.labels?.heading ?? "Notifications"}</span>
             {count > 0 && (
               <button
@@ -225,7 +236,6 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
               </button>
             )}
           </DropdownMenuLabel>
-          <DropdownMenuSeparator />
           {items.length === 0 ? (
             <p className="text-muted-foreground px-2 py-6 text-center text-sm">
               {props.labels?.empty ?? "Nothing new"}

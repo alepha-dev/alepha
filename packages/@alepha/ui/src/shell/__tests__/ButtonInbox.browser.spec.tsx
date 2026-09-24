@@ -170,6 +170,18 @@ describe("ButtonInbox", () => {
     expect(view.getAllByText("Alepha").length).toBeGreaterThan(0);
   });
 
+  it("draws its header on the chrome surface, not as a row (#Q2497)", async () => {
+    const { view } = await mount();
+    fireEvent.click(view.container.querySelector("button")!);
+
+    const header = await waitFor(() => view.getByTestId("inbox-header"));
+    const classes = header.className.split(/\s+/);
+    expect(classes).toContain("bg-muted");
+    expect(classes.some((name) => name.includes("var(--bevel)"))).toBe(true);
+    // Edge to edge over the menu's padding.
+    expect(classes).toEqual(expect.arrayContaining(["-mx-1", "-mt-1"]));
+  });
+
   it("marks a row read and opens it", async () => {
     const opened: string[] = [];
     const { view, links } = await mount({
