@@ -1219,7 +1219,6 @@ export const uiFr: Record<string, string> = {
   "organizations.mine.title": "Mes organisations",
   "organizations.ranks.actions": "Actions de $1",
   "organizations.ranks.blank": "Rang vide",
-  "organizations.ranks.builtin": "Intégré",
   "organizations.ranks.cache":
     "Les changements de permissions peuvent prendre jusqu'à 30 secondes. Les rétrogradations de rang prennent effet immédiatement.",
   "organizations.ranks.cancel": "Annuler",

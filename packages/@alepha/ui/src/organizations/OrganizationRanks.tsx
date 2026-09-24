@@ -245,7 +245,6 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     label: (
       <OrganizationRankColumnHeader
         name={rank.name}
-        builtin={rank.builtin}
         onRename={
           rank.editable && !saving ? () => void rename.run(rank) : undefined
         }

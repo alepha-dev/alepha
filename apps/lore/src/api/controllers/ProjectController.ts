@@ -40,10 +40,7 @@ import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
-import {
-  type CapabilityKey,
-  capabilityKeySchema,
-} from "../schemas/capabilityKeySchema.ts";
+import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
@@ -58,7 +55,6 @@ import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
-import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -140,59 +136,9 @@ export class ProjectController {
   auditService = $inject(AuditService);
   areaService = $inject(AreaService);
   recency = $inject(ProjectRecencyService);
-  rankPresets = $inject(ProjectRankPresets);
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
   openQuests = $inject(OpenQuestScope);
-
-  /**
-   * Seed the three preset ranks, as ordinary custom ranks.
-   *
-   * Goes through {@link RankService.save} rather than writing rows: that is
-   * the write path with the invariants on it, so a preset that ever grew an
-   * owner-only permission or lost the floor would be refused here rather than
-   * stored and enforced.
-   *
-   * ⚠️ Non-fatal by contract. A project whose seeding failed works on its
-   * built-ins, which is exactly the state every project created before this
-   * epic is in, and its owner can create a rank from a template afterwards.
-   *
-   * ⚠️ Existing projects ARE swept, since #Q2001. They used to keep zero
-   * definition rows forever, on the reasoning that seeding them would invent
-   * three ranks nobody asked for in twenty-five projects at once; the owner
-   * of one of those projects then opened the members page and asked where
-   * Admin was (feedback #P2122). `ProjectRankJobs.seedMissingPresetRanks`
-   * gives a project holding NO definition rows the same three, nightly, which
-   * also heals a project whose seeding failed here.
-   */
-  protected async seedPresetRanks(
-    projectId: number,
-    capabilities: Array<{ key: CapabilityKey }>,
-    user: UserAccountToken,
-  ): Promise<void> {
-    try {
-      const language = this.alepha.store.get("alepha.http.request")?.language;
-
-      for (const preset of this.rankPresets.presetsFor(
-        capabilities.map((it) => it.key),
-      )) {
-        await this.ranks.save(
-          await this.projectSecurity.organizationIdOf(projectId),
-          {
-            key: preset.key,
-            name: await this.rankPresets.nameFor(preset, language),
-            permissions: preset.permissions,
-          },
-          user,
-        );
-      }
-    } catch (error) {
-      this.log.warn(
-        "createProject: preset ranks were not seeded; the project works on its built-ins",
-        { projectId, error },
-      );
-    }
-  }
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -466,12 +412,6 @@ export class ProjectController {
       // rows is repairable from Settings, and deleting a usable project to fix
       // a recoverable state is the worse outcome. Only the membership row
       // above triggers the rollback by hand.
-      //
-      // ⚠️ Ordering slot, for Ranks: preset rank seeding goes AFTER this loop,
-      // not after the membership row. A preset is a pure function of the
-      // ENABLED capability set, so seeding any earlier computes all three
-      // presets against a project that has no capabilities yet and every
-      // seeded rank comes out empty.
       const rows = [];
       for (const capability of capabilities) {
         rows.push(
@@ -486,17 +426,12 @@ export class ProjectController {
         );
       }
 
-      // The ordering slot the loop above names: AFTER the capability rows,
-      // because a preset is a pure function of the ENABLED capability set and
-      // seeding any earlier computes all three against a project that has none.
-      //
-      // Non-fatal, deliberately. A project whose seeding failed works on its
-      // built-ins (`owner` and `member`), which is the same state every project
-      // created before ranks existed is in, and the owner can create a rank
-      // from a template afterwards. Destroying a usable project over it would
-      // be the wrong trade, and the compensating delete above is reserved for
-      // the one write that is not recoverable.
-      await this.seedPresetRanks(project.id, capabilities, user);
+      // ⚠️ No preset ranks. A project starts with the two built-ins, `owner`
+      // and `member`, and nothing else: Admin, Contributor and Viewer are
+      // offered by Settings > Ranks > Create rank (`getRankPresets`), where
+      // somebody asks for them on purpose (#Q2511, the GitHub model). This
+      // used to seed all three here, and a nightly sweep refilled any project
+      // left without them (#Q2001, for feedback #P2122); both are gone.
 
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),

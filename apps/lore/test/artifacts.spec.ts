@@ -20,6 +20,7 @@ import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
+import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * The registry half of epic #18: CI pushes what it built, and Lore keeps it.
@@ -1190,12 +1191,14 @@ describe("artifacts", () => {
         },
         { user },
       );
+      await createPresetRanks(ctx.alepha, project.data.id);
       return { owner: user, projectId: project.data.id };
     };
 
     /**
      * Direct row insert, bypassing the invitation flow. `member` is the
-     * built-in default rank; the presets were seeded by `createProject`.
+     * built-in default rank; `anAppsProject` creates the presets, which a
+     * new project no longer starts with (#Q2511).
      */
     const joinAs = async (projectId: number, rank: string) => {
       const user = await createTestUser(ctx);

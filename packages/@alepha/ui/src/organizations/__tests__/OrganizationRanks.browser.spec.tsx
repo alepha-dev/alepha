@@ -154,6 +154,40 @@ describe("OrganizationRanks", () => {
     );
   });
 
+  it("draws no Built-in badge, and still offers no delete on a built-in", async () => {
+    // #Q2511: Owner and Member are told apart by having no Delete, not by a
+    // badge. The badge is gone; the rule it stood for is not.
+    const { view } = await mount();
+
+    expect(view.queryByText("Built-in")).toBeNull();
+
+    fireEvent.click(view.getByRole("button", { name: "Member actions" }));
+    await view.findByRole("menuitem", { name: "Rename" });
+    expect(view.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await waitFor(() =>
+      expect(view.queryByRole("menuitem", { name: "Rename" })).toBeNull(),
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "Editor actions" }));
+    expect(await view.findByRole("menuitem", { name: "Delete" })).toBeDefined();
+  });
+
+  it("creates a blank custom rank beside the presets", async () => {
+    const { links, view } = await mount();
+
+    fireEvent.click(view.getByRole("button", { name: "Create rank" }));
+    fireEvent.click(await view.findByText("Blank rank"));
+    const input = await view.findByRole("textbox");
+    fireEvent.change(input, { target: { value: "Triage" } });
+    fireEvent.click(await view.findByRole("button", { name: "Create" }));
+
+    await waitFor(() => expect(links.saved).toHaveLength(1));
+    expect(links.saved[0].body).toEqual({ name: "Triage", permissions: [] });
+  });
+
   it("creates a custom rank from a caller-provided preset", async () => {
     const { links, view } = await mount();
 

@@ -101,6 +101,12 @@ The module creates two built-ins:
 - `member`, which starts from `organizationConfigAtom.memberPermissions` and
   can be customized.
 
+Anything else is a custom rank the owner creates. The module seeds none: an
+organization starts with these two, and `@alepha/ui`'s `OrganizationRanks`
+editor offers a blank rank plus whatever `presets` the application passes it
+(Lore's Admin, Contributor and Viewer), each saved as an ordinary custom rank
+under a fresh key.
+
 The effective set includes `organizationConfigAtom.floor`. Permissions in
 `ownerOnly` can never be granted to another rank. A writer also cannot grant a
 permission they do not hold, change their own assignment, remove a rank that

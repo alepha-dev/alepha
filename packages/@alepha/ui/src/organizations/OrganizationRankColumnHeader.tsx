@@ -1,7 +1,6 @@
 import { useI18n } from "alepha/react/i18n";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
-import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
 import {
   DropdownMenu,
@@ -12,7 +11,6 @@ import {
 
 export interface OrganizationRankColumnHeaderProps {
   name: string;
-  builtin: boolean;
   onRename?: () => void;
   onDelete?: () => void;
 }
@@ -25,11 +23,6 @@ export const OrganizationRankColumnHeader = (
 
   return (
     <div className="flex items-center justify-center gap-1">
-      {props.builtin && (
-        <Badge variant="secondary" className="text-[10px]">
-          {tr("organizations.ranks.builtin", { default: "Built-in" })}
-        </Badge>
-      )}
       <span className="font-medium">{props.name}</span>
       {actionable && (
         <DropdownMenu>

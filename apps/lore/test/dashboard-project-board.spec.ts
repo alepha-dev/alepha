@@ -19,6 +19,7 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
+import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * The project board's endpoints: one membership gate, a scope proved inside
@@ -69,9 +70,9 @@ const setup = async (): Promise<TestContext> => {
 const token = (id: string): UserAccountToken => ({ id, roles: ["user"] });
 
 /**
- * A project created through the real controller, so its three preset ranks
- * are seeded. `createTestProject` bypasses that on purpose and would leave
- * `contributor` naming nothing.
+ * A project created through the real controller, with the three preset ranks
+ * created on top: a new project starts with Owner and Member only (#Q2511),
+ * and `contributor` would otherwise name nothing.
  */
 const ownedProject = async (
   ctx: TestContext,
@@ -82,6 +83,7 @@ const ownedProject = async (
     { body: { title: `Board ${crypto.randomUUID().slice(0, 8)}` } },
     { user: owner },
   );
+  await createPresetRanks(ctx.alepha, created.data.id);
   return { owner, projectId: created.data.id };
 };
 
@@ -362,13 +364,13 @@ describe("the project dashboard controller", () => {
    * change, and Contributor is the rank most real members hold.
    */
   describe("a Contributor reads the board and cannot change it", () => {
-    it("holds the rank the presets seeded, and it carries project:read only", async ({
+    it("holds the Contributor preset, and it carries project:read only", async ({
       expect,
     }) => {
       const { projectId } = await ownedProject(ctx);
       const reader = await contributorOf(ctx, projectId);
 
-      // The rank the fixture names has to be a real seeded definition. If it
+      // The rank the fixture names has to be a real created definition. If it
       // resolved to nothing the member would fall back to the built-in
       // `member` rank, and every refusal below would still pass while proving
       // nothing about Contributor.

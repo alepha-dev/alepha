@@ -16,6 +16,7 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
+import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * #Q2515: `projects.createdBy` records who created the project. An ownership
@@ -57,6 +58,7 @@ describe("projects.createdBy decides nothing after an ownership transfer", () =>
       { user: founder },
     );
     const projectId = created.data.id;
+    await createPresetRanks(alepha, projectId);
     await createTestMemberByProjectId(alepha, projectId, heir.id);
 
     // A quest the founder wrote, before handing the project over.

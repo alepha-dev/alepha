@@ -17,6 +17,7 @@ import type { QualityRunPush } from "../src/api/schemas/qualityRunPushSchema.ts"
 import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
 import { QualityService } from "../src/api/services/QualityService.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
+import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * The Lore half of epic #15: a CI job pushes what a test run measured, and the
@@ -352,6 +353,7 @@ describe("quality runs", () => {
       // #Q2501: gated on `quality:read` before, which the Viewer preset
       // holds. A Viewer who can write anything is a bug.
       const { projectId } = await aProject(true);
+      await createPresetRanks(ctx.alepha, projectId);
       const viewer = await createTestUser(ctx);
       await createTestMemberByProjectId(ctx.alepha, projectId, viewer.id, {
         rank: "viewer",
