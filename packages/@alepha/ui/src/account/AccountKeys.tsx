@@ -172,6 +172,14 @@ const AccountKeys = (props: AccountKeysProps) => {
 
   const busy = rotate.loading || revoke.loading;
 
+  const empty = {
+    icon: KeyRound,
+    title: tr("account.keys.title", { default: "API keys" }),
+    description: tr("account.keys.description", {
+      default: "Keys act as you. Revoke any you no longer recognise.",
+    }),
+  };
+
   const copy = async () => {
     if (!freshToken) {
       return;
@@ -203,13 +211,11 @@ const AccountKeys = (props: AccountKeysProps) => {
             onClick: () => setCreateOpen(true),
           },
         ]}
-        emptyState={{
-          icon: KeyRound,
-          title: tr("account.keys.title", { default: "API keys" }),
-          description: tr("account.keys.description", {
-            default: "Keys act as you. Revoke any you no longer recognise.",
-          }),
-        }}
+        emptyState={empty}
+        // The status filter is always set (live keys by default), so with no
+        // key at all the table would read "no match, adjust the filters".
+        // Nothing is being filtered out then, so say what is true instead.
+        noMatchState={keys.length === 0 ? empty : undefined}
         columns={{
           name: {
             label: tr("account.keys.colName", { default: "Name" }),

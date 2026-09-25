@@ -385,5 +385,19 @@ test.describe("The Bay console", () => {
     // Pending, not failed: no machine holds the socket, so the command waits
     // for the next hello rather than being refused.
     await expect(page.getByText("pending", { exact: true })).toBeVisible();
+
+    // -- Settings lists the project the estate is lent to (#E68) -------------
+    await page
+      .getByTestId("bay-tabs")
+      .getByRole("link", { name: "Settings", exact: true })
+      .click();
+    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}\/settings/, {
+      timeout: 15_000,
+    });
+    const loan = page
+      .getByRole("row")
+      .filter({ has: page.getByTestId("bay-settings-loan") });
+    await expect(loan).toHaveCount(1);
+    await expect(loan.getByRole("link", { name: "Bay Console" })).toBeVisible();
   });
 });

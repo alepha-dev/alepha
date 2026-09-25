@@ -1749,6 +1749,8 @@ export default {
     "La rotation révoque le secret actuel immédiatement. La machine est refusée à sa prochaine connexion et reste hors ligne jusqu'à ce que vous relanciez `bay connector set` dessus avec le nouveau.",
   "bay.open": "Ouvrir la console",
   "bay.back": "Tous les domaines",
+  "bay.settings.loans.col.project": "Projet",
+  "bay.settings.loans.col.lentAt": "Prêté",
   "estates.online": "en ligne",
   "estates.offline": "hors ligne",
   "estates.deploys.allowed": "déploiements autorisés",

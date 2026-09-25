@@ -3,18 +3,21 @@ import {
   Card,
   CardContent,
   Switch,
+  TimeAgo,
   useDialog,
   useToast,
 } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
+import { DataTable } from "@alepha/ui/table";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { RefreshCw, Trash2, Unlink } from "lucide-react";
+import { FolderKanban, RefreshCw, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { ProjectEstateController } from "@/api/controllers/ProjectEstateController.ts";
+import type { EstateLoan } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -253,45 +256,70 @@ const BaySettings = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="flex flex-col gap-2">
-          <span className="text-muted-foreground text-xs">
-            {estate.projects.length
-              ? tr("account.estates.loans.label")
-              : tr("account.estates.loans.none")}
-          </span>
-          {estate.projects.map((loan) => (
-            <div
-              key={loan.id}
-              className="flex items-center justify-between gap-2 text-sm"
-              data-testid="bay-settings-loan"
-            >
-              {loan.slug ? (
-                <Link
-                  href={router.path("projectSettingsEstates", {
-                    params: { projectSlug: loan.slug },
-                  })}
-                  className="truncate underline-offset-4 hover:underline"
-                >
-                  {loan.title}
-                </Link>
-              ) : (
-                <span className="truncate">{loan.title}</span>
-              )}
-              <Button
-                variant="minimal"
-                size="sm"
-                disabled={busy}
-                aria-label={tr("estates.detach.action")}
-                onClick={() => void detach(loan)}
-              >
-                <Unlink className="size-4" />
-                {tr("estates.detach.action")}
-              </Button>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {/*
+        The projects this estate is lent to (#E68). A table rather than rows in
+        a card: the list grows with every project that borrows the machine,
+        and each row carries the one verb that ends the loan.
+      */}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
+          {tr("account.estates.loans.label")}
+        </span>
+        <DataTable<EstateLoan>
+          data={estate.projects}
+          rowKey={(loan) => String(loan.id)}
+          // A short list inside a column of cards: no column picker, no
+          // refresh (the rows come with the estate), no page-size picker.
+          hideColumnPicker
+          hideActionsMenu
+          pageSizes={[]}
+          emptyState={{
+            icon: FolderKanban,
+            title: tr("account.estates.loans.none"),
+          }}
+          columns={{
+            title: {
+              label: tr("bay.settings.loans.col.project"),
+              sortable: true,
+              cell: (loan) => (
+                <span data-testid="bay-settings-loan">
+                  {loan.slug ? (
+                    <Link
+                      href={router.path("projectSettingsEstates", {
+                        params: { projectSlug: loan.slug },
+                      })}
+                      className="truncate underline-offset-4 hover:underline"
+                    >
+                      {loan.title}
+                    </Link>
+                  ) : (
+                    <span className="truncate">{loan.title}</span>
+                  )}
+                </span>
+              ),
+            },
+            lentAt: {
+              label: tr("bay.settings.loans.col.lentAt"),
+              sortable: true,
+              cell: (loan) => (
+                <TimeAgo
+                  value={loan.lentAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ),
+            },
+          }}
+          rowActions={(loan) => [
+            {
+              label: tr("estates.detach.action"),
+              icon: Unlink,
+              destructive: true,
+              disabled: () => busy,
+              onClick: () => void detach(loan),
+            },
+          ]}
+        />
+      </div>
 
       <Card>
         <CardContent className="flex flex-col gap-3">
