@@ -1,15 +1,21 @@
 import type { MySession, MySessionController } from "alepha/api/users";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Circle, CircleHelp, Monitor, Smartphone, Tablet } from "lucide-react";
+import {
+  CircleHelp,
+  LogOut,
+  Monitor,
+  RadioTower,
+  Smartphone,
+  Tablet,
+} from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "../core/Button.tsx";
+import { Badge } from "../core/Badge.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { SettingsRow } from "../settings/SettingsRow.tsx";
-import { SettingsSection } from "../settings/SettingsSection.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 import { AccountPage } from "./AccountPage.tsx";
 
 export interface AccountSessionsProps {
@@ -17,40 +23,48 @@ export interface AccountSessionsProps {
 }
 
 /**
- * Where you are signed in, and how to stop being.
+ * Where you are signed in, and how to stop being: a `DataTable` over the
+ * sessions the route loader fetched.
  *
- * Revoking a *single* session is unconfirmed; "sign out everywhere else" is
- * confirmed. The difference is reach, not reversibility — one session comes
- * back by signing in again, whereas the bulk action ends every other device
- * at once and there is no undo affordance to reach for afterwards. A prompt
- * on the per-row action would be click-through noise, which is what makes a
- * rare prompt worth reading.
+ * `listMySessions` returns the whole list unpaginated, so the table is given
+ * the array (`data`) and pages, sorts and filters it in memory
+ * (`paginateLocal`). A revoke answers with nothing to re-read: the handler
+ * drops the row from the array it owns, which is the table's refresh in this
+ * mode.
+ *
+ * The current session carries a "This device" badge and no row action: the
+ * way to end it is to sign out, and a row button that signs you out of the
+ * page you are reading is a trap. "Sign out everywhere else" is the toolbar's
+ * primary action, shown while there is anything else to end.
+ *
+ * Both writes are confirmed. They are `useAction` runs, so a failure is
+ * toasted by the shell's `ActionErrorToaster`, and every row action and the
+ * toolbar button are disabled while either is in flight.
  */
 const AccountSessions = (props: AccountSessionsProps) => {
   const api = useClient<MySessionController>();
-  const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
-  const toaster = useToast();
+  const toast = useToast();
   const { tr } = useI18n();
   const [sessions, setSessions] = useState<MySession[]>(props.sessions ?? []);
 
   const deviceIcon = (session: MySession) => {
     if (session.userAgent?.device === "MOBILE") {
-      return <Smartphone className="size-4" />;
+      return <Smartphone className="size-4 shrink-0" />;
     }
     if (session.userAgent?.device === "TABLET") {
-      return <Tablet className="size-4" />;
+      return <Tablet className="size-4 shrink-0" />;
     }
     // A monitor is a claim, not a neutral glyph: it says "this was a computer
     // with a screen". A client the parser could not place is drawn as such.
     if (!session.userAgent || session.userAgent.device === "UNKNOWN") {
-      return <CircleHelp className="size-4" />;
+      return <CircleHelp className="size-4 shrink-0" />;
     }
-    return <Monitor className="size-4" />;
+    return <Monitor className="size-4 shrink-0" />;
   };
 
   /**
-   * The row's title, and the reason it is allowed to say nothing.
+   * The device's name, and the reason it is allowed to say nothing.
    *
    * A session minted for an API client or an OAuth/MCP agent carries a
    * user-agent the parser cannot place, and naming it after whichever
@@ -71,165 +85,192 @@ const AccountSessions = (props: AccountSessionsProps) => {
     });
   };
 
-  /**
-   * "Signed in 3 months ago" says when the session was born, not whether it
-   * is still breathing: a long-lived session that refreshed this morning
-   * looks identical to an abandoned one. `lastUsedAt` is the signal
-   * someone hunting a stolen laptop is after, so it goes next to the IP.
-   * Skipped for the current session, where it would always read "a few
-   * seconds ago".
-   */
-  const description = (session: MySession) => {
-    const parts = [
-      session.ip ?? tr("account.sessions.unknownIp", { default: "unknown IP" }),
-      tr("account.sessions.signedInAt", {
-        default: "signed in $1",
-        args: [dt.of(session.createdAt).fromNow()],
-      }),
-    ];
-    if (session.lastUsedAt && !session.current) {
-      parts.push(
-        tr("account.sessions.lastUsedAt", {
-          default: "last used $1",
-          args: [dt.of(session.lastUsedAt).fromNow()],
-        }),
-      );
-    }
-    return parts.join(" · ");
-  };
-
-  const revoke = async (session: MySession) => {
-    try {
-      await api.deleteMySession({ params: { id: session.id } });
-      setSessions((prev) => prev.filter((it) => it.id !== session.id));
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.sessions.revokeError", {
-            default: "Could not revoke that session",
+  const revoke = useAction<[session: MySession], boolean>(
+    {
+      handler: async (session) => {
+        const ok = await dialog.confirm({
+          title: tr("account.sessions.revokeTitle", {
+            default: "Revoke this session?",
           }),
-        "danger",
-      );
-    }
-  };
-
-  const revokeOthers = async () => {
-    const ok = await dialog.confirm({
-      title: tr("account.sessions.revokeOthersTitle", {
-        default: "Sign out everywhere else?",
-      }),
-      description: tr("account.sessions.revokeOthersDescription", {
-        default:
-          "Every other browser and device will be signed out. This one stays signed in.",
-      }),
-      confirmLabel: tr("account.sessions.revokeOthers", {
-        default: "Sign out everywhere else",
-      }),
-      destructive: true,
-    });
-    if (!ok) {
-      return;
-    }
-    try {
-      const { revoked } = await api.deleteMyOtherSessions();
-      setSessions((prev) => prev.filter((it) => it.current));
-      toaster.show(
-        revoked === 1
-          ? tr("account.sessions.revokedOne", {
-              default: "1 session signed out",
-            })
-          : tr("account.sessions.revokedMany", {
-              default: "$1 sessions signed out",
-              args: [String(revoked)],
-            }),
-        "success",
-      );
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.sessions.revokeOthersError", {
-            default: "Could not sign out the others",
+          description: tr("account.sessions.revokeDescription", {
+            default:
+              "That browser or device is signed out. Signing in again there starts a new session.",
           }),
-        "danger",
-      );
-    }
-  };
+          confirmLabel: tr("account.sessions.revoke", { default: "Revoke" }),
+          destructive: true,
+        });
+        if (!ok) {
+          return false;
+        }
+        await api.deleteMySession({ params: { id: session.id } });
+        setSessions((prev) => prev.filter((it) => it.id !== session.id));
+        return true;
+      },
+    },
+    [api, dialog, tr],
+  );
 
+  const revokeOthers = useAction<[], boolean>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("account.sessions.revokeOthersTitle", {
+            default: "Sign out everywhere else?",
+          }),
+          description: tr("account.sessions.revokeOthersDescription", {
+            default:
+              "Every other browser and device will be signed out. This one stays signed in.",
+          }),
+          confirmLabel: tr("account.sessions.revokeOthers", {
+            default: "Sign out everywhere else",
+          }),
+          destructive: true,
+        });
+        if (!ok) {
+          return false;
+        }
+        const { revoked } = await api.deleteMyOtherSessions();
+        setSessions((prev) => prev.filter((it) => it.current));
+        toast.success(
+          revoked === 1
+            ? tr("account.sessions.revokedOne", {
+                default: "1 session signed out",
+              })
+            : tr("account.sessions.revokedMany", {
+                default: "$1 sessions signed out",
+                args: [String(revoked)],
+              }),
+        );
+        return true;
+      },
+    },
+    [api, dialog, toast, tr],
+  );
+
+  const busy = revoke.loading || revokeOthers.loading;
   const others = sessions.filter((it) => !it.current).length;
 
   return (
-    <AccountPage variant="form">
-      <SettingsSection
-        title={tr("account.sessions.title", { default: "Active sessions" })}
-        description={tr("account.sessions.description", {
-          default: "Revoke any session you do not recognise.",
-        })}
-      >
-        {sessions.map((session) => (
-          <SettingsRow
-            key={session.id}
-            label={
-              <span className="flex items-center gap-2">
-                <Circle
-                  aria-hidden
-                  className={
-                    session.current
-                      ? "size-2 fill-green-500 text-green-500"
-                      : "fill-muted-foreground text-muted-foreground size-2"
-                  }
-                />
+    <AccountPage variant="table">
+      <DataTable<MySession>
+        className="min-h-0 flex-1"
+        data={sessions}
+        rowKey={(session) => session.id}
+        defaultSort={{ field: "lastUsedAt", direction: "desc" }}
+        actions={
+          others > 0
+            ? [
+                {
+                  icon: LogOut,
+                  primary: true,
+                  disabled: busy,
+                  label:
+                    others === 1
+                      ? tr("account.sessions.signOutOne", {
+                          default: "Sign out 1 other",
+                        })
+                      : tr("account.sessions.signOutMany", {
+                          default: "Sign out $1 others",
+                          args: [String(others)],
+                        }),
+                  onClick: () => void revokeOthers.run(),
+                },
+              ]
+            : []
+        }
+        emptyState={{
+          icon: RadioTower,
+          title: tr("account.sessions.title", { default: "Active sessions" }),
+          description: tr("account.sessions.description", {
+            default: "Revoke any session you do not recognise.",
+          }),
+        }}
+        columns={{
+          device: {
+            label: tr("account.sessions.colDevice", { default: "Device" }),
+            cell: (session) => (
+              <span
+                className="flex items-center gap-2"
+                data-testid="account-session-device"
+              >
                 {deviceIcon(session)}
-                {label(session)}
+                <span className="truncate">{label(session)}</span>
                 {session.current ? (
-                  <span className="text-muted-foreground text-xs">
-                    {tr("account.sessions.current", {
-                      default: "(this device)",
+                  <Badge tone="success" data-testid="account-session-current">
+                    {tr("account.sessions.thisDevice", {
+                      default: "This device",
                     })}
+                  </Badge>
+                ) : null}
+              </span>
+            ),
+          },
+          ip: {
+            label: tr("account.sessions.colIp", { default: "IP" }),
+            cell: (session) => (
+              <span className="flex items-center gap-1.5">
+                <code className="text-xs">
+                  {session.ip ??
+                    tr("account.sessions.unknownIp", {
+                      default: "unknown IP",
+                    })}
+                </code>
+                {session.country ? (
+                  <span className="text-muted-foreground text-xs uppercase">
+                    {session.country}
                   </span>
                 ) : null}
               </span>
-            }
-            description={description(session)}
-          >
-            {session.current ? null : (
-              <Button
-                variant="minimal"
-                size="sm"
-                onClick={() => revoke(session)}
-              >
-                {tr("account.sessions.revoke", { default: "Revoke" })}
-              </Button>
-            )}
-          </SettingsRow>
-        ))}
-
-        {others > 0 ? (
-          <SettingsRow
-            label={tr("account.sessions.revokeOthers", {
-              default: "Sign out everywhere else",
-            })}
-            description={tr("account.sessions.revokeOthersHint", {
-              default: "Ends every session except this one.",
-            })}
-          >
-            <Button
-              variant="outlined"
-              intent="danger"
-              size="sm"
-              onClick={revokeOthers}
-            >
-              {others === 1
-                ? tr("account.sessions.signOutOne", {
-                    default: "Sign out 1 other",
-                  })
-                : tr("account.sessions.signOutMany", {
-                    default: "Sign out $1 others",
-                    args: [String(others)],
-                  })}
-            </Button>
-          </SettingsRow>
-        ) : null}
-      </SettingsSection>
+            ),
+          },
+          createdAt: {
+            label: tr("account.sessions.colSignedIn", {
+              default: "Signed in",
+            }),
+            sortable: true,
+            cell: (session) => (
+              <TimeAgo
+                value={session.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+          /*
+            When the session was last used, not when it was born: a
+            long-lived session that refreshed this morning looks identical to
+            an abandoned one by its start date, and this is the column
+            somebody hunting a stolen laptop reads.
+          */
+          lastUsedAt: {
+            label: tr("account.sessions.colLastUsed", {
+              default: "Last used",
+            }),
+            sortable: true,
+            cell: (session) =>
+              session.lastUsedAt ? (
+                <TimeAgo
+                  value={session.lastUsedAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">-</span>
+              ),
+          },
+        }}
+        rowActions={(session) =>
+          session.current
+            ? []
+            : [
+                {
+                  label: tr("account.sessions.revoke", { default: "Revoke" }),
+                  icon: LogOut,
+                  destructive: true,
+                  disabled: () => busy,
+                  onClick: () => void revoke.run(session),
+                },
+              ]
+        }
+      />
     </AccountPage>
   );
 };
