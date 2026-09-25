@@ -1839,6 +1839,12 @@ export default {
   "estates.toast.detached": "Estate detached",
   "estates.toast.copied": "Secret copied",
 
+  "account.estates.col.kind": "Kind",
+  "account.estates.col.estate": "Estate",
+  "account.estates.col.status": "Status",
+  "account.estates.col.lentTo": "Lent to",
+  "account.estates.col.created": "Created",
+  "account.estates.lentTo": "$1 project(s)",
   "account.estates.title": "Estates",
   "account.estates.description":
     "The machines and accounts you own and lend to projects as deploy destinations. Each one dials in with a secret shown once, at creation and at rotation.",

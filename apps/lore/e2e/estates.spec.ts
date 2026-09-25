@@ -94,17 +94,18 @@ test.describe("Estates", () => {
      * followed.
      */
     await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
-    await expect(
-      page
-        .locator('[data-slot="card"]')
-        .filter({ has: page.getByTestId("estate-create-open") }),
-    ).toHaveCount(1);
+    // The table's empty state names the act its toolbar button performs.
+    await expect(page.getByText("Create an estate")).toBeVisible();
+    await expect(page.getByTestId("estate-create-open")).toBeVisible();
 
     await createEstate(page, "ovh-1");
 
     // The ROW carries the four facts worth a glance since #1862; everything
     // else is behind it.
-    const row = page.getByTestId("my-estate-row");
+    // A table row since #E68; the test id sits on its estate cell.
+    const row = page
+      .getByRole("row")
+      .filter({ has: page.getByTestId("my-estate-row") });
     await expect(row).toHaveCount(1);
     await expect(row.getByTestId("my-estate-slug")).toHaveText("ovh-1");
     await expect(row.getByText("offline", { exact: true })).toBeVisible();
@@ -149,7 +150,9 @@ test.describe("Estates", () => {
     // the stored row rather than this page's optimistic copy.
     await page.goto("/account/estates");
     await page.waitForLoadState("networkidle");
-    const reloadedRow = page.getByTestId("my-estate-row");
+    const reloadedRow = page
+      .getByRole("row")
+      .filter({ has: page.getByTestId("my-estate-row") });
     await expect(
       reloadedRow.getByText("deploys allowed", { exact: true }),
     ).toBeVisible();
@@ -167,12 +170,8 @@ test.describe("Estates", () => {
     await confirmDialog(page, "Delete");
     await page.waitForURL(/\/account\/estates/, { timeout: 15_000 });
     await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
-    // And back to the card holding nothing but its create row.
-    await expect(
-      page
-        .locator('[data-slot="card"]')
-        .filter({ has: page.getByTestId("estate-create-open") }),
-    ).toHaveCount(1);
+    // And back to the empty table.
+    await expect(page.getByText("Create an estate")).toBeVisible();
   });
 
   test("the admin list shows every estate on the instance, and no credential", async ({

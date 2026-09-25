@@ -131,13 +131,14 @@ describe("MyEstates", () => {
     };
   };
 
-  it("shows the create row and nothing else when the account owns none", async ({
+  it("shows the empty state and the create button when the account owns none", async ({
     expect,
   }) => {
-    // ⚠️ Feedback #P2140: the create row IS the empty state now, the way
-    // "Create a key" is on API keys. It replaced a paragraph telling a
-    // reader who holds no secret to run `bay connector set` - a command the
-    // secret dialog already carries in full, at the moment it can be run.
+    // ⚠️ Feedback #P2140: the empty state names the act, "Create an estate",
+    // beside the toolbar's New estate button (#E68). It replaced a paragraph
+    // telling a reader who holds no secret to run `bay connector set` - a
+    // command the secret dialog already carries in full, at the moment it
+    // can be run.
     const { findByText, queryAllByTestId } = await show({
       listMyEstates: { items: [] },
     });

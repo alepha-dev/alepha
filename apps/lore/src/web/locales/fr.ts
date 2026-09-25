@@ -1819,6 +1819,12 @@ export default {
   "estates.toast.detached": "Domaine retiré",
   "estates.toast.copied": "Secret copié",
 
+  "account.estates.col.kind": "Type",
+  "account.estates.col.estate": "Domaine",
+  "account.estates.col.status": "Statut",
+  "account.estates.col.lentTo": "Prêté à",
+  "account.estates.col.created": "Créé",
+  "account.estates.lentTo": "$1 projet(s)",
   "account.estates.title": "Domaines",
   "account.estates.description":
     "Les machines et comptes que vous possédez et prêtez aux projets comme destinations de déploiement. Chacun se connecte avec un secret affiché une seule fois, à la création et à la rotation.",
