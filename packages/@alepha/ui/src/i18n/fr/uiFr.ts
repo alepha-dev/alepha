@@ -928,22 +928,22 @@ export const uiFr: Record<string, string> = {
   "account.brand.subtitle": "Compte",
   // The browser tab of every account page, around the page's own title.
   "account.title": "Compte - $1",
-  "account.connections.connectedAt": "Connectée $1",
+  "account.connections.colApp": "Application",
+  "account.connections.colConnected": "Connectée",
+  "account.connections.colExpires": "Fin de l’accès",
+  "account.connections.colLastUsed": "Dernière utilisation",
+  "account.connections.colSessions": "Sessions",
+  "account.connections.never": "Jamais",
   "account.connections.current": "(celle-ci)",
   "account.connections.description":
     "Les applications qui peuvent agir en votre nom.",
   "account.connections.empty": "Aucune application connectée",
   "account.connections.emptyDescription":
     "Les applications que vous autorisez apparaîtront ici.",
-  "account.connections.lastUsedAt": " · dernière utilisation $1",
-  "account.connections.neverUsed": " · jamais utilisée",
-  "account.connections.sessionCount": " · $1 sessions",
   "account.connections.revoke": "Déconnecter",
   "account.connections.revokeDescription":
     "Elle perd l'accès immédiatement et devra être autorisée à nouveau pour revenir.",
-  "account.connections.revokeError": "Impossible de la déconnecter",
   "account.connections.revokeTitle": "Déconnecter $1 ?",
-  "account.connections.title": "Applications connectées",
   "account.delete.cancel": "Annuler",
   "account.delete.confirmAfter": "pour confirmer",
   "account.delete.confirmBefore": "Saisissez",
