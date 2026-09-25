@@ -1,12 +1,19 @@
-import type { ApiKeyController, ListApiKeyItem } from "alepha/api/keys";
-import { useClient } from "alepha/react";
+import { z } from "alepha";
+import type {
+  ApiKeyController,
+  ApiKeyStatus,
+  ListApiKeyItem,
+} from "alepha/api/keys";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   Check,
-  ChevronDown,
-  ChevronRight,
+  CircleDot,
   Clipboard,
+  KeyRound,
   Plus,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -18,13 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../core/Dialog.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 import { useDialog } from "../core/useDialog.tsx";
-import { useToast } from "../core/useToast.tsx";
-import { SettingsRow } from "../settings/SettingsRow.tsx";
-import { SettingsSection } from "../settings/SettingsSection.tsx";
-import { AccountKeysRow } from "./AccountKeysRow.tsx";
+import { DataTable } from "../table/DataTable.tsx";
+import type { DataTableFilterFields } from "../table/dataTableTypes.ts";
 import { AccountPage } from "./AccountPage.tsx";
 import { ApiKeyCreateDialog } from "./ApiKeyCreateDialog.tsx";
+import { ApiKeyScopeSummary } from "./ApiKeyScopeSummary.tsx";
+import { ApiKeyStatusBadge } from "./ApiKeyStatusBadge.tsx";
 
 export interface AccountKeysProps {
   /**
@@ -36,106 +44,133 @@ export interface AccountKeysProps {
 }
 
 /**
- * Your own API keys: mint, rotate, revoke, and see where each is in its life.
+ * The key statuses the filter offers, in order. A local list checked against
+ * `ApiKeyStatus` rather than the schema, for the bundle reason `AdminKeys`
+ * gives.
+ */
+const API_KEY_STATUSES = [
+  "active",
+  "expiring",
+  "expired",
+  "revoked",
+] as const satisfies readonly ApiKeyStatus[];
+
+/**
+ * Your own API keys: mint, rotate, revoke, and see where each is in its life,
+ * as a `DataTable` over the list the route loader fetched.
+ *
+ * `listApiKeys` returns the whole list unpaginated, so the table is handed
+ * the array (`data`) and pages, sorts and filters it in memory. A write
+ * re-reads the list, because a revoked key stays listed with its status.
+ *
+ * The status filter starts on the live keys (active and expiring). Expired
+ * and revoked keys are one filter change away: listed because a key that
+ * stopped working is the one a user comes looking for, filtered out by
+ * default because a table that reads "14 keys" when 11 are dead misleads.
  *
  * The freshly created or rotated token is shown **once**, in a dialog that
  * stays open until dismissed, because the server stores only a hash and
  * cannot show it again. That is also why minting and the reveal are separate
- * steps rather than one inline row - a token that scrolls out of view behind a
- * re-render is gone.
- *
- * Live keys come first. Expired and revoked keys follow in a collapsed
- * "Inactive keys" section: they are listed because a key that stopped working
- * is the one a user comes looking for, and folded away because a panel that
- * reads "14 keys" when 11 are dead misleads.
+ * steps: a token that scrolls out of view behind a re-render is gone.
  */
 const AccountKeys = (props: AccountKeysProps) => {
   const api = useClient<ApiKeyController>();
   const dialog = useDialog();
-  const toaster = useToast();
   const { tr } = useI18n();
 
   const [keys, setKeys] = useState<ListApiKeyItem[]>(props.apiKeys ?? []);
   const [createOpen, setCreateOpen] = useState(false);
-  const [showInactive, setShowInactive] = useState(false);
   const [freshToken, setFreshToken] = useState<string | undefined>();
   const [copied, setCopied] = useState(false);
 
-  const live = keys.filter(
-    (key) => key.status === "active" || key.status === "expiring",
-  );
-  const inactive = keys.filter(
-    (key) => key.status === "expired" || key.status === "revoked",
-  );
+  const statusLabel = (status: ApiKeyStatus): string => {
+    switch (status) {
+      case "active":
+        return tr("account.keys.status.active", { default: "Active" });
+      case "expiring":
+        return tr("account.keys.status.expiringLabel", { default: "Expiring" });
+      case "expired":
+        return tr("account.keys.status.expired", { default: "Expired" });
+      case "revoked":
+        return tr("account.keys.status.revoked", { default: "Revoked" });
+    }
+  };
+
+  const filterFields = {
+    status: {
+      schema: z.array(z.enum(API_KEY_STATUSES)),
+      mode: "default",
+      label: tr("account.keys.colStatus", { default: "Status" }),
+      icon: CircleDot,
+      optionLabel: statusLabel,
+      control: {
+        clearLabel: tr("account.keys.statusAll", { default: "All statuses" }),
+      },
+    },
+  } satisfies DataTableFilterFields;
 
   const reload = async () => {
     setKeys((await api.listApiKeys()) as ListApiKeyItem[]);
   };
 
-  const rotate = async (key: ListApiKeyItem) => {
-    const ok = await dialog.confirm({
-      title: tr("account.keys.rotateTitle", {
-        default: "Rotate $1?",
-        args: [key.name],
-      }),
-      description: tr("account.keys.rotateDescription", {
-        default:
-          "The current secret stops working immediately, and a new one is shown once. Update wherever the key is stored.",
-      }),
-      confirmLabel: tr("account.keys.rotate", { default: "Rotate" }),
-    });
-    if (!ok) {
-      return;
-    }
-    try {
-      const rotated: any = await api.rotateMyApiKey({
-        params: { id: key.id },
-        body: {},
-      });
-      setFreshToken(rotated.token);
-      await reload();
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.keys.rotateError", {
-            default: "Could not rotate that key",
+  const rotate = useAction<[key: ListApiKeyItem], boolean>(
+    {
+      handler: async (key) => {
+        const ok = await dialog.confirm({
+          title: tr("account.keys.rotateTitle", {
+            default: "Rotate $1?",
+            args: [key.name],
           }),
-        "danger",
-      );
-    }
-  };
+          description: tr("account.keys.rotateDescription", {
+            default:
+              "The current secret stops working immediately, and a new one is shown once. Update wherever the key is stored.",
+          }),
+          confirmLabel: tr("account.keys.rotate", { default: "Rotate" }),
+        });
+        if (!ok) {
+          return false;
+        }
+        const rotated: any = await api.rotateMyApiKey({
+          params: { id: key.id },
+          body: {},
+        });
+        setFreshToken(rotated.token);
+        await reload();
+        return true;
+      },
+    },
+    [api, dialog, tr],
+  );
 
-  const revoke = async (key: ListApiKeyItem) => {
-    const ok = await dialog.confirm({
-      title: tr("account.keys.revokeTitle", {
-        default: "Revoke $1?",
-        args: [key.name],
-      }),
-      description: tr("account.keys.revokeDescription", {
-        default:
-          "Anything still using this key stops working immediately. This cannot be undone.",
-      }),
-      confirmLabel: tr("account.keys.revoke", { default: "Revoke" }),
-      destructive: true,
-    });
-    if (!ok) {
-      return;
-    }
-    try {
-      await api.revokeMyApiKey({ params: { id: key.id } });
-      // Re-read rather than drop the row: a revoked key stays listed, with
-      // its status, until the retention window purges it.
-      await reload();
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.keys.revokeError", {
-            default: "Could not revoke that key",
+  const revoke = useAction<[key: ListApiKeyItem], boolean>(
+    {
+      handler: async (key) => {
+        const ok = await dialog.confirm({
+          title: tr("account.keys.revokeTitle", {
+            default: "Revoke $1?",
+            args: [key.name],
           }),
-        "danger",
-      );
-    }
-  };
+          description: tr("account.keys.revokeDescription", {
+            default:
+              "Anything still using this key stops working immediately. This cannot be undone.",
+          }),
+          confirmLabel: tr("account.keys.revoke", { default: "Revoke" }),
+          destructive: true,
+        });
+        if (!ok) {
+          return false;
+        }
+        await api.revokeMyApiKey({ params: { id: key.id } });
+        // Re-read rather than drop the row: a revoked key stays listed, with
+        // its status, until the retention window purges it.
+        await reload();
+        return true;
+      },
+    },
+    [api, dialog, tr],
+  );
+
+  const busy = rotate.loading || revoke.loading;
 
   const copy = async () => {
     if (!freshToken) {
@@ -146,85 +181,156 @@ const AccountKeys = (props: AccountKeysProps) => {
   };
 
   return (
-    <AccountPage variant="form">
-      <SettingsSection
-        title={tr("account.keys.title", { default: "API keys" })}
-        description={tr("account.keys.description", {
-          default: "Keys act as you. Revoke any you no longer recognise.",
-        })}
-      >
-        {live.map((key) => (
-          <AccountKeysRow
-            key={key.id}
-            apiKey={key}
-            onRotate={rotate}
-            onRevoke={revoke}
-          />
-        ))}
-
-        <SettingsRow
-          label={tr("account.keys.create", { default: "Create a key" })}
-          description={tr("account.keys.createDescription", {
-            default:
-              "Shown once, at creation. It cannot be recovered afterwards.",
-          })}
-        >
-          <Button
-            variant="solid"
-            intent="none"
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="size-4" />
-            {tr("account.keys.new", { default: "New key" })}
-          </Button>
-        </SettingsRow>
-      </SettingsSection>
-
-      {inactive.length > 0 ? (
-        <SettingsSection
-          title={tr("account.keys.inactiveTitle", {
-            default: "Inactive keys",
-          })}
-          description={tr("account.keys.inactiveDescription", {
-            default:
-              "Expired and revoked keys, kept for a while so you can tell what stopped working. An expired key can be rotated to renew it.",
-          })}
-        >
-          <SettingsRow
-            label={tr("account.keys.inactiveCount", {
-              default: "$1 inactive key(s)",
-              args: [String(inactive.length)],
-            })}
-          >
-            <Button
-              variant="minimal"
-              size="sm"
-              aria-expanded={showInactive}
-              onClick={() => setShowInactive((open) => !open)}
-            >
-              {showInactive ? (
-                <ChevronDown className="size-4" />
-              ) : (
-                <ChevronRight className="size-4" />
-              )}
-              {showInactive
-                ? tr("account.keys.hideInactive", { default: "Hide" })
-                : tr("account.keys.showInactive", { default: "Show" })}
-            </Button>
-          </SettingsRow>
-          {showInactive
-            ? inactive.map((key) => (
-                <AccountKeysRow
-                  key={key.id}
-                  apiKey={key}
-                  onRotate={rotate}
-                  onRevoke={revoke}
+    <AccountPage variant="table">
+      <DataTable<ListApiKeyItem, typeof filterFields>
+        className="min-h-0 flex-1"
+        data={keys}
+        rowKey={(key) => key.id}
+        filter={(key, filters) =>
+          !filters.status?.length || filters.status.includes(key.status)
+        }
+        filters={{
+          fields: filterFields,
+          // The live keys first; dead ones are one filter change away.
+          initialValues: { status: ["active", "expiring"] },
+        }}
+        actions={[
+          {
+            icon: Plus,
+            label: tr("account.keys.new", { default: "New key" }),
+            primary: true,
+            disabled: busy,
+            onClick: () => setCreateOpen(true),
+          },
+        ]}
+        emptyState={{
+          icon: KeyRound,
+          title: tr("account.keys.title", { default: "API keys" }),
+          description: tr("account.keys.description", {
+            default: "Keys act as you. Revoke any you no longer recognise.",
+          }),
+        }}
+        columns={{
+          name: {
+            label: tr("account.keys.colName", { default: "Name" }),
+            sortable: true,
+            cell: (key) => (
+              <div className="flex min-w-0 flex-col">
+                <span className="font-medium" data-testid="account-key-name">
+                  {key.name}
+                </span>
+                {key.description ? (
+                  <span className="text-muted-foreground truncate text-xs">
+                    {key.description}
+                  </span>
+                ) : null}
+              </div>
+            ),
+          },
+          token: {
+            label: tr("account.keys.colToken", { default: "Token" }),
+            cell: (key) => (
+              <code className="text-xs">
+                {key.tokenPrefix}…{key.tokenSuffix}
+              </code>
+            ),
+          },
+          permissions: {
+            label: tr("account.keys.colScope", { default: "Scope" }),
+            cell: (key) => <ApiKeyScopeSummary permissions={key.permissions} />,
+          },
+          status: {
+            label: tr("account.keys.colStatus", { default: "Status" }),
+            cell: (key) => <ApiKeyStatusBadge apiKey={key} />,
+          },
+          createdAt: {
+            label: tr("account.keys.colCreated", { default: "Created" }),
+            sortable: true,
+            cell: (key) => (
+              <TimeAgo
+                value={key.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+          lastUsedAt: {
+            label: tr("account.keys.colLastUsed", { default: "Last used" }),
+            sortable: true,
+            cell: (key) =>
+              key.lastUsedAt ? (
+                <TimeAgo
+                  value={key.lastUsedAt}
+                  className="text-muted-foreground text-xs"
                 />
-              ))
-            : null}
-        </SettingsSection>
-      ) : null}
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.keys.never", { default: "Never" })}
+                </span>
+              ),
+          },
+          expiresAt: {
+            label: tr("account.keys.colExpires", { default: "Expires" }),
+            sortable: true,
+            cell: (key) =>
+              key.expiresAt ? (
+                <TimeAgo
+                  value={key.expiresAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.keys.never", { default: "Never" })}
+                </span>
+              ),
+          },
+          /*
+            Read-only, set when the key was created through the API: shown so
+            a key refusing requests from a new address can be diagnosed here.
+          */
+          ipAllowlist: {
+            label: tr("account.keys.colIpAllowlist", {
+              default: "Allowed from",
+            }),
+            defaultHidden: true,
+            cell: (key) =>
+              key.ipAllowlist.length ? (
+                <code className="text-xs">{key.ipAllowlist.join(", ")}</code>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.keys.ipAnywhere", { default: "Anywhere" })}
+                </span>
+              ),
+          },
+        }}
+        /*
+          Rotate on a live or an expired key (rotating an expired key is how
+          it is renewed), revoke on a live key only, nothing on a revoked
+          one: it keeps its row, with its status and usage.
+        */
+        rowActions={(key) => [
+          ...(key.status === "revoked"
+            ? []
+            : [
+                {
+                  label: tr("account.keys.rotate", { default: "Rotate" }),
+                  icon: RefreshCw,
+                  disabled: () => busy,
+                  onClick: () => void rotate.run(key),
+                },
+              ]),
+          ...(key.status === "revoked" || key.status === "expired"
+            ? []
+            : [
+                {
+                  label: tr("account.keys.revoke", { default: "Revoke" }),
+                  icon: Trash2,
+                  destructive: true,
+                  disabled: () => busy,
+                  onClick: () => void revoke.run(key),
+                },
+              ]),
+        ]}
+      />
 
       <ApiKeyCreateDialog
         open={createOpen}
