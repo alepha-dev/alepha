@@ -1,18 +1,23 @@
 import type { OrganizationInvitationController } from "alepha/api/organizations";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Check, Mail, X } from "lucide-react";
+import { Building2, Check, Mail, X } from "lucide-react";
 
 import { Badge } from "../core/Badge.tsx";
-import { Button } from "../core/Button.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 import { useToast } from "../core/useToast.tsx";
-import { SettingsHeading } from "../settings/SettingsHeading.tsx";
+import { DataTable } from "../table/DataTable.tsx";
 
 export interface MyOrganizationInvitationsProps {
   load?: () => Promise<MyOrganizationInvitationItem[]>;
   accept?: (invitationId: string) => Promise<string>;
   decline?: (invitationId: string) => Promise<void>;
   onAccepted?: (organizationId: string) => void | Promise<void>;
+  /**
+   * Extra classes merged onto the table, typically `min-h-0 flex-1` when
+   * the host frame gives it the height to fill.
+   */
+  className?: string;
 }
 
 export interface MyOrganizationInvitationItem {
@@ -20,8 +25,32 @@ export interface MyOrganizationInvitationItem {
   organizationId: string;
   organizationName?: string;
   email: string;
+  /**
+   * The rank the invitation grants on acceptance, when it names one.
+   */
+  rank?: string;
+  /**
+   * When the invitation was sent.
+   */
+  createdAt?: string;
+  /**
+   * When it stops being acceptable.
+   */
+  expiresAt?: string;
 }
 
+/**
+ * The invitations waiting for the signed-in user, as a `DataTable` with
+ * Accept and Decline on each row.
+ *
+ * The list is unpaginated (`getMyOrganizationInvitations`, or the caller's
+ * `load`), so the table is handed the array and pages it in memory. Both
+ * verbs re-read the list, and every row action is disabled while one runs.
+ *
+ * It does not own the page frame: an account area wraps it in
+ * `AccountPage variant="table"` (this module must not import `account`),
+ * and passes `className="min-h-0 flex-1"` so the table fills it.
+ */
 export const MyOrganizationInvitations = (
   props: MyOrganizationInvitationsProps,
 ) => {
@@ -31,7 +60,11 @@ export const MyOrganizationInvitations = (
   const invitations = useQuery(
     {
       key: ["my-organization-invitations"],
-      handler: () => props.load?.() ?? api.getMyOrganizationInvitations(),
+      handler: () =>
+        props.load?.() ??
+        (api.getMyOrganizationInvitations() as Promise<
+          MyOrganizationInvitationItem[]
+        >),
     },
     [api, props.load],
   );
@@ -81,76 +114,111 @@ export const MyOrganizationInvitations = (
   const busy = invitations.loading || accept.loading || decline.loading;
 
   return (
-    <div className="flex w-full flex-col gap-2" aria-busy={busy}>
-      <SettingsHeading
-        title={tr("organizations.invitations.myTitle", {
-          default: "Invitations",
-        })}
-        description={tr("organizations.invitations.myDescription", {
+    <DataTable<MyOrganizationInvitationItem>
+      className={props.className}
+      data={items}
+      rowKey={(invitation) => invitation.id}
+      emptyState={{
+        icon: Mail,
+        title: tr("organizations.invitations.empty", {
+          default: "You have no pending invitations.",
+        }),
+        description: tr("organizations.invitations.myDescription", {
           default: "Organizations that invited you to join.",
-        })}
-      />
-      {items.length === 0 ? (
-        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-md border p-6 text-center">
-          <Mail className="text-muted-foreground size-5" />
-          <span className="text-sm">
-            {tr("organizations.invitations.empty", {
-              default: "You have no pending invitations.",
-            })}
-          </span>
-        </div>
-      ) : (
-        <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2">
-          {items.map((invitation) => (
-            <div
-              key={invitation.id}
-              className="border-border bg-muted/40 flex items-center gap-3 rounded-md border p-3 shadow-sm"
+        }),
+      }}
+      columns={{
+        organizationName: {
+          label: tr("organizations.invitations.colOrganization", {
+            default: "Organization",
+          }),
+          sortable: true,
+          sortValue: (invitation) =>
+            invitation.organizationName ?? invitation.organizationId,
+          cell: (invitation) => (
+            <span
+              className="flex items-center gap-2"
+              data-testid="my-invitation-organization"
             >
-              <div className="bg-background flex size-10 items-center justify-center rounded-md">
-                <Mail className="size-5" />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium">
-                    {invitation.organizationName ?? invitation.organizationId}
-                  </span>
-                  <Badge variant="secondary">
-                    {tr("organizations.invitations.pending", {
-                      default: "Pending",
-                    })}
-                  </Badge>
-                </div>
-                <span className="text-muted-foreground truncate text-xs">
-                  {invitation.email}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void decline.run(invitation.id)}
-                >
-                  <X className="size-3.5" />
-                  {tr("organizations.invitations.decline", {
-                    default: "Decline",
-                  })}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void accept.run(invitation.id)}
-                >
-                  <Check className="size-3.5" />
-                  {tr("organizations.invitations.accept", {
-                    default: "Accept",
-                  })}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              <Building2 className="text-muted-foreground size-4 shrink-0" />
+              <span className="truncate font-medium">
+                {invitation.organizationName ?? invitation.organizationId}
+              </span>
+              <Badge variant="secondary">
+                {tr("organizations.invitations.pending", {
+                  default: "Pending",
+                })}
+              </Badge>
+            </span>
+          ),
+        },
+        rank: {
+          label: tr("organizations.invitations.colRank", { default: "Rank" }),
+          cell: (invitation) =>
+            invitation.rank ? (
+              <Badge variant="outline">{invitation.rank}</Badge>
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            ),
+        },
+        email: {
+          label: tr("organizations.invitations.colEmail", {
+            default: "Sent to",
+          }),
+          cell: (invitation) => (
+            <span className="text-muted-foreground truncate text-xs">
+              {invitation.email}
+            </span>
+          ),
+        },
+        createdAt: {
+          label: tr("organizations.invitations.colInvitedAt", {
+            default: "Invited",
+          }),
+          sortable: true,
+          cell: (invitation) =>
+            invitation.createdAt ? (
+              <TimeAgo
+                value={invitation.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            ),
+        },
+        expiresAt: {
+          label: tr("organizations.invitations.colExpires", {
+            default: "Expires",
+          }),
+          sortable: true,
+          cell: (invitation) =>
+            invitation.expiresAt ? (
+              <TimeAgo
+                value={invitation.expiresAt}
+                className="text-muted-foreground text-xs"
+              />
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            ),
+        },
+      }}
+      rowActions={(invitation) => [
+        {
+          label: tr("organizations.invitations.accept", { default: "Accept" }),
+          icon: Check,
+          disabled: () => busy,
+          onClick: () => void accept.run(invitation.id),
+        },
+        {
+          label: tr("organizations.invitations.decline", {
+            default: "Decline",
+          }),
+          icon: X,
+          destructive: true,
+          disabled: () => busy,
+          onClick: () => void decline.run(invitation.id),
+        },
+      ]}
+    />
   );
 };

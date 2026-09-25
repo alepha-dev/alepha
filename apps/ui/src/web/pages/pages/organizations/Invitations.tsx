@@ -14,6 +14,7 @@ const Invitations = () => {
     >
       {() => (
         <MyOrganizationInvitations
+          className="min-h-80"
           onAccepted={() => router.push("/pages/organizations/members")}
         />
       )}

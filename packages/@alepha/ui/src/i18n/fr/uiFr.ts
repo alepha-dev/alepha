@@ -1177,6 +1177,11 @@ export const uiFr: Record<string, string> = {
   "organizations.members.removed": "Membre retiré",
   "organizations.members.removeTitle": "Retirer $1 ?",
   "organizations.members.title": "Membres",
+  "organizations.invitations.colEmail": "Envoyée à",
+  "organizations.invitations.colExpires": "Expire",
+  "organizations.invitations.colInvitedAt": "Invitation",
+  "organizations.invitations.colOrganization": "Organisation",
+  "organizations.invitations.colRank": "Rang",
   "organizations.invitations.accept": "Accepter",
   "organizations.invitations.accepted": "Invitation acceptée",
   "organizations.invitations.actions": "Actions de l'invitation",
@@ -1191,7 +1196,6 @@ export const uiFr: Record<string, string> = {
   "organizations.invitations.inviteTitle": "Inviter un membre",
   "organizations.invitations.myDescription":
     "Organisations qui vous ont invité à les rejoindre.",
-  "organizations.invitations.myTitle": "Invitations",
   "organizations.invitations.pending": "En attente",
   "organizations.invitations.revoke": "Révoquer",
   "organizations.invitations.revokeDescription":

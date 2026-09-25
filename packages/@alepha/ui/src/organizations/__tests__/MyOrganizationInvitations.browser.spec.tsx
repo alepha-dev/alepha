@@ -4,7 +4,8 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, describe, expect, it } from "vitest";
+import { setupJsdomMocks } from "alepha/testing/react";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { MyOrganizationInvitations } from "../MyOrganizationInvitations.tsx";
 
@@ -32,6 +33,7 @@ class Links extends LinkProvider {
                       invitedBy: "00000000-0000-4000-8000-000000000033",
                       email: "kim@example.com",
                       status: "pending",
+                      rank: "member",
                       expiresAt: "2026-10-01T10:00:00.000Z",
                       createdAt: "2026-09-01T10:00:00.000Z",
                       updatedAt: "2026-09-01T10:00:00.000Z",
@@ -59,8 +61,31 @@ class Links extends LinkProvider {
   }
 }
 
+/**
+ * The invitations table: a row per pending invitation, Accept and Decline in
+ * the row's menu, and the list re-read after either.
+ */
 describe("MyOrganizationInvitations", () => {
   let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  /** Opens the first row's menu and clicks the named action. */
+  const runRowAction = async (label: string) => {
+    fireEvent.click(
+      document.querySelector('[aria-label="Open row actions"]') as HTMLElement,
+    );
+    const entry = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (item) => item.textContent?.includes(label),
+      );
+      expect(found).toBeDefined();
+      return found as HTMLElement;
+    });
+    fireEvent.click(entry);
+  };
 
   afterEach(async () => {
     await alepha?.stop();
@@ -84,24 +109,56 @@ describe("MyOrganizationInvitations", () => {
     return { links: alepha.inject(Links), view };
   };
 
+  it("renders a row per invitation, with its rank", async () => {
+    const { view } = await mount();
+
+    expect(
+      view
+        .getAllByTestId("my-invitation-organization")
+        .map((it) => it.textContent),
+    ).toEqual(["AcmePending"]);
+    expect(view.getByText("member")).toBeTruthy();
+    expect(view.getByText("kim@example.com")).toBeTruthy();
+  });
+
+  it("shows the empty state when nothing is pending", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: Links })
+      .with(AlephaReact)
+      .with(AlephaReactI18n);
+    alepha.inject(Links).pending = false;
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <MyOrganizationInvitations />
+      </AlephaContext.Provider>,
+    );
+
+    expect(
+      await view.findByText("You have no pending invitations."),
+    ).toBeTruthy();
+  });
+
   it("accepts an invitation, removes it, and reports the joined organization", async () => {
     const joined: string[] = [];
     const { links, view } = await mount((id) => joined.push(id));
 
-    fireEvent.click(view.getByRole("button", { name: "Accept" }));
+    await runRowAction("Accept");
 
     await waitFor(() => expect(links.accepted).toEqual([invitationId]));
-    expect(joined).toEqual([organizationId]);
-    expect(view.queryByText("Acme")).toBeNull();
+    await waitFor(() => expect(joined).toEqual([organizationId]));
+    await waitFor(() => expect(view.queryByText("Acme")).toBeNull());
   });
 
   it("declines an invitation and removes it", async () => {
     const { links, view } = await mount();
 
-    fireEvent.click(view.getByRole("button", { name: "Decline" }));
+    await runRowAction("Decline");
 
     await waitFor(() => expect(links.declined).toEqual([invitationId]));
-    expect(view.queryByText("Acme")).toBeNull();
+    await waitFor(() => expect(view.queryByText("Acme")).toBeNull());
   });
 
   it("uses caller-provided invitation actions when an app adapts a legacy API", async () => {
@@ -143,7 +200,7 @@ describe("MyOrganizationInvitations", () => {
     );
 
     await view.findByText("Legacy project");
-    fireEvent.click(view.getByRole("button", { name: "Accept" }));
+    await runRowAction("Accept");
 
     await waitFor(() => expect(accepted).toEqual([invitationId]));
     expect(declined).toEqual([]);

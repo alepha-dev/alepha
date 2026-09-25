@@ -65,7 +65,10 @@ import { AccountRouter } from "./AccountRouter.tsx";
  *       order: 100,
  *     },
  *     can: () => this.invitationApi.getMyOrganizationInvitations.can(),
- *     component: MyOrganizationInvitations,
+ *     // A lazy page framing `MyOrganizationInvitations` in
+ *     // `<AccountPage variant="table">`: the component draws the table,
+ *     // the page owns the frame.
+ *     lazy: () => import("./AccountInvitations.tsx"),
  *   });
  * }
  * ```
