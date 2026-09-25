@@ -4,6 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Building2, Check, Mail, X } from "lucide-react";
 
 import { Badge } from "../core/Badge.tsx";
+import { Button } from "../core/Button.tsx";
 import TimeAgo from "../core/TimeAgo.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { DataTable } from "../table/DataTable.tsx";
@@ -30,6 +31,12 @@ export interface MyOrganizationInvitationItem {
    */
   rank?: string;
   /**
+   * Who sent it, by name. The framework's own list carries only the
+   * inviter's id, so the column shows a placeholder unless an application's
+   * `load` resolves the name.
+   */
+  inviterName?: string;
+  /**
    * When the invitation was sent.
    */
   createdAt?: string;
@@ -41,11 +48,12 @@ export interface MyOrganizationInvitationItem {
 
 /**
  * The invitations waiting for the signed-in user, as a `DataTable` with
- * Accept and Decline on each row.
+ * Accept and Decline as buttons on each row.
  *
  * The list is unpaginated (`getMyOrganizationInvitations`, or the caller's
  * `load`), so the table is handed the array and pages it in memory. Both
- * verbs re-read the list, and every row action is disabled while one runs.
+ * verbs re-read the list, and every row's buttons are disabled while one
+ * runs.
  *
  * It does not own the page frame: an account area wraps it in
  * `AccountPage variant="table"` (this module must not import `account`),
@@ -161,6 +169,17 @@ export const MyOrganizationInvitations = (
               <span className="text-muted-foreground text-xs">-</span>
             ),
         },
+        inviterName: {
+          label: tr("organizations.invitations.colInvitedBy", {
+            default: "Invited by",
+          }),
+          cell: (invitation) =>
+            invitation.inviterName ? (
+              <span className="truncate text-sm">{invitation.inviterName}</span>
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            ),
+        },
         email: {
           label: tr("organizations.invitations.colEmail", {
             default: "Sent to",
@@ -201,24 +220,43 @@ export const MyOrganizationInvitations = (
               <span className="text-muted-foreground text-xs">-</span>
             ),
         },
-      }}
-      rowActions={(invitation) => [
-        {
-          label: tr("organizations.invitations.accept", { default: "Accept" }),
-          icon: Check,
-          disabled: () => busy,
-          onClick: () => void accept.run(invitation.id),
-        },
-        {
-          label: tr("organizations.invitations.decline", {
-            default: "Decline",
+        /*
+          Accept and Decline are the page's whole purpose, so they sit in the
+          row as buttons rather than behind its "…" menu: one click, and
+          visible without knowing where to look.
+        */
+        actions: {
+          label: tr("organizations.invitations.actions", {
+            default: "Invitation actions",
           }),
-          icon: X,
-          destructive: true,
-          disabled: () => busy,
-          onClick: () => void decline.run(invitation.id),
+          align: "right",
+          cell: (invitation) => (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={busy}
+                onClick={() => void decline.run(invitation.id)}
+              >
+                <X className="size-3.5" />
+                {tr("organizations.invitations.decline", {
+                  default: "Decline",
+                })}
+              </Button>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => void accept.run(invitation.id)}
+              >
+                <Check className="size-3.5" />
+                {tr("organizations.invitations.accept", {
+                  default: "Accept",
+                })}
+              </Button>
+            </div>
+          ),
         },
-      ]}
+      }}
     />
   );
 };

@@ -1,4 +1,5 @@
-import { $pageAccount } from "@alepha/ui/account";
+import { $pageAccount, AccountRouter } from "@alepha/ui/account";
+import { $inject, Alepha } from "alepha";
 import { $client } from "alepha/server/links";
 import {
   Bell,
@@ -13,6 +14,9 @@ import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { NotificationPreferenceController } from "@/api/controllers/NotificationPreferenceController.ts";
+import type { ProjectController } from "@/api/controllers/ProjectController.ts";
+
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 
 /**
  * Lore's own pages inside the shared `/account` area.
@@ -27,15 +31,22 @@ import type { NotificationPreferenceController } from "@/api/controllers/Notific
  * server graph, which `alepha db migrations create` imports under `tsx`, where
  * the classic JSX transform emits a bare `React.createElement`.
  *
- * All three pages take `order: 100`+ in their own `Lore` group, as
+ * Every page takes an order in 100-999 in its own `Lore` group, as
  * `$pageAccount` requires: the built-ins occupy `Account` (1) and `Security`
- * (2-5), and `useNavEntries` sorts groups by their smallest member, so a lower
- * order here would silently reshuffle the shared rail. Projects leads the group
- * at exactly 100 — putting it first cost a renumber of the other two (101,
- * 102) rather than the 99 it would otherwise have taken, which is the number
- * this rule exists to refuse.
+ * (1000-1003), and groups sort by their smallest member, so the Lore group
+ * sits between the two. Projects leads it at exactly 100.
+ *
+ * ⚠️ **`/account` is a root shell, not a child of `AppRouter.layout`** (#E68).
+ * Nothing that layout provides reaches these pages: not its loader (which
+ * fills `userProjectsAtom`), not its `Toaster` or Spotlight. The account
+ * shell brings its own chrome; the atom is filled by {@link loadProjects}.
+ * The 401 redirect is `$secure()` on the account layout, which sends a
+ * signed-out visitor to the `login` route with `?redirect=`.
  */
 export class LoreAccountRouter {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly account = $inject(AccountRouter);
+  protected readonly projectApi = $client<ProjectController>();
   protected readonly invitationApi = $client<InvitationController>();
   protected readonly feedbackApi = $client<FeedbackController>();
   protected readonly estateApi = $client<EstateController>();
@@ -43,18 +54,34 @@ export class LoreAccountRouter {
     $client<NotificationPreferenceController>();
 
   /**
+   * Fills `userProjectsAtom` when nothing has yet.
+   *
+   * `AppRouter.layout`'s loader fills it on every page under that layout,
+   * and a visit that starts there arrives here with the list in memory. A
+   * visit that starts on `/account/*` never runs that loader, since the
+   * account shell is a root of its own, so the pages that read the atom
+   * load it themselves, once.
+   */
+  protected async loadProjects(): Promise<void> {
+    if (!this.alepha.store.get(userProjectsAtom)) {
+      this.alepha.store.set(
+        userProjectsAtom,
+        await this.projectApi.getHomeOverview(),
+      );
+    }
+  }
+
+  /**
    * The complete project list, behind Home's and the switcher's five.
    *
-   * No `loader`: the page reads `userProjectsAtom`, which `getHomeOverview`
-   * already filled at bootstrap. A loader here would refetch a list that is
-   * in memory. Also no `can()` — every signed-in user has projects to list,
-   * even if the list is empty, unlike the two pages below whose endpoints are
-   * permission-gated.
+   * No `can()`: every signed-in user has projects to list, even if the list
+   * is empty, unlike the pages below whose endpoints are permission-gated.
    */
   projects = $pageAccount({
     path: "/projects",
     name: "accountProjects",
-    head: { title: "Projects" },
+    head: this.account.accountHead("Projects"),
+    loader: () => this.loadProjects(),
     nav: {
       label: "Projects",
       icon: createElement(FolderKanban),
@@ -67,7 +94,9 @@ export class LoreAccountRouter {
   invitations = $pageAccount({
     path: "/invitations",
     name: "accountInvitations",
-    head: { title: "Invitations" },
+    head: this.account.accountHead("Invitations"),
+    // `AccountInvitations` reads the atom to find the project it just joined.
+    loader: () => this.loadProjects(),
     can: () => this.invitationApi.listMyInvitations.can(),
     nav: {
       label: "Invitations",
@@ -94,7 +123,7 @@ export class LoreAccountRouter {
   myFeedback = $pageAccount({
     path: "/feedback",
     name: "myFeedback",
-    head: { title: "My feedback" },
+    head: this.account.accountHead("My feedback"),
     can: () => this.feedbackApi.listMyFeedback.can(),
     nav: {
       label: "Feedback",
@@ -124,7 +153,7 @@ export class LoreAccountRouter {
   notifications = $pageAccount({
     path: "/notifications",
     name: "accountNotifications",
-    head: { title: "Notifications" },
+    head: this.account.accountHead("Notifications"),
     can: () => this.notificationApi.getMyNotificationPreferences.can(),
     nav: {
       label: "Notifications",
@@ -138,7 +167,7 @@ export class LoreAccountRouter {
   estates = $pageAccount({
     path: "/estates",
     name: "accountEstates",
-    head: { title: "Estates" },
+    head: this.account.accountHead("Estates"),
     can: () => this.estateApi.listMyEstates.can(),
     nav: {
       label: "Estates",

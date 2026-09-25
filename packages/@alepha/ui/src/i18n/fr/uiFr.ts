@@ -1180,6 +1180,7 @@ export const uiFr: Record<string, string> = {
   "organizations.invitations.colEmail": "Envoyée à",
   "organizations.invitations.colExpires": "Expire",
   "organizations.invitations.colInvitedAt": "Invitation",
+  "organizations.invitations.colInvitedBy": "Invité par",
   "organizations.invitations.colOrganization": "Organisation",
   "organizations.invitations.colRank": "Rang",
   "organizations.invitations.accept": "Accepter",

@@ -139,7 +139,17 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
       <SidebarMenuButton
         isActive={item.active}
         tooltip={typeof item.label === "string" ? item.label : undefined}
-        render={<Link href={item.href ?? "#"} />}
+        /*
+          `aria-current` beside the styling's `data-active`, so a screen
+          reader announces the page the reader is on, and a test can find the
+          lit entry by role rather than by a styling hook.
+        */
+        render={
+          <Link
+            href={item.href ?? "#"}
+            aria-current={item.active ? "page" : undefined}
+          />
+        }
       >
         {renderNavIcon(item.icon, "size-4")}
         <span>{item.label}</span>
@@ -256,7 +266,12 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
               ) : (
                 <SidebarMenuSubButton
                   isActive={child.active}
-                  render={<Link href={child.href ?? "#"} />}
+                  render={
+                    <Link
+                      href={child.href ?? "#"}
+                      aria-current={child.active ? "page" : undefined}
+                    />
+                  }
                 >
                   {renderNavIcon(child.icon, "size-4")}
                   <span>{child.label}</span>

@@ -1,5 +1,5 @@
 import { TimeAgo, Badge, useDialog } from "@alepha/ui";
-import { SettingsHeading } from "@alepha/ui/settings";
+import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
@@ -119,17 +119,7 @@ const MyFeedback = () => {
   } satisfies DataTableFilterFields;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      {/*
-        `SettingsHeading`, not a hand-rolled `<h2>`: every other page in the
-        `/account` rail titles itself through it, and this one used to carry a
-        `text-base font-semibold` heading that made it the odd one out.
-      */}
-      <SettingsHeading
-        title={tr("myFeedback.title")}
-        description={tr("myFeedback.description")}
-      />
-
+    <AccountPage variant="table">
       <DataTable<MyFeedbackResource, typeof filterFields>
         key={tableKey}
         className="min-h-0 flex-1"
@@ -247,7 +237,7 @@ const MyFeedback = () => {
           setEditing(undefined);
         }}
       />
-    </div>
+    </AccountPage>
   );
 };
 

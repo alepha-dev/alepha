@@ -11,9 +11,10 @@ import {
  *
  * Most of what these pages do is covered by framework specs against the
  * controllers. What only an e2e can prove is that the *seam* is wired: that
- * `AccountRouter` mounts inside Lore's own layout, that the rail lists both
- * the framework's five pages and Lore's two, and that the `$pageAccount`
- * extension point actually produces reachable routes.
+ * `AccountRouter` mounts as a root shell (a floating sidebar and its own
+ * topbar, like `/admin`, #E68), that the sidebar lists both the framework's
+ * five pages and Lore's, and that the `$pageAccount` extension point actually
+ * produces reachable routes.
  */
 test.describe("Account area", () => {
   test("lands on the profile and lists both built-in and Lore pages", async ({
@@ -31,10 +32,12 @@ test.describe("Account area", () => {
 
     await expect(page.getByText(email, { exact: true })).toBeVisible();
 
-    // The rail is derived from route `nav` metadata, so this asserts the five
-    // built-ins AND that `$pageAccount` put Lore's three in the same tree.
+    // The sidebar is derived from route `nav` metadata, so this asserts the
+    // five built-ins AND that `$pageAccount` put Lore's pages in the same tree.
+    const sidebar = page.locator('[data-slot="sidebar"]');
     for (const label of [
       "Profile",
+      "Projects",
       "Security",
       "Sessions",
       "API keys",
@@ -45,12 +48,18 @@ test.describe("Account area", () => {
       "Estates",
     ]) {
       await expect(
-        page.getByRole("link", { name: label, exact: true }),
+        sidebar.getByRole("link", { name: label, exact: true }),
       ).toBeVisible();
     }
+
+    // Lore's brand leads the sidebar and is the way home.
+    await expect(page.getByTestId("lore-account-brand")).toHaveAttribute(
+      "href",
+      "/",
+    );
   });
 
-  test("highlights exactly one rail entry per page", async ({ page }) => {
+  test("highlights exactly one sidebar entry per page", async ({ page }) => {
     test.setTimeout(90_000);
 
     /*
@@ -75,8 +84,10 @@ test.describe("Account area", () => {
       ["/account/sessions", "Sessions"],
       ["/account/keys", "API keys"],
       ["/account/connections", "Connected apps"],
+      ["/account/projects", "Projects"],
       ["/account/invitations", "Invitations"],
       ["/account/feedback", "Feedback"],
+      ["/account/notifications", "Notifications"],
       ["/account/estates", "Estates"],
     ];
 
@@ -84,7 +95,9 @@ test.describe("Account area", () => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
 
-      const active = page.locator('nav a[aria-current="page"]');
+      const active = page.locator(
+        '[data-slot="sidebar"] a[aria-current="page"]',
+      );
       await expect(active).toHaveCount(1);
       await expect(active).toHaveText(label);
     }
@@ -202,10 +215,16 @@ test.describe("Account area", () => {
     await page.waitForLoadState("networkidle");
 
     await expect(page.getByText(/this device/i)).toBeVisible();
-    // The row you are sitting in has no Revoke button — signing yourself out
+    // The row you are sitting in has no row menu - signing yourself out
     // belongs to the sign-out affordance, not to a per-row action that reads
-    // as "revoke someone else".
-    await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
+    // as "revoke someone else" - and with one session there is no "Sign out
+    // N others" either.
+    await expect(
+      page.getByRole("button", { name: "Open row actions" }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Sign out/ })).toHaveCount(
+      0,
+    );
   });
 
   test("creates an API key with an expiry, rotates it, revokes it, and reuses its name", async ({
@@ -245,6 +264,19 @@ test.describe("Account area", () => {
           headers: { authorization: `Bearer ${token}` },
         })
       ).status();
+
+    /**
+     * Runs a row action from the key's "…" menu, and confirms it.
+     */
+    const rowAction = async (name: string, action: string) => {
+      await page
+        .getByRole("row")
+        .filter({ hasText: name })
+        .getByRole("button", { name: "Open row actions" })
+        .click();
+      await page.getByRole("menuitem", { name: action }).click();
+      await confirmDialog(page, action);
+    };
 
     await page.goto("/account/keys");
     await page.waitForLoadState("networkidle");
@@ -288,14 +320,13 @@ test.describe("Account area", () => {
 
     // Rotate: a different secret on the same key, and the old one dies at
     // once, not after the validation cache's fifteen minutes.
-    await page.getByRole("button", { name: "Rotate CI pipeline" }).click();
     const rotated = page.waitForResponse(
       (response) =>
         /_batch|rotate/.test(response.url()) &&
         response.request().method() === "POST",
       { timeout: 20_000 },
     );
-    await confirmDialog(page, "Rotate");
+    await rowAction("CI pipeline", "Rotate");
     expect((await rotated).ok()).toBe(true);
     const second = await takeToken();
 
@@ -303,29 +334,25 @@ test.describe("Account area", () => {
     expect(await statusWith(first)).toBe(401);
     expect(await statusWith(second)).toBe(200);
 
-    // Revoke. A revoked key stays listed, in the collapsed "Inactive keys"
-    // section, marked and with nothing left to click: it is the answer to
-    // "why did CI stop working" (#Q2054, #Q2060).
-    await page.getByRole("button", { name: "Revoke CI pipeline" }).click();
+    // Revoke. The key leaves the table's default view (live keys only) but
+    // stays listed by the API, with its status: it is the answer to "why did
+    // CI stop working" (#Q2054, #Q2060).
     const revoked = page.waitForResponse(
       (response) =>
         /_batch|api-keys/.test(response.url()) &&
         ["POST", "DELETE"].includes(response.request().method()),
       { timeout: 20_000 },
     );
-    await confirmDialog(page, "Revoke");
+    await rowAction("CI pipeline", "Revoke");
     expect((await revoked).ok()).toBe(true);
-    await expect(
-      page.getByRole("button", { name: "Revoke CI pipeline" }),
-    ).toHaveCount(0);
+    await expect(page.getByText("CI pipeline", { exact: true })).toHaveCount(0);
     expect(await statusWith(second)).toBe(401);
-
-    await page.getByRole("button", { name: "Show", exact: true }).click();
-    await expect(page.getByText("CI pipeline", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Revoked/)).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Rotate CI pipeline" }),
-    ).toHaveCount(0);
+    const listed = (await (
+      await page.request.get("/api/api-keys")
+    ).json()) as Array<{ name: string; status: string }>;
+    expect(listed.find((key) => key.name === "CI pipeline")?.status).toBe(
+      "revoked",
+    );
 
     // Revoking freed the name: a new key takes it at once (#Q2054's partial
     // unique index, end to end).
@@ -345,9 +372,7 @@ test.describe("Account area", () => {
     const third = await takeToken();
 
     expect(await statusWith(third)).toBe(200);
-    await expect(
-      page.getByRole("button", { name: "Revoke CI pipeline" }),
-    ).toHaveCount(1);
+    await expect(page.getByText("CI pipeline", { exact: true })).toHaveCount(1);
   });
 
   test("refuses to delete the account while an organization is still owned", async ({
@@ -386,25 +411,21 @@ test.describe("Account area", () => {
     await expect(page.getByText(email, { exact: true })).toBeVisible();
   });
 
-  test("keeps content past the fold reachable inside Lore's clipped shell", async ({
-    page,
-  }) => {
+  test("main scrolls and nothing is clipped at 1280x320", async ({ page }) => {
     test.setTimeout(90_000);
 
     /*
-      Regression guard for the `fill` seam. Lore's `Layout.tsx` is
-      `h-svh … overflow-hidden`, so the document never scrolls and every page
-      under it has to own its scroll. `SettingsLayout` defaults to the
-      opposite assumption ("the page scrolls"), which is right when the
-      account area is mounted standalone and silently wrong here: without
-      `fill: true` on `accountRouterOptionsAtom` there is no scrollbar
-      anywhere, and everything below the fold is unreachable rather than
-      merely below it. `/account/feedback` past a dozen rows lost the rest of
-      its table AND its pagination bar this way.
+      The account shell owns the viewport (`h-svh` + `NavShell fill`), so
+      the document never scrolls: `main` is bounded and every page inside it
+      owns its scroll. A form page does it through `AccountPage
+      variant="form"`, a table page through the table body. Were that frame
+      missing, everything past the fold would be unreachable rather than
+      merely below it, which is how `/account/feedback` once lost the rest
+      of its table and its pagination bar.
 
       Asserted through the DOM rather than by looking for a specific row,
       because how much content overflows depends on the page and the viewport
-      — what must hold is that *something* can scroll.
+      - what must hold is that *something* can scroll and nothing is clipped.
     */
     const email = `af-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
@@ -436,6 +457,53 @@ test.describe("Account area", () => {
 
     expect(overflow.clipped).toBe(0);
     expect(overflow.scrollable).toBeGreaterThan(0);
+  });
+
+  test("opens the sidebar as a sheet at phone width, and keeps the account menu", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const email = `am-${Date.now()}@example.com`;
+    await registerAndVerify(page, email, "GoodPassw0rd");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/account");
+    await page.waitForLoadState("networkidle");
+
+    // Docked sidebars do not fit a phone: the trigger opens a sheet.
+    const sheet = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+    await expect(sheet).toHaveCount(0);
+    await page.getByRole("button", { name: /Expand sidebar/ }).click();
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("link", { name: "Security", exact: true }).click();
+    await expect(page).toHaveURL(/\/account\/security$/);
+    // Following a link closes the sheet.
+    await expect(sheet).toHaveCount(0);
+
+    // Language, theme and display mode stay reachable in the account menu.
+    await page.getByLabel("Account menu").click();
+    for (const name of ["Language", "Theme", "Display Mode"]) {
+      await expect(
+        page.getByRole("menuitem", { name, exact: true }),
+      ).toBeVisible();
+    }
+    // And the way out of the account area.
+    await expect(page.getByTestId("account-back-to-site")).toBeVisible();
+  });
+
+  test("sends a signed-out visitor to sign in, and back", async ({ page }) => {
+    /*
+      `/account` is no longer under Lore's root layout, whose `errorHandler`
+      turned a 401 into the login redirect. The account layout's `$secure()`
+      is what does it now: a guarded page denies an anonymous visitor to the
+      route named `login`, carrying the blocked URL.
+    */
+    await page.goto("/account/projects");
+    await expect(page).toHaveURL(
+      /\/auth\/login\?redirect=%2Faccount%2Fprojects/,
+      { timeout: 15_000 },
+    );
   });
 
   test("404s the retired /auth/profile paths", async ({ page }) => {

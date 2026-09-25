@@ -4,7 +4,7 @@ import { $module } from "alepha";
 import { AlephaCrypto } from "alepha/crypto";
 import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
-import { createElement } from "react";
+import { createElement, lazy, Suspense } from "react";
 
 import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 
@@ -62,7 +62,21 @@ export const LoreWebApp = $module({
     // every quest it authored — including inside other people's projects. The
     // framework cannot know that; this fills the dialog's warning slot so the
     // count is stated before the click rather than discovered after it.
+    //
+    // `/account` is a root shell like `/admin` (#E68): not adopted into
+    // `AppRouter.layout`, so its chrome is set here. The brand is Lore's
+    // mark linking home, loaded lazily so the account chrome stays out of
+    // the bundle every page loads; `Suspense` holds the header empty for the
+    // moment the chunk takes.
     alepha.store.set(accountRouterOptionsAtom, {
+      brand: createElement(
+        Suspense,
+        { fallback: null },
+        createElement(
+          lazy(() => import("./components/account/LoreAccountBrand.tsx")),
+        ),
+      ),
+      homeRouteName: "home",
       pages: {
         security: { deleteWarning: createElement(AccountDeleteWarning) },
       },

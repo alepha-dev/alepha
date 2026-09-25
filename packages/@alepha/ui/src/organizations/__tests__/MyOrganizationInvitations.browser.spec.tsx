@@ -62,8 +62,8 @@ class Links extends LinkProvider {
 }
 
 /**
- * The invitations table: a row per pending invitation, Accept and Decline in
- * the row's menu, and the list re-read after either.
+ * The invitations table: a row per pending invitation, Accept and Decline as
+ * buttons on the row, and the list re-read after either.
  */
 describe("MyOrganizationInvitations", () => {
   let alepha: Alepha | undefined;
@@ -72,19 +72,16 @@ describe("MyOrganizationInvitations", () => {
     setupJsdomMocks();
   });
 
-  /** Opens the first row's menu and clicks the named action. */
+  /** Clicks the named button on the first row. */
   const runRowAction = async (label: string) => {
-    fireEvent.click(
-      document.querySelector('[aria-label="Open row actions"]') as HTMLElement,
-    );
-    const entry = await waitFor(() => {
-      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
-        (item) => item.textContent?.includes(label),
+    const button = await waitFor(() => {
+      const found = [...document.querySelectorAll("tbody tr button")].find(
+        (it) => it.textContent?.includes(label),
       );
       expect(found).toBeDefined();
       return found as HTMLElement;
     });
-    fireEvent.click(entry);
+    fireEvent.click(button);
   };
 
   afterEach(async () => {

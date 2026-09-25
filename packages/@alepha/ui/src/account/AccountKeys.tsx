@@ -241,7 +241,8 @@ const AccountKeys = (props: AccountKeysProps) => {
           },
           status: {
             label: tr("account.keys.colStatus", { default: "Status" }),
-            cell: (key) => <ApiKeyStatusBadge apiKey={key} />,
+            // The Expires column beside it carries the date.
+            cell: (key) => <ApiKeyStatusBadge apiKey={key} labelOnly />,
           },
           createdAt: {
             label: tr("account.keys.colCreated", { default: "Created" }),

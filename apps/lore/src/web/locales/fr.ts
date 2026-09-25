@@ -1112,6 +1112,7 @@ export default {
   "quest-log.expand-all": "Tout déplier",
   "quest-log.collapse-panel": "Masquer le journal",
   "quest-log.expand-panel": "Afficher le journal",
+  "account.brand.subtitle": "Compte",
   "account.projects.title": "Projets",
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
@@ -2330,9 +2331,6 @@ export default {
   "dashboard.footer.noBeacon": "aucune app ici ne remonte de pages vues",
 
   // --- /account/feedback ----------------------------------------------------
-  "myFeedback.title": "Retours envoyés",
-  "myFeedback.description":
-    "Les bogues et demandes que vous avez signalés, tous projets confondus. Ceux en attente peuvent encore être modifiés ou retirés.",
   "myFeedback.empty": "Vous n'avez encore envoyé aucun retour.",
   "myFeedback.filter.search.aria": "Rechercher un retour",
   "myFeedback.filter.allStatuses": "Tous les statuts",
