@@ -103,6 +103,26 @@ test.describe("Account area", () => {
     }
   });
 
+  test("lists the projects in a table and opens one", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const email = `apr-${Date.now()}@example.com`;
+    await registerAndVerify(page, email, "GoodPassw0rd");
+    const title = `APR${Date.now()}`.slice(0, 20);
+    const { slug } = await createProjectViaWizard(page, title);
+
+    await page.goto("/account/projects");
+    await page.waitForLoadState("networkidle");
+
+    const row = page.getByRole("row").filter({ hasText: title });
+    await expect(row).toHaveCount(1);
+    await expect(row.getByText("Owner", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("project-quota")).toBeVisible();
+
+    await row.getByTestId("account-project-row").click();
+    await expect(page).toHaveURL(new RegExp(`/${slug}(/|$)`));
+  });
+
   test("renames the account and persists it across a reload", async ({
     page,
   }) => {

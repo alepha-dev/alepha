@@ -1,11 +1,12 @@
-import { Badge, Card, CardContent } from "@alepha/ui";
+import { Badge, TimeAgo } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
-import { SettingsHeading } from "@alepha/ui/settings";
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import { DataTable } from "@alepha/ui/table";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { ChevronRight } from "lucide-react";
+import { FolderKanban, Plus } from "lucide-react";
+
+import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
@@ -13,44 +14,39 @@ import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 
 /**
- * Every project the signed-in user belongs to, owned or joined.
+ * Every project the signed-in user belongs to, owned or joined, as a
+ * `DataTable`.
  *
- * This page adds NO request. It reads `userProjectsAtom`, which
- * `getHomeOverview` already filled at bootstrap with the complete membership
- * list ordered most-recently-updated first — the same array Home slices its
- * five from. Fetching here would be a second copy of data already in memory,
- * and capping the atom to make this page necessary would break `Spotlight`'s
- * client-side project search. See `recentProjectsCap.ts`.
+ * This page adds NO request of its own. It reads `userProjectsAtom`, the
+ * complete membership list `getHomeOverview` returns, which the root layout
+ * fills at bootstrap and `LoreAccountRouter.loadProjects` fills on a visit
+ * that starts under `/account`. It is the same array Home slices its five
+ * from, and capping the atom to make this page fetch would break
+ * `Spotlight`'s client-side project search (see `recentProjectsCap.ts`). The
+ * table is handed the array and pages it in memory.
  *
- * Ownership is a flag on the row, computed server-side from `members.rank`
+ * Ownership is a flag on the row, computed server-side from the member rank
  * in one batched read beside the area and quest counts. It used to compare
  * `project.createdBy` to the viewer, which stopped being an authorization
  * input in epic #E39 - and after an ownership transfer the two disagree.
  *
  * ⚠️ A boolean rather than the rank's name, on purpose: rank names are
  * per-project user data, so two projects can both have an "Admin" that means
- * different things, and a chip on twenty rows would be noise. Ownership is the
- * one fact that compares across projects, and it is the fact this page already
- * needs for the quota line beside it. A member's rank is one click away, on
- * the project, where the matrix explains it.
+ * different things. Ownership is the one fact that compares across projects,
+ * and it is the fact this page already needs for the quota beside it.
  */
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
   const router = useRouter<AppRouter>();
-  const dt = useInject(DateTimeProvider);
 
-  const projects = [...(overview?.projects ?? [])].sort((a, b) =>
-    a.updatedAt > b.updatedAt ? -1 : 1,
-  );
+  const projects = overview?.projects ?? [];
   /*
    * The quota, counted from the same rows the page already shows
    * (feedback #P2146). Both halves come from `getHomeOverview`, which since
    * #Q2013 derives them through `ProjectSecurityService.ownedProjectIds` -
    * the one helper the CREATE path also counts through, so the number here
-   * and the refusal there cannot disagree. Before that fix they did: the
-   * create path counted membership rows with no join, so a reader saw 8 and
-   * was refused at 15.
+   * and the refusal there cannot disagree.
    *
    * ⚠️ Counted from `owner`, not from `projects.length`: this page lists
    * every project you belong to, and the quota is only on the ones you own.
@@ -58,81 +54,113 @@ const MyProjects = () => {
   const owned = projects.filter((project) => project.owner).length;
   const maxProjects = overview?.maxProjects;
 
+  const projectPath = (project: ProjectOverviewResource) =>
+    router.path("project", { params: { projectSlug: project.slug } });
+
   return (
-    <AccountPage variant="form">
-      <SettingsHeading
-        title={tr("account.projects.title")}
-        description={tr("account.projects.description")}
+    <AccountPage variant="table">
+      <DataTable<ProjectOverviewResource>
+        className="min-h-0 flex-1"
+        data={projects}
+        persistenceKey="lor.account.projects"
+        // Every project on one page: an owner is capped well below this, and
+        // the list is the complete set Home's "Show more" promises.
+        defaultSize={100}
+        defaultSort={{ field: "lastActivityAt", direction: "desc" }}
+        onRowClick={(project) => void router.push(projectPath(project))}
+        /*
+          ⚠️ Shown whenever there is a limit, not only near it. A counter that
+          appears at the ceiling is a counter nobody has seen when they were
+          deciding whether to start something - which is the moment it is
+          for. `maxProjects` is always sent, so the guard is for a page
+          rendered before the overview lands.
+        */
+        toolbar={
+          maxProjects !== undefined ? (
+            <span
+              className="text-muted-foreground text-sm"
+              data-testid="project-quota"
+            >
+              {tr("account.projects.quota", {
+                args: [String(owned), String(maxProjects)],
+              })}
+            </span>
+          ) : undefined
+        }
+        actions={
+          overview?.canCreate
+            ? [
+                {
+                  icon: Plus,
+                  label: tr("account.projects.create"),
+                  primary: true,
+                  onClick: () => void router.push("projectCreate"),
+                },
+              ]
+            : []
+        }
+        emptyState={{
+          icon: FolderKanban,
+          title: tr("account.projects.empty"),
+          description: tr("account.projects.description"),
+        }}
+        columns={{
+          title: {
+            label: tr("account.projects.col.project"),
+            sortable: true,
+            cell: (project) => (
+              // A real link, so the project opens in a new tab on a
+              // middle-click; the row click is the same destination.
+              <Link
+                href={projectPath(project)}
+                data-testid="account-project-row"
+                className="flex min-w-0 items-center gap-2 hover:underline"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <ProjectIcon
+                  fileId={project.icon}
+                  alt={project.title}
+                  className="size-5 shrink-0"
+                />
+                <span className="truncate text-sm font-medium">
+                  {project.title}
+                </span>
+              </Link>
+            ),
+          },
+          owner: {
+            label: tr("account.projects.col.role"),
+            sortable: true,
+            cell: (project) => (
+              <Badge variant={project.owner ? "default" : "secondary"}>
+                {project.owner
+                  ? tr("account.projects.owner")
+                  : tr("account.projects.member")}
+              </Badge>
+            ),
+          },
+          openQuestCount: {
+            label: tr("account.projects.col.openQuests"),
+            sortable: true,
+            align: "right",
+            cell: (project) => (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {project.openQuestCount}
+              </span>
+            ),
+          },
+          lastActivityAt: {
+            label: tr("account.projects.col.lastActivity"),
+            sortable: true,
+            cell: (project) => (
+              <TimeAgo
+                value={project.lastActivityAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+        }}
       />
-
-      {/* ⚠️ Shown whenever there is a limit, not only near it. A counter
-          that appears at the ceiling is a counter nobody has seen when they
-          were deciding whether to start something - which is the moment it
-          is for. The other moment is the refusal, and that message already
-          exists on Home and in the switcher.
-
-          `maxProjects` is always sent, so the guard is for a page rendered
-          before the overview lands rather than for a plan without a
-          limit. */}
-      {maxProjects !== undefined && (
-        <p
-          className="text-muted-foreground text-sm"
-          data-testid="project-quota"
-        >
-          {tr("account.projects.quota", {
-            args: [String(owned), String(maxProjects)],
-          })}
-        </p>
-      )}
-
-      {projects.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {tr("account.projects.empty")}
-        </p>
-      ) : (
-        <Card className="p-0">
-          <CardContent className="flex flex-col divide-y p-0">
-            {projects.map((project) => {
-              const owner = project.owner;
-              return (
-                <Link
-                  key={project.id}
-                  href={router.path("project", {
-                    params: { projectSlug: project.slug },
-                  })}
-                  data-testid="account-project-row"
-                  className="hover:bg-hover flex items-center gap-3 px-4 py-3 transition-colors"
-                >
-                  <ProjectIcon
-                    fileId={project.icon}
-                    alt={project.title}
-                    className="size-5 shrink-0"
-                  />
-                  <span className="truncate text-sm font-medium">
-                    {project.title}
-                  </span>
-                  {owner !== undefined && (
-                    <Badge
-                      variant={owner ? "default" : "secondary"}
-                      className="shrink-0"
-                    >
-                      {owner
-                        ? tr("account.projects.owner")
-                        : tr("account.projects.member")}
-                    </Badge>
-                  )}
-                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {tr("account.projects.updated", {
-                      args: [String(dt.of(project.updatedAt).fromNow())],
-                    })}
-                  </span>
-                  <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-                </Link>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
     </AccountPage>
   );
 };

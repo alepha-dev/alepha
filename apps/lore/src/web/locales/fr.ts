@@ -1113,6 +1113,11 @@ export default {
   "quest-log.collapse-panel": "Masquer le journal",
   "quest-log.expand-panel": "Afficher le journal",
   "account.brand.subtitle": "Compte",
+  "account.projects.create": "Nouveau projet",
+  "account.projects.col.project": "Projet",
+  "account.projects.col.role": "Votre rôle",
+  "account.projects.col.openQuests": "Quêtes ouvertes",
+  "account.projects.col.lastActivity": "Dernière activité",
   "account.projects.title": "Projets",
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
@@ -1120,7 +1125,6 @@ export default {
   "account.projects.quota": "$1 projets possédés sur $2",
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
-  "account.projects.updated": "Mis à jour $1",
   "account.projects.see-all": "Tous les projets",
 
   "area.detail.rename": "Renommer",
