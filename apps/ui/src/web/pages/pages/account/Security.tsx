@@ -31,7 +31,7 @@ const Security = () => (
     initialValues={{ realm: true, identities: true, warning: "" }}
   >
     {(v) => (
-      <div className="mx-auto max-w-3xl">
+      <div className="flex flex-col">
         <AccountSecurity
           realmConfig={v.realm ? SHOWCASE_REALM : undefined}
           identities={(v.identities ? SHOWCASE_IDENTITIES : undefined) as never}

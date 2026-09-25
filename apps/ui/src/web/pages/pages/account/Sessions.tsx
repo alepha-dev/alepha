@@ -22,7 +22,7 @@ const Sessions = () => (
     initialValues={{ empty: false }}
   >
     {(v) => (
-      <div className="mx-auto max-w-3xl">
+      <div className="flex h-[36rem] flex-col">
         <AccountSessions
           sessions={(v.empty ? [] : SHOWCASE_SESSIONS) as never}
         />

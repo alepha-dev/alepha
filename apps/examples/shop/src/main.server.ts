@@ -1,8 +1,10 @@
 import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
+import { accountRouterOptionsAtom } from "@alepha/ui/account";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha, run } from "alepha";
 
 import { ShopApi } from "./api/index.ts";
+import { shopAccountOptions } from "./web/accountChrome.tsx";
 import { shopAdminOptions } from "./web/adminChrome.tsx";
 import { ShopWeb } from "./web/index.ts";
 
@@ -50,5 +52,6 @@ if (process.env.STRIPE_SECRET_KEY) {
 alepha.with(ShopApi);
 alepha.with(ShopWeb);
 alepha.set(adminRouterOptionsAtom, shopAdminOptions);
+alepha.set(accountRouterOptionsAtom, shopAccountOptions);
 
 run(alepha);

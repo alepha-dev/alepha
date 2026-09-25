@@ -25,7 +25,7 @@ const Profile = () => (
     initialValues={{ loading: false }}
   >
     {(v) => (
-      <div className="mx-auto max-w-3xl">
+      <div className="flex flex-col">
         <AccountProfile profile={v.loading ? undefined : SHOWCASE_PROFILE} />
       </div>
     )}

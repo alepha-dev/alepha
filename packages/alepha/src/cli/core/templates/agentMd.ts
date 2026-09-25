@@ -21,10 +21,18 @@ registered in \`src/web/index.ts\` and mount pages of their own:
 | \`/admin/*\`   | \`AdminRouter\`   | \`@alepha/ui/admin\`     |
 
 **These pages are not in \`src/web/\`.** Don't write your own login or admin
-screen — extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page
-to the existing nav in one call. Chrome (branding, nav extras, page props)
-goes through \`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
-\`alepha.set(...)\` from **both** \`main.server.ts\` and \`main.browser.ts\`.
+screen - extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page
+to the existing nav in one call (take \`order\` 100-999 in your own \`nav.group\`).
+
+\`/admin\` and \`/account\` are both **root shells** with their own sidebar and
+topbar; \`/account\`'s menu carries "Back to site". Never put
+\`AccountRouter.layout\` in your own layout's \`children\`: each shell mounts its
+own \`Toaster\`, so every toast would show twice. Chrome (\`brand\`,
+\`homeRouteName\`, \`extraNav\`, \`hide\`, page props) goes through
+\`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
+\`alepha.set(...)\` from **both** \`main.server.ts\` and \`main.browser.ts\`. An
+account page frames itself with \`AccountPage\` (\`variant="table"\` or
+\`"form"\`).
 
 \`src/api/Realm.ts\` is the switchboard for all of it:
 

@@ -159,6 +159,19 @@ describe("alepha init --preset", () => {
       expect(web).toContain('from "@alepha/ui/account"');
     });
 
+    it("should mount the account area at the root, never adopted into the app layout", async () => {
+      // The account shell mounts its own Toaster: adopted under the app's
+      // layout, every toast would show twice.
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      const router = await readFile(fs, "/project/src/web/AppRouter.ts");
+      expect(router).not.toContain("account.layout");
+      expect(router).not.toContain("AccountRouter");
+    });
+
     it("should import the react modules the routers depend on", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);

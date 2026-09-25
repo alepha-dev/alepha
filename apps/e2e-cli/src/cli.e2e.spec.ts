@@ -515,6 +515,12 @@ describe("Alepha CLI E2E", () => {
       expect(web).toContain('from "@alepha/ui/account"');
       expect(web).toContain('from "@alepha/ui/admin"');
       expect(web).toContain('from "@alepha/ui/auth"');
+      // A root shell like /admin: nothing adopts its layout.
+      const router = await readFile(
+        join(SAAS_DIR, "src/web/AppRouter.ts"),
+        "utf-8",
+      );
+      expect(router).not.toContain("account.layout");
     });
 
     it("keeps both locally packed packages rather than the published ones", async () => {

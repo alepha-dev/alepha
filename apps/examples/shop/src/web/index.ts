@@ -1,5 +1,5 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
-import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
+import { AccountRouter } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
@@ -67,25 +67,14 @@ export const ShopWeb = $module({
    * configured via `adminRouterOptionsAtom`, set from both `main.server.ts`
    * and `main.browser.ts` (see `./adminChrome.tsx`).
    *
-   * `AccountRouter` is the customer's own `/account` area — profile, security,
-   * sessions, API keys, connections. `AppRouter` adopts its `layout` into the
-   * storefront shell so those pages keep the atelier's header and footer; it is
-   * listed here as well, as the honest declaration of what the app mounts, the
-   * same way `AdminRouter` is despite `$pageAdmin` already pulling it in.
+   * `AccountRouter` is the customer's own `/account` area: profile, security,
+   * sessions, API keys, connections. It is a root shell like `/admin`, with
+   * its own sidebar and a "Back to site" item, never adopted into the
+   * storefront layout (whose `Toaster` would show every toast twice). Its
+   * chrome is `./accountChrome.tsx`, set beside the admin one.
    */
   services: [AppRouter, AuthRouter, AdminRouter, AccountRouter, ShopI18n],
   register: (alepha) => {
-    /*
-     * The account shell's "Back to site" pushes `home` by default, and the
-     * storefront root is named `accueil` (its property key), as
-     * `adminChrome.tsx` already says for `/admin`.
-     *
-     * Set here rather than in `main.*.ts` (where the admin options live)
-     * because this value carries no JSX: `register` runs in both the server and
-     * the browser container, so one call covers both.
-     */
-    alepha.store.set(accountRouterOptionsAtom, { homeRouteName: "accueil" });
-
     // French is the atelier's own language, so it is the fallback rather than
     // the framework's default of English. `autoDetect` stays on: a first-time
     // visitor whose browser asks for English gets English, and the choice is
