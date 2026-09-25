@@ -985,16 +985,18 @@ test.describe("account API keys", () => {
 
     // The live keys: one with no expiry, one inside its warning window.
     await expect(page.getByText("CLI on my laptop")).toBeVisible();
-    await expect(page.getByText("No expiry")).toBeVisible();
+    await expect(
+      page.getByRole("row").filter({ hasText: "CLI on my laptop" }),
+    ).toContainText("Never");
     await expect(page.getByText("CI pipeline")).toBeVisible();
 
-    // The dead ones sit in the collapsed section, each with its badge.
+    // The dead ones are filtered out by default (the status filter starts on
+    // the live keys); clearing it lists them, each with its badge.
     await expect(page.getByText("Nightly import")).toHaveCount(0);
-    await page.getByRole("button", { name: "Show", exact: true }).click();
+    await page.getByRole("button", { name: "Clear value: Status" }).click();
     await expect(page.getByText("Nightly import")).toBeVisible();
-    // Not the section's own description, "Expired and revoked keys, ...".
-    await expect(page.getByText(/^Expired(?! and)/)).toBeVisible();
-    await expect(page.getByText(/^Revoked/)).toBeVisible();
+    await expect(page.getByText("Expired", { exact: true })).toBeVisible();
+    await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: /new key/i }).click();
     const dialog = page.getByRole("dialog").filter({ hasText: "New API key" });
