@@ -1142,6 +1142,11 @@ export default {
   "quest-log.collapse-panel": "Hide quest log",
   "quest-log.expand-panel": "Show quest log",
   "account.brand.subtitle": "Account",
+  "account.projects.create": "New project",
+  "account.projects.col.project": "Project",
+  "account.projects.col.role": "Your role",
+  "account.projects.col.openQuests": "Open quests",
+  "account.projects.col.lastActivity": "Last activity",
   "account.projects.title": "Projects",
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
@@ -1149,7 +1154,6 @@ export default {
   "account.projects.quota": "$1 of $2 projects owned",
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
-  "account.projects.updated": "Updated $1",
   "account.projects.see-all": "All projects",
 
   "area.detail.rename": "Rename",
