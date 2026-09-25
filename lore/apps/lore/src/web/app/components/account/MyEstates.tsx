@@ -1,4 +1,5 @@
 import { Button, useToast } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -102,7 +103,7 @@ const MyEstates = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <AccountPage variant="form">
       {/* ⚠️ Rendered whatever the count, which is what lets the create row
           live INSIDE it (feedback #P2140). The card used to close after the
           last estate and drop a lone button below it, and with no estates at
@@ -190,7 +191,7 @@ const MyEstates = () => {
         secret={freshSecret}
         onDismiss={() => setFreshSecret(undefined)}
       />
-    </div>
+    </AccountPage>
   );
 };
 

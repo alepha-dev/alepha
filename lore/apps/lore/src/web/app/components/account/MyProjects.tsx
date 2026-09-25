@@ -1,4 +1,5 @@
 import { Badge, Card, CardContent } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { SettingsHeading } from "@alepha/ui/settings";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
@@ -58,7 +59,7 @@ const MyProjects = () => {
   const maxProjects = overview?.maxProjects;
 
   return (
-    <div className="flex flex-col gap-6">
+    <AccountPage variant="form">
       <SettingsHeading
         title={tr("account.projects.title")}
         description={tr("account.projects.description")}
@@ -132,7 +133,7 @@ const MyProjects = () => {
           </CardContent>
         </Card>
       )}
-    </div>
+    </AccountPage>
   );
 };
 

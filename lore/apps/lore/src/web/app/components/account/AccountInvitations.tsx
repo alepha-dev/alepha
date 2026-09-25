@@ -1,3 +1,4 @@
+import { AccountPage } from "@alepha/ui/account";
 import { MyOrganizationInvitations } from "@alepha/ui/organizations";
 import { useAlepha, useClient } from "alepha/react";
 import { useRouter } from "alepha/react/router";
@@ -22,6 +23,10 @@ const AccountInvitations = () => {
       organizationId: invitation.organizationId,
       organizationName: invitation.projectTitle,
       email: invitation.email,
+      rank: invitation.rank,
+      inviterName: invitation.inviterName,
+      createdAt: invitation.createdAt,
+      expiresAt: invitation.expiresAt,
     }));
   }, [invitationApi]);
   const accept = useCallback(
@@ -57,12 +62,15 @@ const AccountInvitations = () => {
   );
 
   return (
-    <MyOrganizationInvitations
-      load={load}
-      accept={accept}
-      decline={decline}
-      onAccepted={onAccepted}
-    />
+    <AccountPage variant="table">
+      <MyOrganizationInvitations
+        className="min-h-0 flex-1"
+        load={load}
+        accept={accept}
+        decline={decline}
+        onAccepted={onAccepted}
+      />
+    </AccountPage>
   );
 };
 

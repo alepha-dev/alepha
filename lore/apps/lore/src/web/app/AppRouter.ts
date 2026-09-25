@@ -204,7 +204,6 @@ export class AppRouter {
       this.projectCreate,
       this.projectFeedbackRequest,
       this.projectRoadmap,
-      this.account.layout,
       this.notFound,
     ],
     // No `ssr` here on purpose. The shell is shared by anonymous pages (home,

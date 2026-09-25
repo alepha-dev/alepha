@@ -101,8 +101,8 @@ test.describe("Home (mobile chrome)", () => {
     }
 
     /*
-     * ⚠️ And the account area, which is `@alepha/ui`'s own `AccountHeader`:
-     * it draws `ButtonSettings` with the kit's catalogue labels, which in
+     * ⚠️ And the account area, a root shell of `@alepha/ui`'s own whose
+     * topbar draws `ButtonSettings` with the kit's catalogue labels, which in
      * English are the same three. It is where a phone reader changed language
      * and theme when the header still hid them as buttons, so it has to keep
      * offering them.

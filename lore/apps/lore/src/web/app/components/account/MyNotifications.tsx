@@ -1,4 +1,5 @@
 import { Switch } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import {
   SettingsHeading,
   SettingsRow,
@@ -89,7 +90,7 @@ const MyNotifications = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <AccountPage variant="form">
       <SettingsHeading
         title={tr("account.notifications.title")}
         description={tr("account.notifications.description")}
@@ -138,7 +139,7 @@ const MyNotifications = () => {
           </SettingsRow>
         ))}
       </SettingsSection>
-    </div>
+    </AccountPage>
   );
 };
 

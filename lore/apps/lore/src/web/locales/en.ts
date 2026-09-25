@@ -1141,6 +1141,7 @@ export default {
   "quest-log.expand-all": "Expand all",
   "quest-log.collapse-panel": "Hide quest log",
   "quest-log.expand-panel": "Show quest log",
+  "account.brand.subtitle": "Account",
   "account.projects.title": "Projects",
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
@@ -2353,9 +2354,6 @@ export default {
   "dashboard.footer.noBeacon": "no app here reports page views",
 
   // --- /account/feedback ----------------------------------------------------
-  "myFeedback.title": "Submitted feedback",
-  "myFeedback.description":
-    "Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn.",
   "myFeedback.empty": "You haven't submitted any feedback yet.",
   "myFeedback.filter.search.aria": "Search feedback",
   "myFeedback.filter.allStatuses": "All statuses",
