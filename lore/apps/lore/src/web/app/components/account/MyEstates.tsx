@@ -1,10 +1,10 @@
-import { Button, useToast } from "@alepha/ui";
+import { Badge, Button, TimeAgo, useToast } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
-import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
+import { DataTable } from "@alepha/ui/table";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Plus } from "lucide-react";
+import { Cloud, Plus, Server } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
@@ -15,7 +15,6 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import MyEstateCreateDialog from "./MyEstateCreateDialog.tsx";
 import MyEstateDrawer from "./MyEstateDrawer.tsx";
-import MyEstateRow from "./MyEstateRow.tsx";
 import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
 
 /**
@@ -32,9 +31,10 @@ import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
  *
  * ## The shape, and why it changed
  *
- * A list of compact rows, a create dialog, a detail drawer, and the secret in
- * a dialog of its own - the shape `@alepha/ui`'s `AccountKeys.tsx` already
- * uses, adopted here for feedback #2110 and #2109 together.
+ * A `DataTable` (#E68), a create dialog opened from its toolbar, a detail
+ * drawer, and the secret in a dialog of its own - the shape `@alepha/ui`'s
+ * `AccountKeys.tsx` uses, adopted here for feedback #2110 and #2109
+ * together. The list is unpaginated, so the table pages it in memory.
  *
  * It was: an always-present create card, then one fully expanded card per
  * estate carrying the switches, the interval, the loans, the commands and
@@ -54,7 +54,7 @@ import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
  * be closed.
  */
 const MyEstates = () => {
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
   const toaster = useToast();
   const router = useRouter<AppRouter>();
   const api = useClient<EstateController>();
@@ -103,48 +103,25 @@ const MyEstates = () => {
   };
 
   return (
-    <AccountPage variant="form">
-      {/* ⚠️ Rendered whatever the count, which is what lets the create row
-          live INSIDE it (feedback #P2140). The card used to close after the
-          last estate and drop a lone button below it, and with no estates at
-          all there was no card - so the one control on the page sat on its
-          own against the background. `AccountKeys.tsx` is the shape being
-          matched, down to the section rather than a hand-rolled `Card`. */}
-      <SettingsSection
-        title={tr("account.estates.title")}
-        description={tr("account.estates.description")}
-      >
-        {(items ?? []).map((estate) => (
-          <MyEstateRow
-            key={estate.id}
-            estate={estate}
-            // ⚠️ Two behaviours in one list, stated here rather than left to
-            // be discovered: a `bay` row opens its console, which is where
-            // its switches, apps and actions live now; a `cloudflare` row
-            // keeps the drawer until #E22 gives it a page of its own.
-            onOpen={() =>
-              estate.type === "bay"
-                ? void router.push("bay", {
-                    params: { estateId: estate.id },
-                  })
-                : setOpenId(estate.id)
-            }
-          />
-        ))}
-
-        {/* The last row, and the empty state: with no estates it is the only
-            row, exactly as "Create a key" is on API keys. That replaced a
-            paragraph telling a reader with no secret in hand to run
-            `bay connector set` - the command belongs where it can be
-            followed, and the secret dialog already carries it in full, with
-            its arguments. */}
-        <SettingsRow
-          // The dialog's title, reused deliberately: the row and the dialog
-          // it opens name the same act, and a second copy of the phrase is a
-          // second thing to translate and to keep in step.
-          label={tr("account.estates.create")}
-          description={tr("account.estates.create.description")}
-        >
+    <AccountPage variant="table">
+      <DataTable<OwnedEstateResource>
+        className="min-h-0 flex-1"
+        data={items ?? []}
+        rowKey={(estate) => estate.id}
+        // ⚠️ Two behaviours in one list, stated here rather than left to be
+        // discovered: a `bay` row opens its console, which is where its
+        // switches, apps and actions live; a `cloudflare` row keeps the
+        // drawer until #E22 gives it a page of its own.
+        onRowClick={(estate) =>
+          estate.type === "bay"
+            ? void router.push("bay", { params: { estateId: estate.id } })
+            : setOpenId(estate.id)
+        }
+        // A labelled button in the toolbar slot rather than a `TableAction`,
+        // which carries no test id: e2e and the browser spec open the dialog
+        // through `estate-create-open`. "New estate" here, "Create" on the
+        // dialog's submit: this opens a form, it does not perform the act.
+        toolbar={
           <Button
             variant="solid"
             intent="none"
@@ -153,13 +130,163 @@ const MyEstates = () => {
             data-testid="estate-create-open"
           >
             <Plus className="size-4" />
-            {/* "New estate" here, "Create" on the dialog's submit: the page
-                button opens a form, it does not perform the action. Same split
-                `AccountKeys.tsx` makes between "New key" and "Create". */}
             {tr("account.estates.new")}
           </Button>
-        </SettingsRow>
-      </SettingsSection>
+        }
+        // With no estates the empty state names the act the toolbar button
+        // performs, the way "Create a key" did on API keys (feedback #P2140).
+        emptyState={{
+          icon: Server,
+          title: tr("account.estates.create"),
+          description: tr("account.estates.create.description"),
+        }}
+        columns={{
+          type: {
+            label: tr("account.estates.col.kind"),
+            sortable: true,
+            cell: (estate) => (
+              <span className="flex items-center gap-1.5 text-xs">
+                {estate.type === "cloudflare" ? (
+                  <Cloud className="text-muted-foreground size-4 shrink-0" />
+                ) : (
+                  <Server className="text-muted-foreground size-4 shrink-0" />
+                )}
+                {estate.type}
+              </span>
+            ),
+          },
+          /*
+            The row's test id sits on this cell: the table draws the `tr`,
+            and a click here bubbles to the row's own handler. The masked
+            prefix names the credential; the credential itself is gone and
+            cannot be shown again (`MyEstateSecretDialog`).
+          */
+          slug: {
+            label: tr("account.estates.col.estate"),
+            sortable: true,
+            cell: (estate) => (
+              <div
+                className="flex min-w-0 flex-col gap-0.5"
+                data-testid="my-estate-row"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <span className="truncate" data-testid="my-estate-slug">
+                    {estate.slug}
+                  </span>
+                  {estate.label && (
+                    <span className="text-muted-foreground truncate text-xs font-normal">
+                      {estate.label}
+                    </span>
+                  )}
+                </span>
+                <span className="text-muted-foreground truncate text-xs">
+                  {estate.secretPrefix &&
+                    (estate.type === "cloudflare"
+                      ? tr("account.estates.tokenPrefix", {
+                          args: [estate.secretPrefix],
+                        })
+                      : tr("account.estates.secretPrefix", {
+                          args: [estate.secretPrefix],
+                        }))}
+                  {estate.secretPrefix && " · "}
+                  {estate.type === "cloudflare"
+                    ? estate.credentialCheckedAt
+                      ? tr("estates.credential.checked", {
+                          args: [
+                            l(estate.credentialCheckedAt, { date: "lll" }),
+                          ],
+                        })
+                      : tr("estates.credential.neverChecked")
+                    : estate.lastSeenAt
+                      ? tr("estates.lastSeen", {
+                          args: [l(estate.lastSeenAt, { date: "lll" })],
+                        })
+                      : tr("estates.neverSeen")}
+                  {/* Only a `bay` estate reports an inventory. From the
+                      denormalised count on the inventory row, so this costs
+                      no JSON parsing and wakes no machine. Absent is
+                      "nothing reported", never "0 apps". */}
+                  {estate.type === "bay" && (
+                    <>
+                      {" · "}
+                      {estate.inventory
+                        ? tr("account.estates.inventory", {
+                            args: [
+                              String(estate.inventory.appCount),
+                              l(estate.inventory.reportedAt, {
+                                date: "fromNow",
+                              }),
+                            ],
+                          })
+                        : tr("account.estates.inventory.none")}
+                    </>
+                  )}
+                </span>
+              </div>
+            ),
+          },
+          /*
+            A cloudflare account never connects, so `online` is always false
+            on it and says nothing. What a person needs there is whether the
+            credential still works (#1630).
+          */
+          status: {
+            label: tr("account.estates.col.status"),
+            cell: (estate) => (
+              <span className="flex flex-wrap items-center gap-1.5">
+                {estate.type === "cloudflare" ? (
+                  <Badge
+                    variant={
+                      estate.credentialStatus === "valid"
+                        ? "default"
+                        : "destructive"
+                    }
+                    data-testid="my-estate-credential-status"
+                  >
+                    {estate.credentialStatus === "valid"
+                      ? tr("estates.credential.valid")
+                      : tr("estates.credential.invalid")}
+                  </Badge>
+                ) : (
+                  <Badge variant={estate.online ? "default" : "outline"}>
+                    {estate.online
+                      ? tr("estates.online")
+                      : tr("estates.offline")}
+                  </Badge>
+                )}
+                <Badge variant="secondary">
+                  {estate.deployAllowed
+                    ? tr("estates.deploys.allowed")
+                    : tr("estates.deploys.statsOnly")}
+                </Badge>
+              </span>
+            ),
+          },
+          projects: {
+            label: tr("account.estates.col.lentTo"),
+            sortable: true,
+            sortValue: (estate) => estate.projects.length,
+            align: "right",
+            cell: (estate) => (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {tr("account.estates.lentTo", {
+                  args: [String(estate.projects.length)],
+                })}
+              </span>
+            ),
+          },
+          createdAt: {
+            label: tr("account.estates.col.created"),
+            sortable: true,
+            cell: (estate) => (
+              <TimeAgo
+                value={estate.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            ),
+          },
+        }}
+      />
 
       <MyEstateCreateDialog
         open={createOpen}
