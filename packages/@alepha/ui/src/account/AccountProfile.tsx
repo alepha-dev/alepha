@@ -18,6 +18,7 @@ import { useToast } from "../core/useToast.tsx";
 import { AutoForm } from "../form/AutoForm.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
+import { AccountPage } from "./AccountPage.tsx";
 
 export interface AccountProfileProps {
   /**
@@ -202,7 +203,7 @@ const AccountProfile = (props: AccountProfileProps) => {
   const canEditAvatar = avatarApi.updateMyAvatar.can();
 
   return (
-    <>
+    <AccountPage variant="form">
       {canEditAvatar && (
         <>
           <SettingsSection
@@ -368,7 +369,7 @@ const AccountProfile = (props: AccountProfileProps) => {
           </span>
         </SettingsRow>
       </SettingsSection>
-    </>
+    </AccountPage>
   );
 };
 

@@ -10,6 +10,7 @@ import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
+import { AccountPage } from "./AccountPage.tsx";
 
 export interface AccountConnectionsProps {
   connections?: MyConnection[];
@@ -98,63 +99,67 @@ const AccountConnections = (props: AccountConnectionsProps) => {
   }
 
   return (
-    <SettingsSection
-      title={tr("account.connections.title", { default: "Connected apps" })}
-      description={tr("account.connections.description", {
-        default: "Applications that can act on your behalf.",
-      })}
-    >
-      {connections.map((connection) => (
-        <SettingsRow
-          key={connection.id}
-          label={
-            <span className="flex items-center gap-2">
-              {connection.clientName}
-              {connection.current ? (
-                <span className="text-muted-foreground text-xs">
-                  {tr("account.connections.current", { default: "(this one)" })}
-                </span>
-              ) : null}
-            </span>
-          }
-          description={
-            tr("account.connections.connectedAt", {
-              default: "Connected $1",
-              args: [dt.of(connection.createdAt).fromNow()],
-            }) +
-            (connection.lastUsedAt
-              ? tr("account.connections.lastUsedAt", {
-                  default: " · last used $1",
-                  args: [dt.of(connection.lastUsedAt).fromNow()],
-                })
-              : tr("account.connections.neverUsed", {
-                  default: " · never used",
-                })) +
-            /*
+    <AccountPage variant="form">
+      <SettingsSection
+        title={tr("account.connections.title", { default: "Connected apps" })}
+        description={tr("account.connections.description", {
+          default: "Applications that can act on your behalf.",
+        })}
+      >
+        {connections.map((connection) => (
+          <SettingsRow
+            key={connection.id}
+            label={
+              <span className="flex items-center gap-2">
+                {connection.clientName}
+                {connection.current ? (
+                  <span className="text-muted-foreground text-xs">
+                    {tr("account.connections.current", {
+                      default: "(this one)",
+                    })}
+                  </span>
+                ) : null}
+              </span>
+            }
+            description={
+              tr("account.connections.connectedAt", {
+                default: "Connected $1",
+                args: [dt.of(connection.createdAt).fromNow()],
+              }) +
+              (connection.lastUsedAt
+                ? tr("account.connections.lastUsedAt", {
+                    default: " · last used $1",
+                    args: [dt.of(connection.lastUsedAt).fromNow()],
+                  })
+                : tr("account.connections.neverUsed", {
+                    default: " · never used",
+                  })) +
+              /*
               ⚠️ Said out loud, not hidden. Since the list groups by client
               one row can stand for several authorizations, and a reader
               deciding whether to disconnect should know how many go with
               it. Omitted at one, which is every ordinary case - "1 session"
               on every row would be noise.
             */
-            (connection.sessionCount > 1
-              ? tr("account.connections.sessionCount", {
-                  default: " · $1 sessions",
-                  args: [String(connection.sessionCount)],
-                })
-              : "")
-          }
-        >
-          <Button
-            variant="minimal"
-            size="sm"
-            onClick={() => revoke(connection)}
+              (connection.sessionCount > 1
+                ? tr("account.connections.sessionCount", {
+                    default: " · $1 sessions",
+                    args: [String(connection.sessionCount)],
+                  })
+                : "")
+            }
           >
-            {tr("account.connections.revoke", { default: "Disconnect" })}
-          </Button>
-        </SettingsRow>
-      ))}
-    </SettingsSection>
+            <Button
+              variant="minimal"
+              size="sm"
+              onClick={() => revoke(connection)}
+            >
+              {tr("account.connections.revoke", { default: "Disconnect" })}
+            </Button>
+          </SettingsRow>
+        ))}
+      </SettingsSection>
+    </AccountPage>
   );
 };
 

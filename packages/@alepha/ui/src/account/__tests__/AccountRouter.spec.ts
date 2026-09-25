@@ -247,6 +247,40 @@ describe("AccountRouter", () => {
     }
   });
 
+  /**
+   * Group order is a contract: personal first, the application's groups in
+   * 100-999, security parked at 1000 and up, so an application page at the
+   * conventional `order: 100` sorts between the two built-in groups.
+   */
+  it("parks Account at 1 and Security at 1000 and up", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AccountRouter);
+    await alepha.start();
+
+    const orderOf = (page: PagePrimitive) =>
+      (page.options.nav as NavMeta | undefined)?.order;
+
+    expect(orderOf(router.profile)).toBe(1);
+    expect(
+      [router.security, router.sessions, router.keys, router.connections].map(
+        orderOf,
+      ),
+    ).toEqual([1000, 1001, 1002, 1003]);
+  });
+
+  it("titles every tab 'Account - <Page>'", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AccountRouter);
+    await alepha.start();
+
+    const titleOf = (page: PagePrimitive) =>
+      (page.options.head as () => { title: string })().title;
+
+    expect(titleOf(router.profile)).toBe("Account - Profile");
+    expect(titleOf(router.keys)).toBe("Account - API keys");
+    expect(router.accountTitle("Projects")).toBe("Account - Projects");
+  });
+
   it("does not collide with the admin router's route names", async () => {
     /*
       The reason every name here is prefixed. `AdminRouter` claims `sessions`

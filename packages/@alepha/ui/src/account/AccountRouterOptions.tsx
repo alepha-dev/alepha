@@ -1,6 +1,7 @@
 import { $atom, z } from "alepha";
 import type { ReactNode } from "react";
 
+import type { NavGroup } from "../shell/appShellNav.tsx";
 import type { AccountConnectionsProps } from "./AccountConnections.tsx";
 import type { AccountKeysProps } from "./AccountKeys.tsx";
 import type { AccountProfileProps } from "./AccountProfile.tsx";
@@ -11,49 +12,80 @@ import type { AccountSessionsProps } from "./AccountSessions.tsx";
  * Everything an application can change about `AccountRouter` without writing
  * its own.
  *
- * The seam is narrower than the admin one, and deliberately so — an account
- * area is a handful of forms, not a console. An application wanting different
- * URLs or a different page set writes its own router; the same trade
- * `AuthRouter` documents.
+ * The chrome slots mirror `AdminRouterOptions`, because the account area is
+ * the same kind of shell: a root `NavShell` with its own sidebar and topbar,
+ * never adopted into the application's layout. The page seam is narrower: an
+ * application wanting different URLs or a different page set writes its own
+ * router, the same trade `AuthRouter` documents.
+ *
+ * There is no `header` and no `fill` any more. Both existed for an account
+ * area nested inside the application's chrome (#F111), which is no longer a
+ * way to mount it: the shell owns the viewport, so it has nothing to bound
+ * and no second header to suppress.
  */
 export interface AccountRouterOptions {
   /**
-   * Replaces the default {@link AccountHeader} — the back link plus the
-   * ambient controls — entirely. Supply the whole bar, not an addition to it.
+   * Sidebar header. Defaults to `AccountBrand`: the signed-in user's avatar
+   * and name, the account area being theirs.
    *
-   * Set it to `null` for an account area nested inside an application's own
-   * chrome, where a second header would just be a second row of the same
-   * controls.
+   * ⚠️ **It must handle the sidebar collapsing to an icon rail itself**, the
+   * same contract as `AdminRouterOptions.brand`: keep whatever reads as an
+   * icon, hide the words with `group-data-[collapsible=icon]:hidden`.
    */
-  header?: ReactNode;
+  brand?: ReactNode;
 
   /**
-   * Route name the default header's back link points at. Ignored when
-   * `header` is supplied, since that replaces the link too.
+   * Replaces the default account cluster (`ButtonSettings`: language, theme,
+   * display mode and the way back to the site) entirely when set. Supply the
+   * whole cluster, not an addition to it.
+   *
+   * The ⌘K search affordance is not part of the cluster and always renders:
+   * the Spotlight state it opens lives inside the layout.
+   */
+  topbarActions?: ReactNode;
+
+  /**
+   * Route name the account menu's "Back to site" item pushes: the way out of
+   * a shell that, like `/admin`, is not drawn inside the application's own
+   * chrome.
    *
    * @default "home"
    */
   homeRouteName?: string;
 
   /**
+   * Route name the account menu's sign-in affordance pushes, for an
+   * application mounting its auth pages under another name than
+   * `AuthRouter`'s `login`. See `AdminRouterOptions.loginRouteName` for why
+   * it answers this one button and not the router.
+   *
+   * @default "login"
+   */
+  loginRouteName?: string;
+
+  /**
+   * Set `false` to keep the shell from mounting `<ColorScheme />`.
+   *
+   * The shell mounts it because `/account` is a root shell, not a child of
+   * the application's layout, so nothing else would apply the dark-mode
+   * class to `<html>`. An application whose host document owns that class
+   * itself turns this off.
+   *
+   * @default true
+   */
+  colorScheme?: boolean;
+
+  /**
+   * Nav groups appended after the route-derived ones, for entries that map to
+   * no route. Forwarded to `NavShell`'s own `extraNav`.
+   */
+  extraNav?: NavGroup[];
+
+  /**
    * Extra class(es) merged onto the shell's root element, for an account area
    * living inside a document the application does not fully own.
    */
   className?: string;
-
-  /**
-   * Bound the account area to its parent's height and let its content column
-   * scroll, rather than relying on the document to scroll.
-   *
-   * Set it whenever the application adopts `AccountRouter.layout` into a shell
-   * that has taken the viewport height and hidden its overflow — the common
-   * `h-svh … overflow-hidden` app frame. Without it those pages have no
-   * scrollbar at all in such a shell, and everything past the fold is
-   * unreachable rather than merely below.
-   *
-   * @default false — the account area scrolls with the document.
-   */
-  fill?: boolean;
 
   /**
    * Props forwarded to the pages, keyed by page.
@@ -100,7 +132,7 @@ export interface AccountRouterOptions {
    * alepha.set(accountRouterOptionsAtom, { hide: ["connections"] });
    * ```
    */
-  hide?: AccountPage[];
+  hide?: AccountPageName[];
 }
 
 /**
@@ -109,7 +141,7 @@ export interface AccountRouterOptions {
  * Named rather than inlined so {@link AccountRouterOptions.hide} and the
  * router's own helper cannot drift apart on a rename.
  */
-export type AccountPage =
+export type AccountPageName =
   | "profile"
   | "security"
   | "sessions"
@@ -128,7 +160,7 @@ export type AccountPage =
  */
 export const accountRouterOptionsAtom = $atom({
   name: "alepha.ui.account.router.options",
-  description: "Chrome slot and per-page props for the account router.",
+  description: "Chrome slots and per-page props for the account router.",
   schema: z.custom<AccountRouterOptions>(),
   default: {} satisfies AccountRouterOptions,
 });

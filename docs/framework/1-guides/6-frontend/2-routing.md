@@ -394,25 +394,32 @@ Three routers ship whole surfaces you can mount instead of rebuilding:
 `$pageAdmin` and `$pageAccount` are `$pageNav` already parented to their shell,
 so one call adds a page to the shared sidebar with no separate registration -
 the shell reads each page's own `nav` metadata. Both follow the same rules:
-take `order: 100` or above (or your own `nav.group`) so you don't reshuffle the
-built-in entries, and gate with `can: () => this.someApi.someAction.can()`
-rather than `permission` alone, because a permission is self-declaring and
-stays granted over an API that was never mounted.
+put your pages in your own `nav.group` at `order: 100` to `999`, where they
+sort between the shell's built-in groups (the built-ins are parked at 1 and at
+1000 and up), and gate with `can: () => this.someApi.someAction.can()` rather
+than `permission` alone, because a permission is self-declaring and stays
+granted over an API that was never mounted.
 
-`AdminRouter` stands alone at the root by design. `AccountRouter` goes either
-way - mount it and `/account` is a root route, or adopt its layout into your
-own shell with `children`, which is the `children` case above:
+Both shells are root routes with their own chrome: a `NavShell` sidebar
+derived from the route subtree, a topbar with a ⌘K search scoped to the shell,
+and the account menu. `/account`'s sidebar floats, and its menu carries a
+"Back to site" item. Do not adopt either layout into your own layout's
+`children`: each mounts its own `Toaster`, so every toast would show twice.
+Configure the chrome through the options atom instead:
 
 ```typescript
-class AppRouter {
-  protected account = $inject(AccountRouter);
+import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
 
-  layout = $page({
-    children: () => [this.home, this.account.layout, this.notFound],
-    lazy: () => import("./Layout.tsx"),
-  });
-}
+alepha.set(accountRouterOptionsAtom, {
+  brand: <MyBrand />, // defaults to the user's avatar and name
+  homeRouteName: "home", // where "Back to site" goes
+  hide: ["connections"], // pages this application does not offer
+});
 ```
+
+An account page frames itself with `AccountPage`: `variant="table"` for a
+`DataTable` that fills the area, `variant="form"` for a centred column of
+cards.
 
 ## Error Handling
 

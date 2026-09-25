@@ -924,6 +924,10 @@ export const uiFr: Record<string, string> = {
   "admin.users.viewProfile": "Voir le profil",
 
   // ─── The account kit (components/account/*) ───────────────────────────────
+  // The account sidebar's default header, under the user's name.
+  "account.brand.subtitle": "Compte",
+  // The browser tab of every account page, around the page's own title.
+  "account.title": "Compte - $1",
   "account.connections.connectedAt": "Connectée $1",
   "account.connections.current": "(celle-ci)",
   "account.connections.description":
@@ -949,7 +953,6 @@ export const uiFr: Record<string, string> = {
   "account.delete.error": "Impossible de supprimer votre compte",
   "account.delete.submit": "Supprimer le compte",
   "account.delete.title": "Supprimer votre compte",
-  "account.header.back": "Retour au site",
   "account.keys.access": "Accès",
   "account.keys.accessFull": "Accès complet",
   "account.keys.accessFullHint":
@@ -1049,6 +1052,7 @@ export const uiFr: Record<string, string> = {
   "account.mfa.turnOn": "Activer",
   // The account rail's own chrome, same mechanism as `admin.nav.*`.
   "account.nav.account": "Compte",
+  "account.nav.backToSite": "Retour au site",
   "account.nav.connections": "Applications connectées",
   "account.nav.group.account": "Compte",
   "account.nav.group.security": "Sécurité",

@@ -1,4 +1,4 @@
-import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
+import { AccountRouter } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
@@ -41,20 +41,4 @@ export const TotpWeb = $module({
   name: "totp.web",
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
   services: [AppRouter, AuthRouter, AccountRouter, AdminRouter],
-  register: (alepha) => {
-    /*
-     * No second header on the account pages.
-     *
-     * `AccountRouter` ships one for an area mounted standalone at the root.
-     * This app adopts its layout into `AppRouter.layout`, which already renders
-     * the theme and account controls, so the default would paint a second row
-     * of the same buttons under the first. `null` is the documented value for
-     * that case, and `AccountLayout` tests `!== undefined` precisely so it can
-     * tell "nested, drop the bar" from "not configured".
-     *
-     * Set in `register` rather than in `main.*.ts` because this value carries
-     * no JSX, so one call covers both containers.
-     */
-    alepha.store.set(accountRouterOptionsAtom, { header: null });
-  },
 });

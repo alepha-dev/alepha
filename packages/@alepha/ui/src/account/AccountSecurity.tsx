@@ -26,6 +26,7 @@ import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
 import { AccountDeleteDialog } from "./AccountDeleteDialog.tsx";
 import { AccountMfaDialog } from "./AccountMfaDialog.tsx";
+import { AccountPage } from "./AccountPage.tsx";
 import { AccountPasswordDialog } from "./AccountPasswordDialog.tsx";
 import { AccountRecoveryCodesDialog } from "./AccountRecoveryCodesDialog.tsx";
 
@@ -213,7 +214,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
   };
 
   return (
-    <>
+    <AccountPage variant="form">
       <SettingsSection
         title={tr("account.security.methodsTitle", {
           default: "Sign-in methods",
@@ -402,7 +403,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
         warning={props.deleteWarning}
         onDeleted={() => auth.logout()}
       />
-    </>
+    </AccountPage>
   );
 };
 

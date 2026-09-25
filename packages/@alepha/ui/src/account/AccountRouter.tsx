@@ -1,4 +1,4 @@
-import { $store } from "alepha";
+import { $inject, $store } from "alepha";
 import type { ApiKeyController } from "alepha/api/keys";
 import type {
   MyConnectionController,
@@ -7,6 +7,7 @@ import type {
   MySessionController,
   RealmController,
 } from "alepha/api/users";
+import { I18nProvider } from "alepha/react/i18n";
 import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
 import { KeyRound, Plug, RadioTower, ShieldCheck, User } from "lucide-react";
@@ -14,7 +15,7 @@ import { createElement } from "react";
 
 import { $pageNav } from "../shell/$pageNav.tsx";
 import {
-  type AccountPage,
+  type AccountPageName,
   accountRouterOptionsAtom,
 } from "./AccountRouterOptions.tsx";
 
@@ -40,46 +41,31 @@ import {
  * });
  * ```
  *
- * ### It needs `<DialogProvider>` and `<Toaster />` above it
+ * ### A root shell, like `/admin`
  *
- * `account-sessions` and `account-connections` call `useDialog()`, which
- * throws `useDialog requires <DialogProvider>` on the first confirm, and both
- * raise toasts. Neither this shell nor `AdminLayout` mounts either provider,
- * on purpose: a second `<Toaster />` under an application that already has
- * one shows every toast twice, and that is a worse failure than a clear
- * throw because nothing points at the cause.
+ * {@link AccountRouter.layout} is a root `$page`: registering the service
+ * puts `/account` at the root of the application, drawn by `AccountLayout`,
+ * a full-viewport `NavShell` with a floating sidebar, its own topbar and a
+ * way back to the site. It is **not** adopted into the application's own
+ * layout any more. Its `AppShell` mounts `DialogProvider`, `Toaster` and
+ * `ActionErrorToaster` itself, so an application that still put
+ * `this.account.layout` among its layout's `children`, under a layout with
+ * its own `Toaster`, would show every toast twice.
  *
- * `AppShell` already mounts both, so an application built on it has nothing
- * to do. Mounting these pages **standalone**, or under `AppShell` with
- * `embedded` (which skips both wrappers), means supplying them:
- *
- * ```tsx
- * <DialogProvider>
- *   <Toaster />
- *   {children}
- * </DialogProvider>
- * ```
- *
- * The same applies to `AdminRouter`, for the same components.
- *
- * ### Mount it standalone, or inside your own layout
- *
- * {@link AccountRouter.layout} is a root `$page`, so registering the service
- * puts `/account` at the root with only the `header` slot for chrome. An
- * application that wants it *inside* its own header and footer adds
- * `accountRouter.layout` to that layout's `children`:
+ * The chrome is configured on `accountRouterOptionsAtom` (`brand`,
+ * `topbarActions`, `homeRouteName`, `loginRouteName`, `colorScheme`,
+ * `extraNav`), mirroring `adminRouterOptionsAtom`:
  *
  * ```ts
- * layout = $page({
- *   children: () => [this.home, this.account.layout, this.notFound],
- *   lazy: () => import("./Layout.tsx"),
+ * alepha.set(accountRouterOptionsAtom, {
+ *   brand: <MyBrand />,
+ *   homeRouteName: "home",
  * });
  * ```
  *
- * `ReactPageProvider` excludes an adopted page from the root set, so it
- * renders nested. This is why the options atom has no `parent` field: a
- * boot-time atom carrying a `PagePrimitive` would be order-fragile, and the
- * mechanism already exists.
+ * A page frames itself with `AccountPage`: `variant="table"` for a
+ * `DataTable` filling the area, `variant="form"` for a centred column of
+ * cards.
  *
  * ### Every page is mounted; none is conditionally registered
  *
@@ -111,14 +97,60 @@ import {
  *
  * ### Extending the shell
  *
- * `$pageAccount` is the one-call way to add a page. Take `order: 100` or
- * above, or declare your own `nav.group` — the built-ins occupy `Account`
- * (order 1) and `Security` (orders 2-5), and `useNavEntries` sorts groups by
- * their smallest member, so a page at a lower order silently reshuffles the
- * shared rail.
+ * `$pageAccount` is the one-call way to add a page.
+ *
+ * ### Group order is a contract
+ *
+ * Three bands, personal first, then the application, then security:
+ *
+ * - `Account` (Profile) at order 1;
+ * - the application's own groups at 100-999;
+ * - `Security` (Security, Sessions, API keys, Connected apps) parked at
+ *   1000-1003.
+ *
+ * `useNavEntries` sorts groups by their smallest member, so a page at
+ * `order: 100` with its own `nav.group` sorts between the two built-in
+ * groups without asking, and only an order of 1000 or more sinks it in among
+ * the security pages.
+ *
+ * ### Tab titles
+ *
+ * Every built-in page's head is {@link AccountRouter.accountHead}:
+ * `Account - <Page>` in the reader's language, the way `adminHead` titles
+ * the admin console.
  */
 export class AccountRouter {
   protected readonly options = $store(accountRouterOptionsAtom);
+  protected readonly i18n = $inject(I18nProvider);
+
+  /**
+   * The head of an account page: `Account - <Page>` in the browser tab.
+   *
+   * A function, evaluated when the page renders, so the tab follows the
+   * reader's language: `key` names the page's title in the catalogue (the
+   * built-ins pass their nav `labelKey`), `title` is the English fallback,
+   * and the prefix is `account.title`. The layout cannot add the prefix
+   * itself, for the reason `AdminRouter.adminHead` gives: `HeadProvider`
+   * would join the two as "Profile - Account".
+   */
+  public accountHead(title: string, key?: string): () => { title: string } {
+    return () => ({
+      title: this.accountTitle(
+        key ? this.i18n.tr(key, { default: title }) : title,
+      ),
+    });
+  }
+
+  /**
+   * `Account - <title>`, the prefix in the reader's language
+   * (`account.title`). The title itself is used as given.
+   */
+  public accountTitle(title: string): string {
+    return this.i18n.tr("account.title", {
+      default: "Account - $1",
+      args: [title],
+    });
+  }
 
   /**
    * Whether the application has declared it does not offer this page.
@@ -128,7 +160,7 @@ export class AccountRouter {
    * `AccountRouterOptions.hide` for the page this exists for and why `can`
    * alone cannot answer it.
    */
-  protected hidden(page: AccountPage): boolean {
+  protected hidden(page: AccountPageName): boolean {
     return this.options.hide?.includes(page) ?? false;
   }
 
@@ -163,7 +195,7 @@ export class AccountRouter {
     parent: this.layout,
     path: "/",
     name: "accountProfile",
-    head: { title: "Profile" },
+    head: this.accountHead("Profile", "account.nav.profile"),
     can: () => !this.hidden("profile") && this.profileApi.getMyProfile.can(),
     nav: {
       label: "Profile",
@@ -199,7 +231,7 @@ export class AccountRouter {
     parent: this.layout,
     path: "/security",
     name: "accountSecurity",
-    head: { title: "Security" },
+    head: this.accountHead("Security", "account.nav.security"),
     can: () =>
       !this.hidden("security") && this.identityApi.listMyIdentities.can(),
     nav: {
@@ -208,7 +240,7 @@ export class AccountRouter {
       icon: createElement(ShieldCheck),
       group: "Security",
       groupKey: "account.nav.group.security",
-      order: 2,
+      order: 1000,
       keywords: ["password", "identities", "sign-in", "delete account"],
     },
     /*
@@ -232,7 +264,7 @@ export class AccountRouter {
     parent: this.layout,
     path: "/sessions",
     name: "accountSessions",
-    head: { title: "Sessions" },
+    head: this.accountHead("Sessions", "account.nav.sessions"),
     can: () => !this.hidden("sessions") && this.sessionApi.listMySessions.can(),
     nav: {
       label: "Sessions",
@@ -240,7 +272,7 @@ export class AccountRouter {
       icon: createElement(RadioTower),
       group: "Security",
       groupKey: "account.nav.group.security",
-      order: 3,
+      order: 1001,
       keywords: ["devices", "sign out"],
     },
     loader: async () => ({ sessions: await this.sessionApi.listMySessions() }),
@@ -252,7 +284,7 @@ export class AccountRouter {
     parent: this.layout,
     path: "/keys",
     name: "accountKeys",
-    head: { title: "API keys" },
+    head: this.accountHead("API keys", "account.nav.keys"),
     can: () => !this.hidden("keys") && this.apiKeyApi.listApiKeys.can(),
     nav: {
       label: "API keys",
@@ -260,7 +292,7 @@ export class AccountRouter {
       icon: createElement(KeyRound),
       group: "Security",
       groupKey: "account.nav.group.security",
-      order: 4,
+      order: 1002,
       keywords: ["tokens", "credentials"],
     },
     loader: async () => ({ apiKeys: await this.apiKeyApi.listApiKeys() }),
@@ -272,7 +304,7 @@ export class AccountRouter {
     parent: this.layout,
     path: "/connections",
     name: "accountConnections",
-    head: { title: "Connected apps" },
+    head: this.accountHead("Connected apps", "account.nav.connections"),
     can: () =>
       !this.hidden("connections") && this.connectionApi.listMyConnections.can(),
     nav: {
@@ -281,7 +313,7 @@ export class AccountRouter {
       icon: createElement(Plug),
       group: "Security",
       groupKey: "account.nav.group.security",
-      order: 5,
+      order: 1003,
       keywords: ["oauth", "mcp", "integrations"],
     },
     loader: async () => ({

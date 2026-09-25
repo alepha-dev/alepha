@@ -1,100 +1,91 @@
 import { useStore } from "alepha/react";
-import { NestedView } from "alepha/react/router";
+import { useI18n } from "alepha/react/i18n";
+import { ColorScheme } from "alepha/react/ui";
+import { Search } from "lucide-react";
+import { useState } from "react";
 
-import { DialogProvider, useHasDialogProvider } from "../core/useDialog.tsx";
-import { SettingsLayout } from "../settings/SettingsLayout.tsx";
-import { SettingsNav } from "../settings/SettingsNav.tsx";
-import { useNavEntries } from "../shell/useNavEntries.ts";
-import { AccountHeader } from "./AccountHeader.tsx";
+import { cn } from "../core/utils.ts";
+import { ButtonSettings } from "../shell/ButtonSettings.tsx";
+import { NavShell } from "../shell/NavShell.tsx";
+import { Spotlight } from "../shell/Spotlight.tsx";
+import { AccountBackToSiteMenuItem } from "./AccountBackToSiteMenuItem.tsx";
+import { AccountBrand } from "./AccountBrand.tsx";
 import { accountRouterOptionsAtom } from "./AccountRouterOptions.tsx";
 
 /**
- * The account shell: a centred column with a settings rail, deliberately not
- * the admin console's chrome.
+ * The account shell: the account counterpart of `AdminLayout`, a root,
+ * full-viewport `NavShell` with a floating sidebar and its own topbar.
  *
- * The rail is derived from the route subtree anchored at `account` — every
- * page carries its own `nav`, so there is no hand-synced list and a page
- * added with `$pageAccount` appears without registering anywhere.
+ * The sidebar and breadcrumbs are derived from the route subtree anchored at
+ * `account`: every page carries its own `nav`, so a page added with
+ * `$pageAccount` appears without registering anywhere.
  *
- * Two things this does *not* do, both on purpose:
+ * It is a root shell, never adopted into the application's layout, and that
+ * decides four things:
  *
- * - **No `<ColorScheme />`.** `AdminLayout` mounts one because `/admin` is
- *   never a child of the application's layout, so nothing else would apply
- *   the dark-mode class to `<html>`. This shell is normally adopted *into*
- *   the application's own layout (see `AccountRouter`'s `children` note), and
- *   an application mounting it standalone is already supplying `header` and
- *   owns its chrome. A second component writing to `<html>` would be the
- *   surprise, not the service.
- * - **No scroll container by default.** The page scrolls, and a nested
- *   `overflow-auto` would strand the sticky rail against the wrong scroll
- *   root. An application whose own shell has already taken the viewport
- *   height and hidden its overflow has no page scroll to lend, and opts in
- *   with `fill` on the options atom — see `SettingsLayout`.
- *
- * `useNavEntries` returns entries already filtered by `can` and permission,
- * and sorted by group then order — and its `NavEntry` is structurally a
- * superset of `SettingsNavItem`, so it passes straight through. That is safe
- * here specifically because none of these routes is parameterised: see
- * `SettingsNav` for why it takes resolved items rather than a route name.
+ * - `<ColorScheme />` is mounted here, because nothing else above `/account`
+ *   applies the dark-mode class to `<html>`. `colorScheme: false` opts out.
+ * - `AppShell` (not `embedded`) mounts `DialogProvider`, `Toaster` and
+ *   `ActionErrorToaster`, so the pages' `useDialog()` and toasts work with no
+ *   provider from the application. An application that still adopted this
+ *   layout under its own `Toaster` would show every toast twice, which is
+ *   why adoption is no longer a way to mount it.
+ * - `h-svh` on the wrapper plus `fill` on `NavShell` bounds `main`, so a
+ *   table page scrolls its own body and a form page (`AccountPage
+ *   variant="form"`) scrolls its column, while the sidebar and topbar stay.
+ * - The topbar is `AdminLayout`'s arrangement: a ⌘K trigger for a Spotlight
+ *   scoped to `account`, then `ButtonSettings`. The trigger renders outside
+ *   the replaceable `topbarActions` cluster, since its open state lives here.
+ *   The menu's way out is `AccountBackToSiteMenuItem`, not the admin item
+ *   `AdminLayout` relabels: that one is gated on `admin:ui`, so most people
+ *   in `/account` would never see it. The admin item stays "Admin Panel".
  */
 export const AccountLayout = () => {
   const [options] = useStore(accountRouterOptionsAtom);
-  const entries = useNavEntries({ root: "account" });
-  /*
-   * `account-security` and `account-sessions` call
-   * `useDialog()`, which throws without a provider above it. The shell left
-   * that to the application so an `AppShell` would not end up with two, but
-   * an application that mounts this router standalone - as the `saas` preset
-   * does - had no way to add one either, and the two pages crashed on open
-   * with a stack trace. Supplied here only when nothing above has already.
-   */
-  const provided = useHasDialogProvider();
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const { tr } = useI18n();
 
-  const layout = (
-    <SettingsLayout
-      className={options.className}
-      fill={options.fill}
-      /*
-        `!== undefined`, not `??`. `null ?? x` yields `x`, so nullish
-        coalescing would silently ignore `header: null` — the documented way
-        to say "this account area is nested in my own chrome, draw no bar".
-        Absent means default; explicit null means none.
-      */
-      header={
-        options.header !== undefined ? (
-          options.header
-        ) : (
-          <AccountHeader homeRouteName={options.homeRouteName} />
-        )
-      }
-      /*
-        `size="default"` so this rail and `apps/lore`'s project-settings one
-        are the same size as well as the same component. `default` rather than
-        the `sm` this used to take because the metrics both rails borrow are
-        `SidebarMenuButton`'s, and the sidebar itself renders at `default`.
-      */
-      nav={
-        <SettingsNav
-          /*
-            The rail groups by `item.group`, which is the raw
-            key ("Account", "Security"), while `useNavEntries` has already
-            resolved `groupLabel` through the dictionary. Without this the
-            headings stayed English on a French account area whose every
-            other word was translated.
-          */
-          items={entries.map((entry) => ({
-            ...entry,
-            group: entry.groupLabel ?? entry.group,
-          }))}
-          size="default"
-        />
-      }
-    >
-      <NestedView />
-    </SettingsLayout>
+  return (
+    <div className={cn("flex h-svh flex-col", options.className)}>
+      {options.colorScheme !== false && <ColorScheme />}
+      <NavShell
+        root="account"
+        variant="floating"
+        fill
+        extraNav={options.extraNav}
+        brand={options.brand ?? <AccountBrand />}
+        topbarActions={
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setSpotlightOpen(true)}
+              className="text-muted-foreground hover:bg-hover hover:text-foreground hidden h-8 items-center gap-2 rounded-md border px-2 text-sm transition-colors sm:flex"
+            >
+              <Search className="size-4 shrink-0" />
+              <span>{tr("nav.spotlight.search", { default: "Search…" })}</span>
+              <kbd className="bg-muted text-muted-foreground pointer-events-none ml-2 hidden rounded px-1.5 font-mono text-[10px] md:inline">
+                ⌘K
+              </kbd>
+            </button>
+            <div
+              aria-hidden="true"
+              className="bg-border mx-1 h-5 w-px shrink-0"
+            />
+            {options.topbarActions ?? (
+              <ButtonSettings loginRouteName={options.loginRouteName}>
+                <AccountBackToSiteMenuItem routeName={options.homeRouteName} />
+              </ButtonSettings>
+            )}
+          </div>
+        }
+      />
+      <Spotlight
+        root="account"
+        open={spotlightOpen}
+        onOpenChange={setSpotlightOpen}
+      />
+    </div>
   );
-
-  return provided ? layout : <DialogProvider>{layout}</DialogProvider>;
 };
 
 export default AccountLayout;

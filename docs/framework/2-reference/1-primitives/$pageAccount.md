@@ -16,8 +16,8 @@ a call site, but it is a plain function wrapping `$pageNav`, which wraps
 `$page`. Nothing about its lifecycle differs from declaring `$page`
 yourself.
 
-The page appears in the rail with no separate registration: the layout
-reads `useNavEntries({ root: "account" })`, which walks the parent chain
+The page appears in the sidebar with no separate registration: the layout
+is `NavShell root="account"`, which walks the parent chain
 and reads each page's own `nav`.
 
 **Calling this registers `AccountRouter`.** Declaring even one page this
@@ -26,10 +26,15 @@ an account page without the account area around it is not a thing. That is
 the intended reading, but it is a real side effect: an application wanting
 `/account` to carry only its own pages must build its own layout instead.
 
-**Take `order: 100` or above, or declare your own `nav.group`.** The
-built-ins occupy `Account` (order 1) and `Security` (orders 2-5), and
-`useNavEntries` sorts groups by their smallest member, so a page at a lower
-order silently reshuffles the shared rail.
+**Take an order between 100 and 999, in your own `nav.group`.** The
+built-ins occupy `Account` (order 1) and `Security` (orders 1000-1003), and
+`useNavEntries` sorts groups by their smallest member, so the application's
+groups sit between the two: personal first, then the application, then
+security. An order below 100 competes with Profile, one of 1000 or more
+sinks the page in among the security pages.
+
+**Frame the page with `AccountPage`**: `variant="table"` for a `DataTable`
+that fills the area, `variant="form"` for a centred column of cards.
 
 **Gate with `can: () => this.someApi.someAction.can()`, not `permission`
 alone.** A permission named by this page's own `$secure` is self-declaring:

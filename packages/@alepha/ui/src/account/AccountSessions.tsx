@@ -10,6 +10,7 @@ import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
+import { AccountPage } from "./AccountPage.tsx";
 
 export interface AccountSessionsProps {
   sessions?: MySession[];
@@ -157,71 +158,79 @@ const AccountSessions = (props: AccountSessionsProps) => {
   const others = sessions.filter((it) => !it.current).length;
 
   return (
-    <SettingsSection
-      title={tr("account.sessions.title", { default: "Active sessions" })}
-      description={tr("account.sessions.description", {
-        default: "Revoke any session you do not recognise.",
-      })}
-    >
-      {sessions.map((session) => (
-        <SettingsRow
-          key={session.id}
-          label={
-            <span className="flex items-center gap-2">
-              <Circle
-                aria-hidden
-                className={
-                  session.current
-                    ? "size-2 fill-green-500 text-green-500"
-                    : "fill-muted-foreground text-muted-foreground size-2"
-                }
-              />
-              {deviceIcon(session)}
-              {label(session)}
-              {session.current ? (
-                <span className="text-muted-foreground text-xs">
-                  {tr("account.sessions.current", { default: "(this device)" })}
-                </span>
-              ) : null}
-            </span>
-          }
-          description={description(session)}
-        >
-          {session.current ? null : (
-            <Button variant="minimal" size="sm" onClick={() => revoke(session)}>
-              {tr("account.sessions.revoke", { default: "Revoke" })}
-            </Button>
-          )}
-        </SettingsRow>
-      ))}
-
-      {others > 0 ? (
-        <SettingsRow
-          label={tr("account.sessions.revokeOthers", {
-            default: "Sign out everywhere else",
-          })}
-          description={tr("account.sessions.revokeOthersHint", {
-            default: "Ends every session except this one.",
-          })}
-        >
-          <Button
-            variant="outlined"
-            intent="danger"
-            size="sm"
-            onClick={revokeOthers}
+    <AccountPage variant="form">
+      <SettingsSection
+        title={tr("account.sessions.title", { default: "Active sessions" })}
+        description={tr("account.sessions.description", {
+          default: "Revoke any session you do not recognise.",
+        })}
+      >
+        {sessions.map((session) => (
+          <SettingsRow
+            key={session.id}
+            label={
+              <span className="flex items-center gap-2">
+                <Circle
+                  aria-hidden
+                  className={
+                    session.current
+                      ? "size-2 fill-green-500 text-green-500"
+                      : "fill-muted-foreground text-muted-foreground size-2"
+                  }
+                />
+                {deviceIcon(session)}
+                {label(session)}
+                {session.current ? (
+                  <span className="text-muted-foreground text-xs">
+                    {tr("account.sessions.current", {
+                      default: "(this device)",
+                    })}
+                  </span>
+                ) : null}
+              </span>
+            }
+            description={description(session)}
           >
-            {others === 1
-              ? tr("account.sessions.signOutOne", {
-                  default: "Sign out 1 other",
-                })
-              : tr("account.sessions.signOutMany", {
-                  default: "Sign out $1 others",
-                  args: [String(others)],
-                })}
-          </Button>
-        </SettingsRow>
-      ) : null}
-    </SettingsSection>
+            {session.current ? null : (
+              <Button
+                variant="minimal"
+                size="sm"
+                onClick={() => revoke(session)}
+              >
+                {tr("account.sessions.revoke", { default: "Revoke" })}
+              </Button>
+            )}
+          </SettingsRow>
+        ))}
+
+        {others > 0 ? (
+          <SettingsRow
+            label={tr("account.sessions.revokeOthers", {
+              default: "Sign out everywhere else",
+            })}
+            description={tr("account.sessions.revokeOthersHint", {
+              default: "Ends every session except this one.",
+            })}
+          >
+            <Button
+              variant="outlined"
+              intent="danger"
+              size="sm"
+              onClick={revokeOthers}
+            >
+              {others === 1
+                ? tr("account.sessions.signOutOne", {
+                    default: "Sign out 1 other",
+                  })
+                : tr("account.sessions.signOutMany", {
+                    default: "Sign out $1 others",
+                    args: [String(others)],
+                  })}
+            </Button>
+          </SettingsRow>
+        ) : null}
+      </SettingsSection>
+    </AccountPage>
   );
 };
 

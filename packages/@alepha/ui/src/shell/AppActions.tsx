@@ -80,7 +80,7 @@ export interface AppActionsProps {
  * The ambient controls as four buttons: language, theme, dark mode, account.
  *
  * ⚠️ **The kit's own shells no longer use it.** `AdminLayout`,
- * `AccountHeader` and Lore's header draw `ButtonSettings`, which folds
+ * `AccountLayout` and Lore's header draw `ButtonSettings`, which folds
  * the three settings into the account menu once signed in, and renders this
  * same row with `placement="buttons"`.
  *

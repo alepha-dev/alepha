@@ -23,6 +23,7 @@ import { useToast } from "../core/useToast.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
 import { AccountKeysRow } from "./AccountKeysRow.tsx";
+import { AccountPage } from "./AccountPage.tsx";
 import { ApiKeyCreateDialog } from "./ApiKeyCreateDialog.tsx";
 
 export interface AccountKeysProps {
@@ -145,7 +146,7 @@ const AccountKeys = (props: AccountKeysProps) => {
   };
 
   return (
-    <>
+    <AccountPage variant="form">
       <SettingsSection
         title={tr("account.keys.title", { default: "API keys" })}
         description={tr("account.keys.description", {
@@ -285,7 +286,7 @@ const AccountKeys = (props: AccountKeysProps) => {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </AccountPage>
   );
 };
 
