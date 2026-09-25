@@ -240,7 +240,7 @@ worth, so it is a decision about that, not a feature.
 
 ### After enrolment: the console
 
-Once the machine has said hello, `/bay/<estate>` in Lore is what an operator reads: the host's
+Once the machine has said hello, `/account/estates/<estate>` in Lore is what an operator reads: the host's
 memory, disk and load, every instance with its state, release, memory, restarts and backup
 freshness, and the commands anyone has queued with what came back. Its Apps table also answers the
 one question this host cannot answer alone - an instance Lore expects here that the machine did not

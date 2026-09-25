@@ -116,7 +116,7 @@ test.describe("Estates", () => {
     /*
      * ⚠️ A `bay` row opens its CONSOLE, not the drawer (#E37). The switches,
      * the loans, the commands and both destructive actions moved to
-     * `/bay/:estateId/settings` when the machine got pages of its own, and
+     * `/account/estates/:estateId/settings` (#E68) when the machine got pages of its own, and
      * the restart form that used to sit in the drawer went with them: a verb
      * belongs on the instance it names, not on a free-text pair of fields.
      *
@@ -125,9 +125,17 @@ test.describe("Estates", () => {
      * but `bay`, so there is no such estate to make here.
      */
     await row.click();
-    await page.waitForURL(/\/bay\/[0-9a-f-]{36}/, { timeout: 15_000 });
+    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
+      timeout: 15_000,
+    });
     await expect(page.getByTestId("my-estate-drawer")).toHaveCount(0);
     await expect(page.getByText("ovh-1").first()).toBeVisible();
+    // A detail page inside the account shell (#E68): the sidebar keeps
+    // Estates as its one lit entry, never Profile, whose `/account` is a
+    // prefix of every path here too.
+    await expect(
+      page.locator('[data-slot="sidebar"] a[aria-current="page"]'),
+    ).toHaveText("Estates");
     // Nothing has ever connected, so the console says so rather than drawing
     // empty gauges.
     await expect(
@@ -135,8 +143,11 @@ test.describe("Estates", () => {
     ).toBeVisible({ timeout: 15_000 });
 
     // The switch follows the server's answer, not the click.
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
-    await page.waitForURL(/\/bay\/[0-9a-f-]{36}\/settings/, {
+    await page
+      .getByTestId("bay-tabs")
+      .getByRole("link", { name: "Settings", exact: true })
+      .click();
+    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}\/settings/, {
       timeout: 15_000,
     });
     await page.getByTestId("bay-settings-deploys").click();
@@ -161,8 +172,13 @@ test.describe("Estates", () => {
     // back here, because the console cannot stay open over an estate that no
     // longer exists.
     await reloadedRow.click();
-    await page.waitForURL(/\/bay\/[0-9a-f-]{36}/, { timeout: 15_000 });
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
+      timeout: 15_000,
+    });
+    await page
+      .getByTestId("bay-tabs")
+      .getByRole("link", { name: "Settings", exact: true })
+      .click();
     await page.getByTestId("bay-settings-delete").click();
     const dialog = page.locator('[role="alertdialog"], [role="dialog"]').last();
     await expect(dialog).toContainText("Nothing is undeployed");

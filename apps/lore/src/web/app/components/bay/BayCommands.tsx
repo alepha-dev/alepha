@@ -1,4 +1,5 @@
 import { Badge, useToast } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
@@ -96,7 +97,7 @@ const BayCommands = (props: BayCommandsProps) => {
   } satisfies DataTableFilterFields;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <AccountPage variant="table">
       <DataTable<EstateCommandListItem, typeof filterFields>
         className="min-h-0 flex-1"
         data={items}
@@ -201,7 +202,7 @@ const BayCommands = (props: BayCommandsProps) => {
           },
         }}
       />
-    </div>
+    </AccountPage>
   );
 };
 

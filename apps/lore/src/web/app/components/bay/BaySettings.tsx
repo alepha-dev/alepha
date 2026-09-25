@@ -6,6 +6,7 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -177,7 +178,7 @@ const BaySettings = () => {
   const detach = detachAction.run;
 
   return (
-    <div className="flex flex-col gap-4">
+    <AccountPage variant="form" className="gap-4">
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4 text-sm">
@@ -327,7 +328,7 @@ const BaySettings = () => {
         secret={freshSecret}
         onDismiss={() => setFreshSecret(undefined)}
       />
-    </div>
+    </AccountPage>
   );
 };
 

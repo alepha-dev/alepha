@@ -3,7 +3,7 @@ import { $atom } from "alepha";
 import { ownedEstateResourceSchema } from "@/api/schemas/ownedEstateResourceSchema.ts";
 
 /**
- * The estate whose console is open, set by the `/bay/:estateId` loader and
+ * The estate whose console is open, set by the `/account/estates/:estateId` loader and
  * cleared on the way out.
  *
  * An atom rather than loader props because the shell renders the header and

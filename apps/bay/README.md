@@ -195,7 +195,7 @@ would suppress exactly the `console.log` you just added.
 
 A Bay connected to Lore pushes what `bay status --json` computes, on its
 report interval and after every command that changes something, and Lore
-renders it at `/bay/:estateId`. `computeStatus` is one function with two
+renders it at `/account/estates/:estateId`. `computeStatus` is one function with two
 callers for that reason: a second copy of the backup-staleness rule would
 drift invisibly, since each copy looks right on its own.
 

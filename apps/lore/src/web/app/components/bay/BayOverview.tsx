@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -40,7 +41,7 @@ const BayOverview = () => {
   const host = inventory?.host;
 
   return (
-    <div className="flex flex-col gap-4">
+    <AccountPage variant="form" className="max-w-5xl gap-4">
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -161,7 +162,7 @@ const BayOverview = () => {
       </Card>
 
       <BayStatsChart />
-    </div>
+    </AccountPage>
   );
 };
 

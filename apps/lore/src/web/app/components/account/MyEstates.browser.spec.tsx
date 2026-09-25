@@ -163,7 +163,7 @@ describe("MyEstates", () => {
 
   /**
    * ⚠️ **Two behaviours in one list since the bay console landed (#E37).** A
-   * `bay` row navigates to `/bay/:estateId`, where its switches, apps and
+   * `bay` row navigates to `/account/estates/:estateId`, where its switches, apps and
    * actions now live; a `cloudflare` row keeps the drawer until #E22 gives it
    * a page of its own. This spec pins the drawer half, which is the one that
    * still exists here.
