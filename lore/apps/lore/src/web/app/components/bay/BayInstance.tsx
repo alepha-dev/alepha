@@ -1,4 +1,5 @@
 import { Badge, Card, CardContent, formatBytes } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 
@@ -67,7 +68,7 @@ const BayInstance = () => {
   const reported = row.reported ? row : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
+    <AccountPage variant="form" className="max-w-5xl gap-4">
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -243,7 +244,7 @@ const BayInstance = () => {
       )}
 
       <BayLogTail app={app} env={env} />
-    </div>
+    </AccountPage>
   );
 };
 

@@ -1,4 +1,5 @@
 import { Badge, formatBytes } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -53,7 +54,7 @@ const BayApps = () => {
   const rows = bayInstanceRows(data);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <AccountPage variant="table">
       <DataTable<BayInstanceRow>
         className="min-h-0 flex-1"
         data={rows}
@@ -265,7 +266,7 @@ const BayApps = () => {
           })
         }
       />
-    </div>
+    </AccountPage>
   );
 };
 

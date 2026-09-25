@@ -1768,6 +1768,7 @@ export default {
   "bay.settings.rotate.warning":
     "Rotating revokes the current secret immediately. The machine is refused on its next dial and stays offline until you run `bay connector set` on it again with the new one.",
   "bay.open": "Open console",
+  "bay.back": "All estates",
   "estates.online": "online",
   "estates.offline": "offline",
   "estates.deploys.allowed": "deploys allowed",

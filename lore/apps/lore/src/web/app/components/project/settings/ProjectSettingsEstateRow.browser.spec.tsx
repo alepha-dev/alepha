@@ -22,7 +22,7 @@ import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 class Routes {
   bay = $page({
     name: "bay",
-    path: "/bay/:estateId",
+    path: "/account/estates/:estateId",
     component: () => null,
   });
 }
@@ -77,7 +77,7 @@ describe("ProjectSettingsEstateRow", () => {
     await mount(anEstate());
 
     const link = screen.getByRole("link", { name: "ovh-1" });
-    expect(link.getAttribute("href")).toBe(`/bay/${ESTATE_ID}`);
+    expect(link.getAttribute("href")).toBe(`/account/estates/${ESTATE_ID}`);
   });
 
   it("leaves the name as plain text for a borrower", async () => {

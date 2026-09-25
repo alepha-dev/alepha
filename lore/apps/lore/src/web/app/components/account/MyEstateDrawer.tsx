@@ -558,7 +558,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                 for it, and #1629 refuses one at enqueue.
                 ⚠️ Since #E37 a `bay` row opens its console rather than this
                 drawer, so in practice this branch is never taken and the
-                queue is read at /bay/:estateId/commands. Kept as the guard
+                queue is read at /account/estates/:estateId/commands. Kept as the guard
                 rather than deleted: it states the rule, and deleting it
                 would leave a cloudflare drawer one route change away from
                 rendering a queue nothing can serve. */}

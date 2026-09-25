@@ -198,8 +198,10 @@ test.describe("The Bay console", () => {
     // page prints it, and reading it here proves that routing at the same
     // time.
     await page.getByTestId("my-estate-row").click();
-    await page.waitForURL(/\/bay\/[0-9a-f-]{36}/, { timeout: 15_000 });
-    const estateId = new URL(page.url()).pathname.split("/")[2];
+    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
+      timeout: 15_000,
+    });
+    const estateId = new URL(page.url()).pathname.split("/")[3];
     expect(estateId).toBeTruthy();
 
     // Both sides of the reconciliation. The estate is lent to the project
@@ -244,7 +246,7 @@ test.describe("The Bay console", () => {
     await pushInventory(baseURL ?? "", secret, inventoryFrame());
 
     // -- Overview -----------------------------------------------------------
-    await page.goto(`/bay/${estateId}`);
+    await page.goto(`/account/estates/${estateId}`);
     await page.waitForLoadState("networkidle");
 
     // The gauges come from the frame's host block, and the units are the
@@ -273,8 +275,13 @@ test.describe("The Bay console", () => {
     await expect(page.getByText("offline", { exact: true })).toHaveCount(2);
 
     // -- Apps, and the three reconciliation states --------------------------
-    await page.getByRole("link", { name: "Apps", exact: true }).click();
-    await page.waitForURL(/\/bay\/[0-9a-f-]{36}\/apps/, { timeout: 15_000 });
+    await page
+      .getByTestId("bay-tabs")
+      .getByRole("link", { name: "Apps", exact: true })
+      .click();
+    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}\/apps/, {
+      timeout: 15_000,
+    });
 
     // Four reported plus one Lore expected and did not get.
     await expect(page.getByText("docs", { exact: true })).toBeVisible({
@@ -337,9 +344,12 @@ test.describe("The Bay console", () => {
     // Clicked on the release cell rather than on the row's own name, which is
     // that link. Any other cell reaches `onRowClick`.
     await page.getByText("r-2026-09-06-1").click();
-    await page.waitForURL(/\/bay\/[0-9a-f-]{36}\/apps\/lore\/production/, {
-      timeout: 15_000,
-    });
+    await page.waitForURL(
+      /\/account\/estates\/[0-9a-f-]{36}\/apps\/lore\/production/,
+      {
+        timeout: 15_000,
+      },
+    );
     await expect(page.getByText("r-2026-09-06-1")).toBeVisible({
       timeout: 20_000,
     });
@@ -367,7 +377,7 @@ test.describe("The Bay console", () => {
     await page.getByTestId("bay-action-restart").click();
     await queued;
 
-    await page.goto(`/bay/${estateId}/commands`);
+    await page.goto(`/account/estates/${estateId}/commands`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("restart", { exact: true })).toBeVisible({
       timeout: 20_000,

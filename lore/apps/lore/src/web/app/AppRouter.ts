@@ -200,7 +200,6 @@ export class AppRouter {
       this.register,
       this.resetPassword,
       this.project,
-      this.bay,
       this.projectCreate,
       this.projectFeedbackRequest,
       this.projectRoadmap,
@@ -447,20 +446,23 @@ export class AppRouter {
    * The console for one `bay` estate: what is running on the machine, what it
    * costs, and the buttons that act on it.
    *
-   * ⚠️ **A per-type root, and that is forced.** `"estates"` is already
-   * reserved for the machine-facing pull routes, so a generic `/estates/:id`
-   * page cannot exist. `/cloudflare/:id` follows the same shape in #E22.
+   * ⚠️ **Inside the account shell, at `/account/estates/:estateId`** (#E68).
+   * An estate belongs to a user, not a project, so its console is a detail
+   * page under the account's Estates entry, the way `/admin/users/:id` sits
+   * under Users. Every route here carries `nav: { hidden: true }`: none is a
+   * sidebar entry, and `isActivePath`'s prefix match keeps "Estates" lit on
+   * all of them. The route NAMES kept, only the paths moved, and `/bay/:id`
+   * was removed with no redirect (pre-v1).
    *
-   * ⚠️ **`"bay"` is in `ProjectSlugService.reserved`**, and it has to be: the
-   * router walks static children before the param child, so without the
-   * reservation a project slugged `bay` would be silently shadowed and become
-   * unreachable for whoever picked that name. `test/app-routes.spec.ts`
-   * asserts the invariant for every static root segment.
+   * `/account/estates` is under the account's root, so it never meets the
+   * machine-facing `/estates` pull routes at the application root.
    *
-   * The param is the uuid, not the slug: a slug is unique per OWNER, and a
-   * root-level URL is global.
+   * The param is the uuid, not the slug: a slug is unique per OWNER, and the
+   * URL has to name one estate among everyone's.
    */
   bay = $page({
+    parent: this.account.layout,
+    nav: { hidden: true, label: "Estate" },
     children: () => [
       this.bayOverview,
       this.bayApps,
@@ -469,7 +471,7 @@ export class AppRouter {
       this.baySettings,
     ],
     name: "bay",
-    path: "/bay/:estateId",
+    path: "/estates/:estateId",
     // Owner-only, and the 404 comes from the server: `getEstate` goes through
     // `EstateService.loadOwned`, which answers 404 for anyone else, so a
     // non-owner gets a real not-found for the whole subtree rather than an
@@ -479,7 +481,7 @@ export class AppRouter {
     head: (props) => {
       const estate = (props as { estate?: { slug?: string } } | undefined)
         ?.estate;
-      return { title: `${estate?.slug ?? "Estate"} › Bay` };
+      return { title: this.account.accountTitle(estate?.slug ?? "Estate") };
     },
     lazy: () => import("./components/bay/BayLayout.tsx"),
     loader: async ({ params }) => {
@@ -501,6 +503,7 @@ export class AppRouter {
 
   bayOverview = $page({
     name: "bayOverview",
+    nav: { hidden: true, label: "Overview" },
     path: "/",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Overview`,
@@ -510,6 +513,7 @@ export class AppRouter {
 
   bayApps = $page({
     name: "bayApps",
+    nav: { hidden: true, label: "Apps" },
     path: "/apps",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Apps`,
@@ -530,6 +534,7 @@ export class AppRouter {
    */
   bayApp = $page({
     name: "bayApp",
+    nav: { hidden: true, label: "Instance" },
     path: "/apps/:app/:env",
     schema: { params: z.object({ app: z.string(), env: z.string() }) },
     head: (_props, previous) => ({
@@ -540,6 +545,7 @@ export class AppRouter {
 
   bayCommands = $page({
     name: "bayCommands",
+    nav: { hidden: true, label: "Commands" },
     path: "/commands",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Commands`,
@@ -549,6 +555,7 @@ export class AppRouter {
 
   baySettings = $page({
     name: "baySettings",
+    nav: { hidden: true, label: "Settings" },
     path: "/settings",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Settings`,
