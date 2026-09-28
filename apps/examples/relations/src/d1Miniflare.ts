@@ -23,7 +23,6 @@ export const d1Miniflare = (binding = "DB"): Miniflare =>
     workers: [
       {
         config: {
-          type: "worker",
           name: "d1-fixture",
           // Fixed, because nothing here is date-sensitive and a moving
           // compatibility date would make the fixture drift on its own.

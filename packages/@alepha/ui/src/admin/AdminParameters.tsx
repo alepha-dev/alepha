@@ -297,20 +297,19 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
           );
         }}
       />
-      {selected &&
-        historyCollapsed && (
-          // The rail exists only where the pane is a column (lg and up). Below
-          // that the panes stack, the history sits under the form and frees no
-          // width by closing, so it stays open there whatever was stored.
-          <PaneRail
-            side="right"
-            label={tr("admin.parameters.historyExpand", {
-              default: "Show history",
-            })}
-            onExpand={toggleHistory}
-            className="bg-card hidden rounded-r-lg border lg:flex"
-          />
-        )}
+      {selected && historyCollapsed && (
+        // The rail exists only where the pane is a column (lg and up). Below
+        // that the panes stack, the history sits under the form and frees no
+        // width by closing, so it stays open there whatever was stored.
+        <PaneRail
+          side="right"
+          label={tr("admin.parameters.historyExpand", {
+            default: "Show history",
+          })}
+          onExpand={toggleHistory}
+          className="bg-card hidden rounded-r-lg border lg:flex"
+        />
+      )}
       {selected && (
         <AdminParametersHistoryPane
           key={`history-${selected}`}

@@ -71,38 +71,37 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
           plus the numbered pages is exactly what made this bar wrap onto
           three lines (feedback #2106).
         */}
-        {pageSizes.length > 0 &&
-          !isMobile && (
-            // The same `Control` the filter bar is built on, so the picker
-            // is one component with every other select in this table. It
-            // used to be the raw `Select` underneath it, because `Control`
-            // is form-bound and this is not a form — `sizeForm` (built in
-            // `useDataTableData`) is
-            // what closes that gap.
-            <Control
-              input={sizeForm.input.size}
-              // The count line beside it is not a label, so the trigger has
-              // to name itself.
-              label=""
-              inputProps={{
-                "aria-label": tr("table.pageSize", {
-                  default: "Rows per page",
-                }),
-              }}
-              // `bg-background`, because this bar is `bg-muted` and the
-              // trigger is `bg-transparent` by default: on a plain form
-              // surface that blending is right, on a tinted bar it made the
-              // picker read as part of the bar while the pagination buttons
-              // beside it sat on their own plane. Set here rather than on
-              // the trigger itself, which every form still wants
-              // transparent.
-              triggerClassName="bg-background h-7 w-auto gap-1 text-xs"
-              items={pageSizes.map((n) => ({
-                value: String(n),
-                label: String(n),
-              }))}
-            />
-          )}
+        {pageSizes.length > 0 && !isMobile && (
+          // The same `Control` the filter bar is built on, so the picker
+          // is one component with every other select in this table. It
+          // used to be the raw `Select` underneath it, because `Control`
+          // is form-bound and this is not a form — `sizeForm` (built in
+          // `useDataTableData`) is
+          // what closes that gap.
+          <Control
+            input={sizeForm.input.size}
+            // The count line beside it is not a label, so the trigger has
+            // to name itself.
+            label=""
+            inputProps={{
+              "aria-label": tr("table.pageSize", {
+                default: "Rows per page",
+              }),
+            }}
+            // `bg-background`, because this bar is `bg-muted` and the
+            // trigger is `bg-transparent` by default: on a plain form
+            // surface that blending is right, on a tinted bar it made the
+            // picker read as part of the bar while the pagination buttons
+            // beside it sat on their own plane. Set here rather than on
+            // the trigger itself, which every form still wants
+            // transparent.
+            triggerClassName="bg-background h-7 w-auto gap-1 text-xs"
+            items={pageSizes.map((n) => ({
+              value: String(n),
+              label: String(n),
+            }))}
+          />
+        )}
         <p className="text-muted-foreground text-xs">
           {meta
             ? // The row range is the half that goes on a phone: "where am
