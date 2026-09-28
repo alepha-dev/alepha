@@ -953,7 +953,7 @@
     "@noble/hashes": "^2.4.0",
     "@redis/client": "^6.2.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "cloudflare": "^7.1.0",
+    "cloudflare": "^7.2.0",
     "dayjs": "^1.11.23",
     "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",
