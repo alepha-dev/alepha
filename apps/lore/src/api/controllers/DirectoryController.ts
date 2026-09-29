@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $repository, $transactional } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { folioAttachments } from "../entities/folioAttachments.ts";
@@ -345,8 +345,7 @@ export class DirectoryController {
   });
 
   renameDirectory = $action({
-    // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [$transactional(), this.ownsDirectoryForKnowledge("folio:write")],
+    use: [this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id/rename",
     description: "Rename a folio directory.",
     schema: {
@@ -360,8 +359,7 @@ export class DirectoryController {
   });
 
   moveDirectory = $action({
-    // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [$transactional(), this.ownsDirectoryForKnowledge("folio:write")],
+    use: [this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id/move",
     description: "Move a folio directory under a new parent (or to root).",
     schema: {
@@ -383,8 +381,7 @@ export class DirectoryController {
   });
 
   deleteDirectory = $action({
-    // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [$transactional(), this.ownsDirectoryForKnowledge("folio:write")],
+    use: [this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id",
     description: "Delete a folio directory. Pass cascade=true for non-empty.",
     schema: {

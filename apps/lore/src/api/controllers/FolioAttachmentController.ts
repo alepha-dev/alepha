@@ -240,8 +240,7 @@ export class FolioAttachmentController {
   });
 
   renameAttachment = $action({
-    // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [$transactional(), this.ownsBlobForKnowledge("folio:write")],
+    use: [this.ownsBlobForKnowledge("folio:write")],
     path: "/folio/attachments/:id/rename",
     description: "Rename a folio attachment.",
     schema: {

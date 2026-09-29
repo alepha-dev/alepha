@@ -172,6 +172,15 @@ export class FolioNameService {
   }
 
   /**
+   * Drop the reservations of several entities in one statement. The caller
+   * batches the list under D1's bound-parameter ceiling.
+   */
+  public async releaseByEntities(entityIds: readonly string[]): Promise<void> {
+    if (entityIds.length === 0) return;
+    await this.names.deleteMany({ entityId: { inArray: [...entityIds] } });
+  }
+
+  /**
    * Drop the reservation for `entityId`. Idempotent (no-op if missing).
    */
   public async releaseByEntity(entityId: string): Promise<void> {

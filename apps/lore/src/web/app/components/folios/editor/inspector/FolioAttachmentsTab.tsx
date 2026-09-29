@@ -31,6 +31,12 @@ export interface FolioAttachmentsTabProps {
    * beside encrypted content. Mirrors `useFolioImageUpload`'s own gate.
    */
   disabled?: boolean;
+  /**
+   * After a rename, with the stored name (the server may have suffixed
+   * it). The server rewrote the folio's references; the open draft needs
+   * the same rewrite, or its next autosave writes the old ones back.
+   */
+  onRenamed?: (from: string, to: string) => void;
 }
 
 /**
@@ -159,13 +165,15 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
           defaultValue: current,
         });
         if (!next || next.trim() === current) return;
-        await attachmentApi.renameAttachment({
+        const renamed = await attachmentApi.renameAttachment({
           params: { id },
           body: { name: next.trim() },
         });
-        // Re-read rather than patching the row: the server auto-suffixes on
-        // collision, so the name it stored may not be the one just typed —
-        // and it has also rewritten the folio's references to match.
+        // The server rewrote the folio's references to the name it STORED,
+        // which auto-suffixing may have changed from the one just typed;
+        // the open draft follows it (#Q2550).
+        props.onRenamed?.(current, renamed.name);
+        // Re-read rather than patching the row, for the same suffixing.
         await refreshAction.run();
       },
     },

@@ -171,13 +171,22 @@ export class DefaultReleaseService {
    * of `WHERE` the qualified form is what you want, and is what the precedent
    * does.
    *
+   * ⚠️ **The target must still be unpublished, and the statement says so**
+   * (#Q2550). The caller read it unpublished, but a publish landing in
+   * between (which clears `defaultSince` on that row) would otherwise be
+   * overwritten with a default on a published release. The `EXISTS` skips
+   * the whole swap instead, and the answer says whether the target is now
+   * the default.
+   *
    * @param releaseId the release to point at, or `null` to point at nothing
+   * @returns whether the swap happened: always `true` for a clear, `false`
+   * when the target was no longer an open release of this project
    */
   async set(
     projectId: number,
     releaseId: number | null,
     now: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (releaseId == null) {
       await this.releases.query(
         (t) => sql`
@@ -189,10 +198,10 @@ export class DefaultReleaseService {
         `,
         this.idOnly,
       );
-      return;
+      return true;
     }
 
-    await this.releases.query(
+    const rows = await this.releases.query(
       (t) => sql`
         UPDATE ${t}
         SET ${sql.identifier(t.defaultSince.name)} = CASE
@@ -201,9 +210,16 @@ export class DefaultReleaseService {
         END
         WHERE ${t.projectId} = ${projectId}
           AND (${t.id} = ${releaseId} OR ${t.defaultSince} IS NOT NULL)
+          AND EXISTS (
+            SELECT 1 FROM ${t} AS target
+            WHERE target.${sql.identifier(t.id.name)} = ${releaseId}
+              AND target.${sql.identifier(t.projectId.name)} = ${projectId}
+              AND target.${sql.identifier(t.releasedAt.name)} IS NULL
+          )
         RETURNING ${t.id}
       `,
       this.idOnly,
     );
+    return rows.some((row) => row.id === releaseId);
   }
 }

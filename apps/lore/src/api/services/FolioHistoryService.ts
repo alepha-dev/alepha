@@ -313,6 +313,19 @@ export class FolioHistoryService {
   }
 
   /**
+   * Fill in every live revision with `content`, the body the folio holds
+   * right now, before a write that is not itself a revision changes it
+   * (an attachment rename rewriting references, #Q2550). History then keeps
+   * the body as it was.
+   */
+  public async materializeHead(
+    folioId: string,
+    content: string,
+  ): Promise<void> {
+    await this.materializeLive(folioId, content, undefined);
+  }
+
+  /**
    * The body a revision documents: its snapshot, or the live folio's
    * content while it is the head. The one way to read a revision's body.
    */
