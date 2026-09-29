@@ -62,6 +62,7 @@ import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { ActivityBackfillJob } from "./jobs/ActivityBackfillJob.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
+import { EpicJobs } from "./jobs/EpicJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
@@ -252,6 +253,7 @@ export const LoreApi = $module({
     // every `requires` allows.
     ProjectRankPresets,
     QuestJobs,
+    EpicJobs,
     BlightJobs,
     SigilJobs,
     QualityJobs,

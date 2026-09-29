@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, DbEntityNotFoundError, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
@@ -305,17 +305,43 @@ export class EpicWorkflowService {
   ): Promise<ReleaseCascade | undefined> {
     const epic = await this.epicOf(quest);
     if (!epic || epic.status !== "ready") return undefined;
+    return await this.start(epic, user, { quest: quest.shortId });
+  }
 
+  /**
+   * Move a `ready` epic to `in_progress`, in ONE guarded statement (#Q2547).
+   *
+   * The status the caller read is re-checked by the UPDATE's own WHERE, so
+   * two concurrent accepts cannot both start the epic: the loser matches no
+   * row, and returns without cascading or logging. D1 has no transaction to
+   * serialize them. Only the winner carries the release down and writes the
+   * audit.
+   */
+  protected async start(
+    epic: Epic,
+    user: UserAccountToken | undefined,
+    metadata: Record<string, unknown>,
+  ): Promise<ReleaseCascade | undefined> {
     const releaseId =
       epic.releaseId == null
         ? (await this.defaults.openDefault(epic.projectId))?.id
         : undefined;
 
-    const updated = await this.epics.updateById(epic.id, {
-      status: "in_progress",
-      startedAt: this.dt.nowISOString(),
-      ...(releaseId != null ? { releaseId } : {}),
-    });
+    let updated: Epic;
+    try {
+      updated = await this.epics.updateOne(
+        { id: { eq: epic.id }, status: { eq: "ready" } },
+        {
+          status: "in_progress",
+          startedAt: this.dt.nowISOString(),
+          ...(releaseId != null ? { releaseId } : {}),
+        },
+      );
+    } catch (error) {
+      // Another request started it first.
+      if (error instanceof DbEntityNotFoundError) return undefined;
+      throw error;
+    }
 
     const cascade =
       releaseId != null
@@ -323,7 +349,7 @@ export class EpicWorkflowService {
         : undefined;
 
     await this.logStatus(epic, "in_progress", user, {
-      quest: quest.shortId,
+      ...metadata,
       ...(cascade ? { cascade } : {}),
     });
 
@@ -356,19 +382,87 @@ export class EpicWorkflowService {
     const epic = await this.epicOf(quest);
     if (!epic || epic.status !== "in_progress") return;
 
-    const open = await this.quests.count({
-      epicId: { eq: epic.id },
-      completedAt: { isNull: true },
-      shelvedAt: { isNull: true },
-    });
-    if (open > 0) return;
+    if (await this.finish(epic)) {
+      await this.logStatus(epic, "completed", user, { quest: quest.shortId });
+    }
+  }
 
-    await this.epics.updateById(epic.id, {
-      status: "completed",
-      completedAt: this.dt.nowISOString(),
-    });
+  /**
+   * Move an `in_progress` epic with no open quest to `completed`, in ONE
+   * guarded statement, and say whether it moved (#Q2547).
+   *
+   * The count is in the UPDATE's WHERE (`NOT EXISTS` an open quest), not
+   * read first: on D1, with no transaction, a quest reopened between a count
+   * and a write would leave it inside a completed epic, and two concurrent
+   * completions would both log the move. Only the request whose statement
+   * changed the row logs it.
+   */
+  protected async finish(epic: Pick<Epic, "id">): Promise<boolean> {
+    const q = this.quests.table;
+    try {
+      await this.epics.updateOne(
+        {
+          id: { eq: epic.id },
+          status: { eq: "in_progress" },
+          notExists: sql`(SELECT 1 FROM ${q} WHERE ${q.epicId} = ${epic.id} AND ${q.deletedAt} IS NULL AND ${q.completedAt} IS NULL AND ${q.shelvedAt} IS NULL)`,
+        },
+        {
+          status: "completed",
+          completedAt: this.dt.nowISOString(),
+        },
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) return false;
+      throw error;
+    }
+  }
 
-    await this.logStatus(epic, "completed", user, { quest: quest.shortId });
+  /**
+   * Heal the epics a failed transition left behind (#Q2547).
+   *
+   * Without a transaction, the quest write and the epic write that follows
+   * it can split, and no action can be retried afterwards: the quest is
+   * already accepted or completed. Two states result, and both are fixed
+   * here, by the same guarded statements the actions use:
+   *
+   * - an `in_progress` epic with no open quest is completed;
+   * - a `ready` epic that already holds an accepted or completed quest is
+   *   started, its release carried down as `startIfReady` does, so its plan
+   *   freezes as it should have.
+   *
+   * Runs from `EpicJobs.sweep`. No user: the audit row names nobody.
+   */
+  async sweep(): Promise<{ started: number; completed: number }> {
+    const q = this.quests.table;
+    let started = 0;
+    let completed = 0;
+
+    const stuckReady = await this.epics.findMany({
+      where: {
+        status: { eq: "ready" },
+        exists: sql`(SELECT 1 FROM ${q} WHERE ${q.epicId} = ${this.epics.table.id} AND ${q.deletedAt} IS NULL AND (${q.acceptedAt} IS NOT NULL OR ${q.completedAt} IS NOT NULL))`,
+      },
+    });
+    for (const epic of stuckReady) {
+      await this.start(epic, undefined, { sweep: true });
+      started += 1;
+    }
+
+    const stuckInProgress = await this.epics.findMany({
+      where: {
+        status: { eq: "in_progress" },
+        notExists: sql`(SELECT 1 FROM ${q} WHERE ${q.epicId} = ${this.epics.table.id} AND ${q.deletedAt} IS NULL AND ${q.completedAt} IS NULL AND ${q.shelvedAt} IS NULL)`,
+      },
+    });
+    for (const epic of stuckInProgress) {
+      if (await this.finish(epic)) {
+        await this.logStatus(epic, "completed", undefined, { sweep: true });
+        completed += 1;
+      }
+    }
+
+    return { started, completed };
   }
 
   /**

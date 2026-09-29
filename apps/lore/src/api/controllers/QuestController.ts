@@ -1829,6 +1829,9 @@ export class QuestController {
       ]);
 
       if (quest.shelvedAt) {
+        // A retried shelve converges: the epic move its first attempt may
+        // have failed to make is made now (#Q2547).
+        await this.epicWorkflow.completeIfResolved(quest, user);
         return this.mapQuestToResource(quest);
       }
 
