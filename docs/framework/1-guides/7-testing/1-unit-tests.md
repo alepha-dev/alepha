@@ -210,6 +210,31 @@ env: {
 }
 ```
 
+### Without transactions, as on D1
+
+Cloudflare D1 has no transactions: `$transactional()` runs its body in place there, and a failure halfway keeps every write made before it. The SQLite drivers used by specs do roll back, and they run transactions one at a time, so a spec on them cannot see a race or a partial write that D1 would produce.
+
+`DATABASE_TRANSACTIONS: false` switches transactions off for one container. `$transactional()` then runs its body in place, `afterCommit` callbacks run at once and `Repository.transaction()` throws, exactly as on D1. The switch is read only when `NODE_ENV` is `test`, so it can never reach production.
+
+To reproduce a failure halfway, substitute the collaborator that fails rather than mocking it:
+
+```typescript
+import { Alepha } from "alepha";
+import { AuditService } from "alepha/api/audits";
+
+class ThrowingAuditService extends AuditService {
+  public override async create(): Promise<never> {
+    throw new Error("audit insert failed");
+  }
+}
+
+const alepha = Alepha.create({
+  env: { DATABASE_URL: "sqlite://:memory:", DATABASE_TRANSACTIONS: false },
+}).with({ provide: AuditService, use: ThrowingAuditService });
+
+// The action's own write is kept, whatever the audit did.
+```
+
 ## TestProvider Pattern
 
 To unit test protected methods on a class, create a test subclass that exposes them:

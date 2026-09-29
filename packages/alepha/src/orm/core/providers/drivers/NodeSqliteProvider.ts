@@ -203,6 +203,12 @@ export class NodeSqliteProvider extends DatabaseProvider {
       return fn();
     }
 
+    // Switched off by a test (`DATABASE_TRANSACTIONS=false`): run bare, as
+    // the base class and D1 do.
+    if (!this.supportsTransactions) {
+      return fn();
+    }
+
     const sqlite = this.requireSqlite();
     return this.runExclusiveNativeTransaction((sql) => sqlite.exec(sql), fn);
   }

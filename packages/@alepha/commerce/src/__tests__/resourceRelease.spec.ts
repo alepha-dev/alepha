@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { DateTimeProvider } from "alepha/datetime";
-import { DatabaseProvider } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
@@ -17,13 +16,16 @@ import { ResourceService } from "../services/ResourceService.ts";
 import { StockService } from "../services/StockService.ts";
 import { TestCourtKind } from "./fixtures/TestCourtKind.ts";
 
-const setup = async (backend: "postgres" | "sqlite") => {
+const setup = async (backend: "postgres" | "sqlite" | "d1") => {
   const alepha =
     backend === "postgres"
       ? Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerceCheckout)
-      : Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }).with(
-          AlephaCommerceCheckout,
-        );
+      : Alepha.create({
+          env: {
+            DATABASE_URL: "sqlite://:memory:",
+            ...(backend === "d1" ? { DATABASE_TRANSACTIONS: false } : {}),
+          },
+        }).with(AlephaCommerceCheckout);
   alepha.inject(ProductKindRegistry).add(alepha.inject(TestCourtKind));
   const ctx = {
     alepha,
@@ -34,7 +36,6 @@ const setup = async (backend: "postgres" | "sqlite") => {
     payments: alepha.inject(PaymentService),
     resources: alepha.inject(ResourceService),
     dateTime: alepha.inject(DateTimeProvider),
-    db: alepha.inject(DatabaseProvider),
   };
   await alepha.start();
   return ctx;
@@ -215,19 +216,14 @@ describe("releasing intervals", () => {
   /*
    * D1 runs `transactional()` in place: nothing rolls back the claims earlier
    * lines took when a later one loses, so the order must give them back
-   * itself. Simulated on SQLite by switching its transactions off, the flag
-   * and the method both: its provider runs its own BEGIN/ROLLBACK. Two lines
+   * itself. Simulated on SQLite with `DATABASE_TRANSACTIONS=false`. Two lines
    * for the same court and slot: whichever runs first holds it, and the
    * other loses, whatever order the lines come back in.
    */
   it("gives back what earlier lines held when a later one loses, with no transaction", async ({
     expect,
   }) => {
-    const ctx = await setup("sqlite");
-    Object.defineProperty(ctx.db, "supportsTransactions", { get: () => false });
-    Object.defineProperty(ctx.db, "transactional", {
-      value: <R>(fn: () => Promise<R>) => fn(),
-    });
+    const ctx = await setup("d1");
     const { product, courts } = await aClub(ctx);
     const booking = {
       productId: product.id,

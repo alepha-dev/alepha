@@ -24,6 +24,20 @@ export const databaseEnvSchema = z.object({
    * (e.g. when managing migrations manually).
    */
   DATABASE_SYNC: z.boolean().meta({ secret: false }).optional(),
+
+  /**
+   * Test-only: `false` runs the database without transactions, the way
+   * Cloudflare D1 does.
+   *
+   * `$transactional()` then runs its body in place, `afterCommit` callbacks
+   * run at once and `Repository.transaction()` throws. A spec that sets it
+   * sees D1's interleaving and its partial writes, which the SQLite drivers
+   * otherwise hide by serializing every transaction.
+   *
+   * Honoured only when `NODE_ENV` is `test`: it can never switch
+   * transactions off in production.
+   */
+  DATABASE_TRANSACTIONS: z.boolean().meta({ secret: false }).optional(),
 });
 
 declare module "alepha" {

@@ -82,9 +82,24 @@ export abstract class DatabaseProvider {
    * Whether this driver supports SQL-level transactions (BEGIN/COMMIT/ROLLBACK).
    *
    * Drivers that do not (e.g. PGlite, Cloudflare D1) should override to `false`.
+   *
+   * Also `false` in a test run with `DATABASE_TRANSACTIONS=false`, so a spec
+   * on SQLite behaves like D1: `$transactional()` runs its body in place and
+   * nothing rolls back. Ignored outside `NODE_ENV=test`.
    */
   public get supportsTransactions(): boolean {
-    return true;
+    return !this.transactionsSwitchedOff;
+  }
+
+  /**
+   * Whether a test switched transactions off (`DATABASE_TRANSACTIONS=false`).
+   */
+  protected get transactionsSwitchedOff(): boolean {
+    if (!this.alepha.isTest()) {
+      return false;
+    }
+    const { DATABASE_TRANSACTIONS } = this.alepha.parseEnv(databaseEnvSchema);
+    return DATABASE_TRANSACTIONS === false;
   }
 
   /**

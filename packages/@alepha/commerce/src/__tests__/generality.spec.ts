@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha, z } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { DatabaseProvider } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
@@ -72,18 +71,21 @@ class TestSeatKind extends ResourceKindHandler {
 }
 
 /**
- * `d1` is SQLite with its transactions switched off, the flag and the method
- * both: what D1 is. There nothing serialises two orders and nothing rolls a
- * lost order back, so a racer can land between an order's two claims and the
- * handler alone must give the first one back.
+ * `d1` is SQLite with its transactions switched off
+ * (`DATABASE_TRANSACTIONS=false`): what D1 is. There nothing serialises two
+ * orders and nothing rolls a lost order back, so a racer can land between an
+ * order's two claims and the handler alone must give the first one back.
  */
 const setup = async (backend: "postgres" | "sqlite" | "d1") => {
   const alepha =
     backend === "postgres"
       ? Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerceCheckout)
-      : Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }).with(
-          AlephaCommerceCheckout,
-        );
+      : Alepha.create({
+          env: {
+            DATABASE_URL: "sqlite://:memory:",
+            ...(backend === "d1" ? { DATABASE_TRANSACTIONS: false } : {}),
+          },
+        }).with(AlephaCommerceCheckout);
   const kinds = alepha.inject(ProductKindRegistry);
   kinds.add(alepha.inject(TestSeatKind));
   kinds.add(alepha.inject(TestCourtKind));
@@ -98,13 +100,6 @@ const setup = async (backend: "postgres" | "sqlite" | "d1") => {
     stock: alepha.inject(StockService),
   };
   await alepha.start();
-  if (backend === "d1") {
-    const db = alepha.inject(DatabaseProvider);
-    Object.defineProperty(db, "supportsTransactions", { get: () => false });
-    Object.defineProperty(db, "transactional", {
-      value: <R>(fn: () => Promise<R>) => fn(),
-    });
-  }
   return ctx;
 };
 

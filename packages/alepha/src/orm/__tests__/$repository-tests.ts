@@ -989,36 +989,11 @@ export const testTransactionThrowsWhenUnsupported = async (alepha: Alepha) => {
   const app = alepha.inject(App);
   await alepha.start();
 
-  // Temporarily override supportsTransactions
-  const provider = (app.users as any).provider;
-  const original = Object.getOwnPropertyDescriptor(
-    Object.getPrototypeOf(provider),
-    "supportsTransactions",
-  );
-  Object.defineProperty(provider, "supportsTransactions", {
-    get: () => false,
-    configurable: true,
-  });
-
-  try {
-    await expect(
-      app.users.transaction(async () => {
-        // should never reach here
-      }),
-    ).rejects.toThrow("Transactions are not supported");
-  } finally {
-    // Restore
-    if (original) {
-      Object.defineProperty(
-        Object.getPrototypeOf(provider),
-        "supportsTransactions",
-        original,
-      );
-    } else {
-      // setting to undefined fails because the prototype has a getter
-      delete provider.supportsTransactions;
-    }
-  }
+  await expect(
+    app.users.transaction(async () => {
+      // should never reach here
+    }),
+  ).rejects.toThrow("Transactions are not supported");
 };
 
 // ============================================================================

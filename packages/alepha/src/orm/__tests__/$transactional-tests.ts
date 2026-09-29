@@ -74,6 +74,32 @@ export const testRollbackOnError = async (alepha: Alepha) => {
   expect(items).toHaveLength(0);
 };
 
+/**
+ * With `DATABASE_TRANSACTIONS=false` the body runs bare, as on D1: the first
+ * write survives the throw that follows it.
+ */
+export const testSecondWriteThrows = async (alepha: Alepha) => {
+  class App {
+    repo = $repository(item);
+
+    createAndFail = $pipeline({
+      use: [$transactional()],
+      handler: async () => {
+        await this.repo.create({ name: "first" });
+        await this.repo.create({ name: "second" });
+        throw new Error("boom");
+      },
+    });
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  await expect(() => app.createAndFail()).rejects.toThrow("boom");
+
+  return (await app.repo.findMany()).map((it) => it.name);
+};
+
 export const testNesting = async (alepha: Alepha) => {
   class App {
     repo = $repository(item);

@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
+import { DatabaseProvider } from "../core/index.ts";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAfterCommitDiscardedOnRollback,
@@ -14,6 +15,7 @@ import {
   testNesting,
   testRepositoryTransactionAsyncRollback,
   testRollbackOnError,
+  testSecondWriteThrows,
   testWrapsInTransaction,
 } from "./$transactional-tests.ts";
 
@@ -34,6 +36,63 @@ describe("$transactional", () => {
   });
   it("should rollback all operations on error (postgres)", async () => {
     await testRollbackOnError(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  describe("DATABASE_TRANSACTIONS=false", () => {
+    it("keeps the first write when the second throws, as D1 does (sqlite)", async ({
+      expect,
+    }) => {
+      const names = await testSecondWriteThrows(
+        Alepha.create({
+          env: {
+            DATABASE_URL: "sqlite://:memory:",
+            DATABASE_TRANSACTIONS: false,
+          },
+        }),
+      );
+      expect(names.sort()).toEqual(["first", "second"]);
+    });
+
+    it("keeps nothing with transactions on (sqlite)", async ({ expect }) => {
+      const names = await testSecondWriteThrows(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+      expect(names).toEqual([]);
+    });
+
+    it("runs the body bare and afterCommit at once", async ({ expect }) => {
+      const alepha = Alepha.create({
+        env: {
+          DATABASE_URL: "sqlite://:memory:",
+          DATABASE_TRANSACTIONS: false,
+        },
+      });
+      const provider = alepha.inject(DatabaseProvider);
+      await alepha.start();
+
+      const ran: string[] = [];
+      await provider.transactional(async () => {
+        await provider.afterCommit(() => {
+          ran.push("after");
+        });
+        ran.push("body");
+      });
+
+      expect(provider.supportsTransactions).toBe(false);
+      expect(ran).toEqual(["after", "body"]);
+    });
+
+    it("is ignored outside a test run", ({ expect }) => {
+      const alepha = Alepha.create({
+        env: {
+          NODE_ENV: "production",
+          DATABASE_URL: "sqlite://:memory:",
+          DATABASE_TRANSACTIONS: false,
+        },
+      });
+
+      expect(alepha.inject(DatabaseProvider).supportsTransactions).toBe(true);
+    });
   });
 
   it("should support nesting / reuse outer tx (sqlite)", async () => {

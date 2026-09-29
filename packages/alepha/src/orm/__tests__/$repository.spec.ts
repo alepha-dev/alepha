@@ -124,7 +124,12 @@ describe("$repository", () => {
   describe("transaction", () => {
     it("should throw when driver does not support transactions (sqlite)", async () => {
       await testTransactionThrowsWhenUnsupported(
-        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+        Alepha.create({
+          env: {
+            DATABASE_URL: "sqlite://:memory:",
+            DATABASE_TRANSACTIONS: false,
+          },
+        }),
       );
     });
   });

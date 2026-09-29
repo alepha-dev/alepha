@@ -136,6 +136,12 @@ export class BunSqliteProvider extends DatabaseProvider {
       return fn();
     }
 
+    // Switched off by a test (`DATABASE_TRANSACTIONS=false`): run bare, as
+    // the base class and D1 do.
+    if (!this.supportsTransactions) {
+      return fn();
+    }
+
     const sqlite = this.sqlite;
     if (!sqlite) {
       throw new AlephaError("Database not initialized");
