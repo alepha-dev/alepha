@@ -322,8 +322,9 @@ export class DirectoryController {
   });
 
   createDirectory = $action({
-    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [$transactional(), this.ownsProjectForKnowledge("folio:write")],
+    // No transaction (D1 has none): the service claims the name before the
+    // row is written (#Q2548).
+    use: [this.ownsProjectForKnowledge("folio:write")],
     path: "/projects/:projectId/folio/directories",
     description: "Create a new folio directory.",
     schema: {

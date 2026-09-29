@@ -757,7 +757,7 @@ export class QuestController {
   });
 
   createQuest = $action({
-    use: [$transactional(), this.ownsProjectFromBodyForWork("quest:create")],
+    use: [this.ownsProjectFromBodyForWork("quest:create")],
     schema: {
       body: questCreateSchema,
       response: questResourceSchema,
@@ -862,7 +862,11 @@ export class QuestController {
       });
 
       // A brand-new id has no links to clear, so the delete is skipped.
-      await this.syncQuestLinks(quest, { created: true });
+      // Best effort (#Q2555): the quest exists now, and a 500 here used to
+      // invite a retry that created a second one.
+      await this.bestEffort.run("createQuest: link sync failed", () =>
+        this.syncQuestLinks(quest, { created: true }),
+      );
       await this.logQuest("create", quest, user);
 
       return this.mapQuestToResource(quest);

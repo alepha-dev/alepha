@@ -73,7 +73,18 @@ export class AreaService {
       return existing;
     }
 
-    return await this.areas.create({ projectId, name: trimmed });
+    // One statement on a miss, not a read then an insert (#Q2548): two
+    // concurrent first uses of a name both miss the read, and the second
+    // `create` used to hit the UNIQUE (projectId, name) index after its
+    // quest number was spent. `ON CONFLICT DO UPDATE ... RETURNING` hands
+    // back the winner's row instead, in the same statement, so no second
+    // read can land on a D1 replica that has not seen it. Areas are
+    // hard-deleted, so `upsert`'s refusal of a soft-deleted conflict never
+    // fires. The cost: the rare conflict bumps that area's `updatedAt`.
+    return await this.areas.upsert(
+      { projectId, name: trimmed },
+      { target: ["projectId", "name"] },
+    );
   }
 
   /**
