@@ -550,6 +550,70 @@ describe("BuildCloudflareTask", () => {
       });
     });
 
+    describe("d1 session anchor", () => {
+      /**
+       * Lifts the generated `d1AnchorFor` out of the emitted worker, with the
+       * cookie reader it calls, so these assert where a request's session
+       * starts rather than how it is spelled.
+       */
+      const loadAnchor = async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("const D1_BOOKMARK_COOKIE");
+        const end = source.indexOf("// `append`, not `set`");
+        // Same technique as the edge cache policy below.
+        // oxlint-disable-next-line typescript/no-implied-eval
+        return new Function(
+          `${source.slice(start, end)}; return d1AnchorFor;`,
+        )() as (request: Request) => string | undefined;
+      };
+
+      const COOKIE = { cookie: "alepha_d1_bookmark=bm-42" };
+
+      it("opens a write request on the primary, even with a bookmark", async () => {
+        const d1AnchorFor = await loadAnchor();
+        for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+          expect(
+            d1AnchorFor(
+              new Request("https://x.test/api/quests/1", {
+                method,
+                headers: COOKIE,
+              }),
+            ),
+          ).toBe("first-primary");
+        }
+        expect(
+          d1AnchorFor(new Request("https://x.test/mcp", { method: "POST" })),
+        ).toBe("first-primary");
+      });
+
+      it("keeps the incoming bookmark for a GET and for POST /api/_batch", async () => {
+        const d1AnchorFor = await loadAnchor();
+        expect(
+          d1AnchorFor(
+            new Request("https://x.test/api/quests", { headers: COOKIE }),
+          ),
+        ).toBe("bm-42");
+        expect(
+          d1AnchorFor(
+            new Request("https://x.test/api/_batch", {
+              method: "POST",
+              headers: COOKIE,
+            }),
+          ),
+        ).toBe("bm-42");
+      });
+
+      it("leaves a GET with no cookie unconstrained", async () => {
+        const d1AnchorFor = await loadAnchor();
+        // No anchor: the provider then opens `first-unconstrained`.
+        expect(
+          d1AnchorFor(new Request("https://x.test/api/quests")),
+        ).toBeUndefined();
+      });
+    });
+
     describe("edge cache", () => {
       /**
        * Lifts the generated `isEdgeCacheable` predicate out of the emitted

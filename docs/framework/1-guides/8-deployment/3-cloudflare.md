@@ -129,6 +129,18 @@ client-side code. An API client that does not keep cookies gets a fresh
 session per request, which is correct but forfeits read-your-writes across
 calls - send the cookie back yourself if that matters.
 
+**A request that can write reads from the primary.** Any method other than
+`GET`, `HEAD` or `OPTIONS` opens its session on `first-primary`, whatever
+bookmark it carries. Without that, a client with no cookie (an MCP agent, an
+API key, a CLI) could have its second call read a replica that missed its
+first write, and a handler that loads a row and saves it back would restore
+the stale copy over that write. The one exception is `POST /api/_batch`: the
+browser coalesces a page load's reads into it and always sends its bookmark,
+so it keeps the bookmark and its replicas.
+
+The cost: every MCP call is a `POST`, read-only tools included, so all MCP
+traffic reads from the primary.
+
 Two consequences worth knowing before switching it on:
 
 - **A response that sets the bookmark cookie is not edge-cacheable.** Alepha

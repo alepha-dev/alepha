@@ -986,6 +986,27 @@ const readBookmarkCookie = (request) => {
   return undefined;
 };
 
+// Where a request's D1 session starts. A request that can write reads from
+// the primary: a client with no cookie (an MCP agent, an API key, the CLI)
+// would otherwise open \`first-unconstrained\`, and its second call could
+// read a replica that missed its first write, then save that stale row back
+// over it. Every write method counts, reads by POST included, so all MCP
+// traffic reads from the primary: freshness matters more there than a
+// replica's latency.
+//
+// Except \`POST /api/_batch\`: the browser coalesces the reads of a page load
+// into it, and it always carries its bookmark, so read-your-writes already
+// holds there. Sending it to the primary would switch replicas off for the
+// browser in practice.
+const D1_READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+const d1AnchorFor = (request) => {
+  const incoming = readBookmarkCookie(request);
+  if (D1_READ_METHODS.has(request.method)) return incoming;
+  if (new URL(request.url).pathname === "/api/_batch") return incoming;
+  return "first-primary";
+};
+
 // \`append\`, not \`set\`: the response may already carry auth cookies and
 // replacing the whole header would sign the user out.
 const writeBookmarkCookie = (response, bookmark) => {
@@ -1055,9 +1076,9 @@ export default {
         skipEvents: true,
       });
 
-      const incoming = readBookmarkCookie(request);
-      if (incoming) {
-        __alepha.store.set("alepha.orm.d1.bookmark", incoming, {
+      const anchor = d1AnchorFor(request);
+      if (anchor) {
+        __alepha.store.set("alepha.orm.d1.bookmark", anchor, {
           skipEvents: true,
         });
       }
