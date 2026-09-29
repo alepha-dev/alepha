@@ -1,6 +1,10 @@
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DbConflictError } from "alepha/orm";
+import {
+  $repository,
+  DbConflictError,
+  DbEntityNotFoundError,
+} from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { folioNames } from "../entities/folioNames.ts";
@@ -180,9 +184,17 @@ export class FolioNameService {
    * under `scope`. Returns the unmodified `desired` when it's already
    * free.
    */
-  public async autoSuffix(desired: string, scope: ScopeKey): Promise<string> {
+  public async autoSuffix(
+    desired: string,
+    scope: ScopeKey,
+    exceptEntityId?: string,
+  ): Promise<string> {
     const siblings = await this.namesAt(scope);
-    const taken = new Set(siblings.map((r) => r.lowerName));
+    const taken = new Set(
+      siblings
+        .filter((r) => r.entityId !== exceptEntityId)
+        .map((r) => r.lowerName),
+    );
     if (!taken.has(this.normalize(desired))) return desired;
 
     const { stem, ext } = this.splitExt(desired);
@@ -208,7 +220,42 @@ export class FolioNameService {
   protected async namesAt(scope: ScopeKey) {
     return this.names.findMany({
       where: { parentDirectoryId: { eq: this.dbParentId(scope) } },
-      columns: ["lowerName"],
+      columns: ["lowerName", "entityId"],
     });
+  }
+
+  /**
+   * Move `entityId`'s reservation to `desired` (suffixed if taken) under
+   * `scope`, in ONE UPDATE of its own row, and return the name it holds
+   * (#Q2549).
+   *
+   * Not release-then-reserve: with no transaction (D1), a reserve failing
+   * after the release left the name unguarded. Here a UNIQUE conflict
+   * refuses the UPDATE (409) and the old reservation stands. The entity's
+   * own row is not counted as a sibling, so "Abc" to "abc" stays "abc"
+   * rather than "abc (1)". An entity with no reservation row at all (one
+   * written before reservations existed) gets one.
+   */
+  public async rename(
+    entityId: string,
+    kind: FolioNodeKind,
+    desired: string,
+    scope: ScopeKey,
+  ): Promise<string> {
+    const name = await this.autoSuffix(desired, scope, entityId);
+    try {
+      await this.names.updateOne(
+        { entityId: { eq: entityId } },
+        {
+          parentDirectoryId: this.dbParentId(scope),
+          rootScope: scope.rootScope ?? "",
+          lowerName: this.normalize(name),
+        },
+      );
+    } catch (error) {
+      if (!(error instanceof DbEntityNotFoundError)) throw error;
+      await this.reserve(name, kind, entityId, scope);
+    }
+    return name;
   }
 }

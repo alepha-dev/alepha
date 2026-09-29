@@ -699,7 +699,19 @@ export const useFolioActions = (
   };
 
   const saveAction = useAction(
-    { handler: save, invalidates: [["folioTree", project?.id]] },
+    {
+      handler: save,
+      invalidates: [["folioTree", project?.id]],
+      // A 409 is a write that landed between this save's read and its own
+      // write (#Q2549). The draft stays dirty and the autosave re-arms, so
+      // the retry converges on its own: toasting it would announce a
+      // conflict the user never has to act on. Everything else is toasted
+      // as the root toaster would have.
+      onError: (error) => {
+        if ((error as { status?: number }).status === 409) return;
+        toaster.error(error.message);
+      },
+    },
     [
       isProtected,
       locked,
