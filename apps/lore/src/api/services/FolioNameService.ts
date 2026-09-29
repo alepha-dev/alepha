@@ -1,6 +1,7 @@
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, DbConflictError } from "alepha/orm";
+import { ConflictError } from "alepha/server";
 
 import { folioNames } from "../entities/folioNames.ts";
 
@@ -18,14 +19,15 @@ import { folioNames } from "../entities/folioNames.ts";
  * an attachment the power to block a folio name it never appears
  * beside.
  *
- * Reservations live in `folio_names`. Each create/rename/move
- * writes the entity row AND a reservation row in one transaction
- * (`$transactional()` on the controller action). The UNIQUE INDEX on
+ * Reservations live in `folio_names`. The UNIQUE INDEX on
  * `(parent_directory_id, root_scope, lower_name)` is the actual
- * uniqueness guarantee — if two writers race, one of them gets a UNIQUE
- * constraint violation and rolls back. This service offers the
- * convenience layer: reserve, release, and "auto-suffix to first
- * available name" (Drive-style `logo (1).png`).
+ * uniqueness guarantee. There is no transaction around the reservation
+ * and its entity row (Lore runs on D1, which has none), so a create
+ * CLAIMS the name first ({@link claim}), before its row exists: a racer
+ * that loses the UNIQUE index retries with the next suffix, and nothing
+ * is left half-written. This service offers the convenience layer:
+ * claim, reserve, release, and "auto-suffix to first available name"
+ * (Drive-style `logo (1).png`).
  */
 export type FolioNodeKind = "folio" | "directory";
 
@@ -82,11 +84,49 @@ export class FolioNameService {
   }
 
   /**
+   * How many suffixes {@link claim} tries before giving up.
+   */
+  protected readonly claimAttempts = 5;
+
+  /**
+   * Claim the first free form of `desired` for `entityId`, and return it
+   * (#Q2548).
+   *
+   * Called BEFORE the entity row is written, with an id the caller
+   * generated: `folio_names.entityId` has no foreign key, so a reservation
+   * may exist before its row. Two concurrent creates of "X" both see it
+   * free; the loser's insert hits the UNIQUE index, and it re-suffixes and
+   * tries again, so they end as "X" and "X (1)". Without a transaction the
+   * UNIQUE violation is an ordinary error on every driver, which is what
+   * makes this loop safe. Answers 409 after {@link claimAttempts} losses.
+   *
+   * If the row insert then fails, the caller releases the name.
+   */
+  public async claim(
+    desired: string,
+    kind: FolioNodeKind,
+    entityId: string,
+    scope: ScopeKey,
+  ): Promise<string> {
+    for (let attempt = 0; attempt < this.claimAttempts; attempt += 1) {
+      const name = await this.autoSuffix(desired, scope);
+      try {
+        await this.reserve(name, kind, entityId, scope);
+        return name;
+      } catch (error) {
+        if (!(error instanceof DbConflictError)) throw error;
+      }
+    }
+    throw new ConflictError(
+      `Could not claim the name "${desired}": it kept being taken by concurrent writes. Try again.`,
+    );
+  }
+
+  /**
    * Reserve `name` for `entityId` of `kind` under `scope`. Throws if
-   * another sibling already owns the name (case-insensitive). Caller
-   * should run this inside the same transaction that inserts the
-   * entity row so the reservation rolls back together with the entity
-   * on failure.
+   * another sibling already owns the name (case-insensitive). No
+   * transaction ties it to the entity row: a create goes through
+   * {@link claim} first, and releases the name if its row insert fails.
    *
    * SQLite gotcha: NULLs are distinct in UNIQUE indexes, so a row with a
    * NULL anywhere in the index can be inserted twice over. Both indexed
@@ -95,7 +135,7 @@ export class FolioNameService {
    * `root_scope` takes `""` inside a directory. `root_scope` used to be
    * left NULL there, which meant the index bit at the root and nowhere
    * else: every reservation inside a folder could be duplicated freely,
-   * so the "one of the two racing writers rolls back" guarantee this
+   * so the "one of the two racing writers loses" guarantee this
    * class documents held only for root-level names.
    */
   public async reserve(

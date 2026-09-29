@@ -1,5 +1,7 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
+import { CryptoProvider } from "alepha/crypto";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
@@ -30,6 +32,7 @@ import {
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { BestEffort } from "../services/BestEffort.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
 import { FolioHistoryService } from "../services/FolioHistoryService.ts";
@@ -68,6 +71,9 @@ export class FolioController {
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly bestEffort = $inject(BestEffort);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
@@ -748,11 +754,7 @@ export class FolioController {
   }
 
   create = $action({
-    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [
-      $transactional(),
-      this.ownsProjectFromBodyForKnowledge("folio:write"),
-    ],
+    use: [this.ownsProjectFromBodyForKnowledge("folio:write")],
     description: "Create a new folio.",
     schema: {
       body: z.object({
@@ -791,53 +793,78 @@ export class FolioController {
       );
       // Drive-style: a title already taken in this folder is suffixed
       // rather than refused, exactly as `FolioDirectoryService.create`
-      // does for a directory. The reservation goes in after the insert
-      // so it can carry the folio's id; the action is `$transactional`,
-      // so a losing race on the UNIQUE index rolls the folio back with
-      // it.
+      // does for a directory. The name is CLAIMED before the row exists,
+      // under an id generated here (#Q2548): there is no transaction (D1),
+      // so a reservation written after the insert could lose the race and
+      // leave a committed folio with the same title and no reservation. A
+      // racer that loses the claim re-suffixes instead.
       const scope = this.nameService.scopeOf(body.projectId, directoryId);
-      const title = await this.nameService.autoSuffix(body.title, scope);
-      const shortId = await this.folioShortId.next(String(body.projectId));
-      const folio = await this.folios.create({
-        projectId: body.projectId,
-        shortId,
-        title,
-        content,
-        summary,
-        directoryId,
-        protected: isProtected,
-        pinned,
-        searchText: isProtected
-          ? // Search index intentionally blank for protected folios —
-            // we can't index ciphertext, and we don't even leak the
-            // summary into the search blob (the user may want it
-            // sensitive too). Title still surfaces via the dedicated
-            // title-LIKE path in the sidebar filter.
-            ""
-          : buildFolioSearchText({
-              title,
-              summary,
-              content,
-            }),
-      });
-      await this.nameService.reserve(title, "folio", folio.id, scope);
+      const id = this.crypto.randomUUIDv7(this.dateTime.nowMillis());
+      const title = await this.nameService.claim(
+        body.title,
+        "folio",
+        id,
+        scope,
+      );
+      let folio: Folio;
+      try {
+        const shortId = await this.folioShortId.next(String(body.projectId));
+        folio = await this.folios.create({
+          id,
+          projectId: body.projectId,
+          shortId,
+          title,
+          content,
+          summary,
+          directoryId,
+          protected: isProtected,
+          pinned,
+          searchText: isProtected
+            ? // Search index intentionally blank for protected folios —
+              // we can't index ciphertext, and we don't even leak the
+              // summary into the search blob (the user may want it
+              // sensitive too). Title still surfaces via the dedicated
+              // title-LIKE path in the sidebar filter.
+              ""
+            : buildFolioSearchText({
+                title,
+                summary,
+                content,
+              }),
+        });
+      } catch (error) {
+        await this.bestEffort.run(
+          "createFolio: releasing the claimed name failed",
+          () => this.nameService.releaseByEntity(id),
+        );
+        throw error;
+      }
+      const created = folio;
+      // Everything below follows the committed row, and is best effort
+      // (#Q2555): a failure is logged as a blight, never a 500 that invites
+      // a retry creating a second folio.
+      //
       // Sync outbound `[[...]]` references. Skipped for protected folios
       // since `content` is ciphertext — scanning it for `[[...]]` would
       // generate noisy junk links from base64 chars.
       if (!isProtected) {
         // A brand-new id has no links to clear, so the delete is skipped.
-        await this.linkService.syncLinks(this.folioSource(folio), content, {
-          created: true,
-        });
+        await this.bestEffort.run("createFolio: link sync failed", () =>
+          this.linkService.syncLinks(this.folioSource(created), content, {
+            created: true,
+          }),
+        );
       }
       // Seed the revision log with a `create` entry. Snapshot is the
       // folio as it stands right after insert — gives the History tab a
       // baseline to diff later edits against.
-      await this.historyService.appendRevision(
-        folio,
-        user.id,
-        "create",
-        undefined,
+      await this.bestEffort.run("createFolio: create revision failed", () =>
+        this.historyService.appendRevision(
+          created,
+          user.id,
+          "create",
+          undefined,
+        ),
       );
       await this.logFolio("create", folio, user, { protected: isProtected });
 

@@ -1,4 +1,6 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
@@ -7,6 +9,7 @@ import {
   folioDirectories,
 } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
+import { BestEffort } from "./BestEffort.ts";
 import { FolioAttachmentService } from "./FolioAttachmentService.ts";
 import { FolioNameService } from "./FolioNameService.ts";
 
@@ -30,6 +33,9 @@ export class FolioDirectoryService {
   protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
   protected readonly names = $inject(FolioNameService);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly bestEffort = $inject(BestEffort);
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly directoryShortId = $sequence();
 
@@ -82,18 +88,30 @@ export class FolioDirectoryService {
       }
     }
 
+    // The name is claimed BEFORE the row, under an id generated here (the
+    // same UUIDv7 the column would have made): with no transaction, a
+    // reservation written after the insert could lose the race and leave a
+    // committed directory with no reservation at all (#Q2548).
     const scope = this.scopeOf(input.projectId, input.parentId);
-    const name = await this.names.autoSuffix(input.name, scope);
+    const id = this.crypto.randomUUIDv7(this.dateTime.nowMillis());
+    const name = await this.names.claim(input.name, "directory", id, scope);
 
-    const shortId = await this.directoryShortId.next(String(input.projectId));
-    const directory = await this.directories.create({
-      projectId: input.projectId,
-      shortId,
-      parentId: input.parentId,
-      name,
-    });
-    await this.names.reserve(name, "directory", directory.id, scope);
-    return directory;
+    try {
+      const shortId = await this.directoryShortId.next(String(input.projectId));
+      return await this.directories.create({
+        id,
+        projectId: input.projectId,
+        shortId,
+        parentId: input.parentId,
+        name,
+      });
+    } catch (error) {
+      await this.bestEffort.run(
+        "createDirectory: releasing the claimed name failed",
+        () => this.names.releaseByEntity(id),
+      );
+      throw error;
+    }
   }
 
   public async rename(id: string, name: string): Promise<FolioDirectory> {
@@ -103,8 +121,8 @@ export class FolioDirectoryService {
     // Release first: autoSuffix counts the entity's own current
     // reservation as a sibling otherwise — so "Abc" → "abc" (or any
     // same-name/case-variant rename in the same scope) would resolve
-    // to "abc (1)". The enclosing controller is $transactional, so a
-    // collision in reserve rolls back the release.
+    // to "abc (1)". ⚠️ Nothing rolls the release back if the reserve
+    // then fails (D1 has no transaction): the name is left unguarded.
     await this.names.releaseByEntity(id);
     const nextName = await this.names.autoSuffix(name, scope);
     await this.names.reserve(nextName, "directory", id, scope);

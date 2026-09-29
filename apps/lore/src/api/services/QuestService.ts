@@ -105,9 +105,10 @@ export class QuestService {
   protected readonly limits = $inject(ProjectLimits);
 
   /**
-   * Per-project sequence for `quests.shortId`. Advances inside the caller's
-   * `$transactional` block on create, so failed inserts return the id to the
-   * pool instead of burning it.
+   * Per-project sequence for `quests.shortId`. One atomic statement, so two
+   * creates never share a number. Nothing rolls it back (D1 has no
+   * transaction): a create that fails after it leaves a gap, never a
+   * duplicate.
    */
   protected readonly questShortId = $sequence();
 
@@ -173,8 +174,9 @@ export class QuestService {
    * 3. insert the `quests` row with the standard defaults.
    *
    * The caller is responsible for its own auth check before calling this —
-   * this service does no permission check of its own. Must run inside a
-   * `$transactional()` block — the `shortId` sequence relies on it.
+   * this service does no permission check of its own. Needs no
+   * transaction: a create that fails after the sequence only leaves a gap
+   * in the numbers.
    */
   async createQuest(input: CreateQuestInput): Promise<Quest> {
     // Before the sequence, so a refused create does not burn a shortId.

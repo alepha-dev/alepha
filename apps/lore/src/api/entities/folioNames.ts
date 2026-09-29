@@ -4,8 +4,9 @@ import { $entity, db } from "alepha/orm";
 /**
  * Reservation table that enforces "no two siblings with the same name"
  * across both folio node types (folios and directories).
- * Every create/rename/move writes the entity row AND a reservation row
- * in one transaction; the UNIQUE INDEX is what makes the DB reject
+ * Every create/rename/move writes the entity row AND a reservation row.
+ * There is no transaction around the two (D1 has none): a create claims
+ * the name first, and the UNIQUE INDEX is what makes the DB reject
  * collisions atomically without app-side locking.
  *
  * Scope key. SQLite considers multiple `NULL`s distinct in a UNIQUE
