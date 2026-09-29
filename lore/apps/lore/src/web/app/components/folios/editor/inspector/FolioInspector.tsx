@@ -55,6 +55,10 @@ export interface FolioInspectorProps {
    */
   onReverted: (folio: Folio) => Promise<void>;
   /**
+   * An attachment was renamed: see `FolioAttachmentsTabProps.onRenamed`.
+   */
+  onAttachmentRenamed?: (from: string, to: string) => void;
+  /**
    * The editor's contenteditable root (or an ancestor of it) — threaded
    * down to the Outline tab only. `null` until the editor mounts.
    */
@@ -176,6 +180,7 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
             folioId={props.folio?.id}
             projectId={props.folio?.projectId}
             disabled={props.protectedFolio}
+            onRenamed={props.onAttachmentRenamed}
           />
         </div>
       </div>

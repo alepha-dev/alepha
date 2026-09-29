@@ -1,18 +1,23 @@
 import { $inject } from "alepha";
 import { FileService, files } from "alepha/api/files";
-import { $repository, $sequence } from "alepha/orm";
+import { $repository, $sequence, DbEntityNotFoundError, sql } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 // A zero-dependency pure helper, deliberately shared with the browser: the
 // two writers and the reader of an `assets/` reference must agree on the
 // encoding exactly, and a second copy here is how that stops being true.
-import { folioAssetPath } from "../../web/app/components/folios/folioAssetReference.ts";
+import {
+  folioAssetPath,
+  folioAssetReferenceForms,
+} from "../../web/app/components/folios/folioAssetReference.ts";
 import {
   type FolioAttachment,
   folioAttachments,
 } from "../entities/folioAttachments.ts";
 import { folios } from "../entities/folios.ts";
 import type { HydratedFolioAttachment } from "../schemas/hydratedFolioAttachmentSchema.ts";
+import { BoundParameters } from "./BoundParameters.ts";
+import { FolioHistoryService } from "./FolioHistoryService.ts";
 
 /**
  * Lore-side attachment operations on top of the framework `FileService`. The
@@ -40,6 +45,8 @@ export class FolioAttachmentService {
   protected readonly folioRows = $repository(folios);
   protected readonly frameworkFiles = $repository(files);
   protected readonly fileService = $inject(FileService);
+  protected readonly bound = $inject(BoundParameters);
+  protected readonly history = $inject(FolioHistoryService);
   protected readonly blobShortId = $sequence();
 
   public async findById(fileId: string): Promise<FolioAttachment | undefined> {
@@ -200,24 +207,42 @@ export class FolioAttachmentService {
     });
     if (!folio?.content || folio.protected) return;
 
-    // Match the encoded and the bare form, since the writers percent-encode
-    // but hand-typed markdown will not. The replacement goes through
-    // `folioAssetPath` rather than `encodeURIComponent` so this cannot drift
-    // from what the reader accepts — the difference is parentheses, which
-    // `encodeURIComponent` leaves alone and markdown treats as terminators,
-    // and which `autoSuffix` puts in every collision name.
-    const candidates = new Set([
-      from,
-      encodeURIComponent(from),
-      folioAssetPath(from).slice("assets/".length),
-    ]);
+    const forms = folioAssetReferenceForms(from);
+    if (!forms.some((form) => folio.content.includes(form))) return;
+
+    // History keeps the pre-rename body: the head revision reads the live
+    // content, which is about to change without a revision of its own.
+    await this.history.materializeHead(folioId, folio.content);
+
+    // In the database, not in JS (#Q2550): a JS rewrite of the row read
+    // above overwrote any edit that landed in between. One UPDATE of
+    // nested `replace()`s over every form of the reference, guarded by
+    // `LIKE` so a folio whose references are already gone is not touched.
+    // Through the Repository rather than `query()`, so `updatedAt` and the
+    // version move and the editor's own version-guarded save sees it.
+    // The replacement goes through `folioAssetPath` rather than
+    // `encodeURIComponent` so it cannot drift from what the reader accepts:
+    // the difference is parentheses, which `autoSuffix` puts in every
+    // collision name.
+    const t = this.folioRows.table;
     const replacement = `](${folioAssetPath(to)})`;
-    let content = folio.content;
-    for (const candidate of candidates) {
-      content = content.split(`](assets/${candidate})`).join(replacement);
+    let content = sql`${t.content}`;
+    for (const form of forms) {
+      content = sql`replace(${content}, ${form}, ${replacement})`;
     }
-    if (content === folio.content) return;
-    await this.folioRows.updateById(folioId, { content });
+    await this.folioRows
+      .updateOne(
+        {
+          id: { eq: folioId },
+          protected: { eq: false },
+          or: forms.map((form) => ({ content: { like: `%${form}%` } })),
+        },
+        { content },
+      )
+      .catch((error: unknown) => {
+        // The references went away meanwhile: nothing to rewrite.
+        if (!(error instanceof DbEntityNotFoundError)) throw error;
+      });
   }
 
   /**
@@ -321,6 +346,39 @@ export class FolioAttachmentService {
    *
    * Returns how many were reclaimed, which is what makes it assertable.
    */
+  /**
+   * The framework file ids behind every attachment of these folios, read
+   * in batches under D1's bound-parameter ceiling.
+   */
+  public async fileIdsOf(folioIds: readonly string[]): Promise<string[]> {
+    const rows = await this.bound.collect(folioIds, (batch) =>
+      this.attachments.findMany({
+        where: { folioId: { inArray: batch } },
+        columns: ["fileId"],
+      }),
+    );
+    return rows.map((row) => row.fileId);
+  }
+
+  /**
+   * Delete the attachment rows of these folios, and nothing in storage.
+   * The first half of a subtree delete: the bytes go last (#Q2550).
+   */
+  public async deleteRowsOf(folioIds: readonly string[]): Promise<void> {
+    for (const batch of this.bound.chunk(folioIds)) {
+      await this.attachments.deleteMany({ folioId: { inArray: batch } });
+    }
+  }
+
+  /**
+   * Delete framework files, rows and bytes, in batches.
+   */
+  public async deleteFiles(fileIds: readonly string[]): Promise<void> {
+    for (const batch of this.bound.chunk(fileIds)) {
+      await this.fileService.deleteFiles(batch);
+    }
+  }
+
   public async deleteByFolio(folioId: string): Promise<number> {
     const attachments = await this.attachments.findMany({
       where: { folioId: { eq: folioId } },

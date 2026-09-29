@@ -26,3 +26,38 @@ export const folioAssetPath = (name: string): string =>
  */
 export const folioAssetEmbed = (name: string): string =>
   `![${name}](${folioAssetPath(name)})`;
+
+/**
+ * Every form a reference to attachment `name` may take in a document:
+ * `](assets/<name>)` bare, percent-encoded, and in the `folioAssetPath`
+ * form. The writers percent-encode, but hand-typed markdown will not.
+ *
+ * One list for the server's rewrite (an SQL `replace` per form) and the
+ * editor's (the same over the open draft), so a rename cannot rewrite one
+ * and leave the other pointing at the old name.
+ */
+export const folioAssetReferenceForms = (name: string): string[] =>
+  [
+    ...new Set([
+      name,
+      encodeURIComponent(name),
+      folioAssetPath(name).slice("assets/".length),
+    ]),
+  ].map((form) => `](assets/${form})`);
+
+/**
+ * `content` with every reference to attachment `from` repointed at `to`.
+ */
+export const rewriteFolioAssetReferences = (
+  content: string,
+  from: string,
+  to: string,
+): string => {
+  if (from === to) return content;
+  const replacement = `](${folioAssetPath(to)})`;
+  let next = content;
+  for (const form of folioAssetReferenceForms(from)) {
+    next = next.split(form).join(replacement);
+  }
+  return next;
+};

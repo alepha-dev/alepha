@@ -6,6 +6,7 @@ import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   okSchema,
@@ -488,10 +489,10 @@ export class ReleaseController {
    * request to learn that is a round trip for nothing.
    */
   setDefaultRelease = $action({
-    // Gate INSIDE the transaction, like `createRelease` - see `$ownsProject`.
     // `release:manage`, because pointing a project's intake somewhere is
-    // configuration rather than work.
-    use: [$transactional(), this.ownsProjectForWork("release:manage")],
+    // configuration rather than work. No transaction (D1 has none): the swap
+    // guards its own target (#Q2550).
+    use: [this.ownsProjectForWork("release:manage")],
     method: "PUT",
     path: "/projects/:projectId/releases/default",
     schema: {
@@ -527,11 +528,18 @@ export class ReleaseController {
           );
         }
         if (previous?.id !== target.id) {
-          await this.defaults.set(
+          const swapped = await this.defaults.set(
             params.projectId,
             target.id,
             this.dt.nowISOString(),
           );
+          // Published between the read above and the swap: the statement
+          // skipped itself, and the project keeps the default it had.
+          if (!swapped) {
+            throw new ConflictError(
+              `Cannot make ${target.tag ?? formatReference("release", target.number)} the default release: it was published meanwhile. Reopen it first.`,
+            );
+          }
           // The release page's activity feed should say who pointed intake
           // where, and it is the only surface that ever will.
           await this.logRelease(

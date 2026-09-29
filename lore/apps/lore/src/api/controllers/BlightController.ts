@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $repository, $transactional } from "alepha/orm";
+import { $repository, DbEntityNotFoundError } from "alepha/orm";
 import {
   $action,
   BadRequestError,
@@ -13,6 +13,7 @@ import {
   blights,
   QUEST_STATUS_PREFIX,
 } from "../entities/blights.ts";
+import { quests } from "../entities/quests.ts";
 import { sigils } from "../entities/sigils.ts";
 import {
   type BlightResource,
@@ -54,6 +55,7 @@ export class BlightController {
   protected readonly BLIGHT_AREA = "Blights";
 
   protected currentBlights = $repository(blights);
+  protected quests = $repository(quests);
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);
   protected questService = $inject(QuestService);
@@ -182,7 +184,6 @@ export class BlightController {
    */
   forwardBlightToQuest = $action({
     use: [
-      $transactional(),
       $ownsProject({
         requires: "blight:triage",
         param: "projectId",
@@ -257,9 +258,24 @@ export class BlightController {
         source: { sigilBlightId: blight.id },
       });
 
-      await this.currentBlights.updateById(blight.id, {
-        status: `${QUEST_STATUS_PREFIX}${quest.id}`,
-      });
+      // The refusal above, again, inside the write (#Q2550): a double click
+      // passes the read twice. No transaction (D1): the loser's quest is
+      // hard-deleted instead of rolled back. Nothing points at it yet (this
+      // path writes no link and no audit), its shortId stays a gap, and a
+      // "Blights" area it may have created stays as a legal empty row.
+      try {
+        await this.currentBlights.updateOne(
+          {
+            id: { eq: blight.id },
+            status: { notLike: `${QUEST_STATUS_PREFIX}%` },
+          },
+          { status: `${QUEST_STATUS_PREFIX}${quest.id}` },
+        );
+      } catch (error) {
+        if (!(error instanceof DbEntityNotFoundError)) throw error;
+        await this.quests.deleteById(quest.id, { force: true });
+        throw new BadRequestError("Blight already forwarded to a quest");
+      }
 
       return { questId: quest.id, questShortId: quest.shortId };
     },

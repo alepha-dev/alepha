@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, $sequence } from "alepha/orm";
+import { $repository, $sequence, DbEntityNotFoundError, sql } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import {
@@ -10,7 +10,9 @@ import {
 } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { BestEffort } from "./BestEffort.ts";
+import { BoundParameters } from "./BoundParameters.ts";
 import { FolioAttachmentService } from "./FolioAttachmentService.ts";
+import { FolioLinkService } from "./FolioLinkService.ts";
 import { FolioNameService } from "./FolioNameService.ts";
 
 /**
@@ -36,6 +38,8 @@ export class FolioDirectoryService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly bestEffort = $inject(BestEffort);
+  protected readonly bound = $inject(BoundParameters);
+  protected readonly linkService = $inject(FolioLinkService);
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly directoryShortId = $sequence();
 
@@ -118,14 +122,11 @@ export class FolioDirectoryService {
     const directory = await this.findById(id);
     if (!directory) throw new NotFoundError("Directory not found");
     const scope = this.scopeOf(directory.projectId, directory.parentId);
-    // Release first: autoSuffix counts the entity's own current
-    // reservation as a sibling otherwise — so "Abc" → "abc" (or any
-    // same-name/case-variant rename in the same scope) would resolve
-    // to "abc (1)". ⚠️ Nothing rolls the release back if the reserve
-    // then fails (D1 has no transaction): the name is left unguarded.
-    await this.names.releaseByEntity(id);
-    const nextName = await this.names.autoSuffix(name, scope);
-    await this.names.reserve(nextName, "directory", id, scope);
+    // One UPDATE of the directory's own reservation row (#Q2550), not a
+    // release then a reserve: with no transaction (D1), a reserve failing
+    // after the release left the name unguarded. A collision answers 409
+    // and the old name stays reserved.
+    const nextName = await this.names.rename(id, "directory", name, scope);
     return this.directories.updateById(id, { name: nextName });
   }
 
@@ -168,25 +169,70 @@ export class FolioDirectoryService {
       }
     }
     const scope = this.scopeOf(directory.projectId, newParentId);
-    // Release first — see rename() above. Move-to-same-parent would
-    // otherwise see the entity's own reservation as a collision.
-    await this.names.releaseByEntity(id);
-    const nextName = await this.names.autoSuffix(directory.name, scope);
-    await this.names.reserve(nextName, "directory", id, scope);
-    return this.directories.updateById(id, {
-      // `newParentId ?? null`, NOT `newParentId` bare — moving to the
-      // project root passes `newParentId: undefined`, and an object key
-      // present with value `undefined` is exactly what Drizzle's `.set()`
-      // silently skips (same rule `FolioController.update`'s own
-      // `directoryId` handling is built around, one file over: `undefined`
-      // means "no change", only an explicit `null` clears a nullable FK).
-      // Before this fix, a directory could never actually be moved to root
-      // through this method — the request succeeded (200, the row's own
-      // `updatedAt` even bumped from the `name` write) and silently left
-      // `parentId` exactly as it was.
-      parentId: newParentId ?? null,
-      name: nextName,
-    });
+    // The name first, as in rename(): one UPDATE of the reservation row.
+    const nextName = await this.names.rename(
+      id,
+      "directory",
+      directory.name,
+      scope,
+    );
+
+    // The cycle check above walks the tree one read per level, so two
+    // opposite moves (A under B, B under A) both pass it. The UPDATE
+    // re-checks it itself (#Q2550): it matches no row when the new parent
+    // sits inside the moved subtree, found by walking up from the new
+    // parent in the same statement.
+    const t = this.directories.table;
+    const col = (name: string) => sql.identifier(name);
+    const guard = newParentId
+      ? {
+          notExists: sql`(
+            WITH RECURSIVE ancestors(node_id, parent_ref) AS (
+              SELECT ${col(t.id.name)}, ${col(t.parentId.name)} FROM ${t}
+              WHERE ${col(t.id.name)} = ${newParentId}
+              UNION ALL
+              SELECT d.${col(t.id.name)}, d.${col(t.parentId.name)}
+              FROM ${t} AS d JOIN ancestors AS a
+                ON d.${col(t.id.name)} = a.parent_ref
+            )
+            SELECT 1 FROM ancestors WHERE node_id = ${id}
+          )`,
+        }
+      : {};
+    try {
+      return await this.directories.updateOne(
+        { id: { eq: id }, ...guard },
+        {
+          // `newParentId ?? null`, NOT `newParentId` bare — moving to the
+          // project root passes `newParentId: undefined`, and an object key
+          // present with value `undefined` is exactly what Drizzle's
+          // `.set()` silently skips (same rule `FolioController.update`'s
+          // own `directoryId` handling is built around, one file over:
+          // `undefined` means "no change", only an explicit `null` clears a
+          // nullable FK). Before this fix, a directory could never actually
+          // be moved to root through this method — the request succeeded
+          // and silently left `parentId` exactly as it was.
+          parentId: newParentId ?? null,
+          name: nextName,
+        },
+      );
+    } catch (error) {
+      if (!(error instanceof DbEntityNotFoundError)) throw error;
+      // Refused by the guard: give the name back its old place.
+      await this.bestEffort.run(
+        "moveDirectory: restoring the previous name failed",
+        () =>
+          this.names.rename(
+            id,
+            "directory",
+            directory.name,
+            this.scopeOf(directory.projectId, directory.parentId),
+          ),
+      );
+      throw new BadRequestError(
+        "Cannot move a directory under one of its own descendants",
+      );
+    }
   }
 
   /**
@@ -202,44 +248,67 @@ export class FolioDirectoryService {
    * since attachments became folio-scoped, so a query on it always came
    * back empty, and the release loop it fed had nothing to release -
    * attachments left the `folio_names` namespace in the same change. The
-   * attachments of the folios below are reclaimed through
-   * `deleteByFolio` in the loop that follows.
+   * attachments of the folios below are reclaimed by the delete itself:
+   * their rows with the other rows, their bytes last.
    */
   public async delete(id: string, opts?: { cascade?: boolean }): Promise<void> {
     const directory = await this.findById(id);
     if (!directory) throw new NotFoundError("Directory not found");
-    const [childDirs, childFolios] = await Promise.all([
-      this.directories.findMany({
-        where: { parentId: { eq: id } },
-        columns: ["id"],
-      }),
-      this.folios.findMany({
-        where: { directoryId: { eq: id } },
-        columns: ["id"],
-      }),
-    ]);
-    const isEmpty = childDirs.length === 0 && childFolios.length === 0;
+
+    // The whole subtree is read first (#Q2550), so every write below knows
+    // what it covers. Id lists go in batches under D1's 100 bound values.
+    const directoryIds = [id];
+    let frontier = [id];
+    while (frontier.length > 0) {
+      const children = await this.bound.collect(frontier, (batch) =>
+        this.directories.findMany({
+          where: { parentId: { inArray: batch } },
+          columns: ["id"],
+        }),
+      );
+      frontier = children.map((child) => child.id);
+      directoryIds.push(...frontier);
+    }
+    const folioIds = (
+      await this.bound.collect(directoryIds, (batch) =>
+        this.folios.findMany({
+          where: { directoryId: { inArray: batch } },
+          columns: ["id"],
+        }),
+      )
+    ).map((folio) => folio.id);
+
+    const isEmpty = directoryIds.length === 1 && folioIds.length === 0;
     if (!isEmpty && !opts?.cascade) {
       throw new BadRequestError(
         "Directory is not empty. Pass cascade=true to delete recursively.",
       );
     }
-    if (!isEmpty) {
-      // Recursive name-reservation cleanup before the FK cascade
-      // wipes the entity rows.
-      for (const child of childDirs) {
-        await this.delete(child.id, { cascade: true });
-      }
-      for (const folio of childFolios) {
-        await this.names.releaseByEntity(folio.id);
-        // The folio is about to be cascaded away by the FK, which takes its
-        // `folio_blobs` rows with it and leaves the framework files behind.
-        // Same reclamation `FolioController.delete` does for one folio.
-        await this.attachmentService.deleteByFolio(folio.id);
-      }
+
+    // Database rows first, storage last (#Q2550). With no transaction, a
+    // failure partway used to leave surviving folios whose attachment
+    // bytes were already gone. Now nothing leaves storage until every row
+    // that pointed at it is deleted.
+    const fileIds = await this.attachmentService.fileIdsOf(folioIds);
+    // `folio_names` has no FK to the entity tables (it discriminates by
+    // `kind`), so no cascade frees the names.
+    for (const batch of this.bound.chunk([...folioIds, ...directoryIds])) {
+      await this.names.releaseByEntities(batch);
     }
-    await this.names.releaseByEntity(id);
+    // `folio_links.from_id` is no FK either: the outbound links of every
+    // folio cascaded away are deleted here, or they outlive it. Inbound
+    // links stay, as `FolioController.delete` leaves them: a reference to
+    // a deleted folio is a broken link, which is what a reader should see.
+    await this.linkService.deleteLinksFromMany("folio", folioIds);
+    await this.attachmentService.deleteRowsOf(folioIds);
+    // The FK cascade takes the child directories, the folios and their
+    // revisions.
     await this.directories.deleteById(id);
+
+    // The bytes, best effort: every row that referenced them is gone.
+    await this.bestEffort.run("deleteDirectory: file cleanup failed", () =>
+      this.attachmentService.deleteFiles(fileIds),
+    );
   }
 
   /**

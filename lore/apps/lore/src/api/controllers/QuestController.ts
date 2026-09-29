@@ -3,7 +3,12 @@ import { $storage, FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
+import {
+  $repository,
+  DbEntityNotFoundError,
+  db,
+  pageQuerySchema,
+} from "alepha/orm";
 import {
   OwnedResourceProvider,
   $secure,
@@ -3100,13 +3105,13 @@ export class QuestController {
   });
 
   deleteQuest = $action({
-    // The only quest mutation that lacked this, and it writes three times
-    // before the row goes: it clears dependents' `dependsOn`, hands any
-    // forwarded blight back to the inbox, then deletes. A failure partway
-    // through used to leave those first two committed against a quest that
-    // still exists — dependencies silently severed, a blight reopened next to
-    // the quest still tracking it.
-    use: [$transactional(), this.ownsQuestForWork("quest:delete")],
+    // It writes three times before the row goes: it clears dependents'
+    // `dependsOn`, hands any forwarded blight back to the inbox, then
+    // deletes. No transaction (D1 has none), and none is needed: the order
+    // is the safe one. A failure partway leaves dependencies severed or a
+    // blight reopened next to a quest that still exists, and a retry of the
+    // delete converges on the intended end state.
+    use: [this.ownsQuestForWork("quest:delete")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -3142,8 +3147,7 @@ export class QuestController {
       // strips undefined keys from an update, which made this a no-op.
       //
       // One statement rather than a read plus an update per dependent: on
-      // D1 each of those was a round trip, inside a delete that is already
-      // transactional.
+      // D1 each of those was a round trip.
       await this.quests.updateMany(
         { dependsOn: { eq: params.id } },
         { dependsOn: null },
@@ -3162,12 +3166,21 @@ export class QuestController {
       // decision from being undone by NOISE; deleting the quest is the owner
       // deliberately withdrawing the decision, which is the opposite.
       if (quest.source?.sigilBlightId) {
-        const blight = await this.blights.findById(quest.source.sigilBlightId);
-        // Only if it still points HERE. A blight re-forwarded to another quest
-        // belongs to that one now, and must not be reopened by this delete.
-        if (blight?.status === `${QUEST_STATUS_PREFIX}${params.id}`) {
-          await this.blights.updateById(blight.id, { status: "open" });
-        }
+        // Only if it still points HERE, checked by the write itself (#Q2550):
+        // a blight re-forwarded to another quest belongs to that one now,
+        // and must not be reopened by this delete. A miss means somebody
+        // else moved it, which is fine.
+        await this.blights
+          .updateOne(
+            {
+              id: { eq: quest.source.sigilBlightId },
+              status: { eq: `${QUEST_STATUS_PREFIX}${params.id}` },
+            },
+            { status: "open" },
+          )
+          .catch((error: unknown) => {
+            if (!(error instanceof DbEntityNotFoundError)) throw error;
+          });
       }
 
       // `folio_links.from_id` is not a foreign key, so nothing in the

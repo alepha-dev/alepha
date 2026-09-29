@@ -12,6 +12,7 @@ import {
 } from "../../shared/markdown-editor/markdownCommands.ts";
 import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
+import { rewriteFolioAssetReferences } from "../folioAssetReference.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioFindBar from "./document/FolioFindBar.tsx";
 import { useFolioFind } from "./document/useFolioFind.ts";
@@ -321,6 +322,15 @@ const FolioWorkspaceContent = (
               onTabChange={props.onInspectorTabChange}
               onCollapse={props.onToggleInspector}
               onReverted={actions.applyReverted}
+              onAttachmentRenamed={(from, to) =>
+                draft.form.input.content.set(
+                  rewriteFolioAssetReferences(
+                    draft.getLiveValues().content,
+                    from,
+                    to,
+                  ),
+                )
+              }
               contentElement={contentElement}
               protectedFolio={actions.actionState.isProtected}
               revisionsAt={draft.revisionsAt}

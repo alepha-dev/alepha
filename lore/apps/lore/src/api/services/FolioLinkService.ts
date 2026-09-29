@@ -311,6 +311,23 @@ export class FolioLinkService {
   }
 
   /**
+   * Delete the outbound links of many sources of one kind at once, in
+   * batches: what a directory delete cascades away (#Q2550). `from_id` is
+   * no foreign key, so nothing else clears them.
+   */
+  public async deleteLinksFromMany(
+    kind: LinkSourceKind,
+    ids: readonly (string | number)[],
+  ): Promise<void> {
+    for (const batch of this.bound.chunk(ids.map(String))) {
+      await this.links.deleteMany({
+        fromType: { eq: kind },
+        fromId: { inArray: batch },
+      });
+    }
+  }
+
+  /**
    * Outbound links: what this source points TO (parsed from its content).
    */
   public async findOutbound(source: {
