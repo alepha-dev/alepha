@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { describe, it } from "vitest";
 
@@ -116,16 +116,12 @@ describe("members.rank migration", () => {
    * The one that matters: applied to rows, including the shapes that are hard.
    */
   it("leaves every live project with exactly one owner", ({ expect }) => {
-    // better-sqlite3 is a native addon, so `createRequire` is how the vitest
-    // ESM graph reaches it - same as `migration-safety.spec.ts`.
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-    const db = new Database(":memory:");
+    const db: any = new DatabaseSync(":memory:");
 
     // D1 ignores `PRAGMA foreign_keys=OFF`, so constraints are always live
     // there. Enforcing them here reproduces D1 rather than the friendlier
     // local SQLite the rest of the suite runs on.
-    db.pragma("foreign_keys = ON");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of sqlOf(dir).split("--> statement-breakpoint")) {

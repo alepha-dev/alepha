@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { describe, it } from "vitest";
 
@@ -59,13 +59,9 @@ describe("epic four-status migration", () => {
   it("rewrites every epic into the new vocabulary when applied to real rows", ({
     expect,
   }) => {
-    // better-sqlite3 is a native addon, so `createRequire` is how the vitest
-    // ESM graph reaches it, as in `migration-safety.spec.ts`.
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-    const db = new Database(":memory:");
+    const db: any = new DatabaseSync(":memory:");
     // D1 enforces foreign keys whatever the pragma says; so does this.
-    db.pragma("foreign_keys = ON");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of sqlOf(dir).split("--> statement-breakpoint")) {
