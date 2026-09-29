@@ -10,7 +10,7 @@ import {
 } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
+import { $repository, db, pageQuerySchema } from "alepha/orm";
 import {
   $secure,
   OwnedResourceProvider,
@@ -1307,7 +1307,7 @@ export class ProjectController {
   /**
    * Hand the project to somebody else, and stop being its owner.
    *
-   * ## One statement, and that is the whole design
+   * ## One guarded statement, in the framework
    *
    * D1 has no transactions (see #Q1926), so a demote-then-promote pair can
    * leave the project with **no** owner if the second write fails, and a
@@ -1315,19 +1315,10 @@ export class ProjectController {
    * expressible anywhere else in this application: `getProjectMembers` sorts
    * on one owner, the quota counts them, and `leaveProject` refuses the one.
    *
-   * So the swap is a single `UPDATE ... CASE ... RETURNING`. `$transactional()`
-   * is still declared for the drivers that honour it - it costs nothing and it
-   * is correct on Postgres - but the correctness on D1 comes from there being
-   * one statement.
-   *
-   * ⚠️ `RETURNING` is not decoration. `Repository.query` throws `DbError` on a
-   * result that is not an array of rows, which is what an `UPDATE` without it
-   * answers. One column, with its own schema: see the note on the statement.
-   *
-   * ⚠️ `sql.identifier(t.rank.name)` on the left of the `SET`, not `${t.rank}`.
-   * Interpolating the column object renders it QUALIFIED (`"members"."rank"`),
-   * which SQLite rejects there - `near ".": syntax error`. Everywhere else in
-   * the statement the qualified form is what you want.
+   * So `MemberService.transfer` swaps both ranks in one `UPDATE` whose WHERE
+   * re-checks that the caller still owns and the target is still a member,
+   * and answers 409 when the membership changed underneath. It wraps that in
+   * its own transaction for Postgres; this action declares none (#Q2556).
    *
    * ## What it is not
    *
@@ -1341,7 +1332,7 @@ export class ProjectController {
     // checked below, off the membership row the gate read. Transfer is
     // deliberately not a permission - a rank that could be granted the right
     // to take ownership away would make ownership grantable.
-    use: [$transactional(), this.ownsProject("member:manage")],
+    use: [this.ownsProject("member:manage")],
     method: "POST",
     path: "/projects/:id/transfer",
     schema: {
