@@ -1,4 +1,6 @@
-import { Alepha, AlephaError, z } from "alepha";
+import { $inject, Alepha, AlephaError, z } from "alepha";
+import { $logger } from "alepha/logger";
+import { $tool, AlephaMcp, McpServerProvider } from "alepha/mcp";
 import { $action, ServerProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
@@ -202,5 +204,144 @@ describe("SigilServerErrors — batched actions", () => {
     } finally {
       await alepha.stop();
     }
+  });
+});
+
+describe("SigilServerErrors — error-level logs", () => {
+  class Worker {
+    protected readonly log = $logger();
+
+    public swallow(error: Error) {
+      this.log.error("best-effort step failed", error);
+    }
+
+    public swallowNested(error: Error) {
+      this.log.error("best-effort step failed", { error, step: "links" });
+    }
+
+    public warn() {
+      this.log.warn("expected condition");
+    }
+
+    public plain() {
+      this.log.error("something is off");
+    }
+  }
+
+  const setup = async () => {
+    const alepha = make();
+    alepha.inject(SigilServerErrors);
+    const worker = alepha.inject(Worker);
+    await alepha.start();
+    const sink = alepha.inject(SigilSinkProvider) as FakeSink;
+    const errors = () => sink.ingested.flatMap((it) => it.errors);
+    return { alepha, sink, errors, worker };
+  };
+
+  it("records one blight for a caught-and-logged error, with its stack", async () => {
+    const { errors, worker } = await setup();
+    const error = Object.assign(new Error("links sync failed"), {
+      name: "DbError",
+    });
+
+    worker.swallow(error);
+
+    await expect.poll(() => errors().length).toBe(1);
+    expect(errors()[0]).toMatchObject({
+      name: "DbError",
+      message: "links sync failed",
+      origin: "server",
+    });
+    expect(errors()[0].sourceUrl).toMatch(/^log:/);
+    expect(errors()[0].stack).toContain("links sync failed");
+  });
+
+  it("reads the Error from data.error, and the message alone when there is none", async () => {
+    const { errors, worker } = await setup();
+
+    worker.swallowNested(new Error("nested"));
+    worker.plain();
+
+    await expect.poll(() => errors().length).toBe(2);
+    expect(
+      errors()
+        .map((it) => String(it.message))
+        .sort((a, b) => a.localeCompare(b)),
+    ).toEqual(["nested", "something is off"]);
+  });
+
+  it("ignores warnings", async () => {
+    const { errors, worker } = await setup();
+
+    worker.warn();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(errors()).toHaveLength(0);
+  });
+
+  it("records a 5xx once, whether the request hook or its log line comes first", async () => {
+    const { alepha, errors, worker } = await setup();
+    const first = new Error("db down");
+    const second = new Error("db down again");
+
+    await emitError(alepha, first);
+    worker.swallow(first);
+    worker.swallow(second);
+    await emitError(alepha, second);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(errors()).toHaveLength(2);
+  });
+
+  it("does not feed back an error logged while ingesting", async () => {
+    class LoopingSink extends FakeSink {
+      public readonly worker = $inject(Worker);
+      override async ingest(env: any) {
+        this.ingested.push(env);
+        this.worker.plain();
+      }
+    }
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
+    }).with({ provide: SigilSinkProvider, use: LoopingSink });
+    alepha.inject(SigilServerErrors);
+    await alepha.start();
+    const sink = alepha.inject(SigilSinkProvider) as LoopingSink;
+
+    sink.worker.swallow(new Error("first"));
+
+    await expect.poll(() => sink.ingested.length).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sink.ingested).toHaveLength(1);
+  });
+
+  it("records one blight for a failing MCP tool", async () => {
+    const alepha = make().with(AlephaMcp);
+    class Tools {
+      failing = $tool({
+        description: "Failing tool",
+        handler: async () => {
+          throw new Error("tool blew up");
+        },
+      });
+    }
+    alepha.with(Tools);
+    alepha.inject(SigilServerErrors);
+    await alepha.start();
+    const sink = alepha.inject(SigilSinkProvider) as FakeSink;
+
+    await alepha.inject(McpServerProvider).handleMessage({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "failing", arguments: {} },
+    });
+
+    await expect.poll(() => sink.ingested.length).toBe(1);
+    expect(sink.ingested[0].errors[0].message).toBe("tool blew up");
   });
 });
