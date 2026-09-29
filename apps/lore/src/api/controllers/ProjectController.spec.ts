@@ -79,8 +79,14 @@ interface TestContext {
 const setup = async (
   options: { failMembership?: boolean; failProjectSave?: boolean } = {},
 ): Promise<TestContext> => {
+  // Transactions off, as on D1: every compensation below is the handler's
+  // own, never a rollback the spec driver would do for it.
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
+    env: {
+      LOG_LEVEL: "error",
+      DATABASE_URL: ":memory:",
+      DATABASE_TRANSACTIONS: false,
+    },
   });
 
   if (options.failMembership) {
@@ -181,9 +187,8 @@ describe("ProjectController.createProject", () => {
       ),
     ).rejects.toThrow(AlephaError);
 
-    // Nothing survives: on this driver `$transactional()` rolls the whole
-    // handler back, and on a driver that cannot (D1) the compensating delete
-    // in the handler is what empties this list.
+    // Nothing survives: with no transaction, the compensating delete in the
+    // handler is what empties this list.
     const projects = await ctx.repos.projects.findMany({
       where: { createdBy: { eq: account.id } },
     });
@@ -212,6 +217,74 @@ describe("ProjectController.createProject", () => {
     expect(await ctx.repos.projects.findMany({})).toHaveLength(0);
     expect(await ctx.repos.organizations.findMany({})).toHaveLength(0);
     expect(await ctx.repos.organizationMembers.findMany({})).toHaveLength(0);
+  });
+
+  it("refuses an unknown capability option before writing anything, and the retry succeeds", async ({
+    expect,
+  }) => {
+    ctx = await setup();
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+
+    await expect(
+      ctx.controller.createProject(
+        {
+          body: {
+            title: "Typo Project",
+            capabilities: [
+              { key: "work" },
+              { key: "apps", options: { trakc: true } },
+            ],
+          },
+        },
+        { user },
+      ),
+    ).rejects.toThrow();
+
+    expect(await ctx.repos.projects.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizations.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizationMembers.findMany({})).toHaveLength(0);
+
+    const retried = await ctx.controller.createProject(
+      {
+        body: {
+          title: "Typo Project",
+          capabilities: [{ key: "work" }, { key: "apps" }],
+        },
+      },
+      { user },
+    );
+    expect(retried.slug).toBe("typo-project");
+  });
+
+  it("refuses a capability listed twice at the request schema, leaving nothing behind", async ({
+    expect,
+  }) => {
+    ctx = await setup();
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+
+    await expect(
+      ctx.controller.createProject(
+        {
+          body: {
+            title: "Twice Project",
+            capabilities: [{ key: "work" }, { key: "work" }],
+          },
+        },
+        { user },
+      ),
+      // The request schema's refusal, which HTTP answers as a 400.
+    ).rejects.toThrow("Each capability may be listed only once.");
+
+    expect(await ctx.repos.projects.findMany({})).toHaveLength(0);
+    expect(await ctx.repos.organizations.findMany({})).toHaveLength(0);
+
+    const retried = await ctx.controller.createProject(
+      { body: { title: "Twice Project", capabilities: [{ key: "work" }] } },
+      { user },
+    );
+    expect(retried.slug).toBe("twice-project");
   });
 
   it("frees the slug, so the same title can be created again after a failure", async ({
