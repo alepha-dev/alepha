@@ -143,7 +143,7 @@ export class ServerMultipartProvider {
       if (contentLength) {
         const size = Number.parseInt(contentLength, 10);
         if (!Number.isNaN(size) && size > caps.maxTotalBytes) {
-          this.log.error(
+          this.log.warn(
             `Multipart request size limit exceeded: ${size} > ${caps.maxTotalBytes}`,
           );
           throw new HttpError({
@@ -404,7 +404,8 @@ export class ServerMultipartProvider {
     }
 
     if (error instanceof MultipartLimitError) {
-      this.log.error(error.message);
+      // The caller's upload was too large: a 413, not a fault.
+      this.log.warn(error.message);
       const message = this.limitMessage(error, field);
       return new HttpError({ status: 413, message }, error);
     }

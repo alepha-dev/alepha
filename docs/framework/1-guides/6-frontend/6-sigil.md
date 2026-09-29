@@ -207,6 +207,18 @@ The sink decides separately what it _keeps_. What an app sends is its own
 business; a sigil whose kinds withhold vitals discards them on arrival however
 enthusiastic the sender.
 
+## Which server errors are reported
+
+Three sources on the server, each one a failure nobody would otherwise see:
+
+- **A request that failed with a 5xx**, or with an error carrying no status. A 4xx is the app refusing, not failing, and stays out.
+- **A background job that threw.**
+- **Anything logged at error level**: `log.error("…", error)` or `log.error("…", { error })`. This is how code that catches a failure and carries on (an audit row that could not be written, a notification that could not be sent) still reaches the inbox. The `Error` passed in gives the report its name, message and stack; with none, the log message is the report.
+
+Warnings and below are never reported, so an expected condition logs at `warn`.
+
+One failure is one report: the 5xx that fails a request and the "Request has failed" line the server logs for it carry the same `Error`, and the second is skipped. An error logged while the report itself is being sent is not fed back.
+
 ## Errors are grouped before they leave
 
 Errors are aggregated by fingerprint in the process, with stack frames

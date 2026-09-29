@@ -328,7 +328,9 @@ export class CloudflareD1Provider extends DatabaseProvider {
           error instanceof Error
             ? `${error.message}${error.stack ? `\n${error.stack}` : ""}`
             : String(error);
-        this.log.error(`D1 initialization failed: ${errorMessage}`);
+        this.log.error(`D1 initialization failed: ${errorMessage}`, {
+          error,
+        });
         throw error;
       }
     },

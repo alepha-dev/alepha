@@ -875,7 +875,9 @@ export class ServerAuthProvider {
         ...tokens,
       }))
       .catch((e) => {
-        this.log.error("Failed to get access token", e);
+        // A replayed or stale callback is the usual cause, and it answers
+        // a refusal: a warning, not a blight.
+        this.log.warn("Failed to get access token", e);
         throw new SecurityError("Failed to get access token", {
           cause: e,
         });

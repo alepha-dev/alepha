@@ -212,8 +212,14 @@ export class NodemailerEmailProvider implements EmailProvider {
       return { messageId: result.messageId };
     } catch (error) {
       const message = `Failed to send email via Nodemailer: ${error instanceof Error ? error.message : String(error)}`;
-      this.log.error(message, { to, subject });
-      throw new EmailError(message, error instanceof Error ? error : undefined);
+      // The Error that is thrown, so this log and the failure it causes
+      // are reported once.
+      const emailError = new EmailError(
+        message,
+        error instanceof Error ? error : undefined,
+      );
+      this.log.error(message, { to, subject, error: emailError });
+      throw emailError;
     }
   }
 

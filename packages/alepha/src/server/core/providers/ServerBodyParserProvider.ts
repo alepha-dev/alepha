@@ -297,7 +297,7 @@ export class ServerBodyParserProvider {
           totalLength += value.length;
 
           if (totalLength > limit) {
-            this.log.error(
+            this.log.warn(
               `Body size limit exceeded: ${totalLength} > ${limit}`,
             );
 

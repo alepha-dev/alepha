@@ -473,7 +473,9 @@ export class SessionService {
 
       const storedPassword = identity.password;
       if (!storedPassword) {
-        this.log.error("Identity has no password configured", {
+        // An account that signs in through a provider only: a refusal, not
+        // a fault.
+        this.log.warn("Identity has no password configured", {
           provider,
           username,
           identityId: identity.id,

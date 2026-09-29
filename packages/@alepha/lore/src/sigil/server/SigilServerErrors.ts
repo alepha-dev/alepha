@@ -1,4 +1,4 @@
-import { $hook, $inject } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 // Type-only, and deliberately so: it loads the module augmentation that
 // declares `job:error` without pulling the jobs runtime into an app that has
 // none. The hook simply never fires there.
@@ -16,23 +16,74 @@ import { SigilSinkProvider } from "./SigilSinkProvider.ts";
  * case that matters most, since a failing endpoint can produce thousands of
  * identical errors a minute.
  *
- * Two sources, both Alepha's own events rather than a process-level trap:
- * `server:onError` for requests and `job:error` for background work. Staying
- * inside the framework's events is what keeps this reportable — an
- * `uncaughtException` handler would fire for anything in the process,
- * including things no app author can act on.
+ * Three sources, all Alepha's own events rather than a process-level trap:
+ * `server:onError` for requests, `job:error` for background work, and `log`
+ * for every entry logged at error level, so a failure the code caught, logged
+ * and carried on from still reaches Lore. Staying inside the framework's
+ * events is what keeps this reportable — an `uncaughtException` handler would
+ * fire for anything in the process, including things no app author can act
+ * on.
+ *
+ * One failure is one report, whichever hooks see it: every `Error` ingested
+ * is remembered, so the 5xx that `server:onError` reports and the "Request
+ * has failed" line the server logs for it arrive once.
  */
 export class SigilServerErrors {
+  protected readonly alepha = $inject(Alepha);
   protected readonly sink = $inject(SigilSinkProvider);
+
+  /**
+   * Context key marking code that runs inside an ingest, so an error it logs
+   * is not fed back into the sink it came from.
+   */
+  protected static readonly INGESTING = "sigil.server.ingesting";
+
+  /**
+   * The `Error`s already reported, by identity. Weak, so a report never keeps
+   * an error alive.
+   */
+  protected readonly reported = new WeakSet<object>();
 
   protected readonly onError = $hook({
     on: "server:onError",
     handler: async ({ route, error }) => {
       if (!this.isCrash(error)) return;
+      if (!this.claim(error)) return;
 
-      await this.sink.ingest({
-        errors: [this.toError(error, route?.path ?? "")],
-      });
+      await this.ingest(this.toError(error, route?.path ?? ""));
+    },
+  });
+
+  /**
+   * An entry logged at error level.
+   *
+   * A log is how a best-effort step reports that it failed and was
+   * swallowed: no request fails and no job throws, so without this nothing
+   * reaches Lore. Warnings and below stay out, which is why an expected
+   * condition logs at `warn`.
+   */
+  protected readonly onLog = $hook({
+    on: "log",
+    handler: async ({ entry }) => {
+      if (entry.level !== "ERROR") return;
+      if (this.alepha.context.get(SigilServerErrors.INGESTING)) return;
+
+      const sourceUrl = `log:${entry.module}`;
+      const error = this.errorOf(entry.data);
+      if (!error) {
+        await this.ingest({
+          name: "Error",
+          message: String(entry.message ?? "").slice(0, 2000),
+          stack: "",
+          sourceUrl: sigilScrubUrl(sourceUrl),
+          origin: "server" as const,
+        });
+        return;
+      }
+      if (!this.isCrash(error)) return;
+      if (!this.claim(error)) return;
+
+      await this.ingest(this.toError(error, sourceUrl));
     },
   });
 
@@ -49,11 +100,44 @@ export class SigilServerErrors {
   protected readonly onJobError = $hook({
     on: "job:error",
     handler: async ({ name, error }) => {
-      await this.sink.ingest({
-        errors: [this.toError(error, `job:${name}`)],
-      });
+      if (!this.claim(error)) return;
+
+      await this.ingest(this.toError(error, `job:${name}`));
     },
   });
+
+  /**
+   * Record `error` as reported, and say whether it was new.
+   *
+   * Anything that is not an object cannot be remembered, and is always new.
+   */
+  protected claim(error: unknown): boolean {
+    if (typeof error !== "object" || error === null) return true;
+    if (this.reported.has(error)) return false;
+    this.reported.add(error);
+    return true;
+  }
+
+  /**
+   * The `Error` a log entry carries: its data, or its data's `error` field,
+   * which is how `log.error("message", { error })` passes one.
+   */
+  protected errorOf(data: unknown): Error | undefined {
+    if (data instanceof Error) return data;
+    const nested = (data as { error?: unknown } | undefined)?.error;
+    return nested instanceof Error ? nested : undefined;
+  }
+
+  /**
+   * Hand one error to the sink, marked so that anything logged at error level
+   * while it runs (a flush that fails, say) is not reported back into it.
+   */
+  protected ingest(error: ReturnType<SigilServerErrors["toError"]>) {
+    return this.alepha.context.nest(async () => {
+      this.alepha.context.set(SigilServerErrors.INGESTING, true);
+      await this.sink.ingest({ errors: [error] });
+    });
+  }
 
   /**
    * Whether this is a fault rather than a refusal.

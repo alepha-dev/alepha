@@ -269,7 +269,8 @@ export class CronProvider {
 
     const failures = results.filter((r) => r.status === "rejected");
     if (failures.length > 0) {
-      this.log.error(`${failures.length}/${jobs.length} cron jobs failed`);
+      // A summary: each failure was already logged at error level above.
+      this.log.warn(`${failures.length}/${jobs.length} cron jobs failed`);
     }
   }
 }

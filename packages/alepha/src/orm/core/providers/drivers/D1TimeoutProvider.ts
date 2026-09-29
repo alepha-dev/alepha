@@ -204,10 +204,16 @@ export class D1TimeoutProvider {
 
     const timer = this.dateTime.createTimeout(() => {
       timedOut = true;
+      // The same Error that is thrown, so a report of this log and one of
+      // the failed request it causes are recognised as one failure.
+      const error = new DbTimeoutError(
+        `D1 query timed out: ${this.summarize(query)}`,
+      );
       this.log.error("D1 query timed out", {
         query: this.summarize(query),
+        error,
       });
-      trip(new DbTimeoutError(`D1 query timed out: ${this.summarize(query)}`));
+      trip(error);
     }, budget);
 
     const operation = call();

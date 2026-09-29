@@ -537,10 +537,11 @@ export abstract class DatabaseProvider {
     }
 
     if (!Array.isArray(result)) {
-      this.log.error("Unexpected query result format", { result });
-      throw new DbError(
+      const error = new DbError(
         "Unexpected query result format, expected array of rows",
       );
+      this.log.error("Unexpected query result format", { result, error });
+      throw error;
     }
 
     return result.map((row) => this.alepha.codec.decode(schema, row));

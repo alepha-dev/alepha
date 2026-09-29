@@ -220,8 +220,14 @@ export class CloudflareEmailProvider implements EmailProvider {
         status === 429
           ? `Cloudflare email rate limit hit (429): ${error instanceof Error ? error.message : String(error)}`
           : `Failed to send email via Cloudflare: ${error instanceof Error ? error.message : String(error)}`;
-      this.log.error(message, { to, subject });
-      throw new EmailError(message, error instanceof Error ? error : undefined);
+      // The Error that is thrown, so this log and the failure it causes
+      // are reported once.
+      const emailError = new EmailError(
+        message,
+        error instanceof Error ? error : undefined,
+      );
+      this.log.error(message, { to, subject, error: emailError });
+      throw emailError;
     }
   }
 
