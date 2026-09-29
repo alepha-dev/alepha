@@ -245,26 +245,17 @@ export class ProjectController {
   });
 
   /**
-   * ⚠️ `$transactional()` is a best-effort net, not a guarantee.
+   * Creates the organization, the project, its owner and its capabilities.
    *
-   * `Repository.transaction` degrades to running the callback in place when
-   * the driver says `supportsTransactions === false`, and
-   * `CloudflareD1Provider` says exactly that: D1 rejects BEGIN, COMMIT and
-   * ROLLBACK and offers only `batch()`. So on `lore.alepha.dev` this
-   * middleware opens nothing and rolls back nothing, while on the Node SQLite
-   * driver (which is what the specs and `yarn v` run) it is a real
-   * transaction.
-   *
-   * That is why the handler ALSO compensates by hand when the membership
-   * write fails: on D1 the compensating delete is the only thing standing
-   * between a crash here and a project whose creator can never open it.
-   *
-   * There is no gate on this action, so the ordering rule in
-   * {@link $ownsProject} - the gate goes after `$transactional()` - does not
-   * bite here.
+   * ⚠️ **No transaction.** Lore runs on D1, which has none, so every
+   * refusal a caller can trigger (an unknown capability option, a duplicate
+   * key) is decided before the first write, and each write that can still
+   * fail afterwards (the fallback slug, the owner, the capability rows)
+   * compensates by hand: it deletes the project and the organization and
+   * rethrows. Only an infrastructure failure reaches a compensation now.
    */
   createProject = $action({
-    use: [$secure({ permissions: ["project:create"] }), $transactional()],
+    use: [$secure({ permissions: ["project:create"] })],
     schema: {
       body: projects.insertSchema.pick({ title: true, icon: true }).extend({
         /**
@@ -300,6 +291,10 @@ export class ProjectController {
          * The at-least-one rule lives in the wizard, because a wizard is
          * asking a question and "none" is not an answer to it; nothing else in
          * the system needs a floor.
+         *
+         * A key listed twice is refused here (400), not deduplicated: two
+         * entries with different options leave the caller's intent
+         * ambiguous.
          */
         capabilities: z
           .array(
@@ -307,6 +302,10 @@ export class ProjectController {
               key: capabilityKeySchema,
               options: z.record(z.text(), z.boolean()).optional(),
             }),
+          )
+          .refine(
+            (list) => new Set(list.map((it) => it.key)).size === list.length,
+            { message: "Each capability may be listed only once." },
           )
           .optional(),
       }),
@@ -351,6 +350,16 @@ export class ProjectController {
 
       const { capabilities: requested, ...columns } = body;
       const capabilities = requested ?? this.capabilityRegistry.defaultSet();
+      // Every option checked before the first write: an unknown one used to
+      // throw inside the insert loop, after the organization, the project
+      // and the owner existed, and on D1 nothing rolled them back.
+      const capabilityRows = capabilities.map((capability) => ({
+        key: capability.key,
+        options: this.capabilityRegistry.strictOptionsOf(
+          capability.key,
+          capability.options,
+        ),
+      }));
 
       const organization = await this.organizations.create({
         name: body.title,
@@ -387,43 +396,29 @@ export class ProjectController {
         throw error;
       }
 
-      // The two writes whose failure must leave nothing behind. Until the
-      // migration is complete, every read still uses Lore's old membership
-      // table, so the owner is written to both stores.
+      // The writes whose failure must leave nothing behind. Each one
+      // compensates by hand: there is no transaction to roll back.
+      // `deleteProject` and not a bare `deleteById`: it also frees the slug,
+      // which a soft-deleted row would otherwise hold hostage against the
+      // retry the rethrow asks the caller to make, and it removes the owner
+      // row. A failed brand-new project has no history worth retaining, so
+      // force removes its tombstone before the restricted organization
+      // delete.
+      const projectId = project.id;
+      let rows;
       try {
         await this.memberService.addOwner(organization.id, user.id);
+        rows = await this.projectSecurity.capabilities.createMany(
+          capabilityRows.map((row) => ({ projectId, ...row })),
+        );
       } catch (error) {
-        // `deleteProject` and not a bare `deleteById`: it also frees the slug,
-        // which a soft-deleted row would otherwise hold hostage against the
-        // retry this rethrow is asking the caller to make. A failed brand-new
-        // project has no history worth retaining, so force removes its
-        // tombstone before the restricted organization delete.
         await this.projectDeletion.deleteProject(project.id, { force: true });
         await this.organizations.deleteById(organization.id);
         this.log.error(
-          "createProject: membership write failed, project rolled back by hand",
+          "createProject: owner or capability write failed, project removed by hand",
           { projectId: project.id, userId: user.id, error },
         );
         throw error;
-      }
-
-      // ⚠️ The fourth and fifth writes. Inside the transaction now, but their
-      // failure deliberately does NOT compensate: a project with no capability
-      // rows is repairable from Settings, and deleting a usable project to fix
-      // a recoverable state is the worse outcome. Only the membership row
-      // above triggers the rollback by hand.
-      const rows = [];
-      for (const capability of capabilities) {
-        rows.push(
-          await this.projectSecurity.capabilities.create({
-            projectId: project.id,
-            key: capability.key,
-            options: this.capabilityRegistry.strictOptionsOf(
-              capability.key,
-              capability.options,
-            ),
-          }),
-        );
       }
 
       // ⚠️ No preset ranks. A project starts with the two built-ins, `owner`
