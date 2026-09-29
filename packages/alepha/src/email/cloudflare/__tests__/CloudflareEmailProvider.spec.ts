@@ -15,10 +15,10 @@ const EMAIL_FROM = "noreply@example.com";
 
 class FakeBinding implements CloudflareEmailBinding {
   public calls: CloudflareEmailSendMessage[] = [];
-  public response: CloudflareEmailSendResult = {
-    id: "msg-1",
-    status: "queued",
-  };
+  // The binding's real shape (`EmailSendResult` in workers-types): an id,
+  // and nothing else. It was faked as `{ id, status }` until #Q2560, which
+  // is how a provider reading the wrong field passed its own suite.
+  public response: CloudflareEmailSendResult = { messageId: "msg-1" };
   public error?: unknown;
 
   public async send(
@@ -116,18 +116,18 @@ describe("CloudflareEmailProvider", () => {
       expect(binding.calls[0].to).toEqual(["a@example.com", "b@example.com"]);
     });
 
-    it("should throw EmailError when the binding returns bounced", async () => {
+    it("should return the binding's messageId, which delivery events name", async () => {
       const binding = new FakeBinding();
-      binding.response = { id: "msg-2", status: "bounced" };
+      binding.response = { messageId: "msg-2" };
       const { provider } = await setup(binding);
 
-      await expect(
-        provider.send({
-          to: "user@example.com",
-          subject: "x",
-          body: "<p>x</p>",
-        }),
-      ).rejects.toThrow("Cloudflare email bounced (id=msg-2)");
+      const result = await provider.send({
+        to: "user@example.com",
+        subject: "x",
+        body: "<p>x</p>",
+      });
+
+      expect(result.messageId).toBe("msg-2");
     });
 
     it("should wrap binding errors as EmailError", async () => {

@@ -30,7 +30,12 @@ class TestCloudflareEmailProvider extends CloudflareEmailProvider {
   public status = 200;
   public payload: unknown = {
     success: true,
-    result: { id: "rest-1", status: "queued" },
+    // The REST API's real shape: recipients by outcome, and no id.
+    result: {
+      delivered: ["user@example.com"],
+      permanent_bounces: [],
+      queued: [],
+    },
   };
 
   protected override async httpPost(
@@ -52,7 +57,7 @@ class FakeBinding implements CloudflareEmailBinding {
     message: CloudflareEmailSendMessage,
   ): Promise<CloudflareEmailSendResult> {
     this.calls.push(message);
-    return { id: "binding-1", status: "queued" };
+    return { messageId: "binding-1" };
   }
 }
 
@@ -180,6 +185,58 @@ describe("CloudflareEmailProvider — REST fallback", () => {
         body: "<p>x</p>",
       }),
     ).rejects.toThrow(/rate limit/i);
+  });
+
+  it("carries no messageId, since REST answers per recipient", async () => {
+    const { provider } = await setup();
+
+    const result = await provider.send({
+      to: "user@example.com",
+      subject: "x",
+      body: "<p>x</p>",
+    });
+
+    expect(result.messageId).toBeUndefined();
+  });
+
+  it("fails when every recipient bounced permanently", async () => {
+    const { provider } = await setup();
+    provider.payload = {
+      success: true,
+      result: {
+        delivered: [],
+        permanent_bounces: ["nobody@example.com"],
+        queued: [],
+      },
+    };
+
+    await expect(
+      provider.send({
+        to: "nobody@example.com",
+        subject: "x",
+        body: "<p>x</p>",
+      }),
+    ).rejects.toThrow(/bounced permanently \(nobody@example.com\)/);
+  });
+
+  it("still succeeds when only some recipients bounced", async () => {
+    const { provider } = await setup();
+    provider.payload = {
+      success: true,
+      result: {
+        delivered: ["a@example.com"],
+        permanent_bounces: ["b@example.com"],
+        queued: [],
+      },
+    };
+
+    await expect(
+      provider.send({
+        to: ["a@example.com", "b@example.com"],
+        subject: "x",
+        body: "<p>x</p>",
+      }),
+    ).resolves.toEqual({});
   });
 
   it("explains both options when neither is configured", async () => {

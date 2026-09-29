@@ -7,6 +7,12 @@ import {
   type EmailSendOptions,
   type EmailSendResult,
 } from "alepha/email";
+import {
+  type CloudflareEmailBinding,
+  CloudflareEmailProvider,
+  type CloudflareEmailSendResult,
+  SEND_EMAIL_DEFAULT_BINDING,
+} from "alepha/email/cloudflare";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSms } from "alepha/sms";
@@ -51,8 +57,9 @@ class Templates {
 
 const boot = async (
   configure?: (alepha: ReturnType<typeof Alepha.create>) => void,
+  env?: Record<string, string>,
 ) => {
-  const alepha = Alepha.create();
+  const alepha = Alepha.create(env ? { env } : undefined);
 
   // Before every module. `AlephaEmail` substitutes `EmailProvider` with the
   // memory one in test mode, and the container refuses a second
@@ -258,6 +265,46 @@ describe("delivery events", () => {
     const [receipt] = await deliveries.list({});
     expect(receipt.status).toBe("bounced");
     expect(receipt.smtpStatusCode).toBe("5.1.1");
+  });
+
+  /*
+   * The whole path on Cloudflare, with the binding's real answer (#Q2560):
+   * the provider has to keep the `messageId` the binding returns, or the
+   * event Cloudflare publishes for that message finds no receipt, and a hard
+   * bounce stays `sent` forever.
+   */
+  it("matches a Cloudflare event to a receipt the Cloudflare provider wrote", async ({
+    expect,
+  }) => {
+    const binding: CloudflareEmailBinding = {
+      send: async (): Promise<CloudflareEmailSendResult> => ({
+        messageId: "cf-msg-42",
+      }),
+    };
+    const { alepha, sender, deliveries } = await boot(
+      (alepha) => {
+        alepha.set("cloudflare.env", { [SEND_EMAIL_DEFAULT_BINDING]: binding });
+        alepha.with({ provide: EmailProvider, use: CloudflareEmailProvider });
+      },
+      { EMAIL_FROM: "noreply@example.com" },
+    );
+    await sender.send(payload("rcpt-reminder"), { executionId: "exec-cf" });
+
+    const [sent] = await deliveries.list({});
+    expect(sent.messageId).toBe("cf-msg-42");
+
+    await alepha.events.emit("cloudflare:queue", {
+      type: "cf.email.sending.message.bounced",
+      payload: {
+        messageId: "cf-msg-42",
+        recipient: "a@example.com",
+        bounce: { type: "hard" },
+      },
+      metadata: { eventTimestamp: new Date().toISOString() },
+    });
+
+    const [receipt] = await deliveries.list({});
+    expect(receipt.status).toBe("bounced");
   });
 
   it("changes nothing for a messageId it has never seen", async ({
