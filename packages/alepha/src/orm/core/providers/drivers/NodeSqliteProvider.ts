@@ -12,9 +12,11 @@ import {
   type Infer,
   z,
 } from "alepha";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import type { BetterSQLite3RunResult } from "drizzle-orm/better-sqlite3/session";
-import { BetterSQLiteSession } from "drizzle-orm/better-sqlite3/session";
+import { migrate } from "drizzle-orm/node-sqlite/migrator";
+import {
+  type NodeSQLiteRunResult,
+  NodeSQLiteSession,
+} from "drizzle-orm/node-sqlite/session";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { SQLiteAsyncDatabase } from "drizzle-orm/sqlite-core/async/db";
 import { SQLiteDialect } from "drizzle-orm/sqlite-core/dialect";
@@ -86,12 +88,10 @@ declare module "alepha" {
 /**
  * Node.js SQLite provider using `node:sqlite` (DatabaseSync).
  *
- * Uses drizzle-orm's `BetterSQLiteSession` (sync driver) with a shimmed
- * `node:sqlite` DatabaseSync — no native `better-sqlite3` package required.
- *
- * The session and migrator sub-modules of `drizzle-orm/better-sqlite3` are
- * imported directly, bypassing `driver.cjs` which has a top-level
- * `require("better-sqlite3")`.
+ * Uses drizzle-orm's native `node-sqlite` session and migrator, so no native
+ * SQLite addon is installed. The session is built here rather than through
+ * `drizzle-orm/node-sqlite/driver`, whose top-level `import "node:sqlite"`
+ * would load the module before `connect()` asks for it.
  */
 export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
@@ -189,7 +189,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
    * SQLite transaction override.
    *
    * The base class uses `this.db.transaction()` which goes through drizzle's
-   * better-sqlite3 driver. That driver wraps a synchronous `BEGIN`/`COMMIT`
+   * sync node-sqlite session. It wraps a synchronous `BEGIN`/`COMMIT`
    * around the callback, so async callbacks commit before the work finishes.
    *
    * This override uses direct `BEGIN`/`COMMIT`/`ROLLBACK` on the native
@@ -272,144 +272,12 @@ export class NodeSqliteProvider extends DatabaseProvider {
   });
 
   /**
-   * Shim `node:sqlite` DatabaseSync to be compatible with the `better-sqlite3`
-   * Drizzle driver. DatabaseSync lacks `stmt.raw()` and `db.transaction()`.
-   */
-  protected shimDatabaseSync(): void {
-    const db = this.sqlite as any;
-
-    // Shim transaction() — better-sqlite3 returns a function keyed by behavior
-    if (!db.transaction) {
-      db.transaction = (fn: (...args: any[]) => any) => {
-        const wrapped = (...args: any[]) => {
-          db.exec("BEGIN");
-          try {
-            const result = fn(...args);
-            db.exec("COMMIT");
-            return result;
-          } catch (error) {
-            db.exec("ROLLBACK");
-            throw error;
-          }
-        };
-        wrapped.deferred = wrapped;
-        wrapped.immediate = wrapped;
-        wrapped.exclusive = wrapped;
-        return wrapped;
-      };
-    }
-
-    // Shim prepare() to add stmt.raw() on returned statements.
-    //
-    // node:sqlite returns objects from stmt.all(), but drizzle's better-sqlite3
-    // driver expects arrays from stmt.raw().all(). We approximate this with
-    // Object.values(row). However, JOIN queries produce duplicate column names
-    // (e.g. "id" from both tables), and JavaScript objects collapse duplicate
-    // keys — losing values and shifting the positional mapping.
-    //
-    // Fix: for SELECT queries containing a JOIN, rewrite the column list with
-    // unique positional aliases (__c0, __c1, ...) so every column gets a
-    // distinct key and Object.values() preserves all values in order.
-    const origPrepare = db.prepare.bind(db);
-    db.prepare = (sql: string) => {
-      const aliased = NodeSqliteProvider.aliasSelectColumns(sql);
-      const stmt = origPrepare(aliased);
-      if (!stmt.raw) {
-        stmt.raw = () => ({
-          all: (...args: any[]) =>
-            stmt.all(...args).map((row: any) => Object.values(row)),
-          get: (...args: any[]) => {
-            const row = stmt.get(...args);
-            return row ? Object.values(row) : undefined;
-          },
-        });
-      }
-      return stmt;
-    };
-  }
-
-  /**
-   * For SELECT queries with JOINs, add unique positional aliases to each column
-   * so that `Object.values()` preserves all values even when column names collide.
-   *
-   * Only rewrites when the query is a SELECT containing a JOIN keyword and the
-   * column list has duplicate base names.
-   */
-  protected static aliasSelectColumns(sql: string): string {
-    const trimmed = sql.trimStart();
-    const lower = trimmed.toLowerCase();
-
-    // Only rewrite SELECT queries that contain a JOIN
-    if (!lower.startsWith("select ") || !/ join /i.test(trimmed)) {
-      return sql;
-    }
-
-    // Find the FROM clause (word boundary, not inside quotes)
-    const fromIdx = trimmed.search(/\bfrom\b/i);
-    if (fromIdx === -1) return sql;
-
-    const selectPart = trimmed.substring(0, fromIdx);
-    const rest = trimmed.substring(fromIdx);
-
-    // Extract the SELECT keyword (+ optional DISTINCT)
-    const kw = selectPart.match(/^(\s*select\s+(?:distinct\s+)?)/i);
-    if (!kw) return sql;
-
-    const prefix = kw[0];
-    const columnsPart = selectPart.substring(prefix.length).trim();
-
-    // Split by top-level commas (not inside parentheses)
-    const columns: string[] = [];
-    let depth = 0;
-    let cur = "";
-    for (const ch of columnsPart) {
-      if (ch === "(") depth++;
-      else if (ch === ")") depth--;
-      else if (ch === "," && depth === 0) {
-        columns.push(cur.trim());
-        cur = "";
-        continue;
-      }
-      cur += ch;
-    }
-    if (cur.trim()) columns.push(cur.trim());
-
-    if (columns.length <= 1) return sql;
-
-    // Extract the trailing column name from each expression to check for duplicates
-    const baseNames = columns.map((col) => {
-      const m = col.match(/"(\w+)"\s*$/);
-      return m ? m[1] : col;
-    });
-
-    const seen = new Set<string>();
-    let hasDuplicates = false;
-    for (const name of baseNames) {
-      if (seen.has(name)) {
-        hasDuplicates = true;
-        break;
-      }
-      seen.add(name);
-    }
-
-    if (!hasDuplicates) return sql;
-
-    // Alias every column with a unique positional name
-    const aliased = columns.map((col, i) => `${col} as "__c${i}"`).join(", ");
-    return `${prefix}${aliased} ${rest}`;
-  }
-
-  /**
-   * Initialize Drizzle using the sync session from `drizzle-orm/better-sqlite3/session`
-   * directly, bypassing `drizzle-orm/better-sqlite3/driver` which has a top-level
-   * `require("better-sqlite3")`. The shimmed `node:sqlite` DatabaseSync is fully
-   * compatible with the sync session — no native `better-sqlite3` package required.
+   * Initialize Drizzle on the native `node:sqlite` session. It reads JOIN rows
+   * as arrays (`setReturnArrays`), so columns sharing a name keep their values.
    */
   protected initDrizzle(): void {
-    this.shimDatabaseSync();
-
     const dialect = new SQLiteDialect();
-    const session = new BetterSQLiteSession(
+    const session = new NodeSQLiteSession(
       this.requireSqlite(),
       dialect,
       {},
@@ -423,11 +291,12 @@ export class NodeSqliteProvider extends DatabaseProvider {
     );
 
     this.gateSyncSession(session as never);
-    this.drizzleDb = new SQLiteAsyncDatabase<
+    this.drizzleDb = new SQLiteAsyncDatabase<"sync", NodeSQLiteRunResult, {}>(
       "sync",
-      BetterSQLite3RunResult,
-      {}
-    >("sync", dialect, session, {});
+      dialect,
+      session,
+      {},
+    );
     this.log.debug("Using node:sqlite with sync driver");
   }
 

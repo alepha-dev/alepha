@@ -3783,16 +3783,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"better-sqlite3@npm:^13.0.3":
-  version: 13.0.3
-  resolution: "better-sqlite3@npm:13.0.3"
-  dependencies:
-    node-addon-api: "npm:^8.0.0"
-    node-gyp: "npm:latest"
-  checksum: 10c0/3daaad4fbd39b3ebddd9840c1aab0a7ccc94a01054fb03f6660ec2c226422b5daf3eb8e55a14103eddb84c2cd16f8e70ae9d41f0e2892b58c8c6152ee7ff09c0
-  languageName: node
-  linkType: hard
-
 "bidi-js@npm:^1.1.0":
   version: 1.1.0
   resolution: "bidi-js@npm:1.1.0"
@@ -5853,7 +5843,6 @@ __metadata:
     "@types/react-dom": "npm:^19.3.0"
     "@types/ws": "npm:^8.18.1"
     alepha: "workspace:*"
-    better-sqlite3: "npm:^13.0.3"
     drizzle-kit: "npm:1.0.0-rc.4"
     fzstd: "npm:0.1.1"
     lucide-react: "npm:^1.48.0"
@@ -5867,9 +5856,6 @@ __metadata:
     vitest: "npm:^5.0.2"
     wrangler: "npm:^4.142.0"
     ws: "npm:^8.22.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
   languageName: unknown
   linkType: soft
 
@@ -6680,15 +6666,6 @@ __metadata:
   version: 1.0.0
   resolution: "negotiator@npm:1.0.0"
   checksum: 10c0/4c559dd52669ea48e1914f9d634227c561221dd54734070791f999c52ed0ff36e437b2e07d5c1f6e32909fc625fe46491c16e4a8f0572567d4dd15c3a4fda04b
-  languageName: node
-  linkType: hard
-
-"node-addon-api@npm:^8.0.0":
-  version: 8.9.2
-  resolution: "node-addon-api@npm:8.9.2"
-  dependencies:
-    node-gyp: "npm:latest"
-  checksum: 10c0/5cf5231e0da22b22862e6b593982a0e390ca89d022a9ac666c83deceecf20378cb8afe47c456ac1a58a9f62ef60099c950aec05814a287fdfd751d9d154fb12d
   languageName: node
   linkType: hard
 

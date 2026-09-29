@@ -24,8 +24,7 @@ import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
 class D1CeilingProvider extends NodeSqliteProvider {
   public override readonly maxBoundParameters = 100;
 
-  protected override shimDatabaseSync(): void {
-    super.shimDatabaseSync();
+  protected override initDrizzle(): void {
     const database = this.sqlite as unknown as {
       prepare: (text: string) => unknown;
     };
@@ -37,6 +36,7 @@ class D1CeilingProvider extends NodeSqliteProvider {
       }
       return prepare(text);
     };
+    super.initDrizzle();
   }
 }
 

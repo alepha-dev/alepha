@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { describe, it } from "vitest";
 
@@ -41,10 +41,8 @@ describe("folio name reservation backfill migration", () => {
   it("reserves every existing folio and repairs the NULL scope", ({
     expect,
   }) => {
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-    const db = new Database(":memory:");
-    db.pragma("foreign_keys = ON");
+    const db: any = new DatabaseSync(":memory:");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {

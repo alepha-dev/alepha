@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { describe, it } from "vitest";
 
@@ -43,14 +43,12 @@ describe("folio blob scoping migration", () => {
   it("applies against a real database with foreign keys enforced", ({
     expect,
   }) => {
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-    const db = new Database(":memory:");
+    const db: any = new DatabaseSync(":memory:");
 
     // D1 ignores `PRAGMA foreign_keys=OFF`, so constraints are ALWAYS live
     // there. Enforcing them here is what makes this reproduce D1 rather than
     // the friendlier local SQLite the rest of the suite runs on.
-    db.pragma("foreign_keys = ON");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {

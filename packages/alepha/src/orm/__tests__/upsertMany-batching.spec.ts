@@ -28,8 +28,7 @@ import {
 class RefusingCeilingProvider extends NodeSqliteProvider {
   public override readonly maxBoundParameters = 10;
 
-  protected override shimDatabaseSync(): void {
-    super.shimDatabaseSync();
+  protected override initDrizzle(): void {
     const database = this.sqlite as unknown as {
       prepare: (text: string) => unknown;
     };
@@ -41,6 +40,7 @@ class RefusingCeilingProvider extends NodeSqliteProvider {
       }
       return prepare(text);
     };
+    super.initDrizzle();
   }
 }
 

@@ -71,7 +71,7 @@ export class DrizzleKitProvider {
    * Reads the actual database state, diffs against current entity definitions,
    * and applies changes. No stored snapshots — no drift, no corruption.
    *
-   * - SQLite: uses `pushSchema` (requires sync driver — node:sqlite shim or bun-sqlite)
+   * - SQLite: uses `pushSchema` (requires a sync driver: node-sqlite or bun-sqlite)
    * - PostgreSQL: uses `pushSchema` with schema filters
    *
    * A rename drizzle-kit cannot decide on its own is resolved as a drop and

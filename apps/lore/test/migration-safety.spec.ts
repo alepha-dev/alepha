@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { Alepha } from "alepha";
 import { organizations } from "alepha/api/organizations";
@@ -298,20 +298,14 @@ describe("migration safety", () => {
   it("keeps every project row and its children when the sigil family is rebuilt", ({
     expect,
   }) => {
-    // better-sqlite3 is a devDependency of this app but not an ESM import
-    // here — it is a native addon, and `createRequire` is how the vitest ESM
-    // graph reaches one.
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-
-    const db = new Database(":memory:");
+    const db: any = new DatabaseSync(":memory:");
 
     // D1 ignores `PRAGMA foreign_keys=OFF`, so constraints are ALWAYS live
     // there — including during `DROP TABLE`, whose implicit `DELETE FROM`
     // is what cascaded 2434 rows away in May 2026. Enforcing them here is
     // what makes this test reproduce D1 rather than the friendlier local
     // SQLite the rest of the suite runs on.
-    db.pragma("foreign_keys = ON");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
@@ -434,10 +428,8 @@ describe("migration safety", () => {
   it("carries the vitals histogram across the JSON-to-columns migration", ({
     expect,
   }) => {
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-    const db = new Database(":memory:");
-    db.pragma("foreign_keys = ON");
+    const db: any = new DatabaseSync(":memory:");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
@@ -504,10 +496,8 @@ describe("migration safety", () => {
   it("carries quest areas and project areas across the Zone to Area rename", ({
     expect,
   }) => {
-    const require = createRequire(import.meta.url);
-    const Database = require("better-sqlite3");
-    const db = new Database(":memory:");
-    db.pragma("foreign_keys = ON");
+    const db: any = new DatabaseSync(":memory:");
+    db.exec("PRAGMA foreign_keys = ON");
 
     const apply = (dir: string) => {
       for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
