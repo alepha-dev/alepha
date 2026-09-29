@@ -8,7 +8,7 @@ import { $atom, type Infer, z } from "alepha";
  * Enforced inline by `FolioHistoryService` on every revision write —
  * when the count of non-pinned revisions for a folio would exceed the
  * cap after the insert, the oldest non-pinned revision is dropped in
- * the same transaction. No background sweep needed.
+ * the same request. No background sweep needed.
  */
 export const folioHistoryAtom = $atom({
   name: "lore.folio.history",

@@ -676,22 +676,15 @@ The `via` join onto `members`, both denial messages and
 the 30s cache window are constants of this application, not of these
 endpoints. `ProjectSecurityService` supplies the repositories.
 
-**On a `$transactional()` action the gate goes AFTER it**, not before:
-
-```typescript
-use: [
-  $secure({ permissions: ["quest:update"] }),
-  $transactional(),
-  this.ownsQuest(),
-];
-```
-
-On a hop the gate is also the READ HALF of the handler's check-then-write -
-`completeQuest` is transactional so two concurrent completions cannot both
-pass the `completedAt IS NULL` read, `updateQuestById` likewise for
-`expectedUpdatedAt`. Gating ahead of the transaction lifts those reads out of
-it and reinstates both races, **with the whole suite still green**, because a
-race is not what a test suite looks at.
+**The gate is the READ HALF of the handler's check-then-write.** The row it
+loads is the row the handler then inspects and writes, and no transaction
+closes the window between the two: Lore runs on D1 and holds no
+`$transactional` (see "No transactions in Lore" below). So a handler that
+writes the gate's row back does it with `save()`, and `db.version()` on
+`quests` and `folios` turns a write that landed in between into a 409; one
+that guards a state change puts the precondition in the write's WHERE. Never
+re-read the row in the handler and write that: the version it carries is not
+the one the decision was made on.
 
 `hops` covers the one two-hop case in the app: a quest comment references a
 quest, and only the quest references the project.
@@ -1067,12 +1060,53 @@ meta: { version: pkg.version },
 build resolves both. `commit` survives CI's shallow clone (resolving HEAD needs
 no tags), so even a `"latest"` build says exactly which commit is running.
 
-## Writes after the main write are best effort (#Q2555)
+## No transactions in Lore (#E69)
 
-Lore runs on D1, where nothing rolls a committed write back. So once an action's main write has landed, what follows it (the audit row, a link sync, a mention) must never fail the action: a 500 for a change that happened invites a retry that repeats it.
+**Lore holds no `$transactional`, and `check:conventions` refuses one under
+`apps/lore/src`.** Lore runs on Cloudflare D1, which has no transactions:
+`$transactional()` runs the handler in place there, and a throw rolls nothing
+back. Twenty-nine actions carried one until epic #E69, each promising an
+atomicity production never had, and the suite could not tell, because the
+SQLite driver the specs run on does roll back. The audit is folio #F1348.
+
+Every write that needs protecting uses one of five patterns instead:
+
+1. **A lost update: `db.version()` and `save()`.** `quests` and `folios` carry
+   a version. Every Repository update bumps it, and `save()` of the row the
+   gate read answers 409 when another write landed in between.
+2. **A check-then-act: the precondition in the write's WHERE.**
+   `updateOne({ id, status: "ready" }, …)`, a `notLike`, an `EXISTS` or a
+   recursive CTE. A miss throws `DbEntityNotFoundError`: catch it and answer
+   what it means (another request won, or 409).
+3. **Several writes: validate first, then a safe order.** Everything a caller
+   can trigger is refused before the first write; what must not be lost is
+   written before the row; storage deletes go last. Compensate by hand where
+   no order is safe (`createProject`).
+4. **A unique name: claim it first.** `FolioNameService.claim` reserves the
+   name under a pre-generated id before the row exists, and retries the next
+   suffix on a `DbConflictError`. A rename is one UPDATE of the reservation
+   row (`FolioNameService.rename`).
+5. **What follows the main write: best effort.** See below.
+
+Specs see D1's behaviour with `DATABASE_TRANSACTIONS: false` in the
+container's env: `$transactional` would run bare, and interleavings and
+partial writes become visible. A race is made deterministic by a
+`repository:read:after` hook that lands the second request after the first
+one's gate read (`test/quest-version-races.spec.ts`).
+
+⚠️ **A read-write request reads from the D1 primary.** Read replication is on
+for lore-production, and the generated worker opens every request that is
+not GET, HEAD or OPTIONS on `first-primary`, except `POST /api/_batch`. So a
+cookie-less agent never saves a stale replica row back over its own write.
+
+### Writes after the main write are best effort (#Q2555)
+
+Once an action's main write has landed, what follows it (the audit row, a
+link sync, a mention, a revision) must never fail the action: a 500 for a
+change that happened invites a retry that repeats it.
 
 - **Audits are best effort in one place**: `LoreAuditService.record` catches a failed insert, logs it at error level and answers success. Never wrap a `logSuccess` in your own try/catch. `AuditService.create` (the admin API) still throws.
-- **Everything else after the main write goes through `BestEffort.run(label, step)`** (`api/services/BestEffort.ts`): it logs a throw at error level with the `Error` itself, and returns.
+- **Everything else after the main write goes through `BestEffort.run(label, step)`** (`api/services/BestEffort.ts`): it logs a throw at error level with the `Error` itself, and returns `undefined`.
 - **An error-level log is a blight**: the sigil reports every `log.error` (#Q2557). So a swallowed failure still reaches the blights inbox, and an expected condition logs at `warn`.
 
 ## ⚠️ Migration safety on D1 (production-data bomb, real incident)

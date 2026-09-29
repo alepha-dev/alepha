@@ -1067,6 +1067,56 @@ if (projectAtomViolations.length > 0) {
 }
 
 /**
+ * Lore holds no `$transactional` (#E69).
+ *
+ * ## Why a mechanical rule rather than a comment
+ *
+ * Lore runs on Cloudflare D1, which has no transactions: `$transactional()`
+ * runs its handler in place there, and a throw rolls nothing back. Twenty-nine
+ * actions carried one anyway, each promising an atomicity production never
+ * had, and the specs could not tell, because the SQLite driver they ran on
+ * does roll back (#F1348). Every one was replaced by a pattern that holds on
+ * D1: `db.version()` with `save()`, a precondition in the write's WHERE, a
+ * safe write order, a name claimed first, or a best-effort step after the
+ * main write. A new `$transactional` would read as protection and give none.
+ *
+ * Code only: the text is stripped of comments and strings first, so the
+ * notes that explain why the primitive is gone do not trip it. Specs are
+ * skipped. There is no exemption list: the one legitimate transaction, an
+ * ownership transfer, lives in the framework's `MemberService`.
+ */
+const transactionalViolations: string[] = [];
+
+const loreSources = execFileSync("git", ["ls-files", "apps/lore/src"], {
+  encoding: "utf8",
+})
+  .trim()
+  .split("\n")
+  .filter((file) => /\.tsx?$/.test(file) && !file.includes(".spec."));
+
+for (const file of loreSources) {
+  const code = stripLiterals(readFileSync(file, "utf8"));
+  if (/\$transactional\b/.test(code)) {
+    transactionalViolations.push(
+      `  ${file}\n    → uses \`$transactional\`, which is a no-op on D1`,
+    );
+  }
+}
+
+if (transactionalViolations.length > 0) {
+  console.error(
+    `\n${transactionalViolations.length} Lore file(s) using $transactional:\n\n` +
+      `${transactionalViolations.join("\n")}\n\n` +
+      "Lore runs on D1, which has no transactions: the handler runs in place\n" +
+      "and a throw rolls nothing back. Use one of the five patterns instead\n" +
+      "(folio #F1348): db.version() with save(), the precondition in the\n" +
+      "write's WHERE, a safe write order, the name claimed first, or\n" +
+      "BestEffort.run for what follows the main write.\n",
+  );
+  process.exit(1);
+}
+
+/**
  * Every `$job` names itself `[system.]<domain>.<action>`, and `system.` means
  * shipped from `packages/`.
  *

@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $storage, FileController, files } from "alepha/api/files";
-import { $repository, $transactional } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
@@ -215,8 +215,7 @@ export class FolioAttachmentController {
   });
 
   registerAttachment = $action({
-    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [$transactional(), this.ownsProjectForKnowledge("folio:write")],
+    use: [this.ownsProjectForKnowledge("folio:write")],
     path: "/projects/:projectId/folio/attachments",
     description:
       "Register a folio attachment on top of an already-uploaded framework file.",
@@ -254,8 +253,9 @@ export class FolioAttachmentController {
   });
 
   deleteAttachment = $action({
-    // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [$transactional(), this.ownsBlobForKnowledge("folio:write")],
+    // No transaction, and none wanted: on Postgres a rollback here would
+    // restore rows pointing at bytes already deleted from storage.
+    use: [this.ownsBlobForKnowledge("folio:write")],
     path: "/folio/attachments/:id",
     description: "Delete a folio attachment (and reclaim framework storage).",
     schema: {

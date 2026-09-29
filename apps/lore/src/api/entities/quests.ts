@@ -122,7 +122,8 @@ export const quests = $entity({
      * `QuestResourceMapper.questStatus` for the precedence.
      *
      * ⚠️ There is no `heldReason` column. The reason is a comment on the
-     * quest, posted by `holdQuest` in the same transaction, so that
+     * quest, posted by `holdQuest` in the same request (and the hold undone
+     * if it cannot be), so that
      * `@mentions` reach people through `MentionNotifier` and the reason
      * lands in the Discussion feed where the conversation already is. A
      * column would be a second copy to keep in sync with the thread.

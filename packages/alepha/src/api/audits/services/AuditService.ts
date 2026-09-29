@@ -258,9 +258,10 @@ export class AuditService {
       // bounded by it: Lore writes a quest's title into `description`, and a
       // quest title has no maximum. Unclamped, creating a quest with a
       // 300-character title would fail schema validation on the audit insert
-      // and - since call sites await this inside their own transaction - roll
-      // back the quest itself. The record is worth having truncated; it is not
-      // worth breaking the write.
+      // and fail the action that just wrote the quest: rolling the quest back
+      // where a transaction is open, and leaving it written behind a 500 on a
+      // driver without one (D1). The record is worth having truncated; it is
+      // not worth breaking the write.
       //
       // The request columns are the same case with a worse source: the client
       // writes them. An in-app browser's User-Agent runs past 255 characters,

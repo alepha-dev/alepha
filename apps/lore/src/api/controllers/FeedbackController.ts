@@ -2,13 +2,7 @@ import { sigilScrubUrl } from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
-import {
-  $repository,
-  $sequence,
-  $transactional,
-  db,
-  pageQuerySchema,
-} from "alepha/orm";
+import { $repository, $sequence, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
   $action,
@@ -138,7 +132,7 @@ export class FeedbackController {
    * limit yields a 429 (whose message survives to the client), not a 500.
    */
   submitFeedback = $action({
-    use: [$secure(), $transactional()],
+    use: [$secure()],
     method: "POST",
     path: "/projects/:projectId/feedback",
     schema: {

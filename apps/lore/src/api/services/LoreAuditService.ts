@@ -95,8 +95,8 @@ export class LoreAuditService extends AuditService {
    * thing that fails the action it records - that is why `AuditService.create`
    * clamps its own text columns - and a rate point is a weaker claim still.
    * On production this is an HTTP-shaped call into Analytics Engine, so it has
-   * a failure mode the audit insert does not; a throw here would roll back the
-   * quest that caused it.
+   * a failure mode the audit insert does not; a throw here would fail the
+   * action whose own write has already landed.
    *
    * ⚠️ **App-layer rows are skipped, not defaulted.** A sign-in, a project
    * created before there is a project to file it under, a parameter change:
