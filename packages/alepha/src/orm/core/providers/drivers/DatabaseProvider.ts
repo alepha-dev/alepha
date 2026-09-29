@@ -505,6 +505,23 @@ export abstract class DatabaseProvider {
     });
   }
 
+  /**
+   * The handle a raw statement runs on: the open transaction when there is
+   * one, the connection (or pool) otherwise. The same choice the Repository
+   * makes for its own methods, so {@link execute} and {@link run} take part in
+   * a `transactional()` block.
+   */
+  protected get executor(): PgAsyncDatabase<any> {
+    return this.alepha.get("alepha.orm.tx") ?? this.db;
+  }
+
+  /**
+   * Run a raw statement and return its rows.
+   *
+   * Inside a `transactional()` block it runs on that transaction, on every
+   * driver: on SQLite the connection is shared anyway, and on Postgres the
+   * statement goes to the transaction's connection, not the pool.
+   */
   public abstract execute(
     statement: SQLLike,
   ): Promise<Record<string, unknown>[]>;

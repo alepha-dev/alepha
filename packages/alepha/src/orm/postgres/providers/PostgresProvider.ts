@@ -62,7 +62,11 @@ export abstract class PostgresProvider extends DatabaseProvider {
   public override async execute(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    return await this.db.execute(statement);
+    // On the open transaction's handle when there is one, like every
+    // repository method: on the pool, a raw statement inside
+    // \`$transactional\` committed on its own connection and survived the
+    // rollback.
+    return await this.executor.execute(statement);
   }
 
   /**

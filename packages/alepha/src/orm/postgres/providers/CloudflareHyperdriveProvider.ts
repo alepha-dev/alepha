@@ -135,7 +135,11 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
   public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    return this.db.execute(query);
+    // On the open transaction's handle when there is one, like every
+    // repository method: on the pool, a raw statement inside
+    // \`$transactional\` committed on its own connection and survived the
+    // rollback.
+    return await this.executor.execute(query);
   }
 
   protected readonly onStart = $hook({

@@ -7,6 +7,7 @@ import {
   $transactional,
   DatabaseProvider,
   db,
+  sql,
 } from "../core/index.ts";
 
 const item = $entity({
@@ -98,6 +99,36 @@ export const testSecondWriteThrows = async (alepha: Alepha) => {
   await expect(() => app.createAndFail()).rejects.toThrow("boom");
 
   return (await app.repo.findMany()).map((it) => it.name);
+};
+
+/**
+ * A raw `repo.query()` UPDATE inside the block is rolled back with it. On
+ * Postgres it used to run on the pool, commit on its own connection and
+ * survive the throw.
+ */
+export const testRawQueryRollsBack = async (alepha: Alepha) => {
+  class App {
+    repo = $repository(item);
+
+    renameAndFail = $pipeline({
+      use: [$transactional()],
+      handler: async (id: number) => {
+        await this.repo.query(
+          (t) =>
+            sql`UPDATE ${t} SET ${sql.identifier(t.name.name)} = ${"raw"} WHERE ${t.id} = ${id}`,
+        );
+        throw new Error("boom");
+      },
+    });
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+  const created = await app.repo.create({ name: "before" });
+
+  await expect(() => app.renameAndFail(created.id)).rejects.toThrow("boom");
+
+  expect((await app.repo.getById(created.id)).name).toBe("before");
 };
 
 export const testNesting = async (alepha: Alepha) => {

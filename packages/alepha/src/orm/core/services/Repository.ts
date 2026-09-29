@@ -172,6 +172,9 @@ export abstract class Repository<T extends ZObject> {
    *
    * You must use the `sql` tagged template function from Drizzle ORM to create the query. https://orm.drizzle.team/docs/sql
    *
+   * It runs on the same handle as the other methods: inside a
+   * `$transactional` block, on that transaction, whatever the driver.
+   *
    * ⚠️ A raw statement skips everything the other methods do for a write: it
    * does not stamp `updatedAt`, bump a `db.version()` column, invalidate the
    * query cache or emit repository events. A raw UPDATE on a versioned table

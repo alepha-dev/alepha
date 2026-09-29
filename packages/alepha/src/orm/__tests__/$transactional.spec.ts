@@ -14,6 +14,7 @@ import {
   testDatabaseProviderTransactional,
   testNesting,
   testRepositoryTransactionAsyncRollback,
+  testRawQueryRollsBack,
   testRollbackOnError,
   testSecondWriteThrows,
   testWrapsInTransaction,
@@ -93,6 +94,15 @@ describe("$transactional", () => {
 
       expect(alepha.inject(DatabaseProvider).supportsTransactions).toBe(true);
     });
+  });
+
+  it("rolls back a raw query() UPDATE with the block (sqlite)", async () => {
+    await testRawQueryRollsBack(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("rolls back a raw query() UPDATE with the block (postgres)", async () => {
+    await testRawQueryRollsBack(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should support nesting / reuse outer tx (sqlite)", async () => {

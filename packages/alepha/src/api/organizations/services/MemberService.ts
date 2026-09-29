@@ -1,7 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
-import { $repository, sql } from "alepha/orm";
+import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, ForbiddenError } from "alepha/server";
+import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
 import {
   type OrganizationMember,
@@ -15,6 +15,7 @@ export class MemberService {
   public static readonly MEMBER = "member";
 
   protected readonly alepha = $inject(Alepha);
+  protected readonly database = $inject(DatabaseProvider);
   protected readonly members = $repository(organizationMembers);
   protected readonly membersWith = $repository(
     organizationRelations,
@@ -162,7 +163,49 @@ export class MemberService {
       throw new BadRequestError("An organization has exactly one owner");
     }
 
-    const updated = await this.members.query(
+    await this.database.transactional(async () => {
+      const updated = await this.swapRanks(
+        organizationId,
+        actor.id,
+        toUserId,
+        keptRank,
+      );
+      // Two rows or none: the statement's own guard refuses the swap when
+      // the actor stopped owning or the target stopped being a member since
+      // the reads above. On Postgres the throw also rolls back a partial
+      // swap the row-level re-check could still let through.
+      if (updated !== 2) {
+        throw new ConflictError(
+          "The organization's membership changed during the transfer; nothing was changed",
+        );
+      }
+    });
+    await this.alepha.events.emit("organization:ownership:transferred", {
+      organizationId,
+      fromUserId: actor.id,
+      toUserId,
+    });
+  }
+
+  /**
+   * Swap the two ranks in one statement that carries its own preconditions,
+   * and return how many rows it changed.
+   *
+   * Correct without a transaction, which is what D1 needs: the WHERE
+   * re-checks both rows (the actor still owns, the target is still a
+   * member), and a scalar subquery requires both to qualify, so on SQLite
+   * and D1 the statement changes two rows or none. On Postgres READ
+   * COMMITTED re-checks the row-level predicates on a row another
+   * transaction just changed, and the caller's transaction rolls back a
+   * count other than 2.
+   */
+  protected async swapRanks(
+    organizationId: string,
+    fromUserId: string,
+    toUserId: string,
+    keptRank: string,
+  ): Promise<number> {
+    const rows = await this.members.query(
       (t) => sql`
         UPDATE ${t}
         SET ${sql.identifier(t.rank.name)} = CASE
@@ -170,21 +213,24 @@ export class MemberService {
           ELSE ${keptRank}
         END
         WHERE ${t.organizationId} = ${organizationId}
-          AND ${t.userId} IN (${toUserId}, ${actor.id})
+          AND (
+            (${t.userId} = ${fromUserId} AND ${t.rank} = ${MemberService.OWNER})
+            OR ${t.userId} = ${toUserId}
+          )
+          AND (
+            SELECT count(*) FROM ${t} AS qualifying
+            WHERE qualifying.${sql.identifier(t.organizationId.name)} = ${organizationId}
+              AND (
+                (qualifying.${sql.identifier(t.userId.name)} = ${fromUserId}
+                  AND qualifying.${sql.identifier(t.rank.name)} = ${MemberService.OWNER})
+                OR qualifying.${sql.identifier(t.userId.name)} = ${toUserId}
+              )
+          ) = 2
         RETURNING ${t.userId}
       `,
       z.object({ userId: z.uuid() }),
     );
-    if (updated.length !== 2) {
-      throw new BadRequestError(
-        "Ownership transfer did not update both members",
-      );
-    }
-    await this.alepha.events.emit("organization:ownership:transferred", {
-      organizationId,
-      fromUserId: actor.id,
-      toUserId,
-    });
+    return rows.length;
   }
 
   public async ownedBy(userId: string): Promise<string[]> {
