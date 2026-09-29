@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $repository, $transactional } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
@@ -97,10 +97,7 @@ export class KanbanController {
    * Omit `beforeQuestId` to drop at the head, `afterQuestId` for the tail.
    */
   moveQuestOnBoard = $action({
-    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`. The
-    // quest it reads is the row this handler then re-ranks and saves.
     use: [
-      $transactional(),
       $ownsProject({
         requires: "quest:update",
         repository: () => this.quests,
@@ -154,9 +151,13 @@ export class KanbanController {
       const before = rankOf(body.beforeQuestId);
       const after = rankOf(body.afterQuestId);
 
-      quest.boardRank = this.rank.between(before, after);
-      await this.quests.save(quest);
-      return this.questMapper.mapQuestToResource(quest);
+      // The rank alone, not a `save()` of the whole row: a drag must never
+      // revert a concurrent edit, nor answer 409 because somebody renamed
+      // the quest meanwhile (#Q2546).
+      const moved = await this.quests.updateById(quest.id, {
+        boardRank: this.rank.between(before, after),
+      });
+      return this.questMapper.mapQuestToResource(moved);
     },
   });
 

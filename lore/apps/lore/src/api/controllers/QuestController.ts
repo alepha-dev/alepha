@@ -48,6 +48,7 @@ import {
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { BestEffort } from "../services/BestEffort.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
@@ -185,6 +186,7 @@ export class QuestController {
   releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(FolioLinkService);
   bound = $inject(BoundParameters);
+  bestEffort = $inject(BestEffort);
 
   attachments = $storage({
     description: "Quest attachments",
@@ -228,13 +230,14 @@ export class QuestController {
    * field initializer reading another field, so a gate declared below its
    * first use is `undefined` at construction time.
    *
-   * ## ⚠️ On a `$transactional()` action the gate goes AFTER it
+   * ## ⚠️ The gate is the READ HALF of every check-then-write here
    *
-   * The gate is not only an access check here - it is the READ HALF of every
-   * check-then-write on this class. `completeQuest` is transactional "so two
-   * concurrent completions cannot both pass the `completedAt IS NULL` read",
-   * and `updateQuestById` for the same reason on `expectedUpdatedAt`. The
-   * full reasoning is on `$ownsProject`; this is the file it was found in.
+   * Every status change reads the quest through the gate, decides in JS, and
+   * `save()`s that same row. No transaction protects the window between (D1
+   * has none, #E69): `quests` carries `db.version()`, so a write landing in
+   * between makes the `save()` answer 409 instead of reverting it. Keep the
+   * write on the gate's row: a fresh read in the handler would compare
+   * against the wrong version.
    */
   protected ownsProject = (requires: string | string[]) =>
     $ownsProject({ requires, param: "projectId" });
@@ -320,11 +323,9 @@ export class QuestController {
    * `/:projectSlug/quests/:shortId` takes, so the feed can build a link out of
    * the row alone.
    *
-   * Awaited inline, inside the caller's `$transactional()` where there is one,
-   * which is the property worth keeping: a mutation that rolls back takes its
-   * activity row with it, so the feed cannot show something that did not
-   * happen. The cost is that a failing audit insert fails the mutation, which
-   * is the same trade every existing call site in this app already makes.
+   * Awaited inline, after the mutation it records. Best effort: a failing
+   * audit insert is logged by `LoreAuditService.record` and never fails the
+   * mutation, which has already landed and cannot be rolled back on D1.
    */
   protected async logQuest(
     action: string,
@@ -1745,7 +1746,7 @@ export class QuestController {
    * move a quest toward resolution rather than opening work.
    */
   unassignQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1813,7 +1814,7 @@ export class QuestController {
    * (#Q2223): shelving is the epic-level equivalent of waiving an objective.
    */
   shelveQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1851,7 +1852,7 @@ export class QuestController {
    * Bring a shelved quest back into the backlog as "todo".
    */
   unshelveQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1910,7 +1911,7 @@ export class QuestController {
    * work. `unholdQuest` IS gated, because it moves one back toward it.
    */
   holdQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1971,11 +1972,24 @@ export class QuestController {
       // whoever clicked Hold did not. Over MCP the same is true — the
       // session user IS the account holding the key, and `quest_hold` is a
       // hold, not a comment posted by an agent in its own voice.
-      await this.comments.create({
-        questId: quest.id,
-        authorId: user.id,
-        body: body.reason,
-      });
+      //
+      // The reason IS the hold's content, so a hold whose comment could not
+      // be written is undone rather than left standing with no explanation.
+      // No transaction to roll it back (D1): the undo is a second `save()`,
+      // guarded by the version the first one returned.
+      try {
+        await this.comments.create({
+          questId: quest.id,
+          authorId: user.id,
+          body: body.reason,
+        });
+      } catch (error) {
+        quest.heldAt = undefined;
+        quest.heldBy = undefined;
+        quest.history.pop();
+        await this.quests.save(quest);
+        throw error;
+      }
 
       // The comment keeps no `source`, but the mention pass still needs to
       // know an agent wrote the reason: "waiting on @owner to pick X" is the
@@ -2001,7 +2015,7 @@ export class QuestController {
    * reason: this returns a quest to workable.
    */
   unholdQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2051,7 +2065,7 @@ export class QuestController {
   }
 
   acceptQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2152,7 +2166,7 @@ export class QuestController {
    * accepted quest is the whole point.
    */
   assignQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2424,9 +2438,10 @@ export class QuestController {
   }
 
   completeQuest = $action({
-    // Transactional so two concurrent completions cannot both pass the
-    // `completedAt IS NULL` read.
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    // No transaction (D1 has none): two concurrent completions both pass the
+    // `completedAt IS NULL` read, and the second `save()` answers 409 on the
+    // version the first one bumped.
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2573,7 +2588,9 @@ export class QuestController {
       }
 
       await this.quests.save(quest);
-      await this.syncQuestLinks(quest);
+      await this.bestEffort.run("completeQuest: link sync failed", () =>
+        this.syncQuestLinks(quest),
+      );
       await this.logQuest("complete", quest, user);
 
       // The epic's two automatic moves (#Q2223), after the save so both see
@@ -2621,13 +2638,11 @@ export class QuestController {
   });
 
   updateQuestById = $action({
-    // Transactional since `expectedUpdatedAt` landed: the version check is
-    // a read followed by a write, and outside a transaction two concurrent
-    // updates carrying the same token both read the old `updatedAt`, both
-    // pass, and the later one silently wins anyway, which is the exact
-    // failure the parameter exists to prevent. Same reasoning as
-    // `completeQuest`'s.
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    // The `expectedUpdatedAt` check is a read followed by a write. What
+    // closes the window between them is the write, not a transaction (D1
+    // has none): it goes through `save()` on the row the gate read, so a
+    // write landing in between answers 409 on the version (#Q2546).
+    use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2709,10 +2724,10 @@ export class QuestController {
         );
       }
 
-      // Checked before anything is validated or written, and inside this
-      // action's transaction. `history.at(-1)` costs nothing (the row is
-      // already loaded) and turns "someone changed it" into something the
-      // caller can act on.
+      // Checked before anything is validated or written. `history.at(-1)`
+      // costs nothing (the row is already loaded) and turns "someone changed
+      // it" into something the caller can act on. A write landing after this
+      // check is caught by the version-guarded `save()` below.
       if (
         body.expectedUpdatedAt != null &&
         body.expectedUpdatedAt !== quest.updatedAt
@@ -2765,15 +2780,13 @@ export class QuestController {
       // update that leaves the field alone (`undefined`) must not
       // register anything.
       //
-      // Deliberately NOT wrapped in `$transactional()`, unlike
-      // `QuestService.createQuest` (whose JSDoc requires one for its
-      // `shortId` sequence allocation). If a later validation below this
-      // point throws — `dependsOn` pointing at itself, an unaccepted
-      // feedback link — the area row this call created stays committed
-      // even though the quest patch never lands. That's a fine state to
-      // be in, not a bug: a zero-quest area is a legal row (an owner can
-      // rename or delete it from the areas settings page), not a
-      // dangling reference the way an orphaned quest FK would be.
+      // If a later validation below this point throws — `dependsOn`
+      // pointing at itself, an unaccepted feedback link — the area row this
+      // call created stays committed even though the quest patch never
+      // lands. That's a fine state to be in, not a bug: a zero-quest area is
+      // a legal row (an owner can rename or delete it from the areas
+      // settings page), not a dangling reference the way an orphaned quest
+      // FK would be.
       // Store what `ensureArea` actually persisted (trimmed), not the raw
       // body value — otherwise `area: " foo "` registers the row `foo`
       // while the quest keeps pointing at `" foo "`, matching no row. A
@@ -2907,8 +2920,23 @@ export class QuestController {
         ];
       }
 
-      const updated = await this.quests.updateById(params.id, patch);
-      await this.syncQuestLinks(updated);
+      // Through `save()` on the row the gate read, not `updateById`: the
+      // write is then conditional on the version this request compared the
+      // token against, so a write landing since answers 409 (#Q2546). Not an
+      // `updatedAt` equality in the WHERE: on Postgres a never-updated row's
+      // microsecond default reads back at millisecond precision.
+      const updated: Quest = { ...quest };
+      for (const [key, value] of Object.entries(patch)) {
+        // `undefined` means "leave it", as it did for `updateById`; `save()`
+        // would write it as NULL.
+        if (value !== undefined) {
+          (updated as Record<string, unknown>)[key] = value;
+        }
+      }
+      await this.quests.save(updated);
+      await this.bestEffort.run("updateQuestById: link sync failed", () =>
+        this.syncQuestLinks(updated),
+      );
       // The field NAMES only, never the values. `diffQuest` carries `from` /
       // `to` for the quest's own history, which is member-gated behind the
       // quest; an audit row is read on a page listing every project the
