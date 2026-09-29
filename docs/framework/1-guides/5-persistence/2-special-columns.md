@@ -66,13 +66,17 @@ Use `{ force: true }` in repository operations to bypass soft delete behavior.
 
 ## Version (Optimistic Locking)
 
-`db.version()` creates an integer column for optimistic concurrency control. It defaults to `0` and is automatically incremented when the `save()` method is used on the repository.
+`db.version()` creates an integer column for optimistic concurrency control. It defaults to `0` and is incremented by every UPDATE the repository issues on the row: `save()`, `updateOne`/`updateById`, `updateMany`, the conflict branch of `upsert`/`upsertMany`, and a soft delete.
 
 ```typescript
 version: db.version(),
 ```
 
-When `save()` is called, it includes the current version in the WHERE clause. If the version in the database has changed since the entity was fetched, a `DbVersionMismatchError` is thrown. This prevents lost updates in concurrent scenarios.
+When `save()` is called, it includes the version the entity was loaded with in the WHERE clause. If any writer changed the row since, a `DbVersionMismatchError` is thrown, which answers **409 Conflict** over HTTP. This prevents lost updates in concurrent scenarios, and it needs no transaction: it is one conditional UPDATE, so it holds on Cloudflare D1 too.
+
+On a mismatch the entity object is left exactly as it was loaded, so retrying `save()` with it fails again instead of overwriting the other write. Read the row again and reapply the change.
+
+A raw `repo.query()` UPDATE does not touch the version (nor `updatedAt`): write `version = version + 1` yourself when you update a versioned table by hand.
 
 ## Enum
 

@@ -69,11 +69,12 @@ export class SequencePrimitive extends Primitive<SequencePrimitiveOptions> {
    * Scope defaults to "default". Pass any string to keep an independent counter
    * per tenant / campaign / parent entity / etc.
    *
-   * **Transaction semantics:** when called inside a `$transactional` block, the
-   * increment participates in that transaction — commit advances the counter,
-   * rollback unwinds it. This is intentionally different from PG-native
-   * `nextval()` (which leaves gaps on rollback). It means a failed insert that
-   * consumed a `shortId` returns the value to the pool instead of burning it.
+   * **Transaction semantics:** the increment is one atomic statement. Inside a
+   * real `$transactional` block it participates in that transaction, so a
+   * rollback unwinds it and a failed insert returns its value to the pool.
+   * Without one (Cloudflare D1, where `$transactional` is a no-op) nothing
+   * unwinds it: a failed insert burns its value and leaves a gap, never a
+   * duplicate.
    */
   public async next(scope: string = "default"): Promise<number> {
     return this.provider.advance(this.name, scope, {

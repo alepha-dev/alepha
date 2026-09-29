@@ -172,6 +172,12 @@ export abstract class Repository<T extends ZObject> {
    *
    * You must use the `sql` tagged template function from Drizzle ORM to create the query. https://orm.drizzle.team/docs/sql
    *
+   * ⚠️ A raw statement skips everything the other methods do for a write: it
+   * does not stamp `updatedAt`, bump a `db.version()` column, invalidate the
+   * query cache or emit repository events. A raw UPDATE on a versioned table
+   * writes `version = version + 1` itself, or a concurrent `save()` never
+   * sees the change.
+   *
    * @example
    * ```ts
    * class App {
@@ -1137,6 +1143,7 @@ export abstract class Repository<T extends ZObject> {
     // `cast` lifts raw SQL expressions out before validating and re-attaches
     // them, so `set: { hits: sql\`hits + 1\` }` still works.
     setData = this.cast(setData, false) as any;
+    this.withVersionBump(setData);
 
     // Scope the conflict update to non-deleted rows so an upsert cannot
     // silently resurrect a soft-deleted row. Plain entities keep the original
@@ -1289,6 +1296,7 @@ export abstract class Repository<T extends ZObject> {
     }
 
     setData = this.cast(setData, false) as any;
+    this.withVersionBump(setData);
 
     const setWhere = this.deletedAt()
       ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
@@ -1383,6 +1391,7 @@ export abstract class Repository<T extends ZObject> {
 
     // do not update the ID field
     delete row[this.id.key];
+    this.withVersionBump(row);
 
     const response = await this.rawUpdate(opts)
       .set(row)
@@ -1440,7 +1449,11 @@ export abstract class Repository<T extends ZObject> {
     entity: Infer<T>,
     opts: StatementOptions = {},
   ): Promise<void> {
-    const row = entity as any;
+    // A copy, assigned back only once the write succeeded: on a version
+    // mismatch the caller's object is exactly what it loaded, so a retry of
+    // it fails again instead of matching the concurrent writer's version and
+    // overwriting it.
+    const row = { ...(entity as Record<string, unknown>) } as any;
 
     const id = row[this.id.key];
     if (id == null) {
@@ -1460,7 +1473,9 @@ export abstract class Repository<T extends ZObject> {
 
     where[this.id.key] = { eq: id };
 
-    const versionField = getAttrFields(this.entity.schema, PG_VERSION)?.[0];
+    // The version is bumped by `updateOne` itself, in SQL, like every other
+    // update: only the version this object was loaded with goes in the WHERE.
+    const versionField = this.versionField();
     if (versionField && typeof row[versionField.key] === "number") {
       where = {
         and: [
@@ -1472,16 +1487,15 @@ export abstract class Repository<T extends ZObject> {
           },
         ],
       } as PgQueryWhere<T>;
-
-      row[versionField.key] += 1;
     }
 
     try {
       const newValue = await this.updateOne(where, row, opts);
+      const target = entity as any;
       for (const key of Object.keys(z.schema.shape(this.entity.schema))) {
-        row[key] = undefined;
+        target[key] = undefined;
       }
-      Object.assign(row, newValue);
+      Object.assign(target, newValue);
     } catch (error) {
       if (error instanceof DbEntityNotFoundError && versionField) {
         // Verify entity still exists to differentiate between not-found vs version mismatch
@@ -1494,11 +1508,7 @@ export abstract class Repository<T extends ZObject> {
           if (lookupError instanceof DbEntityNotFoundError) {
             throw error; // Original error
           }
-          // If it's a version mismatch error, propagate it
-          if (lookupError instanceof DbVersionMismatchError) {
-            throw lookupError;
-          }
-          // Other errors (network, timeout, etc.) should be re-thrown
+          // A version mismatch, or another error (network, timeout, etc.)
           throw lookupError;
         }
       }
@@ -1547,6 +1557,7 @@ export abstract class Repository<T extends ZObject> {
 
     where = this.withDeletedAt(where, opts);
     data = this.cast(data, false) as any;
+    this.withVersionBump(data as Record<string, unknown>);
     try {
       const entities = await this.rawUpdate(opts)
         .set(
@@ -2261,6 +2272,31 @@ export abstract class Repository<T extends ZObject> {
         } as any,
       ],
     } as PgQueryWhereOrSQL<T>;
+  }
+
+  /**
+   * The entity's `db.version()` column, if it declares one.
+   */
+  protected versionField(): PgAttrField | undefined {
+    return getAttrFields(this.entity.schema, PG_VERSION)?.[0];
+  }
+
+  /**
+   * Add `version = version + 1` to an UPDATE's SET clause, on a versioned
+   * entity.
+   *
+   * Every UPDATE the Repository issues goes through here, `save()`'s
+   * included, so the optimistic lock `save()` checks is bumped by every
+   * writer: a `save()` racing an `updateById` loses with a
+   * {@link DbVersionMismatchError} instead of silently reverting it. Applied
+   * after `cast`, which only sees plain values. Raw `query()` does not come
+   * through here: a raw UPDATE on a versioned table bumps it by hand.
+   */
+  protected withVersionBump(set: Record<string, unknown>): void {
+    const version = this.versionField();
+    if (version) {
+      set[version.key] = sql`${this.col(version.key as keyof Infer<T>)} + 1`;
+    }
   }
 
   protected deletedAt(): PgAttrField | undefined {

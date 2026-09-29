@@ -353,7 +353,7 @@ entity.name = "Updated Name";
 await this.repo.save(entity);
 ```
 
-If the version has changed since the entity was fetched, `save` throws `DbVersionMismatchError`.
+If the row was written since the entity was fetched (by `save` or any other update, all of which bump the version), `save` throws `DbVersionMismatchError`, a 409 over HTTP, and leaves the entity as it was loaded.
 
 ## Delete Methods
 
@@ -523,7 +523,7 @@ await this.repo.transaction(async (tx) => {
 });
 ```
 
-All repository methods accept `{ tx }` in their options parameter to participate in the transaction. Beyond `tx`, that options parameter also takes `force` (skip optimistic locking), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (per-statement cache control).
+All repository methods accept `{ tx }` in their options parameter to participate in the transaction. Beyond `tx`, that options parameter also takes `force` (include soft-deleted rows), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (per-statement cache control).
 
 On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws and tells you to use `$transactional()` instead.
 
@@ -546,6 +546,17 @@ class OrderService {
 ```
 
 Every repository operation inside the handler automatically participates in the transaction. Nesting is safe - a nested `$transactional` reuses the outer transaction.
+
+### No transactions on D1
+
+**Cloudflare D1 (and PGlite) has no transactions, and `$transactional()` is a no-op there.** The handler runs in place, a throw rolls back nothing, and two requests interleave freely. Each `$transactional()` primitive logs one warning the first time it runs on such a driver. Code that must be correct on D1 does not rely on a rollback:
+
+- **Lost updates:** `db.version()` with `save()`, which answers 409 when the row changed underneath.
+- **Check-then-act:** put the precondition in the write's WHERE (`updateOne({ id, status: "ready" }, …)`), and treat a miss as "someone else won".
+- **Several writes:** validate before the first one, and order them so that a failure halfway leaves harmless state, or compensate by hand.
+- **Unique names:** claim the name first; a UNIQUE violation is an ordinary error without a transaction.
+
+Specs can run the same way on SQLite with `DATABASE_TRANSACTIONS: false` (see the testing guide).
 
 Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time - `Promise.all`, two requests, a job racing a handler - never read or write through each other's transaction.
 

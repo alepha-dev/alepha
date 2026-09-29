@@ -256,6 +256,7 @@ export abstract class DatabaseProvider {
   public async transactional<R>(
     fn: () => Promise<R>,
     config?: PgTransactionConfig,
+    owner?: object,
   ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
@@ -263,6 +264,7 @@ export abstract class DatabaseProvider {
     }
 
     if (!this.supportsTransactions) {
+      this.warnWithoutTransactions(owner);
       return fn();
     }
 
@@ -290,6 +292,31 @@ export abstract class DatabaseProvider {
       await this.drainAfterCommit(afterCommit);
       return result;
     });
+  }
+
+  /**
+   * The `$transactional()` primitives already warned about running bare.
+   */
+  protected readonly warnedWithoutTransactions = new WeakSet<object>();
+
+  /**
+   * Say once per `$transactional()` primitive that it protects nothing here.
+   *
+   * Quiet under the test switch (`DATABASE_TRANSACTIONS=false`), whose whole
+   * point is to run bare on purpose.
+   */
+  protected warnWithoutTransactions(owner?: object): void {
+    if (
+      !owner ||
+      this.transactionsSwitchedOff ||
+      this.warnedWithoutTransactions.has(owner)
+    ) {
+      return;
+    }
+    this.warnedWithoutTransactions.add(owner);
+    this.log.warn(
+      `$transactional() runs without a transaction: the ${this.driver} driver has none, so a failure rolls nothing back`,
+    );
   }
 
   /**
