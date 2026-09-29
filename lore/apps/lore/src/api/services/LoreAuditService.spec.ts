@@ -1,20 +1,24 @@
-import { Alepha } from "alepha";
+import { $hook, Alepha } from "alepha";
 import {
   AnalyticsProvider,
   type AnalyticsRow,
   MemoryAnalyticsProvider,
 } from "alepha/api/analytics";
-import { audits } from "alepha/api/audits";
+import { AuditService, audits } from "alepha/api/audits";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
+import type { LogEntry } from "alepha/logger";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
+import { ProjectController } from "../controllers/ProjectController.ts";
 import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import { LoreApi } from "../index.ts";
 import { LoreAudits } from "./LoreAudits.ts";
+import { LoreAuditService } from "./LoreAuditService.ts";
 
 class AuditRepositories {
   audits = $repository(audits);
@@ -242,5 +246,85 @@ describe("LoreAuditService", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].action).toBe("create");
     });
+  });
+});
+
+/**
+ * An audit insert that refuses, behind Lore's own recording path.
+ */
+class RefusingAuditService extends LoreAuditService {
+  public override async create(): Promise<never> {
+    throw new Error("audit insert refused");
+  }
+}
+
+class ErrorLogProbe {
+  public errors: LogEntry[] = [];
+
+  onLog = $hook({
+    on: "log",
+    handler: ({ entry }) => {
+      if (entry.level === "ERROR") this.errors.push(entry);
+    },
+  });
+}
+
+describe("LoreAuditService.record is best effort (#Q2555)", () => {
+  const setupRefusing = async () => {
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "silent",
+        DATABASE_URL: ":memory:",
+        DATABASE_TRANSACTIONS: false,
+      },
+    });
+    // `LoreApi` substitutes `AuditService` with `LoreAuditService`; this
+    // replaces the latter, so the chain ends here.
+    alepha.with({ provide: LoreAuditService, use: RefusingAuditService });
+    alepha.with(AlephaOrm);
+    alepha.with(AlephaServer);
+    alepha.with(AlephaSecurity);
+    alepha.with(AlephaEmail);
+    alepha.with(AlephaApiUsers);
+    alepha.with(LoreApi);
+    const probe = alepha.inject(ErrorLogProbe);
+    const repos = alepha.inject(TestEntityRepositories);
+    await alepha.start();
+    return { alepha, probe, repos };
+  };
+
+  it("keeps the action's write, answers success, and logs one error", async ({
+    expect,
+  }) => {
+    const { alepha, probe, repos } = await setupRefusing();
+    const account = await repos.users.create({});
+
+    const resource = await alepha
+      .inject(ProjectController)
+      .createProject(
+        { body: { title: "Audited Project" } },
+        { user: { id: account.id, roles: ["user"] } },
+      );
+
+    expect(await repos.projects.getById(resource.id)).toBeDefined();
+    const audited = probe.errors.filter((it) =>
+      it.message.includes("not recorded"),
+    );
+    expect(audited).toHaveLength(1);
+    expect(audited[0].data).toBeInstanceOf(Error);
+
+    await alepha.stop();
+  });
+
+  it("leaves a direct create() failing loudly, as the admin API needs", async ({
+    expect,
+  }) => {
+    const { alepha } = await setupRefusing();
+
+    await expect(
+      alepha.inject(AuditService).create({ type: "project", action: "create" }),
+    ).rejects.toThrow("audit insert refused");
+
+    await alepha.stop();
   });
 });
