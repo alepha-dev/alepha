@@ -41,6 +41,18 @@ export interface AppendedRevision {
   created: boolean;
 }
 
+/**
+ * What {@link FolioHistoryService.prepareRevision} decided before the folio
+ * write, for {@link FolioHistoryService.recordRevision} to finish after it.
+ */
+export interface RevisionPlan {
+  action: RevisionAction;
+  /**
+   * The same author's open revision to fold into, if any.
+   */
+  open?: FolioRevision;
+}
+
 interface RevisionInput {
   /**
    * New title after the change.
@@ -170,6 +182,32 @@ export class FolioHistoryService {
     action: RevisionAction,
     previousContent: string | undefined,
   ): Promise<AppendedRevision> {
+    const plan = await this.prepareRevision(
+      folio.id,
+      byUserId,
+      action,
+      previousContent,
+    );
+    return await this.recordRevision(folio, byUserId, plan);
+  }
+
+  /**
+   * The half of {@link appendRevision} that runs BEFORE the folio write
+   * (#Q2549): pick the revision to fold into, and fill in every other live
+   * row with `previousContent`.
+   *
+   * The newest revision stores no body, it reads the folio's live content.
+   * Run after the write, a failure in between lost the pre-edit body from
+   * history for good, since nothing rolls the write back on D1. Run before,
+   * the worst a failure leaves is a duplicate snapshot of the body the
+   * folio still holds.
+   */
+  public async prepareRevision(
+    folioId: string,
+    byUserId: string,
+    action: RevisionAction,
+    previousContent: string | undefined,
+  ): Promise<RevisionPlan> {
     // A revert always gets its own row, in BOTH directions. Blocking only
     // the "fold into a revert" side was a bug: the revert's own write would
     // fold into the edit revision that preceded it, overwriting the very
@@ -178,10 +216,23 @@ export class FolioHistoryService {
     const open =
       action === "revert"
         ? undefined
-        : await this.findOpenRevision(folio.id, byUserId);
+        : await this.findOpenRevision(folioId, byUserId);
 
-    await this.materializeLive(folio.id, previousContent, open?.id);
+    await this.materializeLive(folioId, previousContent, open?.id);
+    return { action, open };
+  }
 
+  /**
+   * The half of {@link appendRevision} that runs AFTER the folio write:
+   * fold into the open revision or insert a new head, then enforce the
+   * retention cap.
+   */
+  public async recordRevision(
+    folio: Folio,
+    byUserId: string,
+    plan: RevisionPlan,
+  ): Promise<AppendedRevision> {
+    const { action, open } = plan;
     if (open) {
       return {
         created: false,

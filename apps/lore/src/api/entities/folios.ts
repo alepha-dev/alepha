@@ -18,6 +18,12 @@ export const folios = $entity({
     shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
+    /**
+     * Optimistic lock (#Q2549). Bumped by every Repository update, checked
+     * by `save()`: an update or revert writes against the version its own
+     * request read, and answers 409 when another write landed in between.
+     */
+    version: db.version(),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),

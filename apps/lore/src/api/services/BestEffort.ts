@@ -24,11 +24,15 @@ export class BestEffort {
   protected readonly log = $logger();
 
   /**
-   * Run `step`; on a throw, log it at error level under `label` and return.
+   * Run `step` and answer its value; on a throw, log it at error level
+   * under `label` and answer `undefined`.
    */
-  public async run(label: string, step: () => Promise<unknown>): Promise<void> {
+  public async run<T>(
+    label: string,
+    step: () => Promise<T>,
+  ): Promise<T | undefined> {
     try {
-      await step();
+      return await step();
     } catch (error) {
       this.log.error(
         label,
@@ -36,6 +40,7 @@ export class BestEffort {
           ? error
           : new AlephaError(String(error), { cause: error }),
       );
+      return undefined;
     }
   }
 }

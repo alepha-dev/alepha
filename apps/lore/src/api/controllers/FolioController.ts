@@ -2,7 +2,7 @@ import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, $sequence, $transactional } from "alepha/orm";
+import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
@@ -35,7 +35,10 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { BestEffort } from "../services/BestEffort.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
-import { FolioHistoryService } from "../services/FolioHistoryService.ts";
+import {
+  FolioHistoryService,
+  type RevisionPlan,
+} from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
@@ -876,9 +879,9 @@ export class FolioController {
   });
 
   update = $action({
-    // Gate INSIDE the transaction - it is the read half of the
-    // protection-domain check below. See `$ownsProject`.
-    use: [$transactional(), this.ownsFolioForKnowledge("folio:write")],
+    // The gate is the read half of the protection-domain check below, and
+    // the version the write is guarded by. No transaction (D1 has none).
+    use: [this.ownsFolioForKnowledge("folio:write")],
     description: "Update a folio.",
     schema: {
       params: folioIdParamsSchema,
@@ -991,72 +994,111 @@ export class FolioController {
         body.protected !== undefined ? body.protected : existing.protected;
       const pinned = body.pinned !== undefined ? body.pinned : existing.pinned;
 
-      // Re-reserve whenever the title or the folder changes - the scope
-      // key is (folder, name), so either one moving invalidates the old
-      // row. Release first, or `autoSuffix` counts the folio's own
-      // reservation as a sibling and renaming "Abc" to "abc" lands on
-      // "abc (1)"; the action is `$transactional`, so a collision in
-      // `reserve` rolls the release back with it. Same shape, and the
-      // same reasoning, as `FolioDirectoryService.rename`.
+      // The order is the whole design (#Q2549). Lore runs on D1: nothing
+      // rolls a write back, so every step that must not be lost runs
+      // BEFORE the folio row is written, and everything after it is best
+      // effort.
+      //
+      // 1. The name, as one UPDATE of the folio's own reservation row: a
+      //    collision answers 409 and keeps the old name guarded.
       const title = await this.reserveTitle(
         params.id,
         existing,
         desiredTitle,
         directoryId,
       );
+      const renamed =
+        title !== existing.title ||
+        (directoryId ?? undefined) !== existing.directoryId;
 
-      const updated = await this.folios.updateById(params.id, {
-        title,
-        content,
-        summary,
-        directoryId,
-        protected: isProtected,
-        pinned,
-        searchText: isProtected
-          ? ""
-          : buildFolioSearchText({ title, summary, content }),
-      });
+      const purged = isProtected !== existing.protected;
+      let plan: RevisionPlan | undefined;
+      let updated: Folio;
+      try {
+        // 2. Crossing the protection boundary invalidates every stored
+        //    snapshot: they belong to the previous cryptographic domain.
+        //    Going clear → protected this is the confidentiality fix, and
+        //    it runs BEFORE the row turns protected, so no failure can
+        //    leave a protected folio with plaintext revisions or links.
+        //    The honest cost: a failure after this and before the write
+        //    leaves the folio clear with its history already purged.
+        if (purged) {
+          await this.historyService.purgeRevisions(params.id);
+          if (isProtected) {
+            // The plaintext `[[links]]` would leak what the folio
+            // references once it is ciphertext.
+            await this.linkService.syncLinks(this.folioSource(existing), "");
+          }
+        }
+
+        // 3. The live head materialized from the body as it was read, so
+        //    a failure after the write can never lose it from history.
+        //    Pin-only or reparent-only updates record no revision.
+        const action = this.historyService.decideRevisionAction(
+          {
+            title: existing.title,
+            content: existing.content,
+            summary: existing.summary,
+          },
+          { title, content, summary },
+        );
+        plan = action
+          ? await this.historyService.prepareRevision(
+              params.id,
+              user.id,
+              action,
+              existing.content,
+            )
+          : undefined;
+
+        // 4. The row, against the version this request read: a write that
+        //    landed since answers 409 instead of being overwritten. Not an
+        //    `updatedAt` equality: on Postgres a never-updated row's
+        //    microsecond default reads back at millisecond precision.
+        updated = {
+          ...existing,
+          title,
+          content,
+          summary,
+          // `null` means "move to the root": `save()` writes it as NULL.
+          directoryId: directoryId as string | undefined,
+          protected: isProtected,
+          pinned,
+          searchText: isProtected
+            ? ""
+            : buildFolioSearchText({ title, summary, content }),
+        };
+        await this.folios.save(updated);
+      } catch (error) {
+        if (renamed) {
+          await this.bestEffort.run(
+            "updateFolio: restoring the previous name failed",
+            () =>
+              this.reserveTitle(
+                params.id,
+                { ...existing, title, directoryId: directoryId ?? undefined },
+                existing.title,
+                existing.directoryId ?? null,
+              ),
+          );
+        }
+        throw error;
+      }
+
+      // 5. Best effort from here (#Q2555): the change has landed.
+      //
       // A rename touches no other element: a folio is referenced by its
       // number (`[[#F12]]`, epic #32), which a title change leaves intact.
       // Re-sync this folio's own outbound links whenever content changed.
       if (!isProtected) {
-        await this.linkService.syncLinks(this.folioSource(updated), content);
-      } else if (!existing.protected) {
-        // clear → protected (the view's Encrypt action): the plaintext —
-        // and the `[[links]]` parsed from it — is now ciphertext. Wipe the
-        // outbound links so the graph doesn't leak what the folio used to
-        // reference. `searchText` is already blanked above.
-        await this.linkService.syncLinks(this.folioSource(updated), "");
+        await this.bestEffort.run("updateFolio: link sync failed", () =>
+          this.linkService.syncLinks(this.folioSource(updated), content),
+        );
       }
-      // Crossing the protection boundary invalidates every stored snapshot:
-      // they belong to the previous cryptographic domain. Purge BEFORE
-      // appending below, so the revision written for THIS edit (already in
-      // the new domain) survives. Going clear → protected this is the
-      // confidentiality fix — without it, encrypting a folio left every
-      // pre-encryption plaintext snapshot readable by any project member
-      // through `listHistory`.
-      const purged = isProtected !== existing.protected;
-      if (purged) {
-        await this.historyService.purgeRevisions(params.id);
-      }
-
-      // Write a revision row when the change touched anything we record
-      // (content / title / summary). Pin-only or parent-reparent-only
-      // updates skip the revision — they're not edits in the spec's sense.
-      const action = this.historyService.decideRevisionAction(
-        {
-          title: existing.title,
-          content: existing.content,
-          summary: existing.summary,
-        },
-        { title, content, summary },
-      );
-      const appended = action
-        ? await this.historyService.appendRevision(
-            updated,
-            user.id,
-            action,
-            existing.content,
+      const revisionPlan = plan;
+      const appended = revisionPlan
+        ? await this.bestEffort.run("updateFolio: revision failed", () =>
+            this.historyService.recordRevision(updated, user.id, revisionPlan),
           )
         : undefined;
       // See `folioSavedSchema` for why the purge is an equal partner here
@@ -1068,7 +1110,7 @@ export class FolioController {
         // has already computed it. `undefined` when nothing recordable moved
         // (a pin, a reparent), which is exactly the distinction the feed
         // wants to draw.
-        change: action,
+        change: plan?.action,
       });
 
       return {
@@ -1142,10 +1184,7 @@ export class FolioController {
       return existing.title;
     }
     const scope = this.nameService.scopeOf(existing.projectId, nextDirectoryId);
-    await this.nameService.releaseByEntity(id);
-    const title = await this.nameService.autoSuffix(desiredTitle, scope);
-    await this.nameService.reserve(title, "folio", id, scope);
-    return title;
+    return await this.nameService.rename(id, "folio", desiredTitle, scope);
   }
 
   /**
@@ -1366,8 +1405,7 @@ export class FolioController {
    * can undo the revert if they did it in error.
    */
   revertHistory = $action({
-    // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [$transactional(), this.ownsFolioForKnowledge("folio:write")],
+    use: [this.ownsFolioForKnowledge("folio:write")],
     path: "/folios/:id/history/:revisionId/revert",
     description: "Revert a folio to a prior revision (creates a new revision).",
     schema: {
@@ -1392,27 +1430,68 @@ export class FolioController {
       // content, and so is what the revert's own revision fills it in with.
       const previousContent = folio.content;
       const content = this.historyService.contentOf(revision, previousContent);
-      const updated = await this.folios.updateById(folio.id, {
-        title: revision.titleSnapshot,
-        content,
-        summary: revision.summarySnapshot,
-        searchText: isProtected
-          ? ""
-          : buildFolioSearchText({
-              title: revision.titleSnapshot,
-              summary: revision.summarySnapshot,
-              content,
-            }),
-      });
+
+      // Same order as `update` (#Q2549): the name, then the history, then
+      // the row, then the best-effort rest. Restoring an older title
+      // re-reserves it, which the revert never did: the current name stayed
+      // reserved and the restored one unguarded.
+      const title = await this.reserveTitle(
+        folio.id,
+        folio,
+        revision.titleSnapshot,
+        folio.directoryId ?? null,
+      );
+
+      let plan: RevisionPlan;
+      let updated: Folio;
+      try {
+        plan = await this.historyService.prepareRevision(
+          folio.id,
+          user.id,
+          "revert",
+          previousContent,
+        );
+        // Against the version this request read, so an encrypt landing in
+        // between (a write, which bumps it) refuses the revert rather than
+        // writing a plaintext snapshot into a protected folio.
+        updated = {
+          ...folio,
+          title,
+          content,
+          summary: revision.summarySnapshot,
+          searchText: isProtected
+            ? ""
+            : buildFolioSearchText({
+                title,
+                summary: revision.summarySnapshot,
+                content,
+              }),
+        };
+        await this.folios.save(updated);
+      } catch (error) {
+        if (title !== folio.title) {
+          await this.bestEffort.run(
+            "revertFolio: restoring the previous name failed",
+            () =>
+              this.reserveTitle(
+                folio.id,
+                { ...folio, title },
+                folio.title,
+                folio.directoryId ?? null,
+              ),
+          );
+        }
+        throw error;
+      }
 
       if (!isProtected) {
-        await this.linkService.syncLinks(this.folioSource(updated), content);
+        await this.bestEffort.run("revertFolio: link sync failed", () =>
+          this.linkService.syncLinks(this.folioSource(updated), content),
+        );
       }
-      await this.historyService.appendRevision(
-        updated,
-        user.id,
-        "revert",
-        previousContent,
+      const revisionPlan = plan;
+      await this.bestEffort.run("revertFolio: revision failed", () =>
+        this.historyService.recordRevision(updated, user.id, revisionPlan),
       );
       await this.logFolio("revert", updated, user, {
         revisionId: params.revisionId,
