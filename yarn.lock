@@ -166,7 +166,7 @@ __metadata:
     react-is: "npm:^19.3.0"
     react-markdown: "npm:^10.1.0"
     react-resizable-panels: "npm:^4.14.1"
-    recharts: "npm:3.10.1"
+    recharts: "npm:^3.10.1"
     remark-gfm: "npm:^4.0.1"
     sonner: "npm:^2.0.8"
     tsdown: "npm:^0.23.0"
@@ -180,6 +180,8 @@ __metadata:
     recharts: ^3
     tailwindcss: ^4
   peerDependenciesMeta:
+    recharts:
+      optional: true
     tailwindcss:
       optional: true
   languageName: unknown
@@ -2347,13 +2349,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polka/url@npm:^1.0.0-next.24":
-  version: 1.0.0-next.29
-  resolution: "@polka/url@npm:1.0.0-next.29"
-  checksum: 10c0/0d58e081844095cb029d3c19a659bfefd09d5d51a2f791bc61eba7ea826f13d6ee204a8a448c2f5a855c17df07b37517373ff916dd05801063c0568ae9937684
-  languageName: node
-  linkType: hard
-
 "@poppinss/colors@npm:^4.1.5":
   version: 4.1.6
   resolution: "@poppinss/colors@npm:4.1.6"
@@ -2378,6 +2373,16 @@ __metadata:
   version: 1.2.3
   resolution: "@poppinss/exception@npm:1.2.3"
   checksum: 10c0/44e48400c9f2d33a4904bee99321b89239774bb9210049f1c55864725fd524ff55bc78a5a94a13d5edea93b84e13023c229c88ebba8c2dc717fb4b2205e42ac7
+  languageName: node
+  linkType: hard
+
+"@prometheus-io/client@npm:^0.16.1":
+  version: 0.16.1
+  resolution: "@prometheus-io/client@npm:0.16.1"
+  dependencies:
+    "@opentelemetry/api": "npm:^1.4.0"
+    tdigest: "npm:^0.1.1"
+  checksum: 10c0/a6068cab1140329de0d1b86ceeeb589ce7eeba7133c370a33e0ce08d78dd2c30629012dba6444a7c1c780d2a4419991403234b200cb406a3d55a66a3f83509c8
   languageName: node
   linkType: hard
 
@@ -3287,46 +3292,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/pretty-format@npm:5.0.2":
-  version: 5.0.2
-  resolution: "@vitest/pretty-format@npm:5.0.2"
-  dependencies:
-    tinyrainbow: "npm:^3.1.1"
-  checksum: 10c0/fd3a6c7ab541ca1cf9b21cc8f44e141f50e5d07eb456edb85f1f9eacfd3a276a9ab5a442cbc35c023c3fc0f05cf2bfa022a7960d33538a2872db2043bf207616
-  languageName: node
-  linkType: hard
-
 "@vitest/spy@npm:5.0.2":
   version: 5.0.2
   resolution: "@vitest/spy@npm:5.0.2"
   checksum: 10c0/4a52231cc7b5b8959bb15a700a761464051a6d0cc35a231fc92fd4f58d10a01012671a20ea37ebc79e98bdd5dc257a3c52db10d6a592944560fb69651f6f1296
-  languageName: node
-  linkType: hard
-
-"@vitest/ui@npm:^5.0.2":
-  version: 5.0.2
-  resolution: "@vitest/ui@npm:5.0.2"
-  dependencies:
-    "@vitest/utils": "npm:5.0.2"
-    fflate: "npm:^0.8.3"
-    flatted: "npm:^3.4.4"
-    pathe: "npm:^2.0.3"
-    sirv: "npm:^3.0.2"
-    tinyrainbow: "npm:^3.1.1"
-  peerDependencies:
-    vitest: 5.0.2
-  checksum: 10c0/f232eae237a794b211a1c23ce10e98d125233070af23caaa92e7b89222a6118030df05525c094f493d650bfdcc190636763da1d5e3ed35976a59e6eefa0db5de
-  languageName: node
-  linkType: hard
-
-"@vitest/utils@npm:5.0.2":
-  version: 5.0.2
-  resolution: "@vitest/utils@npm:5.0.2"
-  dependencies:
-    "@vitest/pretty-format": "npm:5.0.2"
-    convert-source-map: "npm:^2.0.0"
-    tinyrainbow: "npm:^3.1.1"
-  checksum: 10c0/5711e43595ce7afe83d0989f301ad6bc00605786fc39242953d2885fbdee2956e51d4ee32ad005234b4d81887538c385d480fe635d609a1646eb530d5b0802b6
   languageName: node
   linkType: hard
 
@@ -3631,7 +3600,6 @@ __metadata:
     "@types/node": "npm:^26.6.3"
     "@types/react": "npm:^19.3.0"
     "@vitest/coverage-v8": "npm:^5.0.2"
-    "@vitest/ui": "npm:^5.0.2"
     alepha: "npm:^0.30.0"
     depcheck: "npm:^1.4.7"
     oxfmt: "npm:^0.70.0"
@@ -3657,6 +3625,7 @@ __metadata:
     "@electric-sql/pglite": "npm:^0.5.8"
     "@faker-js/faker": "npm:^10.6.0"
     "@noble/hashes": "npm:^2.4.0"
+    "@prometheus-io/client": "npm:^0.16.1"
     "@redis/client": "npm:^6.2.1"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@testing-library/dom": "npm:^10.4.2"
@@ -3681,7 +3650,6 @@ __metadata:
     oxlint: "npm:^1.85.0"
     oxlint-tsgolint: "npm:^7.0.2003"
     postgres: "npm:^3.4.9"
-    prom-client: "npm:^15.1.3"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
     s3mini: "npm:^1.0.2"
@@ -4078,13 +4046,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"convert-source-map@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "convert-source-map@npm:2.0.0"
-  checksum: 10c0/8f2f7a27a1a011cc6cc88cc4da2d7d0cfa5ee0369508baae3d98c260bb3ac520691464e5bbe4ae7cdf09860c1d69ecc6f70c63c6e7c7f7e3f18ec08484dc7d9b
-  languageName: node
-  linkType: hard
-
 "cookie@npm:^1.0.2":
   version: 1.1.1
   resolution: "cookie@npm:1.1.1"
@@ -4459,7 +4420,6 @@ __metadata:
     highlight.js: "npm:^11.12.0"
     jsdom: "npm:^30.1.1"
     marked: "npm:^18.0.14"
-    marked-highlight: "npm:^2.2.4"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
     typescript: "npm:^7.0.2"
@@ -5016,13 +4976,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fflate@npm:^0.8.3":
-  version: 0.8.3
-  resolution: "fflate@npm:0.8.3"
-  checksum: 10c0/eab181ca37f5348ae76d4b6f840e0026e30220e33153289ac942222d8b9638237d486507dbcc09878d724095bd354993a2ee48bbee99c8f2c6440d4448719aa7
-  languageName: node
-  linkType: hard
-
 "fill-range@npm:^7.1.1":
   version: 7.1.1
   resolution: "fill-range@npm:7.1.1"
@@ -5041,13 +4994,6 @@ __metadata:
     micromatch: "npm:^4.0.4"
     resolve-dir: "npm:^1.0.1"
   checksum: 10c0/bbdb8af8c86a0bde4445e2f738003b92e4cd2a4539a5b45199d0252f2f504aeaf19aeca1fac776c3632c60657b2659151e72c8ead29a79617459a57419a0920b
-  languageName: node
-  linkType: hard
-
-"flatted@npm:^3.4.4":
-  version: 3.4.4
-  resolution: "flatted@npm:3.4.4"
-  checksum: 10c0/a3a52a88ea5a4c333e5a1f097dcd87a037fa31c236a77cf46222c2aa4036ef895ab9bc76138a66d9dc22bdb3652128f9598cd26e7439561bf19f67276e2bc37e
   languageName: node
   linkType: hard
 
@@ -5907,6 +5853,7 @@ __metadata:
     "@types/react-dom": "npm:^19.3.0"
     "@types/ws": "npm:^8.18.1"
     alepha: "workspace:*"
+    better-sqlite3: "npm:^13.0.3"
     drizzle-kit: "npm:1.0.0-rc.4"
     fzstd: "npm:0.1.1"
     lucide-react: "npm:^1.48.0"
@@ -6015,15 +5962,6 @@ __metadata:
   version: 3.0.4
   resolution: "markdown-table@npm:3.0.4"
   checksum: 10c0/1257b31827629a54c24a5030a3dac952256c559174c95ce3ef89bebd6bff0cb1444b1fd667b1a1bb53307f83278111505b3e26f0c4e7b731e0060d435d2d930b
-  languageName: node
-  linkType: hard
-
-"marked-highlight@npm:^2.2.4":
-  version: 2.2.4
-  resolution: "marked-highlight@npm:2.2.4"
-  peerDependencies:
-    marked: ">=4 <19"
-  checksum: 10c0/27a1f017bc48c14ec2b5838439d819a7efb5d487459900a57119f178f9e8b27bdb5e8f934ae682a053a4c66b0b71f6b6209ec8c1e520a040fadb8f3b6703f9c8
   languageName: node
   linkType: hard
 
@@ -6709,13 +6647,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mrmime@npm:^2.0.0":
-  version: 2.0.1
-  resolution: "mrmime@npm:2.0.1"
-  checksum: 10c0/af05afd95af202fdd620422f976ad67dc18e6ee29beb03dd1ce950ea6ef664de378e44197246df4c7cdd73d47f2e7143a6e26e473084b9e4aa2095c0ad1e1761
-  languageName: node
-  linkType: hard
-
 "ms@npm:^2.1.3":
   version: 2.1.3
   resolution: "ms@npm:2.1.3"
@@ -6753,11 +6684,11 @@ __metadata:
   linkType: hard
 
 "node-addon-api@npm:^8.0.0":
-  version: 8.9.0
-  resolution: "node-addon-api@npm:8.9.0"
+  version: 8.9.2
+  resolution: "node-addon-api@npm:8.9.2"
   dependencies:
     node-gyp: "npm:latest"
-  checksum: 10c0/6d687ffbc66e9735f4182e4c05d137d083be1fa5972b1762307e007804a85b70f810fed5b908f27f48caa4ed831517c95eec5137c8a02eaa08893bdef7fec05e
+  checksum: 10c0/5cf5231e0da22b22862e6b593982a0e390ca89d022a9ac666c83deceecf20378cb8afe47c456ac1a58a9f62ef60099c950aec05814a287fdfd751d9d154fb12d
   languageName: node
   linkType: hard
 
@@ -7188,16 +7119,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prom-client@npm:^15.1.3":
-  version: 15.1.3
-  resolution: "prom-client@npm:15.1.3"
-  dependencies:
-    "@opentelemetry/api": "npm:^1.4.0"
-    tdigest: "npm:^0.1.1"
-  checksum: 10c0/816525572e5799a2d1d45af78512fb47d073c842dc899c446e94d17cfc343d04282a1627c488c7ca1bcd47f766446d3e49365ab7249f6d9c22c7664a5bce7021
-  languageName: node
-  linkType: hard
-
 "property-information@npm:^7.0.0":
   version: 7.1.0
   resolution: "property-information@npm:7.1.0"
@@ -7336,7 +7257,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recharts@npm:3.10.1, recharts@npm:^3.10.1":
+"recharts@npm:^3.10.1":
   version: 3.10.1
   resolution: "recharts@npm:3.10.1"
   dependencies:
@@ -7758,29 +7679,14 @@ __metadata:
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"
     alepha: "workspace:^"
-    better-sqlite3: "npm:^13.0.3"
     lucide-react: "npm:^1.48.0"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
     tailwindcss: "npm:^4.3.3"
     vite: "npm:^8.3.1"
     wrangler: "npm:^4.142.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
   languageName: unknown
   linkType: soft
-
-"sirv@npm:^3.0.2":
-  version: 3.0.2
-  resolution: "sirv@npm:3.0.2"
-  dependencies:
-    "@polka/url": "npm:^1.0.0-next.24"
-    mrmime: "npm:^2.0.0"
-    totalist: "npm:^3.0.0"
-  checksum: 10c0/5930e4397afdb14fbae13751c3be983af4bda5c9aadec832607dc2af15a7162f7d518c71b30e83ae3644b9a24cea041543cc969e5fe2b80af6ce8ea3174b2d04
-  languageName: node
-  linkType: hard
 
 "smart-buffer@npm:^4.2.0":
   version: 4.2.0
@@ -7851,14 +7757,10 @@ __metadata:
   dependencies:
     "@playwright/test": "npm:^1.63.0"
     alepha: "npm:^0.30.0"
-    better-sqlite3: "npm:^13.0.3"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
     vite: "npm:^8.3.1"
     wrangler: "npm:^4.142.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
   languageName: unknown
   linkType: soft
 
@@ -8076,13 +7978,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"totalist@npm:^3.0.0":
-  version: 3.0.1
-  resolution: "totalist@npm:3.0.1"
-  checksum: 10c0/4bb1fadb69c3edbef91c73ebef9d25b33bbf69afe1e37ce544d5f7d13854cda15e47132f3e0dc4cafe300ddb8578c77c50a65004d8b6e97e77934a69aa924863
-  languageName: node
-  linkType: hard
-
 "totp-example@workspace:apps/examples/totp":
   version: 0.0.0-use.local
   resolution: "totp-example@workspace:apps/examples/totp"
@@ -8091,16 +7986,12 @@ __metadata:
     "@alepha/ui": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.3"
     alepha: "workspace:^"
-    better-sqlite3: "npm:^13.0.3"
     lucide-react: "npm:^1.48.0"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
     tailwindcss: "npm:^4.3.3"
     vite: "npm:^8.3.1"
     wrangler: "npm:^4.142.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
   languageName: unknown
   linkType: soft
 

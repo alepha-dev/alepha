@@ -1,7 +1,6 @@
 ignores:
   - "alepha"
   - "@alepha/ui"
-  - "@alepha/mantine"
   - "@alepha/devtools"
   # The root devDependency is what makes Yarn link `node_modules/.bin/lore`,
   # so every `yarn lore ...` step in CI stops resolving the moment somebody
@@ -27,8 +26,6 @@ ignores:
   # consumer of the CLI barrel.
   - "vite-bundle-analyzer"
   - "@types/react"
-  - "animate.css"
-  - "marked-highlight"
   - "highlight.js"
   - "oxfmt"
   - "oxlint"
@@ -49,7 +46,6 @@ ignores:
   # reached through wrangler's tree, which is already a devDependency here. If
   # wrangler ever drops it the spec fails at import, which is the right noise.
   - "blake3-wasm"
-  - "vercel"
   # Every font is pulled by an `@import` in a `.css` file, which depcheck does
   # not read, so all of them look unused. Self-hosted rather than fetched from
   # a CDN, so the manifest entry is what actually ships the files.
@@ -58,8 +54,6 @@ ignores:
   - "@fontsource/space-grotesk"
   - "@fontsource/spectral"
   - "@types/bun"
-  - "better-sqlite3"
-  - "surge"
   - "bun"
   - "bun:sqlite"
   - "bun:test"
@@ -67,13 +61,11 @@ ignores:
   - "tailwindcss"
   - "@tailwindcss/vite"
   - "@types/react-dom"
-  - "@types/react-is"
   - "@fontsource-variable/archivo"
   - "@fontsource-variable/inter"
   - "@fontsource-variable/jetbrains-mono"
   - "date-fns"
   - "tw-animate-css"
-  - "yjs"
 
 ignore-patterns:
   - "dist"

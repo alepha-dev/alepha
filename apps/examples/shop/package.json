@@ -19,7 +19,6 @@
     "@alepha/payments-stripe": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@fontsource-variable/archivo": "^5.3.0",
-    "@testing-library/dom": "^10.4.2",
     "alepha": "workspace:^",
     "lucide-react": "^1.48.0",
     "react": "^19.3.0",
@@ -28,15 +27,10 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "better-sqlite3": "^13.0.3",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.1",
     "wrangler": "^4.142.0"
-  },
-  "dependenciesMeta": {
-    "better-sqlite3": {
-      "built": true
-    }
   }
 }

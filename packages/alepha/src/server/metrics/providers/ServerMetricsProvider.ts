@@ -1,7 +1,11 @@
+import {
+  collectDefaultMetrics,
+  Histogram,
+  Registry,
+} from "@prometheus-io/client";
 import { $env, $hook, $inject, Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route, HttpError } from "alepha/server";
-import { collectDefaultMetrics, Histogram, Registry } from "prom-client";
 
 export class ServerMetricsProvider {
   protected readonly register: Registry = new Registry();
