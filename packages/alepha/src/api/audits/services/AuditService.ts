@@ -428,12 +428,17 @@ export class AuditService {
 
   /**
    * Record an audit event (convenience method).
+   *
+   * The path every `$audit` call takes. Resolves `undefined` when no row was
+   * written: a subclass may make recording best-effort, so that an audit
+   * insert failing after the action's own write never turns a committed
+   * change into an error.
    */
   public async record(
     type: string,
     action: string,
     options: Omit<CreateAudit, "type" | "action"> = {},
-  ): Promise<AuditEntity> {
+  ): Promise<AuditEntity | undefined> {
     return this.create({ type, action, ...options });
   }
 

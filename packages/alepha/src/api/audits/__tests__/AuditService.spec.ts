@@ -126,10 +126,10 @@ describe("alepha/api/audits - AuditService", () => {
         metadata: { amount: 99.99 },
       });
 
-      expect(entry.type).toBe("payment");
-      expect(entry.action).toBe("create");
-      expect(entry.resourceType).toBe("payment");
-      expect(entry.resourceId).toBe("pay-123");
+      expect(entry?.type).toBe("payment");
+      expect(entry?.action).toBe("create");
+      expect(entry?.resourceType).toBe("payment");
+      expect(entry?.resourceId).toBe("pay-123");
     });
   });
 

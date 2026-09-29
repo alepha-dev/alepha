@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { type AuditEntity, AuditService } from "alepha/api/audits";
 import type { CreateAudit } from "alepha/api/audits";
 import { $logger } from "alepha/logger";
@@ -37,6 +37,42 @@ import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 export class LoreAuditService extends AuditService {
   protected readonly logger = $logger();
   protected readonly datasets = $inject(LoreAnalytics);
+
+  /**
+   * Records an audit event, best effort (#Q2555).
+   *
+   * Every `$audit.logSuccess` reaches this after the action's own write has
+   * committed. Lore runs on D1, which has no transaction to roll that write
+   * back, so an audit insert that throws here used to turn a change that
+   * happened into a 500, and invite a retry that repeats it (a duplicate
+   * quest on create). The failure is logged at error level instead, which
+   * the sigil reports as a blight, and the action answers success. The
+   * accepted cost: an action can occasionally succeed with no audit row.
+   *
+   * `record`, not `create`: `AdminAuditController` calls `create` directly
+   * and must keep failing loudly.
+   *
+   * ⚠️ Catch-and-continue only works with no transaction open. On Postgres a
+   * failed statement aborts the surrounding transaction. Lore never runs on
+   * Postgres, and holds no `$transactional`.
+   */
+  public override async record(
+    type: string,
+    action: string,
+    options: Omit<CreateAudit, "type" | "action"> = {},
+  ): Promise<AuditEntity | undefined> {
+    try {
+      return await super.record(type, action, options);
+    } catch (error) {
+      this.logger.error(
+        `Audit '${type}:${action}' not recorded`,
+        error instanceof Error
+          ? error
+          : new AlephaError(String(error), { cause: error }),
+      );
+      return undefined;
+    }
+  }
 
   /**
    * Writes the audit row, then the rate point beside it.

@@ -1067,6 +1067,14 @@ meta: { version: pkg.version },
 build resolves both. `commit` survives CI's shallow clone (resolving HEAD needs
 no tags), so even a `"latest"` build says exactly which commit is running.
 
+## Writes after the main write are best effort (#Q2555)
+
+Lore runs on D1, where nothing rolls a committed write back. So once an action's main write has landed, what follows it (the audit row, a link sync, a mention) must never fail the action: a 500 for a change that happened invites a retry that repeats it.
+
+- **Audits are best effort in one place**: `LoreAuditService.record` catches a failed insert, logs it at error level and answers success. Never wrap a `logSuccess` in your own try/catch. `AuditService.create` (the admin API) still throws.
+- **Everything else after the main write goes through `BestEffort.run(label, step)`** (`api/services/BestEffort.ts`): it logs a throw at error level with the `Error` itself, and returns.
+- **An error-level log is a blight**: the sigil reports every `log.error` (#Q2557). So a swallowed failure still reaches the blights inbox, and an expected condition logs at `warn`.
+
 ## ⚠️ Migration safety on D1 (production-data bomb, real incident)
 
 Lore deploys to Cloudflare D1, which **ignores `PRAGMA foreign_keys=OFF`**. Drizzle-kit's auto-generated SQLite migrations use the standard rebuild pattern (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`, `RENAME`). On D1, the `DROP old` step triggers `ON DELETE CASCADE` on every referencing child row.
