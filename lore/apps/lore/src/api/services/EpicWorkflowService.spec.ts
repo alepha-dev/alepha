@@ -1,4 +1,6 @@
 import { $inject, Alepha } from "alepha";
+import { audits } from "alepha/api/audits";
+import { $repository } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -581,5 +583,112 @@ describe("EpicWorkflowService", () => {
         "in_progress",
       );
     });
+  });
+});
+
+/**
+ * The two transitions without a transaction, as on D1 (#Q2547).
+ */
+class StatusAudits {
+  audits = $repository(audits);
+
+  async epicMoves(to: string) {
+    const rows = await this.audits.findMany({
+      where: { type: { eq: "epic" }, action: { eq: "status" } },
+    });
+    return rows.filter(
+      (row) => (row.metadata as { to?: string } | undefined)?.to === to,
+    );
+  }
+}
+
+describe("EpicWorkflowService without transactions", () => {
+  const setupD1 = async () => {
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "error",
+        DATABASE_URL: ":memory:",
+        DATABASE_TRANSACTIONS: false,
+      },
+    });
+    const app = alepha.inject(TestApp);
+    const log = alepha.inject(StatusAudits);
+    await alepha.start();
+    const project = await createTestProject(alepha);
+    return { alepha, app, log, project };
+  };
+
+  it("two concurrent accepts start the epic once and log it once", async ({
+    expect,
+  }) => {
+    const { alepha, app, log, project } = await setupD1();
+    const epic = await createTestEpic(alepha, project, { status: "ready" });
+    const a = await createTestQuest(alepha, project, { epicId: epic.id });
+    const b = await createTestQuest(alepha, project, { epicId: epic.id });
+
+    await Promise.all([
+      app.workflow.startIfReady(a, undefined),
+      app.workflow.startIfReady(b, undefined),
+    ]);
+
+    expect((await app.repos.epics.getById(epic.id)).status).toBe("in_progress");
+    expect(await log.epicMoves("in_progress")).toHaveLength(1);
+  });
+
+  it("the sweep completes an in-progress epic whose completion write failed", async ({
+    expect,
+  }) => {
+    const { alepha, app, log, project } = await setupD1();
+    // The state a failed `completeIfResolved` leaves: every quest resolved,
+    // and no action left that would retry the move.
+    const epic = await createTestEpic(alepha, project, {
+      status: "in_progress",
+      startedAt: STAMP,
+    });
+    await createTestQuest(alepha, project, {
+      epicId: epic.id,
+      acceptedAt: STAMP,
+      completedAt: STAMP,
+    });
+    const open = await createTestEpic(alepha, project, {
+      status: "in_progress",
+      startedAt: STAMP,
+    });
+    await createTestQuest(alepha, project, {
+      epicId: open.id,
+      acceptedAt: STAMP,
+    });
+
+    await expect(app.workflow.sweep()).resolves.toEqual({
+      started: 0,
+      completed: 1,
+    });
+
+    expect((await app.repos.epics.getById(epic.id)).status).toBe("completed");
+    expect((await app.repos.epics.getById(open.id)).status).toBe("in_progress");
+    expect(await log.epicMoves("completed")).toHaveLength(1);
+  });
+
+  it("the sweep starts a ready epic that already holds an accepted quest", async ({
+    expect,
+  }) => {
+    const { alepha, app, project } = await setupD1();
+    const epic = await createTestEpic(alepha, project, { status: "ready" });
+    await createTestQuest(alepha, project, {
+      epicId: epic.id,
+      acceptedAt: STAMP,
+    });
+    const untouched = await createTestEpic(alepha, project, {
+      status: "ready",
+    });
+    await createTestQuest(alepha, project, { epicId: untouched.id });
+
+    await expect(app.workflow.sweep()).resolves.toEqual({
+      started: 1,
+      completed: 0,
+    });
+
+    expect((await app.repos.epics.getById(epic.id)).status).toBe("in_progress");
+    expect((await app.repos.epics.getById(untouched.id)).status).toBe("ready");
   });
 });
