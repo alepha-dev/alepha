@@ -232,9 +232,10 @@ export class FolioLinkService {
    * Replace the set of outbound links of a source with the references parsed
    * from the supplied content. Idempotent.
    *
-   * Callers should run this inside a transactional boundary (the lore
-   * `FolioController` already wraps create/update with `$transactional()`)
-   * so a partial sync never leaks orphan rows.
+   * Not atomic, and there is no transaction to make it so (D1): a failure
+   * between the delete and the insert leaves the source with fewer links
+   * than its content names, until its next save re-syncs them. Callers run
+   * it after their main write, through `BestEffort` (#Q2555).
    *
    * ⚠️ **Pass `created` on a create path.** The source id is brand new there,
    * so the DELETE below cannot match a row - it is one wasted statement on
@@ -277,9 +278,9 @@ export class FolioLinkService {
     // ⚠️ `createMany` chunks by the driver's parameter ceiling (twenty of
     // these rows per statement on D1, since 2026-09-05: a folio with 28
     // links used to fail its save with `too many SQL variables`) and its
-    // batches are not atomic on their own. That costs nothing here —
-    // `FolioController` wraps create/update in `$transactional()`, and this
-    // delete-then-insert was never atomic without it.
+    // batches are not atomic on their own. That costs little here: this
+    // delete-then-insert was never atomic on D1 either, and the next save
+    // of the source re-syncs whatever a failure left out.
     await this.links.createMany(
       targets.map((target) => ({
         fromType: source.kind,

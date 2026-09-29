@@ -1,7 +1,7 @@
 import { $inject, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, $sequence, $transactional } from "alepha/orm";
+import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
@@ -255,8 +255,7 @@ export class ReleaseController {
   }
 
   createRelease = $action({
-    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [$transactional(), this.ownsProjectForWork("release:manage")],
+    use: [this.ownsProjectForWork("release:manage")],
     schema: {
       params: z.object({
         projectId: z.integer(),

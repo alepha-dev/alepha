@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $repository, $sequence, $transactional } from "alepha/orm";
+import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
@@ -17,6 +17,7 @@ import {
   releaseCascadeSchema,
 } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { BestEffort } from "../services/BestEffort.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import {
@@ -36,7 +37,8 @@ import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
  * (`quest:read` to read, `quest:create` to mutate, `quest:delete` on
  * `deleteEpic` — matching `ReleaseController.deleteRelease` and
  * `QuestController.deleteQuest`, both of which gate delete on its own
- * permission rather than `quest:create`), and `$transactional()` on create.
+ * permission rather than `quest:create`). No `$transactional()` anywhere:
+ * Lore runs on D1, which has none (#E69).
  *
  * **Every endpoint here is member-gated, read and write alike** - the
  * `QuestController` / `FolioController` rule, not the
@@ -66,6 +68,7 @@ export class EpicController {
   quests = $repository(quests);
   folios = $repository(folios);
   linkService = $inject(FolioLinkService);
+  bestEffort = $inject(BestEffort);
   attachment = $inject(ReleaseAttachmentService);
   cascade = $inject(ReleaseCascadeService);
   dependencies = $inject(EpicDependencyService);
@@ -263,8 +266,7 @@ export class EpicController {
   });
 
   createEpic = $action({
-    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [$transactional(), this.ownsProjectForWork("epic:write")],
+    use: [this.ownsProjectForWork("epic:write")],
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -298,7 +300,11 @@ export class EpicController {
         ...(dependsOn !== null ? { dependsOn } : {}),
       });
       // A brand-new id has no links to clear, so the delete is skipped.
-      await this.syncEpicLinks(epic, { created: true });
+      // Best effort (#Q2555): the epic exists now, and a 500 here would
+      // invite a retry that creates a second one.
+      await this.bestEffort.run("createEpic: link sync failed", () =>
+        this.syncEpicLinks(epic, { created: true }),
+      );
       await this.logEpic("create", epic, user);
 
       return await this.buildEpicResource(epic);
