@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
-import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
+import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
@@ -1080,27 +1080,17 @@ export class QuestTools {
         // clears, which `updateQuestById` does from `null` alone.
         !!params.release_tag;
       // An epic move is a write of its own (`attachQuest` sets `epicId`,
-      // which stamps `updatedAt`), and it happens BEFORE the field update
-      // below. So when both are requested the controller's own check would
-      // see a row this very call had just moved and refuse every time.
-      // Check here instead, before anything is written, and let the
-      // controller check when there is no epic move to get in the way.
+      // which stamps `updatedAt`). The concurrency token is checked by the
+      // controller only, whose write is version-guarded (#Q2546): a check
+      // here, before the epic move, left a window no version closed. So
+      // when a token comes with an epic move, the field update (and its
+      // check) runs first and the epic move after it; without a token the
+      // epic move stays first, for the reason given below.
       const epicMove = params.epic_number != null;
-      const needsCurrent = needsProject || params.expectedUpdatedAt != null;
-      const current = needsCurrent
+      const tokenFirst = epicMove && params.expectedUpdatedAt != null;
+      const current = needsProject
         ? await this.questController.getQuestById({ params: { id } })
         : undefined;
-
-      if (
-        epicMove &&
-        params.expectedUpdatedAt != null &&
-        current &&
-        current.updatedAt !== params.expectedUpdatedAt
-      ) {
-        throw new ConflictError(
-          `Quest ${formatReference("quest", current.shortId)} changed since you read it: its updatedAt is ${current.updatedAt}, you passed ${params.expectedUpdatedAt}. Re-read the quest before writing.`,
-        );
-      }
 
       // Translate `dependsOn_shortId` for update: 0 = clear, integer =
       // resolve to global id within the same project as the quest.
@@ -1170,18 +1160,28 @@ export class QuestTools {
       // was the owner gate on `attachQuest`/`detachQuest`, which is now
       // membership like `updateQuestById`'s — the ordering argument does
       // not depend on which failure it is.)
-      if (epicAttachId != null) {
-        await this.epicController.attachQuest({
-          params: { id: epicAttachId },
-          body: { questId: id },
-        });
-      } else if (epicDetachId != null) {
-        await this.epicController.detachQuest({
-          params: { id: epicDetachId, questId: id },
-        });
+      //
+      // ⚠️ Except with a token (`tokenFirst`): a stale write must be refused
+      // before anything lands, and the controller's version-guarded check is
+      // the only one that holds. Then an epic refusal arrives after the
+      // fields were written, which is the cost of that order.
+      const moveEpic = async () => {
+        if (epicAttachId != null) {
+          await this.epicController.attachQuest({
+            params: { id: epicAttachId },
+            body: { questId: id },
+          });
+        } else if (epicDetachId != null) {
+          await this.epicController.detachQuest({
+            params: { id: epicDetachId, questId: id },
+          });
+        }
+      };
+      if (!tokenFirst) {
+        await moveEpic();
       }
 
-      const quest = await this.questController.updateQuestById({
+      const written = await this.questController.updateQuestById({
         params: { id },
         body: {
           title: params.title,
@@ -1196,11 +1196,17 @@ export class QuestTools {
           dependsOn,
           feedbackId,
           releaseId,
-          // Already checked above when an epic move preceded this write;
-          // forwarding it there would compare against our own change.
-          expectedUpdatedAt: epicMove ? undefined : params.expectedUpdatedAt,
+          expectedUpdatedAt: params.expectedUpdatedAt,
         },
       });
+
+      let quest = written;
+      if (tokenFirst) {
+        await moveEpic();
+        // The epic move stamped the row again: answer the token that is
+        // current now, so a follow-up write does not refuse itself.
+        quest = await this.questController.getQuestById({ params: { id } });
+      }
 
       return {
         id: quest.id,

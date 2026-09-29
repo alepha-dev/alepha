@@ -23,6 +23,13 @@ export const quests = $entity({
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),
+    /**
+     * Optimistic lock (#Q2546). Bumped by every Repository update, checked by
+     * `save()`: a status change that `save()`s the row it read answers 409
+     * when another write landed in between, instead of reverting it. D1 has
+     * no transaction to do that job.
+     */
+    version: db.version(),
     title: z.string(),
     description: z.string().meta({ size: "rich" }),
     area: z.string(),
