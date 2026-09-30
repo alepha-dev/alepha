@@ -439,7 +439,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
 
                 {estate.credentialError && (
                   <span
-                    className="text-destructive text-xs"
+                    className="text-danger-text text-xs"
                     data-testid="my-estate-credential-error"
                   >
                     {estate.credentialError}
@@ -476,7 +476,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   </span>
                   {credentialError && (
                     <span
-                      className="text-destructive text-xs"
+                      className="text-danger-text text-xs"
                       data-testid="my-estate-credential-action-error"
                     >
                       {credentialError}

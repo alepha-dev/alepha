@@ -154,7 +154,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
                 <Button
                   variant="minimal"
                   size="icon"
-                  className="text-destructive shrink-0"
+                  className="text-danger-text shrink-0"
                   disabled={saving || !canManage}
                   onClick={() => void removeAction.run(rule)}
                   aria-label={tr("blights.rules.remove")}

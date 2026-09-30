@@ -142,7 +142,7 @@ const FolioPassphraseDialog = (props: FolioPassphraseDialogProps) => {
             </>
           )}
           {error && (
-            <p className="text-destructive text-xs" role="alert">
+            <p className="text-danger-text text-xs" role="alert">
               {error}
             </p>
           )}

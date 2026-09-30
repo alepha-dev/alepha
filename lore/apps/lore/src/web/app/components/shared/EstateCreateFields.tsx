@@ -163,13 +163,13 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
               }}
             />
             {/* ⚠️ Below the control rather than in its `description`, and
-                still `text-destructive`. `Control` takes its error from the
+                still `text-danger-text`. `Control` takes its error from the
                 form's own validation state and offers no prop for one, so a
                 SERVER refusal routed through `description` would render in
                 muted grey - a refusal that does not look like one. */}
             {errorFor("accountId") && (
               <span
-                className="text-destructive text-xs"
+                className="text-danger-text text-xs"
                 data-testid="estate-create-account-error"
               >
                 {errorFor("accountId")}
@@ -201,7 +201,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
             {/* Same reasoning as the account id above. */}
             {errorFor("token") && (
               <span
-                className="text-destructive text-xs"
+                className="text-danger-text text-xs"
                 data-testid="estate-create-token-error"
               >
                 {errorFor("token")}
@@ -247,7 +247,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
 
       {props.error && !props.error.field && (
         <span
-          className="text-destructive text-xs"
+          className="text-danger-text text-xs"
           data-testid="estate-create-error"
         >
           {props.error.message}

@@ -239,7 +239,7 @@ const AppCreateDialog = (props: AppCreateDialogProps) => {
               </span>
             </Label>
 
-            {error && <p className="text-destructive text-sm">{error}</p>}
+            {error && <p className="text-danger-text text-sm">{error}</p>}
 
             <DialogFooter>
               <Button

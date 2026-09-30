@@ -555,7 +555,7 @@ const StepName = (props: StepNameProps) => {
           ) : props.nameStatus === "available" ? (
             <Check className="text-success-text size-4" />
           ) : props.nameStatus === "unavailable" ? (
-            <X className="text-destructive size-4" />
+            <X className="text-danger-text size-4" />
           ) : undefined
         }
       />

@@ -63,7 +63,7 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     passed: { label: tr("reports.quality.passed"), color: "var(--chart-1)" },
     failed: {
       label: tr("reports.quality.failed"),
-      color: "var(--destructive)",
+      color: "var(--danger)",
     },
   } satisfies ChartConfig;
 

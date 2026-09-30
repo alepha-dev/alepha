@@ -170,7 +170,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                   comment.authorId === props.currentUserId) && (
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-danger-text"
                     aria-label={tr("feedback.thread.delete")}
                     disabled={busy}
                     onClick={() => void removeAction.run(comment)}

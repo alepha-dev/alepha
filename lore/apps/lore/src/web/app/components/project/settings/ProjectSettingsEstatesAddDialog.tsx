@@ -254,10 +254,10 @@ const ProjectSettingsEstatesAddDialog = (
 
         {target && (
           <div
-            className="border-destructive/30 bg-destructive/5 flex gap-2 rounded-md border p-3"
+            className="border-danger/30 bg-danger/5 flex gap-2 rounded-md border p-3"
             data-testid="estate-add-trust"
           >
-            <TriangleAlert className="text-destructive mt-0.5 size-4 shrink-0" />
+            <TriangleAlert className="text-danger-text mt-0.5 size-4 shrink-0" />
             <span className="text-sm">
               {grantsCloudflare
                 ? tr("estates.add.trust.cloudflare", {
