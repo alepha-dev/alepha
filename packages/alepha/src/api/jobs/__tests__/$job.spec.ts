@@ -45,6 +45,30 @@ const makeAppDirect = () =>
   Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
 
 /**
+ * `randomFraction` pinned to one half, so the first retry sits 2.5 s away.
+ *
+ * On the real `Math.random()` a draw of a few milliseconds lets the queue
+ * run the second attempt before a poll has seen the first, and a spec
+ * waiting on `attempt === 1` then never matches.
+ */
+class HalfJitterJobProvider extends JobProvider {
+  protected override randomFraction(): number {
+    return 0.5;
+  }
+}
+
+/**
+ * `makeApp` with the jitter pinned. The substitution has to precede the
+ * module that registers the service.
+ */
+const makeAppPinnedJitter = () =>
+  Alepha.create()
+    .with({ provide: JobProvider, use: HalfJitterJobProvider })
+    .with(AlephaOrmPostgres)
+    .with(AlephaApiJobs)
+    .with(AlephaApiJobsQueue);
+
+/**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
  * Use this instead of `setTimeout(r, fixedMs)` — fixed sleeps race the
  * in-memory queue under CI load and produce flaky failures.
@@ -456,7 +480,7 @@ describe("$job — queue mode (outbox)", () => {
   it("retry: failed queue job is rescheduled with a jittered backoff", async ({
     expect,
   }) => {
-    const alepha = makeApp();
+    const alepha = makeAppPinnedJitter();
     let attempts = 0;
     class App {
       executions = $repository(jobExecutionEntity);
@@ -1288,7 +1312,7 @@ describe("$job — retry semantics", () => {
   it("retries: 2 runs the handler 3 times before the row is terminal", async ({
     expect,
   }) => {
-    const alepha = makeApp();
+    const alepha = makeAppPinnedJitter();
     let attempts = 0;
     class App {
       executions = $repository(jobExecutionEntity);
