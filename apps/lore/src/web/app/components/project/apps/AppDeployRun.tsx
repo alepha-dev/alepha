@@ -190,7 +190,7 @@ const AppDeployRun = (props: AppDeployRunProps) => {
       </div>
 
       {run.error ? (
-        <p className="text-destructive text-xs">{String(run.error)}</p>
+        <p className="text-danger-text text-xs">{String(run.error)}</p>
       ) : null}
 
       {/*

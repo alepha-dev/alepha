@@ -67,7 +67,7 @@ export const FormField = (props: FormFieldProps) => {
   const requiredMarker = useFormFieldRequiredMarker();
   const showRequiredMarker = props.required && requiredMarker;
   const invalidClasses = props.error
-    ? "[&_input]:border-destructive [&_input]:focus-visible:ring-destructive/30 [&_textarea]:border-destructive [&_textarea]:focus-visible:ring-destructive/30 [&_[role=combobox]]:border-destructive"
+    ? "[&_input]:border-danger [&_input]:focus-visible:ring-danger/30 [&_textarea]:border-danger [&_textarea]:focus-visible:ring-danger/30 [&_[role=combobox]]:border-danger"
     : "";
   const dataInvalid = props.error ? true : undefined;
 
@@ -105,7 +105,7 @@ export const FormField = (props: FormFieldProps) => {
             <Label htmlFor={props.id} className="font-medium">
               {props.label}
               {showRequiredMarker && (
-                <span className="text-destructive ml-0.5" aria-hidden>
+                <span className="text-danger-text ml-0.5" aria-hidden>
                   *
                 </span>
               )}
@@ -119,7 +119,7 @@ export const FormField = (props: FormFieldProps) => {
           {props.error && (
             <p
               id={errorId}
-              className="text-destructive flex items-center gap-1 text-xs"
+              className="text-danger-text flex items-center gap-1 text-xs"
               role="alert"
             >
               <span aria-hidden>⚠</span>
@@ -143,7 +143,7 @@ export const FormField = (props: FormFieldProps) => {
         <Label htmlFor={props.id}>
           {props.label}
           {showRequiredMarker && (
-            <span className="text-destructive ml-0.5" aria-hidden>
+            <span className="text-danger-text ml-0.5" aria-hidden>
               *
             </span>
           )}
@@ -158,7 +158,7 @@ export const FormField = (props: FormFieldProps) => {
       {props.error && (
         <p
           id={errorId}
-          className="text-destructive flex items-center gap-1 text-xs"
+          className="text-danger-text flex items-center gap-1 text-xs"
           role="alert"
         >
           <span aria-hidden>⚠</span>

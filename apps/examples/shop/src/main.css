@@ -81,7 +81,8 @@
   --muted-foreground: oklch(0.48 0.01 250);
   --accent: oklch(0.88 0.03 88);
   --accent-foreground: oklch(0.28 0.03 88);
-  --destructive: var(--grenat);
+  --danger: var(--grenat);
+  --danger-text: var(--grenat);
 
   /* Hairlines, because a stamped mark is a thin engraved line. */
   --border: oklch(0.84 0.006 120);
@@ -124,7 +125,8 @@
   --muted-foreground: oklch(0.66 0.01 250);
   --accent: oklch(0.3 0.03 88);
   --accent-foreground: var(--or-jaune);
-  --destructive: oklch(0.58 0.15 25);
+  --danger: oklch(0.58 0.15 25);
+  --danger-text: oklch(0.58 0.15 25);
 
   --border: oklch(0.31 0.012 250);
   --input: oklch(0.33 0.012 250);

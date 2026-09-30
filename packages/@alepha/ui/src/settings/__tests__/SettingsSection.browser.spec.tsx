@@ -112,9 +112,9 @@ describe("SettingsDangerSection", () => {
     expect(screen.getByText("Danger zone")).toBeTruthy();
 
     const card = container.querySelector('[data-slot="card"]');
-    expect(card?.className).toContain("border-destructive/30");
+    expect(card?.className).toContain("border-danger/30");
     // Full-strength destructive reads as "this page is broken".
-    expect(card?.className).not.toMatch(/border-destructive(?![/-])/);
+    expect(card?.className).not.toMatch(/border-danger(?![/-])/);
   });
 
   it("keeps the same padding contract as a normal section", () => {

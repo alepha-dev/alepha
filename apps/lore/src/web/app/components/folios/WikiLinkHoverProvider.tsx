@@ -387,7 +387,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     // is the anchors' own.
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      className="[&_a[href^='#lore-broken:']]:text-destructive [&_a[href^='#lore-broken:']]:decoration-destructive/40 relative [&_a[href^='#lore-broken:']]:cursor-help [&_a[href^='#lore-broken:']]:decoration-wavy"
+      className="[&_a[href^='#lore-broken:']]:text-danger-text [&_a[href^='#lore-broken:']]:decoration-danger-text/40 relative [&_a[href^='#lore-broken:']]:cursor-help [&_a[href^='#lore-broken:']]:decoration-wavy"
       onMouseOver={(e) => handleEnter(e.target)}
       onFocus={(e) => handleEnter(e.target)}
       onMouseOut={(e) => handleLeave(e.relatedTarget as Node | null)}
@@ -662,7 +662,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
     >
       {state.target.kind === "broken" ? (
         <div className="flex flex-col gap-1">
-          <span className="text-destructive flex items-center gap-1.5 text-sm font-semibold">
+          <span className="text-danger-text flex items-center gap-1.5 text-sm font-semibold">
             <span aria-hidden>⚠</span>
             {tr("folios.wikilink.broken.title")}
           </span>

@@ -70,7 +70,7 @@ export const AuthVerifyEmailView = (props: AuthVerifyEmailViewProps) => {
             )}
             {props.step === "error" && (
               <>
-                <AlertCircle className="text-destructive size-12" />
+                <AlertCircle className="text-danger-text size-12" />
                 <h2 className="text-center text-lg font-semibold">
                   {tr("auth.verify.errorTitle", {
                     default: "Email verification failed",

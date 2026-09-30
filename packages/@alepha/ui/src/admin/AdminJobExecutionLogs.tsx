@@ -65,7 +65,7 @@ export const AdminJobExecutionLogs = (props: AdminJobExecutionLogsProps) => {
             <span
               className={cn(
                 "w-12 shrink-0 font-semibold",
-                entry.level === "ERROR" && "text-destructive",
+                entry.level === "ERROR" && "text-danger-text",
                 entry.level === "WARN" && "text-amber-600 dark:text-amber-400",
                 (entry.level === "DEBUG" || entry.level === "TRACE") &&
                   "text-muted-foreground",

@@ -182,7 +182,7 @@ const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
             autoFocus
           />
           {error ? (
-            <p className="text-destructive text-[13px]">{error}</p>
+            <p className="text-danger-text text-[13px]">{error}</p>
           ) : (
             <DialogDescription>
               {tr("release.create.tag.help")}

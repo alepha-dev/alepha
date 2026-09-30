@@ -81,7 +81,7 @@ const Panier = () => {
                     type="button"
                     onClick={() => void retirer(line.lineId)}
                     disabled={enCours}
-                    className="hover:text-destructive underline transition-colors disabled:opacity-50"
+                    className="hover:text-danger-text underline transition-colors disabled:opacity-50"
                   >
                     {tr("cart.remove")}
                   </button>

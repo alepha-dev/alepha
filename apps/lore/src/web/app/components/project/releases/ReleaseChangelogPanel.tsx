@@ -78,7 +78,7 @@ const ReleaseChangelogPanel = (props: ReleaseChangelogPanelProps) => {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-10">
         {props.error ? (
-          <p className="text-destructive py-10 text-center text-sm">
+          <p className="text-danger-text py-10 text-center text-sm">
             {tr("release.changelog.error")}
           </p>
         ) : props.loading ? (

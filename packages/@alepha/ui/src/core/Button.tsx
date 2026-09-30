@@ -33,7 +33,7 @@ import { cn } from "./utils.ts";
  *
  * The variant's classes and the caller's are reconciled by tailwind-merge,
  * which decides two classes are the same thing by utility group AND modifier
- * prefix. `hover:bg-primary/80` and a caller's `hover:bg-destructive/90` match,
+ * prefix. `hover:bg-primary/80` and a caller's `hover:bg-danger/90` match,
  * so the caller's replaces it. Prefix the variant's with `not-disabled:` and
  * they no longer match, both survive into the class list, and the browser
  * breaks the tie on specificity - where `:not(:disabled):hover` outranks a
@@ -112,7 +112,7 @@ import { cn } from "./utils.ts";
  * touching this file.
  */
 const buttonCva = cva(
-  "group/button focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-3 not-disabled:active:not-aria-[haspopup]:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-disabled:pointer-events-none aria-invalid:ring-3 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-danger aria-invalid:ring-danger/20 dark:aria-invalid:border-danger/50 dark:aria-invalid:ring-danger/40 inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-3 not-disabled:active:not-aria-[haspopup]:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-disabled:pointer-events-none aria-invalid:ring-3 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

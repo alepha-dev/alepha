@@ -172,7 +172,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
       </div>
 
       {query.error && (
-        <div className="text-destructive mx-5 mt-3 flex-none rounded-lg bg-red-500/10 px-3 py-2.5 text-[12.5px] ring-1 ring-red-500/40 ring-inset">
+        <div className="text-danger-text mx-5 mt-3 flex-none rounded-lg bg-red-500/10 px-3 py-2.5 text-[12.5px] ring-1 ring-red-500/40 ring-inset">
           {query.error}
         </div>
       )}

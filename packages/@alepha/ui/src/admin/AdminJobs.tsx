@@ -246,7 +246,7 @@ export const AdminJobs = () => {
             sortValue: (j) => j.recent.error,
             cell: (j) => (
               <span
-                className={j.recent.error > 0 ? "text-destructive" : undefined}
+                className={j.recent.error > 0 ? "text-danger-text" : undefined}
               >
                 {j.recent.error}
               </span>

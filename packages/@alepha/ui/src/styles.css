@@ -102,8 +102,6 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-primary-text: var(--primary-text);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -188,7 +186,14 @@
    * `-text` is the intent drawn as text on the page: step 2 in light, step 5
    * in dark. `--primary-text` is DERIVED from `--primary` rather than a
    * value of its own, so a theme that retints `--primary` retints its text
-   * with it. `--danger` is the new name `--destructive` will fold into.
+   * with it.
+   *
+   * `--danger` is the kit's only red: shadcn's `--destructive` folded into it
+   * (#Q2562). A fill, border or ring reads `danger`, text on the page reads
+   * `danger-text`. A theme retinting the red sets both, since `-text` is not
+   * derived. `destructive` survives only as a component word
+   * (`variant="destructive"`, `dialog.confirm({ destructive })`), naming an
+   * action rather than a colour.
    */
   --primary: #2d72d2;
   --primary-foreground: #ffffff;
@@ -208,8 +213,6 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
   /*
    * ⚠️ **The one border colour of the whole kit.** Every border, rule,
    * divider and hairline resolves to this, through `border-border` /
@@ -364,8 +367,6 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
   /*
    * The dark half of the kit's one border colour; see `:root`.
    *

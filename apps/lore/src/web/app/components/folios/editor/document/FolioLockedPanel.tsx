@@ -62,7 +62,7 @@ const FolioLockedPanel = (props: FolioLockedPanelProps): ReactElement => {
         <button
           type="button"
           onClick={() => props.onDelete()}
-          className="text-destructive hover:underline"
+          className="text-danger-text hover:underline"
         >
           <Trash2 className="mr-0.5 inline size-3" />
           {tr("folios.protected.delete-unrecoverable")}

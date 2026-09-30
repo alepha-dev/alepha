@@ -78,7 +78,7 @@ export const AdminProductDetailStockTab = (
               <span
                 className={
                   figure.alert
-                    ? "text-destructive text-2xl font-semibold tabular-nums"
+                    ? "text-danger-text text-2xl font-semibold tabular-nums"
                     : "text-2xl font-semibold tabular-nums"
                 }
               >
@@ -148,7 +148,7 @@ export const AdminProductDetailStockTab = (
                   <span
                     className={
                       m.delta < 0
-                        ? "text-destructive font-medium tabular-nums"
+                        ? "text-danger-text font-medium tabular-nums"
                         : "font-medium tabular-nums"
                     }
                   >

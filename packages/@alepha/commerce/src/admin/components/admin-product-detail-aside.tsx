@@ -91,7 +91,7 @@ export const AdminProductDetailAside = (
         <span
           className={
             product.available <= 0
-              ? "text-destructive block font-medium tabular-nums"
+              ? "text-danger-text block font-medium tabular-nums"
               : "block font-medium tabular-nums"
           }
         >

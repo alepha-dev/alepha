@@ -324,7 +324,7 @@ export const AdminJobDetailExecutions = (
           cell: (e) =>
             e.error ? (
               <span
-                className="text-destructive line-clamp-2 text-xs"
+                className="text-danger-text line-clamp-2 text-xs"
                 title={e.error}
               >
                 {e.error}

@@ -108,7 +108,7 @@ describe("NavigationProgress", () => {
 
   it("takes its height and colour from the caller", async () => {
     const app = await mount(
-      <NavigationProgress className="bg-destructive" height={4} />,
+      <NavigationProgress className="bg-danger" height={4} />,
     );
 
     await begin(app);
@@ -116,7 +116,7 @@ describe("NavigationProgress", () => {
     await waitFor(() => {
       const container = screen.getByTestId("navigation-progress");
       expect(container.style.height).toBe("4px");
-      expect(container.querySelector(".bg-destructive")).toBeTruthy();
+      expect(container.querySelector(".bg-danger")).toBeTruthy();
     });
   });
 });

@@ -46,7 +46,7 @@ export const SettingsDangerSection = (props: SettingsDangerSectionProps) => {
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
       <div className="flex flex-col gap-0.5">
-        <span className="text-destructive text-sm">{title}</span>
+        <span className="text-danger-text text-sm">{title}</span>
         {props.description != null ? (
           <span className="text-muted-foreground text-xs">
             {props.description}
@@ -56,7 +56,7 @@ export const SettingsDangerSection = (props: SettingsDangerSectionProps) => {
       <Card
         className={cn(
           settingsCardEdge,
-          "divide-destructive/20 border-destructive/30 gap-0 divide-y py-0",
+          "divide-danger/20 border-danger/30 gap-0 divide-y py-0",
         )}
       >
         {props.children}

@@ -672,7 +672,7 @@ export const ControlArray = (props: ControlArrayProps) => {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="text-sm leading-tight font-medium">
           {meta.label}
-          {meta.required && <span className="text-destructive ml-0.5">*</span>}
+          {meta.required && <span className="text-danger-text ml-0.5">*</span>}
           <span className="text-muted-foreground ml-2 text-xs">
             ({items.length})
           </span>
@@ -683,7 +683,7 @@ export const ControlArray = (props: ControlArrayProps) => {
           </p>
         )}
         {meta.error && (
-          <p className="text-destructive text-xs leading-tight">{meta.error}</p>
+          <p className="text-danger-text text-xs leading-tight">{meta.error}</p>
         )}
       </div>
       {items.length > 0 && (
@@ -769,7 +769,7 @@ export const ControlArray = (props: ControlArrayProps) => {
   return (
     <fieldset
       className={`rounded-md border p-3 ${
-        meta.error ? "border-destructive" : "border-border"
+        meta.error ? "border-danger" : "border-border"
       }`}
     >
       {headerControls}

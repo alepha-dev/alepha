@@ -261,7 +261,7 @@ const KanbanCard = (props: KanbanCardProps) => {
                 <PauseCircle
                   data-testid="kanban-card-held"
                   aria-label={tr("quest.status.onHold")}
-                  className="text-destructive size-3"
+                  className="text-danger-text size-3"
                 />
               )}
               {props.blocked && (

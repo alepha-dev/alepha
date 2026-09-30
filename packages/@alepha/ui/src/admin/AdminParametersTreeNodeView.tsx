@@ -59,7 +59,7 @@ export const AdminParametersTreeNodeView = (
             type="button"
             variant="minimal"
             size="icon-sm"
-            className="text-muted-foreground hover:text-destructive shrink-0"
+            className="text-muted-foreground hover:text-danger-text shrink-0"
             aria-label={tr("admin.parameters.orphanDeleteAction", {
               default: `Delete ${node.path}`,
               args: [node.path],

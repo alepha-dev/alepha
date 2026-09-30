@@ -38,14 +38,14 @@ export const AutoFormErrorPopover = (props: AutoFormErrorPopoverProps) => {
             variant="minimal"
             size="icon"
             aria-label={tr("autoForm.errors", { default: "Form errors" })}
-            className="text-destructive"
+            className="text-danger-text"
           />
         }
       >
         <AlertCircle className="size-4" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-2">
-        <p className="text-destructive px-2 py-1 text-sm font-medium">
+        <p className="text-danger-text px-2 py-1 text-sm font-medium">
           {items.length === 1
             ? tr("autoForm.error", { default: "Error" })
             : tr("autoForm.errors", { default: "Errors" })}

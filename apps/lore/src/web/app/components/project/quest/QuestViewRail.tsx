@@ -322,7 +322,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <Button
               type="button"
               variant="minimal"
-              className="text-destructive hover:text-destructive justify-start gap-3"
+              className="text-danger-text hover:text-danger-text justify-start gap-3"
               disabled={props.unassignDisabled}
               onClick={props.onUnassign}
             >

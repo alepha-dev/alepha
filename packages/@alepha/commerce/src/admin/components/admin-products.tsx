@@ -276,7 +276,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
                 <span
                   className={
                     p.available <= 0
-                      ? "text-destructive font-medium"
+                      ? "text-danger-text font-medium"
                       : "font-medium"
                   }
                 >

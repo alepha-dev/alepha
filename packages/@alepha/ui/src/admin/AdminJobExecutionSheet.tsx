@@ -172,7 +172,7 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
                   <h3 className="text-sm font-semibold">
                     {tr("admin.jobs.colError", { default: "Error" })}
                   </h3>
-                  <pre className="bg-destructive/5 text-destructive overflow-x-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
+                  <pre className="bg-danger/5 text-danger-text overflow-x-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
                     {execution.error}
                   </pre>
                 </section>

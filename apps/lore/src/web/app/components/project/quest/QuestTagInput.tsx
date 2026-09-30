@@ -100,7 +100,7 @@ const QuestTagInput = (props: QuestTagInputProps) => {
               <button
                 type="button"
                 onClick={() => remove(tag)}
-                className="hover:bg-destructive/20 -mr-1 ml-0.5 rounded-sm p-0.5"
+                className="hover:bg-danger/20 -mr-1 ml-0.5 rounded-sm p-0.5"
                 aria-label={`Remove ${tag}`}
               >
                 <X className="size-3" />

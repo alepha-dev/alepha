@@ -207,7 +207,7 @@ export const DialogProvider = (props: DialogProviderProps) => {
                 }}
               />
               {promptError && (
-                <p className="text-destructive text-xs">{promptError}</p>
+                <p className="text-danger-text text-xs">{promptError}</p>
               )}
             </div>
           )}

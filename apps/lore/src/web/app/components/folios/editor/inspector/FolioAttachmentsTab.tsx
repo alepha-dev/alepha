@@ -328,7 +328,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
                 }
                 aria-label={tr("folio.action.delete")}
                 title={tr("folio.action.delete")}
-                className="text-muted-foreground hover:text-destructive flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
+                className="text-muted-foreground hover:text-danger-text flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Trash2 className="size-3.5" />
               </button>

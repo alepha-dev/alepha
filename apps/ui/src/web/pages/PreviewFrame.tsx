@@ -66,7 +66,7 @@ const PreviewFrame = () => {
             <Page />
           </Suspense>
         ) : (
-          <p className="text-destructive p-6 text-sm">
+          <p className="text-danger-text p-6 text-sm">
             No preview module for <code className="font-mono">{id}</code>.
           </p>
         )}

@@ -458,7 +458,7 @@ const RevisionSummary = (props: { revision: HistoryRevision }) => {
             <span className="text-emerald-600 dark:text-emerald-400">
               +{r.linesAdded}
             </span>
-            <span className="text-destructive">−{r.linesRemoved}</span>
+            <span className="text-danger-text">−{r.linesRemoved}</span>
             <span className="text-muted-foreground/70">
               {r.wordsBefore} → {r.words}
             </span>

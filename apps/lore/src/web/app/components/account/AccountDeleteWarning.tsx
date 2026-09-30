@@ -82,10 +82,10 @@ const AccountDeleteWarning = () => {
   }
 
   return (
-    <div className="border-destructive/30 bg-destructive/5 flex flex-col gap-2 rounded-md border p-3">
+    <div className="border-danger/30 bg-danger/5 flex flex-col gap-2 rounded-md border p-3">
       {lines.map((line) => (
         <span key={line} className="flex gap-2 text-sm">
-          <TriangleAlert className="text-destructive mt-0.5 size-4 shrink-0" />
+          <TriangleAlert className="text-danger-text mt-0.5 size-4 shrink-0" />
           <span>{line}</span>
         </span>
       ))}

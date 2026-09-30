@@ -138,7 +138,7 @@ export const ControlObject = (props: ControlObjectProps) => {
   return (
     <fieldset
       className={`rounded-md border p-3 ${
-        meta.error ? "border-destructive" : "border-border"
+        meta.error ? "border-danger" : "border-border"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -174,7 +174,7 @@ export const ControlObject = (props: ControlObjectProps) => {
             <legend className="text-sm leading-tight font-medium">
               {meta.label}
               {meta.required && (
-                <span className="text-destructive ml-0.5">*</span>
+                <span className="text-danger-text ml-0.5">*</span>
               )}
             </legend>
           )}
@@ -184,7 +184,7 @@ export const ControlObject = (props: ControlObjectProps) => {
             </p>
           )}
           {meta.error && (
-            <p className="text-destructive text-xs leading-tight">
+            <p className="text-danger-text text-xs leading-tight">
               {meta.error}
             </p>
           )}
