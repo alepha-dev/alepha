@@ -18,7 +18,7 @@ import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccount
  * longer exists is not a type error anywhere — it widens to the plain `string`
  * overload, the build stays green, and `pathname()` throws the first time a user
  * reaches the call site. That has cost this app a production page more than
- * once: the `ProjectSettings.tsx` nav array below is the one `AppRouter.ts`
+ * once: the settings nav array below is the one `AppRouter.ts`
  * documents as having taken every settings page down when a route it named was
  * renamed without it.
  *
@@ -62,14 +62,18 @@ const NAV_ROUTE_NAMES = [
   "appExplore",
   "appArtifacts",
   "appSettings",
-  // Settings nav array — ProjectSettings.tsx. This is the array that broke.
+  // Settings sections and tabs — projectSettingsSections.ts, read by the
+  // sidebar group and the tab bar. The heir of the nav array that broke.
+  "projectSettingsCapabilities",
   "projectSettingsMembers",
+  "projectSettingsRanks",
   "projectSettingsAreas",
   "projectSettingsArea",
   "projectSettingsWork",
+  "projectSettingsBoard",
+  "projectSettingsPrompts",
   "projectSettingsKnowledge",
   "projectSettingsApps",
-  "projectSettingsSupport",
   // The bay console's rail - BayLayout.tsx, plus the instance page the Apps
   // entry stays lit for and the drawer's "Open console" link.
   "bay",

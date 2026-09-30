@@ -370,18 +370,17 @@ test.describe("Apps", () => {
     const ingest = `${baseURL}/sigils/ingest`;
 
     await test.step("the owner turns Apps on, from a page that no longer enrols", async () => {
-      await page.goto(`/${projectSlug}/settings/apps`);
+      // The master is on General > Capabilities since #Q2565, with every
+      // other capability's.
+      await page.goto(`/${projectSlug}/settings/capabilities`);
       await page.waitForLoadState("networkidle");
 
-      // The settings page rendering at all is worth asserting: removing this
-      // route without editing the nav array crashed every settings page once.
-      // The route is `/settings/apps` now - the key finally matches the label,
-      // which it could not while it lived inside `projects.features`.
-      await expect(
-        page.getByRole("switch", { name: "Enable", exact: true }),
-      ).toBeVisible({ timeout: 15_000 });
-
-      await page.getByRole("switch", { name: "Enable", exact: true }).click();
+      const master = page.getByRole("switch", {
+        name: "Deploy and watch apps",
+        exact: true,
+      });
+      await expect(master).toBeVisible({ timeout: 15_000 });
+      await master.click();
 
       // The switch's own `checked` state is optimistic (see
       // `waitForProjectCapability`) — wait on the server directly, since
@@ -389,6 +388,12 @@ test.describe("Apps", () => {
       // blights route loaders, the sidebar's Apps entry) depends on the Apps
       // capability actually being on, not just the switch looking on.
       await waitForProjectCapability(page, projectId, "apps", true);
+
+      // The Apps section's own page rendering at all is worth asserting:
+      // removing a route without editing the nav table crashed every
+      // settings page once.
+      await page.goto(`/${projectSlug}/settings/apps`);
+      await page.waitForLoadState("networkidle");
 
       // ⚠️ The enrol block and the credential list are GONE (#1770). Creating a
       // deployed copy is what /apps is for, and a list of the same things here
@@ -657,18 +662,18 @@ test.describe("Apps", () => {
       expect(res.status()).toBe(204);
     });
 
-    await test.step("the owner turns Feedback on from its own settings page", async () => {
-      // Off by default for a wizard-created project — `ProjectCreate.tsx`'s
-      // `DEFAULT_FEATURES` sends `feedback: false` even though the
-      // entity-level `defaultProjectFeatures` defaults it on; the wizard
-      // deliberately starts a project with no feedback inbox. It moved off
-      // the Sigils page (Task 8) onto its own page (Task 7), which
-      // otherwise has no e2e coverage at all — this step earns its keep
-      // twice.
-      await page.goto(`/${projectSlug}/settings/support`);
+    await test.step("the owner turns Support on from General > Capabilities", async () => {
+      // Off by default for a wizard-created project: the wizard deliberately
+      // starts a project with no feedback inbox. Support has no option, so
+      // it has no settings page of its own since #Q2565; its master is on
+      // General > Capabilities with the others.
+      await page.goto(`/${projectSlug}/settings/capabilities`);
       await page.waitForLoadState("networkidle");
 
-      const toggle = page.getByRole("switch", { name: "Enable", exact: true });
+      const toggle = page.getByRole("switch", {
+        name: "Collect feedback",
+        exact: true,
+      });
       await expect(toggle).toBeVisible({ timeout: 15_000 });
       await toggle.click();
       // Not `toBeChecked()` — that's satisfied by the toggle's optimistic
@@ -770,7 +775,10 @@ test.describe("Apps", () => {
       await expect(
         page.getByRole("button", { name: "Apps", exact: true }),
       ).toHaveCount(0);
-      await page.getByRole("link", { name: "Apps", exact: true }).click();
+      // By href: "Apps" also names the Apps section inside the Settings group
+      // (#Q2565), which is `inert` while closed but still clipped into the
+      // DOM, where Playwright counts it.
+      await page.locator(`a[href="/${projectSlug}/apps"]`).click();
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/apps$`), {
         timeout: 15_000,
       });

@@ -6,7 +6,7 @@ Quests page, the feedback inbox and the blights inbox, and a click
 copies a ready prompt for Claude Code, Codex or anything else that reads a
 paste.
 
-**It starts off.** The switch is **Settings ▸ Work ▸ Agent prompts**, one
+**It starts off.** The switch is **Settings ▸ Quests ▸ Features ▸ Agent prompts**, one
 click, once, per project. Until you turn it on the menus are not there, and
 that is deliberate: a project that does not hand work to agents should not
 carry a menu that does.
@@ -62,7 +62,7 @@ so a quest filed during the run is picked up rather than missed.
 
 ## Writing your own
 
-Each prompt has a built-in default, and Settings ▸ Work is where you replace
+Each prompt has a built-in default, and Settings ▸ Quests ▸ Agent prompts is where you replace
 it. **Reset to default** deletes your version rather than copying today's
 text into the box, so a prompt you have reset keeps following the built-in
 one as it improves.

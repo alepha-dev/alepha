@@ -15,6 +15,16 @@ export interface ProjectSettingsCapabilitySectionProps {
    * every option it declares.
    */
   options?: string[];
+  /**
+   * Whether to render the master switch. Default `true`.
+   *
+   * General > Capabilities renders it, with the options that add a sidebar
+   * entry nested under it. A capability's own page passes `false` and lists
+   * its other options: the master lives in General only, because once it is
+   * off this page leaves the sidebar and General is where it comes back on
+   * (#Q2565).
+   */
+  master?: boolean;
 }
 
 /**
@@ -42,6 +52,9 @@ const ProjectSettingsCapabilitySection = (
   const options = (props.options ?? descriptor.options.map((it) => it.key))
     .map((key) => descriptor.options.find((it) => it.key === key))
     .filter((it) => it !== undefined);
+  const showMaster = props.master !== false;
+
+  if (!showMaster && options.length === 0) return null;
 
   return (
     <SettingsSection>
@@ -55,24 +68,31 @@ const ProjectSettingsCapabilitySection = (
           card's is about what the PUBLIC sees, which the owner cannot check
           for themselves, and the ranks page's draws a contrast with removal
           taking effect at once. */}
-      <SettingsRow
-        label={tr(descriptor.labelKey as never)}
-        description={tr(descriptor.descriptionKey as never)}
-      >
-        <Switch
-          // Disabled rather than hidden: a capability page with no switch says
-          // nothing at all. `capability:manage` is owner-only structurally.
-          disabled={!master.canToggle || master.busy}
-          checked={master.enabled}
-          onCheckedChange={(value) => {
-            void master.toggle(value);
-          }}
-          aria-label={tr("project.settings.feature.enable")}
-        />
-      </SettingsRow>
+      {showMaster && (
+        <SettingsRow
+          label={tr(descriptor.labelKey as never)}
+          description={tr(descriptor.descriptionKey as never)}
+        >
+          <Switch
+            // Disabled rather than hidden: a switch that vanished for a
+            // member would leave them wondering what turns the capability
+            // on. `capability:manage` is owner-only structurally.
+            disabled={!master.canToggle || master.busy}
+            checked={master.enabled}
+            onCheckedChange={(value) => {
+              void master.toggle(value);
+            }}
+            // The capability's own name, not "Enable": General renders four
+            // of these on one page.
+            aria-label={tr(descriptor.labelKey as never)}
+          />
+        </SettingsRow>
+      )}
       {options.map((option) => (
         <CapabilityOptionRow
           key={option.key}
+          // Nested under the master, so the rows read as its children.
+          className={showMaster ? "sm:pl-10" : undefined}
           capability={props.capability}
           option={option.key}
           label={tr(option.labelKey as never)}
@@ -98,6 +118,7 @@ interface CapabilityOptionRowProps {
   description: string;
   disabled: boolean;
   soon: boolean;
+  className?: string;
 }
 
 /**
@@ -110,6 +131,7 @@ const CapabilityOptionRow = (props: CapabilityOptionRowProps) => {
 
   return (
     <SettingsRow
+      className={props.className}
       label={
         props.soon
           ? `${props.label} · ${tr("project.create.soon")}`

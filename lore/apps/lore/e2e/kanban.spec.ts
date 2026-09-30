@@ -334,9 +334,9 @@ test.describe("Kanban", () => {
 
     await addKanbanColumn(page, projectId, "Review");
 
-    // The board's column configuration is a section on the Work page now,
-    // gated on `work.board`: nine Features pages collapsed to four.
-    await page.goto(`/${projectSlug}/settings/work`);
+    // The board's column configuration is its own tab under Quests since
+    // #Q2565, listed while `work.board` is on.
+    await page.goto(`/${projectSlug}/settings/work/board`);
     const rows = page.getByTestId("kanban-settings-column");
     await expect(rows).toHaveCount(2, { timeout: 10_000 });
     await expect(rows.nth(0)).toHaveAttribute(

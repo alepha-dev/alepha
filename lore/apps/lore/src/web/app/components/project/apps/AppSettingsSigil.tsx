@@ -255,7 +255,7 @@ const AppSettingsSigil = () => {
                   variant="outlined"
                   render={
                     <a
-                      href={router.path("projectSettingsSupport", {
+                      href={router.path("projectSettingsCapabilities", {
                         params: { projectSlug: project.slug },
                       })}
                     />

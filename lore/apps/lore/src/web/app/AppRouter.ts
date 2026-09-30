@@ -1831,14 +1831,16 @@ export class AppRouter {
     path: "/settings",
     children: () => [
       this.projectSettingsBanner,
+      this.projectSettingsCapabilities,
       this.projectSettingsMembers,
       this.projectSettingsRanks,
       this.projectSettingsAreas,
       this.projectSettingsArea,
       this.projectSettingsWork,
+      this.projectSettingsBoard,
+      this.projectSettingsPrompts,
       this.projectSettingsKnowledge,
       this.projectSettingsApps,
-      this.projectSettingsSupport,
       this.projectSettingsEstates,
     ],
     head: (_props, previous) => ({
@@ -1855,6 +1857,21 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsGeneralPage.tsx"),
+  });
+
+  /**
+   * General > Capabilities: every master switch, and the options that add a
+   * sidebar entry (#Q2565). The only page that turns a capability back on,
+   * since an off capability's own settings section leaves the sidebar.
+   */
+  projectSettingsCapabilities = $page({
+    name: "projectSettingsCapabilities",
+    path: "/capabilities",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Capabilities`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsCapabilitiesPage.tsx"),
   });
 
   projectSettingsMembers = $page({
@@ -1893,7 +1910,8 @@ export class AppRouter {
   /**
    * Where the project can deploy: the estates lent to it (epic #20). No
    * loader, and no feature flag: the page lists what it holds itself, and an
-   * empty list is a normal state that says so in words.
+   * empty list is a normal state that says so in words. A tab of the Apps
+   * section since #Q2565.
    */
   projectSettingsEstates = $page({
     name: "projectSettingsEstates",
@@ -1962,35 +1980,59 @@ export class AppRouter {
   });
 
   /**
-   * The four capability pages, one per capability.
+   * The capability pages: each one's Features tab, the options that change
+   * how it behaves. The masters and the options that add a sidebar entry are
+   * on `projectSettingsCapabilities` since #Q2565, and Support, which has no
+   * option, lost its page there.
    *
-   * They replace nine: Quests, Kanban, Folios, Epics, Feedback, Sigils,
-   * Releases, Quality and the Folios summary switch. Four of those nine were a
-   * single switch and nothing else, and the group they sat in was called
-   * Features - which named the storage rather than the thing.
-   *
-   * ⚠️ **The names and the paths moved, and `$page` renames are not
-   * typecheck-protected.** `ProjectSettings.tsx`'s nav carries them as plain
-   * strings, and `app-routes.spec.ts` is what turns a missed one into a red
-   * test rather than a dead link. Estates keeps its own page beside Members
-   * and Areas: a project can be lent one with no sigils, and folding it under
-   * Apps would hide it from exactly that project.
+   * ⚠️ **`$page` renames are not typecheck-protected.**
+   * `projectSettingsSections.ts` carries these names as plain strings, and
+   * `app-routes.spec.ts` is what turns a missed one into a red test rather
+   * than a dead link.
    */
   projectSettingsWork = $page({
     name: "projectSettingsWork",
     path: "/work",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Work`,
+      title: `${previous?.title ?? ""} › Quests`,
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsWorkPage.tsx"),
+  });
+
+  /**
+   * Quests > Board: the kanban columns. Its tab is listed while the `board`
+   * option is on; the route is not guarded, like every settings route.
+   */
+  projectSettingsBoard = $page({
+    name: "projectSettingsBoard",
+    path: "/work/board",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Board`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsBoardPage.tsx"),
+  });
+
+  /**
+   * Quests > Agent prompts: the four templates. Renders nothing while the
+   * `agentPrompts` option is off, and its tab is listed only while it is on.
+   */
+  projectSettingsPrompts = $page({
+    name: "projectSettingsPrompts",
+    path: "/work/prompts",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Agent prompts`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAgentPrompts.tsx"),
   });
 
   projectSettingsKnowledge = $page({
     name: "projectSettingsKnowledge",
     path: "/knowledge",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Knowledge`,
+      title: `${previous?.title ?? ""} › Folios`,
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsKnowledgePage.tsx"),
@@ -2004,16 +2046,6 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsAppsPage.tsx"),
-  });
-
-  projectSettingsSupport = $page({
-    name: "projectSettingsSupport",
-    path: "/support",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Support`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsSupportPage.tsx"),
   });
 
   projectQuest = $page({

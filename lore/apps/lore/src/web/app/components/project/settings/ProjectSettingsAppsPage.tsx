@@ -10,6 +10,7 @@ import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
+import { CAPABILITY_SETTINGS_OPTIONS } from "./projectSettingsSections.ts";
 
 /**
  * Two blocks: the module switch and the ignore rules.
@@ -59,7 +60,13 @@ const ProjectSettingsAppsPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <ProjectSettingsCapabilitySection capability="apps" />
+      {/* The master and `track` (which adds the Blights entry) are in
+          General > Capabilities since #Q2565. */}
+      <ProjectSettingsCapabilitySection
+        capability="apps"
+        master={false}
+        options={CAPABILITY_SETTINGS_OPTIONS.apps}
+      />
 
       {enabled && (
         <div className="flex flex-col gap-2">

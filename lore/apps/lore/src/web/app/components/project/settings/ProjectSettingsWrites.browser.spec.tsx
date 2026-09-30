@@ -16,8 +16,8 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
+import ProjectSettingsBoardPage from "./ProjectSettingsBoardPage.tsx";
 import ProjectSettingsRanksPage from "./ProjectSettingsRanksPage.tsx";
-import ProjectSettingsWorkPage from "./ProjectSettingsWorkPage.tsx";
 
 /**
  * Answers the reads both pages make, and refuses the one write a case names.
@@ -130,9 +130,9 @@ describe("project settings writes", () => {
     expect(screen.getAllByText(message)).toHaveLength(1);
   };
 
-  it("toasts a refused column rename on the Work page once, and keeps the column", async () => {
+  it("toasts a refused column rename on the Board page once, and keeps the column", async () => {
     const fake = await mount(
-      <ProjectSettingsWorkPage />,
+      <ProjectSettingsBoardPage />,
       { renameKanbanColumn: "A column is already called Doing (spec)" },
       { ...projectFixture(), kanbanColumns: ["In Progress", "Review"] },
     );

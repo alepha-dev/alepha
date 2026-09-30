@@ -46,6 +46,11 @@ import {
   SECTION_LABEL_KEYS,
 } from "./projectViewRoutes.ts";
 import QuestLog from "./QuestLog.tsx";
+import {
+  findSettingsTab,
+  SETTINGS_SECTIONS,
+  visibleSettingsTabs,
+} from "./settings/projectSettingsSections.ts";
 
 const ProjectView = () => {
   const routerState = useRouterState();
@@ -57,6 +62,7 @@ const ProjectView = () => {
   );
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name);
   const fullWidth = ROUTES_FULL_WIDTH.has(name);
+  const activeSettings = findSettingsTab(name);
 
   const [project] = useStore(currentProjectAtom);
   const [questCount] = useStore(currentQuestCountAtom);
@@ -184,12 +190,26 @@ const ProjectView = () => {
     {
       items: [
         {
+          // A collapsible group since #Q2565, where it used to be one link
+          // into a page carrying its own second nav rail. The shell opens it
+          // by itself while one of its children is the active route, and a
+          // section whose capability is off is not listed: its master switch
+          // is in General, which always is.
           label: tr("project.menu.settings"),
           icon: Cog,
-          href: router.path("projectSettingsBanner", {
-            params: { projectSlug },
+          children: SETTINGS_SECTIONS.flatMap((section) => {
+            const tabs = visibleSettingsTabs(section, project);
+            const first = tabs[0];
+            if (!first) return [];
+            return [
+              {
+                label: tr(section.labelKey),
+                icon: section.icon,
+                href: router.path(first.route, { params: { projectSlug } }),
+                active: activeSettings?.section.key === section.key,
+              },
+            ];
           }),
-          active: name.startsWith("projectSettings"),
         },
       ],
     },
@@ -214,6 +234,11 @@ const ProjectView = () => {
       label: tr(sectionKey as never),
       href: sectionHref,
     });
+  }
+  // A settings page adds its section, "Project › Settings › Quests", since
+  // the sidebar group is now the only other thing naming it (#Q2565).
+  if (activeSettings) {
+    breadcrumbs.push({ label: tr(activeSettings.section.labelKey) });
   }
   // The app pages contribute the instance as ONE crumb, so the header reads
   // "Project › Apps › club / b14-production": an instance is the pair

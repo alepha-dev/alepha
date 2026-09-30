@@ -3,7 +3,7 @@
  * an epic whose plan is still open, `draft` or `ready`.
  *
  * A template, not a builder. It is what a project gets before anyone edits
- * it in Settings > Work, and what Reset restores. The placeholders are the
+ * it in Settings > Quests > Agent prompts, and what Reset restores. The placeholders are the
  * seven of {@link AgentPromptSubject}, substituted by
  * `renderPromptTemplate`.
  *
