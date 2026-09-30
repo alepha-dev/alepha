@@ -32,11 +32,11 @@ test.describe("Project settings — capabilities", () => {
     const sidebarReleases = page.locator(`a[href="/${slug}/releases"]`);
     await expect(sidebarReleases).toBeVisible();
 
-    await page.goto(`/${slug}/settings/work`);
+    await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
 
-    // By its own label, not `/enable/i`: the Work page has seven switches now
-    // (the master and six options), where the page this replaced had one.
+    // By its own label: General > Capabilities carries every master and the
+    // options that add a sidebar entry, so one page holds a dozen switches.
     const releases = page.getByRole("switch", { name: /^releases$/i });
     await expect(releases).toHaveAttribute("aria-checked", "true");
 
@@ -77,10 +77,12 @@ test.describe("Project settings — capabilities", () => {
     const sidebarFolios = page.locator(`a[href="/${slug}/folios"]`);
     await expect(sidebarFolios).toBeVisible();
 
-    await page.goto(`/${slug}/settings/knowledge`);
+    await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
 
-    const master = page.getByRole("switch", { name: /enable/i });
+    const master = page.getByRole("switch", {
+      name: "Write and keep knowledge",
+    });
     await expect(master).toHaveAttribute("aria-checked", "true");
 
     const saved = page.waitForResponse((res) =>
@@ -89,23 +91,26 @@ test.describe("Project settings — capabilities", () => {
     await master.click();
     expect((await saved).ok()).toBe(true);
 
-    // The entry goes, and the settings page it was turned off from stays
-    // reachable - a page you cannot reach is a capability you cannot turn back
-    // on, which is why the four are listed unconditionally.
+    // The entry goes, and so does the Folios settings section. The page it was
+    // turned off from stays: General is always listed, which is why every
+    // master lives there (#Q2565).
     await expect(sidebarFolios).toHaveCount(0);
+    await expect(
+      page.locator(`a[href="/${slug}/settings/knowledge"]`),
+    ).toHaveCount(0);
     await page.reload();
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
-      "aria-checked",
-      "false",
-      { timeout: 10_000 },
-    );
+    await expect(
+      page.getByRole("switch", { name: "Write and keep knowledge" }),
+    ).toHaveAttribute("aria-checked", "false", { timeout: 10_000 });
 
     // And back. Nothing was deleted, so the folios are where they were.
     const back = page.waitForResponse((res) =>
       res.url().includes("/capabilities/knowledge"),
     );
-    await page.getByRole("switch", { name: /enable/i }).click();
+    await page
+      .getByRole("switch", { name: "Write and keep knowledge" })
+      .click();
     expect((await back).ok()).toBe(true);
     await expect(sidebarFolios).toBeVisible();
   });

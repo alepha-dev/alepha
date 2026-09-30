@@ -47,7 +47,8 @@ const projectIdOf = async (page: Page, slug: string): Promise<number> => {
  */
 
 /**
- * The project sidebar's own hrefs, and the settings rail's separately.
+ * Every settings href on the page: the sidebar's Settings group and the tab
+ * bar of the open section (#Q2565 folded the old second rail into both).
  *
  * Read as hrefs rather than by label, the way `capabilities.spec.ts` does: a
  * label is localized and a heading is ambiguous, while an href is what the
@@ -141,8 +142,8 @@ test.describe("Ranks", () => {
     await page.goto(`/${slug}/settings/ranks`);
     await page.waitForLoadState("networkidle");
 
-    // ⚠️ Scoped to the matrix table. The settings rail carries a
-    // "Capabilities" group header of its own, so a page-wide assertion on
+    // ⚠️ Scoped to the matrix table. The General section carries a
+    // "Capabilities" tab of its own, so a page-wide assertion on
     // that word is answered by the nav and says nothing about this page.
     const matrix = page.locator("table");
 
@@ -205,7 +206,7 @@ test.describe("Ranks", () => {
       const rail = await railHrefs(b.page, slug);
       // ⚠️ The assertion #Q1930's trap needed. The Ranks page is
       // `rank:manage`, which a Contributor does not hold, so its entry is
-      // not in the rail at all - rather than a link to a matrix that saves
+      // not a tab at all - rather than a link to a matrix that saves
       // nothing.
       expect(rail).not.toContain(`/${slug}/settings/ranks`);
       // And the entries a Contributor DOES reach are still there, so this is

@@ -10,7 +10,7 @@ import { questWorkPromptDefault } from "./questWorkPrompt.ts";
 
 /**
  * The built-in default for each kind: what a project gets before anyone
- * edits it in Settings > Work, and what Reset restores.
+ * edits it in Settings > Quests > Agent prompts, and what Reset restores.
  *
  * A `Record` keyed by the schema's type rather than a lookup function, so
  * adding a literal to `agentPromptKindSchema` without writing its default is

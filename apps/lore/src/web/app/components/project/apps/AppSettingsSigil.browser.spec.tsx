@@ -19,9 +19,9 @@ import { I18n } from "../../../services/I18n.ts";
 import AppSettingsSigil from "./AppSettingsSigil.tsx";
 
 class Routes {
-  projectSettingsSupport = $page({
-    name: "projectSettingsSupport",
-    path: "/:projectSlug/settings/support",
+  projectSettingsCapabilities = $page({
+    name: "projectSettingsCapabilities",
+    path: "/:projectSlug/settings/capabilities",
     component: () => null,
   });
 }

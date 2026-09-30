@@ -1615,8 +1615,12 @@ test.describe("Quest", () => {
       await page.waitForTimeout(1_500);
       expect(new URL(page.url()).pathname).toBe(`/${projectSlug}/folios`);
 
-      // The Settings entry points at the layout's default child, hence the
-      // prefix match rather than an exact href.
+      // Settings is a collapsible group since #Q2565: open it, then take
+      // General, the layout's default child, hence the prefix match.
+      await page
+        .locator('[data-slot="sidebar"]')
+        .getByRole("button", { name: "Settings", exact: true })
+        .click();
       await page.locator(`a[href^="/${projectSlug}/settings"]`).first().click();
       await page.waitForURL(`**/${projectSlug}/settings**`, {
         timeout: 15_000,

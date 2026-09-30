@@ -123,9 +123,8 @@ test.describe("agent prompts", () => {
 
     await test.step("Settings > Work turns it on, by its own name", async () => {
       await page.goto(`/${projectSlug}/settings/work`);
-      // ⚠️ Addressed by its own label, not by "Enable": only the capability
-      // MASTER switch carries the generic name, and each option row sets
-      // `aria-label` from its own label key.
+      // ⚠️ Addressed by its own label: each option row sets `aria-label`
+      // from its own label key, and the masters are on General now.
       const toggle = page.getByRole("switch", { name: "Agent prompts" });
       await expect(toggle).toBeVisible({ timeout: 15_000 });
 
@@ -139,7 +138,17 @@ test.describe("agent prompts", () => {
       await toggle.click();
       await saved;
 
-      // The editors appear with it, seeded from the built-in defaults.
+      // The editors have a tab of their own since #Q2565, listed once the
+      // option is on. A client-side click, so nothing reloads the loader.
+      await page
+        .getByTestId("settings-tabs")
+        .getByRole("link", { name: "Agent prompts" })
+        .click();
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/settings/work/prompts$`),
+      );
+
+      // The editors appear, seeded from the built-in defaults.
       await expect(page.getByTestId("prompt-input-epicReview")).toBeVisible({
         timeout: 15_000,
       });
@@ -187,7 +196,7 @@ test.describe("agent prompts", () => {
     });
 
     await test.step("editing and saving a template takes effect too", async () => {
-      await page.goto(`/${projectSlug}/settings/work`);
+      await page.goto(`/${projectSlug}/settings/work/prompts`);
       const editor = page.getByTestId("prompt-input-epicReview");
       await expect(editor).toBeVisible({ timeout: 15_000 });
       await editor.fill("Edited review of {{reference}}.");
@@ -249,7 +258,7 @@ test.describe("agent prompts", () => {
     });
 
     await test.step("Reset restores the built-in default", async () => {
-      await page.goto(`/${projectSlug}/settings/work`);
+      await page.goto(`/${projectSlug}/settings/work/prompts`);
       await expect(page.getByTestId("prompt-reset-epicReview")).toBeVisible({
         timeout: 15_000,
       });

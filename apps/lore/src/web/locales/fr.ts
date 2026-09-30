@@ -610,20 +610,33 @@ export default {
   "project.settings.leave.modal.submit": "Quitter le projet",
 
   "project.settings.general.title": "Projet",
-  "project.settings.nav.banner": "Général",
+  "project.settings.nav.general": "Général",
   "project.settings.nav.members": "Membres",
-  "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
+  "project.settings.tab.details": "Détails",
+  "project.settings.tab.capabilities": "Capacités",
+  "project.settings.tab.features": "Fonctionnalités",
+  "project.settings.tab.board": "Tableau",
+  "project.settings.tab.prompts": "Invites pour agents",
+  "project.settings.section.general":
+    "Le projet lui-même, et les parties de Lore qu'il utilise.",
+  "project.settings.section.members":
+    "Qui fait partie du projet, et ce que chaque rang peut faire.",
+  "project.settings.section.work":
+    "Comment les quêtes sont estimées, étiquetées et affichées sur le tableau.",
+  "project.settings.section.knowledge": "Comment les folios sont affichés.",
+  "project.settings.section.apps":
+    "Ce que les apps remontent, où elles se déploient, et les erreurs ignorées.",
+  "project.settings.board.off":
+    "Le tableau est désactivé. Activez-le dans Général › Capacités pour configurer ses colonnes.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
     "Téléchargez toutes les quêtes de ce projet en CSV.",
   "project.settings.data.export.button": "Exporter les quêtes",
-  // ── Capacités ───────────────────────────────────────────────────────────
-  // Voir la note dans en.ts : `.short` est le nom court du rail, `.label`
-  // reste la phrase de l'assistant de création et des titres de section.
+  // ── Capabilities ────────────────────────────────────────────────────────
+  // See the note in en.ts: `.label` stays a sentence on purpose.
   "project.capability.work.label": "Planifier et suivre le travail",
-  "project.capability.work.short": "Travail",
   "project.capability.work.description":
     "Quêtes, épopées, versions, un tableau.",
   "project.capability.work.option.board.label": "Tableau",
@@ -648,7 +661,6 @@ export default {
   "project.capability.work.option.agentPrompts.description":
     "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour Claude Code ou Codex ; rien n’est envoyé nulle part.",
   "project.capability.knowledge.label": "Écrire et conserver le savoir",
-  "project.capability.knowledge.short": "Savoir",
   "project.capability.knowledge.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
   "project.capability.knowledge.option.agentSummary.label":
@@ -656,7 +668,6 @@ export default {
   "project.capability.knowledge.option.agentSummary.description":
     "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
   "project.capability.apps.label": "Déployer et surveiller des applications",
-  "project.capability.apps.short": "Déploiement",
   "project.capability.apps.description":
     "Instances, analytique, erreurs, Web Vitals.",
   "project.capability.apps.option.track.label": "Surveiller les applications",
@@ -666,7 +677,6 @@ export default {
   "project.capability.apps.option.deploy.description":
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
-  "project.capability.support.short": "Support",
   "project.capability.support.description":
     "Un formulaire public et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
@@ -769,7 +779,6 @@ export default {
   "reports.members.idle.empty": "Tout le monde a été actif.",
   "reports.members.idle.lastCompleted": "dernière quête terminée $1",
   "reports.members.idle.never": "jamais",
-  "project.settings.feature.enable": "Activer",
   "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
   "project.settings.kanban.tagColors.description":
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
@@ -1414,7 +1423,7 @@ export default {
     "Les retours ne sont pas collectés",
   "app.settings.sigil.feedback.dropped.description":
     "Cette application envoie des retours et le projet les jette. Activez Recueillir les retours pour les conserver.",
-  "app.settings.sigil.feedback.dropped.action": "Ouvrir les paramètres Support",
+  "app.settings.sigil.feedback.dropped.action": "Ouvrir les capacités",
   "app.settings.credential": "Accès",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":

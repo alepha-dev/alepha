@@ -5,6 +5,7 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
+import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
@@ -13,6 +14,7 @@ import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsAppsPage from "./ProjectSettingsAppsPage.tsx";
+import ProjectSettingsCapabilitiesPage from "./ProjectSettingsCapabilitiesPage.tsx";
 
 interface SetCapabilityCall {
   params: { projectId: number; key: string };
@@ -59,7 +61,8 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 /**
- * The page after #1770 gutted it: a switch and the ignore rules.
+ * The page after #1770 gutted it: a switch and the ignore rules. The switch
+ * moved to General > Capabilities with #Q2565, so it mounts beside it.
  *
  * The case that matters is still the KEY, and it survived the move: the label
  * says "Apps" and the persisted key is `apps`. What changed is that the key
@@ -68,7 +71,14 @@ class FakeLinkProvider extends LinkProvider {
  * for the same reason `milestones` does.
  */
 describe("the Apps settings page", () => {
-  const mount = async () => {
+  const mount = async (
+    ui: ReactNode = (
+      <>
+        <ProjectSettingsCapabilitiesPage />
+        <ProjectSettingsAppsPage />
+      </>
+    ),
+  ) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -84,9 +94,7 @@ describe("the Apps settings page", () => {
     alepha.store.set(currentProjectAtom, aProject as never);
 
     const view = render(
-      <AlephaContext.Provider value={alepha}>
-        <ProjectSettingsAppsPage />
-      </AlephaContext.Provider>,
+      <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
     );
 
     return { alepha, fake: alepha.inject(FakeLinkProvider), view };
@@ -97,7 +105,9 @@ describe("the Apps settings page", () => {
   }) => {
     const { alepha, fake, view } = await mount();
 
-    fireEvent.click(await view.findByRole("switch", { name: "Enable" }));
+    fireEvent.click(
+      await view.findByRole("switch", { name: "Deploy and watch apps" }),
+    );
 
     // ⚠️ `track` rides along, and only because this is the FIRST enable.
     // There is no row to carry options from, and sending `{}` would give Apps
@@ -127,7 +137,9 @@ describe("the Apps settings page", () => {
     // those. A second door onto the same room is what this quest closed.
     const { view } = await mount();
 
-    fireEvent.click(await view.findByRole("switch", { name: "Enable" }));
+    fireEvent.click(
+      await view.findByRole("switch", { name: "Deploy and watch apps" }),
+    );
 
     await waitFor(() =>
       expect(view.container.textContent).toContain("Ignore rules"),

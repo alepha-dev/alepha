@@ -256,6 +256,26 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
 };
 
 /**
+ * The options that add or remove a sidebar entry, per capability: every
+ * `option` an entry above hangs off, in declaration order, without repeats.
+ *
+ * Settings > General > Capabilities shows these under their master switch,
+ * and each capability's own settings page shows every OTHER option (#Q2565).
+ * Derived rather than listed, so a new entry that hangs off an option moves
+ * that option's switch to General by itself.
+ */
+export const CAPABILITY_NAV_OPTIONS = Object.fromEntries(
+  Object.entries(CAPABILITY_NAV).map(([key, entries]) => [
+    key,
+    [
+      ...new Set(
+        entries.flatMap((entry) => (entry.option ? [entry.option] : [])),
+      ),
+    ],
+  ]),
+) as Record<CapabilityKey, string[]>;
+
+/**
  * The entries no capability owns.
  *
  * The dashboard is the project's landing page and Activity sits under it;

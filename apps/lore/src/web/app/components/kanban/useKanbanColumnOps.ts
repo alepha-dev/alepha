@@ -13,7 +13,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * Create, rename, recolour and delete an in-progress column, from wherever
  * the operator happens to be looking.
  *
- * Extracted so the board (#1511) and Settings ▸ Work drive the SAME four
+ * Extracted so the board (#1511) and Settings ▸ Quests ▸ Board drive the SAME four
  * endpoints. That is what the quest meant by no second source of truth: the
  * validation is the server's - name length, uniqueness, the five-column cap,
  * and the refusal to delete a column that still holds quests - so whatever

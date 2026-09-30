@@ -52,6 +52,30 @@ export const ROUTES_APP = new Set([
   "appSettings",
 ]);
 
+/**
+ * The settings shell and every page under it.
+ *
+ * Full width since #Q2565, like Reports: a plate over route tabs that owns
+ * its own scroll, where it used to be a centred column with a second nav
+ * rail. `projectViewRoutes.spec.ts` walks the router and fails when a page
+ * under `projectSettings` is missing from the label table this feeds.
+ */
+export const ROUTES_SETTINGS = [
+  "projectSettings",
+  "projectSettingsBanner",
+  "projectSettingsCapabilities",
+  "projectSettingsMembers",
+  "projectSettingsRanks",
+  "projectSettingsWork",
+  "projectSettingsAreas",
+  "projectSettingsArea",
+  "projectSettingsBoard",
+  "projectSettingsPrompts",
+  "projectSettingsKnowledge",
+  "projectSettingsApps",
+  "projectSettingsEstates",
+];
+
 export const ROUTES_FULL_WIDTH = new Set([
   // The project's landing page since #Q2104. Full width because it is a grid
   // that lays its own columns out from the space it is given (`auto-fill` over
@@ -107,6 +131,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   // that decision lives.
   "projectQuestGraph",
   ...ROUTES_APP,
+  ...ROUTES_SETTINGS,
 ]);
 
 /**
@@ -211,13 +236,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   appDeploy: "project.menu.apps",
   appEnvironment: "project.menu.apps",
   appSettings: "project.menu.apps",
-  projectSettings: "project.menu.settings",
-  projectSettingsBanner: "project.menu.settings",
-  projectSettingsAreas: "project.menu.settings",
-  projectSettingsMembers: "project.menu.settings",
-  projectSettingsEstates: "project.menu.settings",
-  projectSettingsWork: "project.menu.settings",
-  projectSettingsKnowledge: "project.menu.settings",
-  projectSettingsApps: "project.menu.settings",
-  projectSettingsSupport: "project.menu.settings",
+  ...Object.fromEntries(
+    ROUTES_SETTINGS.map((route) => [route, "project.menu.settings"]),
+  ),
 };

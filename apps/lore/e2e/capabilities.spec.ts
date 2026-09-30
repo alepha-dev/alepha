@@ -326,15 +326,21 @@ test.describe("Project capabilities", () => {
       { projectId: id },
     );
 
-    // ⚠️ Off from SETTINGS, one page at a time, through the real switches -
-    // this case is about the pages a person uses, and `setCapability` would
-    // skip the optimistic control the epic's e2e traps are about. Each click
-    // is armed first: the switch flips instantly and proves nothing, and
-    // navigating before the batch window closes cancels the save outright.
-    for (const key of ["work", "knowledge", "apps", "support"]) {
-      await page.goto(`/${slug}/settings/${key}`);
-      await page.waitForLoadState("networkidle");
-      const master = page.getByRole("switch", { name: /enable/i }).first();
+    // ⚠️ Off from SETTINGS, through the real switches - this case is about
+    // the page a person uses, and `setCapability` would skip the optimistic
+    // control the epic's e2e traps are about. Each click is armed first: the
+    // switch flips instantly and proves nothing. Every master is on General >
+    // Capabilities since #Q2565, one page for all four.
+    const masters = {
+      work: "Plan and track work",
+      knowledge: "Write and keep knowledge",
+      apps: "Deploy and watch apps",
+      support: "Collect feedback",
+    };
+    await page.goto(`/${slug}/settings/capabilities`);
+    await page.waitForLoadState("networkidle");
+    for (const [key, label] of Object.entries(masters)) {
+      const master = page.getByRole("switch", { name: label, exact: true });
       await expect(master).toHaveAttribute("aria-checked", "true", {
         timeout: 10_000,
       });
@@ -384,39 +390,35 @@ test.describe("Project capabilities", () => {
       await expect404(page, `/${slug}/${path}`);
     }
 
-    // ⚠️ Settings still reaches all four capability pages, and it has to: a
-    // page you cannot reach is a capability you cannot turn back on. Members
-    // and Estates are Core and stay too.
+    // ⚠️ Settings still reaches the switches that turn them back on, and it
+    // has to: a page you cannot reach is a capability you cannot turn back
+    // on. They are all on General > Capabilities, which is always listed.
+    // Members is Core and stays too; each capability's own section goes with
+    // it (#Q2565).
     await page.goto(`/${slug}/settings`);
     await page.waitForLoadState("networkidle");
-    for (const page404 of [
-      "work",
-      "knowledge",
-      "apps",
-      "support",
-      "members",
-      "estates",
-    ]) {
+    for (const always of ["capabilities", "members"]) {
       await expect(
-        page.locator(`a[href="/${slug}/settings/${page404}"]`),
-        page404,
+        page.locator(`a[href="/${slug}/settings/${always}"]`).first(),
+        always,
       ).toBeVisible({ timeout: 10_000 });
     }
-    // Areas belongs to Work, so it is the one settings entry that goes.
-    await expect(page.locator(`a[href="/${slug}/settings/areas"]`)).toHaveCount(
-      0,
-    );
+    for (const gone of ["work", "knowledge", "apps", "areas", "estates"]) {
+      await expect(
+        page.locator(`a[href="/${slug}/settings/${gone}"]`),
+        gone,
+      ).toHaveCount(0);
+    }
 
     // And back. Nothing was deleted, so the quest is exactly where it was -
     // "hides, never deletes", proven from the outside.
-    await page.goto(`/${slug}/settings/work`);
+    await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
     const back = page.waitForResponse((res) =>
       res.url().includes("/capabilities/work"),
     );
     await page
-      .getByRole("switch", { name: /enable/i })
-      .first()
+      .getByRole("switch", { name: "Plan and track work", exact: true })
       .click();
     expect((await back).ok()).toBe(true);
 

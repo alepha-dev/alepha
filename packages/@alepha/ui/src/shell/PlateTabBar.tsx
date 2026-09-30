@@ -92,7 +92,9 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
         // the bar's own `border-t` when there is a plate, and the shell
         // header's bottom border when there is not. Both are `--border`, so
         // the fold reads the same either way.
-        "bg-muted border-border flex gap-5 px-6 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        // `overflow-x-auto` so a bar wider than a phone scrolls sideways
+        // instead of widening the page; the tabs never wrap or shrink.
+        "bg-muted border-border flex gap-5 overflow-x-auto px-6 shadow-[inset_0_1px_0_0_var(--bevel)]",
         props.divided !== false && "border-t",
       )}
       role={navigates ? "navigation" : "tablist"}
@@ -100,7 +102,7 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
       {props.tabs.map((tab) => {
         const active = tab.key === props.active;
         const className = cn(
-          "-mb-px inline-flex h-[42px] items-center gap-[7px] border-b-2 text-[13.5px] font-medium transition-colors",
+          "-mb-px inline-flex h-[42px] shrink-0 items-center gap-[7px] border-b-2 text-[13.5px] font-medium whitespace-nowrap transition-colors",
           active
             ? "border-primary text-foreground"
             : "text-muted-foreground hover:text-foreground border-transparent",

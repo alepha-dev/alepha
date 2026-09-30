@@ -39,7 +39,7 @@ with the **Admin** rank. A **Contributor** or a **Viewer** reads the board and
 cannot change it: no Add button, no card menu, no dragging.
 
 If you want Contributors curating the board in your project, tick
-`project:update` for that rank in **Settings ▸ Ranks**. It is a checkbox in
+`project:update` for that rank in **Settings ▸ Members ▸ Ranks**. It is a checkbox in
 your own rank matrix rather than something Lore decides for you.
 
 ## The cards
