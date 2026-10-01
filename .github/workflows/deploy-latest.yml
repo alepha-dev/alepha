@@ -172,7 +172,6 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
 
   deploy-lore-production:
     # ⚠️ OFF since 2026-10-01: Lore deploys from github.com/alepha-dev/lore
