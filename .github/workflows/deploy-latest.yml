@@ -97,62 +97,32 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # The component showcase at `ui.alepha.dev`, deployed THROUGH Lore.
+  # The component showcase at `ui.alepha.dev`, and the shop demo at
+  # `shop.alepha.dev`, deployed with `alepha platform up` (#Q2576).
   #
-  # ⚠️ **No Cloudflare credentials, and that is the point of the migration.**
-  # The account is an estate lent to the `alepha` project, and the copy's own
-  # row says which one - so a runner that is compromised holds a Lore key
-  # scoped to this project rather than a token that can reach every Worker on
-  # the account. `LORE_API_KEY` is the only secret this job has.
-  #
-  # ⚠️ `SIGIL_KEY` is gone from here too. It lives in the copy's Lore
-  # environment now, uploaded with the script rather than pushed after it, so
-  # there is no window in which the new build runs against the old secret set.
-  #
-  # One step: `lore apps deploy` with no `--tag` builds, pushes and deploys in
-  # that order, and nothing writes into this app's output after its build.
-  #
-  # The Worker is `alepha-ui-production` - Lore composes `<project>-<app>-<env>`
-  # where `alepha platform` composed `<app>-<env>`. `ui.alepha.dev` is a Custom
-  # Domain that Lore attaches on every deploy.
-  #
-  # ⚠️ This used to be gated on `checks` and `test` only, so the showcase - no
-  # database, no auth, no migrations - could ship while an unrelated e2e suite
-  # was still running. A `workflow_run` gate cannot express that: it waits for
-  # all of Verify. The paragraph is kept because the reasoning is still the
-  # reason someone might want it back.
+  # They went through Lore Deploy from #E1 until Lore left this repository
+  # (#E72). `platform({ project: "alepha" })` gives them the names Lore had
+  # given their Workers (`alepha-<app>-production`), so the first `up` took
+  # each Worker and its Custom Domain over instead of colliding with it.
+  # Cloudflare credentials are repository secrets; each app's own secrets live
+  # in its GitHub environment and reach the Worker through the job env.
   # ---------------------------------------------------------------------------
   deploy-ui-production:
-    # ⚠️ **This is the whole safety mechanism.** `workflow_run` fires for EVERY
-    # completed Verify run, branches and pull requests included, so without
-    # this condition a push to `claude/anything` would deploy to production.
-    #
-    #   conclusion  - `workflow_run` fires on failure too, not only on success
-    #   head_branch - the branch Verify actually ran on. This is the line that
-    #                 makes an agent's branch run verify and stop.
-    #
-    # ⚠️ NOT `github.ref`, which for a `workflow_run` is the DEFAULT BRANCH and
-    # would therefore be `main` for every branch on earth. Same trap as the
-    # concurrency group's, and it has already cost this repository one silent
-    # missed deploy.
     if: >-
       github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: ui-production
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # This job's artifact is deployed, and `alepha.meta.version` reads the
-          # git tag on the built commit. The default checkout fetches shallow
-          # and passes --no-tags, so without this every deploy would report
-          # "latest".
-          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
-          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
-          # several agents pushing to main is routinely a commit nothing has
-          # verified. It is the single most important line in this file.
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-tags: true
 
@@ -162,59 +132,28 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      # Run inside the app, because `lore apps deploy` reads the name from the
-      # `package.json` of the directory it runs in - which is also how it finds
-      # the copy to place the build on. The project comes from the
-      # workflow-level `LORE_PROJECT` at the top of this file.
+      # `alepha-ui-production` (`platform({ project: "alepha" })`), the Worker
+      # Lore Deploy created, taken over with its Custom Domain (#Q2576).
       - name: Deploy
         working-directory: apps/ui
-        run: yarn lore apps deploy --env production
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+        run: yarn alepha platform up --env production
 
-  # ---------------------------------------------------------------------------
-  # The commerce example at `shop.alepha.dev`, deployed THROUGH Lore (#Q2471),
-  # the last of the three after ui and docs (which deploys from `release.yml`
-  # since #Q2480).
-  #
-  # Until then it was the `shop-production` Worker that `alepha platform up`
-  # made by hand, and this job only pushed the artifact. The copy now has the
-  # `cf-feunard` estate and its `url` pinned to `https://shop.alepha.dev`,
-  # which is where a Lore deploy takes its Custom Domain from. The Worker is
-  # `alepha-shop-production`, with a D1 and a bucket of its own: the old
-  # catalogue, orders and drawings stayed behind with `shop-production`.
-  #
-  # ⚠️ No Cloudflare credentials, and no secret but `LORE_API_KEY`, as on the
-  # ui job. `APP_SECRET` is minted by Lore on the first deploy. `SIGIL_KEY` and
-  # the two Stripe keys live in the copy's Lore environment: the copy already
-  # had a sigil, and Lore keeps only its hash, so it cannot fill that one in.
-  #
-  # One step, like ui. `lore apps deploy` with no `--tag` builds for the
-  # runtime the copy's estate accepts (workerd, for a Cloudflare estate),
-  # pushes it as `latest` and deploys it. Nothing writes into `dist/public`
-  # after the build, so one step is enough.
-  #
-  # ⚠️ Waits for all of Verify, for the reason given on the ui job above.
-  # ---------------------------------------------------------------------------
   deploy-shop-production:
-    # See the ui job above for the guard's reasoning.
     if: >-
       github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: shop-production
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # `alepha.meta.version` reads the git tag on the built commit, and
-          # the default checkout passes --no-tags, so without this the deploy
-          # would report "latest" as its version.
-          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
-          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
-          # several agents pushing to main is routinely a commit nothing has
-          # verified. It is the single most important line in this file.
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-tags: true
 
@@ -224,18 +163,17 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      # Run inside the app, because `lore apps deploy` reads the name from the
-      # working directory's `package.json`.
+      # A demo: its data is disposable. Secrets come from the `shop-production`
+      # environment and are resolved from the job env by `platform up`.
       - name: Deploy
         working-directory: apps/examples/shop
-        run: yarn lore apps deploy --env production
+        run: yarn alepha platform up --env production
         env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
 
-  # ⚠️ The one job that gates on everything, e2e included, and the list has to
-  # be spelled out: `needs` takes job ids, and the three e2e jobs replaced one.
-  # A job left off this list is not an error, it is a deploy that stops waiting
-  # for it - silently.
   deploy-lore-production:
     # ⚠️ OFF since 2026-10-01: Lore deploys from github.com/alepha-dev/lore
     # (#E72, #Q2583). Left in place, a push here would redeploy the old

@@ -383,9 +383,8 @@ jobs:
       # not be one: a runtime lives in at most one archive per tag, so it would
       # overlap the two-slice archive and be refused as a conflict.
       #
-      # `docs` still ships as TWO single-runtime archives under one version
-      # tag: the `node` bundle `yarn build` produced, and the `workerd` bundle
-      # rebuilt here. Their runtimes do not overlap, so they sit side by side.
+      # `docs` is rebuilt here for workerd and deployed by `platform up
+      # --prebuilt` at the very end (#Q2576); it is no longer pushed to Lore.
       #
       # ⚠️ The docs rebuild sits HERE, at the very end, and cannot move earlier:
       # `alepha build --runtime=workerd` cleans `dist/` and replaces it.
@@ -429,15 +428,6 @@ jobs:
       # with no Lore release exits 0 with a log line, and a re-run of this job
       # finds it already published and exits 0 again.
       # ──────────────────────────────────────────────────────────────
-      - name: Push docs artifact to Lore (node)
-        working-directory: apps/docs
-        run: >-
-          yarn lore artifacts push
-          --tag "$VERSION"
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
-
       - name: Push lore artifact to Lore (node + workerd)
         working-directory: apps/lore
         run: >-
@@ -453,15 +443,6 @@ jobs:
       - name: Rebuild docs for workerd
         working-directory: apps/docs
         run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
-
-      - name: Push docs artifact to Lore (workerd)
-        working-directory: apps/docs
-        run: >-
-          yarn lore artifacts push
-          --tag "$VERSION"
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
 
       # The image, as a reference rather than as bytes. Lore reads what the
       # image says about itself out of ghcr - its `dev.alepha.runtime` label
@@ -508,17 +489,17 @@ jobs:
       # The docs now move with the npm version, and a docs-only fix waits for
       # the next release, or a hand-dispatched patch release.
       #
-      # `--tag` deploys the workerd archive pushed above and never builds. The
-      # estate behind `production` accepts workerd, and an artifact's runtime is
-      # part of its identity, so the node archive under the same tag is not a
-      # candidate.
-      #
       # Last, after every push and the publish: a red deploy then tears
-      # nothing, and re-running the job redeploys the same stored bytes.
+      # nothing, and re-running the job redeploys the same build.
       # ──────────────────────────────────────────────────────────────
+      # `alepha-docs-production` (`platform({ project: "alepha" })`), the
+      # Worker Lore Deploy created for alepha.dev, taken over with its Custom
+      # Domain (#Q2576). `--prebuilt`: the workerd build above carries the
+      # llms.txt files `gen:llms` wrote after it, and a fresh build would drop
+      # them.
       - name: Deploy docs
         working-directory: apps/docs
-        run: yarn lore apps deploy --env production --tag "$VERSION"
+        run: yarn alepha platform up --env production --prebuilt
         env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

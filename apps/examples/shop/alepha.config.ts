@@ -1,11 +1,11 @@
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
+import { cloudflare, platform } from "alepha/cli/platform";
 
 /*
- * No `platform()` block: shop.alepha.dev is deployed through Lore by CI
- * (`deploy-shop-production`), which takes the domain from the
- * `shop / production` copy's pinned url and the variables from its Environment
- * tab, never from this file.
+ * shop.alepha.dev is a demo: `deploy-shop-production` runs `platform up` on
+ * every green main, its data is disposable, and its secrets (APP_SECRET and
+ * the Stripe test keys) come from the `shop-production` GitHub environment.
  */
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
@@ -20,5 +20,13 @@ export default defineConfig({
      * `/__devtools/` and injects the floating button into every dev page.
      */
     devtools(),
+    platform({
+      // Worker, D1 and bucket `alepha-shop-production`: the names Lore Deploy
+      // gave them, so the Custom Domain moved over without a 409 (#Q2576).
+      project: "alepha",
+      environments: {
+        production: cloudflare({ domain: "shop.alepha.dev" }),
+      },
+    }),
   ],
 });

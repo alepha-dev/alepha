@@ -78,6 +78,9 @@ export default defineConfig({
   },
   plugins: [
     platform({
+      // Worker `alepha-docs-production`: the name Lore Deploy gave it, so
+      // `platform up` took the Worker and the apex domain over (#Q2576).
+      project: "alepha",
       environments: {
         // ⚠️ A Custom Domain, the only binding `alepha platform` makes. This
         // used to set a `zone` (a field since removed) to get a Worker Route
@@ -86,11 +89,10 @@ export default defineConfig({
         // record, so Cloudflare would have refused to create one while they
         // were there.
         //
-        // Those eight records were deleted when docs moved onto
-        // `lore apps deploy`, which only ever attaches a Custom Domain - a
-        // Lore deploy emits no route, deliberately, since a route is
-        // zone-scoped and no estate can be probed for a zone it does not
-        // know. Cloudflare owns the apex record and its certificate now.
+        // Those eight records were deleted when docs moved onto Lore Deploy,
+        // which only ever attaches a Custom Domain, and docs came back to
+        // `alepha platform` in #E72 with the same Worker. Cloudflare owns the
+        // apex record and its certificate now.
         //
         // Rolling back means re-creating those eight records by hand before
         // anything can serve the apex again, so it is no longer the free

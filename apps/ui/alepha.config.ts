@@ -51,6 +51,9 @@ export default defineConfig({
   },
   plugins: [
     platform({
+      // Worker `alepha-ui-production`: the name Lore Deploy gave it, so
+      // `platform up` took the Worker and its Custom Domain over (#Q2576).
+      project: "alepha",
       // Worker secrets are auto-detected from the build manifest's `env` list
       // (every `$env`-declared key), so no `secrets.keys` is needed: CI
       // delivers them through the deploy job's `env:` block.
