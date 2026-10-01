@@ -51,7 +51,7 @@ import {
  */
 const FIXTURE = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../bay/internal/connector/testdata/wire-v1",
+  "../test/fixtures/bay/wire-v1",
 );
 
 const inventoryFrame = (): Record<string, unknown> =>

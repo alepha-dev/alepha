@@ -1,32 +1,37 @@
 /**
- * The origin the Alepha documentation is served from.
+ * Where Lore's own guides are read: `docs/1-guides/` of the Lore repository,
+ * rendered by GitHub.
  *
- * ⚠️ **Absolute, and it has to be.** The docs are a different site on a
- * different host: Lore is `lore.alepha.dev`, the docs are `alepha.dev`. A
- * root-relative href resolves against the PAGE's origin, so
- * `/lore/docs/<slug>` written from inside Lore asks Lore for a route it does
- * not serve and 404s - which is feedback #P2142, reported on the one link
- * that fails exactly when the reader is stuck.
+ * ⚠️ **Absolute, and it has to be.** The guides are on a different host than
+ * Lore. A root-relative href resolves against the PAGE's origin, so it asks
+ * Lore for a route it does not serve and 404s - which is feedback #P2142,
+ * reported on the one link that fails exactly when the reader is stuck.
  *
- * A constant rather than an env var, deliberately. This is the public
- * address of a published site, not a per-deployment setting: there is one
- * docs site, it is the same one for a local Lore, a preview and production,
- * and pointing a dev build at production docs is right rather than a
- * compromise. An env var would add a knob whose only correct value is this
- * one, and whose wrong value is a 404 nobody notices until a reader clicks.
+ * They were served at `alepha.dev/lore/docs/<slug>` until Lore left the Alepha
+ * monorepo (#E72); alepha.dev redirects those addresses here. A constant
+ * rather than an env var, deliberately: there is one copy of the guides, the
+ * same for a local Lore, a preview and production.
  */
-const DOCS_ORIGIN = "https://alepha.dev";
+const DOCS_ROOT = "https://github.com/alepha-dev/lore/blob/main/docs/1-guides";
 
 /**
- * Link to one page of Lore's own documentation (`docs/lore/`), which is
- * served at `alepha.dev/lore/docs/<slug>`.
- *
- * The slug is the file's name with its leading digits and dashes eaten, so
- * `docs/lore/1-guides/5-cloudflare-token.md` is `guides-cloudflare-token`.
+ * Every guide Lore links to, by the slug it has always had (the file name
+ * with its leading digits and dashes eaten, under `guides-`), to its file.
+ */
+const GUIDES = {
+  "guides-artifacts": "7-artifacts.md",
+  "guides-cloudflare-token": "5-cloudflare-token.md",
+  "guides-project-dashboard": "8-project-dashboard.md",
+  "guides-releases": "8-releases.md",
+} as const;
+
+/**
+ * Link to one page of Lore's own guides.
  *
  * Every docs link from Lore goes through here. That is the whole point: the
  * bug this replaces is one character of href, invisible in review, and it
- * will look exactly as reasonable the next time somebody writes it.
+ * will look exactly as reasonable the next time somebody writes it. A slug
+ * with no guide is a type error rather than a 404.
  */
-export const loreDocsUrl = (slug: string): string =>
-  `${DOCS_ORIGIN}/lore/docs/${slug}`;
+export const loreDocsUrl = (slug: keyof typeof GUIDES): string =>
+  `${DOCS_ROOT}/${GUIDES[slug]}`;

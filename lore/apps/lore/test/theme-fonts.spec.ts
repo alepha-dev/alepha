@@ -29,7 +29,7 @@ describe("theme fonts", () => {
   const LORE_ROOT = join(import.meta.dirname, "..");
   const mainCss = readFileSync(join(LORE_ROOT, "src/main.css"), "utf8");
   const uiCss = readFileSync(
-    join(LORE_ROOT, "../../packages/@alepha/ui/src/styles.css"),
+    join(LORE_ROOT, "../../.vendor/@alepha/ui/src/styles.css"),
     "utf8",
   );
 

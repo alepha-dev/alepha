@@ -9,17 +9,14 @@ import { estateServerFrameSchema } from "../src/api/schemas/estateServerFrameSch
 /**
  * Wire format v1, pinned from the Lore side.
  *
- * `apps/bay/internal/connector/testdata/wire-v1` holds one frame of each
- * kind. The Go suite proves its structs read and write exactly those bytes;
+ * Bay's `internal/connector/testdata/wire-v1` (github.com/alepha-dev/bay)
+ * holds one frame of each kind, copied in `fixtures/bay/wire-v1`. The Go suite proves its structs read and write exactly those bytes;
  * this spec proves the same files validate against the `$channel` schemas
- * that are the format's source of truth. Both suites read one set of
- * fixtures, so neither side can move the vocabulary without the other going
- * red. Folio #1198 is the readable copy.
+ * that are the format's source of truth. Both suites read the same frames,
+ * copied in step since Bay left the monorepo (#E72), so neither side can move
+ * the vocabulary without the copy, and then the other suite, going red. Folio #1198 is the readable copy.
  */
-const FIXTURES = join(
-  import.meta.dirname,
-  "../../bay/internal/connector/testdata/wire-v1",
-);
+const FIXTURES = join(import.meta.dirname, "fixtures/bay/wire-v1");
 
 const SERVER_FRAMES = [
   "welcome.json",

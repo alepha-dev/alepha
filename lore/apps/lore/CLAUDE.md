@@ -8,9 +8,9 @@ Alepha Lore is the **only public Alepha app** and exists in large part to **dogf
 
 ## The Lore of Lore (start here)
 
-The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.dev/lore`** — the "Lore of Lore", **project id `1`** over MCP (it was `2` until 2026-08-18, when the former `Lore` and `shop` projects were merged into `Alepha`; everything that came from Lore carries a shortId offset of +1000, so an older note's quest `#208` is today's `#1208`). The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title, "Lore", via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
+The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.dev/lore`** — the "Lore of Lore", **project id `74`** over MCP since 2026-10-01, when Lore left the Alepha monorepo (#E72) and its quests, epics and folios moved out of project `1` (`Alepha`) with their numbers unchanged. Before that it was project `1`, and before 2026-08-18 project `2` (an older note's quest `#208` is `#1208` since that merge). The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title, "Lore", via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
 
-**Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, project id `1`):
+**Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, project id `74`):
 
 1. `project_context` — one-shot orientation (project metadata + active quests + folio index, ~2K tokens).
 2. `folio_get` on the folios that look relevant — folios are the shared memory between you and the user across sessions. The user relies on them heavily, so **read first, write often**.
@@ -28,9 +28,11 @@ All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
 ## Repository layout
 
-Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework is a sibling workspace at `../../packages/alepha`; the shared UI kit lives at `../../packages/@alepha/ui`. Yarn workspace links route imports of `alepha` / `@alepha/ui` to those local packages — no vendoring, no sync step.
+Lore lives in its own repository, `github.com/alepha-dev/lore`, at `apps/lore`, beside its CLI and client (`packages/@alepha/lore`). Until 2026-10-01 it was a workspace of the Alepha monorepo (#E72).
 
-**Why this matters for AI:** Alepha is a small framework that LLMs have **near-zero training data on**. Do not guess Alepha APIs from memory — they will be wrong. Read `../../packages/alepha/src/...` and `../../packages/@alepha/ui/src/...` as the authoritative source whenever framework behavior matters. Editing them from inside `apps/lore` is fine — they're the same monorepo. Run `yarn v` from the monorepo root for the inner loop, then push the branch: CI is the gate.
+The framework is **vendored**: `.vendor/alepha` and `.vendor/@alepha/ui` are the framework's `main`, synced by `yarn vendor:sync` and committed, and they are workspaces, so `alepha` / `@alepha/ui` resolve to them as source.
+
+**Why this matters for AI:** Alepha is a small framework that LLMs have **near-zero training data on**. Do not guess Alepha APIs from memory: they will be wrong. Read `../../.vendor/alepha/src/...` and `../../.vendor/@alepha/ui/src/...` as the authoritative source whenever framework behavior matters. **Never edit them here**: a framework change lands in `alepha-dev/alepha` first, then comes in with `yarn vendor:sync`.
 
 ```
 apps/lore/                # This app
@@ -1043,14 +1045,14 @@ to map a reported bug to the exact tip it runs against.
 The record is resolved once at build time and baked into the server **and** the
 client bundle, so `alepha.meta` reads the same answer in the browser as on the
 server. The endpoint is public on purpose: Lore lives in the open-source
-`github.com/alepha-dev/alepha` monorepo, so the commit SHA leaks nothing.
+`github.com/alepha-dev/lore` repository, so the commit SHA leaks nothing.
 
 ⚠️ **`version` is declared in `alepha.config.ts` and has to be.** The framework
 resolves it from `git tag --points-at HEAD`, falling back to `"latest"`. Lore
 deploys on **every push to main** while tags exist only on releases, so the
 built-in chain would report `"latest"` on almost every deploy. The `meta` block
-keeps publishing the FRAMEWORK's `pkg.version` — Lore is private and carries no
-version of its own:
+publishes Lore's own `pkg.version` (`apps/lore/package.json`, bumped by the
+release with `@alepha/lore`); the framework it runs on is the `framework` field:
 
 ```ts
 meta: { version: pkg.version },
@@ -1129,7 +1131,7 @@ Mitigations, in order of preference:
 
 **Why local testing won't catch this:** the suites use in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
 
-**CI auto-deploys to prod on every push to `main` whose Verify succeeds** (alepha monorepo's `.github/workflows/verify.yml`, workflow **Verify**, then `.github/workflows/deploy-latest.yml` → `deploy-lore-production` job, a `workflow_run` on Verify → `yarn alepha platform up --env production` from `apps/lore`). A Verify cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
+**CI auto-deploys to prod on every push to `main` whose Verify succeeds** (this repository's `.github/workflows/verify.yml`, workflow **Verify**, then `.github/workflows/deploy-latest.yml` → `deploy-lore-production` job, a `workflow_run` on Verify → `yarn alepha platform up --env production` from `apps/lore`). A Verify cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
 ### What the 2026-08 great-rename migration got right (worked example)
 
@@ -1615,9 +1617,3 @@ Clears all projects, members, sessions, etc. Migrations auto-apply on boot. Opti
 - The session cookie persists across reloads; if you need a clean slate, clear cookies via `context.clearCookies()` rather than relaunching the browser.
 - Pages load lazily — wait for the visible text of a known route element (e.g. "Projects") before asserting.
 - `claude-in-chrome` MCP works fine; the deferred `playwright` MCP is what most of the existing e2e specs target.
-
-## Working on the framework while in this repo
-
-Lore is a workspace member of the Alepha monorepo — there is no vendor step. Edit `../../packages/alepha/src/...` or `../../packages/@alepha/ui/src/...` directly; Vite HMR picks the change up immediately. Run `yarn v` from the monorepo root for the inner loop, then push the branch and read CI before calling it done.
-
-The same CI run that ships Alepha now also verifies Lore (because Lore is just another workspace under `yarn workspaces foreach`), and the `deploy-lore-production` job in `.github/workflows/deploy-latest.yml` ships Lore to Cloudflare once that Verify run succeeds on a push to `main`. So a single commit covers both sides — no cross-repo handoff, no sync drift to worry about.

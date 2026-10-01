@@ -20,8 +20,11 @@
  * ⚠️ This is a SUBSET of the release rehearsal, not a replacement for it. It
  * proves a local install with npm only. Yarn, pnpm and Bun each resolve and
  * link differently, and a global install has no host project to satisfy
- * anything from, which is the whole reason `alepha` is a dependency here and
- * not a peer. That belongs on verdaccio, before a release.
+ * anything from. That belongs on verdaccio, before a release.
+ *
+ * The tarball is installed ALONE, with no `alepha` beside it: `alepha` is an
+ * optional peer and the bin carries its own (#Q2579), so a passing run here
+ * is also the proof that the bin needs nothing else.
  *
  * Requires `yarn build` first: the tarball carries `dist/`.
  */
@@ -145,10 +148,7 @@ describe("the lore binary, as installed", () => {
       await rm(WORK_DIR, { recursive: true, force: true });
     }
 
-    for (const built of [
-      "packages/alepha/dist/bin/index.js",
-      "packages/@alepha/lore/dist/bin/index.js",
-    ]) {
+    for (const built of ["packages/@alepha/lore/dist/bin/index.js"]) {
       if (!existsSync(join(ROOT, built))) {
         throw new Error(
           `${built} is missing — run \`yarn build\` before \`yarn e2e-cli\`.\n` +
@@ -163,10 +163,7 @@ describe("the lore binary, as installed", () => {
     // `yarn pack`, not `npm pack`: the `publishConfig` overrides that repoint
     // `bin` and the `exports` map at `dist/` are a yarn extension, and npm
     // ignores them. An npm-packed tarball would still point at `src/*.ts`.
-    for (const [workspace, file] of [
-      ["alepha", "alepha.tgz"],
-      ["@alepha/lore", "lore.tgz"],
-    ]) {
+    for (const [workspace, file] of [["@alepha/lore", "lore.tgz"]]) {
       const out = join(TARBALL_DIR, file);
       const packed = await run(
         `yarn workspace ${workspace} pack -o "${out}"`,
@@ -184,11 +181,10 @@ describe("the lore binary, as installed", () => {
       `${JSON.stringify({ name: "lore-consumer", version: "1.0.0", private: true }, null, 2)}\n`,
     );
 
-    // Both tarballs, which is the shape a sigil consumer has: its own `alepha`
-    // plus `@alepha/lore`. Installing only the second would resolve `alepha`
-    // from the registry and test the previously published build.
+    // The `lore` tarball alone. `alepha` is an optional peer, so npm installs
+    // none, and the bin must run on what it carries.
     const installed = await run(
-      `npm install "${join(TARBALL_DIR, "alepha.tgz")}" "${join(TARBALL_DIR, "lore.tgz")}"`,
+      `npm install "${join(TARBALL_DIR, "lore.tgz")}"`,
       PROJECT_DIR,
     );
     if (installed.exitCode !== 0) {

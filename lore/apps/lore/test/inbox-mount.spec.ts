@@ -31,7 +31,7 @@ const UI = join(
   "..",
   "..",
   "..",
-  "packages",
+  ".vendor",
   "@alepha",
   "ui",
   "src",

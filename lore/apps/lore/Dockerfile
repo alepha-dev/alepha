@@ -7,7 +7,7 @@ FROM node:26-alpine
 WORKDIR /app
 
 LABEL "dev.alepha.runtime"="node"
-LABEL "org.opencontainers.image.source"="https://github.com/alepha-dev/alepha"
+LABEL "org.opencontainers.image.source"="https://github.com/alepha-dev/lore"
 LABEL "org.opencontainers.image.title"="Lore"
 LABEL "org.opencontainers.image.description"="Project management and telemetry for Alepha applications."
 LABEL "org.opencontainers.image.licenses"="MIT"

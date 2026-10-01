@@ -2,13 +2,10 @@ import { defineConfig } from "alepha/cli/config";
 import { i18n } from "alepha/cli/i18n";
 import { cloudflare, platform } from "alepha/cli/platform";
 
-// The FRAMEWORK's manifest, not Lore's own - the same source `apps/docs` uses.
-// Lore is private and therefore carries no version of its own: the release job
-// bumps with `--no-private`, so a number here would be decoration that nothing
-// maintains. Reading its own manifest silently published `"undefined"` on
-// /version, and the framework version is the more useful answer anyway - what
-// a continuously deployed app is running.
-import pkg from "../../packages/alepha/package.json" with { type: "json" };
+// Lore's own version, since it left the Alepha monorepo (#E72): the release
+// workflow bumps `apps/lore` and `@alepha/lore` together. /version still
+// reports the framework it runs on, as `framework`.
+import pkg from "./package.json" with { type: "json" };
 
 export default defineConfig({
   // ⚠️ Top-level `image:`, not `build.docker`. Config follows the command that
@@ -29,7 +26,7 @@ export default defineConfig({
       // `private: true` with no description and no license, and `source`
       // must never come from the git remote (a fork would publish the
       // wrong URL, permanently, on a public artifact).
-      source: "https://github.com/alepha-dev/alepha",
+      source: "https://github.com/alepha-dev/lore",
       title: "Lore",
       description: "Project management and telemetry for Alepha applications.",
       licenses: "MIT",
@@ -199,6 +196,11 @@ export default defineConfig({
   },
   plugins: [
     platform({
+      // ⚠️ Pinned, and never a `project`: the Worker is `lore-production`, and
+      // any other name provisions an empty D1 and moves lore.alepha.dev onto
+      // it. The package name says the same today; this keeps a rename of the
+      // package from renaming production.
+      name: "lore",
       // Worker secrets are auto-detected from the build manifest's `env`
       // list (every `$env`-declared key), so no `secrets.keys` is needed —
       // CI delivers them via the deploy job's `env:` and the deploy step
@@ -208,11 +210,10 @@ export default defineConfig({
       },
     }),
     i18n({
-      // Lore is now a workspace member; `@alepha/ui` lives at
-      // ../../packages/@alepha/ui. The i18n scanner needs to see both
-      // app source and the shared UI block strings to extract a complete
-      // catalog.
-      scan: ["src", "../../packages/@alepha/ui/src"],
+      // `@alepha/ui` is vendored at ../../.vendor/@alepha/ui. The i18n
+      // scanner needs to see both app source and the shared UI block strings
+      // to extract a complete catalog.
+      scan: ["src", "../../.vendor/@alepha/ui/src"],
       dynamicPrefixes: [
         // tr(`account.notifications.category.${category}`) and its
         // `.description`. A category is a string a `$notification` template

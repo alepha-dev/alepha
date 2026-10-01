@@ -80,9 +80,9 @@ describe("EstateCloudflareService, the probe table", () => {
 
   /**
    * ⚠️ This case is the contract with #1517 and with the guide at
-   * `/lore/docs/guides-cloudflare-token`. When #1517 learns what a Lore
+   * `docs/1-guides/5-cloudflare-token.md`. When #1517 learns what a Lore
    * deploy really calls, this list, the table on `EstateCloudflareService`
-   * and that page change together. `yarn check:docs` cannot see the drift.
+   * and that page change together. Nothing checks the drift.
    */
   it("asks seven endpoints: identity, then one per permission group", async ({
     expect,
