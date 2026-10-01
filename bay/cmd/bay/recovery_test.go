@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // A static site has no database to snapshot. Backing one up used to record a

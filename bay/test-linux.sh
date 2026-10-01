@@ -15,7 +15,7 @@
 # _test.go files. A Linux test binary cannot be executed here either (`exec
 # format error`). Running them needs Linux, which means a container.
 #
-# The work itself is in ci.sh, the image in Dockerfile, the wiring in the repo's
+# The work itself is in ci.sh, the image in Dockerfile, the wiring in
 # compose.yml. This file is only the front door: it exists so that Docker being
 # down is a sentence rather than a stack trace.
 
@@ -41,4 +41,4 @@ echo "test-linux: reproducing the 'bay' CI job in a container"
 # `run --rm`, not `up`: this is a task, and its exit code is the whole result.
 # Compose rebuilds the image by itself when the Dockerfile or go.mod moves, so
 # there is no staleness to manage here.
-exec docker compose -f ../../compose.yml run --rm --build bay-test
+exec docker compose run --rm --build bay-test

@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/alepha/bay/internal/connector"
-	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/runner"
 )
 
 /*

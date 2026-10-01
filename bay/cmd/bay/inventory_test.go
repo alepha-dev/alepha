@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/runner"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 func inventoryFixtureTime(t *testing.T) time.Time {

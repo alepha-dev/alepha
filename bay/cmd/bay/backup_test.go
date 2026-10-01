@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/schedule"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/schedule"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // snapshotCapableNode stands in for the runtime Bay borrows to read SQLite.

@@ -36,11 +36,11 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	"github.com/alepha/bay/internal/headers"
-	"github.com/alepha/bay/internal/manifest"
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/runner"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/headers"
+	"github.com/alepha-dev/bay/internal/manifest"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // bayOwnedKeys are the env vars Bay manages. Everything else in a .env belongs

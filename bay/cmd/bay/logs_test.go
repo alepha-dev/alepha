@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/runner"
 )
 
 func TestFilterLogs(t *testing.T) {

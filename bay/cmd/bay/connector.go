@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/alepha/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/connector"
 )
 
 /*

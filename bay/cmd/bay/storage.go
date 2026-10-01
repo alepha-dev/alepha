@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alepha/bay/internal/deploy"
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/s3"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/deploy"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/s3"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // Where hosted apps put their blobs.

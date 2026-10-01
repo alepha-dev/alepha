@@ -12,8 +12,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // siteHeaders is the `_headers` the build writes for an Alepha site, trimmed

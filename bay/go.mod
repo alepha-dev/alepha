@@ -1,4 +1,4 @@
-module github.com/alepha/bay
+module github.com/alepha-dev/bay
 
 go 1.26.1
 

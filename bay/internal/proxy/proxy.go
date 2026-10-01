@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alepha/bay/internal/manifest"
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/manifest"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // Proxy routes incoming requests to the right app.

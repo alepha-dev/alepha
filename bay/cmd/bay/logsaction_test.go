@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/connector"
-	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/runner"
 )
 
 func logsCommand(id string, ask *connector.LogsAsk) connector.Command {

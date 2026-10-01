@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/runner"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // `bay env set` accepts a value of up to 1 MiB; the reader used bufio's

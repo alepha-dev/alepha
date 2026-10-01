@@ -24,7 +24,7 @@ want=$(awk '/^go /{print $2; exit}' go.mod)
 have=$(go env GOVERSION | sed 's/^go//')
 if [ "$want" != "$have" ]; then
   echo "ci: toolchain mismatch — go.mod wants $want, the image has $have." >&2
-  echo "  Update ARG GO_VERSION in apps/bay/Dockerfile to $want." >&2
+  echo "  Update ARG GO_VERSION in the Dockerfile to $want." >&2
   exit 1
 fi
 

@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alepha/bay/internal/s3"
+	"github.com/alepha-dev/bay/internal/s3"
 
-	"github.com/alepha/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/naming"
 )
 
 // timeLayout sorts lexically in chronological order, which is what makes

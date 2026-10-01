@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/runner"
 )
 
 // defaultLogLines is what `bay logs` asks for when nobody said.

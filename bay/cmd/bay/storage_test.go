@@ -14,9 +14,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/runner"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // rejectingS3 answers 403 to everything, the way a wrong key does.

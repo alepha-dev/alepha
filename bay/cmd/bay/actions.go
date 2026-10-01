@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alepha/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/connector"
 )
 
 /*

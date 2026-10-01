@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // registered is a DomainRegistry holding exactly the hosts it lists.

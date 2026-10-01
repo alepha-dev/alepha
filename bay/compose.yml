@@ -1,0 +1,18 @@
+# Bay's checks, on the platform Bay ships for.
+#
+# A task that runs once and exits, never a daemon. Reached through
+# `./test-linux.sh`, never directly, because Docker being down has to be a
+# loud, explained failure rather than a stack trace.
+services:
+  bay-test:
+    # No build args, and that is deliberate: the Go version is pinned in the
+    # Dockerfile, and ci.sh asserts at run time that it matches go.mod. A
+    # checked duplicate beats a required variable.
+    build:
+      context: .
+    volumes:
+      # Read-only on purpose. The container runs as root, and this is the only
+      # host path it can see, so a test run can never leave root-owned files in
+      # the working tree. Everything Go writes (build cache, module cache) lives
+      # inside the container.
+      - .:/src:ro

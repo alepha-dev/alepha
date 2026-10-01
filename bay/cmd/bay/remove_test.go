@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/naming"
 )
 
 /*

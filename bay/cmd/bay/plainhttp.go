@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/alepha/bay/internal/proxy"
+	"github.com/alepha-dev/bay/internal/proxy"
 )
 
 // portEighty is what the plain-HTTP listener serves.

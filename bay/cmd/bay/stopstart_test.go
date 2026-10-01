@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/connector"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 func stopCommand(id string) connector.Command {

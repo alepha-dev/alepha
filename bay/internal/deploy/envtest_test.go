@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/runner"
 )
 
 // flatEnv reads an instance .env and renders it back as plain `KEY=value`

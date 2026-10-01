@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // bucketArtifact declares `$storage`, which is what puts `hasBucket: true` in

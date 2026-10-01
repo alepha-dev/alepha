@@ -10,10 +10,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/alepha/bay/internal/headers"
-	"github.com/alepha/bay/internal/manifest"
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/headers"
+	"github.com/alepha-dev/bay/internal/manifest"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // defaultCacheControl is what Cloudflare answers for a file no `_headers` rule

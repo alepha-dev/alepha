@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alepha/bay/internal/schedule"
+	"github.com/alepha-dev/bay/internal/schedule"
 )
 
 // statusLine is one instance as `bay status --json` reports it.

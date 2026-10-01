@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alepha/bay/internal/deploy"
+	"github.com/alepha-dev/bay/internal/deploy"
 )
 
 // maxEnvPayloadBytes bounds one `bay env set` body.

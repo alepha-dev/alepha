@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/connector"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 func backupCommand(id, app string) connector.Command {

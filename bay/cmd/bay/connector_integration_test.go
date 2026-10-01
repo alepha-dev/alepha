@@ -18,7 +18,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/alepha/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/connector"
 )
 
 /*

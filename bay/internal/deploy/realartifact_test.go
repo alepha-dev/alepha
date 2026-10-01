@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/alepha/bay/internal/manifest"
+	"github.com/alepha-dev/bay/internal/manifest"
 )
 
 // Reads the artifact `alepha pack` actually produced, rather than one this

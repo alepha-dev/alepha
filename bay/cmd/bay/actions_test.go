@@ -13,8 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/alepha/bay/internal/connector"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // ackRecorder is the connection's seat: what the executor said back.

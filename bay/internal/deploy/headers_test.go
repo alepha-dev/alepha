@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/naming"
 )
 
 // staticArtifactWithHeaders is a static site whose dist/public carries a

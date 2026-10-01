@@ -19,10 +19,10 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	"github.com/alepha/bay/internal/health"
-	"github.com/alepha/bay/internal/naming"
-	"github.com/alepha/bay/internal/runner"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/health"
+	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // fakeRunner supervises nothing and remembers everything.

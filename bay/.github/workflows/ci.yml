@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # Read from go.mod so the version lives in exactly one place.
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Verify Formatting
+        # `gofmt -l` lists misformatted files and exits 0 either way, so the
+        # test has to be on its output.
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Cross-compile for the targets Bay actually runs on
+        run: |
+          for target in amd64 arm64; do
+            echo "→ linux/$target"
+            GOOS=linux GOARCH=$target CGO_ENABLED=0 go build -o /dev/null ./cmd/bay
+          done

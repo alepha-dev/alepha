@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/health"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/health"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // staticArtifact writes the tar.gz `alepha build --target=static` produces:

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alepha/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/naming"
 )
 
 // setEnv drives the control API's handler the way `bay env set` does.

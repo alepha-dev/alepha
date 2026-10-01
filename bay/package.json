@@ -1,8 +1,0 @@
-{
-  "name": "bay",
-  "private": true,
-  "scripts": {
-    "test": "go test ./...",
-    "test:linux": "./test-linux.sh"
-  }
-}

@@ -27,7 +27,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/runner"
 )
 
 // envKeyPattern is what a POSIX-ish environment variable name looks like.

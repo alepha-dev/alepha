@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alepha/bay/internal/connector"
-	"github.com/alepha/bay/internal/state"
+	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 const testSecret = "est_0123456789abcdef0123456789abcdef"
