@@ -124,7 +124,7 @@ echo "── image: ${IMAGE}"
 start "$FIRST" "$VOLUME_MAIN"
 wait_for_version "$FIRST"
 
-EXPECTED_VERSION="$(python3 -c 'import json;print(json.load(open("packages/alepha/package.json"))["version"])')"
+EXPECTED_VERSION="$(python3 -c 'import json;print(json.load(open("apps/lore/package.json"))["version"])')"
 VERSION="$(curl -fsS "${BASE}/version" | json_field version)"
 [ "$VERSION" = "$EXPECTED_VERSION" ] ||
   fail "/version reported '${VERSION}', expected '${EXPECTED_VERSION}'"

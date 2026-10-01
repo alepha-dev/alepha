@@ -5578,7 +5578,6 @@ __metadata:
     oxfmt: "npm:^0.70.0"
     oxlint: "npm:^1.85.0"
     oxlint-tsgolint: "npm:^7.0.2003"
-    rolldown: "npm:~1.2.11"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.1"
     vitest: "npm:^5.0.2"

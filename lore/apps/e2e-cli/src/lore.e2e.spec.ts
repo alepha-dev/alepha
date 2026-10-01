@@ -256,15 +256,13 @@ describe("the lore binary, as installed", () => {
   });
 
   /**
-   * The claim that decided `^0.28.0` over an exact pin in the manifest.
-   *
-   * A sigil consumer already has `alepha`, and a caret dedupes with it across
-   * any `0.28.x` where a pin would guarantee a second copy: two containers,
-   * two sets of primitives, and a `$module` identity that no longer matches
-   * across the boundary. Asserted rather than assumed, and read off the disk
-   * rather than off the lockfile.
+   * `alepha` is an optional peer and the bin carries its own (#Q2579), so the
+   * install brings none: a sigil consumer keeps the one copy it already has,
+   * and a global install of the CLI has nothing else to resolve. Read off the
+   * disk rather than off the lockfile; the passing `--help` above is the proof
+   * that the bin needs nothing it did not bring.
    */
-  it("leaves the consumer with exactly one alepha", () => {
-    expect(copiesOf("alepha", PROJECT_DIR)).toHaveLength(1);
+  it("installs no alepha beside it", () => {
+    expect(copiesOf("alepha", PROJECT_DIR)).toHaveLength(0);
   });
 });
