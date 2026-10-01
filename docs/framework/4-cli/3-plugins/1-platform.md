@@ -58,6 +58,7 @@ Common flags accepted by most subcommands:
 | Option         | Type     | Default             | Description                                                                                            |
 | -------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------ |
 | `name`         | `string` | `package.json` name | The **app** name: one workspace is one app. Used as the prefix of every resource name.                 |
+| `project`      | `string` | -                   | The project the app belongs to. Set, it goes in front of the app name: `<project>-<app>-<env>`.        |
 | `default`      | `string` | `"production"`      | Default environment when `--env` is omitted.                                                           |
 | `secrets`      | `object` | -                   | The secret key set override (`keys`), and an external store - see [the secrets command](#secrets-1).   |
 | `environments` | `Record` | -                   | Named environments, each the result of an adapter factory: `cloudflare(...)`, `bay(...)`, `lore(...)`. |
@@ -138,10 +139,11 @@ Variables handled by platform bindings or build config (`DATABASE_URL`, `R2_BUCK
 All cloud resources follow a deterministic naming convention:
 
 ```txt
-<project>-<env>
+<app>-<env>
+<project>-<app>-<env>   (with platform({ project }))
 ```
 
-For a project named `acme` deployed to `production`:
+For an app named `acme` deployed to `production`:
 
 | Resource     | Name              |
 | ------------ | ----------------- |
@@ -152,6 +154,10 @@ For a project named `acme` deployed to `production`:
 | Queue        | `acme-production` |
 
 Names are slugified - lowercase, alphanumeric and dashes, max 63 characters.
+
+When several apps share one Cloudflare account, `project` keeps their names apart. With `platform({ project: "alepha", name: "docs" })`, the Worker is `alepha-docs-production`. It only prefixes names; nothing else reads it.
+
+⚠️ Adding or removing `project` renames every resource of the app. The next `up` provisions fresh ones under the new names, an empty database included, and leaves the old ones in place. Read `alepha platform plan` before the first `up` after the change.
 
 ## Commands
 

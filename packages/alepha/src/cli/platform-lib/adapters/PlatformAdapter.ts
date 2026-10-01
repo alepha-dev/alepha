@@ -60,7 +60,8 @@ export interface DetectedResources {
  */
 export interface PlatformContext<TOptions = unknown> {
   /**
-   * Slugified app name (`platform().name`, else the workspace package.json).
+   * The slugified resource prefix: the app name (`platform().name`, else the
+   * workspace package.json), behind `platform().project` when one is set.
    */
   project: string;
 

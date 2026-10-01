@@ -85,6 +85,36 @@ describe("PlatformInspector", () => {
     expect(config.project).toBe("my-custom-name");
   });
 
+  test("puts the project in front of the app name", async ({ expect }) => {
+    const { inspector, fs } = createTestEnv({
+      project: "Alepha",
+      environments: {
+        production: cloudflare(),
+      },
+    });
+
+    await fs.writeFile(
+      "/project/package.json",
+      JSON.stringify({ name: "@alepha/docs" }),
+    );
+
+    const config = await inspector.resolveConfig("/project");
+    expect(config.project).toBe("alepha-alepha-docs");
+  });
+
+  test("puts the project in front of a configured name", async ({ expect }) => {
+    const { inspector } = createTestEnv({
+      project: "alepha",
+      name: "shop",
+      environments: {
+        production: cloudflare(),
+      },
+    });
+
+    const config = await inspector.resolveConfig("/project");
+    expect(config.project).toBe("alepha-shop");
+  });
+
   test("resolves default env to production", async ({ expect }) => {
     const { inspector, fs } = createTestEnv({
       environments: {
