@@ -1,0 +1,178 @@
+/**
+ * `saas` adds `## Identity`: the structure table below states there are no
+ * variants, which stops being true the moment the preset puts a `Realm.ts`
+ * next to `index.ts` and mounts three routers that declare pages no file in
+ * `src/web/` mentions. An agent working from the unqualified table looks for
+ * the admin console in `AppRouter.ts`, does not find it, and writes a second
+ * one.
+ */
+export const agentMd = (opts: { saas?: boolean } = {}): string => {
+  const saas = opts.saas
+    ? `
+## Identity
+
+This project uses the \`saas\` preset, so three routers from \`@alepha/ui\` are
+registered in \`src/web/index.ts\` and mount pages of their own:
+
+| Route        | Router          | Source                 |
+| ------------ | --------------- | ---------------------- |
+| \`/auth/*\`    | \`AuthRouter\`    | \`@alepha/ui/auth\`      |
+| \`/account/*\` | \`AccountRouter\` | \`@alepha/ui/account\`   |
+| \`/admin/*\`   | \`AdminRouter\`   | \`@alepha/ui/admin\`     |
+
+**These pages are not in \`src/web/\`.** Don't write your own login or admin
+screen - extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page
+to the existing nav in one call (take \`order\` 100-999 in your own \`nav.group\`).
+
+\`/admin\` and \`/account\` are both **root shells** with their own sidebar and
+topbar; \`/account\`'s menu carries "Back to site". Never put
+\`AccountRouter.layout\` in your own layout's \`children\`: each shell mounts its
+own \`Toaster\`, so every toast would show twice. Chrome (\`brand\`,
+\`homeRouteName\`, \`extraNav\`, \`hide\`, page props) goes through
+\`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
+\`alepha.set(...)\` from **both** \`main.server.ts\` and \`main.browser.ts\`. An
+account page frames itself with \`AccountPage\` (\`variant="table"\` or
+\`"form"\`).
+
+\`src/api/Realm.ts\` is the switchboard for all of it:
+
+- \`settings.adminEmails\` — the first registration matching one of these is
+  promoted to admin. It reads \`ADMIN_EMAIL\`; init wrote your \`git config
+user.email\` into \`.env\`, so registering with that address locally makes you
+  admin. Every deployed environment must set its own \`ADMIN_EMAIL\`, and one
+  that does not promotes nobody.
+- \`features\` — \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
+  \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
+  on registers its module _and_ makes its admin/account screens appear.
+- \`verifyEmailRequired\` / \`verifyPhoneRequired\` / \`resetPasswordAllowed\`
+  each need \`features.notifications\`, because each completes by sending a
+  code. Setting one without it refuses to boot rather than running with the
+  setting quietly ignored.
+
+Pages hide themselves when the action behind them is missing from
+\`/api/_links\`, so a missing nav entry means the module is not mounted, not
+that the page is broken.
+`
+    : "";
+
+  return (
+    `# AGENTS.md
+
+This is an **Alepha** project.
+
+## Structure
+
+Every Alepha project has the same layout. There are no variants — put new
+code where this table says it goes. Directories marked \`(create)\` are not
+scaffolded, because there is nothing to put in them yet; create them under
+that exact name when you write the first file.
+
+\`\`\`
+src/
+├── api/                  # Backend
+│   ├── controllers/      # $action endpoints
+│   ├── services/         # Business logic            (create)
+│   ├── entities/         # $entity definitions       (create)
+│   ├── schemas/          # Request/response schemas${
+      opts.saas
+        ? `
+│   ├── Realm.ts          # $realm — auth settings & features`
+        : ""
+    }
+│   └── index.ts          # ApiModule ($module)
+├── web/                  # Frontend (React, SSR)
+│   ├── components/       # React components
+│   ├── AppRouter.ts      # $page routes
+│   └── index.ts          # WebModule ($module)
+├── main.server.ts        # Server entry
+├── main.browser.ts       # Browser entry
+└── main.css              # Tailwind entry
+\`\`\`
+
+\`src/api/\` and \`src/web/\` each have an \`index.ts\` exporting the \`$module\`
+that groups everything below it — register new services there. The
+subdirectories are plain folders; they have no \`index.ts\` of their own.
+
+Tailwind is already wired up through \`vite.config.ts\` — style with utility
+classes, don't add another CSS framework. The scaffolded home page renders
+\`GettingStarted\` from the framework and carries no classes of its own, so
+there is no house style to match: the first component you write sets it.
+
+\`vite.config.ts\` also holds the Vitest config, under \`test\`. Don't add a
+\`vitest.config.ts\`: one file keeps plugins and path aliases identical between
+the build and the tests.
+
+## Environment
+
+\`.env.example\` is the committed list of variables; \`.env\` is gitignored.
+\`alepha dev\` creates \`.env\` from the example on its first run when there is
+none, as on a fresh clone, and never overwrites one: put your local values there.
+
+\`APP_SECRET\` is not optional in production once the app signs anything
+(sessions, tokens, signed cookies): it refuses to start without it, because the
+built-in default is public and would let anyone forge authentication tokens.
+Generate one with \`openssl rand -hex 32\`.
+
+## Rules
+
+- Always check \`node_modules/alepha/src/\` before suggesting npm packages
+- Use \`z\` from Alepha for schemas (\`import { z } from "alepha"\`), never \`zod\` directly
+- Use \`protected\` instead of \`private\` for class members
+- Import with file extensions: \`import { User } from "./User.ts"\`
+
+## Commands
+
+\`\`\`bash
+alepha lint              # Format and lint
+alepha typecheck         # Type checking
+alepha test              # Run tests
+alepha build             # Build
+alepha platform plan     # Show planned cloud topology (requires platform plugin)
+alepha platform up       # Provision + deploy to a configured environment
+alepha platform status   # Inspect deployed resources
+\`\`\`
+${saas}
+## Testing
+
+- Specs live in \`test/\`, named \`*.spec.ts\`.
+- Run with \`alepha test\` (Vitest, embedded in alepha — nothing to install).
+- \`test/dummy.spec.ts\` is the starting example; \`Alepha.create()\` is the
+  entry point and \`.inject(...)\` resolves providers.
+
+## Cloud deployment (Cloudflare Workers)
+
+Add the \`platform\` plugin to \`alepha.config.ts\` to manage cloud
+provisioning, deploy, secrets, and DB migrations end-to-end:
+
+\`\`\`ts
+import { defineConfig } from "alepha/cli/config";
+import { cloudflare, platform } from "alepha/cli/platform";
+
+export default defineConfig({
+  plugins: [
+    platform({
+      environments: {
+        production: cloudflare({
+          domain: "yourapp.com",
+          // jurisdiction: "eu",       // optional: EU data residency
+        }),
+      },
+    }),
+  ],
+});
+\`\`\`
+
+Then: \`alepha platform up --env production\` (auth via \`wrangler login\` on first run).
+
+Supported adapters: \`cloudflare\`, \`bay\`. The Cloudflare adapter provisions
+D1 (or Hyperdrive when \`DATABASE_URL\` is postgres), KV, R2, Queues, and pushes
+secrets via \`wrangler secret bulk\`. Set \`build.target: "cloudflare"\` in
+\`alepha.config.ts\` if you only want the build artifact without the orchestrator.
+
+## Documentation
+
+- Framework source: \`node_modules/alepha/src/\`
+- Docs: https://alepha.dev/llms.txt
+`.trim() + "\n"
+  );
+};

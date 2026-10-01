@@ -1,0 +1,597 @@
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  createPrimitive,
+  KIND,
+  Primitive,
+} from "alepha";
+import {
+  DateTimeProvider,
+  type Duration,
+  type DurationLike,
+} from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import type { ServerRequest } from "alepha/server";
+import type { JSONWebKeySet, JWTPayload } from "jose";
+
+import { SecurityError } from "../errors/SecurityError.ts";
+import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
+import { JwtProvider, type SigningConfig } from "../providers/JwtProvider.ts";
+import { SecurityProvider } from "../providers/SecurityProvider.ts";
+import type { Role } from "../schemas/roleSchema.ts";
+import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
+
+/**
+ * Create a new issuer.
+ *
+ * An issuer is responsible for creating and verifying JWT tokens.
+ * It can be internal (with a secret) or external (with a JWKS).
+ */
+export const $issuer = (options: IssuerPrimitiveOptions): IssuerPrimitive => {
+  return createPrimitive(IssuerPrimitive, options);
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type IssuerPrimitiveOptions = {
+  /**
+   * Define the issuer name.
+   * If not provided, it will use the property key.
+   */
+  name?: string;
+
+  /**
+   * Short description about the issuer.
+   */
+  description?: string;
+
+  /**
+   * All roles available in the issuer. Role is a string (role name) or a Role object (embedded role).
+   */
+  roles?: Array<string | Role>;
+
+  /**
+   * Issuer settings.
+   */
+  settings?: IssuerSettings;
+
+  /**
+   * Parse the JWT payload to create a user account info.
+   */
+  profile?: (jwtPayload: Record<string, any>) => UserAccount;
+
+  /**
+   * Custom resolvers (in addition to default JWT resolver).
+   */
+  resolvers?: IssuerResolver[];
+
+  /**
+   * Asymmetric signing config. When set, this issuer's tokens are signed with
+   * the given alg + kid and its public keys are published via JWKS. When
+   * omitted, the HS256 `secret` path is used (default, backward compatible).
+   */
+  signing?: SigningConfig;
+
+  /**
+   * Answer every lookup that names no realm.
+   *
+   * Only meaningful once an application declares more than one realm. Until
+   * then the single realm is the answer to a realm-less question and there is
+   * nothing to declare; from two realms on, a realm-less lookup is refused
+   * unless exactly one of them carries this flag.
+   *
+   * It used to be positional - `realms[0]`, so the order of FIELDS in a class
+   * decided which realm every realm-less lookup resolved against, which
+   * nothing declared and nothing checked.
+   */
+  default?: boolean;
+} & (IssuerInternal | IssuerExternal);
+
+export interface IssuerSettings {
+  accessToken?: {
+    /**
+     * Lifetime of the access token.
+     * @default 15 minutes
+     */
+    expiration?: DurationLike;
+  };
+
+  refreshToken?: {
+    /**
+     * Lifetime of the refresh token.
+     * @default 30 days
+     */
+    expiration?: DurationLike;
+
+    /**
+     * Idle invalidation is enforced by session-backed realms via
+     * `realmAuthSettings.refreshToken.expirationIdle` (in `alepha/api/users`).
+     * Token-only refresh (no `onRefreshSession`) does not support idle
+     * invalidation — it has no stateful row to track `lastUsedAt`.
+     */
+  };
+
+  onCreateSession?: (
+    user: UserAccount,
+    config: {
+      expiresIn: number;
+      /**
+       * OAuth client id, when the session is being created for an OAuth
+       * 2.1 authorization-code grant. Lets the session store record which
+       * MCP client / app the session belongs to.
+       */
+      clientId?: string;
+      /**
+       * The scope ids an OAuth grant was given. Store them beside `clientId`
+       * and hand them back from `onRefreshSession`, or a refreshed token
+       * loses the grant's narrowing.
+       */
+      scopes?: string[];
+    },
+  ) => Promise<{
+    refreshToken: string;
+    sessionId?: string;
+  }>;
+
+  /**
+   * Exchange a refresh token for the CURRENT user, re-read from your store.
+   *
+   * Strongly recommended. Without it the realm falls back to token-only
+   * refresh, which rebuilds the user from the *expired* access token and
+   * therefore re-issues whatever roles that token carried: a revoked or
+   * demoted user keeps their old privileges until the refresh token itself
+   * expires (30 days by default). Token-only mode also cannot support idle
+   * invalidation, since there is no row to track `lastUsedAt` on.
+   *
+   * Provide this whenever roles can change during a session — i.e. almost
+   * always. `alepha/api/users` wires it for you via `$realm`.
+   */
+  onRefreshSession?: (refreshToken: string) => Promise<{
+    user: UserAccount;
+    expiresIn: number;
+    sessionId?: string;
+    /**
+     * OAuth client the session was minted for, when it came from an
+     * authorization-code grant (the `clientId` handed to `onCreateSession`).
+     * The OAuth token endpoint requires the refreshing client to match it, so
+     * one client cannot refresh another's session. A store that does not
+     * record it leaves the session unrefreshable at `/oauth/token`.
+     */
+    clientId?: string;
+    /**
+     * The scope ids the session's OAuth grant was given (the `scopes` handed
+     * to `onCreateSession`), resolved by {@link resolveScopePermissions} into
+     * the refreshed token's permission scope.
+     */
+    scopes?: string[];
+  }>;
+
+  onDeleteSession?: (refreshToken: string) => Promise<void>;
+
+  /**
+   * Turn an OAuth grant's scope ids into the permission list its access
+   * tokens are limited to, or `undefined` when the grant stays unrestricted.
+   *
+   * Called each time a token is minted for a grant, on creation and on every
+   * refresh, so a changed declaration applies at the next refresh. The
+   * security module cannot know what an application's scopes reach, so the
+   * application hands it this; `$realm` wires it from `oauthOptions.scopes`.
+   * Without it, a grant's scopes narrow nothing.
+   */
+  resolveScopePermissions?: (scopes: string[]) => string[] | undefined;
+}
+
+export type IssuerInternal = {
+  /**
+   * Internal secret to sign JWT tokens and verify them.
+   */
+  secret: string;
+};
+
+export interface IssuerExternal {
+  /**
+   * URL to the JWKS (JSON Web Key Set) to verify JWT tokens from external providers.
+   */
+  jwks: (() => string) | JSONWebKeySet;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly securityProvider = $inject(SecurityProvider);
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly jwt = $inject(JwtProvider);
+  protected readonly log = $logger();
+
+  public get name(): string {
+    return this.options.name || this.config.propertyKey;
+  }
+
+  public get accessTokenExpiration(): Duration {
+    return this.dateTimeProvider.duration(
+      this.options.settings?.accessToken?.expiration ?? [15, "minutes"],
+    );
+  }
+
+  public get refreshTokenExpiration(): Duration {
+    return this.dateTimeProvider.duration(
+      this.options.settings?.refreshToken?.expiration ?? [30, "days"],
+    );
+  }
+
+  protected onInit() {
+    // A name is resolved AFTER the realm exists, not here.
+    //
+    // `getRoles()` scopes its lookup to this realm, and this realm is created
+    // three lines below - so the lookup was empty by construction and
+    // `roles: ["admin"]` could only ever throw "Role 'admin' not found". The
+    // name is handed to the provider instead, which resolves it against every
+    // declared role and, if the matching `$role` has not been declared yet,
+    // waits for it. Unresolved names fail the boot at `ready`.
+    const named: string[] = [];
+    const roles: Role[] = [];
+
+    for (const it of this.options.roles ?? []) {
+      if (typeof it === "string") {
+        named.push(it);
+      } else {
+        roles.push(it);
+      }
+    }
+
+    this.securityProvider.createRealm({
+      name: this.name,
+      profile: this.options.profile,
+      secret: "jwks" in this.options ? this.options.jwks : this.options.secret,
+      signing: this.options.signing,
+      default: this.options.default,
+      roles,
+      resolvers: [],
+    });
+
+    for (const name of named) {
+      this.securityProvider.referenceRole(this.name, name);
+    }
+
+    // Register custom resolvers first (they usually have lower priority)
+    for (const resolver of this.options.resolvers ?? []) {
+      this.registerResolver(resolver);
+    }
+
+    // Register default JWT resolver (priority 100)
+    this.registerResolver(this.createJwtResolver());
+  }
+
+  /**
+   * Creates the default JWT resolver.
+   */
+  protected createJwtResolver(): IssuerResolver {
+    return {
+      priority: 100,
+      onRequest: async (req: ServerRequest) => {
+        const auth = req.headers.authorization;
+        if (!auth?.startsWith("Bearer ")) {
+          return null;
+        }
+
+        const token = auth.slice(7);
+
+        // Check if it looks like a JWT (has dots)
+        if (!token.includes(".")) {
+          return null;
+        }
+
+        // Parse and validate JWT
+        const { result } = await this.jwt.parse(token, this.name);
+
+        // Only an access token authenticates. Authorization codes, refresh
+        // tokens and id_tokens are signed with this same key and would
+        // otherwise pass straight through.
+        if (!this.jwt.isAccessToken(this.name, result.protectedHeader)) {
+          return null;
+        }
+
+        // Anti-replay: a token minted by realm B must not authenticate on
+        // realm A. Every realm signs with the same key by default, so the
+        // signature alone decides nothing.
+        if (!this.jwt.matchesRealmAudience(this.name, result.payload)) {
+          return null;
+        }
+
+        // Extract user info from JWT payload
+        return this.securityProvider.createUserFromPayload(
+          result.payload,
+          this.name,
+        );
+      },
+    };
+  }
+
+  /**
+   * Register a resolver to this issuer.
+   * Resolvers are sorted by priority (lower = first).
+   */
+  public registerResolver(resolver: IssuerResolver): void {
+    this.securityProvider.registerResolver(resolver, this.name);
+  }
+
+  /**
+   * Get all roles in the issuer.
+   */
+  public getRoles(): Role[] {
+    return this.securityProvider.getRoles(this.name);
+  }
+
+  /**
+   * Set all roles in the issuer.
+   */
+  public async setRoles(roles: Role[]): Promise<void> {
+    await this.securityProvider.updateRealm(this.name, roles);
+  }
+
+  /**
+   * Get a role by name, throws an error if not found.
+   */
+  public getRoleByName(name: string): Role {
+    const role = this.getRoles().find((it) => it.name === name);
+    if (!role) {
+      throw new SecurityError(`Role '${name}' not found`);
+    }
+    return role;
+  }
+
+  public async parseToken(token: string): Promise<JWTPayload> {
+    const { result } = await this.jwt.parse(token, this.name);
+    return result.payload;
+  }
+
+  /**
+   * Create a token for the subject.
+   */
+  public async createToken(
+    user: UserAccount,
+    refreshToken?: {
+      sid?: string;
+      refresh_token?: string;
+      refresh_token_expires_in?: number;
+    },
+    context?: {
+      /**
+       * OAuth client the token is issued to. Tags a freshly created session
+       * with it (the `onCreateSession` path), and is signed into the access
+       * token as its `client_id` claim on every path, creation and refresh.
+       */
+      clientId?: string;
+      /**
+       * The scope ids of the OAuth grant the token is issued for. Stored on a
+       * freshly created session, and resolved through
+       * `settings.resolveScopePermissions` into the token's
+       * `permission_scope` claim.
+       */
+      scopes?: string[];
+    },
+  ): Promise<AccessTokenResponse> {
+    let sid: string | undefined = refreshToken?.sid;
+    let refresh_token: string | undefined = refreshToken?.refresh_token;
+    let refresh_token_expires_in: number | undefined =
+      refreshToken?.refresh_token_expires_in;
+
+    const iat = this.dateTimeProvider.now().unix();
+    const exp = iat + this.accessTokenExpiration.asSeconds();
+
+    if (!refreshToken) {
+      const create = this.options.settings?.onCreateSession;
+      if (create) {
+        // -----------------------------------------------------------------------------------------------------------------
+        // managed by the application
+        const expiresIn = this.refreshTokenExpiration.asSeconds();
+        const { refreshToken, sessionId } = await create(user, {
+          expiresIn,
+          clientId: context?.clientId,
+          scopes: context?.scopes,
+        });
+
+        refresh_token = refreshToken;
+        refresh_token_expires_in = expiresIn;
+        sid = sessionId;
+      } else {
+        // -----------------------------------------------------------------------------------------------------------------
+        // token based
+
+        // The session id travels inside the refresh token: `refresh()` reads
+        // it back so the next access token keeps the same `sid` instead of
+        // minting a fresh one per refresh.
+        sid = crypto.randomUUID();
+        const payload = {
+          sub: user.id,
+          exp: iat + this.refreshTokenExpiration.asSeconds(),
+          iat,
+          aud: this.name,
+          sid,
+        };
+
+        this.log.trace("Creating refresh token", payload);
+
+        refresh_token_expires_in = this.refreshTokenExpiration.asSeconds();
+        refresh_token = await this.jwt.create(payload, this.name, {
+          header: {
+            typ: "refresh",
+          },
+        });
+      }
+    }
+
+    this.log.trace("Creating access token", {
+      sub: user.id,
+      exp,
+      iat,
+      aud: this.name,
+    });
+
+    // A token issued to an OAuth client says so, and keeps saying so: the
+    // claim is what makes a connected app's identity a machine credential
+    // rather than a session (see `SecureOptions.sessionOnly`). Read from the
+    // context on creation and on a session-backed refresh, and from the user
+    // itself when it was rebuilt from such a token, so re-minting an OAuth
+    // identity can never launder it into a session.
+    const clientId =
+      context?.clientId ??
+      (user.credential?.type === "oauth"
+        ? user.credential.clientId
+        : undefined);
+
+    // What the token may do, when an OAuth grant narrows it. Resolved from the
+    // grant's scope ids at every mint; failing that, a user rebuilt from a
+    // narrowed token (the token-only refresh) keeps its narrowing, so
+    // re-minting never widens a credential.
+    const permissionScope =
+      context?.scopes !== undefined
+        ? this.options.settings?.resolveScopePermissions?.(context.scopes)
+        : user.permissionScope;
+
+    // Resilient display name: compose from first/last when the caller didn't
+    // provide one (credentials users register with first+last but no `name`),
+    // and carry the OIDC given/family claims so consumers can re-derive it —
+    // otherwise such users surface as "Anonymous User".
+    const composedName =
+      user.name ??
+      ([user.firstName, user.lastName]
+        .filter((s): s is string => !!s?.trim())
+        .join(" ")
+        .trim() ||
+        undefined);
+
+    const access_token = await this.jwt.create(
+      {
+        // jwt
+        sub: user.id,
+        exp,
+        iat,
+        aud: this.name,
+        sid, // session id, if available
+        // oidc
+        name: composedName,
+        given_name: user.firstName,
+        family_name: user.lastName,
+        email: user.email,
+        preferred_username: user.username,
+        picture: user.picture,
+        // our claims
+        roles: user.roles,
+        client_id: clientId,
+        permission_scope: permissionScope,
+      },
+      this.name,
+      // Marks this JWT as the only kind that may be presented as a Bearer.
+      { header: { typ: this.jwt.accessTokenTyp } },
+    );
+
+    const response: AccessTokenResponse = {
+      access_token,
+      token_type: "Bearer",
+      expires_in: this.accessTokenExpiration.asSeconds(),
+      issued_at: iat,
+      refresh_token,
+      refresh_token_expires_in,
+    };
+
+    return response;
+  }
+
+  public async refreshToken(
+    refreshToken: string,
+    accessToken?: string,
+  ): Promise<{
+    tokens: AccessTokenResponse;
+    user: UserAccount;
+    /**
+     * OAuth client the refreshed session belongs to, when the store records
+     * one. Always undefined on the token-only path, which has no session row.
+     */
+    clientId?: string;
+  }> {
+    // -----------------------------------------------------------------------------------------------------------------
+    // session based
+
+    if (this.options.settings?.onRefreshSession) {
+      // get user and expiration from the session
+      const { user, expiresIn, sessionId, clientId, scopes } =
+        await this.options.settings.onRefreshSession(refreshToken);
+
+      // then, create a new access token. The client comes back from the
+      // session row: without it, the first refresh of a connected app's token
+      // would mint one without its `client_id` claim, which is to say a
+      // session. Both refresh routes (`/oauth/token` and `/_auth/refresh`)
+      // end here, which is why the claim is set here and not in either.
+      const tokens = await this.createToken(
+        user,
+        {
+          sid: sessionId,
+          refresh_token: refreshToken,
+          refresh_token_expires_in: expiresIn,
+        },
+        { clientId, scopes },
+      );
+
+      return { user, tokens, clientId };
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // token based
+
+    if (!accessToken) {
+      throw new AlephaError("An access token is required for refreshing");
+    }
+
+    // Extract user from an expired token.
+    // WARNING: Roles from the expired token are reused without re-validation.
+    // If roles were revoked, the new access token will still contain old roles
+    // until the refresh token expires. Use session-based refresh (onRefreshSession)
+    // to re-fetch current roles from the database on each refresh.
+    const user = await this.securityProvider.createUserFromToken(accessToken, {
+      realm: this.name,
+      verify: {
+        currentDate: new Date(0), // don't verify expiration, it's expected to be expired...
+      },
+    });
+
+    // check if the refresh token is valid + match access token user
+    const {
+      result: { payload },
+    } = await this.jwt.parse(refreshToken, this.name, {
+      typ: "refresh",
+      audience: this.name,
+      subject: user.id,
+    });
+
+    const iat = this.dateTimeProvider.now().unix();
+    const expiresIn = payload.exp
+      ? payload.exp - iat
+      : this.refreshTokenExpiration.asSeconds();
+
+    return {
+      user,
+      tokens: await this.createToken(user, {
+        sid: payload.sid,
+        refresh_token: refreshToken,
+        refresh_token_expires_in: expiresIn,
+      }),
+    };
+  }
+}
+
+$issuer[KIND] = IssuerPrimitive;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface AccessTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  issued_at: number;
+  refresh_token?: string;
+  refresh_token_expires_in?: number;
+  scope?: string;
+}

@@ -1,0 +1,306 @@
+import { Alepha } from "alepha";
+import { AlephaCache } from "alepha/cache";
+import { $action, AlephaServer, type ServerRequest } from "alepha/server";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  AlephaServerRateLimit,
+  rateLimitOptions,
+  ServerRateLimitProvider,
+} from "../index.ts";
+
+describe("ServerRateLimitProvider", () => {
+  let alepha: Alepha;
+  let provider: ServerRateLimitProvider;
+
+  beforeEach(async () => {
+    alepha = Alepha.create().with(AlephaCache);
+    provider = alepha.inject(ServerRateLimitProvider);
+    await alepha.start();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  const createMockRequest = (ip: string = "127.0.0.1"): ServerRequest =>
+    ({
+      ip,
+      headers: {},
+      method: "GET",
+      url: "/test",
+      path: "/test",
+      query: {},
+      params: {},
+      body: undefined,
+    }) as any;
+
+  it("does not throttle routes just because the module is registered", async () => {
+    const app = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaCache)
+      .with(AlephaServerRateLimit);
+
+    class HelloApp {
+      hello = $action({ path: "/hello", handler: () => "ok" });
+    }
+    app.inject(HelloApp);
+    await app.start();
+
+    const { ServerProvider } = await import("alepha/server");
+    const hostname = app.inject(ServerProvider).hostname;
+
+    // No rate limit was configured anywhere — merely importing the module
+    // must not silently cap the app at the (former) 100 req / 15 min
+    // fallback.
+    let lastStatus = 0;
+    for (let i = 0; i < 105; i++) {
+      const resp = await fetch(`${hostname}/api/hello`);
+      lastStatus = resp.status;
+      await resp.arrayBuffer();
+    }
+    expect(lastStatus).toBe(200);
+
+    await app.stop();
+  });
+
+  it("should allow requests within limit", async () => {
+    const req = createMockRequest();
+    const result = await provider.checkLimit(req, { max: 5, windowMs: 60000 });
+
+    expect(result.allowed).toBe(true);
+    expect(result.limit).toBe(5);
+    expect(result.remaining).toBe(4);
+  });
+
+  it("should block requests exceeding limit", async () => {
+    const req = createMockRequest();
+    const options = { max: 2, windowMs: 60000 };
+
+    // First request should be allowed
+    const result1 = await provider.checkLimit(req, options);
+    expect(result1.allowed).toBe(true);
+    expect(result1.remaining).toBe(1);
+
+    // Second request should be allowed
+    const result2 = await provider.checkLimit(req, options);
+    expect(result2.allowed).toBe(true);
+    expect(result2.remaining).toBe(0);
+
+    // Third request should be blocked
+    const result3 = await provider.checkLimit(req, options);
+    expect(result3.allowed).toBe(false);
+    expect(result3.remaining).toBe(0);
+    expect(result3.retryAfter).toBeGreaterThan(0);
+  });
+
+  it("should handle different IPs separately", async () => {
+    const req1 = createMockRequest("192.168.1.1");
+    const req2 = createMockRequest("192.168.1.2");
+    const options = { max: 1, windowMs: 60000 };
+
+    // Both requests should be allowed as they come from different IPs
+    const result1 = await provider.checkLimit(req1, options);
+    const result2 = await provider.checkLimit(req2, options);
+
+    expect(result1.allowed).toBe(true);
+    expect(result2.allowed).toBe(true);
+  });
+
+  it("should use req.ip for rate limiting (trust proxy handled by ServerRequestParser)", async () => {
+    const options = { max: 1, windowMs: 60000 };
+
+    // Rate limit uses req.ip which is resolved by ServerRequestParser
+    // Trust proxy configuration is at server level via TRUST_PROXY env var
+    const req1 = createMockRequest("192.168.1.100");
+    const result1 = await provider.checkLimit(req1, options);
+    expect(result1.allowed).toBe(true);
+
+    // Same IP should be blocked
+    const req2 = createMockRequest("192.168.1.100");
+    const result2 = await provider.checkLimit(req2, options);
+    expect(result2.allowed).toBe(false);
+  });
+
+  it("should handle truly concurrent requests atomically", async () => {
+    const options = { max: 3, windowMs: 60000 };
+
+    // Fire 5 requests concurrently from the same IP
+    const requests = Array.from({ length: 5 }, () =>
+      createMockRequest("10.0.0.1"),
+    );
+    const results = await Promise.all(
+      requests.map((req) => provider.checkLimit(req, options)),
+    );
+
+    // Exactly 3 should be allowed, 2 should be blocked
+    const allowed = results.filter((r) => r.allowed).length;
+    const blocked = results.filter((r) => !r.allowed).length;
+
+    expect(allowed).toBe(3);
+    expect(blocked).toBe(2);
+  });
+
+  it("should return correct resetTime within the fixed window", async () => {
+    const windowMs = 60000;
+    const options = { max: 10, windowMs };
+    const req = createMockRequest();
+
+    const result = await provider.checkLimit(req, options);
+
+    // resetTime should be at the end of the current window
+    const now = Date.now();
+    const windowStart = Math.floor(now / windowMs) * windowMs;
+    const expectedResetTime = windowStart + windowMs;
+
+    expect(result.resetTime).toBe(expectedResetTime);
+  });
+});
+
+describe("ServerRateLimitProvider Module Integration", () => {
+  let alepha: Alepha;
+  let provider: ServerRateLimitProvider;
+
+  class TestApp {
+    test = $action({
+      handler: () => "success",
+    });
+  }
+
+  beforeEach(async () => {
+    alepha = Alepha.create()
+      .with(AlephaCache)
+      .with(AlephaServer)
+      .with(AlephaServerRateLimit)
+      .with(TestApp);
+    provider = alepha.inject(ServerRateLimitProvider);
+    await alepha.start();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  it("should integrate with Alepha framework successfully", async () => {
+    expect(provider).toBeDefined();
+    expect(provider).toBeInstanceOf(ServerRateLimitProvider);
+    expect(typeof provider.checkLimit).toBe("function");
+  });
+
+  it("should work with real action requests", async () => {
+    // Configure rate limit for testing
+    alepha.store.mut(rateLimitOptions, () => ({
+      max: 10,
+      windowMs: 60000,
+    }));
+
+    const app = alepha.inject(TestApp);
+
+    // First request should succeed
+    const result = await app.test.run({});
+    expect(result).toBe("success");
+
+    // Multiple requests should still work within limit
+    for (let i = 0; i < 5; i++) {
+      const result = await app.test.run({});
+      expect(result).toBe("success");
+    }
+  });
+});
+
+describe("Nested run() invocations", () => {
+  let alepha: Alepha;
+
+  /**
+   * The `/api/_batch` and SSR-loader shape: an action carrying its own
+   * `rateLimit`, reached through `run()` rather than over the wire. It has no
+   * socket of its own, so the address has to come from the HTTP request that
+   * is paying for the work.
+   */
+  class BatchApp {
+    hits = 0;
+
+    limited = $action({
+      path: "/limited",
+      rateLimit: { max: 2, windowMs: 60_000 },
+      handler: () => {
+        this.hits++;
+        return "ok";
+      },
+    });
+
+    limitedFour = $action({
+      path: "/limited-four",
+      rateLimit: { max: 4, windowMs: 60_000 },
+      handler: () => {
+        this.hits++;
+        return "ok";
+      },
+    });
+  }
+
+  beforeEach(async () => {
+    alepha = Alepha.create()
+      .with(AlephaCache)
+      .with(AlephaServer)
+      .with(AlephaServerRateLimit)
+      .with(BatchApp);
+    await alepha.start();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  /**
+   * One HTTP request from `ip`, batching `times` nested calls, the way
+   * `ServerLinksProvider.batch` does.
+   */
+  const batchOf = (
+    pick: (app: BatchApp) => { run: () => Promise<any> },
+    ip: string,
+    times: number,
+  ): Promise<Array<string | number>> =>
+    alepha.context.run(async () => {
+      alepha.set("alepha.http.request", { ip, headers: {} } as any);
+
+      const action = pick(alepha.inject(BatchApp));
+      const outcomes: Array<string | number> = [];
+      for (let i = 0; i < times; i++) {
+        outcomes.push(
+          await action.run().catch((error: any) => error.status ?? -1),
+        );
+      }
+      return outcomes;
+    });
+
+  const batchAs = (ip: string, times: number) =>
+    batchOf((app) => app.limited, ip, times);
+
+  const batchAs4 = (ip: string, times: number) =>
+    batchOf((app) => app.limitedFour, ip, times);
+
+  it("spends the caller's own bucket, not one shared by everybody", async () => {
+    // Before the fix the synthetic request had no `ip`, so every nested call
+    // from every client in the world keyed on `ip:unknown` - the second
+    // client here would have started already exhausted.
+    expect(await batchAs("10.0.0.1", 3)).toEqual(["ok", "ok", 429]);
+    expect(await batchAs("10.0.0.2", 3)).toEqual(["ok", "ok", 429]);
+  });
+
+  it("counts one token per nested call, not one per batch", async () => {
+    const app = alepha.inject(BatchApp);
+
+    // Four tokens each. Three go on the first batch...
+    expect(await batchAs4("10.0.0.3", 3)).toEqual(["ok", "ok", "ok"]);
+    expect(app.hits).toBe(3);
+
+    // ...another client's batch of three is served in full, because it is
+    // drawing on its own bucket...
+    expect(await batchAs4("10.0.0.4", 3)).toEqual(["ok", "ok", "ok"]);
+
+    // ...and the first client has exactly one token left, so a batch of two
+    // is half served. One token per call, one bucket per address.
+    expect(await batchAs4("10.0.0.3", 2)).toEqual(["ok", 429]);
+  });
+});

@@ -1,0 +1,1402 @@
+import { Alepha, AlephaError } from "alepha";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
+import type { BuildTaskContext } from "../tasks/BuildTask.ts";
+
+/**
+ * Exposes the protected binding enhancers so the wrangler.jsonc shape can be
+ * asserted directly without driving a full build.
+ */
+class TestBuildCloudflareTask extends BuildCloudflareTask {
+  public testEnhanceD1 = this.enhanceD1.bind(this);
+  public testEnhanceR2 = this.enhanceR2.bind(this);
+  public testEnhanceQueue = this.enhanceQueue.bind(this);
+  public testEnhanceAnalyticsEngine = this.enhanceAnalyticsEngine.bind(this);
+  public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
+  public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
+  public testGenerateCloudflare = this.generateCloudflare.bind(this);
+  public testEnhanceCron = this.enhanceCron.bind(this);
+  public testEnhanceDomain = this.enhanceDomain.bind(this);
+  public testEnhanceEmail = this.enhanceEmail.bind(this);
+  public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
+
+  /**
+   * Collected instead of logged, so a warning can be asserted on rather
+   * than read by a human who happens to be watching the build.
+   */
+  public warnings: string[] = [];
+  protected override warn(message: string): void {
+    this.warnings.push(message);
+  }
+
+  public setHasWebSocket(value: boolean): void {
+    this.hasWebSocket = value;
+  }
+
+  public setWebsocketPaths(paths: string[]): void {
+    this.websocketPaths = paths;
+  }
+}
+
+describe("BuildCloudflareTask", () => {
+  const createTask = () => {
+    const alepha = Alepha.create().with({
+      provide: FileSystemProvider,
+      use: MemoryFileSystemProvider,
+    });
+    return alepha.inject(TestBuildCloudflareTask);
+  };
+
+  const createTaskWithFs = () => {
+    const alepha = Alepha.create().with({
+      provide: FileSystemProvider,
+      use: MemoryFileSystemProvider,
+    });
+    return {
+      task: alepha.inject(TestBuildCloudflareTask),
+      fs: alepha.inject(MemoryFileSystemProvider),
+    };
+  };
+
+  /**
+   * A context with NO `env` bag, so the enhancers read `process.env` - which
+   * is what `alepha build` on a laptop does and what every case below sets up.
+   *
+   * The bag itself is #288's: a Lore deploy passes one so two deploys sharing
+   * an isolate cannot trade each other's values. `the explicit environment`
+   * below is where that path is exercised.
+   */
+  const ambient = () => ({}) as BuildTaskContext;
+
+  // Snapshot + restore the env vars these enhancers read so tests don't leak.
+  const ENV_KEYS = [
+    "DATABASE_URL",
+    "R2_BUCKET_NAME",
+    "CLOUDFLARE_JURISDICTION",
+    "CLOUDFLARE_QUEUE_NAME",
+    "CLOUDFLARE_QUEUE_DLQ_NAME",
+    "CLOUDFLARE_QUEUE_MAX_RETRIES",
+    "CLOUDFLARE_ANALYTICS_DATASET",
+    "CLOUDFLARE_EMAIL_EVENTS_QUEUE",
+    "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME",
+    "CLOUDFLARE_DOMAIN",
+  ] as const;
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const k of ENV_KEYS) saved[k] = process.env[k];
+  });
+  afterEach(() => {
+    for (const k of ENV_KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  /**
+   * `workers_dev` is what decides whether a Worker answers on
+   * `<script>.<subdomain>.workers.dev`, and `putSubdomain` returns early on
+   * `workersDev === undefined` - so an ABSENT key is not a default, it is the
+   * setting never being sent. That is what left a deploy with no domain
+   * unreachable and unexplained (#Q2132).
+   */
+  describe("enhanceDomain", () => {
+    it("turns the workers.dev host on when there is no domain", () => {
+      delete process.env.CLOUDFLARE_DOMAIN;
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceDomain(ambient(), wrangler);
+
+      expect(wrangler.workers_dev).toBe(true);
+      // No domain means no route of any kind, which is unchanged.
+      expect(wrangler.routes).toBeUndefined();
+    });
+
+    it("turns it off when a domain IS set, rather than leaving it absent", () => {
+      // ⚠️ Sent as `false`, not omitted, for the same reason the crons array
+      // is sent when empty: an app that has just gained a custom domain must
+      // STOP answering on the workers.dev host it used to be reachable at,
+      // and Cloudflare only stops if it is told to.
+      process.env.CLOUDFLARE_DOMAIN = "api.example.com";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceDomain(ambient(), wrangler);
+
+      expect(wrangler.workers_dev).toBe(false);
+      expect(wrangler.routes).toEqual([
+        { pattern: "api.example.com", custom_domain: true },
+      ]);
+    });
+
+    it("refuses a wildcard domain rather than writing a Custom Domain Cloudflare rejects", () => {
+      // The zone Route that once served `*.club.alepha.dev` is gone (#Q2482):
+      // a Custom Domain is the only binding, and it cannot be a wildcard.
+      process.env.CLOUDFLARE_DOMAIN = "*.club.alepha.dev";
+
+      const wrangler: Record<string, any> = {};
+      expect(() => createTask().testEnhanceDomain(ambient(), wrangler)).toThrow(
+        /wildcard/,
+      );
+      expect(wrangler.routes).toBeUndefined();
+    });
+  });
+
+  describe("enhanceD1", () => {
+    it("does not emit `jurisdiction` on the D1 binding (wrangler rejects it)", () => {
+      // D1 jurisdiction is applied at database-creation time, not on the
+      // binding — wrangler warns on the unexpected field. See CloudflareApi.
+      process.env.DATABASE_URL = "d1://my-db:db-id-123";
+      process.env.CLOUDFLARE_JURISDICTION = "eu";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceD1(ambient(), wrangler);
+
+      expect(wrangler.d1_databases).toEqual([
+        { binding: "DB", database_name: "my-db", database_id: "db-id-123" },
+      ]);
+      expect(wrangler.d1_databases[0]).not.toHaveProperty("jurisdiction");
+      expect(wrangler.vars.DATABASE_URL).toBe("d1://DB");
+    });
+
+    it("ignores non-d1 DATABASE_URL", () => {
+      process.env.DATABASE_URL = "postgres://localhost/db";
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceD1(ambient(), wrangler);
+      expect(wrangler.d1_databases).toBeUndefined();
+    });
+  });
+
+  describe("enhanceR2", () => {
+    it("keeps `jurisdiction` on the R2 binding (wrangler accepts it)", () => {
+      process.env.R2_BUCKET_NAME = "my-bucket";
+      process.env.CLOUDFLARE_JURISDICTION = "eu";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceR2(ambient(), wrangler);
+
+      expect(wrangler.r2_buckets).toEqual([
+        { binding: "my-bucket", bucket_name: "my-bucket", jurisdiction: "eu" },
+      ]);
+    });
+  });
+
+  describe("enhanceAnalyticsEngine", () => {
+    it("emits the dataset binding with no id to pair it with", () => {
+      process.env.CLOUDFLARE_ANALYTICS_DATASET = "sigil_analytics";
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceAnalyticsEngine(ambient(), wrangler);
+
+      // Unlike KV and D1, there is no id: Cloudflare provisions the dataset on
+      // the first data point, so there is nothing to reference beforehand.
+      expect(wrangler.analytics_engine_datasets).toEqual([
+        { binding: "ANALYTICS", dataset: "sigil_analytics" },
+      ]);
+    });
+
+    it("emits nothing at all when no dataset is configured", () => {
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceAnalyticsEngine(ambient(), wrangler);
+
+      // Absent, not `[]`: an empty array is a key wrangler then validates, and
+      // every app that does not use Analytics Engine would carry it.
+      expect(wrangler.analytics_engine_datasets).toBeUndefined();
+    });
+
+    it("appends to a user-declared dataset list rather than replacing it", () => {
+      process.env.CLOUDFLARE_ANALYTICS_DATASET = "sigil_analytics";
+      const wrangler: Record<string, any> = {
+        analytics_engine_datasets: [{ binding: "OTHER", dataset: "other" }],
+      };
+      createTask().testEnhanceAnalyticsEngine(ambient(), wrangler);
+
+      // The user's `cloudflare.config` is spread in before the enhancers run,
+      // so a hand-written binding is already present here and must survive.
+      expect(wrangler.analytics_engine_datasets).toHaveLength(2);
+      expect(wrangler.analytics_engine_datasets[1].binding).toBe("ANALYTICS");
+    });
+  });
+
+  describe("enhanceQueue", () => {
+    /**
+     * The worker's queue handler calls `msg.retry()` on any throw. Without a
+     * `dead_letter_queue`, CF burns its retries and then DISCARDS the message —
+     * a poison job disappears with no record and no signal.
+     */
+    it("gives the consumer a dead-letter queue and a retry ceiling", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues.consumers).toEqual([
+        {
+          queue: "my-queue",
+          dead_letter_queue: "my-queue-dlq",
+          max_retries: 3,
+          max_batch_size: 1,
+        },
+      ]);
+    });
+
+    it("honours an explicit dead-letter queue and retry ceiling", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+      process.env.CLOUDFLARE_QUEUE_DLQ_NAME = "shared-dlq";
+      process.env.CLOUDFLARE_QUEUE_MAX_RETRIES = "5";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues.consumers[0]).toEqual({
+        queue: "my-queue",
+        dead_letter_queue: "shared-dlq",
+        max_retries: 5,
+        max_batch_size: 1,
+      });
+    });
+
+    /**
+     * Cloudflare holds a consumer's messages until 10 have arrived or 5
+     * seconds have passed. A job is one message, so every `$job.push()` sat
+     * out the whole window before its handler started: a Lore deploy waited
+     * 8-10s to begin where it had waited ~1.5s in direct mode. A batch of one
+     * is full the moment it lands.
+     */
+    it("delivers a job the moment it lands, not after a 5-second batch window", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues.consumers[0].max_batch_size).toBe(1);
+    });
+
+    it("ignores a non-numeric retry ceiling rather than emitting NaN", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+      process.env.CLOUDFLARE_QUEUE_MAX_RETRIES = "not-a-number";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues.consumers[0].max_retries).toBe(3);
+    });
+
+    /**
+     * Bounce and complaint ingestion consumes a queue Cloudflare fills, not
+     * one this app produces to. It therefore needs a consumer entry and no
+     * producer binding, and must not be gated on the job queue existing: an
+     * app running jobs in direct mode still wants its delivery events.
+     */
+    it("adds an email-events consumer with no producer binding", () => {
+      process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE = "email-events";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues.consumers).toEqual([
+        {
+          queue: "email-events",
+          dead_letter_queue: "email-events-dlq",
+          max_retries: 3,
+        },
+      ]);
+      expect(wrangler.queues.producers).toBeUndefined();
+    });
+
+    it("declares both consumers when the app also has a job queue", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+      process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE = "email-events";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(
+        wrangler.queues.consumers.map((c: { queue: string }) => c.queue).sort(),
+      ).toEqual(["email-events", "my-queue"]);
+      // Still exactly one producer: the app writes to its job queue only.
+      expect(wrangler.queues.producers).toHaveLength(1);
+    });
+
+    it("adds nothing when neither queue is configured", () => {
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues).toBeUndefined();
+    });
+  });
+
+  describe("enhanceDurableObjects", () => {
+    it("emits the DO binding + sqlite migration when websocket is present", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceDurableObjects(ambient(), wrangler);
+
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+    });
+
+    it("no-ops when websocket is absent", () => {
+      const task = createTask();
+      task.setHasWebSocket(false);
+
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceDurableObjects(ambient(), wrangler);
+
+      expect(wrangler.durable_objects).toBeUndefined();
+      expect(wrangler.migrations).toBeUndefined();
+    });
+
+    /**
+     * `ctx.options.cloudflare.config` is spread into the wrangler BEFORE the
+     * enhancers run, so a user-supplied `migrations` array is already present
+     * here. Blindly pushing `{ tag: "v1" }` on top of it produced either a
+     * duplicate tag (wrangler error) or a duplicated class declaration.
+     */
+    it("skips the migration when a user migration already declares the DO class", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {
+        migrations: [
+          { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+        ],
+      };
+      task.testEnhanceDurableObjects(ambient(), wrangler);
+
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+      // The binding itself is still required.
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+    });
+
+    it("picks the first free tag when user migrations already occupy v1", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {
+        migrations: [{ tag: "v1", new_classes: ["MyOwnDurableObject"] }],
+      };
+      task.testEnhanceDurableObjects(ambient(), wrangler);
+
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_classes: ["MyOwnDurableObject"] },
+        { tag: "v2", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+    });
+
+    it("does not double the DO binding when the user config already declares it", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {
+        durable_objects: {
+          bindings: [
+            {
+              name: "ALEPHA_WEBSOCKET",
+              class_name: "AlephaWebSocketDurableObject",
+            },
+          ],
+        },
+      };
+      task.testEnhanceDurableObjects(ambient(), wrangler);
+
+      expect(wrangler.durable_objects.bindings).toHaveLength(1);
+    });
+  });
+
+  describe("writeWorkerEntryPoint", () => {
+    const ENTRY = "/root/dist/main.cloudflare.js";
+
+    /**
+     * A single CF isolate serves concurrent invocations. Stashing the
+     * per-invocation `executionCtx.waitUntil` on the shared Alepha store means
+     * request B overwrites request A's, and A's background work then calls B's
+     * (already-returned) context — "waitUntil after response" — silently
+     * killing it. The handle must ride the per-invocation async context.
+     */
+    it("does not stash waitUntil on the shared global store", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testWriteWorkerEntryPoint("/root", "dist");
+
+      expect(
+        fs.wasWrittenMatching(
+          ENTRY,
+          /__alepha\.set\(\s*["']cloudflare\.waitUntil["']/,
+        ),
+      ).toBe(false);
+    });
+
+    it("scopes waitUntil to each invocation's async context", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testWriteWorkerEntryPoint("/root", "dist");
+
+      // Every entry point (fetch / scheduled / queue) must run its body inside
+      // an Alepha fork seeded with that invocation's waitUntil.
+      expect(fs.wasWrittenMatching(ENTRY, /__alepha\.context\.run\(/)).toBe(
+        true,
+      );
+    });
+
+    describe("d1 bookmark carrier", () => {
+      /**
+       * A queue or cron invocation has no cookie to carry a bookmark, and a
+       * session left `first-unconstrained` may read a replica that has not
+       * seen a row written moments before: a job claimed off the queue found
+       * nothing and its message was acked (#Q2478). Both handlers start their
+       * session on the primary.
+       */
+      it("starts queue and cron invocations on the primary", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /const readOnPrimary = \(\) => \{\s*__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.bookmark["'],\s*["']first-primary["']/,
+          ),
+        ).toBe(true);
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /scheduled: async[\s\S]*?withExecutionContext\(executionCtx, \(\) => \{\s*readOnPrimary\(\);/,
+          ),
+        ).toBe(true);
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /queue: async[\s\S]*?withExecutionContext\(executionCtx, \(\) => \{\s*readOnPrimary\(\);/,
+          ),
+        ).toBe(true);
+      });
+
+      it("reads the incoming bookmark into the request's async context", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.bookmark["']/,
+          ),
+        ).toBe(true);
+      });
+
+      it("reads the session off a holder, not out of the store", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const source = fs.getFileContent(ENTRY) ?? "";
+
+        // `store.set` writes to the innermost async layer, and the handler
+        // runs several layers below the entry point, so the session it opens
+        // cannot be read back from here. Verified against a real deploy: the
+        // store read returned nothing and the cookie was never set, while
+        // every unit test stayed green.
+        expect(source).toMatch(/const d1Carrier = \{\}/);
+        expect(source).toMatch(
+          /__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.carrier["']/,
+        );
+        expect(source).toMatch(/d1Carrier\.session\.getBookmark\(\)/);
+        expect(source).not.toMatch(
+          /__alepha\.get\(\s*["']alepha\.orm\.d1\.session["']\s*\)/,
+        );
+      });
+
+      it("decides cacheability before attaching the cookie", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        // `isEdgeCacheable` refuses any response carrying a `set-cookie`, so
+        // attaching the bookmark first would switch the edge cache off for
+        // every response the moment an app enabled sessions.
+        const source = fs.getFileContent(ENTRY) ?? "";
+
+        expect(source.indexOf("const cacheable =")).toBeLessThan(
+          source.indexOf("writeBookmarkCookie(ctx.res"),
+        );
+      });
+
+      it("appends the cookie rather than replacing the header", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        // `set` would drop any auth cookie already on the response and sign
+        // the user out.
+        expect(
+          fs.wasWrittenMatching(ENTRY, /headers\.append\(\s*"set-cookie"/),
+        ).toBe(true);
+      });
+    });
+
+    describe("d1 session anchor", () => {
+      /**
+       * Lifts the generated `d1AnchorFor` out of the emitted worker, with the
+       * cookie reader it calls, so these assert where a request's session
+       * starts rather than how it is spelled.
+       */
+      const loadAnchor = async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("const D1_BOOKMARK_COOKIE");
+        const end = source.indexOf("// `append`, not `set`");
+        // Same technique as the edge cache policy below.
+        // oxlint-disable-next-line typescript/no-implied-eval
+        return new Function(
+          `${source.slice(start, end)}; return d1AnchorFor;`,
+        )() as (request: Request) => string | undefined;
+      };
+
+      const COOKIE = { cookie: "alepha_d1_bookmark=bm-42" };
+
+      it("opens a write request on the primary, even with a bookmark", async () => {
+        const d1AnchorFor = await loadAnchor();
+        for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+          expect(
+            d1AnchorFor(
+              new Request("https://x.test/api/quests/1", {
+                method,
+                headers: COOKIE,
+              }),
+            ),
+          ).toBe("first-primary");
+        }
+        expect(
+          d1AnchorFor(new Request("https://x.test/mcp", { method: "POST" })),
+        ).toBe("first-primary");
+      });
+
+      it("keeps the incoming bookmark for a GET and for POST /api/_batch", async () => {
+        const d1AnchorFor = await loadAnchor();
+        expect(
+          d1AnchorFor(
+            new Request("https://x.test/api/quests", { headers: COOKIE }),
+          ),
+        ).toBe("bm-42");
+        expect(
+          d1AnchorFor(
+            new Request("https://x.test/api/_batch", {
+              method: "POST",
+              headers: COOKIE,
+            }),
+          ),
+        ).toBe("bm-42");
+      });
+
+      it("leaves a GET with no cookie unconstrained", async () => {
+        const d1AnchorFor = await loadAnchor();
+        // No anchor: the provider then opens `first-unconstrained`.
+        expect(
+          d1AnchorFor(new Request("https://x.test/api/quests")),
+        ).toBeUndefined();
+      });
+    });
+
+    describe("edge cache", () => {
+      /**
+       * Lifts the generated `isEdgeCacheable` predicate out of the emitted
+       * worker and makes it callable, so these assert what the policy DOES
+       * rather than how it is spelled. It is the only thing standing between
+       * a shared, URL-keyed cache and a per-user response.
+       */
+      const loadPolicy = async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("const isEdgeCacheable");
+        const end = source.indexOf("export default");
+        // The point of the test: compile the `isEdgeCacheable` helper out of the
+        // worker entry point this task generates, and run it against real requests.
+        // oxlint-disable-next-line typescript/no-implied-eval
+        return new Function(
+          `${source.slice(start, end)}; return isEdgeCacheable;`,
+        )() as (request: Request, response?: Response) => boolean;
+      };
+
+      const req = (headers: Record<string, string> = {}, method = "GET") =>
+        new Request("https://x.test/api/public/files/abc", { method, headers });
+
+      const res = (headers: Record<string, string>, status = 200) =>
+        new Response("bytes", { status, headers });
+
+      const PUBLIC = { "cache-control": "public, max-age=31536000, immutable" };
+
+      it("caches a public, anonymous, 200 GET", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        expect(isEdgeCacheable(req(), res(PUBLIC))).toBe(true);
+      });
+
+      it("refuses a response the caller's identity could have shaped", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        // A shared entry is keyed by URL alone, so a credentialed request must
+        // stay out however loudly the route opts in.
+        expect(
+          isEdgeCacheable(req({ authorization: "Bearer t" }), res(PUBLIC)),
+        ).toBe(false);
+        expect(isEdgeCacheable(req({ cookie: "sid=1" }), res(PUBLIC))).toBe(
+          false,
+        );
+        expect(
+          isEdgeCacheable(req(), res({ ...PUBLIC, "set-cookie": "sid=1" })),
+        ).toBe(false);
+      });
+
+      it("refuses anything the route did not declare public", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        expect(
+          isEdgeCacheable(req(), res({ "cache-control": "private, no-cache" })),
+        ).toBe(false);
+        expect(isEdgeCacheable(req(), res({}))).toBe(false);
+        expect(
+          isEdgeCacheable(req(), res({ "cache-control": "public, no-store" })),
+        ).toBe(false);
+      });
+
+      it("refuses non-GET and non-200", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        expect(isEdgeCacheable(req({}, "POST"), res(PUBLIC))).toBe(false);
+        expect(isEdgeCacheable(req(), res(PUBLIC, 404))).toBe(false);
+        expect(isEdgeCacheable(req(), res(PUBLIC, 206))).toBe(false);
+        expect(isEdgeCacheable(req(), undefined)).toBe(false);
+      });
+
+      it("looks the cache up before booting the container", async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+
+        // The whole point: a hit that still paid for __alepha.start() would
+        // leave the expensive half of a cold request exactly where it was.
+        expect(source.indexOf("cache.match(request)")).toBeLessThan(
+          source.indexOf("await __alepha.start()"),
+        );
+      });
+    });
+
+    describe("queue handler", () => {
+      interface FakeMessage {
+        body: string;
+        ack: () => void;
+        retry: () => void;
+      }
+
+      /**
+       * Lifts the generated `queue` handler out of the emitted worker and
+       * runs it against stand-ins for the four things it closes over, so
+       * these assert how a batch is PROCESSED rather than how the loop is
+       * spelled.
+       */
+      const runBatch = async (
+        messages: FakeMessage[],
+        emit: (name: string, body: string) => Promise<void>,
+      ) => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("queue: async");
+        const end = source.lastIndexOf("};");
+        const handler = source
+          .slice(start + "queue:".length, end)
+          .trim()
+          .replace(/,$/, "");
+        // The point of the test: compile the `queue` handler out of the worker
+        // entry point this task generates, and run it against a real batch.
+        // oxlint-disable-next-line typescript/no-implied-eval
+        const queue = new Function(
+          "__alepha",
+          "bindEnv",
+          "withExecutionContext",
+          "readOnPrimary",
+          `return ${handler};`,
+        )(
+          { start: async () => {}, log: { error: () => {} }, events: { emit } },
+          () => {},
+          (_ctx: unknown, fn: () => Promise<void>) => fn(),
+          () => {},
+        ) as (batch: { messages: FakeMessage[] }) => Promise<void>;
+        await queue({ messages });
+      };
+
+      const message = (body: string, outcomes: string[]): FakeMessage => ({
+        body,
+        ack: () => outcomes.push(`ack ${body}`),
+        retry: () => outcomes.push(`retry ${body}`),
+      });
+
+      /**
+       * One awaited message after another meant the second job of a batch
+       * waited for the whole of the first. On Lore that was a ui deploy
+       * queued behind a 30-second docs deploy - up to 43s - while the deploy
+       * concurrency limit of 2 never came into play.
+       */
+      it("runs every message of a batch at once, so one job never waits on another", async () => {
+        const log: string[] = [];
+
+        await runBatch(
+          [message("a", []), message("b", [])],
+          async (_, body) => {
+            log.push(`start ${body}`);
+            await Promise.resolve();
+            log.push(`end ${body}`);
+          },
+        );
+
+        expect(log).toEqual(["start a", "start b", "end a", "end b"]);
+      });
+
+      it("retries a message that throws and still acks the rest of the batch", async () => {
+        const outcomes: string[] = [];
+
+        await runBatch(
+          [
+            message("a", outcomes),
+            message("b", outcomes),
+            message("c", outcomes),
+          ],
+          async (_, body) => {
+            if (body === "b") {
+              throw new AlephaError("poison");
+            }
+          },
+        );
+
+        expect(outcomes.sort()).toEqual(["ack a", "ack c", "retry b"]);
+      });
+    });
+
+    describe("websocket routing", () => {
+      it("re-exports the DO class and adds an upgrade branch when websocket is present", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.workerd\.js"/,
+          ),
+        ).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /idFromName/)).toBe(true);
+        // The registered channel path must be baked into the routing guard.
+        expect(fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat"\]/)).toBe(true);
+        // The endpoint's options object is handed to the provider's `admit`
+        // whole: `getEndpoint` returns `WebSocketPrimitiveOptions` directly,
+        // so there is no `.options` wrapper to reach through, and the entry
+        // reads neither `secure` nor `authorize` itself.
+        expect(
+          fs.wasWrittenMatching(ENTRY, /wsProvider\.admit\(endpoint,/),
+        ).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /endpoint\.options\.secure/)).toBe(
+          false,
+        );
+      });
+
+      /**
+       * An endpoint's `authorize` hook names the room the credential owns,
+       * and the entry must forward THAT room to the Durable Object, ahead of
+       * the `?roomId=` the client asked for. Otherwise a signed-in user could
+       * open somebody else's room and receive its messages before anything
+       * post-accept could refuse them.
+       */
+      it("takes the room from the admission before the URL, and answers 503 when admission fails", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/estates"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const content = fs.getFileContent(ENTRY) ?? "";
+        const admitIndex = content.indexOf("wsProvider.admit(endpoint,");
+        const admittedRoomIndex = content.indexOf("admission.roomId ||");
+        const urlRoomIndex = content.indexOf('url.searchParams.get("roomId")');
+        const forwardIndex = content.indexOf(
+          'forward.headers.set("x-alepha-ws-room", roomId)',
+        );
+
+        expect(admitIndex).toBeGreaterThan(-1);
+        expect(admittedRoomIndex).toBeGreaterThan(admitIndex);
+        expect(urlRoomIndex).toBeGreaterThan(admittedRoomIndex);
+        expect(forwardIndex).toBeGreaterThan(urlRoomIndex);
+        expect(content).toContain(
+          'new Response("Unauthorized", { status: 401 })',
+        );
+        expect(content).toContain(
+          'new Response("Service Unavailable", { status: 503 })',
+        );
+      });
+
+      /**
+       * A `$room` registers on the provider's room registry, not the
+       * `$websocket` endpoint registry — `getEndpoint(path)` returns
+       * `undefined` for a room-only path, which silently skipped the 401
+       * check and let anonymous sockets into a `$room({ secure: true })`.
+       */
+      it("falls back to the room endpoint for the secure-401 check", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/world"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /wsProvider\.getEndpoint\(url\.pathname\) \?\?\s*wsProvider\.getRoomEndpoint\(url\.pathname\)/,
+          ),
+        ).toBe(true);
+      });
+
+      it("strips any client-forged x-alepha-ws-user header before trusting it", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const content = fs.getFileContent(ENTRY) ?? "";
+        const deleteIndex = content.indexOf(
+          'forward.headers.delete("x-alepha-ws-user")',
+        );
+        const setIndex = content.indexOf(
+          'if (userId) forward.headers.set("x-alepha-ws-user"',
+        );
+
+        // A forged inbound `x-alepha-ws-user` header must be deleted before
+        // the trusted value is conditionally set — otherwise an anonymous
+        // client on a non-secure endpoint could forge its identity.
+        expect(deleteIndex).toBeGreaterThan(-1);
+        expect(setIndex).toBeGreaterThan(-1);
+        expect(deleteIndex).toBeLessThan(setIndex);
+      });
+
+      it("omits the DO export and upgrade branch when websocket is absent", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(false);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(ENTRY, /AlephaWebSocketDurableObject/),
+        ).toBe(false);
+        expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(false);
+      });
+    });
+  });
+
+  describe("generateCloudflare (manifest/prebuilt mode)", () => {
+    /**
+     * In `--prebuilt`/manifest mode there is no live Alepha to probe, so
+     * `websocketPaths` must come from `ctx.manifest` instead — otherwise the
+     * emitted worker's `wsPaths` routing guard stays empty and WebSocket
+     * upgrades silently fail to route even though the DO binding and
+     * migration are still emitted (see FIX 3).
+     */
+    it("resolves websocketPaths from ctx.manifest so the emitted worker's routing guard is populated", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      const ctx = {
+        root: "/root",
+        options: {},
+        manifest: {
+          project: "my-app",
+          runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: true,
+          },
+          crons: [],
+          secrets: [],
+          variables: [],
+          cloudflare: { websocketPaths: ["/ws/chat"] },
+        },
+      } as any;
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      expect(
+        fs.wasWrittenMatching(
+          "/root/dist/main.cloudflare.js",
+          /\["\/ws\/chat"\]/,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  /**
+   * A prebuilt deploy (Lore Deploy) has no app to probe, so the `send_email`
+   * binding comes from the manifest's `cloudflare.email` (#Q2465). Without it
+   * the worker boots with email inert.
+   */
+  describe("enhanceEmail (manifest/prebuilt mode)", () => {
+    it("binds send_email from the manifest's cloudflare block", () => {
+      const task = createTask();
+      const wrangler: any = {};
+
+      task.testEnhanceEmail(
+        {
+          manifest: {
+            cloudflare: {
+              websocketPaths: [],
+              email: { binding: "SEND_EMAIL" },
+            },
+          },
+        } as any,
+        wrangler,
+      );
+
+      expect(wrangler.send_email).toEqual([{ name: "SEND_EMAIL" }]);
+    });
+
+    it("binds nothing when the manifest declares no email", () => {
+      const task = createTask();
+      const wrangler: any = {};
+
+      task.testEnhanceEmail(
+        { manifest: { cloudflare: { websocketPaths: [] } } } as any,
+        wrangler,
+      );
+
+      expect(wrangler.send_email).toBeUndefined();
+    });
+  });
+
+  describe("generateCloudflare (live probe)", () => {
+    const WRANGLER = "/root/dist/wrangler.jsonc";
+    const ENTRY = "/root/dist/main.cloudflare.js";
+
+    /**
+     * Minimal fake of the workspace's live `ctx.alepha`: `primitives` answers
+     * per primitive name; every `inject` the task makes (CronProvider, the CF
+     * email provider) is already wrapped in try/catch, so throwing is enough
+     * to mean "absent".
+     */
+    const fakeAlephaWith = (byName: Record<string, string[]>) =>
+      ({
+        primitives: (name: string) =>
+          (byName[name] ?? []).map((path) => ({
+            options: { channel: { options: { path } } },
+          })),
+        inject: () => {
+          throw new Error("not available in this fake");
+        },
+      }) as any;
+
+    const contextFor = (byName: Record<string, string[]>) =>
+      ({
+        root: "/root",
+        options: {},
+        manifest: undefined,
+        alepha: fakeAlephaWith(byName),
+      }) as any;
+
+    /**
+     * ⚠️ The reason the slices are namespaced at all (epic #E63).
+     *
+     * Under `no_bundle` these globs are what decides the upload, and a
+     * `--runtime node,workerd` build leaves BOTH slices in one `dist/`. The
+     * old `["index.js", "server/*.js"]` against such a build sweeps every Node
+     * chunk into the Worker: best case a Worker twice the size it needs, and
+     * likely case a Node chunk importing a node builtin and a deploy refused
+     * at validation, with nothing in the message pointing at a glob.
+     *
+     * Asserted as an exact list rather than "contains workerd", because the
+     * failure mode is an EXTRA entry, which a containment check cannot see.
+     */
+    it("scopes the module rules to the workerd slice and nothing else", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.rules).toEqual([
+        {
+          type: "ESModule",
+          globs: ["index.workerd.js", "server/workerd/*.js"],
+        },
+      ]);
+    });
+
+    // The same check from the other side: no glob may match a sibling slice's
+    // entry wrapper or its chunk directory.
+    it("uploads no node slice from a multi-slice build", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      const globs: string[] = wrangler.rules[0].globs;
+      for (const glob of globs) {
+        expect(glob).not.toBe("index.js");
+        expect(glob).not.toBe("index.node.js");
+        expect(glob).not.toBe("index.bun.js");
+        // A bare `server/*.js` is the exact shape that swept the Node chunks
+        // in: it matches nothing under `server/node/` only by accident of the
+        // build having produced one slice.
+        expect(glob).not.toBe("server/*.js");
+      }
+    });
+
+    // The worker entry imports the workerd wrapper by name. There is no
+    // `index.js` that works out its host, and importing any other slice would
+    // upload a bundle the Worker cannot run.
+    it("imports the workerd entry wrapper from the generated worker", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const entry = fs.getFileContent(ENTRY) ?? "";
+      expect(entry).toContain('import "./index.workerd.js"');
+      expect(entry).not.toContain('import "./index.js"');
+    });
+
+    /**
+     * The app declares `assets.run_worker_first` to keep the worker out of the
+     * static path. Replacing the whole `assets` block would drop `binding`
+     * with it, and `env.ASSETS` would vanish without a word.
+     */
+    it("merges the app's asset config over the defaults instead of replacing it", async () => {
+      const { task, fs } = createTaskWithFs();
+      await fs.mkdir("/root/dist/public", { recursive: true });
+
+      const ctx = contextFor({});
+      ctx.options = {
+        cloudflare: {
+          config: {
+            assets: {
+              run_worker_first: ["/api/*"],
+              not_found_handling: "404-page",
+            },
+          },
+        },
+      };
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.assets).toEqual({
+        directory: "./public",
+        binding: "ASSETS",
+        run_worker_first: ["/api/*"],
+        not_found_handling: "404-page",
+      });
+    });
+
+    /**
+     * Prebuilt deploys never load the workspace's `alepha.config.ts`, so the
+     * artifact has to remember what it declared. Without this, the build wrote
+     * a correct `wrangler.jsonc` and the deploy silently regenerated it with
+     * the defaults — no error, and the only symptom was in production.
+     */
+    it("recovers the app's cloudflare config from the manifest in prebuilt mode", async () => {
+      const { task, fs } = createTaskWithFs();
+      await fs.mkdir("/root/dist/public", { recursive: true });
+
+      const ctx = contextFor({});
+      // Prebuilt: CLI flags only, no workspace config.
+      ctx.options = {};
+      ctx.manifest = {
+        resources: { hasWebSocket: false },
+        crons: [],
+        cloudflare: {
+          websocketPaths: [],
+          config: { assets: { run_worker_first: ["/api/*"] } },
+        },
+      };
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.assets).toEqual({
+        directory: "./public",
+        binding: "ASSETS",
+        run_worker_first: ["/api/*"],
+      });
+    });
+
+    /**
+     * lindocara's shape: the realtime layer is `$room` only (no `$websocket`
+     * primitive at all). Without the union, the build emitted a worker with
+     * no upgrade branch, no DO binding and no DO class export.
+     */
+    it("wires a $room-only app exactly like a $websocket one", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testGenerateCloudflare(
+        contextFor({ $room: ["/ws/world", "/ws/party", "/ws/presence"] }),
+        "dist",
+      );
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+
+      expect(
+        fs.wasWrittenMatching(
+          ENTRY,
+          /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.workerd\.js"/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          ENTRY,
+          /\["\/ws\/world","\/ws\/party","\/ws\/presence"\]/,
+        ),
+      ).toBe(true);
+    });
+
+    it("dedups a channel path shared by a $websocket and a $room", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testGenerateCloudflare(
+        contextFor({ $websocket: ["/ws/chat"], $room: ["/ws/chat"] }),
+        "dist",
+      );
+
+      expect(fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat"\]/)).toBe(true);
+      expect(
+        fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat","\/ws\/chat"\]/),
+      ).toBe(false);
+    });
+  });
+
+  /**
+   * Three Cloudflare limits shape what `$job` can promise, and none of them
+   * is visible from the API or the config. These two are the ones a build
+   * can see coming.
+   */
+  describe("Cloudflare job budgets", () => {
+    const manifest = (over: Partial<Record<string, unknown>> = {}) =>
+      ({
+        project: "my-app",
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: true,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+        cloudflare: { websocketPaths: [] },
+        ...over,
+      }) as any;
+
+    /**
+     * A build context whose live app registered these jobs. The budget
+     * warning reads the live app only: a prebuilt deploy has none, and the
+     * build that produced its artifact already warned (#Q2465).
+     */
+    const liveJobs = (jobs: Array<{ name: string; timeoutMs?: number }>) =>
+      ({
+        manifest: null,
+        alepha: {
+          inject: (name: string) => {
+            if (name === "JobProvider") {
+              return {
+                getRegisteredJobs: () =>
+                  new Map(
+                    jobs.map((job) => [
+                      job.name,
+                      { options: { timeout: job.timeoutMs } },
+                    ]),
+                  ),
+              };
+            }
+            if (name === "DateTimeProvider") {
+              return { duration: (value: number) => ({ as: () => value }) };
+            }
+            throw new AlephaError(`${name} is not in this fake`);
+          },
+        },
+      }) as any;
+
+    it("emits every cron expression and warns at no count", () => {
+      const task = createTask();
+      const wrangler: any = {};
+
+      task.testEnhanceCron(
+        {
+          manifest: manifest({
+            crons: [
+              "*/15 * * * *",
+              "0 * * * *",
+              "0 0 * * *",
+              "0 3 * * *",
+              "0 4 * * *",
+              "0 5 * * *",
+            ],
+          }),
+        } as any,
+        wrangler,
+      );
+
+      expect(wrangler.triggers.crons).toHaveLength(6);
+      // The build cannot know the account's plan, and the cap it used to
+      // guard is per ACCOUNT rather than per Worker, so no count is a
+      // warning here. This case is what keeps that warning from creeping
+      // back.
+      expect(task.warnings).toHaveLength(0);
+    });
+
+    it("warns about a timeout direct mode on Workers cannot honour", () => {
+      const task = createTask();
+      task.testWarnUnreachableTimeouts(
+        liveJobs([
+          { name: "reports:render", timeoutMs: 600_000 },
+          { name: "quick", timeoutMs: 5_000 },
+          { name: "untimed" },
+        ]),
+      );
+
+      expect(task.warnings).toHaveLength(1);
+      expect(task.warnings[0]).toMatch(/reports:render \(600s\)/);
+      // A timeout the budget already covers is honoured, so it is not named.
+      expect(task.warnings[0]).not.toMatch(/quick/);
+      // A job with no timeout at all is held to the same budget, so it IS
+      // named, in its own clause: see the test below for why the two cannot
+      // share one sentence.
+      expect(task.warnings[0]).toMatch(/untimed/);
+      // And it points at the fix rather than at lowering the timeout.
+      expect(task.warnings[0]).toMatch(/AlephaApiJobsQueue/);
+    });
+
+    /**
+     * The case the first version of this warning was blind to, and the one
+     * that actually reached production: Lore's `deploys.run` declared no
+     * `timeout`, so the filter never looked at it, and it was killed at the
+     * `waitUntil` budget while its own `DeployLimits` promised ten minutes.
+     */
+    it("warns about a job that declares no timeout at all", () => {
+      const task = createTask();
+      task.testWarnUnreachableTimeouts(liveJobs([{ name: "deploys.run" }]));
+
+      expect(task.warnings).toHaveLength(1);
+      expect(task.warnings[0]).toMatch(/deploys\.run/);
+      // Its consequence is the WORSE one, and the reason it gets a clause of
+      // its own: with no timeout to double, crash recovery falls back to the
+      // `runTimeout` config rather than to twice the declared timeout.
+      expect(task.warnings[0]).toMatch(/runTimeout/);
+      // Nothing declared a timeout here, so the other clause must stay out.
+      expect(task.warnings[0]).not.toMatch(/cannot be honoured/);
+      expect(task.warnings[0]).toMatch(/AlephaApiJobsQueue/);
+    });
+
+    it("says nothing about timeouts once a queue is bound", () => {
+      const task = createTask();
+      // Restored by the suite's own afterEach, alongside every other env var
+      // these enhancers read.
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
+      task.testWarnUnreachableTimeouts(
+        liveJobs([{ name: "slow", timeoutMs: 600_000 }]),
+      );
+      // A queue consumer gets 15 minutes of wall clock, so the declared
+      // timeout is reachable and there is nothing to say.
+      expect(task.warnings).toHaveLength(0);
+    });
+
+    it("says nothing about an untimed job once a queue is bound", () => {
+      const task = createTask();
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
+      task.testWarnUnreachableTimeouts(liveJobs([{ name: "deploys.run" }]));
+      // Same reason: off `waitUntil`, an undeclared timeout is not a cap.
+      expect(task.warnings).toHaveLength(0);
+    });
+
+    it("says nothing in a prebuilt deploy, which has no live app to read", () => {
+      const task = createTask();
+      task.testWarnUnreachableTimeouts({ manifest: manifest() } as any);
+      expect(task.warnings).toHaveLength(0);
+    });
+  });
+  /**
+   * #288: a deploy passes its environment ON THE CONTEXT.
+   *
+   * ⚠️ The alternative it replaces was `CloudflareAdapter.runBuildInProcess`
+   * setting each value on `process.env` for the duration of the call and
+   * restoring it after. That is fine in a CLI process and a race inside Lore's
+   * Worker, where two deploys share an isolate: the second call's save
+   * captures the FIRST call's values, so the first finishes by restoring the
+   * second's variables and the second builds against whatever was left.
+   * Nothing about that failure looks like a race.
+   */
+  describe("the explicit environment", () => {
+    it("reads the context's bag instead of the ambient one", ({ expect }) => {
+      process.env.DATABASE_URL = "d1://ambient-db:ambient-id";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceD1(
+        { env: { DATABASE_URL: "d1://deploy-db:deploy-id" } } as never,
+        wrangler,
+      );
+
+      expect(wrangler.d1_databases).toEqual([
+        { binding: "DB", database_name: "deploy-db", database_id: "deploy-id" },
+      ]);
+    });
+
+    it("does NOT fall through to the ambient one, key by key", ({ expect }) => {
+      // The property that makes it explicit. A bag that merged over
+      // `process.env` would let a deploy inherit the operator's own
+      // `DATABASE_URL` for a database it never provisioned - and the worker
+      // would come up bound to it.
+      process.env.DATABASE_URL = "d1://ambient-db:ambient-id";
+      process.env.R2_BUCKET_NAME = "ambient-bucket";
+
+      const wrangler: Record<string, any> = {};
+      const task = createTask();
+      task.testEnhanceD1({ env: { R2_BUCKET_NAME: "b" } } as never, wrangler);
+      task.testEnhanceR2({ env: {} } as never, wrangler);
+
+      expect(wrangler.d1_databases).toBeUndefined();
+      expect(wrangler.r2_buckets).toBeUndefined();
+    });
+
+    it("still reads the ambient one when no bag is given", ({ expect }) => {
+      // `alepha build --runtime=workerd` on a laptop, which is the other caller.
+      process.env.R2_BUCKET_NAME = "laptop-bucket";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceR2(ambient(), wrangler);
+
+      expect(wrangler.r2_buckets?.[0]?.bucket_name).toBe("laptop-bucket");
+    });
+  });
+});

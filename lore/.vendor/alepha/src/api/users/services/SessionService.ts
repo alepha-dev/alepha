@@ -1,0 +1,1076 @@
+import { randomInt } from "node:crypto";
+
+import { $inject, Alepha } from "alepha";
+import type { FileController } from "alepha/api/files";
+import { DatabaseCacheProvider } from "alepha/cache/database";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import {
+  CryptoProvider,
+  InvalidCredentialsError,
+  type UserAccount,
+} from "alepha/security";
+import { BadRequestError, UnauthorizedError } from "alepha/server";
+import type { OAuth2Profile } from "alepha/server/auth";
+import { $client } from "alepha/server/links";
+import { FileSystemProvider } from "alepha/system";
+
+import { SessionAudits } from "../audits/SessionAudits.ts";
+import { UserAudits } from "../audits/UserAudits.ts";
+import type { UserEntity } from "../entities/users.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
+import { UsernameSlugger } from "./UsernameSlugger.ts";
+import { UserService } from "./UserService.ts";
+
+export class SessionService {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly fsp = $inject(FileSystemProvider);
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly cryptoProvider = $inject(CryptoProvider);
+  protected readonly log = $logger();
+  protected readonly realmProvider = $inject(RealmProvider);
+  protected readonly fileController = $client<FileController>();
+  /**
+   * The login lockout counters, pinned to SQL rather than the app's default
+   * cache.
+   *
+   * The default is runtime-dependent: memory on Node, Cloudflare KV on
+   * workerd. Neither is acceptable here. Memory is per-process, so a counter
+   * written on one instance is invisible to the next request on another. KV is
+   * worse: it is bound as the workerd default whether or not the app ever
+   * provisioned a namespace, and when it wasn't it skips its own
+   * initialization and throws on every call — which is exactly how this
+   * lockout came to be silently disabled in production.
+   *
+   * SQL is the only backend that is present wherever this service is (it
+   * already owns the `users` table it is protecting) and strongly consistent
+   * on every runtime, D1 included.
+   */
+  protected readonly cacheProvider = $inject(DatabaseCacheProvider);
+  protected readonly usernameSlugger = $inject(UsernameSlugger);
+  protected readonly userService = $inject(UserService);
+
+  protected userAudits(realmName?: string) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(UserAudits)) {
+      return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected sessionAudits(realmName?: string) {
+    // Registered by every `$realm` whatever its features say; a realm
+    // registered straight through `RealmProvider` (tests) may not have it.
+    if (this.alepha.has(SessionAudits)) {
+      return this.alepha.inject(SessionAudits);
+    }
+    return undefined;
+  }
+
+  protected userNotifications(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.notifications) {
+      return this.alepha.inject(UserNotifications);
+    }
+    return undefined;
+  }
+
+  public users(userRealmName?: string) {
+    return this.realmProvider.userRepository(userRealmName);
+  }
+
+  public sessions(userRealmName?: string) {
+    return this.realmProvider.sessionRepository(userRealmName);
+  }
+
+  public identities(userRealmName?: string) {
+    return this.realmProvider.identityRepository(userRealmName);
+  }
+
+  /**
+   * Check if user should be auto-promoted to admin based on adminEmails/adminUsernames settings.
+   * If user matches and doesn't have admin role, promote them.
+   */
+  protected async ensureAdminRole(
+    user: {
+      id: string;
+      email?: string | null;
+      username?: string | null;
+      roles: string[];
+    },
+    userRealmName?: string,
+  ): Promise<boolean> {
+    if (user.roles.includes("admin")) return false;
+
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const { name } = realm;
+    const adminEmails = settings.adminEmails ?? [];
+    const adminUsernames = settings.adminUsernames ?? [];
+
+    const isAdminByEmail = user.email && adminEmails.includes(user.email);
+    const isAdminByUsername =
+      user.username && adminUsernames.includes(user.username);
+
+    if (!isAdminByEmail && !isAdminByUsername) return false;
+
+    // Promote to admin
+    user.roles = [...user.roles.filter((r) => r !== "admin"), "admin"];
+    await this.users(userRealmName).updateById(user.id, { roles: user.roles });
+
+    const reason = isAdminByEmail ? "adminEmails" : "adminUsernames";
+    this.log.info(`User auto-promoted to admin via ${reason} setting`, {
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      realm: name,
+    });
+
+    await this.userAudits(userRealmName)?.user.log("role_change", {
+      resourceType: "user",
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: name,
+      resourceId: user.id,
+      description: `User auto-promoted to admin via ${reason} setting`,
+      metadata: { addedRole: "admin", reason },
+    });
+
+    return true;
+  }
+
+  /**
+   * Generate a unique username from an OAuth profile.
+   *
+   * Routes through {@link UsernameSlugger}, which is the same code path as
+   * `username: "email"` registration. The OAuth profile's email is the
+   * primary signal; if absent (rare — most IDPs return one), we fall back
+   * to `profile.name`, then to a random handle. The slugger applies the
+   * realm's `usernameBlocklist` and retries on collision.
+   */
+  protected async generateUniqueUsername(
+    profile: OAuth2Profile,
+    realmName?: string,
+  ): Promise<string> {
+    const seed =
+      profile.email ??
+      profile.name ??
+      `user-${Math.random().toString(36).slice(2, 8)}`;
+    const base = this.usernameSlugger.slug(seed);
+    return this.usernameSlugger.pickAvailable(realmName, base);
+  }
+
+  /**
+   * Random delay to prevent timing attacks (50-200ms)
+   * Uses cryptographically secure random number generation
+   */
+  protected randomDelay(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, randomInt(50, 201)));
+  }
+
+  protected static readonly LOGIN_CACHE_NAME = "login-rate-limit";
+
+  /**
+   * Check if a login key is currently locked out.
+   * Read-only — does not increment the counter.
+   *
+   * **Fails closed.** A counter store that cannot be read cannot say an
+   * attacker is under the threshold, and answering "not locked" turns an
+   * outage into an open door — brute force with the rate limiter removed, for
+   * as long as the store is down and with nothing in the response to show it.
+   * Refusing instead costs legitimate users their logins, loudly, which is the
+   * failure someone will actually come and fix.
+   */
+  protected async isLoginLocked(key: string, max: number): Promise<boolean> {
+    try {
+      const count = await this.cacheProvider.getTyped<number>(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+      );
+      return count != null && count >= max;
+    } catch (error) {
+      this.log.error(
+        "Failed to check login rate limit, denying attempt",
+        error,
+      );
+      return true;
+    }
+  }
+
+  /**
+   * Record a failed login attempt.
+   *
+   * Returns `true` if this failure just crossed the lockout threshold.
+   *
+   * **Atomic, and a fixed window.** `incr` is one
+   * `INSERT ... ON CONFLICT DO UPDATE` against `cache_entries`, so concurrent
+   * attempts cannot interleave. The read-modify-write this replaces could:
+   * a hundred parallel attempts all read the same count and all wrote
+   * `count + 1`, moving the counter by one — the lockout was bypassable by
+   * anyone willing to send their guesses at once rather than in sequence.
+   *
+   * That read-modify-write bought a sliding window, because each write
+   * re-armed the TTL. `incr` stamps the expiry when the counter is created and
+   * never extends it, so the window is now fixed — and that is the better
+   * behaviour anyway: under a sliding window anyone who knows a username can
+   * hold that account locked forever by failing one login just inside every
+   * window. A fixed window bounds the lockout to `windowMs`.
+   *
+   * A write that fails is logged at `error` and swallowed: the attempt it
+   * belongs to is being rejected either way, and the return value only decides
+   * whether to raise the "just locked" audit and notification. The door it
+   * would otherwise leave open is closed by {@link isLoginLocked}, which
+   * denies when the same store cannot be read.
+   */
+  protected async recordFailedLogin(
+    key: string,
+    max: number,
+    windowMs: number,
+  ): Promise<boolean> {
+    try {
+      const count = await this.cacheProvider.incr(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+        1,
+        windowMs,
+      );
+      return count === max;
+    } catch (error) {
+      this.log.error("Failed to record failed login attempt", error);
+      return false;
+    }
+  }
+
+  /**
+   * Take one attempt from a login counter BEFORE the password is compared,
+   * and answer the counter's new value (#Q2529).
+   *
+   * Checking first and counting after a failure let a burst of parallel
+   * guesses all read the counter under the cap and each get a compare: the
+   * lockout overshot by the burst's width. Taking first means every compare
+   * holds a slot, and a guess past the cap is refused before it is checked.
+   * A success gives its slot back ({@link refundLoginAttempt}), so the
+   * counter still counts failures only.
+   *
+   * Fails closed, like {@link isLoginLocked}: a counter that cannot be
+   * written answers "past any cap", so an outage refuses logins rather than
+   * removing the limit.
+   */
+  protected async takeLoginAttempt(
+    key: string,
+    windowMs: number,
+  ): Promise<number> {
+    try {
+      return await this.cacheProvider.incr(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+        1,
+        windowMs,
+      );
+    } catch (error) {
+      this.log.error("Failed to take a login attempt, denying", error);
+      return Number.POSITIVE_INFINITY;
+    }
+  }
+
+  /**
+   * Give back the slot {@link takeLoginAttempt} took, for an attempt that
+   * succeeded or was never compared. Best effort: a refund that fails costs
+   * the user one slot of the window, never the limit.
+   */
+  protected async refundLoginAttempt(
+    key: string,
+    windowMs: number,
+  ): Promise<void> {
+    try {
+      await this.cacheProvider.incr(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+        -1,
+        windowMs,
+      );
+    } catch (error) {
+      this.log.warn("Failed to refund a login attempt", error);
+    }
+  }
+
+  /**
+   * Validate user credentials and return the user if valid.
+   */
+  public async login(
+    provider: string,
+    username: string,
+    password: string,
+    userRealmName?: string,
+  ): Promise<UserEntity> {
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const { name } = realm;
+    const { loginRateLimit } = settings;
+    const isEmail = username.includes("@");
+    // Phone numbers are E.164 (`users.phoneNumber` is `z.e164()`), so they
+    // start with "+". Matching any digit string here classified an all-digit
+    // username as a phone number, and that user could never log in.
+    const isPhone =
+      settings.phoneNumber !== "none" && /^\+[\d\s()-]+$/.test(username);
+    const isUsername = !isEmail && !isPhone;
+    const identities = this.identities(userRealmName);
+    const users = this.users(userRealmName);
+
+    // IP rate limit check (global, cross-realm) — before any DB work
+    const request = this.alepha.store.get("alepha.http.request");
+    const ipKey = request?.ip ? `login:ip:${request.ip}` : undefined;
+
+    if (ipKey) {
+      const ipLocked = await this.isLoginLocked(
+        ipKey,
+        loginRateLimit.ipMaxAttempts,
+      );
+      if (ipLocked) {
+        this.log.warn("Login blocked — IP rate limit exceeded", {
+          ip: request?.ip,
+        });
+        throw new InvalidCredentialsError();
+      }
+    }
+
+    await this.randomDelay();
+
+    try {
+      const where = users.createQueryWhere();
+
+      where.realm = name;
+
+      if (settings.username !== "none" && isUsername) {
+        // validate username format if regex is provided
+        if (settings.usernameRegExp) {
+          const regex = new RegExp(settings.usernameRegExp);
+          if (!regex.test(username)) {
+            this.log.warn("Username does not match required format", {
+              provider,
+              username,
+              realm: name,
+            });
+
+            await this.sessionAudits(userRealmName)?.auth.log("login", {
+              userRealm: name,
+              success: false,
+              description: "Username does not match required format",
+              metadata: { provider, username },
+            });
+
+            throw new InvalidCredentialsError();
+          }
+        }
+        // Case-insensitive EQUALITY, not a LIKE pattern. `ilike` on the raw
+        // identifier made `_` and `%` wildcards, so `admi_` matched `admin`
+        // and `findOne` picked one arbitrarily — wrong semantics on the auth
+        // hot path. Mirrors the `(realm, username COLLATE NOCASE)` unique index.
+        where.username = { eqInsensitive: username };
+      } else if (settings.email !== "none" && isEmail) {
+        where.email = username;
+      } else if (settings.phoneNumber !== "none" && isPhone) {
+        where.phoneNumber = username;
+      } else {
+        this.log.warn("Invalid login identifier format", {
+          provider,
+          username,
+          realm: name,
+        });
+
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userRealm: name,
+          success: false,
+          description: "Invalid login identifier format",
+          metadata: { provider, username },
+        });
+
+        throw new InvalidCredentialsError();
+      }
+
+      const user = await users.findOne({ where });
+      if (!user) {
+        this.log.warn("User not found during login attempt", {
+          provider,
+          username,
+          realm: name,
+        });
+
+        // Only increment IP counter (no user ID to track). Counted before
+        // the attempt is audited: an audit write that fails must never be
+        // what lets an attempt go uncounted.
+        const justLocked = ipKey
+          ? await this.recordFailedLogin(
+              ipKey,
+              loginRateLimit.ipMaxAttempts,
+              loginRateLimit.windowMs,
+            )
+          : false;
+
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userRealm: name,
+          success: false,
+          description: "User not found",
+          metadata: { provider, username },
+        });
+
+        if (justLocked) {
+          await this.sessionAudits(userRealmName)?.security.log(
+            "rate_limited",
+            {
+              userRealm: name,
+              success: false,
+              description:
+                "IP temporarily locked due to too many failed login attempts",
+              metadata: { ip: request?.ip },
+            },
+          );
+        }
+
+        throw new InvalidCredentialsError();
+      }
+
+      // Check if user account is enabled
+      if (!user.enabled) {
+        this.log.warn("Login attempt for disabled account", {
+          userId: user.id,
+          realm: name,
+        });
+
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userRealm: name,
+          success: false,
+          resourceId: user.id,
+          description: "Login attempt for disabled account",
+          metadata: { provider, username },
+        });
+
+        throw new InvalidCredentialsError();
+      }
+
+      // Account rate limit check (per-realm)
+      const accountKey = `login:account:${name}:${user.id}`;
+      const accountLocked = await this.isLoginLocked(
+        accountKey,
+        loginRateLimit.accountMaxAttempts,
+      );
+      if (accountLocked) {
+        this.log.warn("Login blocked — account rate limit exceeded", {
+          userId: user.id,
+          realm: name,
+        });
+        throw new InvalidCredentialsError();
+      }
+
+      const identity = await identities.getOne({
+        where: {
+          provider: { eq: provider },
+          userId: { eq: user.id },
+        },
+      });
+
+      const storedPassword = identity.password;
+      if (!storedPassword) {
+        // An account that signs in through a provider only: a refusal, not
+        // a fault.
+        this.log.warn("Identity has no password configured", {
+          provider,
+          username,
+          identityId: identity.id,
+          realm: name,
+        });
+        throw new InvalidCredentialsError();
+      }
+
+      // Both counters take this attempt before the password is compared,
+      // so concurrent guesses cannot all slip under the cap (#Q2529). The
+      // checks above are the cheap early refusal; these are the limit. And
+      // it happens before anything is audited, so an audit write that fails
+      // can never be what lets a guess go uncounted.
+      const accountCount = await this.takeLoginAttempt(
+        accountKey,
+        loginRateLimit.windowMs,
+      );
+      if (accountCount > loginRateLimit.accountMaxAttempts) {
+        this.log.warn("Login blocked — account rate limit exceeded", {
+          userId: user.id,
+          realm: name,
+        });
+        throw new InvalidCredentialsError();
+      }
+      const ipCount = ipKey
+        ? await this.takeLoginAttempt(ipKey, loginRateLimit.windowMs)
+        : 0;
+      if (ipKey && ipCount > loginRateLimit.ipMaxAttempts) {
+        // Never compared, so the account's slot goes back.
+        await this.refundLoginAttempt(accountKey, loginRateLimit.windowMs);
+        this.log.warn("Login blocked — IP rate limit exceeded", {
+          ip: request?.ip,
+        });
+        throw new InvalidCredentialsError();
+      }
+
+      const valid = await this.cryptoProvider.verifyPassword(
+        password,
+        storedPassword,
+      );
+
+      if (!valid) {
+        this.log.warn("Invalid password during login attempt", {
+          provider,
+          username,
+          realm: name,
+        });
+
+        // The attempt is already counted; this one filling the counter is
+        // what "just locked" means.
+        const ipJustLocked =
+          ipKey !== undefined && ipCount === loginRateLimit.ipMaxAttempts;
+        const accountJustLocked =
+          accountCount === loginRateLimit.accountMaxAttempts;
+
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userRealm: name,
+          success: false,
+          resourceId: user.id,
+          description: "Invalid password",
+          metadata: { provider, username },
+        });
+
+        if (ipJustLocked) {
+          await this.sessionAudits(userRealmName)?.security.log(
+            "rate_limited",
+            {
+              userRealm: name,
+              success: false,
+              description:
+                "IP temporarily locked due to too many failed login attempts",
+              metadata: { ip: request?.ip },
+            },
+          );
+        }
+
+        if (accountJustLocked) {
+          await this.sessionAudits(userRealmName)?.security.log(
+            "rate_limited",
+            {
+              userRealm: name,
+              resourceId: user.id,
+              success: false,
+              description:
+                "Account temporarily locked due to too many failed login attempts",
+              metadata: { userId: user.id },
+            },
+          );
+
+          // Notify user about account lockout.
+          //
+          // Deliberately NOT `inline`, and it is not an oversight. This mail
+          // goes to the account owner, who at this point is very likely not
+          // the person driving the request: the whole reason we are here is
+          // repeated failed passwords. Blocking the login response on it
+          // turns response time into an account-enumeration oracle for the
+          // attacker, and hands them a way to slow the endpoint down.
+          if (user.email) {
+            const lockoutMinutes = Math.round(loginRateLimit.windowMs / 60_000);
+            await this.userNotifications(userRealmName)?.accountLockout.push({
+              contact: user.email,
+              variables: { email: user.email, lockoutMinutes },
+            });
+          }
+        }
+
+        throw new InvalidCredentialsError();
+      }
+
+      // A right password costs nothing: both slots go back.
+      await this.refundLoginAttempt(accountKey, loginRateLimit.windowMs);
+      if (ipKey) {
+        await this.refundLoginAttempt(ipKey, loginRateLimit.windowMs);
+      }
+
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: name,
+        resourceId: user.id,
+        description: `User logged in via ${provider}`,
+        metadata: { provider, username },
+      });
+
+      // Auto-promote to admin if configured
+      await this.ensureAdminRole(user, userRealmName);
+
+      return user;
+    } catch (error) {
+      if (error instanceof InvalidCredentialsError) {
+        throw error;
+      }
+
+      this.log.warn("Error during login attempt", error);
+
+      throw new InvalidCredentialsError();
+    }
+  }
+
+  public async createSession(
+    user: UserAccount,
+    expiresIn: number,
+    userRealmName?: string,
+    clientId?: string,
+    scopes?: string[],
+  ) {
+    this.log.trace("Creating session", { userId: user.id, expiresIn });
+
+    const request = this.alepha.store.get("alepha.http.request");
+    const refreshToken = this.cryptoProvider.randomUUID();
+
+    const expiresAt = this.dateTimeProvider
+      .now()
+      .add(expiresIn, "seconds")
+      .toISOString();
+
+    const nowIso = this.dateTimeProvider.nowISOString();
+
+    const session = await this.sessions(userRealmName).create({
+      userId: user.id,
+      expiresAt,
+      lastUsedAt: nowIso,
+      ip: request?.ip,
+      country: request?.geo?.country,
+      userAgent: request?.userAgent,
+      refreshToken,
+      clientId,
+      scopes,
+    });
+
+    await this.users(userRealmName).updateById(user.id, {
+      lastLoginAt: nowIso,
+    });
+
+    this.log.info("Session created", {
+      sessionId: session.id,
+      userId: user.id,
+      ip: request?.ip,
+    });
+
+    return {
+      refreshToken,
+      sessionId: session.id,
+    };
+  }
+
+  public async refreshSession(refreshToken: string, userRealmName?: string) {
+    this.log.trace("Refreshing session");
+
+    // An unknown token is an authentication failure, not a missing entity:
+    // getOne() used to answer 404 with the table name in the message.
+    const session = await this.sessions(userRealmName).findOne({
+      where: {
+        refreshToken: { eq: refreshToken },
+      },
+    });
+    if (!session) {
+      throw new UnauthorizedError("Invalid refresh token");
+    }
+
+    const now = this.dateTimeProvider.now();
+    const expiresAt = this.dateTimeProvider.of(session.expiresAt);
+
+    if (this.dateTimeProvider.of(session.expiresAt) < now) {
+      this.log.debug("Session expired during refresh", {
+        sessionId: session.id,
+        userId: session.userId,
+      });
+      await this.sessions(userRealmName).deleteById(session.id);
+      throw new UnauthorizedError("Session expired");
+    }
+
+    // Idle timeout check — opt-in via realm settings.
+    // Falls back to createdAt when lastUsedAt is null (pre-migration rows or
+    // sessions that never refreshed since the column was introduced).
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const idleMs = settings.refreshToken?.expirationIdle;
+    if (idleMs && idleMs > 0) {
+      const lastUsedRef = session.lastUsedAt ?? session.createdAt;
+      const idleSince = now.diff(this.dateTimeProvider.of(lastUsedRef));
+      if (idleSince > idleMs) {
+        this.log.info("Session expired (idle timeout)", {
+          sessionId: session.id,
+          userId: session.userId,
+          idleMs: idleSince,
+          thresholdMs: idleMs,
+        });
+        await this.sessions(userRealmName).deleteById(session.id);
+        throw new UnauthorizedError("Session expired");
+      }
+    }
+
+    const user = await this.users(userRealmName).getOne({
+      where: {
+        id: { eq: session.userId },
+      },
+    });
+
+    // The tables are shared between realms: a session row found here may
+    // belong to a user of another realm, and this issuer must not sign an
+    // access token (with that realm's roles) for it.
+    if (user.realm !== realm.name) {
+      this.log.warn("Session refresh across realms refused", {
+        sessionId: session.id,
+        userRealm: user.realm,
+        realm: realm.name,
+      });
+      throw new UnauthorizedError("Invalid refresh token");
+    }
+
+    // Check if user account is still enabled
+    if (!user.enabled) {
+      this.log.warn("Session refresh for disabled account", {
+        userId: user.id,
+        sessionId: session.id,
+      });
+      await this.sessions(userRealmName).deleteById(session.id);
+      throw new UnauthorizedError("Account disabled");
+    }
+
+    // Auto-promote to admin if configured (handles "I promote you admin" case)
+    await this.ensureAdminRole(user, userRealmName);
+
+    // Update lastUsedAt — sliding-window for idle timeout enforcement.
+    await this.sessions(userRealmName).updateById(session.id, {
+      lastUsedAt: now.toISOString(),
+    });
+
+    this.log.debug("Session refreshed", {
+      sessionId: session.id,
+      userId: session.userId,
+    });
+
+    return {
+      user,
+      expiresIn: expiresAt.unix() - now.unix(),
+      sessionId: session.id,
+      // Carried so the OAuth token endpoint can bind a refresh to the client
+      // the session was issued to. Undefined for ordinary password logins.
+      clientId: session.clientId,
+      // The grant's scope ids, resolved to a permission list by the issuer
+      // on this very refresh.
+      scopes: session.scopes,
+    };
+  }
+
+  public async deleteSession(refreshToken: string, userRealmName?: string) {
+    this.log.trace("Deleting session");
+
+    // Get session info before deletion for audit
+    const session = await this.sessions(userRealmName).findOne({
+      where: { refreshToken: { eq: refreshToken } },
+    });
+
+    await this.sessions(userRealmName).deleteOne({
+      refreshToken,
+    });
+    this.log.debug("Session deleted");
+
+    if (session) {
+      const { name } = this.realmProvider.getRealm(userRealmName);
+
+      await this.sessionAudits(userRealmName)?.auth.log("logout", {
+        userId: session.userId,
+        userRealm: name,
+        sessionId: session.id,
+        description: "User logged out",
+      });
+    }
+  }
+
+  public async link(
+    provider: string,
+    profile: OAuth2Profile,
+    userRealmName?: string,
+  ) {
+    this.log.trace("Linking OAuth2 profile", {
+      provider,
+      profileSub: profile.sub,
+      email: profile.email,
+    });
+
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const identities = this.identities(userRealmName);
+    const users = this.users(userRealmName);
+
+    const identity = await identities.findOne({
+      where: {
+        provider,
+        providerUserId: profile.sub,
+      },
+    });
+
+    // existing identity found, return associated user
+    if (identity) {
+      this.log.debug("Existing identity found", {
+        provider,
+        identityId: identity.id,
+        userId: identity.userId,
+      });
+
+      const user = await users.getById(identity.userId);
+
+      // `login()` and `refreshSession()` refuse a disabled account; this
+      // path used to let one back in through its OAuth identity.
+      if (!user.enabled) {
+        this.log.warn("OAuth2 login refused for disabled account", {
+          provider,
+          userId: user.id,
+        });
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userId: user.id,
+          userRealm: realm.name,
+          success: false,
+          description: `OAuth2 login refused: account disabled (${provider})`,
+          metadata: { provider },
+        });
+        throw new BadRequestError("Account disabled");
+      }
+
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: user.id,
+        description: `User logged in via OAuth2 (${provider})`,
+        metadata: { provider, providerUserId: profile.sub },
+      });
+
+      // Auto-promote to admin if configured
+      await this.ensureAdminRole(user, userRealmName);
+
+      return user;
+    }
+
+    if (!profile.email) {
+      // Returning the bare profile used to send `profile.sub` down the
+      // session path as a user id, which ended in a foreign-key error (or,
+      // without FK enforcement, a token for a user row that does not exist).
+      this.log.warn("OAuth2 profile has no email, refusing login", {
+        provider,
+        profileSub: profile.sub,
+      });
+      throw new BadRequestError(
+        "The identity provider did not supply an email address",
+      );
+    }
+
+    const existing = await users.findOne({
+      where: {
+        realm: realm.name,
+        email: profile.email,
+      },
+    });
+
+    if (existing) {
+      if (!existing.enabled) {
+        this.log.warn("OAuth2 auto-link refused for disabled account", {
+          provider,
+          userId: existing.id,
+        });
+        throw new BadRequestError("Account disabled");
+      }
+
+      // Auto-linking by email requires positive proof of ownership: a provider
+      // that omits `email_verified` has NOT asserted the email is verified, and
+      // linking on it would let an attacker who registered the victim's email
+      // at that provider take over the local account.
+      if (profile.email_verified !== true) {
+        this.log.warn(
+          "OAuth2 profile email not verified by provider, refusing auto-link",
+          { provider, email: profile.email, userId: existing.id },
+        );
+        throw new BadRequestError(
+          "Cannot link account: email not verified by provider",
+        );
+      }
+
+      this.log.debug("Linking OAuth2 profile to existing user by email", {
+        provider,
+        profileSub: profile.sub,
+        userId: existing.id,
+        email: profile.email,
+      });
+      await identities.create({
+        provider,
+        providerUserId: profile.sub,
+        userId: existing.id,
+      });
+
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
+        userId: existing.id,
+        userEmail: existing.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: existing.id,
+        description: `OAuth2 identity linked to existing user (${provider})`,
+        metadata: { provider, providerUserId: profile.sub, linked: true },
+      });
+
+      // Auto-promote to admin if configured
+      await this.ensureAdminRole(existing, userRealmName);
+
+      return existing;
+    }
+
+    const realmSettings = await realm.getSettings();
+    const adminEmails = realmSettings?.adminEmails ?? [];
+    const isAdmin = profile.email && adminEmails.includes(profile.email);
+
+    if (
+      realmSettings?.registrationAllowed === false &&
+      !isAdmin &&
+      // Same lockout guard as the credentials path: a realm still holding no
+      // account has no administrator who could reopen it.
+      !(await this.realmProvider.allowsBootstrapRegistration(userRealmName))
+    ) {
+      // Same seam as the credentials path, so a closed realm is not open on
+      // one entry point and shut on the other. `profile.email_verified` goes
+      // with it: an app may well want to refuse a provider that has asserted
+      // nothing, and only the app can weigh that against what it knows.
+      //
+      // The answer's `emailVerified` hint is deliberately NOT read here. On
+      // this path the provider is the authority, and `trustProviderEmail`
+      // below already decides what an unverified profile is worth; letting
+      // the closure override it would hand out verified accounts on the word
+      // of an address the provider itself would not vouch for.
+      const preAuthorized = await this.realmProvider.preAuthorizeRegistration(
+        userRealmName,
+        {
+          email: profile.email,
+          method: "oauth",
+          provider,
+          emailVerified: profile.email_verified,
+        },
+      );
+      if (!preAuthorized) {
+        this.log.warn("Registration not allowed for realm via OAuth2", {
+          provider,
+          userRealmName,
+        });
+        // Unchanged message. A pre-authorized address that fails must be
+        // indistinguishable from one that was never invited.
+        throw new BadRequestError("Account doesn't exist");
+      }
+      this.log.debug("OAuth2 first login pre-authorized for a closed realm", {
+        provider,
+        userRealmName,
+      });
+    }
+
+    const username = await this.generateUniqueUsername(profile, userRealmName);
+
+    // A provider that sends `email_verified` is believed either way. One that
+    // omits it has asserted nothing, and the account used to be created
+    // verified regardless: anyone able to register the victim's address at
+    // such a provider got a verified local account for it, which is the
+    // credential every "sign in with your email" flow downstream trusts.
+    const emailVerified =
+      profile.email_verified ?? realmSettings.trustProviderEmail !== false;
+
+    const user = await users.create({
+      realm: realm.name,
+      username,
+      email: profile.email,
+      firstName: profile.given_name,
+      lastName: profile.family_name,
+      emailVerified,
+      roles: realmSettings.defaultRoles,
+    });
+
+    if (!emailVerified && profile.email) {
+      this.log.debug("OAuth2 profile email unverified, sending verification", {
+        provider,
+        userId: user.id,
+      });
+      await this.userService.requestEmailVerification(
+        profile.email,
+        userRealmName,
+      );
+    }
+
+    if (profile.picture) {
+      this.log.debug("Fetching user profile picture from OAuth2 provider", {
+        provider,
+        url: profile.picture,
+      });
+      try {
+        const response = await fetch(profile.picture);
+        const file = this.fsp.createFile({
+          response,
+        });
+        if (response.ok && response.body) {
+          const fileEntity = await this.fileController.uploadFile(
+            {
+              body: { file },
+            },
+            {
+              user,
+            },
+          );
+          await users.updateById(user.id, { picture: fileEntity.id });
+        }
+      } catch (error) {
+        this.log.warn("Failed to fetch user profile picture", error);
+      }
+    }
+
+    await this.identities(userRealmName).create({
+      provider,
+      providerUserId: profile.sub,
+      userId: user.id,
+    });
+
+    this.log.info("New user created via OAuth2 link", {
+      provider,
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+    });
+
+    // Audit: user created via OAuth
+    await this.userAudits(userRealmName)?.user.log("create", {
+      resourceType: "user",
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: `User created via OAuth2 (${provider})`,
+      metadata: {
+        provider,
+        providerUserId: profile.sub,
+        username: user.username,
+        email: user.email,
+      },
+    });
+
+    // Audit: login event
+    await this.sessionAudits(userRealmName)?.auth.log("login", {
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: `First login via OAuth2 (${provider})`,
+      metadata: { provider, providerUserId: profile.sub, firstLogin: true },
+    });
+
+    // The first account in the realm owns the instance. A no-op unless the
+    // realm set `bootstrapFirstUser`; runs before `ensureAdminRole`, which
+    // then finds the role already there and does nothing.
+    await this.realmProvider.promoteFirstUserToAdmin(user, userRealmName);
+
+    // Auto-promote to admin if configured
+    await this.ensureAdminRole(user, userRealmName);
+
+    return user;
+  }
+}

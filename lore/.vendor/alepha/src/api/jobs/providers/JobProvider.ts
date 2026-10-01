@@ -1,0 +1,2598 @@
+import {
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  AlephaError,
+  type Infer,
+  type ZType,
+} from "alepha";
+import { CryptoProvider } from "alepha/crypto";
+import {
+  type DateTime,
+  DateTimeProvider,
+  type DurationLike,
+} from "alepha/datetime";
+import { LockProvider } from "alepha/lock";
+import { $logger, LogBufferProvider, type LogEntry } from "alepha/logger";
+import {
+  $repository,
+  DbConflictError,
+  DbEntityNotFoundError,
+} from "alepha/orm";
+import { CronProvider } from "alepha/scheduler";
+
+import {
+  type JobExecutionEntity,
+  type JobStatus,
+  jobExecutionEntity,
+} from "../entities/jobExecutionEntity.ts";
+import type {
+  JobPrimitiveOptions,
+  JobRescheduleOptions,
+  JobRetryBackoff,
+} from "../primitives/$job.ts";
+import { jobConfig } from "../schemas/jobConfigAtom.ts";
+import type { JobRetention } from "../schemas/jobRetentionSchema.ts";
+import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
+import type { JobDispatcher, JobDispatchOptions } from "./JobDispatcher.ts";
+import { JobQueueProvider } from "./JobQueueProvider.ts";
+import {
+  type EffectiveRetention,
+  JobRetentionProvider,
+} from "./JobRetentionProvider.ts";
+
+// -----------------------------------------------------------------------------------------------------------------
+
+export interface PushOptions {
+  delay?: DurationLike;
+  key?: string;
+  scheduledAt?: Date;
+  triggeredBy?: string;
+  triggeredByName?: string;
+  /**
+   * Run this execution inline and wait for it, overriding the job's own
+   * `inline` default. See {@link JobPrimitiveOptions.inline} for the contract.
+   *
+   * **Per-push is the form that matters**, not the job-level default. One
+   * shared job usually sits behind many call sites - `sendNotification` is
+   * the single job behind every notification - so a job-only flag would make
+   * all of them block. Whether you can afford to wait is a property of the
+   * call site, not of the job or of the template.
+   *
+   * On a job that declares `retry`, passing this means **this execution does
+   * not retry**: it runs once, goes terminal on failure, and throws. That is
+   * what lets `sendNotification` keep `retry: 3` for the asynchronous
+   * majority while an auth call site opts one send out of the retry
+   * machinery.
+   */
+  inline?: boolean;
+}
+
+export interface PushManyItem<T extends ZType = ZType> {
+  payload: Infer<T>;
+  key?: string;
+  delay?: DurationLike;
+  scheduledAt?: Date;
+}
+
+export interface JobTriggerContext<T extends ZType = ZType> {
+  payload?: Infer<T>;
+  triggeredBy?: string;
+  triggeredByName?: string;
+}
+
+export interface CancelContext {
+  cancelledBy?: string;
+  cancelledByName?: string;
+}
+
+/**
+ * The declared shape of the job (set at registration time).
+ *
+ * **Important** — this `kind` is the *declared* form. The *effective*
+ * runtime mode (cron / queue / direct) is exposed by
+ * `JobProvider.effectiveMode(name)` and the `JobRegistration.type` field on
+ * the admin schema. Don't conflate the two: a `queue` kind can run as
+ * `direct` at runtime when no queue dispatcher is loaded.
+ */
+export interface JobRuntimeRegistration {
+  name: string;
+  options: JobPrimitiveOptions;
+  kind: "cron" | "queue";
+  /**
+   * The rule each status follows, defaults filled in at registration. Every
+   * write and the trim read it from here, never from `options.retention`.
+   */
+  retention: EffectiveRetention;
+}
+
+export type JobEffectiveMode = "cron" | "queue" | "direct";
+
+/**
+ * What a handler's `reschedule()` resolved to: the row's next stage.
+ */
+interface RescheduleIntent {
+  scheduledAt: string;
+  payload: Record<string, unknown> | undefined;
+}
+
+// -----------------------------------------------------------------------------------------------------------------
+
+/**
+ * One row of the sweep's recovery table — see `JobProvider.sweepTable()`.
+ */
+export interface SweepEntry {
+  /** Phase name, used for log lines and failure containment. */
+  label: string;
+
+  /**
+   * The single status this entry owns. No two entries share one: that is
+   * what makes "at most one phase claims a row per tick" structural rather
+   * than something each phase has to remember.
+   */
+  status: JobStatus;
+
+  /** Narrow further, in SQL. Mutates the where object in place. */
+  where: (where: Record<string, any>, now: DateTime) => void;
+
+  /**
+   * Optional ordering: which rows a phase serves first when its batch fills.
+   */
+  orderBy?: {
+    column: keyof JobExecutionEntity;
+    direction: "asc" | "desc";
+  };
+
+  /** Anything SQL cannot express, evaluated per row. Defaults to "yes". */
+  claims?: (
+    exec: JobExecutionEntity,
+    registration: JobRuntimeRegistration,
+    now: DateTime,
+  ) => boolean;
+
+  /** What to do with a claimed row. */
+  act: (
+    exec: JobExecutionEntity,
+    registration: JobRuntimeRegistration,
+  ) => Promise<void>;
+}
+
+/**
+ * Coordinates cron and push jobs with a durable outbox table and a single
+ * reconciliation sweep. The actual delivery channel (queue / direct) is
+ * abstracted behind {@link JobDispatcher}, substituted by DI:
+ *
+ * - **DirectJobDispatcher** (default, registered by `AlephaApiJobs`) -
+ *   runs the handler in-process right after `push()` returns.
+ * - **QueueJobDispatcher** (registered by `AlephaApiJobsQueue`): sends
+ *   the executionId through `AlephaQueue` so a pool of workers can pick
+ *   it up.
+ *
+ * Push flow:
+ *   push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id)
+ *   worker  → claim → UPDATE running → handler → UPDATE ok (or DELETE when
+ *             successes are not recorded)
+ *           → UPDATE error (or DELETE) / scheduled (retry) on failure
+ *
+ * Cron flow:
+ *   scheduler tick → claim the instant → acquire lock → executeInline (no retry)
+ *                                                     → enqueue + dispatch (retry declared)
+ *
+ * Sweep responsibilities (every `sweepCron`), one per status, declared in
+ * `sweepTable()`:
+ *   - `scheduled` with `scheduledAt <= now` → pending + dispatch
+ *   - `pending` untouched for `staleThreshold` → re-dispatch
+ *   - `running` past its lease → failed, then the retry policy
+ *
+ * Trim runs on its own cron (`trimCron`, default hourly):
+ *   - rows of a job name nothing registers are purged first, every status
+ *     (a renamed job loses its rows, see `purgeUnregistered`)
+ *   - then each job's retention: per status, rows past the newest `last` or
+ *     completed more than `days` ago (see `JobRetentionProvider`)
+ *   - decoupled from sweep because trim cost scales with job count, not
+ *     retry latency - running it every sweep is wasted work for most apps.
+ */
+export class JobProvider {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly dt = $inject(DateTimeProvider);
+  protected readonly cronProvider = $inject(CronProvider);
+  protected readonly lockProvider = $inject(LockProvider);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly config = $store(jobConfig);
+
+  /**
+   * Resolved at first use (after the container is fully wired) — picks
+   * the queue dispatcher when `AlephaApiJobsQueue` was loaded, otherwise
+   * the direct dispatcher. Lazy because both dispatchers inject
+   * `JobProvider` themselves; resolving them at field-init time would
+   * create a circular construction.
+   */
+  protected dispatcherRef?: JobDispatcher;
+  public get dispatcher(): JobDispatcher {
+    if (!this.dispatcherRef) {
+      this.dispatcherRef = this.alepha.has(JobQueueProvider)
+        ? this.alepha.inject(JobQueueProvider)
+        : this.alepha.inject(DirectJobDispatcher);
+    }
+    return this.dispatcherRef;
+  }
+  protected readonly log = $logger();
+  protected readonly executions = $repository(jobExecutionEntity);
+
+  protected readonly jobs = new Map<string, JobRuntimeRegistration>();
+  protected readonly inFlight = new Set<Promise<void>>();
+
+  /**
+   * Names of the cron jobs with a run inside `runCronLocked` in this process.
+   *
+   * The in-process half of "one run at a time". The run lock is the other
+   * half, and it cannot do this one: its value is a per-process holder id, so
+   * a second caller here reads the stored value back as its own.
+   */
+  protected readonly runningCrons = new Set<string>();
+  protected readonly abortControllers = new Map<string, AbortController>();
+  protected readonly logBuffer = $inject(LogBufferProvider);
+  protected readonly retention = $inject(JobRetentionProvider);
+  protected stopping = false;
+
+  constructor() {
+    // Register the sweep + trim crons eagerly so the wrangler build
+    // step (which reads `CronProvider.getCronJobs()` without running
+    // any lifecycle hooks) sees them and emits the matching cron
+    // triggers into wrangler.jsonc. CronProvider's `start` hook will
+    // boot whatever is in `cronJobs` at runtime — registering here
+    // (constructor, runs at inject time) is equivalent to registering
+    // in `onStart` from CronProvider's POV but visible to build-time
+    // introspection.
+    this.cronProvider.createCronJob(
+      "system.jobs.sweep",
+      this.config.sweepCron,
+      async () => {
+        await this.sweep();
+      },
+      true,
+    );
+    this.cronProvider.createCronJob(
+      "system.jobs.trim",
+      this.config.trimCron,
+      async () => {
+        if (this.stopping) return;
+        try {
+          await this.trimRingBuffers();
+        } catch (e) {
+          this.log.error("Trim failed", { error: e });
+        }
+      },
+      true,
+    );
+  }
+
+  // --- Registration -----------------------------------------------------------------------------------------------
+
+  /**
+   * The shape every job name must have: `<domain>.<action>`, or
+   * `system.<domain>.<action>` for a job shipped from `packages/`. Lowercase
+   * kebab-case segments, and no `/`, since the admin routes carry the name in
+   * the path.
+   */
+  public readonly namePattern =
+    /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
+
+  /**
+   * The longest description a job may declare. The registration payload's
+   * `description` is a `z.text()`, which caps there: a longer one would not
+   * fail the boot, it would blank the admin's job list.
+   */
+  public readonly maxDescriptionLength = 255;
+
+  public registerJob(name: string, options: JobPrimitiveOptions): void {
+    if (typeof name !== "string" || !this.namePattern.test(name)) {
+      throw new AlephaError(
+        `Job name '${name}' does not follow the convention: <domain>.<action>, or system.<domain>.<action> for a job shipped from packages/, in lowercase kebab-case (${this.namePattern.source}). For example 'estates.sweep-commands'.`,
+      );
+    }
+    const description =
+      typeof options.description === "string" ? options.description.trim() : "";
+    if (description.length === 0) {
+      throw new AlephaError(
+        `Job '${name}' declares no description. Say in one sentence what it does, for the operators who read the admin.`,
+      );
+    }
+    if (options.description.length > this.maxDescriptionLength) {
+      throw new AlephaError(
+        `Job '${name}' declares a description of ${options.description.length} characters; at most ${this.maxDescriptionLength} are allowed.`,
+      );
+    }
+    if (this.jobs.has(name)) {
+      throw new AlephaError(`Job already registered: ${name}`);
+    }
+    if (options.cron && options.schema) {
+      throw new AlephaError(
+        `Job '${name}' declares both 'cron' and 'schema'. A job must be either cron-only (recurring) or queue-only (push-based). Split into two jobs.`,
+      );
+    }
+    if (!options.cron && !options.schema) {
+      throw new AlephaError(
+        `Job '${name}' must declare either 'cron' (for recurring tasks) or 'schema' (for queue-mode tasks).`,
+      );
+    }
+    if (options.inline && options.cron) {
+      throw new AlephaError(
+        `Job '${name}' declares both 'inline' and 'cron'. A cron tick has no caller to block, so there is nobody for 'inline' to hand the failure to. Drop 'inline'.`,
+      );
+    }
+    if (options.inline && options.retry) {
+      throw new AlephaError(
+        `Job '${name}' declares both 'inline' and 'retry'. "Retry ${options.retry.retries} time(s)" and "tell the caller now" cannot both be the default. Keep 'retry' on the job and pass 'inline' per push at the call sites that cannot wait.`,
+      );
+    }
+    const factor = options.retry?.backoff?.factor ?? 2;
+    if (!(factor >= 1)) {
+      throw new AlephaError(
+        `Job '${name}' declares a retry backoff factor of ${factor}. Below 1 every retry comes sooner than the last; use 1 for a flat curve.`,
+      );
+    }
+
+    const kind: "cron" | "queue" = options.cron ? "cron" : "queue";
+    const retention = this.retention.resolve(name, options);
+
+    this.jobs.set(name, { name, options, kind, retention });
+    this.log.debug(`Registered ${kind} job '${name}'`, {
+      cron: options.cron,
+      retries: options.retry?.retries ?? 0,
+    });
+
+    if (options.cron) {
+      this.cronProvider.createCronJob(name, options.cron, async ({ now }) => {
+        try {
+          // `now` is the SCHEDULED instant, not the wall clock: every replica
+          // derives the same value from the same expression, which is what
+          // lets them agree on a single lease per tick.
+          await this.runCron(name, now);
+        } catch (error) {
+          this.log.error(`Cron tick failed for job '${name}'`, error);
+        }
+      });
+    }
+  }
+
+  public getRegisteredJobs(): Map<string, JobRuntimeRegistration> {
+    return this.jobs;
+  }
+
+  /**
+   * A registered job's effective retention, as the admin prints it: a rule
+   * per status, where each came from, and a cron's cadence bucket.
+   */
+  public describeRetention(name: string): JobRetention {
+    return this.retention.describe(this.getRegistration(name).retention);
+  }
+
+  /**
+   * Resolves what *actually* runs at dispatch time. Cron jobs are always
+   * "cron"; non-cron jobs delegate to the active `JobDispatcher` (queue
+   * vs. direct), which is determined by which modules the app loaded.
+   */
+  public effectiveMode(name: string): JobEffectiveMode {
+    const reg = this.getRegistration(name);
+    if (reg.kind === "cron") return "cron";
+    return this.dispatcher.kind;
+  }
+
+  // --- Cron execution (inline, no queue) --------------------------------------------------------------------------
+
+  protected async runCron(name: string, instant?: DateTime): Promise<void> {
+    const registration = this.getRegistration(name);
+    if (registration.kind !== "cron") {
+      throw new AlephaError(`Job '${name}' is not cron-mode`);
+    }
+    await this.runCronLocked(
+      registration,
+      {
+        triggeredBy: "system",
+        triggeredByName: "system (cron)",
+      },
+      instant,
+    );
+  }
+
+  /**
+   * Cron-mode runner that respects the per-job distributed lock.
+   * Used by both the scheduled tick and manual `trigger()` calls so that an
+   * admin-triggered run on one instance can't race a scheduled run on another.
+   *
+   * **Two paths depending on `retry`:**
+   *
+   * - **No `retry`**: runs the handler inline, then writes one terminal row
+   *   for the outcome, when the job's retention records that status. The
+   *   "next tick" is the implicit retry.
+   * - **`retry` declared** — enqueues a synthetic execution row and hands
+   *   it to the dispatcher. The handler then runs through the same path
+   *   as a queue/direct push (claim, retry-on-fail, sweep recovery). Use
+   *   this when a single failed tick must not block work for the whole
+   *   `cron` interval (e.g. once-daily jobs).
+   *
+   * **Two locks, doing different jobs.** `instant` (present only on a
+   * scheduled tick) claims the schedule instant once for the whole cluster
+   * and is never released — see `claimCronInstant`. The per-job lock below
+   * is the older one and stays: it keeps a manual `trigger()` on one
+   * instance from overlapping a scheduled run on another, which a
+   * per-instant key cannot express because a trigger has no instant.
+   *
+   * **Within one process, `runningCrons` goes first.** The per-job lock
+   * cannot tell two callers in the same process apart (see
+   * `acquireCronLock`), so a trigger that lands on a tick in progress here,
+   * or a tick that lands on a trigger, stands down on the set before it
+   * reaches the lock. A tick checks it after claiming its instant, so it
+   * stands down exactly as it would had another replica held the lock. A
+   * skipped call returns without running, the same as lock contention.
+   */
+  protected async runCronLocked(
+    registration: JobRuntimeRegistration,
+    ctx: { triggeredBy?: string; triggeredByName?: string },
+    instant?: DateTime,
+  ): Promise<void> {
+    if (this.stopping) return;
+
+    const useLock = registration.options.lock !== false;
+
+    if (useLock && instant) {
+      const claimed = await this.claimCronInstant(registration, instant);
+      if (!claimed) {
+        this.log.debug(
+          `Cron '${registration.name}' skipped — instant ${instant.toISOString()} is already claimed`,
+        );
+        return;
+      }
+    }
+
+    // Checked and taken with no `await` in between, so two callers in this
+    // process cannot both get past it. It has to come before the run lock,
+    // which cannot tell them apart (see `acquireCronLock`), and it holds
+    // whatever `lock` says: that option opts out of the replicas, not of
+    // overlapping itself.
+    if (this.runningCrons.has(registration.name)) {
+      this.log.debug(
+        `Cron '${registration.name}' skipped: a run is already in progress in this process`,
+      );
+      return;
+    }
+    this.runningCrons.add(registration.name);
+
+    try {
+      if (useLock) {
+        const acquired = await this.acquireCronLock(registration);
+        if (!acquired) {
+          this.log.debug(
+            `Cron '${registration.name}' skipped — another instance holds the lock`,
+          );
+          return;
+        }
+      }
+
+      try {
+        if (registration.options.retry) {
+          await this.enqueueCronExecution(registration, ctx);
+          return;
+        }
+
+        const executionId = this.crypto.randomUUID();
+        const promise = this.executeInline(registration, executionId, {
+          payload: undefined,
+          attempt: 1,
+          triggeredBy: ctx.triggeredBy,
+          triggeredByName: ctx.triggeredByName,
+        });
+        this.inFlight.add(promise);
+        try {
+          await promise;
+        } finally {
+          this.inFlight.delete(promise);
+        }
+      } finally {
+        if (useLock) {
+          await this.releaseCronLock(registration);
+        }
+      }
+    } finally {
+      // Only once the release has landed. Freed any sooner, the next run in
+      // this process would "acquire" the lock this one still holds, and the
+      // release would then delete it out from under that run: its owner
+      // check sees the same per-process holder id for both.
+      this.runningCrons.delete(registration.name);
+    }
+  }
+
+  /**
+   * Materialize a cron tick into the outbox so it goes through the normal
+   * retry/sweep path. Used when the user opts into `retry` on a cron job —
+   * a transient failure no longer means "wait for the next cron tick", it
+   * means "the sweep will retry within `sweepCron`".
+   */
+  protected async enqueueCronExecution(
+    registration: JobRuntimeRegistration,
+    ctx: { triggeredBy?: string; triggeredByName?: string },
+  ): Promise<void> {
+    const opts = registration.options;
+    const maxAttempts = (opts.retry?.retries ?? 0) + 1;
+    const execution = await this.executions.create({
+      jobName: registration.name,
+      payload: undefined,
+      status: "pending",
+      maxAttempts,
+      triggeredBy: ctx.triggeredBy,
+      triggeredByName: ctx.triggeredByName,
+    });
+    await this.dispatch(registration.name, execution.id);
+  }
+
+  /**
+   * Acquire a per-job NX lock keyed by `alepha.api.jobs.cron:<name>` (see
+   * `cronLockKey`) so that a single tick across all replicas runs exactly one
+   * execution. Auto-expires after `2 * timeout` (or 5 minutes if no per-job
+   * timeout) so a crashed worker cannot permanently block the cron from
+   * firing.
+   *
+   * The key carries the job's name, so renaming a job changes it: during a
+   * rolling deploy, a replica on the old name and one on the new name hold
+   * different locks, and one tick can run twice. That is accepted.
+   *
+   * **It only tells replicas apart.** The lock value is a per-process holder
+   * id, so a second NX set from this same process reads the stored value
+   * back as its own and "acquires" a lock that is already held. Nothing gets
+   * that far: `runCronLocked` stands a second caller in this process down on
+   * `runningCrons` first.
+   */
+  protected async acquireCronLock(
+    registration: JobRuntimeRegistration,
+  ): Promise<boolean> {
+    const lockKey = this.cronLockKey(registration.name);
+    const ttlMs = this.cronLockTtlMs(registration);
+    const value = `${this.lockHolderId},${this.dt.nowISOString()}`;
+    try {
+      const stored = await this.lockProvider.set(lockKey, value, true, ttlMs);
+      const [holderId] = stored.split(",");
+      return holderId === this.lockHolderId;
+    } catch (e) {
+      this.log.warn(`Cron lock acquire failed for '${registration.name}'`, e);
+      return true; // Fail-open: better to risk a duplicate than to silently miss a tick.
+    }
+  }
+
+  /**
+   * Update only when the row is still in one of the expected statuses.
+   * Logs and returns `false` when the guard rejects — this happens when a
+   * concurrent operation (most often `cancel()`) has already moved the row
+   * into a terminal state. We must not overwrite that. Returns `true` when
+   * the write happened, for the callers that must not dispatch otherwise.
+   */
+  protected async guardedUpdate(
+    executionId: string,
+    expectedStatuses: JobStatus[],
+    patch: Parameters<typeof this.executions.updateById>[1],
+    label: string,
+  ): Promise<boolean> {
+    try {
+      await this.executions.updateOne(
+        { id: { eq: executionId }, status: { inArray: expectedStatuses } },
+        patch,
+      );
+      return true;
+    } catch (e) {
+      if (e instanceof DbEntityNotFoundError) {
+        this.log.debug(
+          `${label}: row ${executionId} not in expected status — skipping write`,
+        );
+        return false;
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Release the run lock, but only while it is still ours.
+   *
+   * A run can outlive its lock: the lock expires after `cronLockTtlMs()`, and
+   * a handler that ignores its abort signal, or a cron with no `timeout`
+   * running past the 5-minute default, carries on regardless. By the time it
+   * finishes, another replica may have taken the lock, and an unconditional
+   * delete would free it for a third to take while the second is still
+   * running. `delIfOwner` compares the holder id `acquireCronLock` wrote
+   * before the comma, which is per process, so it tells replicas apart.
+   */
+  protected async releaseCronLock(
+    registration: JobRuntimeRegistration,
+  ): Promise<void> {
+    try {
+      await this.lockProvider.delIfOwner(
+        this.cronLockKey(registration.name),
+        this.lockHolderId,
+      );
+    } catch (e) {
+      this.log.debug(
+        `Cron lock release failed for '${registration.name}' (will expire by TTL)`,
+        e,
+      );
+    }
+  }
+
+  /**
+   * Claim one schedule instant for the whole cluster, exactly once.
+   *
+   * The run lock above is released the moment the tick is done with it, and
+   * in the `retry` path that is right after the outbox row is written - a few
+   * milliseconds. A second replica whose clock reaches the same instant just
+   * after that finds the lock free and enqueues the same tick again, so "one
+   * run per schedule" only ever held for the inline path.
+   *
+   * This lease is keyed by the instant itself and is deliberately **never
+   * released**: it expires on its own, and until it does, any later tick for
+   * the SAME instant stands down. The next instant has a different key, so
+   * nothing is blocked by leaving it behind.
+   *
+   * Unlike the run lock, a same-process double tick cannot slip through
+   * either: the stored value is unique per attempt, not per process, so only
+   * the caller that actually created the key sees its own token back.
+   */
+  protected async claimCronInstant(
+    registration: JobRuntimeRegistration,
+    instant: DateTime,
+  ): Promise<boolean> {
+    const key = `${this.cronLockKey(registration.name)}:${instant.toISOString()}`;
+    const token = `${this.lockHolderId},${this.crypto.randomUUID()}`;
+    try {
+      const stored = await this.lockProvider.set(
+        key,
+        token,
+        true,
+        this.cronLockTtlMs(registration),
+      );
+      return stored === token;
+    } catch (e) {
+      this.log.warn(
+        `Cron instant claim failed for '${registration.name}'`,
+        e as Error,
+      );
+      // Fail-open, like the run lock: a duplicate run beats a missed tick.
+      return true;
+    }
+  }
+
+  /**
+   * How long a cron lock or instant lease survives without being released.
+   * Twice the job's own timeout so a run cannot outlive its lock, or five
+   * minutes when the job declares none.
+   */
+  protected cronLockTtlMs(registration: JobRuntimeRegistration): number {
+    return registration.options.timeout
+      ? this.dt.duration(registration.options.timeout).as("milliseconds") * 2
+      : 5 * 60 * 1000;
+  }
+
+  protected cronLockKey(jobName: string): string {
+    return `alepha.api.jobs.cron:${jobName}`;
+  }
+
+  /**
+   * Stable per-process id used as the lock value — survives multiple ticks.
+   * Lazy so that Cloudflare Workers (which forbid random in global scope)
+   * stay happy.
+   */
+  protected lockHolderIdValue?: string;
+  protected get lockHolderId(): string {
+    if (!this.lockHolderIdValue) {
+      this.lockHolderIdValue = this.crypto.randomUUID();
+    }
+    return this.lockHolderIdValue;
+  }
+
+  /**
+   * Execute a cron handler inline. Nothing is written while it runs; at the
+   * end, one terminal row for the outcome, when the job's retention records
+   * that status.
+   */
+  protected async executeInline(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    ctx: {
+      payload: unknown;
+      attempt: number;
+      triggeredBy?: string;
+      triggeredByName?: string;
+    },
+  ): Promise<void> {
+    const opts = registration.options;
+    const name = registration.name;
+    const contextId = this.alepha.context.createContextId();
+
+    const abortController = new AbortController();
+    this.abortControllers.set(executionId, abortController);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (opts.timeout) {
+      const ms = this.dt.duration(opts.timeout).as("milliseconds");
+      timeoutId = setTimeout(() => abortController.abort(), ms);
+    }
+
+    const startedAt = this.dt.now();
+
+    await this.alepha.context.run(
+      async () => {
+        await this.alepha.events.emit("job:begin", {
+          name,
+          now: startedAt,
+          executionId,
+        });
+
+        try {
+          await opts.handler({
+            payload: ctx.payload,
+            attempt: ctx.attempt,
+            now: startedAt,
+            signal: abortController.signal,
+            executionId,
+            reschedule: () => {
+              throw new AlephaError(
+                `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
+              );
+            },
+          });
+
+          if (this.retention.records(registration.retention, "ok")) {
+            await this.writeTerminalRow(executionId, name, "ok", {
+              payload: ctx.payload,
+              attempt: ctx.attempt,
+              startedAt,
+              error: undefined,
+              triggeredBy: ctx.triggeredBy,
+              triggeredByName: ctx.triggeredByName,
+            });
+          }
+
+          await this.alepha.events.emit(
+            "job:success",
+            { name, executionId },
+            { catch: true },
+          );
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          if (this.retention.records(registration.retention, "error")) {
+            await this.writeTerminalRow(executionId, name, "error", {
+              payload: ctx.payload,
+              attempt: ctx.attempt,
+              startedAt,
+              error: err,
+              triggeredBy: ctx.triggeredBy,
+              triggeredByName: ctx.triggeredByName,
+            });
+          }
+          await this.alepha.events.emit(
+            "job:error",
+            { name, error: err, executionId },
+            { catch: true },
+          );
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+          this.abortControllers.delete(executionId);
+          await this.alepha.events.emit(
+            "job:end",
+            { name, executionId },
+            { catch: true },
+          );
+        }
+      },
+      { context: contextId, ...this.logBuffer.seed(this.config.logMaxEntries) },
+    );
+  }
+
+  protected async writeTerminalRow(
+    executionId: string,
+    jobName: string,
+    status: "ok" | "error",
+    fields: {
+      payload: unknown;
+      attempt: number;
+      startedAt: ReturnType<DateTimeProvider["now"]>;
+      error?: Error;
+      triggeredBy?: string;
+      triggeredByName?: string;
+    },
+  ): Promise<void> {
+    try {
+      // Called from inside the execution's context, so the buffer of the run
+      // that just finished is the ambient one. Kept whatever the outcome: the
+      // log of a successful tick ("purged 12 sessions") is most of what an
+      // operator reads.
+      await this.executions.create({
+        id: executionId,
+        jobName,
+        status,
+        payload: fields.payload as Record<string, unknown> | undefined,
+        attempt: fields.attempt,
+        maxAttempts: fields.attempt,
+        startedAt: fields.startedAt.toISOString(),
+        completedAt: this.dt.nowISOString(),
+        error: fields.error?.message,
+        logs: this.logBuffer.snapshot(),
+        triggeredBy: fields.triggeredBy,
+        triggeredByName: fields.triggeredByName,
+      });
+    } catch (e) {
+      this.log.warn(`Failed to write terminal row for ${executionId}`, e);
+    }
+  }
+
+  // --- Queue push -------------------------------------------------------------------------------------------------
+
+  public async push(
+    name: string,
+    payload: unknown,
+    options?: PushOptions,
+  ): Promise<string> {
+    const registration = this.getRegistration(name);
+    if (registration.kind !== "queue") {
+      throw new AlephaError(
+        `Job '${name}' is not queue-mode (no schema declared). Use trigger() instead.`,
+      );
+    }
+    const opts = registration.options;
+    const validated = this.alepha.codec.validate(opts.schema!, payload);
+
+    // The call site wins, the job's own declaration is the default. See
+    // `PushOptions.inline` for why per-push is the form that carries the
+    // weight.
+    const inline = options?.inline ?? opts.inline ?? false;
+
+    // A per-push `inline` on a job that declares `retry` means "not this
+    // execution": one attempt, terminal on failure, and the caller is told.
+    const maxAttempts = inline ? 1 : (opts.retry?.retries ?? 0) + 1;
+
+    const isDelayed = options?.delay || options?.scheduledAt;
+    if (inline && isDelayed) {
+      throw new AlephaError(
+        `Job '${name}' was pushed with both 'inline' and a delay. 'inline' means run now and hand the caller the outcome; a delayed row has no caller left to hand it to. Pick one.`,
+      );
+    }
+    const status: JobStatus = isDelayed ? "scheduled" : "pending";
+
+    let scheduledAt: string | undefined;
+    if (options?.scheduledAt) {
+      scheduledAt = options.scheduledAt.toISOString();
+    } else if (options?.delay) {
+      scheduledAt = this.dt
+        .now()
+        .add(this.dt.duration(options.delay))
+        .toISOString();
+    }
+
+    if (options?.key) {
+      // Key-based dedup: check for existing row first, then insert.
+      // Two queries in the no-conflict path, but deterministic across dialects.
+      const existing = await this.executions.findMany({
+        where: { jobName: { eq: name }, key: { eq: options.key } },
+        limit: 1,
+      });
+      if (existing.length > 0) {
+        return existing[0].id;
+      }
+      const { id: executionId, created } = await this.createKeyedExecution({
+        jobName: name,
+        key: options.key,
+        payload: validated as Record<string, unknown>,
+        status,
+        maxAttempts,
+        scheduledAt,
+        triggeredBy: options.triggeredBy,
+        triggeredByName: options.triggeredByName,
+      });
+      if (!created) {
+        // Lost the race to a concurrent same-key push — the winner dispatches.
+        return executionId;
+      }
+      if (inline) {
+        await this.runInline(registration, executionId);
+      } else if (status === "pending") {
+        await this.dispatch(name, executionId);
+      } else if (status === "scheduled" && scheduledAt) {
+        await this.dispatchDelayed(name, executionId, scheduledAt);
+      }
+      return executionId;
+    }
+
+    const execution = await this.executions.create({
+      jobName: name,
+      payload: validated as Record<string, unknown>,
+      status,
+      maxAttempts,
+      scheduledAt,
+      triggeredBy: options?.triggeredBy,
+      triggeredByName: options?.triggeredByName,
+    });
+
+    if (inline) {
+      // Deliberately NOT through `JobDispatcher`: the whole point is that
+      // behaviour is identical with and without `AlephaApiJobsQueue`, and a
+      // queue send is exactly the hand-off `inline` exists to skip.
+      await this.runInline(registration, execution.id);
+    } else if (status === "pending") {
+      await this.dispatch(name, execution.id);
+    } else if (status === "scheduled" && scheduledAt) {
+      await this.dispatchDelayed(name, execution.id, scheduledAt);
+    }
+    return execution.id;
+  }
+
+  /**
+   * Run one execution here and now, and let its failure reach the caller.
+   *
+   * `processExecution` cannot be used for this: `processQueueExecution`
+   * catches the handler error, routes it to `handleFailure` and returns
+   * normally, so `await processExecution(...)` resolves happily on a failed
+   * send. The `inline` flag threaded through it swaps that for a terminal
+   * write plus a rethrow.
+   *
+   * Still tracked in `inFlight`, so shutdown drains it like any other run.
+   */
+  protected async runInline(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+  ): Promise<void> {
+    const promise = this.processQueueExecution(registration, executionId, {
+      inline: true,
+    });
+    this.inFlight.add(promise);
+    try {
+      await promise;
+    } finally {
+      this.inFlight.delete(promise);
+    }
+  }
+
+  /**
+   * How long a `running` row may go without a lease renewal before the
+   * sweep assumes the instance running it crashed. Shared by the sweep's
+   * crash detection and the heartbeat cadence so the two can't drift.
+   */
+  protected crashThresholdMs(registration: JobRuntimeRegistration): number {
+    return registration.options.timeout
+      ? this.dt.duration(registration.options.timeout).as("milliseconds") * 2
+      : this.config.runTimeout;
+  }
+
+  /**
+   * While a handler runs, keep the row's `updatedAt` fresh so another
+   * instance's sweep can tell a long-running job from a crashed one — the
+   * sweep treats `max(startedAt, updatedAt)` as the lease. Self-stops when
+   * the row leaves `running` (finished, cancelled, swept elsewhere).
+   */
+  protected startLeaseHeartbeat(
+    executionId: string,
+    registration: JobRuntimeRegistration,
+  ): ReturnType<typeof setInterval> {
+    const intervalMs = Math.max(
+      250,
+      Math.floor(this.crashThresholdMs(registration) / 3),
+    );
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          await this.executions.updateOne(
+            { id: { eq: executionId }, status: { eq: "running" } },
+            { status: "running" },
+          );
+        } catch (error) {
+          if (this.shouldStopHeartbeat(error)) {
+            clearInterval(timer);
+            return;
+          }
+          this.log.warn(
+            `Lease heartbeat failed for ${executionId}, will retry next tick`,
+            { error },
+          );
+        }
+      })();
+    }, intervalMs);
+    return timer;
+  }
+
+  /**
+   * Whether a failed lease renewal means the heartbeat should stop.
+   *
+   * Only when the row is gone or no longer `running` (cancelled, completed
+   * elsewhere) — there is nothing left to renew. A transient DB error must
+   * NOT stop it: the handler keeps running, so once `crashThresholdMs`
+   * elapses another instance's sweep marks the lease crashed and schedules a
+   * retry — a duplicate, concurrent execution of the same job.
+   */
+  protected shouldStopHeartbeat(error: unknown): boolean {
+    return error instanceof DbEntityNotFoundError;
+  }
+
+  /**
+   * Insert a keyed execution row, resolving the dedup pre-check/insert
+   * race: a concurrent same-key push can land between the read and this
+   * insert, so a unique violation on (jobName, key) is settled by
+   * returning the winner's row instead of throwing.
+   */
+  protected async createKeyedExecution(fields: {
+    jobName: string;
+    key: string;
+    payload?: Record<string, unknown>;
+    status: JobStatus;
+    maxAttempts: number;
+    scheduledAt?: string;
+    triggeredBy?: string;
+    triggeredByName?: string;
+  }): Promise<{ id: string; created: boolean }> {
+    try {
+      const execution = await this.executions.create(fields);
+      return { id: execution.id, created: true };
+    } catch (e) {
+      if (e instanceof DbConflictError) {
+        const winner = await this.executions.findMany({
+          where: { jobName: { eq: fields.jobName }, key: { eq: fields.key } },
+          limit: 1,
+        });
+        if (winner.length > 0) {
+          return { id: winner[0].id, created: false };
+        }
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Ceiling for the local promoting timer. Past one day the sweep is the
+   * delivery mechanism anyway, and a 32-bit `setTimeout` overflows at
+   * ~24.85 days — an unclamped timer would fire immediately and run the
+   * job weeks early.
+   */
+  protected readonly maxOptimisticDelayMs = 24 * 60 * 60 * 1000;
+
+  /**
+   * Arrange for a `scheduled` row to be promoted and dispatched locally in
+   * `delayMs`, instead of waiting for the next sweep tick.
+   *
+   * **It promotes, it does not deliver**, and that distinction is what makes
+   * it safe on more than one replica: the timer fires, `dispatchScheduled`
+   * runs a guarded `status = scheduled AND scheduledAt <= now -> pending`
+   * update, and only then calls the dispatcher. Exactly one replica wins the
+   * update, and a replica that dies holding a timer leaves the row untouched
+   * for the sweep — degrading to sweep granularity rather than losing an
+   * execution.
+   *
+   * Being dispatcher-agnostic is why it is the fallback for a queue backend
+   * that declines a delay as well as the implementation of `delaySeconds` in
+   * direct mode. It is public for exactly that: the dispatchers call it.
+   *
+   * ⚠️ **On Cloudflare Workers this does nothing useful.** The isolate
+   * freezes once `waitUntil` settles, so a timer armed after the response
+   * never fires for any delay worth having. Delayed work there needs a
+   * transport that can hold the message (`AlephaApiJobsQueue`), and without
+   * one it keeps sweep granularity. Nothing is lost either way.
+   *
+   * Skipped beyond {@link maxOptimisticDelayMs}, where the sweep is the
+   * delivery mechanism regardless.
+   */
+  public scheduleLocalPromotion(
+    jobName: string,
+    executionId: string,
+    delayMs: number,
+  ): void {
+    const wait = Math.max(0, delayMs);
+    if (wait > this.maxOptimisticDelayMs) {
+      return;
+    }
+    this.dt.createTimeout(() => {
+      void this.dispatchScheduled(jobName, executionId);
+    }, wait);
+  }
+
+  public async pushMany(
+    name: string,
+    items: Array<PushManyItem>,
+  ): Promise<string[]> {
+    if (items.length === 0) return [];
+
+    const registration = this.getRegistration(name);
+    if (registration.kind !== "queue") {
+      throw new AlephaError(
+        `Job '${name}' is not queue-mode (no schema declared).`,
+      );
+    }
+    const opts = registration.options;
+    if (opts.inline) {
+      throw new AlephaError(
+        `Job '${name}' declares 'inline', which pushMany cannot honour: a fan-out over a roster would block the caller on every send, one after another. Push the items individually if each really has to be waited on.`,
+      );
+    }
+    const maxAttempts = (opts.retry?.retries ?? 0) + 1;
+
+    const keyed: PushManyItem[] = [];
+    const bulk: Array<{
+      jobName: string;
+      payload: Record<string, unknown>;
+      status: JobStatus;
+      maxAttempts: number;
+      scheduledAt?: string;
+    }> = [];
+
+    for (const item of items) {
+      const validated = this.alepha.codec.validate(opts.schema!, item.payload);
+      if (item.key) {
+        keyed.push({ ...item, payload: validated as Infer<ZType> });
+        continue;
+      }
+      const isDelayed = item.delay || item.scheduledAt;
+      const status: JobStatus = isDelayed ? "scheduled" : "pending";
+      let scheduledAt: string | undefined;
+      if (item.scheduledAt) {
+        scheduledAt = item.scheduledAt.toISOString();
+      } else if (item.delay) {
+        scheduledAt = this.dt
+          .now()
+          .add(this.dt.duration(item.delay))
+          .toISOString();
+      }
+      bulk.push({
+        jobName: name,
+        payload: validated as Record<string, unknown>,
+        status,
+        maxAttempts,
+        scheduledAt,
+      });
+    }
+
+    const ids: string[] = [];
+
+    for (const item of keyed) {
+      const id = await this.push(name, item.payload, {
+        key: item.key,
+        delay: item.delay,
+        scheduledAt: item.scheduledAt,
+      });
+      ids.push(id);
+    }
+
+    if (bulk.length > 0) {
+      const created = await this.executions.createMany(bulk);
+      // Collect pending rows so we hand them to the dispatcher in a single
+      // batch — the queue dispatcher can fan them out in one network call.
+      const toDispatch: Array<{ jobName: string; executionId: string }> = [];
+      for (const exec of created) {
+        ids.push(exec.id);
+        if (exec.status === "pending" && !this.stopping) {
+          toDispatch.push({ jobName: name, executionId: exec.id });
+        } else if (
+          exec.status === "scheduled" &&
+          exec.scheduledAt &&
+          !this.stopping
+        ) {
+          await this.dispatchDelayed(name, exec.id, exec.scheduledAt);
+        }
+      }
+      if (toDispatch.length > 0) {
+        await this.dispatchMany(toDispatch);
+      }
+    }
+
+    this.log.debug(`pushMany '${name}': ${ids.length} jobs created`, {
+      bulk: bulk.length,
+      keyed: keyed.length,
+    });
+
+    return ids;
+  }
+
+  /**
+   * Hand a single execution to the active `JobDispatcher`. Whether that
+   * results in a queue send or in-process execution depends on which
+   * dispatcher is wired (see {@link JobDispatcher}).
+   */
+  protected async dispatch(
+    jobName: string,
+    executionId: string,
+    options?: JobDispatchOptions,
+  ): Promise<void> {
+    if (this.stopping) return;
+    await this.dispatcher.dispatch(jobName, executionId, options);
+  }
+
+  /**
+   * Hand a `scheduled` row to the dispatcher with the delay it still has to
+   * wait, so a transport that can hold the message does, and a transport
+   * that cannot falls back to the local promoting timer.
+   *
+   * The row's own `scheduledAt` remains the truth throughout: this only
+   * decides how soon anyone looks at it, and the sweep looks at it either
+   * way. See {@link JobDispatchOptions.delaySeconds}.
+   */
+  protected async dispatchDelayed(
+    jobName: string,
+    executionId: string,
+    scheduledAt: string,
+  ): Promise<void> {
+    const delayMs = Math.max(
+      0,
+      new Date(scheduledAt).getTime() - this.dt.nowMillis(),
+    );
+    await this.dispatchSafe(jobName, executionId, {
+      delaySeconds: delayMs / 1000,
+    });
+  }
+
+  /**
+   * Batched variant. Used by `pushMany` so a backing queue can do a single
+   * batch network call (e.g. Cloudflare Queues `sendBatch`).
+   */
+  protected async dispatchMany(
+    items: Array<{ jobName: string; executionId: string }>,
+  ): Promise<void> {
+    if (this.stopping || items.length === 0) return;
+    await this.dispatcher.dispatchMany(items);
+  }
+
+  // --- Manual trigger (admin / CLI) ------------------------------------------------------------------------------
+
+  public async trigger(
+    name: string,
+    context?: JobTriggerContext,
+  ): Promise<void> {
+    const registration = this.getRegistration(name);
+
+    if (registration.kind === "cron") {
+      await this.runCronLocked(registration, {
+        triggeredBy: context?.triggeredBy,
+        triggeredByName: context?.triggeredByName,
+      });
+      return;
+    }
+
+    // queue-mode: treat as a normal push with the given payload
+    if (!context?.payload) {
+      throw new AlephaError(
+        `Queue-mode job '${name}' requires a payload for manual trigger.`,
+      );
+    }
+    await this.push(name, context.payload, {
+      triggeredBy: context.triggeredBy,
+      triggeredByName: context.triggeredByName,
+    });
+  }
+
+  // --- Reschedule ------------------------------------------------------------------------------------------------
+
+  /**
+   * Resolve a handler's `reschedule()` call into the row it asks for. Runs at
+   * call time, inside the handler, so a bad request fails the run there
+   * rather than parking garbage: the error takes the retry path like any
+   * other throw.
+   */
+  protected rescheduleIntent(
+    registration: JobRuntimeRegistration,
+    currentPayload: Record<string, unknown> | undefined,
+    options: JobRescheduleOptions,
+  ): RescheduleIntent {
+    let scheduledAt: string;
+    if (options.scheduledAt) {
+      scheduledAt = options.scheduledAt.toISOString();
+    } else if (options.delay) {
+      scheduledAt = this.dt
+        .now()
+        .add(this.dt.duration(options.delay))
+        .toISOString();
+    } else {
+      throw new AlephaError(
+        `Job '${registration.name}' called reschedule() without a 'delay' or a 'scheduledAt'. A reschedule is a wait; say how long.`,
+      );
+    }
+    const payload =
+      options.payload === undefined
+        ? currentPayload
+        : (this.alepha.codec.validate(
+            registration.options.schema!,
+            options.payload,
+          ) as Record<string, unknown>);
+    return { scheduledAt, payload };
+  }
+
+  /**
+   * Put a running execution back to `scheduled` for its next stage.
+   *
+   * Guarded on `running`, like every other write that ends a run: a cancel
+   * that landed while the handler was finishing wins, and the reschedule is
+   * dropped without a dispatch. The row keeps its id, its key and its
+   * `maxAttempts`; `attempt` and `redispatchCount` start over, so each stage
+   * has the job's full retry budget. No success is recorded and no
+   * `job:success` is emitted: the execution is not over.
+   */
+  protected async park(
+    jobName: string,
+    executionId: string,
+    next: RescheduleIntent,
+  ): Promise<void> {
+    const parked = await this.guardedUpdate(
+      executionId,
+      ["running"],
+      {
+        status: "scheduled",
+        scheduledAt: next.scheduledAt,
+        payload: next.payload,
+        attempt: 0,
+        redispatchCount: 0,
+      },
+      "reschedule",
+    );
+    if (!parked) return;
+    this.log.debug(`Job '${jobName}' rescheduled`, {
+      executionId,
+      scheduledAt: next.scheduledAt,
+    });
+    await this.dispatchDelayed(jobName, executionId, next.scheduledAt);
+  }
+
+  // --- Cancel ----------------------------------------------------------------------------------------------------
+
+  /**
+   * Cancel the execution parked under `(jobName, key)`, if any.
+   *
+   * One status-guarded update on `pending | scheduled`, not a read followed
+   * by `cancel()`: a claim racing this call simply wins the update, and the
+   * handler it started is left alone. A `running` row is never touched here,
+   * by contract (see {@link JobPrimitive.cancelByKey}); the row's own next
+   * stage re-checks whatever the event meant. Returns the cancelled id, or
+   * `null` when nothing was parked under that key.
+   */
+  public async cancelByKey(
+    jobName: string,
+    key: string,
+    context?: CancelContext,
+  ): Promise<string | null> {
+    this.getRegistration(jobName);
+    try {
+      const row = await this.executions.updateOne(
+        {
+          jobName: { eq: jobName },
+          key: { eq: key },
+          status: { inArray: ["pending", "scheduled"] },
+        },
+        {
+          status: "cancelled",
+          key: null,
+          cancelledBy: context?.cancelledBy,
+          cancelledByName: context?.cancelledByName,
+          completedAt: this.dt.nowISOString(),
+        },
+      );
+      this.log.info(`Cancelled execution ${row.id} by key`, {
+        jobName,
+        key,
+        cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
+      });
+      await this.dropUnrecordedCancel(jobName, row.id);
+      return row.id;
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) return null;
+      throw error;
+    }
+  }
+
+  public async cancel(
+    executionId: string,
+    context?: CancelContext,
+  ): Promise<void> {
+    const execution = await this.executions.findById(executionId);
+    if (!execution) {
+      throw new AlephaError(`Execution not found: ${executionId}`);
+    }
+    if (
+      execution.status === "ok" ||
+      execution.status === "error" ||
+      execution.status === "cancelled"
+    ) {
+      throw new AlephaError(
+        `Cannot cancel execution in '${execution.status}' status`,
+      );
+    }
+
+    // Status-guarded: the execution may complete between our read above and
+    // this write — never stamp `cancelled` over a terminal row. Claim the
+    // status BEFORE aborting: the abort makes the running handler throw, and
+    // its failure path would otherwise write `error` first, making this
+    // legitimate cancellation lose the race (flaky on slow machines).
+    try {
+      await this.executions.updateOne(
+        {
+          id: { eq: executionId },
+          status: { inArray: ["pending", "running", "scheduled"] },
+        },
+        {
+          status: "cancelled",
+          key: null,
+          cancelledBy: context?.cancelledBy,
+          cancelledByName: context?.cancelledByName,
+          completedAt: this.dt.nowISOString(),
+        },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        const current = await this.executions.findById(executionId);
+        throw new AlephaError(
+          `Cannot cancel execution in '${current?.status ?? "deleted"}' status`,
+        );
+      }
+      throw error;
+    }
+
+    const controller = this.abortControllers.get(executionId);
+    if (controller) controller.abort();
+
+    this.log.info(`Cancelled execution ${executionId}`, {
+      jobName: execution.jobName,
+      cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
+    });
+
+    // A running row stays `cancelled` for its handler's abort path to read,
+    // which deletes it once it has emitted `job:cancel`; when that handler
+    // runs in another process, the next trim tick does.
+    if (execution.status !== "running") {
+      await this.dropUnrecordedCancel(execution.jobName, executionId);
+    }
+  }
+
+  /**
+   * Cancelled follows a job's failure rule: a job that records no failures
+   * records no cancellations either, so the row goes as soon as nothing is
+   * left to read it.
+   */
+  protected async dropUnrecordedCancel(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    const registration = this.jobs.get(jobName);
+    if (
+      !registration ||
+      this.retention.records(registration.retention, "error")
+    ) {
+      return;
+    }
+    await this.executions.deleteMany({
+      id: { eq: executionId },
+      status: { eq: "cancelled" },
+    });
+  }
+
+  // --- Queue consumer (called by JobQueueProvider) --------------------------------------------------------------
+
+  public async processExecution(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    const registration = this.jobs.get(jobName);
+    if (!registration) {
+      this.log.warn(`Unknown job '${jobName}' — skipping execution`, {
+        executionId,
+      });
+      return;
+    }
+    // Both `queue` and cron-with-retry execute through the outbox path —
+    // the DB-level `claim()` is the actual concurrency guard.
+    if (registration.kind !== "queue" && !registration.options.retry) {
+      this.log.warn(
+        `Job '${jobName}' has no outbox path (no schema and no retry) — skipping`,
+        { executionId },
+      );
+      return;
+    }
+
+    const promise = this.processQueueExecution(registration, executionId);
+    this.inFlight.add(promise);
+    try {
+      await promise;
+    } finally {
+      this.inFlight.delete(promise);
+    }
+  }
+
+  protected async processQueueExecution(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    /**
+     * `inline: true` changes exactly two things about a run, and both are
+     * about who learns that it failed. See {@link runInline}.
+     */
+    mode?: { inline?: boolean },
+  ): Promise<void> {
+    const jobName = registration.name;
+    const opts = registration.options;
+    const inline = mode?.inline === true;
+
+    const execution = await this.claim(executionId);
+    if (!execution) {
+      this.log.debug(`Execution ${executionId} already claimed, skipping`);
+      return;
+    }
+
+    const contextId = this.alepha.context.createContextId();
+
+    const abortController = new AbortController();
+    this.abortControllers.set(executionId, abortController);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (opts.timeout) {
+      const ms = this.dt.duration(opts.timeout).as("milliseconds");
+      timeoutId = setTimeout(() => abortController.abort(), ms);
+    }
+    const leaseTimer = this.startLeaseHeartbeat(executionId, registration);
+
+    const now = this.dt.now();
+
+    try {
+      await this.alepha.context.run(
+        async () => {
+          await this.alepha.events.emit("job:begin", {
+            name: jobName,
+            now,
+            executionId,
+          });
+
+          // Set by the handler's `reschedule()`; read once it resolves. A
+          // throw discards it, which is what makes "throw wins" true.
+          let parkAgain: RescheduleIntent | undefined;
+          try {
+            await opts.handler({
+              payload: execution.payload,
+              attempt: execution.attempt,
+              now,
+              signal: abortController.signal,
+              executionId,
+              reschedule: (options) => {
+                if (inline) {
+                  throw new AlephaError(
+                    `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                  );
+                }
+                parkAgain = this.rescheduleIntent(
+                  registration,
+                  execution.payload,
+                  options,
+                );
+              },
+            });
+
+            if (parkAgain) {
+              await this.park(jobName, executionId, parkAgain);
+              return;
+            }
+
+            // Success: UPDATE to 'ok' with the run's logs, or DELETE when the
+            // job does not record successes. Guarded on 'running' either
+            // way: a cancellation that landed while the handler was finishing
+            // must not be stomped to 'ok' or erased.
+            if (this.retention.records(registration.retention, "ok")) {
+              await this.guardedUpdate(
+                executionId,
+                ["running"],
+                {
+                  status: "ok",
+                  completedAt: this.dt.nowISOString(),
+                  key: null,
+                  logs: this.logBuffer.snapshot(),
+                },
+                "success",
+              );
+            } else {
+              await this.executions.deleteMany({
+                id: { eq: executionId },
+                status: { eq: "running" },
+              });
+            }
+
+            await this.alepha.events.emit(
+              "job:success",
+              { name: jobName, executionId },
+              { catch: true },
+            );
+          } catch (error) {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+
+            if (abortController.signal.aborted) {
+              const current = await this.executions.findById(executionId);
+              if (current?.status === "cancelled") {
+                await this.alepha.events.emit(
+                  "job:cancel",
+                  { name: jobName, executionId },
+                  { catch: true },
+                );
+                // Cancelled follows the job's failure rule. `cancel()` left
+                // the row for this path to read; it goes now.
+                if (!this.retention.records(registration.retention, "error")) {
+                  await this.executions.deleteMany({
+                    id: { eq: executionId },
+                    status: { eq: "cancelled" },
+                  });
+                }
+                // A resolved `push({ inline: true })` claims the handler ran
+                // to completion. A cancelled run did not, so the caller has
+                // to hear about it rather than read success into silence.
+                if (inline) throw err;
+                return;
+              }
+            }
+
+            if (inline) {
+              // **The rule that decides whether this flag achieves
+              // anything**: an inline failure writes a TERMINAL row, never
+              // `scheduled`. Left scheduled, the sweep would deliver the
+              // expired payload a quarter of an hour later and `inline`
+              // would have bought nothing but a synchronous error stapled
+              // onto the identical broken behaviour.
+              //
+              // Written here rather than through `handleFailure`, which
+              // derives its budget from `registration.options.retry` and so
+              // cannot see that THIS execution opted out of retrying. A job
+              // that records no failures loses the row instead; the caller
+              // still gets the error.
+              if (this.retention.records(registration.retention, "error")) {
+                await this.guardedUpdate(
+                  executionId,
+                  ["running"],
+                  {
+                    status: "error",
+                    error: err.message,
+                    completedAt: this.dt.nowISOString(),
+                    key: null,
+                    logs: this.logBuffer.snapshot(),
+                  },
+                  "inline-failure",
+                );
+              } else {
+                await this.executions.deleteMany({
+                  id: { eq: executionId },
+                  status: { eq: "running" },
+                });
+              }
+              await this.alepha.events.emit(
+                "job:error",
+                { name: jobName, error: err, executionId },
+                { catch: true },
+              );
+              throw err;
+            }
+
+            await this.handleFailure(
+              executionId,
+              registration,
+              execution.attempt,
+              err,
+              this.logBuffer.snapshot(),
+            );
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            this.abortControllers.delete(executionId);
+            await this.alepha.events.emit(
+              "job:end",
+              { name: jobName, executionId },
+              { catch: true },
+            );
+          }
+        },
+        {
+          context: contextId,
+          ...this.logBuffer.seed(this.config.logMaxEntries),
+        },
+      );
+    } finally {
+      clearInterval(leaseTimer);
+    }
+  }
+
+  /**
+   * Transition pending → running and return the post-update row.
+   * Two round-trips: read current attempt, then guarded UPDATE … RETURNING.
+   * Returns null when the row is gone or already claimed by another worker.
+   * The returned row replaces a separate post-claim findById, so the dispatch
+   * path is 2 queries instead of 3.
+   *
+   * A **due `scheduled`** row is claimed too, in the same guarded update.
+   * That is not a loosening: it is the only way a transport-held delay can
+   * work at all. When the dispatcher honours `delaySeconds` itself, the
+   * delivery necessarily arrives while the row still says `scheduled` —
+   * the delay was requested at the moment the row was written, and nothing
+   * promotes it in between. The `scheduledAt <= now` condition is what keeps
+   * an early delivery (a clamped Cloudflare delay, clock skew) from running
+   * the job ahead of its time: it simply fails to claim, and the sweep
+   * delivers it when it is genuinely due.
+   */
+  protected async claim(executionId: string) {
+    const current = await this.executions.findById(executionId);
+    if (!current) {
+      // Not the "already claimed" case, which the guarded update below
+      // answers: the row is not there at all. A delivery for a deleted row,
+      // or a read that did not see the write (a D1 replica behind the
+      // primary). The message is acked either way and only the sweep can
+      // recover the row, so this must be visible (#Q2478).
+      this.log.warn(
+        `Execution ${executionId} not found when claiming; the sweep will re-dispatch it if it exists`,
+      );
+      return null;
+    }
+    const where =
+      current.status === "scheduled"
+        ? {
+            id: { eq: executionId },
+            status: { eq: "scheduled" as const },
+            scheduledAt: { lte: this.dt.nowISOString() },
+          }
+        : { id: { eq: executionId }, status: { eq: "pending" as const } };
+    try {
+      return await this.executions.updateOne(where, {
+        status: "running",
+        attempt: current.attempt + 1,
+        startedAt: this.dt.nowISOString(),
+      });
+    } catch (e) {
+      if (e instanceof DbEntityNotFoundError) return null;
+      throw e;
+    }
+  }
+
+  /**
+   * How long to wait before attempt `currentAttempt + 1`.
+   *
+   * Exponential (`base * factor^(n-1)`), capped, then **full jitter**:
+   * uniform in `[0, computed]`. The jitter matters more than the curve.
+   * Before this, every retrying row in the system shared one `scheduledAt`
+   * and the sweep promoted them as a single herd against a downstream that
+   * had just told them all it was struggling; spreading them is most of the
+   * value.
+   *
+   * A job's own `retry.backoff` replaces the base, the factor and the cap,
+   * and may switch the jitter off for an exact curve; the global
+   * `retryBackoffMax` still caps a job that names no `max`.
+   */
+  protected retryBackoffMs(
+    currentAttempt: number,
+    backoff?: JobRetryBackoff,
+  ): number {
+    const base = backoff
+      ? Math.max(0, this.dt.duration(backoff.initial).as("milliseconds"))
+      : Math.max(0, this.config.retryBackoffBase);
+    const cap = Math.max(
+      base,
+      backoff?.max
+        ? this.dt.duration(backoff.max).as("milliseconds")
+        : this.config.retryBackoffMax,
+    );
+    const factor = backoff?.factor ?? 2;
+    const exponent = Math.max(0, currentAttempt - 1);
+    // 2^30 ms is already ~12 days, so clamp the exponent before it can
+    // overflow into Infinity on a job with an absurd retry count.
+    const ceiling = Math.min(cap, base * factor ** Math.min(exponent, 30));
+    const jitter = backoff?.jitter ?? true;
+    return Math.round(jitter ? this.randomFraction() * ceiling : ceiling);
+  }
+
+  /**
+   * A uniform value in `[0, 1)`. Its own method so a test can make the
+   * jitter deterministic by subclassing, the way everything else here stays
+   * substitutable.
+   */
+  protected randomFraction(): number {
+    return Math.random();
+  }
+
+  protected async handleFailure(
+    executionId: string,
+    registration: JobRuntimeRegistration,
+    currentAttempt: number,
+    error: Error,
+    /**
+     * Breadcrumbs of the run that failed. Passed in rather than read from the
+     * ambient context: the sweep recovers crashed executions from *outside*
+     * any run, and must not staple whatever context it happens to sit in
+     * (a request, another job) onto the row it is repairing.
+     */
+    logs?: LogEntry[],
+  ): Promise<void> {
+    const jobName = registration.name;
+    const opts = registration.options;
+    const retry = opts.retry;
+    const maxAttempts = (retry?.retries ?? 0) + 1;
+
+    // `retries: 2` means "1 initial + 2 retries = 3 total attempts". Retry
+    // while we have not yet *executed* the maxAttempts'th attempt — i.e.
+    // currentAttempt (the one that just failed) is strictly less than
+    // maxAttempts. The off-by-one fix: previously this was
+    // `currentAttempt + 1 < maxAttempts`, which only ran 2 attempts for
+    // `retries: 2`.
+    const canRetry =
+      retry &&
+      currentAttempt < maxAttempts &&
+      (retry.when ? retry.when(error) : true);
+
+    if (canRetry) {
+      // Exponential backoff with full jitter, written onto the row and then
+      // handed to the dispatcher as a delay.
+      //
+      // It used to be `scheduledAt = now`, on the reasoning that backoff was
+      // platform-dependent: precise on Node via setTimeout, degraded to
+      // "next sweep" on Cloudflare, so it was dropped everywhere for
+      // consistency. The price of that consistency was a 15-minute retry
+      // grid, which is what makes a retried verification email land after
+      // its 300-second code has expired.
+      //
+      // The delay is an optimisation; `scheduledAt` is the truth and the
+      // sweep is the backstop, so a runtime that cannot arrange a wake-up
+      // still retries, just no sooner than the next tick. That is the
+      // property the old comment wanted, and it did not need a flat grid.
+      const delayMs = this.retryBackoffMs(currentAttempt, retry.backoff);
+      const nextScheduledAt = this.dt
+        .now()
+        .add(delayMs, "millisecond")
+        .toISOString();
+      this.log.info(
+        `Job '${jobName}' failed, retry ${currentAttempt + 1}/${maxAttempts} in ~${Math.round(delayMs / 1000)}s`,
+        { executionId, error: error.message },
+      );
+      // Guard with `status: running` so a concurrent cancel that has already
+      // flipped the row to 'cancelled' is not overwritten by the retry write.
+      await this.guardedUpdate(
+        executionId,
+        ["running"],
+        {
+          status: "scheduled",
+          error: error.message,
+          scheduledAt: nextScheduledAt,
+          logs,
+        },
+        "retry-after-failure",
+      );
+      await this.dispatchDelayed(jobName, executionId, nextScheduledAt);
+    } else {
+      this.log.info(
+        `Job '${jobName}' dead after ${currentAttempt} attempt(s)`,
+        { executionId, error: error.message },
+      );
+      if (this.retention.records(registration.retention, "error")) {
+        await this.guardedUpdate(
+          executionId,
+          ["running"],
+          {
+            status: "error",
+            error: error.message,
+            completedAt: this.dt.nowISOString(),
+            key: null,
+            logs,
+          },
+          "terminal-failure",
+        );
+      } else {
+        // The job records no failures, so its outbox row ends here. Guarded
+        // like the write it replaces: a cancel that won keeps its row.
+        await this.executions.deleteMany({
+          id: { eq: executionId },
+          status: { eq: "running" },
+        });
+      }
+    }
+
+    await this.alepha.events.emit(
+      "job:error",
+      { name: jobName, error, executionId },
+      { catch: true },
+    );
+  }
+
+  // --- Sweep ----------------------------------------------------------------------------------------------------
+
+  protected async sweep(): Promise<void> {
+    if (this.stopping) return;
+    this.log.trace("Starting job sweep");
+    const now = this.dt.now();
+
+    // Each phase is contained independently: one failing phase (or one bad
+    // row inside it) must not skip the others until the next tick, which is
+    // 15 minutes away by default.
+    for (const entry of this.sweepTable()) {
+      await this.sweepPhase(entry.label, () => this.runSweepEntry(entry, now));
+    }
+  }
+
+  /**
+   * The sweep's recovery table: one entry per status the sweep may act on.
+   *
+   * This is data rather than three hand-written phases because the three used
+   * to disagree with each other. `redispatch-stale` measured age from
+   * `createdAt`, a column that never moves, so a row that `promote-due` had
+   * just lifted to `pending` in the SAME tick looked stale immediately and
+   * was dispatched a second time - every delayed job and every retry was
+   * delivered twice, forever, because `createdAt` only gets older.
+   *
+   * Two rules keep the entries honest, and both are visible here rather than
+   * spread across three methods:
+   *
+   * - **The statuses are disjoint.** No row can be claimed by two entries in
+   *   one tick. `ok`, `error` and `cancelled` appear nowhere, which is what
+   *   makes "the sweep never touches a terminal row" a property of the table
+   *   instead of an accident.
+   * - **One clock.** Staleness is `updatedAt`, the same value the lease
+   *   heartbeat renews, never `createdAt`.
+   */
+  protected sweepTable(): SweepEntry[] {
+    return [
+      {
+        label: "promote-due",
+        status: "scheduled",
+        // Oldest due first, so a backlog is served in the order it fell due.
+        orderBy: { column: "scheduledAt", direction: "asc" },
+        // Due when its own scheduledAt has arrived.
+        where: (where, now) => {
+          where.scheduledAt = { lte: now.toISOString() };
+        },
+        act: (exec) => this.promoteDue(exec),
+      },
+      {
+        label: "redispatch-stale",
+        status: "pending",
+        // Longest untouched first, the same clock the phase measures
+        // staleness with, and the ordering `recover-crashed` already uses.
+        orderBy: { column: "updatedAt", direction: "asc" },
+        // Pending and untouched for `staleThreshold`: the delivery was lost.
+        // `updatedAt` is the clock, and the (status, updatedAt) index serves
+        // both the bound and the order.
+        where: (where, now) => {
+          where.updatedAt = {
+            lte: now
+              .subtract(this.config.staleThreshold, "millisecond")
+              .toISOString(),
+          };
+        },
+        act: (exec) => this.redispatchStale(exec),
+      },
+      {
+        label: "recover-crashed",
+        status: "running",
+        // No SQL bound: the lease length is per job, so the threshold cannot
+        // be expressed as one comparison across the whole result set.
+        where: () => {},
+        // It needs the batch bound like the other two - it reads every
+        // `running` row otherwise - but a bounded batch here is filtered
+        // again in JS by `claims`, so an arbitrary slice could be all
+        // live rows and leave the crashed ones unreached forever.
+        //
+        // Ordering by `updatedAt` ascending is what makes the bound safe:
+        // `updatedAt` is the value the lease heartbeat renews, so the oldest
+        // lease sorts first and a bounded batch is exactly the rows most
+        // likely to be crashed. A live job renews and sorts itself to the
+        // back.
+        orderBy: { column: "updatedAt", direction: "asc" },
+        claims: (exec, registration, now) => {
+          if (this.abortControllers.has(exec.id)) return false; // alive here
+          // The lease is whichever is fresher: the claim (startedAt) or the
+          // last heartbeat (updatedAt). A legitimately long-running job on
+          // another instance keeps renewing; only a stale lease is a crash.
+          const lastAliveMs = Math.max(
+            exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+            exec.updatedAt ? new Date(exec.updatedAt).getTime() : 0,
+          );
+          if (lastAliveMs === 0) return false;
+          return (
+            now.valueOf() - lastAliveMs > this.crashThresholdMs(registration)
+          );
+        },
+        act: (exec, registration) => this.recoverCrashed(exec, registration),
+      },
+    ];
+  }
+
+  /**
+   * Run one entry of the sweep table: read the rows it owns, drop the ones
+   * its own predicate rejects, and act on the rest. Per-row containment lives
+   * in the actions, so one unrecoverable row cannot strand the others.
+   *
+   * The read is bounded by `sweepBatchSize`. It used to have no `limit` at
+   * all, and `Repository.findMany` emits no LIMIT clause when none is given,
+   * so every phase materialised every matching row. The failure mode was
+   * self-reinforcing rather than merely wasteful: a downstream outage turns
+   * the whole retrying population into rows `promote-due` matches on the very
+   * next tick, so the tick that has the most to do is the one that runs out
+   * of budget, and the next tick starts from the top of the same ordered set
+   * and redoes the same prefix. The sweep was least able to make progress
+   * exactly when it was most needed.
+   *
+   * Every phase's action moves the row out of the status the phase owns
+   * (`promote-due` promotes, `recover-crashed` fails, `redispatch-stale`
+   * stamps `updatedAt` past the stale window), so a bounded batch always
+   * makes progress: next tick reads the next rows, not the same ones.
+   *
+   * Every phase serves its oldest rows first, so under a backlog work is
+   * picked up in the order it has been waiting.
+   */
+  protected async runSweepEntry(
+    entry: SweepEntry,
+    now: DateTime,
+  ): Promise<void> {
+    const where = this.executions.createQueryWhere();
+    where.status = { eq: entry.status };
+    entry.where(where, now);
+
+    const limit = Math.max(1, this.config.sweepBatchSize);
+    const rows = await this.executions.findMany({
+      where,
+      limit,
+      ...(entry.orderBy ? { orderBy: entry.orderBy } : {}),
+    });
+
+    if (rows.length >= limit) {
+      // A full batch means a backlog. Say so rather than leaving it to be
+      // inferred from a graph: from the outside a bounded sweep that is
+      // behind looks exactly like one that is up to date.
+      this.log.info(
+        `Sweep phase '${entry.label}' filled its batch (${rows.length}/${limit}); the remainder waits for the next tick`,
+      );
+    }
+
+    for (const exec of rows) {
+      const registration = this.jobs.get(exec.jobName);
+      if (!registration) continue;
+      if (entry.claims && !entry.claims(exec, registration, now)) continue;
+      await entry.act(exec, registration);
+    }
+  }
+
+  /**
+   * Sweep action for `redispatch-stale`: a `pending` row nobody claimed, so
+   * the dispatch was lost. Re-dispatch it, but count the attempts.
+   *
+   * `attempt` only moves inside `claim()`, so a payload that reliably kills
+   * the isolate between dispatch and claim never increments it and the
+   * post-claim `maxAttempts` bound never binds. This was the one path in the
+   * state machine with no terminal state: it looped once per sweep, forever.
+   *
+   * The counter write is guarded on `pending` and is what stamps `updatedAt`,
+   * which is also the phase's staleness clock — so a row re-dispatched here
+   * drops out of the phase's window for another `staleThreshold` instead of
+   * being picked again on every tick.
+   */
+  protected async redispatchStale(exec: JobExecutionEntity): Promise<void> {
+    const count = exec.redispatchCount ?? 0;
+    if (count >= this.config.maxRedispatch) {
+      this.log.warn(
+        `Job '${exec.jobName}' (${exec.id}) was never claimed after ${count} re-dispatch(es), marking it errored`,
+      );
+      const registration = this.jobs.get(exec.jobName);
+      if (
+        !registration ||
+        this.retention.records(registration.retention, "error")
+      ) {
+        await this.guardedUpdate(
+          exec.id,
+          ["pending"],
+          {
+            status: "error",
+            error: `Never claimed after ${count} sweep re-dispatch(es) (jobConfig.maxRedispatch)`,
+            completedAt: this.dt.nowISOString(),
+            key: null,
+          },
+          "redispatch-exhausted",
+        );
+      } else {
+        await this.executions.deleteMany({
+          id: { eq: exec.id },
+          status: { eq: "pending" },
+        });
+      }
+      await this.alepha.events.emit(
+        "job:error",
+        {
+          name: exec.jobName,
+          error: new Error(
+            `Never claimed after ${count} sweep re-dispatch(es)`,
+          ),
+          executionId: exec.id,
+        },
+        { catch: true },
+      );
+      return;
+    }
+
+    // Count first: a re-dispatch we cannot record is one we must not make,
+    // or the cap above is unreachable. A row that left `pending` in the
+    // meantime was claimed by someone, and needs no help from us.
+    const bumped = await this.executions.updateMany(
+      { id: { eq: exec.id }, status: { eq: "pending" } },
+      { redispatchCount: count + 1 },
+    );
+    if (bumped.length === 0) {
+      this.log.trace(
+        `Sweep: skipping ${exec.jobName} (${exec.id}), no longer pending`,
+      );
+      return;
+    }
+
+    await this.dispatchSafe(exec.jobName, exec.id);
+  }
+
+  /**
+   * Sweep action for `recover-crashed`: the instance that claimed this row is
+   * gone, so fail it here and let the retry policy decide what happens next.
+   */
+  protected async recoverCrashed(
+    exec: JobExecutionEntity,
+    registration: JobRuntimeRegistration,
+  ): Promise<void> {
+    this.log.warn(
+      `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
+    );
+    // The when, in the message itself: a killed isolate reports nothing, so
+    // this line is the whole record of a run that died, and "assumed crashed"
+    // alone could not say whether it died at start or an hour in (#Q2344).
+    // Still a plain `Error` with a fixed prefix: a sigil fingerprints on the
+    // error's name and throw site, never its message, so the timestamps do
+    // not split one recurring crash into many groups, while a new name would.
+    const error = new Error(
+      `Execution assumed crashed (recovered by sweep): started ${exec.startedAt ?? "never"}, lease last renewed ${exec.updatedAt}, no renewal within ${Math.round(this.crashThresholdMs(registration) / 1000)}s`,
+    );
+    // Per-row containment: one unrecoverable row must not strand the
+    // remaining crashed executions until the next tick.
+    try {
+      await this.handleFailure(exec.id, registration, exec.attempt, error);
+    } catch (e) {
+      this.log.error(`Sweep failed to recover crashed execution ${exec.id}`, {
+        error: e,
+      });
+    }
+  }
+
+  protected async sweepPhase(
+    label: string,
+    phase: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await phase();
+    } catch (error) {
+      this.log.error(`Sweep phase '${label}' failed`, { error });
+    }
+  }
+
+  /**
+   * Sweep phase 1: promote a due `scheduled` row to `pending` and dispatch.
+   * Status-guarded like `dispatchScheduled` — a concurrent `cancel()` between
+   * the sweep's read and this write must win, not be resurrected. A failure
+   * on one row must not abort the rest of the sweep tick.
+   */
+  protected async promoteDue(exec: {
+    id: string;
+    jobName: string;
+  }): Promise<void> {
+    try {
+      await this.executions.updateOne(
+        { id: { eq: exec.id }, status: { eq: "scheduled" } },
+        { status: "pending" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        this.log.trace(
+          `Sweep: skipping ${exec.jobName} (${exec.id}) — no longer scheduled`,
+        );
+        return;
+      }
+      this.log.warn(`Sweep failed to promote ${exec.jobName} (${exec.id})`, {
+        error,
+      });
+      return;
+    }
+    await this.dispatchSafe(exec.jobName, exec.id);
+  }
+
+  protected async dispatchSafe(
+    jobName: string,
+    executionId: string,
+    options?: JobDispatchOptions,
+  ): Promise<void> {
+    try {
+      await this.dispatch(jobName, executionId, options);
+    } catch (e) {
+      // Containment, not silence: the row keeps its own `scheduledAt` and
+      // the sweep is still the backstop, so a dispatch that could not be
+      // arranged costs latency, never an execution.
+      this.log.warn(`Failed to dispatch ${jobName} (${executionId})`, e);
+    }
+  }
+
+  /**
+   * Move a row from `scheduled` → `pending` and dispatch it.
+   * Used by the optimistic retry/delay timer. If the sweep has already moved
+   * the row, or another worker has claimed it, the UPDATE guard fails silently.
+   * The `scheduledAt <= now` condition keeps a stray early timer (clock skew,
+   * timer overflow) from promoting a row ahead of schedule.
+   */
+  protected async dispatchScheduled(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    if (this.stopping) return;
+    try {
+      await this.executions.updateOne(
+        {
+          id: { eq: executionId },
+          status: { eq: "scheduled" },
+          scheduledAt: { lte: this.dt.nowISOString() },
+        },
+        { status: "pending" },
+      );
+    } catch {
+      // Either the row already transitioned (sweep ran, another worker
+      // claimed it), or the timer fired a millisecond EARLY: timers run on
+      // the monotonic loop clock while `scheduledAt` is compared with the
+      // wall clock, and the two disagree by a millisecond often enough that
+      // a 10 ms retry backoff used to strand its row until the next sweep.
+      // Re-arm for the remainder when the row is still waiting for us.
+      const row = await this.executions
+        .findById(executionId)
+        .catch(() => undefined);
+      if (row?.status === "scheduled" && row.scheduledAt) {
+        const remaining =
+          new Date(row.scheduledAt).getTime() - this.dt.nowMillis();
+        if (remaining <= this.maxOptimisticDelayMs) {
+          this.dt.createTimeout(
+            () => {
+              void this.dispatchScheduled(jobName, executionId);
+            },
+            Math.max(1, remaining),
+          );
+        }
+      }
+      return;
+    }
+    try {
+      await this.dispatchSafe(jobName, executionId);
+    } catch {
+      // dispatchSafe reports its own failures; nothing to add here.
+    }
+  }
+
+  /**
+   * How many ids go into one `DELETE ... WHERE id IN (...)`.
+   *
+   * Comfortably under SQLite's 999-parameter ceiling, which is the binding
+   * constraint on D1. It is why the catch-up below is a loop rather than one
+   * statement sized from the count.
+   */
+  protected readonly trimChunkSize = 500;
+
+  /**
+   * Ceiling on how much one trim tick will delete per (job, status).
+   *
+   * Bounds a single tick without being the silent cap this replaces: when it
+   * binds it is logged, and the next tick resumes, so the table still
+   * converges instead of growing forever.
+   */
+  protected readonly trimMaxPerTick = 5_000;
+
+  /**
+   * The trim's first phase: delete every row whose job name no job in this
+   * container declares, whatever its status.
+   *
+   * The name is a job's identity in `job_executions`, and every other path
+   * filters on a registered name: rows under a name nothing declares any more
+   * are never swept, trimmed, retried or listed, so without this they stay
+   * forever. **Renaming a job therefore loses its rows**, pending and
+   * scheduled ones included, at the first trim tick after the deploy. That is
+   * accepted: there is no alias and no carry-over.
+   *
+   * Skipped when no job is registered. A container that declares none (a
+   * script that loaded `AlephaApiJobs` alone) is not an application whose job
+   * set means anything, and would otherwise empty the table.
+   *
+   * ⚠️ Any process pointed at the same database with a different job set
+   * deletes the rows of the jobs it does not declare: two applications
+   * sharing a database, or a script that started a container with only some
+   * of the application's modules. Give each its own database, or its own
+   * schema.
+   */
+  protected async purgeUnregistered(): Promise<void> {
+    const names = [...this.jobs.keys()];
+    if (names.length === 0) return;
+
+    let deleted = 0;
+    try {
+      while (deleted < this.trimMaxPerTick) {
+        const chunk = Math.min(
+          this.trimChunkSize,
+          this.trimMaxPerTick - deleted,
+        );
+        // The registered names are a few dozen bound parameters on top of a
+        // chunk of ids, which keeps the delete under D1's 999.
+        const rows = await this.executions.findMany({
+          where: { jobName: { notInArray: names } },
+          columns: ["id"],
+          limit: chunk,
+        });
+        if (rows.length === 0) break;
+        await this.executions.deleteMany({
+          id: { inArray: rows.map((r) => r.id) },
+        });
+        deleted += rows.length;
+        if (rows.length < chunk) break;
+      }
+      if (deleted > 0) {
+        this.log.info(
+          `Purged ${deleted} execution row(s) of jobs no longer registered`,
+        );
+      }
+      if (deleted >= this.trimMaxPerTick) {
+        this.log.info(
+          `Purge of unregistered jobs hit its per-tick ceiling (${deleted} removed); the rest waits for the next tick`,
+        );
+      }
+    } catch (e) {
+      this.log.warn("Failed to purge rows of unregistered jobs", e);
+    }
+  }
+
+  /**
+   * Enforce every job's retention.
+   *
+   * **One grouped query for the whole tick**, not two per registered job.
+   * The old shape issued a `findMany` per job per status regardless of
+   * activity: about sixteen jobs in Lore meant up to 32 queries an hour,
+   * roughly 770 a day, almost all of them returning nothing. Most of the
+   * hourly cron trigger's 172 ms of CPU was this.
+   *
+   * The group carries each status's count and its oldest `completedAt`, so a
+   * status that is neither over its `last` nor holding a row older than its
+   * `days` costs nothing more. `cancelled` is trimmed too, by the failure rule.
+   *
+   * **The clock is `completedAt`**, which every terminal write sets. Not
+   * `startedAt`: it is null on a row cancelled before any worker claimed it,
+   * and Postgres sorts that null first under `DESC` where SQLite sorts it
+   * last, so the two databases would delete different rows.
+   */
+  protected async trimRingBuffers(): Promise<void> {
+    await this.purgeUnregistered();
+
+    let groups: Array<{
+      jobName: string;
+      status: string;
+      id: { count: number };
+      completedAt: { min: unknown };
+    }>;
+    try {
+      groups = (await this.executions.aggregate({
+        select: {
+          jobName: true,
+          status: true,
+          id: { count: true },
+          completedAt: { min: true },
+        },
+        where: { status: { inArray: ["ok", "error", "cancelled"] } },
+        groupBy: ["jobName", "status"],
+      })) as typeof groups;
+    } catch (e) {
+      this.log.warn("Failed to read execution counts for trim", e);
+      return;
+    }
+
+    const now = this.dt.now();
+    for (const group of groups) {
+      const reg = this.jobs.get(group.jobName);
+      if (!reg) continue;
+      const status = group.status as "ok" | "error" | "cancelled";
+      const total = Number(group.id.count ?? 0);
+      if (total === 0) continue;
+
+      const limit = this.retention.limitFor(reg.retention, reg.kind, status);
+      if (limit === false) {
+        // Not recorded: whatever is left from before goes.
+        await this.trimByStatus(reg.name, status, {
+          total,
+          last: 0,
+          keepNewest: false,
+        });
+        continue;
+      }
+
+      const overCount = limit.last !== undefined && total > limit.last;
+      const cutoff =
+        limit.days !== undefined
+          ? now.subtract(limit.days * 86_400_000, "millisecond")
+          : undefined;
+      const oldest = new Date(group.completedAt?.min as any).getTime();
+      const holdsOld =
+        cutoff !== undefined &&
+        // An unreadable minimum is left to the SQL comparison to decide.
+        (Number.isNaN(oldest) || oldest < cutoff.valueOf()) &&
+        // A cron's only row is its newest, which outlives the window.
+        !(limit.keepNewest && total <= 1);
+
+      if (!overCount && !holdsOld) continue;
+      await this.trimByStatus(reg.name, status, {
+        total,
+        last: overCount ? limit.last : undefined,
+        cutoff: holdsOld ? cutoff?.toISOString() : undefined,
+        keepNewest: limit.keepNewest,
+      });
+    }
+  }
+
+  /**
+   * Delete one status of one job back to its limits, in chunks: first every
+   * row past the newest `last`, then every row that completed before
+   * `cutoff`, sparing the newest row when `keepNewest`.
+   *
+   * It used to read `limit: keep + 50` and delete whatever was beyond
+   * `keep`, which meant a job producing more than 50 rows of a status per
+   * trim tick could **never** be trimmed back: the table grew without bound
+   * and nothing anywhere said so. Silently giving up was the one option to
+   * rule out, so both phases loop, under one per-tick ceiling that logs when
+   * it binds.
+   */
+  protected async trimByStatus(
+    jobName: string,
+    status: "ok" | "error" | "cancelled",
+    plan: {
+      total: number;
+      last?: number;
+      cutoff?: string;
+      keepNewest: boolean;
+    },
+  ): Promise<void> {
+    const newestFirst = [
+      { column: "completedAt" as const, direction: "desc" as const },
+      { column: "createdAt" as const, direction: "desc" as const },
+    ];
+    let deleted = 0;
+    let unfinished = false;
+    try {
+      if (plan.last !== undefined && plan.total > plan.last) {
+        const over = plan.total - plan.last;
+        let removed = 0;
+        while (removed < over && deleted < this.trimMaxPerTick) {
+          const chunk = Math.min(
+            this.trimChunkSize,
+            over - removed,
+            this.trimMaxPerTick - deleted,
+          );
+          // `offset: last` past a newest-first ordering is the tail. Re-read
+          // each round rather than paging: the previous chunk is gone, so the
+          // same offset lands on the next-oldest rows.
+          const rows = await this.executions.findMany({
+            where: { jobName: { eq: jobName }, status: { eq: status } },
+            orderBy: newestFirst,
+            columns: ["id"],
+            offset: plan.last,
+            limit: chunk,
+          });
+          if (rows.length === 0) break;
+          await this.executions.deleteMany({
+            id: { inArray: rows.map((r) => r.id) },
+          });
+          removed += rows.length;
+          deleted += rows.length;
+        }
+        if (removed < over && deleted >= this.trimMaxPerTick) {
+          unfinished = true;
+        }
+      }
+
+      if (plan.cutoff !== undefined && deleted < this.trimMaxPerTick) {
+        let spare: string | undefined;
+        if (plan.keepNewest) {
+          const newest = await this.executions.findMany({
+            where: { jobName: { eq: jobName }, status: { eq: status } },
+            orderBy: newestFirst,
+            columns: ["id"],
+            limit: 1,
+          });
+          spare = newest[0]?.id;
+        }
+        while (deleted < this.trimMaxPerTick) {
+          const chunk = Math.min(
+            this.trimChunkSize,
+            this.trimMaxPerTick - deleted,
+          );
+          const where = this.executions.createQueryWhere();
+          where.jobName = { eq: jobName };
+          where.status = { eq: status };
+          where.completedAt = { lt: plan.cutoff };
+          if (spare) where.id = { ne: spare };
+          const rows = await this.executions.findMany({
+            where,
+            columns: ["id"],
+            limit: chunk,
+          });
+          if (rows.length === 0) break;
+          await this.executions.deleteMany({
+            id: { inArray: rows.map((r) => r.id) },
+          });
+          deleted += rows.length;
+          if (rows.length < chunk) break;
+          if (deleted >= this.trimMaxPerTick) unfinished = true;
+        }
+      }
+
+      if (deleted > 0) {
+        this.log.debug(`Trimmed ${deleted} ${status} rows for '${jobName}'`);
+      }
+      if (unfinished) {
+        // Visible, unlike the cap this replaces. The next tick continues.
+        this.log.info(
+          `Trim of '${jobName}' ${status} rows hit its per-tick ceiling after ${deleted} removed, the rest waits for the next tick`,
+        );
+      }
+    } catch (e) {
+      this.log.warn(`Failed to trim ${status} rows for '${jobName}'`, e);
+    }
+  }
+
+  // --- Lifecycle -----------------------------------------------------------------------------------------------
+
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: async () => {
+      // Summarize effective modes once at start so operators can see at a
+      // glance what each job will do. No validation is needed here: queue
+      // jobs gracefully fall back to direct mode when AlephaApiJobsQueue
+      // isn't loaded.
+      const modes: Record<JobEffectiveMode, number> = {
+        cron: 0,
+        queue: 0,
+        direct: 0,
+      };
+      const perJob: Record<string, JobEffectiveMode> = {};
+      for (const [name] of this.jobs) {
+        const m = this.effectiveMode(name);
+        modes[m]++;
+        perJob[name] = m;
+      }
+      this.log.info(`Job system OK`, {
+        modes,
+        jobs: this.jobs.size,
+        perJob,
+      });
+
+      if (!this.alepha.isServerless()) {
+        await this.sweep();
+      }
+
+      // Sweep + trim cron registrations live in the constructor — see
+      // the note there. CronProvider's `start` hook (which runs before
+      // ours via DI order) has already booted them by the time we get
+      // here.
+    },
+  });
+
+  protected readonly onStop = $hook({
+    on: "stop",
+    handler: async () => {
+      this.stopping = true;
+      if (this.inFlight.size > 0) {
+        this.log.info(`Draining ${this.inFlight.size} in-flight job(s)...`);
+        await Promise.race([
+          Promise.allSettled(this.inFlight),
+          this.dt.wait([this.config.drainTimeout, "millisecond"]),
+        ]);
+      }
+      if (this.abortControllers.size > 0) {
+        this.log.warn(
+          `Aborting ${this.abortControllers.size} remaining job(s) after drain timeout`,
+        );
+        for (const controller of this.abortControllers.values()) {
+          controller.abort();
+        }
+      }
+    },
+  });
+
+  // --- Helpers -------------------------------------------------------------------------------------------------
+
+  protected getRegistration(name: string): JobRuntimeRegistration {
+    const registration = this.jobs.get(name);
+    if (!registration) {
+      throw new AlephaError(`Job not registered: ${name}`);
+    }
+    return registration;
+  }
+}

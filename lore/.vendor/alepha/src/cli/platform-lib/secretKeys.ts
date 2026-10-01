@@ -1,0 +1,266 @@
+import type { BuildManifest } from "alepha/cli";
+import type { EnvUtils } from "alepha/command";
+import type { FileSystemProvider } from "alepha/system";
+
+/**
+ * The env keys no adapter pushes as a runtime secret.
+ *
+ * Two groups, both of which the platform decides rather than the app:
+ *
+ * - **Binding/build vars.** The deploy target supplies these itself —
+ *   `DATABASE_URL` from a D1 binding or Bay's managed SQLite, `SERVER_PORT`
+ *   from whatever allocated it. Pushing the local value would point a
+ *   deployed app at a development machine.
+ * - **Framework infra knobs.** `LOG_LEVEL`, `DEBUG` and friends all have
+ *   defaults, and a build manifest's `secrets` list surfaces every declared
+ *   `$env` key — so they have to be excluded here to keep a CI runner's own
+ *   environment out of the push.
+ *
+ * Lives on its own rather than on {@link CloudflareAdapter} because a second
+ * adapter needs the same answer. Two hand-maintained copies of a list like this
+ * drift silently: the copy that is missing a key does not fail, it pushes one
+ * more secret than it should, and nothing says so until a deployed app is
+ * reading a laptop's `DATABASE_URL`.
+ */
+export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
+  "DATABASE_URL",
+  "R2_BUCKET_NAME",
+  "CLOUDFLARE_ANALYTICS_DATASET",
+  "CLOUDFLARE_DOMAIN",
+  "CLOUDFLARE_JURISDICTION",
+  "HYPERDRIVE_ID",
+  "POSTGRES_SCHEMA",
+  "NODE_ENV",
+  // Framework infra knobs (have defaults, never worker secrets). The
+  // manifest's `secrets` list surfaces every declared `$env` key, so
+  // exclude these here to keep them out of the secret push even when a CI
+  // runner happens to set them (LOG_LEVEL, DEBUG, etc.).
+  "LOG_LEVEL",
+  "LOG_FORMAT",
+  "SERVER_HOST",
+  "SERVER_PORT",
+  "TRUST_PROXY",
+  "TRUST_PROXY_HOPS",
+  "REACT_SSR_ENABLED",
+  "DATABASE_SYNC",
+  "DEBUG",
+]);
+
+/**
+ * The keys Bay writes into every instance's `.env` itself.
+ *
+ * A mirror of `bayOwnedKeys` in `apps/bay/internal/deploy/deploy.go`, which
+ * is the authority: Bay REFUSES a secrets file holding one of these, naming
+ * it, and the refusal fails the whole deploy. `BayAdapter.spec.ts` reads the
+ * Go source and fails if the two lists diverge.
+ *
+ * Here rather than on `BayAdapter` because Lore reads it too, under
+ * workerd, when it answers a Bay machine's secret pull - and `BayAdapter`
+ * shells out, so the workerd entry of this module does not carry it.
+ * `BayAdapter.BAY_OWNED_KEYS` is this same set.
+ */
+export const BAY_OWNED_SECRET_KEYS: ReadonlySet<string> = new Set([
+  "NODE_ENV",
+  "DATABASE_URL",
+  "APP_SECRET",
+  "STORAGE_PATH",
+  "DATA_DIR",
+  "SERVER_PORT",
+  "SERVER_HOST",
+  "APP_NAME",
+  "S3_ENDPOINT",
+  "S3_BUCKET_NAME",
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+  "S3_REGION",
+  "S3_KEY_PREFIX",
+]);
+
+/**
+ * Every key the app declares via `$env`, read from `dist/manifest.json`: its
+ * `secrets` and its `variables` together.
+ *
+ * This is the **allowlist**, and it is what makes reading `process.env` safe at
+ * all: the key set comes from what the app declared at build time, never from
+ * enumerating the deploying shell. A CI runner can therefore deliver secrets
+ * through the job environment with no `.env` file on disk, and `PATH`,
+ * `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way in: they are not
+ * on the list, so they are never looked up.
+ *
+ * Returns `undefined` when the manifest is absent or unreadable, so the caller
+ * falls back to the `.env` file's own keys.
+ */
+export async function readManifestEnvKeys(
+  fs: FileSystemProvider,
+  root: string,
+): Promise<string[] | undefined> {
+  const manifest = await readManifestEnv(fs, root);
+  if (!manifest) {
+    return undefined;
+  }
+  return [...manifest.secrets, ...manifest.variables]
+    .map((entry) => entry.name)
+    .sort();
+}
+
+/**
+ * The keys the app declared `secret: false`, read from the manifest's
+ * `variables`.
+ *
+ * A key on the {@link readManifestEnvKeys} allowlist and NOT on this list is a
+ * secret. That is the direction that fails safe: an unreadable manifest
+ * returns `undefined`, and every key stays encrypted.
+ *
+ * Only a target with a real distinction between the two has any use for it;
+ * `BayAdapter` writes one env file either way, so this has one caller.
+ */
+export async function readManifestVariables(
+  fs: FileSystemProvider,
+  root: string,
+): Promise<string[] | undefined> {
+  const manifest = await readManifestEnv(fs, root);
+  return manifest?.variables.map((entry) => entry.name);
+}
+
+/**
+ * The manifest's two env lists, or `undefined` when it cannot be read or does
+ * not carry them.
+ */
+async function readManifestEnv(
+  fs: FileSystemProvider,
+  root: string,
+): Promise<Pick<BuildManifest, "secrets" | "variables"> | undefined> {
+  try {
+    const manifest = await fs.readJsonFile<Partial<BuildManifest>>(
+      fs.join(root, "dist", "manifest.json"),
+    );
+    if (
+      !Array.isArray(manifest.secrets) ||
+      !Array.isArray(manifest.variables)
+    ) {
+      return undefined;
+    }
+    return { secrets: manifest.secrets, variables: manifest.variables };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The key set an app's deploy pushes, and the `.env.<env>` values to resolve
+ * it from.
+ */
+export interface SecretKeySet {
+  /**
+   * The allowlist: which keys are this app's secrets. Never derived from
+   * `process.env`.
+   */
+  keys: string[];
+  /**
+   * The parsed `.env.<env>` file, handed to {@link selectSecrets} as the first
+   * source of each value.
+   */
+  envVars: Record<string, string>;
+}
+
+/**
+ * Which keys are this app's secrets, resolved once for every adapter.
+ *
+ * By precedence:
+ *
+ * 1. `keys`, the explicit `platform().secrets.keys` override.
+ * 2. Otherwise the UNION of:
+ *    - the manifest's `env` list (every key the app declares via `$env`,
+ *      captured at build time), or the `.env.<env>` file's own keys when there
+ *      is no readable manifest. This is what lets CI deliver declared secrets
+ *      from `process.env` with no file on the runner.
+ *    - the `.env.<env>.local` keys, the per-deploy override layer an external
+ *      orchestrator writes injected values into. Only `.local` is unioned,
+ *      never the base file, so local infra credentials cannot leak in.
+ *
+ * The excluded set is NOT applied here: it is each caller's own (Cloudflare's,
+ * Bay's, and for Lore the keys its `AppSecretService` refuses), passed to
+ * {@link selectSecrets} with this result.
+ *
+ * ⚠️ One function rather than a copy per adapter: this was written twice, and
+ * a third adapter was about to make it three. A copy that drifts does not fail,
+ * it pushes a different set of secrets, and nothing says so.
+ */
+export async function resolveSecretKeySet(options: {
+  fs: FileSystemProvider;
+  envUtils: EnvUtils;
+  root: string;
+  env: string;
+  keys?: string[];
+}): Promise<SecretKeySet> {
+  const { fs, envUtils, root, env } = options;
+  const envVars = await envUtils.parseEnv(root, [`.env.${env}`]);
+  if (options.keys) {
+    return { keys: options.keys, envVars };
+  }
+  const manifestKeys = await readManifestEnvKeys(fs, root);
+  const localKeys = Object.keys(
+    await envUtils.parseEnv(root, [`.env.${env}.local`]),
+  );
+  return {
+    keys: Array.from(
+      new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
+    ),
+    envVars,
+  };
+}
+
+/**
+ * What one adapter's `secrets()` step actually decided to push.
+ */
+export interface SecretSelection {
+  /**
+   * Key → value, ready to hand to the platform.
+   */
+  secrets: Record<string, string>;
+  /**
+   * Keys that were on the allowlist and dropped because the platform owns
+   * them. Kept so an adapter can say so out loud — a user who put
+   * `DATABASE_URL` in `.env.production` and cannot find it on the host is owed
+   * a sentence, not silence.
+   */
+  platformOwned: string[];
+}
+
+/**
+ * Resolves an allowlist of keys into the values to push.
+ *
+ * The security boundary of every `secrets()` implementation, in one place so
+ * the adapters cannot come to differ on it. Three rules, in order:
+ *
+ * - a key the platform owns is dropped, and reported;
+ * - a `VITE_*` key is dropped silently — Vite inlines it at build time, so it
+ *   is never a runtime secret on any platform;
+ * - the value is the `.env.<env>[.local]` one, falling back to `process.env`,
+ *   and an empty result is dropped.
+ *
+ * `process.env` is read only for a key that is ALREADY on `keys`. Callers must
+ * keep it that way: derive `keys` from the manifest, the config or the `.env`
+ * file — never from `process.env` itself, which would put the whole deploying
+ * environment in scope.
+ */
+export function selectSecrets(options: {
+  keys: string[];
+  envVars: Record<string, string>;
+  excluded?: ReadonlySet<string>;
+}): SecretSelection {
+  const excluded = options.excluded ?? EXCLUDED_SECRET_KEYS;
+  const secrets: Record<string, string> = {};
+  const platformOwned: string[] = [];
+  for (const key of options.keys) {
+    if (excluded.has(key)) {
+      platformOwned.push(key);
+      continue;
+    }
+    if (key.startsWith("VITE_")) continue;
+    const value = options.envVars[key] ?? process.env[key];
+    if (!value) continue;
+    secrets[key] = value;
+  }
+  return { secrets, platformOwned };
+}

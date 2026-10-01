@@ -1,0 +1,1010 @@
+import { $inject, AlephaError, z } from "alepha";
+import {
+  type AppEntry,
+  AppEntryProvider,
+  type BuildManifest,
+  buildManifestSchema,
+  ViteBuildProvider,
+} from "alepha/cli";
+import {
+  CloudflareAdapter,
+  CloudflareApi,
+  D1MigrationsService,
+  type DetectedResources,
+  NamingService,
+  PlatformInspector,
+  PlatformOrchestrator,
+  type PlatformPlanOutput,
+  type PlatformStatusOutput,
+  type ResolvedPlatformConfig,
+} from "alepha/cli/platform-lib";
+import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
+import { ConsoleColorProvider } from "alepha/logger";
+
+import { SecretsCommand } from "./SecretsCommand.ts";
+
+export class PlatformCommand {
+  protected readonly orchestrator = $inject(PlatformOrchestrator);
+  protected readonly inspector = $inject(PlatformInspector);
+  protected readonly naming = $inject(NamingService);
+  protected readonly boot = $inject(AppEntryProvider);
+  protected readonly viteBuild = $inject(ViteBuildProvider);
+  protected readonly color = $inject(ConsoleColorProvider);
+  protected readonly envUtils = $inject(EnvUtils);
+  protected readonly secretsCommand = $inject(SecretsCommand);
+  protected readonly d1Migrations = $inject(D1MigrationsService);
+  // The transport the migration service is driven with. It carries the
+  // Cloudflare credential, which is why the service takes it as an argument
+  // rather than injecting one of its own.
+  protected readonly cloudflare = $inject(CloudflareApi);
+
+  /**
+   * Common flags for env targeting.
+   */
+  protected readonly envFlags = z.object({
+    env: z
+      .text({
+        aliases: ["e"],
+        description: "Target environment",
+      })
+      .optional(),
+    verbose: z
+      .boolean()
+      .meta({ aliases: ["v"] })
+      .describe("Verbose output")
+      .optional(),
+    json: z.boolean().describe("Output as JSON").optional(),
+  });
+
+  // -----------------------------------------------------------------------
+  // alepha p plan
+  // -----------------------------------------------------------------------
+
+  protected readonly plan = $command({
+    name: "plan",
+    description: "Show project topology and resource names",
+    flags: this.envFlags,
+    handler: async ({ flags, root }) => {
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, env, adapter } = target;
+
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const namingCtx = this.naming.forContext(config.project, env);
+
+      // --- Data collection ---
+
+      const hasDB = app.resources.hasDatabase;
+      const hasBucket = app.resources.hasBucket;
+      const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
+
+      const resources: Array<{ label: string; value: string }> = [];
+
+      resources.push({ label: "Worker", value: namingCtx.worker() });
+
+      if (adapter.cloudflareResources) {
+        if (hasDB) {
+          const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+          if (dbUrl?.startsWith("postgres:")) {
+            resources.push({
+              label: "Hyperdrive",
+              value: namingCtx.hyperdrive(),
+            });
+          } else {
+            resources.push({ label: "D1", value: namingCtx.d1() });
+          }
+        }
+
+        if (hasBucket) {
+          resources.push({ label: "R2", value: namingCtx.r2() });
+        }
+
+        if (app.resources.hasAnalytics) {
+          resources.push({ label: "Analytics", value: namingCtx.analytics() });
+        }
+
+        if (app.resources.hasKV) {
+          resources.push({ label: "KV", value: namingCtx.kv() });
+        }
+        if (app.resources.hasQueue) {
+          resources.push({ label: "Queue", value: namingCtx.queue() });
+        }
+      }
+
+      const excludedKeys = CloudflareAdapter.EXCLUDED_SECRET_KEYS;
+      const secretCount = Object.entries(envVars).filter(
+        ([key, value]) =>
+          value && !excludedKeys.has(key) && !key.startsWith("VITE_"),
+      ).length;
+
+      // --- JSON output ---
+
+      if (flags.json) {
+        const environments: Record<
+          string,
+          { adapter: string; domain?: string }
+        > = {};
+        for (const [key, val] of Object.entries(config.environments)) {
+          const domain = this.inspector.domainOf(val);
+          environments[key] = {
+            adapter: val.adapter.id,
+            ...(domain ? { domain } : {}),
+          };
+        }
+
+        const output: PlatformPlanOutput = {
+          project: config.project,
+          env,
+          mode: "standalone",
+          // Still an array: `apps` is part of the JSON contract
+          // (`platformPlanSchema`), and a project has exactly one app since
+          // the `apps:` collapse — so the array is always exactly one entry.
+          apps: [
+            {
+              name: config.project,
+              path: "",
+              resources: app.resources,
+            },
+          ],
+          environments,
+          resources,
+          secretCount,
+        };
+
+        process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+        return;
+      }
+
+      // --- Tree output ---
+
+      const c = this.color;
+
+      process.stdout.write(
+        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)}\n\n`,
+      );
+
+      process.stdout.write(`   ${c.set("GREY_LIGHT", "Mode:")} standalone\n`);
+
+      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Environments:")}\n`);
+      const envKeys = Object.keys(config.environments);
+      for (const [i, envKey] of envKeys.entries()) {
+        const descriptor = config.environments[envKey];
+        const prefix =
+          i === envKeys.length - 1
+            ? "\u2514\u2500\u2500"
+            : "\u251C\u2500\u2500";
+        const envDomain = this.inspector.domainOf(descriptor);
+        const domain = envDomain ? `     ${c.set("GREY_DARK", envDomain)}` : "";
+        const marker = envKey === env ? `  ${c.set("GREEN", "\u25C0")}` : "";
+        process.stdout.write(
+          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", descriptor.adapter.id)}${domain}${marker}\n`,
+        );
+      }
+
+      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Resources:")}\n`);
+
+      if (secretCount > 0) {
+        resources.push({
+          label: "Secrets",
+          value: `${secretCount} from .env.${env}`,
+        });
+      }
+
+      for (const [i, res] of resources.entries()) {
+        const isLast = i === resources.length - 1;
+        const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+        process.stdout.write(
+          `   ${c.set("GREY_DARK", branch)} ${c.set("GREY_LIGHT", res.label.padEnd(11))} ${c.set("CYAN", res.value)}\n`,
+        );
+      }
+
+      process.stdout.write("\n");
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // alepha p up
+  // -----------------------------------------------------------------------
+
+  protected readonly up = $command({
+    name: "up",
+    mode: "production",
+    description: "Build, migrate, and deploy",
+    flags: z.object({
+      ...this.envFlags.shape,
+      prebuilt: z
+        .boolean()
+        .describe(
+          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-deploy overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root, run }) => {
+      process.env.NODE_ENV = "production";
+
+      const { config, env, adapter } =
+        await this.orchestrator.resolveEnvironment(root, flags.env);
+      const app = await this.resolveApp(root, config, adapter.serverless, {
+        prebuilt: flags.prebuilt,
+      });
+
+      const result = await this.orchestrator.up({
+        root,
+        env,
+        entry: app.entry,
+        resources: app.resources,
+
+        run,
+        prebuilt: flags.prebuilt,
+      });
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            {
+              status: "succeeded",
+              project: config.project,
+              env,
+              urls: result.urls,
+              domain: result.domain,
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      } else {
+        this.orchestrator.printUpSummary(result);
+      }
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // alepha p down
+  // -----------------------------------------------------------------------
+
+  protected readonly down = $command({
+    name: "down",
+    description: "Tear down an environment",
+    flags: z.object({
+      ...this.envFlags.shape,
+      yes: z
+        .boolean()
+        .meta({ aliases: ["y"] })
+        .describe(
+          "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally — there's no second chance.",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root, run, ask }) => {
+      if (!flags.env) {
+        throw new AlephaError(
+          "--env is required for teardown. This command deletes resources.",
+        );
+      }
+
+      const { config, adapter } = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const app = await this.resolveApp(root, config, adapter.serverless);
+
+      const completed = await this.orchestrator.down({
+        root,
+        env: flags.env,
+        entry: app.entry,
+        resources: app.resources,
+
+        run,
+        confirm: async (prompt) => {
+          if (flags.yes) {
+            return flags.env as string;
+          }
+          ask.intro("Confirm teardown");
+          const value = await ask.prompt(prompt);
+          ask.outro("");
+          return value;
+        },
+      });
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            {
+              status: completed ? "succeeded" : "aborted",
+              project: config.project,
+              env: flags.env,
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      }
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // alepha platform auth login|logout
+  // -----------------------------------------------------------------------
+
+  /**
+   * Runs the adapter's interactive login or logout.
+   *
+   * Shared by both subcommands: they differ by one word, and duplicating the
+   * environment resolution would let them drift.
+   */
+  protected async runAuth(
+    action: "login" | "logout",
+    ctx: { flags: { env?: string }; root: string; run: RunnerMethod },
+  ): Promise<void> {
+    if (!ctx.flags.env) {
+      // Credentials are per-environment because environments can live on
+      // different hosts or accounts; guessing one would log into the wrong
+      // place with no sign that it happened.
+      throw new AlephaError(
+        "--env is required: each environment has its own credential.",
+      );
+    }
+    const { config, adapter } = await this.orchestrator.resolveEnvironment(
+      ctx.root,
+      ctx.flags.env,
+    );
+    const app = await this.resolveApp(ctx.root, config, adapter.serverless);
+    await this.orchestrator.auth({
+      root: ctx.root,
+      env: ctx.flags.env,
+      entry: app.entry,
+      resources: app.resources,
+      run: ctx.run,
+      action,
+    });
+  }
+
+  /**
+   * `alepha platform auth login`.
+   *
+   * The mechanism belongs to the adapter — `wrangler login` for Cloudflare, a
+   * device-code flow for Bay — because credentials are the provider's
+   * vocabulary, and a second store would drift from the one every other tool
+   * reads.
+   *
+   * Separate from `up`, which must never block: it runs in CI, where nothing
+   * can answer a prompt. This is what a human runs once.
+   */
+  protected readonly authLogin = $command({
+    name: "login",
+    description: "Log in to the platform for an environment",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) =>
+      await this.runAuth("login", { flags, root, run }),
+  });
+
+  /**
+   * `alepha platform auth logout`.
+   */
+  protected readonly authLogout = $command({
+    name: "logout",
+    description: "Discard the stored credential for an environment",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) =>
+      await this.runAuth("logout", { flags, root, run }),
+  });
+
+  protected readonly auth = $command({
+    name: "auth",
+    description: "Manage platform credentials",
+    children: [this.authLogin, this.authLogout],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // alepha p status
+  // -----------------------------------------------------------------------
+
+  protected readonly status = $command({
+    name: "status",
+    aliases: ["s"],
+    description: "Show deployed state",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) => {
+      const { config, env, descriptor, adapter } =
+        await this.orchestrator.resolveEnvironment(root, flags.env);
+      const app = await this.resolveApp(root, config, adapter.serverless);
+
+      const { state } = await this.orchestrator.status({
+        root,
+        env,
+        entry: app.entry,
+        resources: app.resources,
+
+        run,
+      });
+
+      // --- JSON output ---
+
+      if (flags.json) {
+        run.end();
+
+        const output: PlatformStatusOutput = {
+          project: config.project,
+          env,
+          adapter: descriptor.adapter.id,
+          ...state,
+        };
+
+        process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+        return;
+      }
+
+      // --- Tree output ---
+
+      run.end();
+
+      const c = this.color;
+
+      process.stdout.write(
+        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)} ${c.set("GREY_DARK", `(${descriptor.adapter.id})`)}\n\n`,
+      );
+
+      const hasDB = state.databases.length > 0;
+      const hasBuckets = state.buckets.length > 0;
+
+      process.stdout.write(`   ${c.set("GREY_LIGHT", "Workers:")}\n`);
+      for (const [i, w] of state.workers.entries()) {
+        const isLast = i === state.workers.length - 1;
+        const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+        if (w.exists) {
+          const versionShort = w.version?.slice(0, 8) ?? "unknown";
+          const tag = w.tag ? ` ${c.set("GREY_DARK", `(${w.tag})`)}` : "";
+          const date = w.createdAt
+            ? ` ${c.set("GREY_DARK", "\u2014")} ${c.set("GREY_DARK", new Date(w.createdAt).toLocaleString())}`
+            : "";
+          process.stdout.write(
+            `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", w.name)}  ${c.set("GREEN", "\u2713")} ${c.set("GREY_LIGHT", versionShort)}${tag}${date}\n`,
+          );
+        } else {
+          process.stdout.write(
+            `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", w.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not deployed")}\n`,
+          );
+        }
+      }
+
+      if (hasDB) {
+        const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
+        const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+        const dbLabel = dbUrl?.startsWith("postgres:")
+          ? "Hyperdrive:"
+          : "Database:";
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", dbLabel)}\n`);
+        for (const [i, db] of state.databases.entries()) {
+          const isLast = i === state.databases.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          if (db.exists) {
+            const id = db.id
+              ? ` ${c.set("GREY_LIGHT", db.id.slice(0, 8))}`
+              : "";
+            const detail = db.detail
+              ? ` ${c.set("GREY_DARK", "\u2014")} ${c.set("GREY_DARK", db.detail.slice(0, 40))}`
+              : "";
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", db.name)}  ${c.set("GREEN", "\u2713")}${id}${detail}\n`,
+            );
+          } else {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", db.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
+            );
+          }
+        }
+      }
+
+      if (hasBuckets) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Buckets:")}\n`);
+        for (const [i, b] of state.buckets.entries()) {
+          const isLast = i === state.buckets.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          if (b.exists) {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", b.name)}  ${c.set("GREEN", "\u2713")}\n`,
+            );
+          } else {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", b.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
+            );
+          }
+        }
+      }
+
+      if (state.kvNamespaces.length > 0) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "KV:")}\n`);
+        for (const [i, kv] of state.kvNamespaces.entries()) {
+          const isLast = i === state.kvNamespaces.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          if (kv.exists) {
+            const id = kv.id
+              ? ` ${c.set("GREY_LIGHT", kv.id.slice(0, 8))}`
+              : "";
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", kv.name)}  ${c.set("GREEN", "\u2713")}${id}\n`,
+            );
+          } else {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", kv.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
+            );
+          }
+        }
+      }
+
+      if (state.queues.length > 0) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Queues:")}\n`);
+        for (const [i, q] of state.queues.entries()) {
+          const isLast = i === state.queues.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          if (q.exists) {
+            const id = q.id ? ` ${c.set("GREY_LIGHT", q.id.slice(0, 8))}` : "";
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", q.name)}  ${c.set("GREEN", "\u2713")}${id}\n`,
+            );
+          } else {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", q.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
+            );
+          }
+        }
+      }
+
+      if (state.secrets.length > 0) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Secrets:")}\n`);
+        for (const [i, s] of state.secrets.entries()) {
+          const isLast = i === state.secrets.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          const icon = s.deployed
+            ? c.set("GREEN", "\u2713")
+            : c.set("RED", "\u2717");
+          process.stdout.write(
+            `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", s.name)}  ${icon}\n`,
+          );
+        }
+      }
+
+      process.stdout.write("\n");
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // Granular commands
+  // -----------------------------------------------------------------------
+
+  protected readonly build = $command({
+    name: "build",
+    mode: "production",
+    description: "Build all apps locally",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) => {
+      process.env.NODE_ENV = "production";
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
+
+      await adapter.build(ctx, run);
+    },
+  });
+
+  protected readonly deploy = $command({
+    name: "deploy",
+    description: "Deploy apps to cloud",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) => {
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
+
+      await adapter.authenticate(ctx, run);
+      await adapter.deploy(ctx, run);
+    },
+  });
+
+  protected readonly migrate = $command({
+    name: "migrate",
+    description: "Run database migrations",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) => {
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, env, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
+
+      await adapter.authenticate(ctx, run);
+      await adapter.migrate(ctx, run);
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            { status: "succeeded", project: config.project, env },
+            null,
+            2,
+          )}\n`,
+        );
+      }
+    },
+  });
+
+  protected readonly dbExport = $command({
+    name: "export",
+    description:
+      "Export the deployed database to a local snapshot (remote → local dev DB).",
+    flags: z.object({
+      ...this.envFlags.shape,
+      output: z
+        .text({
+          description:
+            "Destination SQLite file. Defaults to the dev DB path (node_modules/.alepha/sqlite.db).",
+        })
+        .optional(),
+      keepSql: z
+        .boolean()
+        .describe("Keep the intermediate .sql dump file.")
+        .optional(),
+      skipPlaceholders: z
+        .boolean()
+        .describe(
+          "Do not write placeholder blobs for exported file rows (they stop the dev server 404ing for objects left in remote storage).",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root, run }) => {
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, adapter } = target;
+      const app = await this.resolveApp(root, config, adapter.serverless);
+      const ctx = this.orchestrator.createContext(target, { root, ...app });
+
+      await adapter.authenticate(ctx, run);
+      await adapter.exportDb(ctx, run, {
+        output: flags.output,
+        keepSql: flags.keepSql,
+        placeholders: !flags.skipPlaceholders,
+      });
+    },
+  });
+
+  /**
+   * Record the baseline migration as already applied on a deployed
+   * Cloudflare D1 database, without executing it.
+   *
+   * D1's deploy path doesn't go through drizzle's migrator at all — it
+   * keys off a filename-based `d1_migrations` bookkeeping table (see
+   * `D1MigrationsService.baseline`), which needs the project/env resource
+   * naming that only this command tree can resolve. That's also why
+   * `--reset` lives here rather than on core `alepha db baseline mark`: it
+   * rewrites those bookkeeping rows only (never table data), and only the D1
+   * path supports it today.
+   */
+  protected readonly baselineMark = $command({
+    name: "mark",
+    description:
+      "Record the baseline migration as already applied on the deployed D1 database, without executing it.",
+    flags: z.object({
+      ...this.envFlags.shape,
+      reset: z
+        .boolean()
+        .describe(
+          "Replace an existing migration history with the baseline. Rewrites bookkeeping rows only; never touches table data.",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root, run }) => {
+      const target = await this.orchestrator.resolveEnvironment(
+        root,
+        flags.env,
+      );
+      const { config, env, descriptor, adapter } = target;
+
+      if (!adapter.cloudflareResources) {
+        throw new AlephaError(
+          `'platform db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${descriptor.adapter.id}' adapter.`,
+        );
+      }
+
+      // Deliberately `.env.<env>` only — no `process.env.DATABASE_URL`
+      // fallback. Unlike `plan`'s use of the same lookup (a display label
+      // only), this gates a hard refusal: a deployed D1 environment's
+      // `DATABASE_URL` is a Cloudflare secret, not a local env var, so it's
+      // routinely absent from `.env.<env>` — and falling back to whatever
+      // the operator happens to have exported would make this guard trip on
+      // an unrelated local Postgres database, sending a real D1 deploy to
+      // `alepha db baseline mark`, which then hard-refuses D1 with no
+      // working path left.
+      const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
+      if (envVars.DATABASE_URL?.startsWith("postgres:")) {
+        throw new AlephaError(
+          `'${env}' is backed by Postgres/Hyperdrive, not D1. Use 'alepha db baseline mark' instead.`,
+        );
+      }
+
+      const namingCtx = this.naming.forContext(config.project, env);
+      const dbName = namingCtx.d1();
+
+      // No app boot needed below this point — unlike `migrate`/`export`,
+      // this command never calls an adapter method that reads `entry` or
+      // `resources`, so those are stubbed rather than paying for a Vite
+      // boot (or requiring dist/manifest.json) just to baseline-mark.
+      const ctx = this.orchestrator.createContext(target, {
+        root,
+        entry: { root, server: "" },
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+      });
+
+      await adapter.authenticate(ctx, run);
+
+      const result = await this.d1Migrations.baseline(
+        this.cloudflare,
+        dbName,
+        root,
+        undefined,
+        { reset: flags.reset },
+      );
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            {
+              status: "succeeded",
+              project: config.project,
+              env,
+              dbName,
+              replaced: result.replaced,
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      }
+    },
+  });
+
+  protected readonly baseline = $command({
+    name: "baseline",
+    description:
+      "Record a baseline as already applied on the deployed database (D1 only).",
+    children: [this.baselineMark],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  /**
+   * `db` subgroup — operations against the *deployed* database (export,
+   * migrate, baseline mark). They live under `platform` (not core
+   * `alepha db`) because they need the env config, adapter, and
+   * resource naming.
+   */
+  protected readonly db = $command({
+    name: "db",
+    description:
+      "Deployed-database operations (export, migrate, baseline mark).",
+    children: [this.dbExport, this.migrate, this.baseline],
+    handler: async ({ help, root }) => {
+      await this.inspector.resolveConfig(root);
+      help();
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // Parent command
+  // -----------------------------------------------------------------------
+
+  public readonly platform = $command({
+    name: "platform",
+    aliases: ["p"],
+    description: "Cloud deployment orchestrator",
+    children: [
+      this.plan,
+      this.up,
+      this.down,
+      this.status,
+      this.auth,
+      this.build,
+      this.deploy,
+      this.db,
+      this.secretsCommand.secrets,
+    ],
+    handler: async ({ help, root }) => {
+      await this.inspector.resolveConfig(root);
+      help();
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // Helpers
+  // -----------------------------------------------------------------------
+
+  /**
+   * Resolve the app definition for the workspace at `root` and introspect
+   * it for resources.
+   *
+   * NOTE: Resource detection (hasDatabase, hasBucket, etc.) boots the app
+   * through Vite, which is expensive; every command that needs the
+   * topology (plan included) pays for it once.
+   */
+  protected async resolveApp(
+    root: string,
+    _config: ResolvedPlatformConfig,
+    isServerless: boolean,
+    options: { prebuilt?: boolean } = {},
+  ): Promise<{ entry: AppEntry; resources: DetectedResources }> {
+    // Prebuilt + manifest fast-path: read `dist/manifest.json` produced
+    // by the original `alepha build` instead of re-booting the workspace
+    // via Vite. Lets external orchestrators (Alepha Rocket) avoid the
+    // workspace's runtime `npm install` — the app source is never
+    // imported here, so missing deps (react-dom, etc.) don't matter.
+    if (options.prebuilt) {
+      const manifest = await this.readManifest(root);
+      if (manifest) {
+        return {
+          entry: { root, server: "" },
+          resources: manifest.resources,
+        };
+      }
+      // No manifest — fall through to introspection. Useful for older
+      // artifacts that pre-date the manifest emission.
+    }
+
+    const entry = await this.boot.getAppEntry(root);
+    if (isServerless) {
+      process.env.ALEPHA_SERVERLESS = "true";
+    }
+    const appAlepha = await this.viteBuild.init({ entry });
+    delete process.env.ALEPHA_SERVERLESS;
+    const resources = this.detectResources(appAlepha);
+
+    return { entry, resources };
+  }
+
+  /**
+   * Read `dist/manifest.json` if present. Returns `null` when the file
+   * doesn't exist, isn't parseable, or doesn't satisfy `buildManifestSchema` —
+   * caller falls back to the Vite-introspection path.
+   *
+   * ⚠️ The schema check is the point, and the `try/catch` never was. A
+   * truncated or pre-`resources` manifest parses as JSON perfectly well, so
+   * the old `JSON.parse` returned an object, `if (manifest)` passed, and
+   * `manifest.resources` — `undefined` — flowed downstream typed as
+   * `DetectedResources`. Every `resources.hasX` then read `undefined`, and a
+   * deploy provisioned no database, no bucket and no queue while reporting
+   * success. `safeParse` turns that into the same `null` an absent file
+   * produces, which the caller already knows how to handle by introspecting
+   * the app for real.
+   *
+   * `safeParse`, not `parse`: a manifest this deployer cannot read is a reason
+   * to fall back, never a reason to fail the deploy. The schema is `.loose()`,
+   * so a NEWER manifest carrying fields this build has never heard of is read,
+   * not refused.
+   */
+  protected async readManifest(root: string): Promise<BuildManifest | null> {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      const raw = await fs.readFile(
+        path.join(root, "dist", "manifest.json"),
+        "utf-8",
+      );
+      const parsed = buildManifestSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  protected detectResources(alepha: any): DetectedResources {
+    let hasDatabase = false;
+    let hasBucket = false;
+    let hasAnalytics = false;
+    let hasKV = false;
+    let hasQueue = false;
+    let hasCron = false;
+
+    try {
+      const repo = alepha.inject("RepositoryProvider");
+      hasDatabase = repo.getRepositories().length > 0;
+    } catch {}
+
+    try {
+      const storages = alepha.primitives("$storage");
+      hasBucket = storages.length > 0;
+    } catch {}
+
+    try {
+      // Same primitive check as `BuildManifestTask`. Note there is no
+      // `CLOUDFLARE_ANALYTICS_DATASET` escape hatch here, deliberately: the
+      // `hasBucket` check just above has never had an `R2_BUCKET_NAME` one
+      // either, even though `BuildManifestTask` does — this live-boot path
+      // only ever sees primitives, matching how R2 detection already works
+      // here today.
+      const datasets = alepha.primitives("$analytics");
+      hasAnalytics = datasets.length > 0;
+    } catch {}
+
+    try {
+      // Provision KV only when the user actually wants it: a `$cache` declared
+      // *without* an explicit `provider` falls back to the runtime default.
+      // Any explicit choice — `"memory"`, `DatabaseCacheProvider`, a Redis
+      // provider, or a custom one — opts out of the platform default and
+      // therefore should not trigger KV provisioning.
+      //
+      // ⚠️ Since #Q2151 the workerd default is `CloudflareCacheProvider`, so
+      // the fallback is KV only for an app with NO database cache. Same rule
+      // as `BuildManifestTask`, and for the same reason the queue rule below
+      // says so: the two must agree or `plan` lies about what `up` will
+      // create.
+      let hasDatabaseCache = false;
+      try {
+        hasDatabaseCache = !!alepha.inject("DatabaseCacheProvider");
+      } catch {}
+
+      hasKV =
+        !hasDatabaseCache &&
+        alepha
+          .primitives("cache")
+          .filter((it: any) => it.options?.provider == null).length > 0;
+    } catch {}
+
+    try {
+      // There is no queue primitive to count — `$queue` has not existed for a
+      // while, so the old `primitives("queue")` lookup was structurally always
+      // zero and this command silently under-reported the resource. A Queue
+      // binding is needed only when `$job` dispatch is routed through a broker,
+      // which is exactly what registering `JobQueueProvider` (via
+      // `AlephaApiJobsQueue`) means. Same rule as `BuildManifestTask`, which is
+      // what actually drives provisioning — the two must agree or `plan` lies
+      // about what `up` will create.
+      hasQueue = !!alepha.inject("JobQueueProvider");
+    } catch {}
+
+    try {
+      const cron = alepha.inject("CronProvider");
+      hasCron = cron.getCronJobs().length > 0;
+    } catch {}
+
+    // ⚠️ The union of BOTH realtime primitives, matching `BuildManifestTask` -
+    // a `$room` rides the same `AlephaWebSocketDurableObject` as a
+    // `$websocket`, so a rooms-only app has a DO namespace too. The two must
+    // agree or `plan` lies about what `up` creates.
+    const hasWebSocket =
+      alepha.primitives("$websocket").length > 0 ||
+      alepha.primitives("$room").length > 0;
+
+    return {
+      hasDatabase,
+      hasBucket,
+      hasAnalytics,
+      hasKV,
+      hasQueue,
+      hasCron,
+      hasWebSocket,
+    };
+  }
+}

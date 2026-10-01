@@ -1,0 +1,235 @@
+import { $inject, Alepha } from "alepha";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { describe, expect, it } from "vitest";
+
+import { AlephaCrypto } from "../index.ts";
+import { CryptoProvider } from "../providers/CryptoProvider.ts";
+import {
+  DEFAULT_SECRET_KEY_VALUE,
+  SecretProvider,
+} from "../providers/SecretProvider.ts";
+
+describe("SecretProvider", () => {
+  describe("registration", () => {
+    it("is not created by AlephaCrypto, so an app that only hashes boots in production", async () => {
+      // The server and etag modules reach AlephaCrypto for hashes and request
+      // ids. An app that signs nothing must not need APP_SECRET for that.
+      const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
+        AlephaCrypto,
+      );
+      alepha.inject(CryptoProvider);
+
+      await expect(alepha.start()).resolves.toBeDefined();
+      expect(alepha.has(SecretProvider)).toBe(false);
+
+      await alepha.stop();
+    });
+
+    it("is created by the first service that injects it, and still refuses the default", async () => {
+      class Signer {
+        protected readonly secrets = $inject(SecretProvider);
+      }
+      const alepha = Alepha.create({ env: { NODE_ENV: "production" } })
+        .with(AlephaCrypto)
+        .with(Signer);
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+  });
+
+  it("throws on start in production when APP_SECRET is the default", async () => {
+    const alepha = Alepha.create({ env: { NODE_ENV: "production" } });
+    // Register the provider so its `configure` hook runs on start.
+    alepha.inject(SecretProvider);
+
+    await expect(alepha.start()).rejects.toThrow(/SecretProvider|APP_SECRET/);
+  });
+
+  it("starts in production when APP_SECRET is set to a non-default value", async () => {
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", APP_SECRET: "a-strong-unique-secret" },
+    });
+    alepha.inject(SecretProvider);
+
+    await expect(alepha.start()).resolves.toBeDefined();
+    await alepha.stop();
+  });
+
+  it("only warns (does not throw) outside production with the default secret", async () => {
+    const alepha = Alepha.create({ env: { NODE_ENV: "test" } });
+    alepha.inject(SecretProvider);
+
+    await expect(alepha.start()).resolves.toBeDefined();
+    await alepha.stop();
+  });
+
+  describe("an empty APP_SECRET", () => {
+    /*
+     * `APP_SECRET=` in a `.env` file is an empty string, not an absent key,
+     * and a schema default only applies to an absent one. The empty string
+     * used to become the key: the production guard compared it with the
+     * default constant and let it boot, and every sign-in then failed with
+     * "No secret key found in the keystore". The scaffold's own `.env.example`
+     * writes that line, so a project whose `.env` is a copy of it hit this.
+     */
+    it("refuses to start in production, as an unset one does", async () => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "" },
+      });
+      alepha.inject(SecretProvider);
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+
+    it("refuses a whitespace-only value the same way", async () => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "   " },
+      });
+      alepha.inject(SecretProvider);
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+
+    it("falls back to the development default outside production, so signing works", async () => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "test", APP_SECRET: "" },
+      });
+      const secret = alepha.inject(SecretProvider);
+
+      await alepha.start();
+
+      expect(secret.secretKey).toBe(DEFAULT_SECRET_KEY_VALUE);
+
+      await alepha.stop();
+    });
+
+    it("does not disable APP_SECRET_FILE, which an explicit value would", async () => {
+      const alepha = Alepha.create({
+        env: {
+          NODE_ENV: "production",
+          APP_SECRET: "",
+          APP_SECRET_FILE: "/data/.app_secret",
+        },
+      }).with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      const secret = alepha.inject(SecretProvider);
+
+      await alepha.start();
+
+      expect(fs.wasWritten("/data/.app_secret")).toBe(true);
+      expect(secret.secretKey).not.toBe("");
+      expect(secret.secretKey).not.toBe(DEFAULT_SECRET_KEY_VALUE);
+
+      await alepha.stop();
+    });
+  });
+
+  describe("APP_SECRET_FILE", () => {
+    const SECRET_PATH = "/data/.app_secret";
+
+    const createEnv = (env: Record<string, string>) => {
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", ...env },
+      }).with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      const secret = alepha.inject(SecretProvider);
+      return { alepha, fs, secret };
+    };
+
+    it("generates and persists a secret when the file does not exist", async () => {
+      const { alepha, fs, secret } = createEnv({
+        APP_SECRET_FILE: SECRET_PATH,
+      });
+
+      await alepha.start();
+
+      expect(fs.wasWritten(SECRET_PATH)).toBe(true);
+      expect(secret.secretKey).not.toBe(DEFAULT_SECRET_KEY_VALUE);
+      expect(secret.secretKey.length).toBeGreaterThanOrEqual(32);
+      expect(await fs.readTextFile(SECRET_PATH)).toBe(secret.secretKey);
+
+      await alepha.stop();
+    });
+
+    it("writes the generated secret with mode 0600", async () => {
+      const { alepha, fs } = createEnv({ APP_SECRET_FILE: SECRET_PATH });
+
+      await alepha.start();
+
+      expect(fs.wasWrittenWithMode(SECRET_PATH, 0o600)).toBe(true);
+      expect((await fs.stat(SECRET_PATH)).mode).toBe(0o600);
+
+      await alepha.stop();
+    });
+
+    it("returns the same secret on a second boot against the same volume", async () => {
+      const first = createEnv({ APP_SECRET_FILE: SECRET_PATH });
+      await first.alepha.start();
+      const generated = first.secret.secretKey;
+      await first.alepha.stop();
+
+      const second = createEnv({ APP_SECRET_FILE: SECRET_PATH });
+      // The volume survives the restart; the container does not.
+      await second.fs.writeFile(
+        SECRET_PATH,
+        await first.fs.readTextFile(SECRET_PATH),
+      );
+      second.fs.writeFileCalls = [];
+
+      await second.alepha.start();
+
+      // A regenerated secret would invalidate every session on restart, and
+      // the image would look healthy right up until the operator restarted it.
+      expect(second.secret.secretKey).toBe(generated);
+      // Nothing rewritten: the second boot read the file it found.
+      expect(second.fs.wasWritten(SECRET_PATH)).toBe(false);
+
+      await second.alepha.stop();
+    });
+
+    it("uses an existing file's contents verbatim", async () => {
+      const { alepha, fs, secret } = createEnv({
+        APP_SECRET_FILE: SECRET_PATH,
+      });
+      await fs.writeFile(SECRET_PATH, "  a-secret-from-disk\n");
+
+      await alepha.start();
+
+      expect(secret.secretKey).toBe("a-secret-from-disk");
+
+      await alepha.stop();
+    });
+
+    it("lets an explicit APP_SECRET beat a file holding something else", async () => {
+      const { alepha, fs, secret } = createEnv({
+        APP_SECRET_FILE: SECRET_PATH,
+        APP_SECRET: "an-explicit-secret",
+      });
+      await fs.writeFile(SECRET_PATH, "a-secret-from-disk");
+
+      await alepha.start();
+
+      expect(secret.secretKey).toBe("an-explicit-secret");
+
+      await alepha.stop();
+    });
+
+    it("refuses the file path on serverless rather than ignoring it", async () => {
+      const { alepha } = createEnv({
+        APP_SECRET_FILE: SECRET_PATH,
+        ALEPHA_SERVERLESS: "true",
+      });
+
+      // A silent no-op here would leave a Worker booting on the public default.
+      await expect(alepha.start()).rejects.toThrow(
+        /APP_SECRET_FILE.*serverless/s,
+      );
+    });
+
+    it("still throws in production when APP_SECRET_FILE is unset", async () => {
+      const { alepha } = createEnv({});
+
+      await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
+    });
+  });
+});

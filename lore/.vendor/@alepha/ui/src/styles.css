@@ -1,0 +1,832 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+@source "./**/*.{ts,tsx}";
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * The data-attribute variants and `no-scrollbar`, carried here verbatim from
+ * `shadcn/tailwind.css` (4.21.0, lines 27-95), which the primitives were
+ * written against. Each variant is wrapped in `:where()`, so it adds no
+ * specificity to the utility it prefixes.
+ *
+ * ⚠️ Two of them must never be swapped for Tailwind's built-in variants of
+ * the same name, which match a different thing: `data-horizontal` and
+ * `data-vertical` read `[data-orientation=...]`. No element carries a bare
+ * `data-horizontal`, so the built-ins match nothing.
+ *
+ * `data-selected` is deliberately absent. It matched only
+ * `[data-selected="true"]`, for cmdk, which wrote `data-selected="false"` on
+ * every row it had not selected. The command palette is on Base UI now, which
+ * marks the keyboard row `data-highlighted`, so the palette styles that and a
+ * `data-selected:` class gets Tailwind's built-in (any `[data-selected]`).
+ */
+@custom-variant data-open {
+  &:where([data-state="open"]),
+  &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state="closed"]),
+  &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state="checked"]),
+  &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state="unchecked"]),
+  &:where([data-unchecked]:not([data-unchecked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled="true"]),
+  &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state="active"]),
+  &:where([data-active]:not([data-active="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation="horizontal"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation="vertical"]) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-text: var(--warning-text);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-text: var(--danger-text);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-hover: var(--hover);
+  --color-hover-weak: var(--hover-weak);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.625rem;
+  /*
+   * Typography. Three faces, and a theme moves any of them independently:
+   * `--font-sans` is the text, `--font-heading` the headings, `--font-mono`
+   * code. Only the middle one is ours - the other two are Tailwind's own
+   * theme variables, which its utilities and Preflight already reference by
+   * `var()`, so a theme class redefining either is picked up at runtime with
+   * nothing else to wire (Preflight sets `html` from `--font-sans` and
+   * `code`/`pre` from `--font-mono`).
+   *
+   * ⚠️ `--font-heading` has no such machinery behind it, which is exactly how
+   * its predecessor died. `apps/lore` carried a `--font-display` token that
+   * four themes set and NOTHING read: it was declared in a plain `:root`
+   * rather than in `@theme`, so Tailwind generated no utility for it, and no
+   * hand-written rule consumed it either. Three display faces were
+   * downloaded, self-hosted and link-swapped on every theme change without
+   * ever being drawn. The base rule below is what makes this one real - do
+   * not remove it and leave the token, which is the same failure again.
+   *
+   * Defaults to `--font-sans` so a heading is the text face until an app
+   * says otherwise, and so apps that never set it are unaffected.
+   */
+  --font-heading: var(--font-sans);
+  --background: oklch(1 0 0);
+  /*
+   * The colour of the surface a control sits on: the page by default, and
+   * re-declared by every element painting one of the surface tokens (the
+   * rules after `.dark` below). Read by an overlay that has to fade INTO
+   * what is behind it, such as a text field's clear button over the end of
+   * its value. It holds a `var()`, so it follows `.dark` and every theme.
+   */
+  --surface: var(--background);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  /*
+   * 🧪 Experimental: Blueprint's core palette, one colour per intent.
+   *
+   * The fill is Blueprint's step 3 (`#2D72D2`, `#238551`, `#CD4246`; warning
+   * is its step 5, `#FBB360`, the one intent filled light and written dark).
+   * `-text` is the intent drawn as text on the page: step 2 in light, step 5
+   * in dark. `--primary-text` is DERIVED from `--primary` rather than a
+   * value of its own, so a theme that retints `--primary` retints its text
+   * with it.
+   *
+   * `--danger` is the kit's only red: shadcn's `--destructive` folded into it
+   * (#Q2562). A fill, border or ring reads `danger`, text on the page reads
+   * `danger-text`. A theme retinting the red sets both, since `-text` is not
+   * derived. `destructive` survives only as a component word
+   * (`variant="destructive"`, `dialog.confirm({ destructive })`), naming an
+   * action rather than a colour.
+   */
+  --primary: #2d72d2;
+  --primary-foreground: #ffffff;
+  --primary-text: color-mix(in oklch, var(--primary), black 20%);
+  --success: #238551;
+  --success-foreground: #ffffff;
+  --success-text: #1c6e42;
+  --warning: #fbb360;
+  --warning-foreground: #111418;
+  --warning-text: #935610;
+  --danger: #cd4246;
+  --danger-foreground: #ffffff;
+  --danger-text: #ac2f33;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  /*
+   * ⚠️ **The one border colour of the whole kit.** Every border, rule,
+   * divider and hairline resolves to this, through `border-border` /
+   * `bg-border` or through the two aliases below. A component that needs a
+   * line and reaches for anything else is the bug this note exists to stop.
+   *
+   * Two values and no more: this one and the `.dark` one. A theme may retint
+   * both, and nothing else may define a border colour of its own.
+   *
+   * It was `#e6e6e6` and went one step darker: at 9% off white a rule read
+   * as a smudge on a white page, and the grid this palette now draws wants
+   * its lines to be lines.
+   */
+  --border: #d9d9d9;
+  /*
+   * ⚠️ NOT a border. This is the FILL a field takes (`bg-input/30` in dark,
+   * where a transparent input would disappear into the page). It kept its
+   * name because 33 call sites paint with it; a field's BORDER is
+   * `--border`, like everything else.
+   */
+  --input: oklch(0.922 0 0);
+  /*
+   * The border ANY bordered surface takes on hover.
+   *
+   * ⚠️ **Derived, never a value of its own**: `--border` pulled 20% toward
+   * the text colour. So it darkens in light and brightens in dark, it
+   * follows every theme's own `--border` for free, and a component that
+   * wants the hover line writes `hover:border-border-hover` instead of
+   * inventing `hover:border-muted-foreground/40`, which is what five of them
+   * used to do, each a different guess.
+   *
+   * One declaration serves both modes: `.dark` sits on the same element as
+   * `:root`, so the substitution reads whichever `--border` won there.
+   *
+   * Defined ONCE, and only here, because it is relative: the surface's own
+   * border pulled 20% toward the text colour. `--foreground` is near-black in
+   * light and near-white in dark, so the same expression darkens the border in
+   * one mode and lightens it in the other, with no `.dark` counterpart to keep
+   * in step. It also follows every theme in `apps/ui`'s palette switcher for
+   * free, keeping each one's hue instead of washing toward neutral grey the
+   * way a mix with plain black or white would.
+   *
+   * `oklab` rather than sRGB so the step is perceptually even across a light
+   * grey border and a dark tinted one. Where `--input` is translucent (dark
+   * mode ships `oklch(1 0 0 / 15%)`) the mix raises the alpha too, which is
+   * the same direction: a hovered field reads as more present, not less.
+   */
+  --border-hover: color-mix(in oklab, var(--border), var(--foreground) 20%);
+  /*
+   * ⚠️ **The one hover fill of the whole kit**, for anything a pointer can
+   * act on: a row, a ghost button, a menu item, a segmented option, a
+   * sidebar entry. `hover:bg-hover`, and nothing else. Components used to
+   * pick between `bg-muted`, `bg-accent`, `bg-sidebar-accent` and five
+   * opacities of each, and the interaction layer below then redirected most
+   * of them to `--state-layer` by selector - so the fill was already one
+   * colour in practice, reached by a dozen spellings that each looked like a
+   * choice.
+   *
+   * It IS `--state-layer`, named for what a component wants. The wash and
+   * the reasoning behind it are documented there; the short version is that
+   * a translucent fill composites over whatever is under it, so a hover is
+   * the same weight on the page, on a `bg-muted` toolbar and in every theme,
+   * and can never vanish by matching its own surface.
+   *
+   * One declaration for both modes: `--state-layer` has its own light and
+   * dark values, and `.dark` sits on the same element as `:root`.
+   *
+   * ⚠️ Base UI moves focus on hover, so a menu's `focus:bg-hover` is this
+   * same affordance and reads from here too. An INVERTED surface (the bulk
+   * bar, dark in both modes) keeps its own `white/10`: a wash of the page's
+   * foreground would be a dark smudge on it.
+   *
+   * ⚠️ **An element with a `dark:bg-*` fill needs `dark:hover:bg-hover` as
+   * well**, and this cost a round: a `dark:` utility outranks a bare
+   * `hover:` one, so the outline button's `dark:bg-input/30` and the minimal
+   * trigger's `dark:bg-transparent` painted straight over the hover and the
+   * control looked dead in dark - exactly what the `dark:hover:bg-input/50`
+   * those classes used to carry was for. Same token either way; the variant
+   * is only there to win the cascade.
+   */
+  --hover: var(--state-layer);
+  /*
+   * The same wash at half weight, for a surface where the full one is too
+   * loud: a table ROW, which is wide, striped by its own borders and hovered
+   * constantly as the pointer crosses a list. A control is a small target
+   * and wants the strong step; a row spanning the page does not.
+   *
+   * `hover:bg-hover-weak`, and it is the ONLY exception to `--hover`. A new
+   * one is a decision, not a preference - two weights are a system, five are
+   * the dozen spellings this replaced.
+   */
+  --hover-weak: var(--state-layer-weak);
+  --ring: oklch(0.708 0 0);
+  /*
+   * The bevel: a 1px inset line laid along the TOP edge of a chrome surface,
+   * immediately under the `--border` that already closes that edge. The pair
+   * is the whole illusion: two adjacent lines of OPPOSITE polarity read as a
+   * fold, so the surface looks raised out of the page instead of painted onto
+   * it. One line alone is just a divider.
+   *
+   * Which polarity is the bevel's is decided by the border, and the border
+   * changes sides between the modes. In light, `--border` is DARKER than the
+   * surface it edges, so the bevel is the highlight: pure white, because these
+   * surfaces are `bg-muted`, already within a few percent of the page, and
+   * nothing short of actual white separates them.
+   *
+   * In dark the border is LIGHTER than its surface (`oklch(1 0 0 / 10%)` over
+   * a near-black card), so it is already the highlight and the bevel has to be
+   * the shadow under it. A white line there does not make a fold, it makes the
+   * border look 2px thick and desaturated, which is what a neutral white wash
+   * does to a tinted theme.
+   */
+  --bevel: oklch(1 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  /* The same line as everywhere else; see `--border`. */
+  --sidebar-border: var(--border);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #2d72d2;
+  --primary-foreground: #ffffff;
+  --primary-text: color-mix(in oklch, var(--primary), white 45%);
+  --success: #238551;
+  --success-foreground: #ffffff;
+  --success-text: #72ca9b;
+  --warning: #fbb360;
+  --warning-foreground: #111418;
+  --warning-text: #fbb360;
+  --danger: #cd4246;
+  --danger-foreground: #ffffff;
+  --danger-text: #fa999c;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  /*
+   * The dark half of the kit's one border colour; see `:root`.
+   *
+   * ⚠️ 15%, not the 10% the stock palette carries, and the difference is a
+   * control's edge. A rule on the page is 10% of white over near-black and
+   * reads easily; a FIELD's edge sits on the field's own `dark:bg-input/30`
+   * wash, which is already lighter than the panel around it, so the same
+   * 10% is a 5% step and vanishes. 15% is what `--input` used to carry for
+   * exactly this reason, and folding the two tokens into one took it away
+   * until this line put it back.
+   */
+  --border: oklch(1 0 0 / 15%);
+  /* The field FILL in dark, not a border; see `:root`. */
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --bevel: oklch(0 0 0 / 30%);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.308 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: var(--border);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/*
+ * `--surface` follows the surface utilities rather than being set by hand
+ * in each component: a hand-written `bg-card` panel is as much a surface as
+ * `Card`, and a per-component declaration missed it (the clear button's
+ * fade showed as a darker patch on the showcase's knob panel). Keyed on the
+ * class names Tailwind emits, so any element painting one of these declares
+ * the colour its descendants sit on. A translucent fill (`bg-muted/40`) is
+ * not a surface an overlay can match, and is left out on purpose.
+ */
+.bg-background {
+  --surface: var(--background);
+}
+.bg-card {
+  --surface: var(--card);
+}
+.bg-popover {
+  --surface: var(--popover);
+}
+.bg-sidebar {
+  --surface: var(--sidebar);
+}
+.bg-muted {
+  --surface: var(--muted);
+}
+.bg-secondary {
+  --surface: var(--secondary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /*
+   * The heading face. This rule is the whole of what makes `--font-heading`
+   * exist - see the token's own note in `:root` for the dead one it replaces.
+   *
+   * In `@layer base` so any utility class beats it: a heading that wants the
+   * text face asks for `font-sans` and gets it, and a prose surface with its
+   * own reading face (Lore's folio document) overrides it by inheritance
+   * with a plain unlayered rule.
+   */
+  :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-heading);
+  }
+
+  /*
+   * The pointer cursor on anything clickable.
+   *
+   * Tailwind v3's Preflight carried `button, [role="button"] { cursor: pointer }`
+   * and v4 dropped it, deliberately, to match the browser default. The browser
+   * default is defensible and the result is not: `<a href>` still gets a
+   * pointer from the UA stylesheet, `<button>` gets `default`, and Base UI's
+   * span-based switches and checkboxes get `auto`. So a page ends up telling
+   * the reader that half its controls are clickable and the other half are
+   * text, with the split falling on an implementation detail they cannot see.
+   * Measured on the Table showcase before this rule: 37 controls, 8 pointers.
+   *
+   * Here rather than on the components: one rule reaches every control, where
+   * a per-component `cursor-pointer` is one class per primitive, forever, and
+   * a new primitive that forgets it. The fifteen hand-written `cursor-pointer`
+   * classes already scattered through the repo are what that approach looks
+   * like halfway through.
+   *
+   * Roles as well as tags, because Base UI renders several controls as a
+   * `<span>` carrying the role. Disabled is excluded three ways: `:disabled`
+   * for native controls, and the two attributes Base UI sets on the ones that
+   * are not - a control that refuses the click should not invite it.
+   */
+  :is(
+    button,
+    summary,
+    [role="button"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="tab"],
+    [role="option"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="combobox"],
+    input[type="checkbox"],
+    input[type="radio"]
+  ):not(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled],
+    /* A Combobox carries `role="combobox"` on TWO elements: the trigger
+       button, and the typeahead input inside the popup. The input wants a
+       caret, not a hand. Text entry is excluded by shape rather than by
+       listing the types, so a future `[role]` on an input cannot reopen it. */
+    input:not([type="checkbox"], [type="radio"]),
+    textarea
+  ) {
+    cursor: pointer;
+  }
+}
+
+/*
+ * `font-heading` as a utility, hand-written because Tailwind cannot generate
+ * it: a `--font-heading` entry in `@theme` would have to read
+ * `var(--font-heading)`, which is circular, and the `inline` variant would
+ * freeze the value at build time and make it theme-blind - the one property
+ * this face needs. In `@layer utilities` so it beats the base rule and loses
+ * to nothing, like every other font utility.
+ *
+ * `CardTitle`, `SheetTitle`, `DrawerTitle`, `AlertDialogTitle`, `DialogTitle`
+ * and `Empty` carry it, which is what makes a dialog title and an `<h2>`
+ * agree.
+ */
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Interaction state layer.
+ *
+ * shadcn spends ABSOLUTE colors on interaction states: `--accent`, `--muted`
+ * and `--sidebar-accent` are all `oklch(0.97 0 0)`, i.e. 3% off white. Dark
+ * mode gets a 12% step (0.145 → 0.269) against `--background`, which is why
+ * light looked like the only broken half.
+ *
+ * An absolute fill cannot track a surface that varies, so the step shrinks to
+ * nothing as the surface darkens: on `--sidebar` (0.985) it is 1.5%, and a
+ * `hover:bg-muted` child sitting on a `bg-muted` panel is a 0% step — the
+ * state is literally invisible. Below 0.97 it inverts and hovering BRIGHTENS.
+ *
+ * ⚠️ That 0% case is NOT light-specific, and this block was scoped to light
+ * for a year on the assumption that it was. `hover:bg-muted` on a `bg-muted`
+ * panel is a 0% step in dark too — same token on both sides, and the
+ * measurement is `oklch(0.269 0 0)` for the hovered control and
+ * `oklch(0.269 0 0)` for the panel it sits on. That is the whole of quest
+ * #1643: the DataTable toolbar IS a `bg-muted` panel, so its three icon
+ * buttons had no hover at all in dark. Light was fine on that same panel
+ * only because the wash below already applied there. So the selector block
+ * now runs in both modes, and dark gets its own state-layer values.
+ *
+ * So the state fill is an ALPHA WASH rather than a color. Alpha composites
+ * over whatever it lands on, which turns the step into a constant ratio of the
+ * surface instead of a fixed color: the same weight on white, on a card, on
+ * the sidebar and on every Lore theme, and never lighter than its own
+ * background. Same idiom the stock `secondary` button variant already uses
+ * (`color-mix(in oklch, var(--secondary), var(--foreground) 5%)`).
+ *
+ * ⚠️ This file is the place for it. The same fix written into each
+ * primitive's classes is one edit per primitive, and a new primitive that
+ * forgets it; the token reaches all of them at once.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:root:not(.dark) {
+  --state-layer: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --state-layer-weak: color-mix(in oklch, var(--foreground) 5%, transparent);
+
+  /* `--accent` and `--sidebar-accent` are PURE interaction tokens across this
+   * package and apps/lore — every single use is hover/focus/open/selected,
+   * never an opaque surface (verified by grep, incl. the bare `bg-accent`
+   * selected-state uses). So the wash goes on the token itself and reaches
+   * every state variant at once — hover, focus, data-open, data-highlighted,
+   * data-active, aria-expanded — with no selector list to keep in sync.
+   *
+   * This deliberately overrides the per-theme `--accent` values in Lore's
+   * main.css: those were hand-tuned per surface, which is exactly the approach
+   * that does not scale. Specificity (0,2,0) beats a bare `.theme-*` (0,1,0). */
+  --accent: var(--state-layer);
+  --sidebar-accent: var(--state-layer);
+}
+
+/* Dark carries the wash too, so the selector block below can drop its light
+ * scoping. The same 10%/5% of `--foreground`, which in dark is a near-white:
+ * over `--card` (0.22) or `--muted` (0.269) it lifts the surface rather than
+ * replacing it, and it stays a constant ratio the way it does in light.
+ *
+ * ⚠️ `--accent` and `--sidebar-accent` are deliberately NOT redirected here.
+ * Their light redirect is safe because stock light `--accent` is 3% off
+ * white and reads as nothing; dark `--accent` is a real step (0.269 against
+ * a 0.145 background) and Lore's themes hand-tune it per theme, so the
+ * markdown toolbar and every other deliberate `bg-accent` hover would lose
+ * the value someone chose. Only `--muted`'s state variants move. */
+.dark {
+  --state-layer: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --state-layer-weak: color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+
+/* `--muted` is the exception: it is BOTH a state fill and an opaque surface
+ * (progress track, tabs list, kbd, card footer, slider). It must stay opaque,
+ * so its state variants are reached by selector instead of via the token.
+ *
+ * Unlayered on purpose — Tailwind's utilities live in `@layer utilities`, and
+ * unlayered styles beat layered ones whatever the specificity, so this wins
+ * without `!important` and without racing selector counts.
+ *
+ * Every match is `[class~=]`, the exact space-separated token — never
+ * `[class*=]`. A substring match looks equivalent and is not: it also matches
+ * `dark:hover:bg-muted/50`, so a ghost button rendered in LIGHT mode picked up
+ * the weak layer off its dark-mode class and came out at half strength. Exact
+ * tokens cannot do that. The cost is that the fractional list below is
+ * enumerated rather than wildcarded — a fraction nobody listed keeps today's
+ * behaviour, which is a no-op, not a wrong result. */
+/* ⚠️ The `hover:` and `focus:` entries this list used to carry are GONE, and
+ * nothing replaced them: every hover and every menu highlight writes
+ * `bg-hover` now, which is `--state-layer` by name instead of by redirect.
+ * What is left is the states a pointer does not produce - a trigger held
+ * open, a segmented option that is the current one - which still spell
+ * themselves `bg-muted/50` and still need the wash. */
+:is([class~="aria-expanded:bg-muted"][aria-expanded="true"]) {
+  background-color: var(--state-layer);
+}
+
+:is(
+  [class~="data-open:bg-muted/50"][data-open],
+  [class~="data-active:bg-muted/50"][data-active],
+  [class~="data-popup-open:bg-muted/50"][data-popup-open],
+  [class~="aria-expanded:bg-muted/50"][aria-expanded="true"]
+) {
+  background-color: var(--state-layer-weak);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Sidebar active item — a left bar, not a heavier fill.
+ *
+ * The state layer above deliberately gives the active item the SAME weight as
+ * a hovered one, because shadcn spends one token on both. That leaves two
+ * adjacent rows — the current page and the one under the pointer — rendering
+ * as a single merged shape with no way to tell them apart.
+ *
+ * The bar resolves it without touching the fill. Presence/absence of a shape
+ * is not a color distinction, so it survives where two fills never would: low
+ * vision, a bad display, or any theme whose surface drifts. Hover stays purely
+ * a fill, so the two states never encode the same way.
+ *
+ * Both modes, unlike the state layer above: the collision it fixes is
+ * shadcn's one-token design, which is present in dark too — dark just happens
+ * to render both at `oklch(0.308 0 0)` instead of both at a 10% wash.
+ *
+ * `--sidebar-primary` rather than a fixed color, so every Lore theme carries
+ * its own hue with no per-theme values. Lives here, beside the state layer it
+ * compensates for, rather than in `sidebar.tsx`.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+[data-slot="sidebar-menu-button"][data-active],
+[data-slot="sidebar-menu-sub-button"][data-active] {
+  position: relative;
+}
+
+[data-slot="sidebar-menu-button"][data-active]::after,
+[data-slot="sidebar-menu-sub-button"][data-active]::after {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0;
+  width: 3px;
+  border-radius: 9999px;
+  background-color: var(--sidebar-primary);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * A sidebar entry sinks on press the way a Button does (feedback #P2181).
+ *
+ * `Button` nudges down one pixel with
+ * `not-disabled:active:not-aria-[haspopup]:translate-y-px` under
+ * `transition-all`; this is the same nudge, with the same exclusions, on
+ * `SidebarMenuButton`. Here rather than in `sidebar.tsx`, beside the active
+ * bar above, which styles the same slot.
+ *
+ * - `aria-haspopup` is excluded as Button excludes it: a trigger that sinks
+ *   reads as a button that did something rather than one that opened. Lore's
+ *   project switcher renders through `SidebarMenuButton` as a menu trigger,
+ *   and Base UI gives it the trigger's `data-slot`, so this rule does not
+ *   match it today; the exclusion keeps it that way if that ever changes.
+ * - Disabled and `aria-disabled` entries do not move.
+ * - `translate` joins the button's own `width, height, padding` transition
+ *   rather than replacing it, so the collapse animation is untouched, and it
+ *   keeps the utility's duration and easing - Tailwind's defaults, the ones
+ *   Button's `transition-all` runs on. Without it the nudge would snap.
+ * - The x half reads `--tw-translate-x`, so a translate utility anybody puts
+ *   on an entry survives the press.
+ *
+ * Sub-buttons are left alone: they already carry `-translate-x-px`, and the
+ * report was about the entries themselves.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+[data-slot="sidebar-menu-button"] {
+  transition-property: width, height, padding, translate;
+}
+
+[data-slot="sidebar-menu-button"]:active:not(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled],
+    [aria-haspopup]
+  ) {
+  translate: var(--tw-translate-x, 0) 1px;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Menu and list items, which are the OTHER half of the cursor problem.
+ *
+ * The rule in `@layer base` above cannot reach these. shadcn ships
+ * `cursor-default` as an explicit utility on every menu item, select item,
+ * combobox item, command item and context-menu item, and a utility outranks
+ * anything in the base layer, so those items stayed on `default` while the
+ * buttons beside them turned into pointers. That is the same split the rule
+ * was written to close, moved one layer down.
+ *
+ * Unlayered on purpose: unlayered CSS beats every `@layer`, including
+ * Tailwind's `utilities`, which is what the sidebar rules below already rely
+ * on. Targeted by ROLE rather than by `data-slot` so it covers the checkbox
+ * and radio variants of a menu item without naming five primitives, each of
+ * which could rename its slot.
+ *
+ * This is a deliberate departure from shadcn, whose `cursor-default` copies
+ * the macOS convention that native menus do not show a hand. The convention
+ * is real, and it belongs to the menu bar - not to a popover inside a web
+ * page, where a row of text with no pointer reads as inert. Leaving these
+ * alone would have fixed half the inconsistency and kept the other half.
+ *
+ * Disabled items are excluded, and they also carry `pointer-events-none`
+ * already, so the guard is belt and braces.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:is(
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"]
+):not([data-disabled], [aria-disabled="true"], [data-disabled="true"]) {
+  cursor: pointer;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * The hover border on a field.
+ *
+ * Every bordered surface a `Control` can render, addressed by `data-slot`
+ * rather than patched into each primitive: one rule instead of a class per
+ * primitive. Same reasoning as the cursor rules above.
+ *
+ * Unlayered, because `border-border` is a utility and `@layer base` loses to
+ * it. All six slots carry `transition-colors` already, so the change eases in
+ * and out on its own; `combobox-trigger` and `date-trigger` get both the
+ * border and the transition from `control-base/field-trigger`, which is the
+ * part that is not obvious - neither primitive carries them itself.
+ *
+ * SPLIT IN TWO, because the primitives disagree about which pseudo-class earns
+ * the focus border, and this rule outranks all of them. Whatever is excluded
+ * here has to match what actually paints `border-ring`, exactly: exclude too
+ * little and the hover paints over a focus ring, exclude too much and the
+ * field stops responding to the mouse.
+ *
+ * The second failure is the one that happened. Excluding `:focus-within` as a
+ * safe superset looked harmless and was not: Base UI returns focus to the
+ * trigger after a selection, so choosing a value left the field `:focus` -
+ * measured `:focus` true, `:focus-visible` FALSE, `:active` false - and the
+ * hover border silently stopped working for the rest of the visit. Nothing was
+ * painting `border-ring` in that state either, since it keys on
+ * `:focus-visible`, so the exclusion was protecting nothing at all.
+ *
+ * Hence: `:focus-visible` for the four slots whose focus border keys on it,
+ * and `:focus-within` only for `combobox-chips`, which really does use
+ * `focus-within:border-ring`. `input-group` keys on a `:has()` of the first,
+ * so it needs the `:has(:focus-visible)` spelling.
+ *
+ * Invalid and disabled are excluded in both the direct and the `:has()` form,
+ * because half these slots are wrappers carrying the state on a descendant.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/*
+ * `[data-minimal]` is excluded too: a `minimal` select has no border at rest
+ * (`TRIGGER_MINIMAL_CLASSES` makes it transparent), and this rule, which
+ * outranks that class, drew one on hover, so the trigger grew a box the
+ * moment it was pointed at. Its hover is the `hover:bg-muted` tint alone.
+ */
+:is(
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="input-group"],
+    [data-slot="combobox-trigger"],
+    [data-slot="date-trigger"]
+  ):hover:not(
+    :disabled,
+    :focus-visible,
+    :has(:focus-visible),
+    [aria-invalid="true"],
+    [data-disabled],
+    [data-minimal],
+    :has(:disabled),
+    :has([aria-invalid="true"])
+  ) {
+  border-color: var(--border-hover);
+}
+
+/* The one that genuinely takes `focus-within:border-ring`. */
+[data-slot="combobox-chips"]:hover:not(
+    :focus-within,
+    [aria-invalid="true"],
+    [data-disabled],
+    :has(:disabled),
+    :has([aria-invalid="true"])
+  ) {
+  border-color: var(--border-hover);
+}
+
+/*
+ * The checkbox takes the same hover border, on its UNCHECKED state only.
+ *
+ * Checked, the box is filled `--primary` and carries a `--primary` border to
+ * match, so mixing `--foreground` into that would either vanish - in dark,
+ * where `--primary` is already near-white - or lay a dark smudge along the
+ * edge of a filled box in light. The border is the affordance only while the
+ * box is empty, which is exactly the state the other slots are always in.
+ *
+ * Base UI renders a native `disabled` here AND mirrors it as `[data-disabled]`,
+ * so both spellings are excluded, the way the shared rule above does it. There
+ * is no `:has()` form to match: this slot is the control itself rather than a
+ * wrapper carrying its state on a descendant.
+ */
+[data-slot="checkbox"]:hover:not(
+    :disabled,
+    :focus-visible,
+    [data-checked],
+    [data-disabled],
+    [aria-invalid="true"]
+  ) {
+  border-color: var(--border-hover);
+}

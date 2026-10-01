@@ -1,0 +1,2115 @@
+import * as fs from "node:fs/promises";
+import { glob } from "node:fs/promises";
+
+import {
+  $atom,
+  $env,
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  AlephaError,
+  type Infer,
+  SchemaValidationError,
+  type ZObject,
+  type ZType,
+  z,
+} from "alepha";
+import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
+
+import { CommandError } from "../errors/CommandError.ts";
+import { UsageError } from "../errors/UsageError.ts";
+import { Asker } from "../helpers/Asker.ts";
+import { EnvUtils } from "../helpers/EnvUtils.ts";
+import { Runner } from "../helpers/Runner.ts";
+import {
+  $command,
+  type CommandHandlerArgs,
+  type CommandPrimitive,
+} from "../primitives/$command.ts";
+import { ConsoleInputProvider } from "./ConsoleInputProvider.ts";
+import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
+import { ExclusiveProvider } from "./ExclusiveProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = z.object({
+  CLI_NAME: z.text({
+    default: "cli",
+    secret: false,
+    description: "Name of the CLI application.",
+  }),
+  CLI_DESCRIPTION: z.text({
+    default: "",
+    secret: false,
+    description: "Description of the CLI application.",
+  }),
+});
+
+declare module "alepha" {
+  interface Env extends Partial<Infer<typeof envSchema>> {}
+}
+
+/**
+ * CLI provider configuration atom
+ */
+export const cliOptions = $atom({
+  name: "alepha.command.cli.options",
+  schema: z.object({
+    name: z.string().describe("Name of the CLI application.").optional(),
+    description: z
+      .string()
+      .describe("Description of the CLI application.")
+      .optional(),
+    argv: z
+      .array(z.string())
+      .describe("Command line arguments to parse.")
+      .optional(),
+  }),
+  default: {},
+  serverOnly: true,
+});
+
+export type CliProviderOptions = Infer<typeof cliOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [cliOptions.key]: CliProviderOptions;
+  }
+}
+
+/**
+ * One `@path` or `@-` flag value waiting to be read.
+ *
+ * `index` is the argv slot the value came from: the flag token itself for
+ * `--flag=@x`, the slot after it for `--flag @x`. It is unique per
+ * occurrence, which is what lets a repeated array flag keep its order.
+ */
+export interface FlagFileRequest {
+  index: number;
+  rawKey: string;
+  /**
+   * What follows the `@`: a path, or `-` for stdin.
+   */
+  source: string;
+}
+
+/**
+ * The `@file` state of one flag parse: the reads the first pass found, and
+ * the contents the second pass substitutes.
+ */
+export interface FlagFileReads {
+  requests: FlagFileRequest[];
+  resolved: Map<number, string>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * CLI provider for parsing and executing commands.
+ *
+ * Handles:
+ * - Command resolution (simple, nested, colon-notation)
+ * - Flag and argument parsing
+ * - Environment variable validation
+ * - Help generation
+ * - Pre/post command hooks
+ *
+ * @example
+ * ```typescript
+ * // Define a command
+ * class MyCommands {
+ *   build = $command({
+ *     name: "build",
+ *     description: "Build the project",
+ *     flags: z.object({ watch: z.boolean().optional() }),
+ *     handler: async ({ flags }) => { ... }
+ *   });
+ * }
+ *
+ * // CLI automatically discovers and executes commands
+ * const alepha = Alepha.create().with(MyCommands);
+ * ```
+ */
+export class CliProvider {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dependencies
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  protected readonly env = $env(envSchema);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
+  protected readonly color = $inject(ConsoleColorProvider);
+  protected readonly runner = $inject(Runner);
+  protected readonly asker = $inject(Asker);
+  protected readonly output = $inject(ConsoleOutputProvider);
+  protected readonly input = $inject(ConsoleInputProvider);
+  protected readonly fileSystem = $inject(FileSystemProvider);
+  protected readonly exclusive = $inject(ExclusiveProvider);
+  protected readonly envUtils = $inject(EnvUtils);
+  protected readonly options = $store(cliOptions);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Configuration
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  protected get name(): string {
+    return this.options.name || this.env.CLI_NAME;
+  }
+
+  protected get description(): string {
+    return this.options.description || this.env.CLI_DESCRIPTION;
+  }
+
+  protected get argv(): string[] {
+    return (
+      this.options.argv ||
+      (typeof process !== "undefined" ? process.argv.slice(2) : [])
+    );
+  }
+
+  /**
+   * Global flags available to all commands.
+   */
+  protected readonly globalFlags = {
+    help: {
+      aliases: ["h", "help"],
+      description: "Show this help message",
+      schema: z.boolean(),
+    },
+    verbose: {
+      // No `-v` alias — it collides with `--version` on the root command.
+      aliases: ["verbose"],
+      description:
+        "Verbose output: trace-level logs (framework internals) in pretty format, and task output streams live.",
+      schema: z.boolean(),
+    },
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Main entry point - resolves and executes the command from process.argv.
+   * This is the production execution path with full lifecycle support.
+   */
+  protected readonly onReady = $hook({
+    on: "ready",
+    handler: async () => {
+      const argv = this.helpWordAsFlag([...this.argv]);
+
+      // Resolve command using space-separated or colon-notation, skipping
+      // argv slots that are flag values rather than positionals.
+      const { command, consumedArgs, positionalArgs } =
+        this.resolveCommandFromArgv(argv);
+
+      try {
+        return await this.dispatch(argv, command, consumedArgs, positionalArgs);
+      } catch (error) {
+        // Nothing has run yet — the argv itself was rejected. Render it the way
+        // an unknown command is rendered, not as a crash.
+        if (error instanceof UsageError) {
+          return this.reportUsage(error.message, command);
+        }
+        // A task ran and failed. The tool it shelled out to has already said
+        // why, so the reason is all that is left to add.
+        if (error instanceof CommandError) {
+          return this.reportFailure(error);
+        }
+        throw error;
+      } finally {
+        // The command is over, so no question can follow: release stdin.
+        //
+        // A CLI has no `stop` — commands run on `ready` and the process is
+        // expected to exit once the event loop drains. An interactive command
+        // left an open readline interface behind, which keeps a ref'd handle
+        // on stdin, so the loop never drained: `alepha platform down` did all
+        // its work, printed its summary, and then sat there forever.
+        this.asker.close();
+      }
+    },
+  });
+
+  /**
+   * Resolve what the argv asks for and run it.
+   *
+   * Split out of the `ready` hook so the hook has one job: turn a
+   * {@link UsageError} into a usage message. Every throw below is either a
+   * `UsageError` (the user's argv is wrong) or a genuine failure that should
+   * keep its stack.
+   */
+  protected async dispatch(
+    argv: string[],
+    command: CommandPrimitive<ZObject> | undefined,
+    consumedArgs: string[],
+    positionalArgs: string[],
+  ): Promise<void> {
+    const globalFlags = this.parseFlags(
+      argv,
+      Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+        key,
+        ...value,
+      })),
+      { strict: false }, // Don't throw for command-specific flags
+    );
+
+    // `--verbose` → raise the logger to trace + pretty format via state
+    // (read live by Logger). At DEBUG level Runner also switches shelled
+    // task output from captured to streamed, so tool output shows live.
+    //
+    // An agent session (Claude Code sets CLAUDECODE) used to imply verbose:
+    // the compact `cli` format is tuned for a human watching a terminal, but
+    // an agent benefits from the full module/context and internal logs, same
+    // as if `--verbose` were passed.
+    //
+    // disabled for now for performance reasons
+    // const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
+    const verbose = globalFlags.verbose;
+    if (verbose) {
+      this.alepha.store.set("alepha.logger.level", "trace");
+      this.alepha.store.set("alepha.logger.format", "pretty");
+    }
+
+    if (globalFlags.help) {
+      this.logToStderr();
+      this.printHelp(command);
+      return;
+    }
+
+    if (!command) {
+      // Check if there's a root command (name === "")
+      const rootCommand = this.findCommand("");
+
+      // If we have positional args but no matching command, show error
+      const commandName = positionalArgs[0] ?? "";
+      if (commandName !== "" && !rootCommand?.options.args) {
+        return this.reportUsage(`Unknown command: '${commandName}'`);
+      }
+
+      // Execute root command if it exists
+      if (rootCommand) {
+        this.logToStderr();
+        await this.executeCommand(rootCommand, argv, true);
+        return;
+      }
+
+      // No command found and no root command: nothing for a CLI to do, so
+      // this process is not one (an application that happens to register
+      // commands), and its logs stay where they were.
+      return;
+    }
+
+    this.logToStderr();
+
+    // A mistyped *sub*command must not report success either.
+    //
+    // `resolveCommand` stops walking at the first word that matches no child
+    // and returns the group it reached, so `alepha db bogus` resolves to `db`.
+    // The group's own handler is `({ help }) => help()`, which prints usage and
+    // returns normally — exit 0. That makes `alepha db migreate` a green no-op
+    // in CI, which is exactly what the `Unknown command` guard above exists to
+    // prevent; it just never fires here, because a nested typo always leaves
+    // `command` truthy.
+    //
+    // The gate is "declares no positional args of its own", and nothing more.
+    // `alepha test [filter]` legitimately keeps its word, and a leftover there
+    // is data, not a typo.
+    //
+    // It used to also require `hasChildren`, which left every leaf command
+    // outside the guard: `alepha verify fast` (meaning `--fast`),
+    // `alepha build prod`, `alepha lint src/` all ran the default behaviour
+    // and exited 0 with the word silently dropped. That is the same green
+    // no-op in CI the guard was written to stop; a leaf has simply always
+    // consumed its whole path, so `positionalArgs[consumedArgs.length]` is
+    // the first word it was never asked for either way.
+    if (!command.options.args) {
+      const unknown = positionalArgs[consumedArgs.length];
+      if (unknown !== undefined) {
+        // Naming it a "command" is right for a group and wrong for a leaf,
+        // which has no subcommands to have mistyped.
+        throw new UsageError(
+          command.hasChildren
+            ? `Unknown command: '${[...consumedArgs, unknown].join(" ")}'`
+            : `Unexpected argument '${unknown}': '${consumedArgs.join(" ")}' takes no positional arguments.`,
+        );
+      }
+    }
+
+    // Remove consumed command path args from argv for argument parsing
+    const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
+
+    // Since we've removed the command path, treat it like a root command for parsing
+    await this.executeCommand(command, remainingArgv, true);
+  }
+
+  /**
+   * Print a usage failure the way a CLI should: the reason, then the help for
+   * whatever context we managed to resolve, then a non-zero exit code.
+   *
+   * A typo must not report success. Exit code rather than a throw: throwing
+   * surfaces as "Alepha failed to start" plus a stack through `CliProvider`
+   * internals, which reads as a crash when the right answer is a usage
+   * message. The `process` guard mirrors core/index.ts — there is no process
+   * in workerd or the browser.
+   */
+  protected reportUsage(
+    message: string,
+    command?: CommandPrimitive<ZObject>,
+  ): void {
+    this.logToStderr();
+    this.log.error(message);
+    this.printHelp(command);
+    if (typeof process === "object") {
+      process.exitCode = 1;
+    }
+  }
+
+  /**
+   * Print a task failure as a command failure, not a crash.
+   *
+   * `UsageError`'s own doc justifies the split by saying a `CommandError` from
+   * {@link Runner} means a task genuinely failed "and its stack is the useful
+   * part". That holds for the stack of whatever *threw* — but by the time this
+   * reaches the `ready` hook it has been wrapped, and what the user got
+   * was ~30 lines under "Alepha failed to start", every frame of it inside
+   * `alepha/dist/command/index.js`. None of those frames are the user's code,
+   * and the tool that actually failed — tsc, vitest, oxlint — has already
+   * printed its diagnostics above.
+   *
+   * So the default is the reason and nothing else, and the stack stays one
+   * `--verbose` away. `CliProvider.run()` is untouched: a caller driving the
+   * CLI from code still gets the error thrown.
+   *
+   * The exit code is the error's own `exitCode`, and 1 when it names none, so
+   * a caller can say WHY a command failed without a script parsing English.
+   * `2` is taken by `alepha i18n check`; see {@link CommandError} for the
+   * table.
+   */
+  protected reportFailure(error: CommandError): void {
+    this.logToStderr();
+    this.log.error(error.message);
+
+    // The wrapper names the task; the innermost cause carries what went wrong.
+    // For a shelled task that is "Command exited with code 1: <stderr>"; for a
+    // check that throws on its own (schema drift, say) it is the only sentence
+    // that explains anything, and nothing else printed it.
+    //
+    // Two exceptions. A bare "Command exited with code N": the tool streamed
+    // its own output and the exit code adds nothing the line above did not
+    // already say. And a cause the message already quotes: a translated
+    // refusal carries the server's sentence inside its own.
+    const cause = this.rootCause(error);
+    if (
+      cause?.message &&
+      !error.message.includes(cause.message) &&
+      !/^Command exited with code \d+$/.test(cause.message)
+    ) {
+      this.log.error(cause.message);
+    }
+
+    this.log.debug("Task failure detail", error);
+
+    if (typeof process === "object") {
+      process.exitCode = error.exitCode ?? 1;
+    }
+  }
+
+  /**
+   * From here on, this container's log lines go to stderr, and stdout carries
+   * only what a command prints: `--version`, help, a rendered result.
+   *
+   * Called the moment this process turns out to be a CLI (a command runs, or
+   * help or a usage error is printed), and never from {@link run}, which is
+   * the programmatic path. It writes THIS container's store, read at write
+   * time by `ConsoleDestinationProvider`; an application container a command
+   * boots keeps writing to stdout, because its logs are its output.
+   *
+   * Not a `LogDestinationProvider` substitution: the destination is resolved
+   * inside `AlephaLogger`'s `register`, long before a command module could
+   * swap it.
+   */
+  protected logToStderr(): void {
+    this.alepha.store.set("alepha.logger.stream", "stderr");
+  }
+
+  /**
+   * Walk to the deepest `cause`, guarding against a cycle.
+   */
+  protected rootCause(error: Error): Error | undefined {
+    const seen = new Set<unknown>([error]);
+    let current: unknown = error.cause;
+    let last: Error | undefined;
+
+    while (current instanceof Error && !seen.has(current)) {
+      seen.add(current);
+      last = current;
+      current = current.cause;
+    }
+
+    return last;
+  }
+
+  /**
+   * Execute a command with full lifecycle support.
+   *
+   * This is the production execution path that includes:
+   * - Mode-based .env file loading
+   * - Pre/post command hooks
+   * - Runner session for pretty CLI output
+   * - Alepha context wrapper for proper scoping
+   *
+   * @see run() for a lightweight test-only alternative
+   */
+  protected async executeCommand(
+    command: CommandPrimitive<ZObject>,
+    argv: string[],
+    isRootCommand: boolean,
+  ): Promise<void> {
+    const root = process.cwd();
+
+    // Handle --mode flag if command has mode option enabled
+    let modeValue: string | undefined;
+    if (command.options.mode) {
+      modeValue = this.parseModeFlag(argv);
+      // Use default mode if not provided and mode is a string
+      if (modeValue === undefined && typeof command.options.mode === "string") {
+        modeValue = command.options.mode;
+      }
+      await this.loadModeEnv(root, modeValue);
+    }
+
+    const commandFlags = await this.parseCommandFlags(argv, command.flags, {
+      modeEnabled: !!command.options.mode,
+      root,
+    });
+    const commandArgs = this.parseCommandArgs(
+      argv,
+      command.options.args,
+      isRootCommand,
+      command.flags,
+    );
+    const commandEnv = this.parseCommandEnv(command.env, command.name);
+
+    await this.alepha.context.run(async () => {
+      this.log.debug(`Executing command '${command.name}'...`, {
+        flags: commandFlags,
+        args: commandArgs,
+        mode: modeValue,
+      });
+
+      const runner = this.runner;
+
+      // Start command session for pretty print
+      runner.startCommand(this.name, command.name);
+
+      const args = {
+        flags: commandFlags,
+        args: commandArgs,
+        env: commandEnv,
+        run: runner.run,
+        ask: this.asker.ask,
+        fs,
+        glob,
+        root,
+        help: () => this.printHelp(command),
+        print: (message?: string) => this.output.print(message),
+        mode: modeValue,
+      };
+
+      // One slot around all three: a pre-hook running outside it would do the
+      // expensive part of the work unserialised.
+      //
+      // A function-form `exclusive` is evaluated here rather than at
+      // declaration, which is the whole point of it: the flags are parsed by
+      // now, so one command can serialise its heavy lane and let its cheap one
+      // through. It sees the same parsed inputs the handler will.
+      const declared = command.options.exclusive;
+      const exclusiveKey = this.exclusive.resolveKey(
+        typeof declared === "function"
+          ? declared({
+              flags: commandFlags,
+              args: commandArgs,
+              env: commandEnv,
+              root,
+            })
+          : declared,
+        root,
+        command.name,
+      );
+      const slot = exclusiveKey
+        ? await this.exclusive.acquire(exclusiveKey, {
+            command: command.name,
+            cwd: root,
+          })
+        : undefined;
+
+      try {
+        // Execute pre-hooks
+        const preHooks = this.findPreHooks(command.name);
+        for (const hook of preHooks) {
+          this.log.debug(`Executing pre-hook for '${command.name}'...`);
+          await hook.options.handler(args as CommandHandlerArgs<ZObject>);
+        }
+
+        // Execute main command
+        await command.options.handler(args as CommandHandlerArgs<ZObject>);
+
+        // Execute post-hooks
+        const postHooks = this.findPostHooks(command.name);
+        for (const hook of postHooks) {
+          this.log.debug(`Executing post-hook for '${command.name}'...`);
+          await hook.options.handler(args as CommandHandlerArgs<ZObject>);
+        }
+
+        runner.end();
+
+        this.log.debug(`Command '${command.name}' executed successfully.`);
+      } finally {
+        await slot?.release();
+      }
+    });
+  }
+
+  /**
+   * Remove consumed command path arguments from argv (keeps flags and remaining args).
+   */
+  protected removeConsumedArgs(
+    argv: string[],
+    consumedArgs: string[],
+  ): string[] {
+    const result: string[] = [];
+    let consumedIndex = 0;
+    const end = this.terminatorIndex(argv);
+
+    argv.forEach((arg, index) => {
+      // From `--` on, every token is passed through untouched. The terminator
+      // itself has to survive too: it used to be dropped here, so the parsers
+      // that run on the returned argv could not tell where flags stopped.
+      if (index >= end) {
+        result.push(arg);
+        return;
+      }
+      // A negative number is a VALUE, not a flag — `--count -5` used to fail
+      // because any token starting with `-` was treated as a flag name.
+      if (this.isFlagToken(arg)) {
+        result.push(arg);
+      } else if (
+        consumedIndex < consumedArgs.length &&
+        arg === consumedArgs[consumedIndex]
+      ) {
+        consumedIndex++;
+        // Skip this arg, it's part of the command path
+      } else {
+        result.push(arg);
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * Resolve a command from positional arguments.
+   *
+   * Supports:
+   * 1. Space-separated subcommands: `deploy vercel` -> finds deploy command, then vercel child
+   * 2. Colon notation (backwards compat): `deploy:vercel` -> finds command with name "deploy:vercel"
+   * 3. Simple commands: `build` -> finds command with name "build"
+   */
+  /**
+   * Resolve a command from the raw argv, skipping argv slots that are flag
+   * VALUES rather than positionals.
+   *
+   * `argv.filter(a => !a.startsWith("-"))` ran before any flag parsing, so
+   * `cli deploy --target vercel` saw `vercel` as a positional and walked into
+   * a `vercel` subcommand — after which `--target` failed as "requires a
+   * value". Flags before the command (`cli --mode production build`) made
+   * `production` the resolved command → "Unknown command".
+   *
+   * The flag definitions of EVERY registered command are used, not just the
+   * global ones: which command owns `--target` is exactly what we are trying
+   * to work out, so the superset is the only thing available this early. A
+   * value-taking flag anywhere in the app therefore consumes its next
+   * argument here — which is the behaviour a user expects from a CLI.
+   */
+  protected resolveCommandFromArgv(argv: string[]): {
+    command: CommandPrimitive<ZObject> | undefined;
+    consumedArgs: string[];
+    positionalArgs: string[];
+  } {
+    const consumedIndices = this.getFlagConsumedIndices(
+      argv,
+      this.everyFlagDef(),
+    );
+
+    const positionalArgs = this.extractPositionals(argv, consumedIndices);
+
+    return { ...this.resolveCommand(positionalArgs), positionalArgs };
+  }
+
+  /**
+   * The flag definitions of every registered command, plus the global flags
+   * and `--mode`: the superset {@link resolveCommandFromArgv} needs, because
+   * which command owns a flag is what it is working out.
+   */
+  protected everyFlagDef(): Array<{
+    key: string;
+    aliases: string[];
+    schema: ZType;
+  }> {
+    return [
+      ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+        key,
+        aliases: value.aliases,
+        schema: value.schema,
+      })),
+      ...this.commands.flatMap((command) => {
+        const flags = (command.options as { flags?: ZObject }).flags;
+        return flags ? this.extractFlagDefs(flags) : [];
+      }),
+      // `--mode` is not in `options.flags` on any command: `mode: true` turns
+      // it on and `parseModeFlag` reads it straight off the argv, so it is
+      // invisible to the superset above. Without it `build --mode production`
+      // leaves `production` sitting in `positionalArgs`, which is what the
+      // paragraph above says this method exists to prevent.
+      {
+        key: "__mode__",
+        aliases: ["mode", "m"],
+        schema: z.string(),
+      },
+    ];
+  }
+
+  /**
+   * `help` as a word: `cli help quest create` is `cli quest create --help`.
+   *
+   * Rewritten on the argv, before anything else reads it, so the two
+   * spellings cannot print different things: the word is removed and the
+   * flag added, and from there the one help path runs. It used to print
+   * `Unknown command: 'help'`, the root help, and exit 1, which is the first
+   * thing a newcomer to a CLI types.
+   *
+   * Only as the FIRST positional, and only when no top-level command is named
+   * `help`: a CLI that registers one keeps it.
+   */
+  protected helpWordAsFlag(argv: string[]): string[] {
+    if (this.findTopLevelCommand("help")) {
+      return argv;
+    }
+
+    const consumed = this.getFlagConsumedIndices(argv, this.everyFlagDef());
+    const end = this.terminatorIndex(argv);
+    for (let i = 0; i < end; i++) {
+      if (this.isFlagToken(argv[i]) || consumed.has(i)) continue;
+      if (argv[i] !== "help") return argv;
+      return [...argv.slice(0, i), ...argv.slice(i + 1), "--help"];
+    }
+    return argv;
+  }
+
+  protected resolveCommand(positionalArgs: string[]): {
+    command: CommandPrimitive<ZObject> | undefined;
+    consumedArgs: string[];
+  } {
+    if (positionalArgs.length === 0) {
+      return { command: undefined, consumedArgs: [] };
+    }
+
+    const firstArg = positionalArgs[0];
+
+    // First, try colon notation for backwards compatibility (e.g., "deploy:vercel")
+    if (firstArg.includes(":")) {
+      const command = this.findCommand(firstArg);
+      if (command) {
+        return { command, consumedArgs: [firstArg] };
+      }
+    }
+
+    // Try to find command with space-separated subcommand path
+    // Only search top-level commands to avoid child commands shadowing
+    // top-level ones (e.g., "platform > build" shadowing standalone "build")
+    let currentCommand = this.findTopLevelCommand(firstArg);
+    const consumedArgs: string[] = [];
+
+    if (!currentCommand) {
+      return { command: undefined, consumedArgs: [] };
+    }
+
+    consumedArgs.push(firstArg);
+
+    // Walk through remaining args to find nested subcommands
+    for (let i = 1; i < positionalArgs.length; i++) {
+      const arg = positionalArgs[i];
+
+      if (!currentCommand.hasChildren) {
+        break;
+      }
+
+      const childCommand = currentCommand.findChild(arg);
+      if (childCommand) {
+        currentCommand = childCommand;
+        consumedArgs.push(arg);
+      } else {
+        // No matching child, stop here
+        break;
+      }
+    }
+
+    return { command: currentCommand, consumedArgs };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Public API
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get all registered commands in the application.
+   */
+  public get commands(): CommandPrimitive<any>[] {
+    return this.alepha.primitives($command);
+  }
+
+  /**
+   * Execute a command handler with given arguments.
+   *
+   * This is a **lightweight test helper** that directly invokes the command handler
+   * without the full production lifecycle. It intentionally skips:
+   * - Pre/post command hooks
+   * - Runner session (pretty CLI output)
+   * - Alepha context wrapper
+   * - .env.{mode} file loading
+   *
+   * For production execution, the `onReady` hook uses `executeCommand()` which
+   * provides the full lifecycle. Merging them would either make this method too
+   * heavy for simple testing or require many optional parameters to toggle behaviors.
+   *
+   * @example
+   * ```typescript
+   * // In tests
+   * const cli = alepha.inject(CliProvider);
+   * const cmd = alepha.inject(InitCommand);
+   *
+   * await cli.run(cmd.init, "--agent --pm=yarn");
+   * await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+   * ```
+   */
+  public async run<T extends ZObject, A extends ZType>(
+    command: CommandPrimitive<T, A>,
+    options:
+      | string
+      | string[]
+      | { argv?: string | string[]; root?: string } = {},
+  ): Promise<void> {
+    const opts =
+      typeof options === "string" || Array.isArray(options)
+        ? { argv: options }
+        : options;
+    const args =
+      typeof opts.argv === "string"
+        ? opts.argv.split(" ").filter(Boolean)
+        : (opts.argv ?? []);
+    const root = opts.root ?? process.cwd();
+
+    const commandFlags = await this.parseCommandFlags(args, command.flags, {
+      modeEnabled: !!command.options.mode,
+      root,
+    });
+    const commandArgs = this.parseCommandArgs(
+      args,
+      command.options.args,
+      true,
+      command.flags,
+    );
+    const commandEnv = this.parseCommandEnv(command.env, command.name);
+
+    let modeValue: string | undefined;
+    if (command.options.mode) {
+      modeValue = this.parseModeFlag(args);
+      if (modeValue === undefined && typeof command.options.mode === "string") {
+        modeValue = command.options.mode;
+      }
+    }
+
+    await command.options.handler({
+      flags: commandFlags,
+      args: commandArgs,
+      env: commandEnv,
+      run: this.runner.run,
+      ask: this.asker.ask,
+      fs,
+      glob,
+      root,
+      help: () => this.printHelp(command),
+      print: (message?: string) => this.output.print(message),
+      mode: modeValue,
+    } as CommandHandlerArgs<T, A>);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Command Resolution
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Find a command by name or alias
+   */
+  protected findCommand(name: string): CommandPrimitive<ZObject> | undefined {
+    return this.commands.findLast(
+      (command) => command.name === name || command.aliases.includes(name),
+    );
+  }
+
+  /**
+   * Find a top-level command by name or alias (excludes child commands)
+   */
+  protected findTopLevelCommand(
+    name: string,
+  ): CommandPrimitive<ZObject> | undefined {
+    return this.getTopLevelCommands().findLast(
+      (command) => command.name === name || command.aliases.includes(name),
+    );
+  }
+
+  /**
+   * Find all pre-hooks for a command (commands named `pre{commandName}`)
+   */
+  protected findPreHooks(commandName: string): CommandPrimitive<ZObject>[] {
+    return this.commands.filter((cmd) => cmd.name === `pre${commandName}`);
+  }
+
+  /**
+   * Find all post-hooks for a command (commands named `post{commandName}`)
+   */
+  protected findPostHooks(commandName: string): CommandPrimitive<ZObject>[] {
+    return this.commands.filter((cmd) => cmd.name === `post${commandName}`);
+  }
+
+  /**
+   * Get global flags (help only, root command flags are NOT global)
+   */
+  protected getAllGlobalFlags(): Record<
+    string,
+    { aliases: string[]; description?: string; schema: ZType }
+  > {
+    return { ...this.globalFlags };
+  }
+
+  /**
+   * Read a schema's metadata (`title`, `description`, `aliases`, `alias`, …).
+   *
+   * Under zod these options live on the schema's `.meta()` registry rather than
+   * as direct properties, and they sit on the INNER schema, so any
+   * optional / nullable / default wrappers are peeled first.
+   */
+  protected schemaMeta(schema: ZType | undefined): Record<string, any> {
+    if (!schema) return {};
+    const base = z.schema.unwrap(schema) as any;
+    return (typeof base?.meta === "function" ? base.meta() : undefined) ?? {};
+  }
+
+  /**
+   * Build flag definitions (key, aliases, description, schema) from a flags
+   * object schema. Centralises the metadata reading so every call-site (parsing,
+   * arg-splitting, help) extracts aliases/descriptions the same way.
+   */
+  protected extractFlagDefs(schema: ZObject): Array<{
+    key: string;
+    aliases: string[];
+    description?: string;
+    schema: ZType;
+  }> {
+    return Object.entries(z.schema.shape(schema)).map(([key, value]) => {
+      const meta = this.schemaMeta(value as ZType);
+      const extra: string[] = meta.aliases ?? (meta.alias ? [meta.alias] : []);
+      return {
+        key,
+        aliases: [key, ...extra],
+        description: meta.description,
+        schema: value as ZType,
+      };
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Parsing (Flags, Args, Env)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Parse command flags from argv using the command's flag schema.
+   *
+   * Async because a flag that declares `atFile` may name a file or stdin, and
+   * {@link parseFlags} is synchronous. So it runs twice when it has to: the
+   * first pass binds every token exactly as the second will and collects the
+   * `@` values it could not cast, they are read, and the second pass casts the
+   * contents in their place. Binding first is the point. A body read into argv
+   * before parsing would start with `- ` often enough to be taken for a flag.
+   */
+  protected async parseCommandFlags(
+    argv: string[],
+    schema: ZObject,
+    options: { modeEnabled?: boolean; root?: string } = {},
+  ): Promise<Record<string, any>> {
+    const { modeEnabled = false, root = process.cwd() } = options;
+    const flagDefs = this.extractFlagDefs(schema);
+
+    // Add mode flags if mode is enabled (they're parsed elsewhere by parseModeFlag)
+    if (modeEnabled) {
+      flagDefs.push({
+        key: "__mode__",
+        aliases: ["mode", "m"],
+        description: undefined,
+        schema: z.string(),
+      });
+    }
+
+    // Tolerate global flags (--help, --verbose) so strict command parsing
+    // doesn't reject them — they're consumed by the onReady global pass,
+    // not by the command. Skip any whose alias the command already claims
+    // (e.g. a command with its own `verbose` flag handles it directly).
+    const claimed = new Set(flagDefs.flatMap((d) => d.aliases));
+    for (const [key, value] of Object.entries(this.getAllGlobalFlags())) {
+      if (value.aliases.some((a: string) => claimed.has(a))) continue;
+      flagDefs.push({
+        key: `__global_${key}__`,
+        aliases: value.aliases,
+        description: undefined,
+        schema: value.schema,
+      });
+    }
+
+    const files: FlagFileReads = { requests: [], resolved: new Map() };
+    let parsed = this.parseFlags(argv, flagDefs, { files });
+    if (files.requests.length > 0) {
+      files.resolved = await this.readFlagFiles(files.requests, root);
+      files.requests = [];
+      parsed = this.parseFlags(argv, flagDefs, { files });
+    }
+
+    // Remove the mode + global flags from parsed result (handled separately)
+    parsed.__mode__ = undefined;
+    for (const key of Object.keys(parsed)) {
+      if (key.startsWith("__global_")) delete parsed[key];
+    }
+
+    // apply manually defaults for optional properties that have defaults
+    for (const [key, value] of Object.entries(z.schema.shape(schema))) {
+      if (!(key in parsed)) {
+        const def = z.schema.getDefault(value);
+        if (def !== undefined) {
+          parsed[key] = def;
+        }
+      }
+    }
+
+    try {
+      return this.alepha.codec.decode(schema, parsed);
+    } catch (error) {
+      if (error instanceof SchemaValidationError) {
+        throw new UsageError(
+          `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Parse and validate environment variables using the command's env schema
+   */
+  protected parseCommandEnv(
+    schema: ZObject,
+    commandName: string,
+  ): Record<string, any> {
+    const result: Record<string, any> = {};
+    const missing: string[] = [];
+
+    for (const [key, propSchema] of Object.entries(z.schema.shape(schema))) {
+      const value = process.env[key];
+
+      if (value !== undefined) {
+        // Environment values are strings; a `z.number()` or `z.boolean()`
+        // declaration could never validate without this cast.
+        try {
+          result[key] = this.parseArgumentValue(
+            value,
+            z.schema.unwrap(propSchema),
+          );
+        } catch (error) {
+          if (error instanceof UsageError) {
+            throw new UsageError(`Invalid value for ${key}: ${error.message}`);
+          }
+          throw error;
+        }
+      } else {
+        const def = z.schema.getDefault(propSchema);
+        if (def !== undefined) {
+          result[key] = def;
+        } else if (z.schema.isOptional(propSchema)) {
+          // Optional with no default — leave undefined
+        } else {
+          missing.push(key);
+        }
+      }
+    }
+
+    if (missing.length > 0) {
+      const vars = missing.join(", ");
+      throw new UsageError(
+        `Missing required environment variable${missing.length > 1 ? "s" : ""}: ${vars}`,
+      );
+    }
+
+    try {
+      return this.alepha.codec.decode(schema, result);
+    } catch (error) {
+      if (error instanceof SchemaValidationError) {
+        throw new UsageError(
+          `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Parse --mode or -m flag from argv for environment file loading
+   */
+  protected parseModeFlag(argv: string[]): string | undefined {
+    const end = this.terminatorIndex(argv);
+
+    for (let i = 0; i < end; i++) {
+      const arg = argv[i];
+
+      // Handle --mode=value or -m=value
+      if (arg.startsWith("--mode=") || arg.startsWith("-m=")) {
+        return arg.split("=")[1];
+      }
+
+      // Handle --mode value or -m value
+      if (arg === "--mode" || arg === "-m") {
+        const nextArg = argv[i + 1];
+        if (nextArg && !this.isFlagToken(nextArg)) {
+          return nextArg;
+        }
+        throw new UsageError("Flag --mode requires a value.");
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Load .env and .env.{mode} files into process.env
+   */
+  protected async loadModeEnv(
+    root: string,
+    mode: string | undefined,
+  ): Promise<void> {
+    const envFiles = [".env"];
+    if (mode) {
+      envFiles.push(`.env.${mode}`);
+    }
+    this.log.debug(`Loading env files: ${envFiles.join(", ")}`);
+    await this.envUtils.loadEnv(root, envFiles);
+  }
+
+  /**
+   * Low-level flag parser - extracts flag values from argv based on definitions.
+   *
+   * A repeated array flag accumulates (see {@link castArrayOccurrence}); a
+   * repeated scalar is last-wins. A flag declaring `atFile` binds an `@path`
+   * or `@-` value into `options.files` instead of casting it, and casts the
+   * content once the caller has filled `files.resolved` (see
+   * {@link parseCommandFlags}).
+   */
+  protected parseFlags(
+    argv: string[],
+    flagDefs: { key: string; aliases: string[]; schema: ZType }[],
+    options: { strict?: boolean; files?: FlagFileReads } = {},
+  ): Record<string, any> {
+    const { strict = true, files } = options;
+    const result: Record<string, any> = {};
+    // The array flags seen so far in THIS argv: the first occurrence starts
+    // the list, a later one appends to it.
+    const started = new Set<string>();
+    const end = this.terminatorIndex(argv);
+
+    for (let i = 0; i < end; i++) {
+      const arg = argv[i];
+      if (!this.isFlagToken(arg)) continue;
+
+      const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
+      const value = valueParts.join("=");
+
+      const { def, negated } = this.resolveFlagDef(rawKey, flagDefs);
+      if (!def) {
+        if (strict) {
+          throw new UsageError(`Unknown flag: --${rawKey}`);
+        }
+        continue;
+      }
+
+      // Resolve the underlying schema (peel optional/nullable/default) so flags
+      // like `z.boolean().optional()` are still recognised as booleans.
+      const base = z.schema.unwrap(def.schema);
+
+      // Check if schema is a union containing boolean (allows flag without value)
+      const isUnionWithBoolean =
+        z.schema.isUnion(base) &&
+        z.schema.options(base).some((s) => z.schema.isBoolean(s));
+
+      if (negated) {
+        // `--no-x` is the only way to turn a defaulted-true flag off besides
+        // `--x=false`, which reads like a mistake in a shell.
+        if (!z.schema.isBoolean(base) && !isUnionWithBoolean) {
+          throw new UsageError(
+            `Flag --${rawKey} is not available: --${rawKey.slice(3)} is not a boolean flag.`,
+          );
+        }
+        if (value) {
+          throw new UsageError(`Flag --${rawKey} does not take a value.`);
+        }
+        result[def.key] = false;
+        continue;
+      }
+
+      if (z.schema.isBoolean(base)) {
+        // `--flag=false` used to read as true: the value was never looked at.
+        result[def.key] = value
+          ? this.castFlagValue(value, base, rawKey)
+          : true;
+      } else if (isUnionWithBoolean && !value) {
+        // Union with boolean: --flag without value → true
+        const nextArg = argv[i + 1];
+        if (nextArg && !this.isFlagToken(nextArg)) {
+          // Has a value after space: --flag value
+          result[def.key] = nextArg;
+          i++; // consume next arg
+        } else {
+          // No value: --flag → true
+          result[def.key] = true;
+        }
+      } else {
+        // --flag=value, or the space-separated --flag value.
+        //
+        // An empty value is a value: `--flag=` and `--flag ""` both bind "".
+        // Testing the value for truthiness used to send `--flag=` on to take
+        // the NEXT token (which `getFlagConsumedIndices` meanwhile left as a
+        // positional), and refuse `--flag ""` as missing its value.
+        let raw = value;
+        let index = i;
+        if (valueParts.length === 0) {
+          const nextArg = argv[i + 1];
+          if (nextArg === undefined || this.isFlagToken(nextArg)) {
+            throw new UsageError(`Flag --${rawKey} requires a value.`);
+          }
+          raw = nextArg;
+          index = i + 1;
+        }
+
+        const bound = this.bindFlagValue(raw, index, def, rawKey, files);
+        if (bound === undefined) {
+          // An `@` value waiting to be read: the second pass casts it.
+          continue;
+        }
+
+        if (z.schema.isArray(base)) {
+          const items = this.castArrayOccurrence(bound, base, rawKey);
+          result[def.key] = started.has(def.key)
+            ? [...result[def.key], ...items]
+            : items;
+          started.add(def.key);
+        } else {
+          result[def.key] = this.castFlagValue(bound, base, rawKey);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Whether a flag reads `@path` and `@-` as a file and stdin.
+   *
+   * Opt-in, through `atFile: true` in the flag's schema metadata, and never
+   * implied by the flag being a string. `alepha test --project` is a string
+   * whose values are package names, and `--project '@alepha/ui*'` would
+   * otherwise read a file called `alepha/ui*`.
+   */
+  protected acceptsAtFile(schema: ZType | undefined): boolean {
+    return this.schemaMeta(schema).atFile === true;
+  }
+
+  /**
+   * The string a bound flag value casts from.
+   *
+   * On a flag that does not declare `atFile`, the token itself, `@` or not. On
+   * one that does: `@@x` is the literal `@x`; `@path` and `@-` are the
+   * content already read by an earlier pass, or `undefined` after recording
+   * the read in `files` for that pass to make.
+   */
+  protected bindFlagValue(
+    raw: string,
+    index: number,
+    def: { schema: ZType },
+    rawKey: string,
+    files: FlagFileReads | undefined,
+  ): string | undefined {
+    if (!raw.startsWith("@") || !this.acceptsAtFile(def.schema)) {
+      return raw;
+    }
+    if (raw.startsWith("@@")) {
+      return raw.slice(1);
+    }
+
+    const content = files?.resolved.get(index);
+    if (content !== undefined) {
+      return content;
+    }
+    if (!files) {
+      throw new AlephaError(
+        `Flag --${rawKey} reads '${raw}', and this parse cannot read files: go through parseCommandFlags.`,
+      );
+    }
+
+    files.requests.push({ index, rawKey, source: raw.slice(1) });
+    return undefined;
+  }
+
+  /**
+   * Read every `@` value a flag parse asked for, keyed by argv slot.
+   *
+   * Stdin can be read once per invocation, so a second `@-` is refused before
+   * anything is read.
+   */
+  protected async readFlagFiles(
+    requests: FlagFileRequest[],
+    root: string,
+  ): Promise<Map<number, string>> {
+    const stdin = requests.filter((request) => request.source === "-");
+    if (stdin.length > 1) {
+      throw new UsageError(
+        `Only one flag value can read stdin, and ${stdin.map((request) => `--${request.rawKey}`).join(", ")} all use @-.`,
+      );
+    }
+
+    const resolved = new Map<number, string>();
+    for (const request of requests) {
+      resolved.set(
+        request.index,
+        request.source === "-"
+          ? await this.readFlagStdin(request.rawKey)
+          : await this.readFlagFile(request.rawKey, request.source, root),
+      );
+    }
+    return resolved;
+  }
+
+  /**
+   * The value of a flag given as `@-`.
+   *
+   * Refused on a terminal, because a command waiting on a keyboard nobody is
+   * at is a hang, and a hang is the worst failure an agent can meet. Refused
+   * on an empty read too: an agent's shell tool with nothing piped in has an
+   * empty stdin, and sending an empty body without a word is how that goes
+   * unnoticed. Somebody who means empty passes `""`.
+   */
+  protected async readFlagStdin(rawKey: string): Promise<string> {
+    if (this.input.isTTY()) {
+      throw new UsageError(
+        `Flag --${rawKey} reads stdin (@-), and stdin is a terminal. Pipe the value in, or pass @<file>.`,
+      );
+    }
+
+    const content = await this.input.readAll();
+    if (content === "") {
+      throw new UsageError(
+        `Flag --${rawKey} read nothing from stdin (@-). Pipe the value in, or pass "" for an empty value.`,
+      );
+    }
+    return content;
+  }
+
+  /**
+   * The value of a flag given as `@path`, resolved against the command's
+   * root. An empty file is allowed: it was named explicitly.
+   */
+  protected async readFlagFile(
+    rawKey: string,
+    path: string,
+    root: string,
+  ): Promise<string> {
+    if (path === "") {
+      throw new UsageError(
+        `Flag --${rawKey}: '@' names no file. Pass @<file>, @- for stdin, or @@ for a literal '@'.`,
+      );
+    }
+
+    const full = this.fileSystem.resolve(root, path);
+    try {
+      return await this.fileSystem.readTextFile(full);
+    } catch (error) {
+      throw new UsageError(
+        `Flag --${rawKey}: cannot read '${path}' (${full}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Cast one occurrence of an array flag into the items it adds.
+   *
+   * `--tag a --tag b` is `["a", "b"]`: each occurrence is cast against the
+   * ELEMENT schema. An occurrence starting with `[` is a JSON array and is
+   * spread, which keeps `--tag '["a","b"]'` working; a malformed one is
+   * refused rather than taken for an element. When the element is itself an
+   * array, an occurrence is one element and nothing is spread.
+   */
+  protected castArrayOccurrence(
+    value: string,
+    schema: ZType,
+    rawKey: string,
+  ): any[] {
+    const element = z.schema.unwrap(z.schema.element(schema));
+
+    if (!z.schema.isArray(element) && value.trimStart().startsWith("[")) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        throw new UsageError(`Invalid JSON value for flag --${rawKey}`);
+      }
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+
+    return [this.castFlagValue(value, element, rawKey)];
+  }
+
+  /**
+   * Convert a raw flag value string into the value its schema expects.
+   *
+   * zod no longer coerces, so scalar values (number / integer / boolean) are
+   * cast + validated via {@link parseArgumentValue} (same path as positional
+   * args); object / array / record values are JSON-parsed. `schema` is expected
+   * to already be unwrapped of optional/nullable/default.
+   */
+  protected castFlagValue(value: string, schema: ZType, rawKey: string): any {
+    if (
+      z.schema.isObject(schema) ||
+      z.schema.isArray(schema) ||
+      z.schema.isRecord(schema)
+    ) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        throw new UsageError(`Invalid JSON value for flag --${rawKey}`);
+      }
+    }
+    return this.parseArgumentValue(value, schema);
+  }
+
+  /**
+   * A token is a flag when it starts with a dash and is not a negative
+   * number: `--count -5` passes a value, not a flag named `5`.
+   */
+  protected isFlagToken(arg: string): boolean {
+    return arg.startsWith("-") && !/^-\d/.test(arg);
+  }
+
+  /**
+   * Index of the `--` terminator, or `argv.length` when there is none.
+   *
+   * Everything from there on is a positional, even a token that looks like a
+   * flag. Without it a dash-leading value could not be passed at all: it was
+   * read as a flag and rejected as unknown.
+   *
+   * Only FLAG parsing stops. The command path is resolved from positionals,
+   * and no command is named with a leading dash, so `--` has nothing to
+   * protect there.
+   */
+  protected terminatorIndex(argv: string[]): number {
+    const index = argv.indexOf("--");
+    return index === -1 ? argv.length : index;
+  }
+
+  /**
+   * The positional arguments of an argv: the tokens that are neither a flag
+   * nor a value already consumed by one, plus everything past the `--`
+   * terminator. The terminator itself is dropped.
+   */
+  protected extractPositionals(
+    argv: string[],
+    consumedIndices: Set<number>,
+  ): string[] {
+    const end = this.terminatorIndex(argv);
+
+    return argv.filter((arg, index) => {
+      if (index === end) {
+        return false;
+      }
+      if (index > end) {
+        return true;
+      }
+      return !this.isFlagToken(arg) && !consumedIndices.has(index);
+    });
+  }
+
+  /**
+   * Resolve the flag a token names, honouring the `--no-x` negation of a
+   * boolean `x`.
+   *
+   * A flag whose own name starts with `no-` wins over the negation reading,
+   * so declaring `--no-cache` keeps working as its own flag.
+   */
+  protected resolveFlagDef<T extends { key: string; aliases: string[] }>(
+    rawKey: string,
+    flagDefs: T[],
+  ): { def: T | undefined; negated: boolean } {
+    const def = flagDefs.find((d) => d.aliases.includes(rawKey));
+    if (def || !rawKey.startsWith("no-")) {
+      return { def, negated: false };
+    }
+
+    const negatedDef = flagDefs.find((d) =>
+      d.aliases.includes(rawKey.slice(3)),
+    );
+
+    return { def: negatedDef, negated: negatedDef !== undefined };
+  }
+
+  /**
+   * Get indices of argv elements consumed by flags (for separating args from flags)
+   */
+  protected getFlagConsumedIndices(
+    argv: string[],
+    flagDefs: { key: string; aliases: string[]; schema: ZType }[],
+  ): Set<number> {
+    const consumed = new Set<number>();
+    const end = this.terminatorIndex(argv);
+
+    for (let i = 0; i < end; i++) {
+      const arg = argv[i];
+      if (!this.isFlagToken(arg)) continue;
+
+      consumed.add(i);
+
+      const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
+      const hasEqualValue = valueParts.length > 0;
+
+      const { def, negated } = this.resolveFlagDef(rawKey, flagDefs);
+      // `--no-x` never takes a value, so the token after it stays a
+      // positional. Falling through would let a union-with-boolean flag
+      // swallow it here while parseFlags left it alone.
+      if (!def || negated) continue;
+
+      // Peel optional/nullable/default so boolean flags are recognised.
+      const base = z.schema.unwrap(def.schema);
+
+      // Check if schema is a union containing boolean
+      const isUnionWithBoolean =
+        z.schema.isUnion(base) &&
+        z.schema.options(base).some((s) => z.schema.isBoolean(s));
+
+      // If not a boolean flag and no = value, the next arg is consumed as the value
+      // Exception: union with boolean can work without a value
+      if (!z.schema.isBoolean(base) && !isUnionWithBoolean && !hasEqualValue) {
+        // `""` is a value too, the same as in parseFlags.
+        const nextArg = argv[i + 1];
+        if (nextArg !== undefined && !this.isFlagToken(nextArg)) {
+          consumed.add(i + 1);
+        }
+      } else if (isUnionWithBoolean && !hasEqualValue) {
+        // Union with boolean: check if next arg looks like a value (not a flag)
+        const nextArg = argv[i + 1];
+        if (nextArg && !this.isFlagToken(nextArg)) {
+          consumed.add(i + 1);
+        }
+      }
+    }
+
+    return consumed;
+  }
+
+  protected parseCommandArgs(
+    argv: string[],
+    schema?: ZType,
+    isRootCommand = false,
+    flagSchema?: ZObject,
+  ): any {
+    if (!schema) {
+      return undefined;
+    }
+
+    // Get indices consumed by flags (including space-separated values)
+    const flagDefs = flagSchema ? this.extractFlagDefs(flagSchema) : [];
+    const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
+
+    // Extract positional arguments (non-flag arguments that aren't consumed as flag values)
+    const positionalArgs = this.extractPositionals(argv, consumedIndices);
+    // For root commands, there's no command name to remove; otherwise slice off the command name
+    const argsOnly = isRootCommand ? positionalArgs : positionalArgs.slice(1);
+
+    try {
+      // The cast below only knows strings, numbers and booleans; the decode
+      // is what applies the rest of the declaration (min/max, enums,
+      // formats), which positional arguments used to bypass entirely.
+      if (this.isOptionalOrDefaulted(schema)) {
+        // Handle optional args: z.text().optional(), z.number().default(1)
+        if (argsOnly.length === 0) {
+          return z.schema.getDefault(schema);
+        }
+        return this.alepha.codec.decode(
+          schema,
+          this.parseArgumentValue(argsOnly[0], schema),
+        );
+      } else if (z.schema.items(schema).length > 0) {
+        // Handle tuple args: z.tuple([z.text(), z.number()])
+        const result: any[] = [];
+        const items = z.schema.items(schema);
+        for (let i = 0; i < items.length; i++) {
+          const itemSchema = items[i];
+          if (i < argsOnly.length) {
+            result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
+          } else if (this.isOptionalOrDefaulted(itemSchema)) {
+            result.push(z.schema.getDefault(itemSchema));
+          } else {
+            throw new UsageError(
+              `Missing required argument at position ${i + 1}`,
+            );
+          }
+        }
+        return this.alepha.codec.decode(schema, result);
+      } else {
+        // Handle single arg: z.text(), z.number(), etc.
+        if (argsOnly.length === 0) {
+          throw new UsageError("Missing required argument");
+        }
+        return this.alepha.codec.decode(
+          schema,
+          this.parseArgumentValue(argsOnly[0], schema),
+        );
+      }
+    } catch (error) {
+      if (error instanceof SchemaValidationError) {
+        throw new UsageError(`Invalid argument: ${error.value.message}`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * A declaration that can be left out: `.optional()`, or `.default()`,
+   * whose value stands in for the missing argument.
+   */
+  protected isOptionalOrDefaulted(schema: ZType): boolean {
+    return (
+      z.schema.isOptional(schema) || z.schema.getDefault(schema) !== undefined
+    );
+  }
+
+  /**
+   * Convert a string argument value to the appropriate type based on schema
+   */
+  protected parseArgumentValue(value: string, schema: ZType): any {
+    // Peel optional/nullable/default: `z.number().optional()` is still a
+    // number, and used to stay a string.
+    const base = z.schema.unwrap(schema);
+
+    if (z.schema.isString(base)) {
+      return value;
+    }
+
+    if (z.schema.isNumber(base) || z.schema.isInteger(base)) {
+      const num = Number(value);
+      if (Number.isNaN(num)) {
+        throw new UsageError(`Expected number, got "${value}"`);
+      }
+      if (z.schema.isInteger(base) && !Number.isInteger(num)) {
+        throw new UsageError(`Expected integer, got "${value}"`);
+      }
+      return num;
+    }
+
+    if (z.schema.isBoolean(base)) {
+      const lower = value.toLowerCase();
+      if (lower === "true" || lower === "1") return true;
+      if (lower === "false" || lower === "0") return false;
+      throw new UsageError(`Expected boolean, got "${value}"`);
+    }
+
+    // For other types, return the string value and let Zod validate it
+    return value;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Help Generation
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Generate usage string for command arguments (e.g., "<path>" or "[path]")
+   */
+  protected generateArgsUsage(schema?: ZType): string {
+    if (!schema) {
+      return "";
+    }
+
+    if (z.schema.isOptional(schema)) {
+      const typeName = this.getTypeName(schema);
+      const key = this.schemaMeta(schema).title ?? "arg1";
+      return ` [${key}${typeName}]`;
+    }
+
+    if (z.schema.items(schema).length > 0) {
+      const items = z.schema.items(schema);
+      const args = items.map((item, index) => {
+        const argName = `arg${index + 1}`;
+        const typeName = this.getTypeName(item);
+        if (z.schema.isOptional(item)) {
+          return `[${argName}${typeName}]`;
+        }
+        return `<${argName}${typeName}>`;
+      });
+      return ` ${args.join(" ")}`;
+    }
+
+    const typeName = this.getTypeName(schema);
+    const key = this.schemaMeta(schema).title ?? "arg1";
+    return ` <${key}${typeName}>`;
+  }
+
+  /**
+   * Get display type name for a schema (e.g., ": number", ": boolean")
+   */
+  protected getTypeName(schema: ZType): string {
+    if (!schema) return "";
+
+    // Peel optional/nullable/default before inspecting the scalar type.
+    const base = z.schema.unwrap(schema);
+
+    // Order matters: under zod an integer IS a number (format "safeint"), so the
+    // narrower integer check must come before the number check.
+    if (z.schema.isString(base)) return "";
+    if (z.schema.isInteger(base)) return ": integer";
+    if (z.schema.isNumber(base)) return ": number";
+    if (z.schema.isBoolean(base)) return ": boolean";
+
+    return "";
+  }
+
+  /**
+   * Print help for a specific command or general CLI help.
+   *
+   * @param command - If provided, shows help for this specific command.
+   *                  If omitted, shows general CLI help with all commands.
+   */
+  public printHelp(command?: CommandPrimitive<any>): void {
+    // Help is a document, not a log stream, so it goes to stdout rather than
+    // through the logger.
+    //
+    // It used to flip `alepha.logger.format` to `raw` and restore it
+    // afterwards, which worked but mutated global state that `help()` — handed
+    // to command handlers, who keep running after printing — could leak. It
+    // also could not make help pipeable: the format decides how a line looks,
+    // not which stream it lands on.
+    const out = (line = "") => this.output.print(line);
+    const cliName = this.name || "cli";
+    const c = this.color;
+    out(""); // Newline
+
+    if (command?.name) {
+      // Command-specific help
+      const hasChildren = command.hasChildren;
+      const argsUsage = hasChildren
+        ? ` ${c.set("CYAN", "<command>")}`
+        : this.generateColoredArgsUsage(command.options.args);
+      const commandPath = this.getCommandPath(command);
+      const usage =
+        `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)}${argsUsage}`.trim();
+      out(`${c.set("WHITE_BOLD", "Usage:")} ${usage}`);
+
+      if (command.options.description) {
+        out(``);
+        out(`\t${command.options.description}`);
+      }
+
+      // Show subcommands if this is a parent command
+      if (hasChildren) {
+        out("");
+        out(c.set("WHITE_BOLD", "Commands:"));
+        const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
+
+        for (const child of command.children) {
+          if (child.options.hide) {
+            continue;
+          }
+          const childArgsUsage = this.generateArgsUsage(child.options.args);
+          const cmdStr = [child.name, ...child.aliases].join(", ");
+          const fullCmdStr = `${cmdStr}${childArgsUsage}`;
+          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)} ${c.set("CYAN", fullCmdStr)}`;
+          const padding = " ".repeat(
+            Math.max(0, maxSubCmdLength - fullCmdStr.length),
+          );
+          out(
+            `    ${coloredCmd}${padding}  ${child.options.description ?? ""}`,
+          );
+        }
+      }
+
+      out("");
+      out(c.set("WHITE_BOLD", "Flags:"));
+
+      const flags = [
+        // Read aliases/description from the schema's `.meta()` registry (zod),
+        // not as direct schema properties; see extractFlagDefs.
+        ...this.extractFlagDefs(command.flags),
+        // Add --mode flag if command has mode option enabled
+        ...(command.options.mode
+          ? [
+              {
+                key: "mode",
+                aliases: ["m", "mode"],
+                description:
+                  typeof command.options.mode === "string"
+                    ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
+                    : "Environment mode (e.g., production, staging) - loads .env.{mode}",
+                schema: z.string() as ZType,
+              },
+            ]
+          : []),
+        ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+          key,
+          ...value,
+        })),
+      ];
+
+      const maxFlagLength = this.getMaxFlagLength(flags);
+      for (const flag of flags) {
+        const { aliases, description } = flag;
+        const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
+        // Sort aliases by length (shorter first: -t before --target)
+        const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
+          .slice()
+          .sort((a, b) => a.length - b.length);
+        const flagStr = sortedAliases
+          .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ");
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
+      }
+
+      this.printFlagConventions();
+
+      // Show environment variables if defined
+      const envVars = Object.entries(z.schema.shape(command.env));
+      if (envVars.length > 0) {
+        out("");
+        out(c.set("WHITE_BOLD", "Env:"));
+        const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
+        for (const [key, schema] of envVars) {
+          const isOptional = this.isOptionalOrDefaulted(schema as ZType);
+          // Wrapped schemas (`.optional()`) keep the description in the
+          // INNER schema's `.meta()` registry, so reading `.description`
+          // off the wrapper rendered an empty Env: section.
+          const description =
+            this.schemaMeta(schema as ZType).description ?? "";
+          const optionalStr = isOptional
+            ? c.set("GREY_DARK", " (optional)")
+            : c.set("RED", " (required)");
+          const coloredKey = c.set("CYAN", key);
+          const padding = " ".repeat(Math.max(0, maxEnvLength - key.length));
+          out(`    ${coloredKey}${padding}  ${description}${optionalStr}`);
+        }
+      }
+    } else {
+      // general help
+      out(this.description || "Available commands:");
+      out("");
+      out(c.set("WHITE_BOLD", "Commands:"));
+
+      // Get top-level commands (commands that are not children of other commands)
+      const topLevelCommands = this.getTopLevelCommands();
+      const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
+
+      for (const cmd of topLevelCommands) {
+        // skip root command and hooks in list
+        if (cmd.name === "" || cmd.options.hide) {
+          continue;
+        }
+
+        const cmdStr = [cmd.name, ...cmd.aliases].join(", ");
+        const argsUsage = cmd.hasChildren
+          ? " <command>"
+          : this.generateArgsUsage(cmd.options.args);
+        const fullCmdStr = `${cmdStr}${argsUsage}`;
+        const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", fullCmdStr)}`;
+        const padding = " ".repeat(
+          Math.max(0, maxCmdLength - fullCmdStr.length),
+        );
+        out(`    ${coloredCmd}${padding}  ${cmd.options.description ?? ""}`);
+      }
+
+      out("");
+      out(c.set("WHITE_BOLD", "Flags:"));
+
+      // In general help, also show root command flags
+      const rootCommand = this.findCommand("");
+      // Read aliases/description from the schema's `.meta()` registry (zod),
+      // not as direct schema properties; see extractFlagDefs.
+      const rootFlags = rootCommand
+        ? this.extractFlagDefs(rootCommand.flags)
+        : [];
+
+      const globalFlags = [
+        ...rootFlags,
+        ...Object.values(this.getAllGlobalFlags()),
+      ];
+      const maxFlagLength = this.getMaxFlagLength(globalFlags);
+      for (const { aliases, description, schema } of globalFlags) {
+        const flagStr = aliases
+          .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ");
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
+      }
+
+      this.printFlagConventions();
+    }
+    out(""); // Newline
+  }
+
+  /**
+   * The argv conventions that no individual flag can advertise: the `--no-x`
+   * negation of a boolean, the `--` terminator, and `help` as a word.
+   */
+  protected printFlagConventions(): void {
+    const c = this.color;
+    this.output.print("");
+    this.output.print(
+      `    ${c.set("GREY_DARK", "--no-<flag> turns a boolean flag off; -- ends flag parsing, everything after it is an argument; help <command> prints a command's help.")}`,
+    );
+  }
+
+  /**
+   * Generate colored usage string for command arguments (for help display)
+   */
+  protected generateColoredArgsUsage(schema?: ZType): string {
+    if (!schema) {
+      return "";
+    }
+
+    const c = this.color;
+
+    if (z.schema.isOptional(schema)) {
+      const typeName = this.getTypeName(schema);
+      const key = this.schemaMeta(schema).title ?? "arg1";
+      return ` ${c.set("GREY_DARK", `[${key}${typeName}]`)}`;
+    }
+
+    if (z.schema.items(schema).length > 0) {
+      const items = z.schema.items(schema);
+      const args = items.map((item, index) => {
+        const argName = `arg${index + 1}`;
+        const typeName = this.getTypeName(item);
+        if (z.schema.isOptional(item)) {
+          return c.set("GREY_DARK", `[${argName}${typeName}]`);
+        }
+        return c.set("CYAN", `<${argName}${typeName}>`);
+      });
+      return ` ${args.join(" ")}`;
+    }
+
+    const typeName = this.getTypeName(schema);
+    const key = this.schemaMeta(schema).title ?? "arg1";
+    return ` ${c.set("CYAN", `<${key}${typeName}>`)}`;
+  }
+
+  /**
+   * Get the full command path (e.g., "deploy vercel" for a nested command)
+   */
+  protected getCommandPath(command: CommandPrimitive<any>): string {
+    const path: string[] = [command.name];
+    let current = command;
+
+    // Walk up the tree to find parents
+    while (true) {
+      const parent = this.findParentCommand(current);
+      if (!parent) break;
+      path.unshift(parent.name);
+      current = parent;
+    }
+
+    return path.join(" ");
+  }
+
+  /**
+   * Find the parent command of a nested command
+   */
+  protected findParentCommand(
+    command: CommandPrimitive<any>,
+  ): CommandPrimitive<any> | undefined {
+    for (const cmd of this.commands) {
+      if (cmd.children.includes(command)) {
+        return cmd;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Get top-level commands (commands that are not children of other commands).
+   *
+   * Deduplicated by name, keeping the LAST registration. A project that
+   * redefines a builtin in its `alepha.config.ts` — `clean` and `verify` in
+   * this repo — otherwise appeared twice in `--help`, with two contradictory
+   * descriptions, while only one of them could ever run. Last-wins is not a
+   * choice made here: it is what {@link findCommand} already does with
+   * `findLast`, so this makes the help agree with the resolution instead of
+   * inventing a second rule.
+   */
+  protected getTopLevelCommands(): CommandPrimitive<any>[] {
+    const allChildren = new Set<CommandPrimitive<any>>();
+
+    // Collect all children
+    for (const command of this.commands) {
+      for (const child of command.children) {
+        allChildren.add(child);
+      }
+    }
+
+    const topLevel = this.commands.filter((cmd) => !allChildren.has(cmd));
+
+    // Keep insertion order, but let a later same-named command take the
+    // earlier one's slot rather than adding a row.
+    const byName = new Map<string, CommandPrimitive<any>>();
+    for (const cmd of topLevel) {
+      byName.set(cmd.name, cmd);
+    }
+    return [...byName.values()];
+  }
+
+  /**
+   * Calculate max display length for child commands (for help alignment)
+   */
+  protected getMaxChildCmdLength(children: CommandPrimitive<any>[]): number {
+    return Math.max(
+      ...children
+        .filter((c) => !c.options.hide)
+        .map((c) => {
+          const cmdStr = [c.name, ...c.aliases].join(", ");
+          const argsUsage = this.generateArgsUsage(c.options.args);
+          return `${cmdStr}${argsUsage}`.length;
+        }),
+      0,
+    );
+  }
+
+  /**
+   * Calculate max display length for commands (for help alignment)
+   */
+  protected getMaxCmdLength(commands: CommandPrimitive[]): number {
+    return Math.max(
+      ...commands
+        .filter((c) => !c.options.hide && c.name !== "")
+        .map((c) => {
+          const cmdStr = [c.name, ...c.aliases].join(", ");
+          const argsUsage = c.hasChildren
+            ? " <command>"
+            : this.generateArgsUsage(c.options.args);
+          return `${cmdStr}${argsUsage}`.length;
+        }),
+    );
+  }
+
+  /**
+   * Calculate max display length for flags (for help alignment)
+   */
+  protected getMaxFlagLength(flags: { aliases: string[] }[]): number {
+    return Math.max(
+      ...flags.map((f) => {
+        const aliases = Array.isArray(f.aliases) ? f.aliases : [f.aliases];
+        return aliases
+          .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ").length;
+      }),
+    );
+  }
+
+  /**
+   * Extract enum values from a schema if it represents an enum.
+   * Returns undefined if the schema is not an enum.
+   */
+  protected getEnumValues(schema: ZType): string[] | undefined {
+    if (!schema) return undefined;
+
+    const base = z.schema.unwrap(schema);
+
+    // A zod enum (`z.enum`).
+    if (z.schema.isEnum(base)) {
+      const values = z.schema.enumValues(base);
+      return values.length > 0 && values.every((v) => typeof v === "string")
+        ? values
+        : undefined;
+    }
+
+    // A union of string literals (alternative enum representation).
+    if (z.schema.isUnion(base)) {
+      const variants = z.schema.options(base);
+      const values: string[] = [];
+
+      for (const variant of variants) {
+        const value = (variant as any).value; // zod literal value
+        if (z.schema.isLiteral(variant) && typeof value === "string") {
+          values.push(value);
+        } else {
+          // Not all variants are string literals, not a simple enum.
+          return undefined;
+        }
+      }
+
+      return values.length > 0 ? values : undefined;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Format a flag's description with what its schema implies: the enum
+   * values, that an array flag repeats, and that an `atFile` flag reads
+   * `@file` and `@-`.
+   *
+   * Printed here, by the framework, rather than left to every description to
+   * remember: a convention one flag's author forgot to mention is a
+   * convention its reader never learns.
+   */
+  protected formatFlagDescription(
+    description: string | undefined,
+    schema: ZType | undefined,
+  ): string {
+    const baseDesc = description ?? "";
+
+    if (!schema) return baseDesc;
+
+    const hints: string[] = [];
+
+    const enumValues = this.getEnumValues(schema);
+    if (enumValues && enumValues.length > 0) {
+      hints.push(`[${enumValues.join(", ")}]`);
+    }
+    if (z.schema.isArray(z.schema.unwrap(schema))) {
+      hints.push("(repeatable)");
+    }
+    if (this.acceptsAtFile(schema)) {
+      hints.push("(takes @file, or @- for stdin; @@ for a literal @)");
+    }
+
+    if (hints.length === 0) return baseDesc;
+
+    const hint = this.color.set("GREY_DARK", hints.join(" "));
+    return baseDesc ? `${baseDesc} ${hint}` : hint;
+  }
+}

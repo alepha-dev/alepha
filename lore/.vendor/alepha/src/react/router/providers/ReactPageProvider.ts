@@ -1,0 +1,1169 @@
+import {
+  $atom,
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  AlephaError,
+  coerceObject,
+  MIDDLEWARE_PROTECTED,
+  OPTIONS,
+  PipelineHandler,
+  type ZType,
+  z,
+} from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { AlephaContext, ClientOnly } from "alepha/react";
+import type { Head } from "alepha/react/head";
+import { currentUserAtom } from "alepha/security";
+import { createElement, type ReactNode, StrictMode } from "react";
+
+import { loginRoutesAtom } from "../atoms/loginRoutesAtom.ts";
+import ErrorViewer from "../components/ErrorViewer.tsx";
+import NestedView from "../components/NestedView.tsx";
+import NotFoundPage from "../components/NotFound.tsx";
+import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import { Redirection } from "../errors/Redirection.ts";
+import {
+  $page,
+  type ErrorHandler,
+  type PagePrimitive,
+  type PagePrimitiveOptions,
+} from "../primitives/$page.ts";
+import { RootComponentsProvider } from "./RootComponentsProvider.ts";
+import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
+
+// -------------------------------------------------------------------------------------------------------------------
+
+export const reactPageOptions = $atom({
+  name: "alepha.react.page.options",
+  description: "Configuration options for the React page provider.",
+  schema: z.object({
+    /**
+     * Enable React StrictMode wrapper.
+     */
+    strictMode: z.boolean().default(true),
+    /**
+     * RegExp pattern (as string) to detect file-like URLs (e.g. /hello.txt, /wp-login.php).
+     * When a request hits a route that swallows arbitrary paths and matches
+     * this pattern, a plain 404 is returned before the route answers at all.
+     *
+     * Two routes swallow arbitrary paths: the catch-all `/*`, and a
+     * **root-level param** such as `/:slug`, which matches every unclaimed
+     * root segment. The second matters as much as the first: an orphaned build
+     * asset (`/chunk.OLD.js`, which every deploy creates) lands on it, and if
+     * that page is guarded the probe is answered as an authorization question
+     * rather than as the 404 it is.
+     *
+     * Set to empty string to disable this behavior.
+     *
+     * @default "\\.[a-zA-Z0-9]{1,10}$"
+     */
+    staticFilePattern: z.string(),
+  }),
+  default: {
+    strictMode: true,
+    staticFilePattern: "\\.[a-zA-Z0-9]{1,10}$",
+  },
+});
+
+// -------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Handle page routes for React applications. (Browser and Server)
+ */
+export class ReactPageProvider {
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly log = $logger();
+  protected readonly options = $store(reactPageOptions);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
+  protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly pages: PageRoute[] = [];
+  protected nextIdCursor = 0;
+
+  protected readonly configure = $hook({
+    on: "configure",
+    handler: () => {
+      let hasNotFoundHandler = false;
+      const pages = this.alepha.primitives($page);
+
+      const hasParent = (it: PagePrimitive) => {
+        if (it.options.parent) {
+          return true;
+        }
+
+        for (const page of pages) {
+          const children = page.options.children
+            ? Array.isArray(page.options.children)
+              ? page.options.children
+              : page.options.children()
+            : [];
+          if (children.includes(it)) {
+            return true;
+          }
+        }
+      };
+
+      for (const page of pages) {
+        if (page.options.path === "/*") {
+          hasNotFoundHandler = true;
+        }
+
+        // skip children, we only want root pages
+        if (hasParent(page)) {
+          continue;
+        }
+
+        this.add(this.map(pages, page));
+      }
+
+      if (!hasNotFoundHandler && pages.length > 0) {
+        // add a default 404 page if not already defined
+        // `add` is what stamps the 404 status onto any `/*` page, this one
+        // included - see the comment there for why it does not live here.
+        this.add({
+          path: "/*",
+          name: "notFound",
+          component: NotFoundPage,
+        });
+      }
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  public getPages(): PageRoute[] {
+    return this.pages;
+  }
+
+  public getConcretePages(): ConcretePageRoute[] {
+    const pages: ConcretePageRoute[] = [];
+    for (const page of this.pages) {
+      if (page.children && page.children.length > 0) {
+        continue;
+      }
+
+      // check if the page has dynamic params
+      const fullPath = this.pathname(page.name);
+      if (fullPath.includes(":") || fullPath.includes("*")) {
+        if (typeof page.static === "object") {
+          const entries = page.static.entries;
+          if (entries && entries.length > 0) {
+            for (const entry of entries) {
+              const params = entry.params as Record<string, string>;
+              const path = this.compile(page.path ?? "", params);
+              if (!path.includes(":") && !path.includes("*")) {
+                pages.push({
+                  ...page,
+                  name: params[Object.keys(params)[0]],
+                  staticName: page.name,
+                  path,
+                  ...entry,
+                });
+              }
+            }
+          }
+        }
+
+        continue;
+      }
+
+      pages.push(page);
+    }
+    return pages;
+  }
+
+  public page(name: string): PageRoute {
+    for (const page of this.pages) {
+      if (page.name === name) {
+        return page;
+      }
+    }
+
+    throw new AlephaError(`Page '${name}' not found`);
+  }
+
+  /**
+   * Find a route by name anywhere in the tree (including nested children).
+   * Returns undefined if no page with that name exists: the non-throwing
+   * counterpart to {@link page}.
+   *
+   * Public because callers that hold a possibly-synthetic layer name (the
+   * `not-found` layer the router inserts when no route matched) need to ask
+   * without being thrown at — `page()` throws for unknown names, so the
+   * `?.` in `page(name)?.onLeave?.()` guarded nothing.
+   */
+  public findRoute(
+    name: string,
+    routes: PageRouteEntry[] = this.pages,
+  ): PageRoute | undefined {
+    for (const route of routes as PageRoute[]) {
+      if (route.name === name) {
+        return route;
+      }
+      if (route.children?.length) {
+        const found = this.findRoute(name, route.children);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  public pathname(
+    name: string,
+    options: {
+      params?: Record<string, string>;
+      query?: Record<string, string>;
+    } = {},
+  ) {
+    const page = this.page(name);
+
+    let url = page.path ?? "";
+    let parent = page.parent;
+    while (parent) {
+      url = `${parent.path ?? ""}/${url}`;
+      parent = parent.parent;
+    }
+
+    url = this.compile(url, options.params ?? {});
+    url = url.replace(/\/\/+/g, "/") || "/";
+
+    // Apply the active locale prefix (e.g. `/about` → `/fr/about`) to the path
+    // portion only, before any query string is appended. A no-op unless
+    // `routing: "prefix"` is enabled on the i18n module.
+    url = this.localeProvider.withPrefix(url);
+
+    if (options.query) {
+      const query = new URLSearchParams(options.query);
+      if (query.toString()) {
+        url += `?${query.toString()}`;
+      }
+    }
+
+    return url;
+  }
+
+  public url(
+    name: string,
+    options: { params?: Record<string, string>; host?: string } = {},
+  ): URL {
+    return new URL(
+      this.pathname(name, options),
+      // use provided base or default to http://localhost
+      options.host ?? `http://localhost`,
+    );
+  }
+
+  public root(state: ReactRouterState): ReactNode {
+    const root = createElement(
+      AlephaContext.Provider,
+      { value: this.alepha },
+      createElement(NestedView, {}, state.layers[0]?.element),
+      ...this.rootComponentsProvider.rootComponents,
+    );
+
+    if (this.options.strictMode) {
+      return createElement(StrictMode, {}, root);
+    }
+
+    return root;
+  }
+
+  protected convertStringObjectToObject = (
+    schema?: ZType,
+    value?: any,
+  ): any => {
+    if (z.schema.isObject(schema) && typeof value === "object") {
+      const shape = z.schema.shape(schema);
+      for (const key in shape) {
+        // Peel optional/nullable/default wrappers so a field declared as
+        // `z.object(...).optional()` is still recognised as an object whose
+        // JSON-encoded query value needs parsing.
+        const propSchema = z.schema.unwrap(shape[key]);
+        if (z.schema.isObject(propSchema) && typeof value[key] === "string") {
+          try {
+            value[key] = this.alepha.codec.decode(
+              propSchema,
+              decodeURIComponent(value[key]),
+            );
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    }
+    return value;
+  };
+
+  /**
+   * Create a new RouterState based on a given route and request.
+   * This method resolves the layers for the route, applying any query and params schemas defined in the route.
+   * It also handles errors and redirects.
+   */
+  public async createLayers(
+    route: PageRoute,
+    state: ReactRouterState,
+    previous: PreviousLayerData[] = [],
+  ): Promise<CreateLayersResult> {
+    const context: Record<string, any> = {}; // all props
+    const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
+
+    let parent = route.parent;
+    while (parent) {
+      stack.unshift({ route: parent });
+      parent = parent.parent;
+    }
+
+    let forceRefresh = false;
+    let identity = "";
+
+    for (let i = 0; i < stack.length; i++) {
+      const it = stack[i];
+      const route = it.route;
+      const config: Record<string, any> = {};
+
+      // The layer's identity: its path so far, compiled from the RAW matched
+      // params. It keys the layer's element (see `renderView`) and decides
+      // reuse below, so both agree on when a layer is "the same page".
+      identity = this.identityOf(identity, route, state.params);
+      it.key = identity;
+
+      try {
+        this.convertStringObjectToObject(route.schema?.query, state.query);
+        config.query = route.schema?.query
+          ? this.alepha.codec.decode(
+              route.schema.query,
+              // Query params arrive as strings from the URL; coerce declared
+              // scalar fields (number/integer/boolean) to their schema type
+              // before strict validation, mirroring the HTTP server boundary.
+              coerceObject(route.schema.query, state.query),
+            )
+          : {};
+      } catch (e) {
+        it.error = e instanceof Error ? e : new Error(String(e));
+        break;
+      }
+
+      try {
+        config.params = route.schema?.params
+          ? this.alepha.codec.decode(
+              route.schema.params,
+              // URL path params arrive as strings; coerce declared scalar
+              // fields (number/integer/boolean) to their schema type before
+              // strict validation, mirroring `query` above and the HTTP server.
+              coerceObject(route.schema.params, state.params),
+            )
+          : {};
+      } catch (e) {
+        it.error = e instanceof Error ? e : new Error(String(e));
+        break;
+      }
+
+      // save config
+      it.config = {
+        ...config,
+      };
+
+      // check if previous layer is the same, reuse if possible
+      if (previous?.[i] && !forceRefresh && previous[i].name === route.name) {
+        // The decoded query participates: loaders read `query`, so a
+        // query-only navigation (`/search?q=foo` → `/search?q=bar`) must
+        // re-run them — reusing the layer would keep stale data on screen
+        // and diverge from SSR, which re-runs loaders for the same URL.
+        //
+        // ⚠️ The identity, never `part` + the decoded params. A page with
+        // `:id` in its path and no `schema.params` decodes to `{}`, so
+        // `/users/1` and `/users/2` compared equal: the layer was reused and
+        // its loader never ran for the second user (#Q2349).
+        const prev = JSON.stringify({
+          key: previous[i].key,
+          query: previous[i].config?.query ?? {},
+        });
+
+        const curr = JSON.stringify({
+          key: it.key,
+          query: config.query ?? {},
+        });
+
+        if (prev === curr) {
+          // part is the same, reuse previous layer
+          it.props = previous[i].props;
+          it.error = previous[i].error;
+          it.cache = true;
+          Object.assign(context, it.props);
+          continue;
+        }
+
+        // part is different, force refresh of next layers
+        forceRefresh = true;
+      }
+
+      // redirect shorthand
+      if (route.redirect) {
+        return { redirect: route.redirect };
+      }
+
+      // Run this layer's `use` middleware (e.g. $secure) around its loader.
+      // Without this, client-side navigation would skip page guards entirely
+      // and render protected pages for anyone.
+      //
+      // Browser-only: on the server, ReactServerProvider already wraps the
+      // page handler with the collected middleware chain — running it here
+      // too would double-execute it. `$cache` is excluded: like on the
+      // server it is handled separately, not as a loader-wrapping middleware.
+      const middleware = this.alepha.isBrowser()
+        ? (route.use ?? []).filter((m) => m[OPTIONS]?.name !== "$cache")
+        : [];
+
+      // Nothing to run for this layer — render a basic view by default.
+      if (!route.loader && middleware.length === 0) {
+        continue;
+      }
+
+      try {
+        const args = Object.create(state);
+        Object.assign(args, config, context);
+
+        // Terminal handler = the loader (or a no-op when the page has none).
+        // `reached` stays false if a guard middleware short-circuits without
+        // calling `next` — that is how $secure denies access in the browser.
+        let reached = false;
+        const terminal = async (a: any) => {
+          reached = true;
+          return (await route.loader?.(a)) ?? {};
+        };
+
+        const props = middleware.length
+          ? ((await new PipelineHandler(terminal, middleware).run(args)) ?? {})
+          : await terminal(args);
+
+        if (!reached) {
+          return this.denyGuardedPage(state.url);
+        }
+
+        // save props
+        it.props = {
+          ...props,
+        };
+
+        // add props to context. `Object.assign` onto the accumulator rather
+        // than rebuilding it: `context` is a fresh local object and this runs
+        // once per layer, so re-spreading it made the walk quadratic in route
+        // depth.
+        Object.assign(context, props);
+      } catch (e) {
+        // check if we need to redirect
+        if (e instanceof Redirection) {
+          return {
+            redirect: e.redirect,
+          };
+        }
+
+        // A refusal is the app working, not a crash: a loader that throws a
+        // 403 for an under-privileged visitor, or a 404 for a row that is not
+        // there, renders its page's refusal view exactly as intended. Logging
+        // every one of those at error level buries the 5xx that are real. Same
+        // rule the crash reporter uses: 4xx is debug, everything else — 5xx,
+        // and anything with no status, which never became a response at all —
+        // stays an error.
+        const status = (e as { status?: number } | undefined)?.status;
+        const expected = typeof status === "number" && status < 500;
+        this.log[expected ? "debug" : "error"]("Page loader has failed", e);
+
+        it.error = e instanceof Error ? e : new Error(String(e));
+        break;
+      }
+    }
+
+    // A route that opts out of SSR emits no HTML for its whole chain — the
+    // root layer is wrapped in `ClientOnly` below. So on the server there is
+    // nothing to gain from importing any layer's component, and quite a lot to
+    // lose: `createElement` awaits `page.lazy()`, which pulls that page's
+    // entire module graph into the server runtime for an element that is then
+    // thrown away.
+    //
+    // On Node that is only wasted memory. On Cloudflare Workers it took Lore's
+    // folio route down in production: importing MDXEditor + Lexical server-side
+    // exceeded the isolate's ceiling, killing it mid-stream — the client got
+    // the early-head flush and nothing else, then the error boundary. It never
+    // reproduced in dev or under `node dist`, because neither is workerd.
+    //
+    // Loaders are untouched. They ran in the loop above and their props are
+    // what the client hydrates from; only the component import is skipped.
+    const skipComponents = !this.alepha.isBrowser() && !this.isSSR(route);
+
+    let acc = "";
+    for (let i = 0; i < stack.length; i++) {
+      const it = stack[i];
+      const props = it.props ?? {};
+
+      const params = { ...it.config?.params };
+      for (const key of Object.keys(params)) {
+        params[key] = String(params[key]);
+      }
+
+      acc += "/";
+      acc += it.route.path ? this.compile(it.route.path, params) : "";
+      // Every segment is prefixed with "/" above and most route paths start
+      // with one too, so the accumulator carries "//" at every level: collapse
+      // all of them, not only the first run (this path is the canonical URL).
+      const path = acc.replace(/\/+/g, "/");
+      const localErrorHandler = this.getErrorHandler(it.route);
+      if (localErrorHandler) {
+        const onErrorParent = state.onError;
+        state.onError = (error, context) => {
+          const result = localErrorHandler(error, context);
+          // if nothing happen, call the parent
+          if (result === undefined) {
+            return onErrorParent(error, context);
+          }
+          return result;
+        };
+      }
+
+      // normal use case
+      if (!it.error) {
+        try {
+          const element = skipComponents
+            ? undefined
+            : await this.createElement(
+                it.route,
+                {
+                  // default props attached to page
+                  ...(it.route.props ? it.route.props() : {}),
+                  // resolved props
+                  ...props,
+                  // context props (from previous layers)
+                  ...context,
+                },
+                state.url,
+              );
+
+          state.layers.push({
+            name: it.route.name,
+            props,
+            part: it.route.path,
+            config: it.config,
+            element: this.renderView(i + 1, path, element, it.route, it.key),
+            index: i + 1,
+            path,
+            key: it.key,
+            route: it.route,
+            cache: it.cache,
+          });
+        } catch (e) {
+          it.error = e instanceof Error ? e : new Error(String(e));
+        }
+      }
+
+      // handler has thrown an error, render an error view
+      if (it.error) {
+        try {
+          let element: ReactNode | Redirection | undefined =
+            await state.onError(it.error, state);
+
+          if (element === undefined) {
+            throw it.error;
+          }
+
+          if (element instanceof Redirection) {
+            return {
+              redirect: element.redirect,
+            };
+          }
+
+          if (element === null) {
+            element = this.renderError(it.error);
+          }
+
+          state.layers.push({
+            props,
+            error: it.error,
+            name: it.route.name,
+            part: it.route.path,
+            config: it.config,
+            element: this.renderView(i + 1, path, element, it.route, it.key),
+            index: i + 1,
+            path,
+            key: it.key,
+            route: it.route,
+            cache: it.cache,
+          });
+          break;
+        } catch (e) {
+          if (e instanceof Redirection) {
+            return {
+              redirect: e.redirect,
+            };
+          }
+          throw e;
+        }
+      }
+    }
+
+    // If the matched leaf opts out of SSR (own value or inherited from
+    // parents), wrap the root layer in ClientOnly so the server emits no
+    // HTML for the route chain. Loaders have already run above.
+    if (state.layers.length > 0 && !this.isSSR(route)) {
+      const rootLayer = state.layers[0];
+      rootLayer.element = createElement(ClientOnly, {}, rootLayer.element);
+    }
+
+    return { state };
+  }
+
+  /**
+   * The nearest `errorHandler` for a page: its own, else the closest parent's.
+   *
+   * Public because the pre-stream error path (`ReactServerErrorProvider`) has
+   * to resolve the same handler from outside `createLayers` — a failure in a
+   * guard or a hook must reach the handler the page already declares.
+   */
+  public getErrorHandler(route: PageRoute): ErrorHandler | undefined {
+    if (route.errorHandler) return route.errorHandler;
+    let parent = route.parent;
+    while (parent) {
+      if (parent.errorHandler) return parent.errorHandler;
+      parent = parent.parent;
+    }
+  }
+
+  protected async createElement(
+    page: PageRoute,
+    props: Record<string, any>,
+    targetUrl?: URL,
+  ): Promise<ReactNode> {
+    if (page.lazy && page.component) {
+      this.log.warn(
+        `Page ${page.name} has both lazy and component options, lazy will be used`,
+      );
+    }
+
+    if (page.lazy) {
+      try {
+        const component = await page.lazy();
+        return createElement(component.default, props);
+      } catch (error) {
+        if (this.alepha.isBrowser() && this.isChunkLoadError(error)) {
+          if (this.reloadAfterChunkError(targetUrl)) {
+            return undefined;
+          }
+        }
+        throw error;
+      }
+    }
+
+    if (page.component) {
+      return createElement(page.component, props);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Detect chunk load errors caused by stale dynamic imports after a deployment.
+   * When new assets are deployed with different hashes, old chunk URLs return 404.
+   */
+  protected isChunkLoadError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message;
+    return (
+      /Failed to fetch dynamically imported module/.test(msg) ||
+      /error loading dynamically imported module/i.test(msg) ||
+      /Unable to preload CSS/.test(msg) ||
+      /Importing a module script failed/.test(msg)
+    );
+  }
+
+  /**
+   * Navigate to the target URL to fetch updated assets after a chunk load failure.
+   * Uses sessionStorage to prevent infinite reload loops.
+   * Returns true if navigation was initiated.
+   */
+  protected reloadAfterChunkError(url?: URL): boolean {
+    const key = "alepha:chunk-reload";
+    const lastReload = sessionStorage.getItem(key);
+    const now = this.dateTimeProvider.nowMillis();
+
+    if (lastReload && now - Number(lastReload) < 10_000) {
+      this.log.error(
+        "Chunk load failed after recent reload, not retrying to avoid loop",
+      );
+      return false;
+    }
+
+    this.log.warn("Chunk load failed after deployment, reloading page");
+    sessionStorage.setItem(key, String(now));
+    window.location.assign(
+      url ? url.pathname + url.search : window.location.href,
+    );
+    return true;
+  }
+
+  public renderError(error: Error): ReactNode {
+    return createElement(ErrorViewer, { error, alepha: this.alepha });
+  }
+
+  public renderEmptyView(): ReactNode {
+    return createElement(NestedView, {});
+  }
+
+  /**
+   * Substitute `:name` tokens with param values.
+   *
+   * Same rules as `HttpClient.pathVariables`: the token is matched whole (so
+   * `:id` cannot eat the prefix of `:idType`), a replace function keeps `$&`
+   * literal instead of expanding it as a substitution pattern, and values are
+   * percent-encoded — the router decodes path params, so an unencoded value
+   * does not round-trip to itself.
+   */
+  public compile(path: string, params: Record<string, string> = {}) {
+    return path.replace(/:([A-Za-z0-9_]+)/g, (match, key) =>
+      Object.hasOwn(params, key)
+        ? encodeURIComponent(String(params[key]))
+        : match,
+    );
+  }
+
+  /**
+   * A layer's identity: `parent`, the identity of the layer above it, joined
+   * with this route's own path compiled from the RAW matched params, the
+   * wildcard's capture included. The query and a locale prefix never
+   * participate.
+   *
+   * ## ⚠️ Raw params, not the decoded `config.params`
+   *
+   * A page with no `schema.params` decodes its params to `{}`, so compiling
+   * from them leaves `/users/:id` uncompiled and every user the same page.
+   * `state.params` holds what the URL matched, schema or not.
+   *
+   * ## What it is for (#Q2349)
+   *
+   * `renderView` keys each layer's element by it, so a param change remounts
+   * that layer and every layer below it, while the layers above keep their
+   * key and their state: the Next.js App Router's behaviour. A page that did
+   * `useState(props.epic)` used to keep showing the epic it mounted with, and
+   * nothing but a remount makes that pattern right by default. State that
+   * must survive a param change lives in the parent layout.
+   */
+  protected identityOf(
+    parent: string,
+    route: PageRoute,
+    params: Record<string, string> = {},
+  ): string {
+    const own = this.compile(route.path ?? "", params).replace(
+      /\*/g,
+      () => params["*"] ?? "",
+    );
+    return `${parent}/${own}`.replace(/\/+/g, "/");
+  }
+
+  protected renderView(
+    index: number,
+    path: string,
+    view: ReactNode | undefined,
+    page: PageRoute,
+    key?: string,
+  ): ReactNode {
+    view ??= this.renderEmptyView();
+
+    return createElement(
+      RouterLayerContext.Provider,
+      {
+        // The layer's identity (`identityOf`): a new one is a remount of
+        // this layer and everything below it, the same one an update.
+        key,
+        value: {
+          index,
+          path,
+          onError:
+            this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
+        },
+      },
+      view,
+    );
+  }
+
+  /**
+   * Outcome for a page whose `use` chain refused to call the loader.
+   *
+   * A guard middleware denies by short-circuiting — `$secure` returns
+   * `undefined` in the browser rather than throwing, so the signal is "next was
+   * never called", not the value that came back. Both the browser navigation
+   * path and the server render path funnel here so a denial means the same
+   * thing whichever way the page was reached.
+   *
+   * The two cases are deliberately different:
+   *  - not authenticated (401) → redirect to the login page, resolved by the
+   *    conventional `name: "login"`, carrying the blocked URL as `?redirect=`
+   *    so login can return the user.
+   *  - authenticated but not allowed (403) → a forbidden error; redirecting a
+   *    logged-in user to login would just loop.
+   *
+   * ⚠️ **`login` is the fallback, not the only answer.** One route can carry
+   * that name, so an application serving two realms could not say which of
+   * its doors a denied page belongs to, and every denial landed on whichever
+   * page held the name — an expired back-office session sending an agent to
+   * the citizen's sign-in form. {@link loginRoutesAtom} maps a path prefix to
+   * a route name for those applications; unset, this resolves exactly as it
+   * always did.
+   *
+   * Throws when there is no usable `login` route to send an anonymous visitor
+   * to — a page that cannot be entered and cannot redirect is an error, not a
+   * blank render.
+   */
+  public denyGuardedPage(url: URL): { redirect: string } {
+    const user = this.alepha.store.get(currentUserAtom);
+
+    if (!user) {
+      const login = this.findLoginRoute(url);
+      if (login?.match && !/[:*]/.test(login.match)) {
+        const back = encodeURIComponent(url.pathname + url.search);
+        return { redirect: `${login.match}?redirect=${back}` };
+      }
+    }
+
+    const denied = new AlephaError(
+      user
+        ? "You do not have permission to access this page."
+        : "Authentication required.",
+    );
+    (denied as { status?: number }).status = user ? 403 : 401;
+    throw denied;
+  }
+
+  /**
+   * The sign-in page a denied URL belongs to.
+   *
+   * {@link loginRoutesAtom} first, by longest-committed-first order rather
+   * than by longest match: the list is the application's own, and reading it
+   * top to bottom is what lets `{ prefix: "/", route: "signIn" }` sit at the
+   * end as a catch-all beside a `/admin` entry above it.
+   *
+   * Falls back to the conventional `login` name on every miss — an unset
+   * atom, a URL under no declared prefix, and a prefix naming a route that
+   * does not exist. That last one matters: a typo in the list degrades to the
+   * behaviour of an application that never set it, instead of to a redirect
+   * pointing nowhere.
+   */
+  protected findLoginRoute(url: URL): PageRoute | undefined {
+    const doors = this.alepha.store.get(loginRoutesAtom);
+    const named = doors?.find((door) =>
+      url.pathname.startsWith(door.prefix),
+    )?.route;
+
+    return (
+      (named ? this.findRoute(named) : undefined) ?? this.findRoute("login")
+    );
+  }
+
+  /**
+   * Resolve the effective `ssr` value for a route by walking up the parent
+   * chain. Returns the nearest explicit `ssr` value, and otherwise derives one
+   * from whether the page is behind a guard — defaulting to `true`.
+   *
+   * The decision is made at the leaf: a parent's value only acts as a default
+   * for descendants that did not decide for themselves.
+   *
+   * ## Why a guarded page defaults to CSR
+   *
+   * Server-rendering exists to hand HTML to something that will not run
+   * JavaScript — a crawler, a link unfurler, a slow first paint that should not
+   * wait on a bundle. A page behind a login wall has none of those readers:
+   * every visitor is authenticated, no crawler will ever see past the
+   * redirect, and the render costs CPU on every single request. On a per-request
+   * CPU budget (Cloudflare Workers) that is the difference between paying for a
+   * render nobody benefits from and not paying for it.
+   *
+   * It costs nothing in data: `ssr: false` still runs the loader on the server
+   * and serialises the result for hydration, so a CSR page makes no extra round
+   * trip — it only skips painting HTML.
+   *
+   * ## Precedence
+   *
+   * At each level of the walk: an explicit `ssr` wins outright; otherwise a
+   * guard at that level means CSR; otherwise keep walking. So a guarded layout
+   * puts its whole subtree in CSR, and any page can still opt back in with an
+   * explicit `ssr: true` — which is what a public marketing page nested under a
+   * guarded shell would do.
+   *
+   * The guard is recognised by the {@link MIDDLEWARE_PROTECTED} capability flag,
+   * never by middleware name, so an application's own auth middleware gets the
+   * same treatment as `$secure`.
+   */
+  public isSSR(route: PageRoute): boolean {
+    let current: PageRoute | undefined = route;
+    while (current) {
+      if (typeof current.ssr === "boolean") {
+        return current.ssr;
+      }
+      if (this.isProtected(current)) {
+        return false;
+      }
+      current = current.parent;
+    }
+    return true;
+  }
+
+  /**
+   * Does this single route level carry a guard middleware?
+   *
+   * Only its own `use` — the caller walks the chain, so looking further here
+   * would double-count and make a child indistinguishable from its parent.
+   */
+  protected isProtected(route: PageRoute): boolean {
+    return (route.use ?? []).some(
+      (middleware) =>
+        middleware[OPTIONS]?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+    );
+  }
+
+  protected map(
+    pages: Array<PagePrimitive>,
+    target: PagePrimitive,
+  ): PageRouteEntry {
+    const children = target.options.children
+      ? Array.isArray(target.options.children)
+        ? target.options.children
+        : target.options.children()
+      : [];
+
+    const getChildrenFromParent = (it: PagePrimitive): PagePrimitive[] => {
+      const children = [];
+      for (const page of pages) {
+        if (page.options.parent === it) {
+          children.push(page);
+        }
+      }
+      return children;
+    };
+
+    children.push(...getChildrenFromParent(target));
+
+    return {
+      ...target.options,
+      name: target.name,
+      parent: undefined,
+      children: children.map((it) => this.map(pages, it)),
+    } as PageRoute;
+  }
+
+  /**
+   * Every registered page, flattened, each carrying in `match` the full path
+   * the router resolves it on.
+   *
+   * Exposed because a page's own `path` is only its last segment: a page under
+   * two layouts declares `/intro` and answers on `/docs/guides/intro`. Anything
+   * enumerating the application's URLs from the `$page` primitives instead
+   * (the sitemap did) publishes addresses that 404. Reading the compiled
+   * routes is what keeps the two from disagreeing, since this is the same
+   * composition `createMatch` hands the matcher.
+   */
+  public get routes(): readonly PageRoute[] {
+    return this.pages;
+  }
+
+  public add(entry: PageRouteEntry) {
+    if (this.alepha.isReady()) {
+      throw new AlephaError("Router is already initialized");
+    }
+
+    entry.name ??= this.nextId();
+    const page = entry as PageRoute;
+
+    page.match = this.createMatch(page);
+
+    /*
+     * A `/*` page IS the not-found page, so it answers 404 unless the app says
+     * otherwise.
+     *
+     * The framework already treats the catch-all that way everywhere else: the
+     * `configure` hook above skips its built-in 404 page as soon as one exists
+     * (`hasNotFoundHandler`), and `ReactServerProvider.resolveNotFoundRoute`
+     * falls back to `/*` by design. Only the status disagreed, and it did so
+     * exactly when an app customized the page: the built-in carries an
+     * `onServerResponse` setting 404, an app-declared `/*` replaces it
+     * wholesale, and nothing puts the status back. So designing your own 404
+     * page silently downgraded it to a 200 - which is worse than no 404 page
+     * at all, because a crawler indexes a soft 404 as a real page.
+     *
+     * Setting it here rather than in the `configure` hook covers both: the
+     * built-in no longer needs to repeat itself, and a `/*` added through this
+     * public method gets the same treatment.
+     *
+     * `??=` is the escape hatch. A `/*` that resolves real content (a CMS
+     * slug, a proxy) declares its own `onServerResponse` and keeps its 200.
+     */
+    if (page.match === "/*" || page.path === "/*") {
+      page.onServerResponse ??= ({ reply }) => {
+        reply.status = 404;
+      };
+    }
+
+    this.pages.push(page);
+
+    if (page.children) {
+      for (const child of page.children) {
+        (child as PageRoute).parent = page;
+        this.add(child);
+      }
+    }
+  }
+
+  protected createMatch(page: PageRoute): string {
+    let url = page.path ?? "/";
+    let target = page.parent;
+    while (target) {
+      url = `${target.path ?? ""}/${url}`;
+      target = target.parent;
+    }
+
+    let path = url.replace(/\/\/+/g, "/");
+
+    if (path.endsWith("/") && path !== "/") {
+      // remove trailing slash
+      path = path.slice(0, -1);
+    }
+
+    return path;
+  }
+
+  protected nextId(): string {
+    this.nextIdCursor += 1;
+    return `P${this.nextIdCursor}`;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const isPageRoute = (it: any): it is PageRoute => {
+  return (
+    it &&
+    typeof it === "object" &&
+    typeof it.path === "string" &&
+    typeof it.page === "object"
+  );
+};
+
+export interface PageRouteEntry extends Omit<
+  PagePrimitiveOptions,
+  "children" | "parent"
+> {
+  children?: PageRouteEntry[];
+}
+
+export interface ConcretePageRoute extends PageRoute {
+  /**
+   * When exported, static routes can be split into multiple pages with different params.
+   * We replace 'name' by the new name for each static entry, and old 'name' becomes 'staticName'.
+   */
+  staticName?: string;
+
+  params?: Record<string, string>;
+}
+
+export interface PageRoute extends PageRouteEntry {
+  type: "page";
+  name: string;
+  parent?: PageRoute;
+  match: string;
+
+  /**
+   * Optional meta information associated with the page route, can be used for any purpose (e.g. menu label, icon, etc.).
+   */
+  label?: string;
+}
+
+export interface Layer {
+  config?: {
+    query?: Record<string, any>;
+    params?: Record<string, any>;
+    // stack of resolved props
+    context?: Record<string, any>;
+  };
+
+  name: string;
+  props?: Record<string, any>;
+  error?: Error;
+  part?: string;
+  element: ReactNode;
+  index: number;
+  path: string;
+  /**
+   * The layer's identity: its path compiled from the raw matched params,
+   * query excluded (`ReactPageProvider.identityOf`). Keys the layer's element
+   * and decides whether a navigation reuses the layer. Carried in the SSR
+   * payload, so hydration reuses the server's layers.
+   */
+  key?: string;
+  route?: PageRoute;
+  cache?: boolean;
+}
+
+export type PreviousLayerData = Omit<Layer, "element" | "index" | "path">;
+
+export interface AnchorProps {
+  href: string;
+  onClick: (ev?: any) => any;
+}
+
+export interface ReactRouterState {
+  /**
+   * Stack of layers for the current page.
+   */
+  layers: Array<Layer>;
+
+  /**
+   * URL of the current page.
+   */
+  url: URL;
+
+  /**
+   * Error handler for the current page.
+   */
+  onError: ErrorHandler;
+
+  /**
+   * Params extracted from the URL for the current page.
+   */
+  params: Record<string, any>;
+
+  /**
+   * Query parameters extracted from the URL for the current page.
+   */
+  query: Record<string, string>;
+
+  /**
+   * Optional meta information associated with the current page.
+   */
+  meta: Record<string, any>;
+
+  /**
+   * Head configuration for the current page (title, meta tags, etc.).
+   * Populated by HeadProvider during SSR.
+   */
+  head: Head;
+
+  /**
+   * Optional name of the current page route
+   */
+  name?: string;
+}
+
+export interface RouterStackItem {
+  route: PageRoute;
+  key?: string;
+  config?: Record<string, any>;
+  props?: Record<string, any>;
+  error?: Error;
+  cache?: boolean;
+}
+
+export interface CreateLayersResult {
+  redirect?: string;
+  state?: ReactRouterState;
+}

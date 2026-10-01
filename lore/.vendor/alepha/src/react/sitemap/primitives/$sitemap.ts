@@ -1,0 +1,264 @@
+import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { ReactPageProvider } from "alepha/react/router";
+import { type ServerRequest, ServerRouterProvider } from "alepha/server";
+
+/**
+ * Expose a `sitemap.xml` generated from the application's `$page` primitives.
+ *
+ * Registers a `GET /sitemap.xml` route that reads every registered page at
+ * request time and emits a standard XML sitemap. Marked `static` by default, so
+ * the build prerenders it to `dist/public/sitemap.xml` for static deployments -
+ * while SSR runtimes also serve it live.
+ *
+ * The hostname comes from `options.hostname`, falling back to `PUBLIC_URL`, then
+ * to `""` (relative URLs). URLs that no page answers, a feed or an
+ * `llms.txt`, are listed through `options.urls`.
+ *
+ * @example
+ * ```ts
+ * import { $sitemap } from "alepha/react/sitemap";
+ *
+ * class AppRouter {
+ *   sitemap = $sitemap();
+ * }
+ * ```
+ */
+export const $sitemap = (
+  options: SitemapPrimitiveOptions = {},
+): SitemapPrimitive => {
+  return createPrimitive(SitemapPrimitive, options);
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface SitemapPrimitiveOptions {
+  /**
+   * Absolute base URL used to build `<loc>` entries (e.g. "https://alepha.dev").
+   *
+   * Defaults to `PUBLIC_URL`, then to `""` (relative URLs).
+   */
+  hostname?: string;
+
+  /**
+   * Extra URLs to list after the pages: files and routes that are not a
+   * `$page`, such as `/llms.txt`. A path is joined to the hostname like a
+   * page's; an absolute URL is listed as is.
+   *
+   * @example ["/llms.txt", "/feed.xml"]
+   */
+  urls?: string[];
+
+  /**
+   * Route path the sitemap is served at.
+   *
+   * @default "/sitemap.xml"
+   */
+  path?: string;
+
+  /**
+   * Prerender the sitemap to a static file at build time.
+   *
+   * @default true
+   */
+  static?: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
+  protected readonly router = $inject(ServerRouterProvider);
+  protected readonly pageProvider = $inject(ReactPageProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  protected onInit() {
+    this.router.createRoute({
+      method: "GET",
+      path: this.options.path ?? "/sitemap.xml",
+      static: this.options.static ?? true,
+      silent: true,
+      handler: (request: ServerRequest) => {
+        request.reply.setHeader("content-type", "application/xml");
+        return this.buildSitemap();
+      },
+    });
+  }
+
+  /**
+   * Render the sitemap to its path and body. Used by the build to snapshot the
+   * sitemap to a static file.
+   */
+  public prerender(): { path: string; body: string } {
+    return {
+      path: this.options.path ?? "/sitemap.xml",
+      body: this.buildSitemap(),
+    };
+  }
+
+  /**
+   * Build the sitemap XML from the application's page primitives.
+   */
+  protected buildSitemap(): string {
+    const hostname =
+      this.options.hostname ?? String(this.alepha.env.PUBLIC_URL ?? "");
+    const pages = this.getSitemapPages();
+    return this.generateSitemapFromPages(pages, hostname);
+  }
+
+  /**
+   * Select the pages that should appear in the sitemap.
+   *
+   * Reads the router's compiled routes rather than the `$page` primitives, so
+   * every decision below is made on the path a visitor would actually request.
+   * A page's own `path` is only its last segment - `/intro` under two layouts
+   * answers on `/docs/guides/intro` - and every one of these rules changes
+   * answer depending on which of the two it is asked about: a parameter can sit
+   * anywhere in the chain, and so can a wildcard.
+   *
+   * Excludes layout pages (those with children), wildcard paths, and `/404`.
+   * Parameterized pages are included only when they declare `static.entries`.
+   */
+  protected getSitemapPages(): any[] {
+    return this.pageProvider.routes.filter((route: any) => {
+      const path: string = route.match ?? "";
+      if (route.children?.length) {
+        return false;
+      }
+      if (path.includes("*")) {
+        return false;
+      }
+      if (path === "/404") {
+        return false;
+      }
+      if (!this.hasParams(route)) {
+        return true;
+      }
+      if (
+        route.static &&
+        typeof route.static === "object" &&
+        route.static.entries
+      ) {
+        return true;
+      }
+      return false;
+    }) as any[];
+  }
+
+  protected generateSitemapFromPages(pages: any[], baseUrl: string): string {
+    const urls: string[] = [];
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+
+    for (const route of pages) {
+      if (!this.hasParams(route)) {
+        const path = route.match || "";
+        const url = `${normalizedBaseUrl}${path === "" ? "/" : path}`;
+        urls.push(url);
+      } else if (
+        route.static &&
+        typeof route.static === "object" &&
+        route.static.entries
+      ) {
+        for (const entry of route.static.entries) {
+          const path = this.buildPathFromParams(
+            route.match || "",
+            entry.params || {},
+          );
+          // An entry naming only the page's own parameters leaves a parent's
+          // `:orgId` sitting in the path. A `<loc>` with a colon token in it is
+          // not a URL, so there is nothing to publish.
+          if (this.containsParam(path)) {
+            continue;
+          }
+          const url = `${normalizedBaseUrl}${path}`;
+          urls.push(url);
+        }
+      }
+    }
+
+    for (const url of this.options.urls ?? []) {
+      urls.push(
+        /^https?:\/\//.test(url)
+          ? url
+          : `${normalizedBaseUrl}${url.startsWith("/") ? url : `/${url}`}`,
+      );
+    }
+
+    return this.buildSitemapXml(urls);
+  }
+
+  /**
+   * Whether a page carries route parameters, and so cannot be listed unless
+   * it enumerates its own URLs through `static.entries`.
+   *
+   * The path is consulted as well as the schema because `schema.params` is
+   * optional: `$page({ path: "/blog/:slug" })` routes perfectly well without
+   * one, and used to reach the sitemap as the literal `/blog/:slug`. Nothing
+   * failed, nothing warned, and the 404 surfaced only in Search Console.
+   *
+   * The FULL path, not the page's own segment: a page can be entirely static
+   * and still have no concrete URL, because a layout above it holds the
+   * parameter. `schema` only ever describes a page's own parameters, so it
+   * cannot answer this on its own.
+   */
+  protected hasParams(route: {
+    match?: string;
+    path?: string;
+    schema?: any;
+  }): boolean {
+    if (route.schema?.params) {
+      return true;
+    }
+    return this.containsParam(route.match ?? route.path ?? "");
+  }
+
+  /**
+   * Anchored on the slash so a literal colon inside a segment ("/foo:bar")
+   * stays a static URL. Route parameters are always "/:name".
+   */
+  protected containsParam(path: string): boolean {
+    return /\/:[^/]+/.test(path);
+  }
+
+  /**
+   * Same substitution rules as `ReactPageProvider.compile` — whole-token
+   * match, `$&` kept literal, values percent-encoded. A sitemap `<loc>` has to
+   * be a valid URL, and a slug with a space or a slash produced neither.
+   */
+  protected buildPathFromParams(
+    pathPattern: string,
+    params: Record<string, any>,
+  ): string {
+    const path = pathPattern.replace(/:([A-Za-z0-9_]+)/g, (match, key) =>
+      Object.hasOwn(params, key)
+        ? encodeURIComponent(String(params[key]))
+        : match,
+    );
+    return path || "/";
+  }
+
+  protected buildSitemapXml(urls: string[]): string {
+    const lastMod = this.dateTime.now().format("YYYY-MM-DD");
+    const urlEntries = urls
+      .map(
+        (url) =>
+          `  <url>\n    <loc>${this.escapeXml(url)}</loc>\n    <lastmod>${lastMod}</lastmod>\n  </url>`,
+      )
+      .join("\n");
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urlEntries}
+</urlset>`;
+  }
+
+  protected escapeXml(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+}
+
+$sitemap[KIND] = SitemapPrimitive;

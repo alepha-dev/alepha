@@ -1,0 +1,223 @@
+/**
+ * Theme-aware syntax highlighting for highlight.js.
+ * Light palette is GitHub Light; dark palette (under `.dark` ancestor) is GitHub Dark.
+ * Backgrounds are intentionally transparent so the code block inherits its container bg.
+ */
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: transparent;
+  color: var(--hljs-fg);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: var(--hljs-keyword);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+  color: var(--hljs-number);
+}
+
+/*
+ * Object property names — `roles:`, `name:`, `scope:`.
+ *
+ * `.hljs-attr` was reachable only through `.hljs-tag .hljs-attr` above,
+ * which is an attribute inside an HTML tag. A BARE `hljs-attr`, which is
+ * what highlight.js emits for every key in a JS/TS object literal or a
+ * JSON document, matched no rule at all and fell through to `.hljs`'s
+ * plain foreground. The effect was a code block where the strings were
+ * coloured and every key was body text — subtle enough to read as "the
+ * theme is a bit washed out" rather than as a missing selector.
+ *
+ * `--hljs-builtin` (#79c0ff dark / #005cc5 light) is what GitHub uses for
+ * property names, and it is what the CodeMirror side already gives
+ * `tags.propertyName`, so the two faces agree.
+ *
+ * Specificity keeps the HTML case intact: `.hljs-tag .hljs-attr` is (0,2,0)
+ * against this rule's (0,1,0), so a tag attribute stays on `--hljs-number`
+ * no matter which rule comes last.
+ */
+.hljs-attr,
+.hljs-property {
+  color: var(--hljs-builtin);
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp,
+.hljs-link {
+  color: var(--hljs-string);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id,
+.hljs-type,
+.hljs-class .hljs-title {
+  color: var(--hljs-title);
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-attribute {
+  color: var(--hljs-tag);
+}
+
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--hljs-symbol);
+}
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-params {
+  color: var(--hljs-builtin);
+}
+
+.hljs-meta {
+  color: var(--hljs-meta);
+}
+
+.hljs-deletion {
+  background: var(--hljs-deletion);
+}
+
+.hljs-addition {
+  background: var(--hljs-addition);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+:root {
+  --hljs-fg: #24292e;
+  --hljs-comment: #6a737d;
+  --hljs-keyword: #d73a49;
+  --hljs-number: #005cc5;
+  --hljs-string: #032f62;
+  --hljs-title: #6f42c1;
+  --hljs-tag: #22863a;
+  --hljs-symbol: #e36209;
+  --hljs-builtin: #005cc5;
+  --hljs-meta: #6a737d;
+  --hljs-deletion: #ffeef0;
+  --hljs-addition: #f0fff4;
+}
+
+.dark {
+  --hljs-fg: #c9d1d9;
+  --hljs-comment: #8b949e;
+  --hljs-keyword: #ff7b72;
+  --hljs-number: #79c0ff;
+  --hljs-string: #a5d6ff;
+  --hljs-title: #d2a8ff;
+  --hljs-tag: #7ee787;
+  --hljs-symbol: #ffa657;
+  --hljs-builtin: #79c0ff;
+  --hljs-meta: #8b949e;
+  --hljs-deletion: #67060c;
+  --hljs-addition: #033a16;
+}
+
+/**
+ * The scroll frame around a sequence diagram.
+ *
+ * A flowchart is roughly as tall as it is wide and scales into the prose
+ * column. A sequence diagram's width comes from its participant count with
+ * nothing to wrap, so scaling eight lifelines into a phone column puts the
+ * labels at around 5px with no way for the reader to recover. It scrolls
+ * instead, at its natural size.
+ *
+ * `overscroll-behavior-x: contain` is not a nicety: without it, swiping a
+ * wide diagram on touch swallows the page's own back-swipe.
+ *
+ * The fades are the classic four-layer scroll-shadow: two `local` covers
+ * painted in the page background scroll WITH the content and so sit over
+ * the shadows while the diagram is at that edge, and two `scroll` shadows
+ * stay pinned to the frame. The result is a fade on the overflowing side
+ * only, in pure CSS - without it a clipped diagram just looks truncated and
+ * nobody discovers it scrolls.
+ */
+.alepha-diagram-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  background:
+    linear-gradient(to right, var(--background) 60%, transparent) left center /
+      28px 100% no-repeat local,
+    linear-gradient(to left, var(--background) 60%, transparent) right center /
+      28px 100% no-repeat local,
+    linear-gradient(
+        to right,
+        color-mix(in oklab, var(--foreground) 26%, transparent),
+        transparent
+      )
+      left center / 18px 100% no-repeat scroll,
+    linear-gradient(
+        to left,
+        color-mix(in oklab, var(--foreground) 26%, transparent),
+        transparent
+      )
+      right center / 18px 100% no-repeat scroll;
+}
+
+/*
+ * Discord-style `||spoilers||`.
+ *
+ * ⚠️ Not a security feature. The text is in the DOM from the first paint -
+ * this covers it, it does not withhold it - and it is in the raw markdown, in
+ * an export, over MCP and in any search snippet too. See `SpoilerSpan`.
+ *
+ * Both states are painted from `--foreground` through `color-mix`, so the
+ * dark theme needs no second block: the token already flips, and a hidden
+ * spoiler is a strong wash of it while a revealed one is the faint wash every
+ * other inline surface here uses.
+ *
+ * The hidden state sets the text to `transparent` rather than hiding it,
+ * which is what keeps the line's metrics: a `display: none` would reflow the
+ * paragraph on reveal and move the sentence out from under the reader who
+ * just clicked it. `user-select: none` stops a drag-select from lifting the
+ * covered text out through the clipboard by accident.
+ */
+[data-slot="markdown-view"] [data-spoiler="hidden"] {
+  background-color: color-mix(in oklab, var(--foreground) 82%, transparent);
+  color: transparent;
+  user-select: none;
+  transition: background-color 120ms ease;
+}
+
+[data-slot="markdown-view"] [data-spoiler="hidden"]:hover {
+  background-color: color-mix(in oklab, var(--foreground) 70%, transparent);
+}
+
+/*
+ * A visible focus ring, because the hidden state has nothing else to show
+ * one against: the box IS the content, so the browser's default outline on a
+ * `color: transparent` span is the only thing telling a keyboard reader where
+ * they are.
+ */
+[data-slot="markdown-view"] [data-spoiler="hidden"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+[data-slot="markdown-view"] [data-spoiler="revealed"] {
+  background-color: color-mix(in oklab, var(--foreground) 8%, transparent);
+}

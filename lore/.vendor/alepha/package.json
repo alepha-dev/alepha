@@ -1,0 +1,1018 @@
+{
+  "name": "alepha",
+  "version": "0.30.0",
+  "description": "A full-stack TypeScript framework. One schema, everywhere.",
+  "keywords": [
+    "aleph",
+    "alepha",
+    "api",
+    "cloudflare",
+    "drizzle",
+    "edge",
+    "framework",
+    "fullstack",
+    "orm",
+    "react",
+    "serverless",
+    "ssr",
+    "typescript",
+    "workers"
+  ],
+  "homepage": "https://alepha.dev",
+  "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alepha-dev/alepha.git"
+  },
+  "bin": "./src/bin/index.ts",
+  "files": [
+    "dist",
+    "src",
+    "assets",
+    "tsconfig.base.json",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "exports": {
+    "./api/analytics": {
+      "types": "./src/api/analytics/index.ts",
+      "workerd": "./src/api/analytics/index.workerd.ts",
+      "import": "./src/api/analytics/index.ts",
+      "default": "./src/api/analytics/index.ts"
+    },
+    "./api/audits": {
+      "types": "./src/api/audits/index.ts",
+      "react-native": "./src/api/audits/index.browser.ts",
+      "browser": "./src/api/audits/index.browser.ts",
+      "import": "./src/api/audits/index.ts",
+      "default": "./src/api/audits/index.ts"
+    },
+    "./api/files": {
+      "types": "./src/api/files/index.ts",
+      "react-native": "./src/api/files/index.browser.ts",
+      "browser": "./src/api/files/index.browser.ts",
+      "import": "./src/api/files/index.ts",
+      "default": "./src/api/files/index.ts"
+    },
+    "./api/jobs": {
+      "types": "./src/api/jobs/index.ts",
+      "react-native": "./src/api/jobs/index.browser.ts",
+      "browser": "./src/api/jobs/index.browser.ts",
+      "import": "./src/api/jobs/index.ts",
+      "default": "./src/api/jobs/index.ts"
+    },
+    "./api/keys": {
+      "types": "./src/api/keys/index.ts",
+      "import": "./src/api/keys/index.ts",
+      "default": "./src/api/keys/index.ts"
+    },
+    "./api/notifications": {
+      "types": "./src/api/notifications/index.ts",
+      "react-native": "./src/api/notifications/index.browser.ts",
+      "browser": "./src/api/notifications/index.browser.ts",
+      "import": "./src/api/notifications/index.ts",
+      "default": "./src/api/notifications/index.ts"
+    },
+    "./api/oauth": {
+      "types": "./src/api/oauth/index.ts",
+      "import": "./src/api/oauth/index.ts",
+      "default": "./src/api/oauth/index.ts"
+    },
+    "./api/organizations": {
+      "types": "./src/api/organizations/index.ts",
+      "react-native": "./src/api/organizations/index.browser.ts",
+      "browser": "./src/api/organizations/index.browser.ts",
+      "import": "./src/api/organizations/index.ts",
+      "default": "./src/api/organizations/index.ts"
+    },
+    "./api/parameters": {
+      "types": "./src/api/parameters/index.ts",
+      "react-native": "./src/api/parameters/index.browser.ts",
+      "browser": "./src/api/parameters/index.browser.ts",
+      "import": "./src/api/parameters/index.ts",
+      "default": "./src/api/parameters/index.ts"
+    },
+    "./api/payments": {
+      "types": "./src/api/payments/index.ts",
+      "import": "./src/api/payments/index.ts",
+      "default": "./src/api/payments/index.ts"
+    },
+    "./api/users": {
+      "types": "./src/api/users/index.ts",
+      "react-native": "./src/api/users/index.browser.ts",
+      "browser": "./src/api/users/index.browser.ts",
+      "import": "./src/api/users/index.ts",
+      "default": "./src/api/users/index.ts"
+    },
+    "./api/verifications": {
+      "types": "./src/api/verifications/index.ts",
+      "react-native": "./src/api/verifications/index.browser.ts",
+      "browser": "./src/api/verifications/index.browser.ts",
+      "import": "./src/api/verifications/index.ts",
+      "default": "./src/api/verifications/index.ts"
+    },
+    "./background": {
+      "types": "./src/background/index.ts",
+      "workerd": "./src/background/index.workerd.ts",
+      "import": "./src/background/index.ts",
+      "default": "./src/background/index.ts"
+    },
+    "./bucket": {
+      "types": "./src/bucket/index.ts",
+      "workerd": "./src/bucket/index.workerd.ts",
+      "import": "./src/bucket/index.ts",
+      "default": "./src/bucket/index.ts"
+    },
+    "./cache": {
+      "types": "./src/cache/core/index.ts",
+      "workerd": "./src/cache/core/index.workerd.ts",
+      "import": "./src/cache/core/index.ts",
+      "default": "./src/cache/core/index.ts"
+    },
+    "./cache/database": {
+      "types": "./src/cache/database/index.ts",
+      "import": "./src/cache/database/index.ts",
+      "default": "./src/cache/database/index.ts"
+    },
+    "./cache/redis": {
+      "types": "./src/cache/redis/index.ts",
+      "import": "./src/cache/redis/index.ts",
+      "default": "./src/cache/redis/index.ts"
+    },
+    "./captcha": {
+      "types": "./src/captcha/index.ts",
+      "import": "./src/captcha/index.ts",
+      "default": "./src/captcha/index.ts"
+    },
+    "./cli/config": {
+      "types": "./src/cli/config/index.ts",
+      "import": "./src/cli/config/index.ts",
+      "default": "./src/cli/config/index.ts"
+    },
+    "./cli": {
+      "types": "./src/cli/core/index.ts",
+      "workerd": "./src/cli/core/index.workerd.ts",
+      "import": "./src/cli/core/index.ts",
+      "default": "./src/cli/core/index.ts"
+    },
+    "./cli/devtools": {
+      "types": "./src/cli/devtools/index.ts",
+      "import": "./src/cli/devtools/index.ts",
+      "default": "./src/cli/devtools/index.ts"
+    },
+    "./cli/i18n": {
+      "types": "./src/cli/i18n/index.ts",
+      "import": "./src/cli/i18n/index.ts",
+      "default": "./src/cli/i18n/index.ts"
+    },
+    "./cli/platform": {
+      "types": "./src/cli/platform/index.ts",
+      "import": "./src/cli/platform/index.ts",
+      "default": "./src/cli/platform/index.ts"
+    },
+    "./cli/platform-lib": {
+      "types": "./src/cli/platform-lib/index.ts",
+      "workerd": "./src/cli/platform-lib/index.workerd.ts",
+      "import": "./src/cli/platform-lib/index.ts",
+      "default": "./src/cli/platform-lib/index.ts"
+    },
+    "./cli/vendor": {
+      "types": "./src/cli/vendor/index.ts",
+      "import": "./src/cli/vendor/index.ts",
+      "default": "./src/cli/vendor/index.ts"
+    },
+    "./command": {
+      "types": "./src/command/index.ts",
+      "import": "./src/command/index.ts",
+      "default": "./src/command/index.ts"
+    },
+    ".": {
+      "types": "./src/core/index.ts",
+      "react-native": "./src/core/index.native.ts",
+      "workerd": "./src/core/index.workerd.ts",
+      "browser": "./src/core/index.browser.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./crypto": {
+      "types": "./src/crypto/index.ts",
+      "react-native": "./src/crypto/index.browser.ts",
+      "browser": "./src/crypto/index.browser.ts",
+      "import": "./src/crypto/index.ts",
+      "default": "./src/crypto/index.ts"
+    },
+    "./datetime": {
+      "types": "./src/datetime/index.ts",
+      "import": "./src/datetime/index.ts",
+      "default": "./src/datetime/index.ts"
+    },
+    "./email/brevo": {
+      "types": "./src/email/brevo/index.ts",
+      "import": "./src/email/brevo/index.ts",
+      "default": "./src/email/brevo/index.ts"
+    },
+    "./email/cloudflare": {
+      "types": "./src/email/cloudflare/index.ts",
+      "import": "./src/email/cloudflare/index.ts",
+      "default": "./src/email/cloudflare/index.ts"
+    },
+    "./email": {
+      "types": "./src/email/core/index.ts",
+      "workerd": "./src/email/core/index.workerd.ts",
+      "import": "./src/email/core/index.ts",
+      "default": "./src/email/core/index.ts"
+    },
+    "./email/smtp": {
+      "types": "./src/email/smtp/index.ts",
+      "workerd": "./src/email/smtp/index.workerd.ts",
+      "import": "./src/email/smtp/index.ts",
+      "default": "./src/email/smtp/index.ts"
+    },
+    "./lock": {
+      "types": "./src/lock/core/index.ts",
+      "import": "./src/lock/core/index.ts",
+      "default": "./src/lock/core/index.ts"
+    },
+    "./lock/redis": {
+      "types": "./src/lock/redis/index.ts",
+      "import": "./src/lock/redis/index.ts",
+      "default": "./src/lock/redis/index.ts"
+    },
+    "./logger": {
+      "types": "./src/logger/index.ts",
+      "import": "./src/logger/index.ts",
+      "default": "./src/logger/index.ts"
+    },
+    "./mcp": {
+      "types": "./src/mcp/index.ts",
+      "import": "./src/mcp/index.ts",
+      "default": "./src/mcp/index.ts"
+    },
+    "./orm": {
+      "types": "./src/orm/core/index.ts",
+      "react-native": "./src/orm/core/index.browser.ts",
+      "browser": "./src/orm/core/index.browser.ts",
+      "bun": "./src/orm/core/index.bun.ts",
+      "import": "./src/orm/core/index.ts",
+      "default": "./src/orm/core/index.ts"
+    },
+    "./orm/postgres": {
+      "types": "./src/orm/postgres/index.ts",
+      "bun": "./src/orm/postgres/index.bun.ts",
+      "import": "./src/orm/postgres/index.ts",
+      "default": "./src/orm/postgres/index.ts"
+    },
+    "./queue": {
+      "types": "./src/queue/core/index.ts",
+      "workerd": "./src/queue/core/index.workerd.ts",
+      "import": "./src/queue/core/index.ts",
+      "default": "./src/queue/core/index.ts"
+    },
+    "./queue/redis": {
+      "types": "./src/queue/redis/index.ts",
+      "import": "./src/queue/redis/index.ts",
+      "default": "./src/queue/redis/index.ts"
+    },
+    "./react/auth": {
+      "types": "./src/react/auth/index.ts",
+      "react-native": "./src/react/auth/index.browser.ts",
+      "browser": "./src/react/auth/index.browser.ts",
+      "import": "./src/react/auth/index.ts",
+      "default": "./src/react/auth/index.ts"
+    },
+    "./react": {
+      "types": "./src/react/core/index.ts",
+      "import": "./src/react/core/index.ts",
+      "default": "./src/react/core/index.ts"
+    },
+    "./react/email": {
+      "types": "./src/react/email/index.ts",
+      "import": "./src/react/email/index.ts",
+      "default": "./src/react/email/index.ts"
+    },
+    "./react/form": {
+      "types": "./src/react/form/index.ts",
+      "import": "./src/react/form/index.ts",
+      "default": "./src/react/form/index.ts"
+    },
+    "./react/head": {
+      "types": "./src/react/head/index.ts",
+      "react-native": "./src/react/head/index.browser.ts",
+      "browser": "./src/react/head/index.browser.ts",
+      "import": "./src/react/head/index.ts",
+      "default": "./src/react/head/index.ts"
+    },
+    "./react/i18n": {
+      "types": "./src/react/i18n/index.ts",
+      "import": "./src/react/i18n/index.ts",
+      "default": "./src/react/i18n/index.ts"
+    },
+    "./react/intro": {
+      "types": "./src/react/intro/index.ts",
+      "import": "./src/react/intro/index.ts",
+      "default": "./src/react/intro/index.ts"
+    },
+    "./react/router": {
+      "types": "./src/react/router/index.ts",
+      "react-native": "./src/react/router/index.browser.ts",
+      "browser": "./src/react/router/index.browser.ts",
+      "import": "./src/react/router/index.ts",
+      "default": "./src/react/router/index.ts"
+    },
+    "./react/sitemap": {
+      "types": "./src/react/sitemap/index.ts",
+      "react-native": "./src/react/sitemap/index.browser.ts",
+      "browser": "./src/react/sitemap/index.browser.ts",
+      "import": "./src/react/sitemap/index.ts",
+      "default": "./src/react/sitemap/index.ts"
+    },
+    "./react/ui": {
+      "types": "./src/react/ui/index.ts",
+      "import": "./src/react/ui/index.ts",
+      "default": "./src/react/ui/index.ts"
+    },
+    "./react/websocket": {
+      "types": "./src/react/websocket/index.ts",
+      "import": "./src/react/websocket/index.ts",
+      "default": "./src/react/websocket/index.ts"
+    },
+    "./redis": {
+      "types": "./src/redis/index.ts",
+      "bun": "./src/redis/index.bun.ts",
+      "import": "./src/redis/index.ts",
+      "default": "./src/redis/index.ts"
+    },
+    "./router": {
+      "types": "./src/router/index.ts",
+      "import": "./src/router/index.ts",
+      "default": "./src/router/index.ts"
+    },
+    "./scheduler": {
+      "types": "./src/scheduler/index.ts",
+      "workerd": "./src/scheduler/index.workerd.ts",
+      "import": "./src/scheduler/index.ts",
+      "default": "./src/scheduler/index.ts"
+    },
+    "./security": {
+      "types": "./src/security/index.ts",
+      "react-native": "./src/security/index.browser.ts",
+      "browser": "./src/security/index.browser.ts",
+      "import": "./src/security/index.ts",
+      "default": "./src/security/index.ts"
+    },
+    "./server/auth": {
+      "types": "./src/server/auth/index.ts",
+      "react-native": "./src/server/auth/index.browser.ts",
+      "browser": "./src/server/auth/index.browser.ts",
+      "import": "./src/server/auth/index.ts",
+      "default": "./src/server/auth/index.ts"
+    },
+    "./server/cookies": {
+      "types": "./src/server/cookies/index.ts",
+      "react-native": "./src/server/cookies/index.browser.ts",
+      "browser": "./src/server/cookies/index.browser.ts",
+      "import": "./src/server/cookies/index.ts",
+      "default": "./src/server/cookies/index.ts"
+    },
+    "./server": {
+      "types": "./src/server/core/index.ts",
+      "react-native": "./src/server/core/index.browser.ts",
+      "browser": "./src/server/core/index.browser.ts",
+      "import": "./src/server/core/index.ts",
+      "default": "./src/server/core/index.ts"
+    },
+    "./server/cors": {
+      "types": "./src/server/cors/index.ts",
+      "import": "./src/server/cors/index.ts",
+      "default": "./src/server/cors/index.ts"
+    },
+    "./server/etag": {
+      "types": "./src/server/etag/index.ts",
+      "import": "./src/server/etag/index.ts",
+      "default": "./src/server/etag/index.ts"
+    },
+    "./server/links": {
+      "types": "./src/server/links/index.ts",
+      "react-native": "./src/server/links/index.browser.ts",
+      "browser": "./src/server/links/index.browser.ts",
+      "import": "./src/server/links/index.ts",
+      "default": "./src/server/links/index.ts"
+    },
+    "./server/metrics": {
+      "types": "./src/server/metrics/index.ts",
+      "import": "./src/server/metrics/index.ts",
+      "default": "./src/server/metrics/index.ts"
+    },
+    "./server/multipart": {
+      "types": "./src/server/multipart/index.ts",
+      "import": "./src/server/multipart/index.ts",
+      "default": "./src/server/multipart/index.ts"
+    },
+    "./server/proxy": {
+      "types": "./src/server/proxy/index.ts",
+      "import": "./src/server/proxy/index.ts",
+      "default": "./src/server/proxy/index.ts"
+    },
+    "./server/rate-limit": {
+      "types": "./src/server/rate-limit/index.ts",
+      "import": "./src/server/rate-limit/index.ts",
+      "default": "./src/server/rate-limit/index.ts"
+    },
+    "./server/static": {
+      "types": "./src/server/static/index.ts",
+      "import": "./src/server/static/index.ts",
+      "default": "./src/server/static/index.ts"
+    },
+    "./server/swagger": {
+      "types": "./src/server/swagger/index.ts",
+      "import": "./src/server/swagger/index.ts",
+      "default": "./src/server/swagger/index.ts"
+    },
+    "./sms": {
+      "types": "./src/sms/index.ts",
+      "import": "./src/sms/index.ts",
+      "default": "./src/sms/index.ts"
+    },
+    "./system": {
+      "types": "./src/system/index.ts",
+      "react-native": "./src/system/index.browser.ts",
+      "workerd": "./src/system/index.workerd.ts",
+      "browser": "./src/system/index.browser.ts",
+      "import": "./src/system/index.ts",
+      "default": "./src/system/index.ts"
+    },
+    "./testing/faker": {
+      "types": "./src/testing/faker/index.ts",
+      "import": "./src/testing/faker/index.ts",
+      "default": "./src/testing/faker/index.ts"
+    },
+    "./testing/playwright": {
+      "types": "./src/testing/playwright/index.ts",
+      "import": "./src/testing/playwright/index.ts",
+      "default": "./src/testing/playwright/index.ts"
+    },
+    "./testing/react": {
+      "types": "./src/testing/react/index.ts",
+      "import": "./src/testing/react/index.ts",
+      "default": "./src/testing/react/index.ts"
+    },
+    "./testing/vitest": {
+      "types": "./src/testing/vitest/index.ts",
+      "import": "./src/testing/vitest/index.ts",
+      "default": "./src/testing/vitest/index.ts"
+    },
+    "./topic": {
+      "types": "./src/topic/core/index.ts",
+      "import": "./src/topic/core/index.ts",
+      "default": "./src/topic/core/index.ts"
+    },
+    "./topic/redis": {
+      "types": "./src/topic/redis/index.ts",
+      "import": "./src/topic/redis/index.ts",
+      "default": "./src/topic/redis/index.ts"
+    },
+    "./websocket": {
+      "types": "./src/websocket/index.ts",
+      "react-native": "./src/websocket/index.browser.ts",
+      "workerd": "./src/websocket/index.workerd.ts",
+      "browser": "./src/websocket/index.browser.ts",
+      "import": "./src/websocket/index.ts",
+      "default": "./src/websocket/index.ts"
+    },
+    "./tsconfig.base": "./tsconfig.base.json",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "bin": "./dist/bin/index.js",
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      "./api/analytics": {
+        "types": "./dist/api/analytics/index.d.ts",
+        "workerd": "./dist/api/analytics/index.workerd.js",
+        "import": "./dist/api/analytics/index.js",
+        "default": "./dist/api/analytics/index.js"
+      },
+      "./api/audits": {
+        "types": "./dist/api/audits/index.d.ts",
+        "react-native": "./dist/api/audits/index.browser.js",
+        "browser": "./dist/api/audits/index.browser.js",
+        "import": "./dist/api/audits/index.js",
+        "default": "./dist/api/audits/index.js"
+      },
+      "./api/files": {
+        "types": "./dist/api/files/index.d.ts",
+        "react-native": "./dist/api/files/index.browser.js",
+        "browser": "./dist/api/files/index.browser.js",
+        "import": "./dist/api/files/index.js",
+        "default": "./dist/api/files/index.js"
+      },
+      "./api/jobs": {
+        "types": "./dist/api/jobs/index.d.ts",
+        "react-native": "./dist/api/jobs/index.browser.js",
+        "browser": "./dist/api/jobs/index.browser.js",
+        "import": "./dist/api/jobs/index.js",
+        "default": "./dist/api/jobs/index.js"
+      },
+      "./api/keys": {
+        "types": "./dist/api/keys/index.d.ts",
+        "import": "./dist/api/keys/index.js",
+        "default": "./dist/api/keys/index.js"
+      },
+      "./api/notifications": {
+        "types": "./dist/api/notifications/index.d.ts",
+        "react-native": "./dist/api/notifications/index.browser.js",
+        "browser": "./dist/api/notifications/index.browser.js",
+        "import": "./dist/api/notifications/index.js",
+        "default": "./dist/api/notifications/index.js"
+      },
+      "./api/oauth": {
+        "types": "./dist/api/oauth/index.d.ts",
+        "import": "./dist/api/oauth/index.js",
+        "default": "./dist/api/oauth/index.js"
+      },
+      "./api/organizations": {
+        "types": "./dist/api/organizations/index.d.ts",
+        "react-native": "./dist/api/organizations/index.browser.js",
+        "browser": "./dist/api/organizations/index.browser.js",
+        "import": "./dist/api/organizations/index.js",
+        "default": "./dist/api/organizations/index.js"
+      },
+      "./api/parameters": {
+        "types": "./dist/api/parameters/index.d.ts",
+        "react-native": "./dist/api/parameters/index.browser.js",
+        "browser": "./dist/api/parameters/index.browser.js",
+        "import": "./dist/api/parameters/index.js",
+        "default": "./dist/api/parameters/index.js"
+      },
+      "./api/payments": {
+        "types": "./dist/api/payments/index.d.ts",
+        "import": "./dist/api/payments/index.js",
+        "default": "./dist/api/payments/index.js"
+      },
+      "./api/users": {
+        "types": "./dist/api/users/index.d.ts",
+        "react-native": "./dist/api/users/index.browser.js",
+        "browser": "./dist/api/users/index.browser.js",
+        "import": "./dist/api/users/index.js",
+        "default": "./dist/api/users/index.js"
+      },
+      "./api/verifications": {
+        "types": "./dist/api/verifications/index.d.ts",
+        "react-native": "./dist/api/verifications/index.browser.js",
+        "browser": "./dist/api/verifications/index.browser.js",
+        "import": "./dist/api/verifications/index.js",
+        "default": "./dist/api/verifications/index.js"
+      },
+      "./background": {
+        "types": "./dist/background/index.d.ts",
+        "workerd": "./dist/background/index.workerd.js",
+        "import": "./dist/background/index.js",
+        "default": "./dist/background/index.js"
+      },
+      "./bucket": {
+        "types": "./dist/bucket/index.d.ts",
+        "workerd": "./dist/bucket/index.workerd.js",
+        "import": "./dist/bucket/index.js",
+        "default": "./dist/bucket/index.js"
+      },
+      "./cache": {
+        "types": "./dist/cache/core/index.d.ts",
+        "workerd": "./dist/cache/core/index.workerd.js",
+        "import": "./dist/cache/core/index.js",
+        "default": "./dist/cache/core/index.js"
+      },
+      "./cache/database": {
+        "types": "./dist/cache/database/index.d.ts",
+        "import": "./dist/cache/database/index.js",
+        "default": "./dist/cache/database/index.js"
+      },
+      "./cache/redis": {
+        "types": "./dist/cache/redis/index.d.ts",
+        "import": "./dist/cache/redis/index.js",
+        "default": "./dist/cache/redis/index.js"
+      },
+      "./captcha": {
+        "types": "./dist/captcha/index.d.ts",
+        "import": "./dist/captcha/index.js",
+        "default": "./dist/captcha/index.js"
+      },
+      "./cli/config": {
+        "types": "./dist/cli/config/index.d.ts",
+        "import": "./dist/cli/config/index.js",
+        "default": "./dist/cli/config/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/core/index.d.ts",
+        "workerd": "./dist/cli/core/index.workerd.js",
+        "import": "./dist/cli/core/index.js",
+        "default": "./dist/cli/core/index.js"
+      },
+      "./cli/devtools": {
+        "types": "./dist/cli/devtools/index.d.ts",
+        "import": "./dist/cli/devtools/index.js",
+        "default": "./dist/cli/devtools/index.js"
+      },
+      "./cli/i18n": {
+        "types": "./dist/cli/i18n/index.d.ts",
+        "import": "./dist/cli/i18n/index.js",
+        "default": "./dist/cli/i18n/index.js"
+      },
+      "./cli/platform": {
+        "types": "./dist/cli/platform/index.d.ts",
+        "import": "./dist/cli/platform/index.js",
+        "default": "./dist/cli/platform/index.js"
+      },
+      "./cli/platform-lib": {
+        "types": "./dist/cli/platform-lib/index.d.ts",
+        "workerd": "./dist/cli/platform-lib/index.workerd.js",
+        "import": "./dist/cli/platform-lib/index.js",
+        "default": "./dist/cli/platform-lib/index.js"
+      },
+      "./cli/vendor": {
+        "types": "./dist/cli/vendor/index.d.ts",
+        "import": "./dist/cli/vendor/index.js",
+        "default": "./dist/cli/vendor/index.js"
+      },
+      "./command": {
+        "types": "./dist/command/index.d.ts",
+        "import": "./dist/command/index.js",
+        "default": "./dist/command/index.js"
+      },
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "react-native": "./dist/core/index.native.js",
+        "workerd": "./dist/core/index.workerd.js",
+        "browser": "./dist/core/index.browser.js",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./crypto": {
+        "types": "./dist/crypto/index.d.ts",
+        "react-native": "./dist/crypto/index.browser.js",
+        "browser": "./dist/crypto/index.browser.js",
+        "import": "./dist/crypto/index.js",
+        "default": "./dist/crypto/index.js"
+      },
+      "./datetime": {
+        "types": "./dist/datetime/index.d.ts",
+        "import": "./dist/datetime/index.js",
+        "default": "./dist/datetime/index.js"
+      },
+      "./email/brevo": {
+        "types": "./dist/email/brevo/index.d.ts",
+        "import": "./dist/email/brevo/index.js",
+        "default": "./dist/email/brevo/index.js"
+      },
+      "./email/cloudflare": {
+        "types": "./dist/email/cloudflare/index.d.ts",
+        "import": "./dist/email/cloudflare/index.js",
+        "default": "./dist/email/cloudflare/index.js"
+      },
+      "./email": {
+        "types": "./dist/email/core/index.d.ts",
+        "workerd": "./dist/email/core/index.workerd.js",
+        "import": "./dist/email/core/index.js",
+        "default": "./dist/email/core/index.js"
+      },
+      "./email/smtp": {
+        "types": "./dist/email/smtp/index.d.ts",
+        "workerd": "./dist/email/smtp/index.workerd.js",
+        "import": "./dist/email/smtp/index.js",
+        "default": "./dist/email/smtp/index.js"
+      },
+      "./lock": {
+        "types": "./dist/lock/core/index.d.ts",
+        "import": "./dist/lock/core/index.js",
+        "default": "./dist/lock/core/index.js"
+      },
+      "./lock/redis": {
+        "types": "./dist/lock/redis/index.d.ts",
+        "import": "./dist/lock/redis/index.js",
+        "default": "./dist/lock/redis/index.js"
+      },
+      "./logger": {
+        "types": "./dist/logger/index.d.ts",
+        "import": "./dist/logger/index.js",
+        "default": "./dist/logger/index.js"
+      },
+      "./mcp": {
+        "types": "./dist/mcp/index.d.ts",
+        "import": "./dist/mcp/index.js",
+        "default": "./dist/mcp/index.js"
+      },
+      "./orm": {
+        "types": "./dist/orm/core/index.d.ts",
+        "react-native": "./dist/orm/core/index.browser.js",
+        "browser": "./dist/orm/core/index.browser.js",
+        "bun": "./dist/orm/core/index.bun.js",
+        "import": "./dist/orm/core/index.js",
+        "default": "./dist/orm/core/index.js"
+      },
+      "./orm/postgres": {
+        "types": "./dist/orm/postgres/index.d.ts",
+        "bun": "./dist/orm/postgres/index.bun.js",
+        "import": "./dist/orm/postgres/index.js",
+        "default": "./dist/orm/postgres/index.js"
+      },
+      "./queue": {
+        "types": "./dist/queue/core/index.d.ts",
+        "workerd": "./dist/queue/core/index.workerd.js",
+        "import": "./dist/queue/core/index.js",
+        "default": "./dist/queue/core/index.js"
+      },
+      "./queue/redis": {
+        "types": "./dist/queue/redis/index.d.ts",
+        "import": "./dist/queue/redis/index.js",
+        "default": "./dist/queue/redis/index.js"
+      },
+      "./react/auth": {
+        "types": "./dist/react/auth/index.d.ts",
+        "react-native": "./dist/react/auth/index.browser.js",
+        "browser": "./dist/react/auth/index.browser.js",
+        "import": "./dist/react/auth/index.js",
+        "default": "./dist/react/auth/index.js"
+      },
+      "./react": {
+        "types": "./dist/react/core/index.d.ts",
+        "import": "./dist/react/core/index.js",
+        "default": "./dist/react/core/index.js"
+      },
+      "./react/email": {
+        "types": "./dist/react/email/index.d.ts",
+        "import": "./dist/react/email/index.js",
+        "default": "./dist/react/email/index.js"
+      },
+      "./react/form": {
+        "types": "./dist/react/form/index.d.ts",
+        "import": "./dist/react/form/index.js",
+        "default": "./dist/react/form/index.js"
+      },
+      "./react/head": {
+        "types": "./dist/react/head/index.d.ts",
+        "react-native": "./dist/react/head/index.browser.js",
+        "browser": "./dist/react/head/index.browser.js",
+        "import": "./dist/react/head/index.js",
+        "default": "./dist/react/head/index.js"
+      },
+      "./react/i18n": {
+        "types": "./dist/react/i18n/index.d.ts",
+        "import": "./dist/react/i18n/index.js",
+        "default": "./dist/react/i18n/index.js"
+      },
+      "./react/intro": {
+        "types": "./dist/react/intro/index.d.ts",
+        "import": "./dist/react/intro/index.js",
+        "default": "./dist/react/intro/index.js"
+      },
+      "./react/router": {
+        "types": "./dist/react/router/index.d.ts",
+        "react-native": "./dist/react/router/index.browser.js",
+        "browser": "./dist/react/router/index.browser.js",
+        "import": "./dist/react/router/index.js",
+        "default": "./dist/react/router/index.js"
+      },
+      "./react/sitemap": {
+        "types": "./dist/react/sitemap/index.d.ts",
+        "react-native": "./dist/react/sitemap/index.browser.js",
+        "browser": "./dist/react/sitemap/index.browser.js",
+        "import": "./dist/react/sitemap/index.js",
+        "default": "./dist/react/sitemap/index.js"
+      },
+      "./react/ui": {
+        "types": "./dist/react/ui/index.d.ts",
+        "import": "./dist/react/ui/index.js",
+        "default": "./dist/react/ui/index.js"
+      },
+      "./react/websocket": {
+        "types": "./dist/react/websocket/index.d.ts",
+        "import": "./dist/react/websocket/index.js",
+        "default": "./dist/react/websocket/index.js"
+      },
+      "./redis": {
+        "types": "./dist/redis/index.d.ts",
+        "bun": "./dist/redis/index.bun.js",
+        "import": "./dist/redis/index.js",
+        "default": "./dist/redis/index.js"
+      },
+      "./router": {
+        "types": "./dist/router/index.d.ts",
+        "import": "./dist/router/index.js",
+        "default": "./dist/router/index.js"
+      },
+      "./scheduler": {
+        "types": "./dist/scheduler/index.d.ts",
+        "workerd": "./dist/scheduler/index.workerd.js",
+        "import": "./dist/scheduler/index.js",
+        "default": "./dist/scheduler/index.js"
+      },
+      "./security": {
+        "types": "./dist/security/index.d.ts",
+        "react-native": "./dist/security/index.browser.js",
+        "browser": "./dist/security/index.browser.js",
+        "import": "./dist/security/index.js",
+        "default": "./dist/security/index.js"
+      },
+      "./server/auth": {
+        "types": "./dist/server/auth/index.d.ts",
+        "react-native": "./dist/server/auth/index.browser.js",
+        "browser": "./dist/server/auth/index.browser.js",
+        "import": "./dist/server/auth/index.js",
+        "default": "./dist/server/auth/index.js"
+      },
+      "./server/cookies": {
+        "types": "./dist/server/cookies/index.d.ts",
+        "react-native": "./dist/server/cookies/index.browser.js",
+        "browser": "./dist/server/cookies/index.browser.js",
+        "import": "./dist/server/cookies/index.js",
+        "default": "./dist/server/cookies/index.js"
+      },
+      "./server": {
+        "types": "./dist/server/core/index.d.ts",
+        "react-native": "./dist/server/core/index.browser.js",
+        "browser": "./dist/server/core/index.browser.js",
+        "import": "./dist/server/core/index.js",
+        "default": "./dist/server/core/index.js"
+      },
+      "./server/cors": {
+        "types": "./dist/server/cors/index.d.ts",
+        "import": "./dist/server/cors/index.js",
+        "default": "./dist/server/cors/index.js"
+      },
+      "./server/etag": {
+        "types": "./dist/server/etag/index.d.ts",
+        "import": "./dist/server/etag/index.js",
+        "default": "./dist/server/etag/index.js"
+      },
+      "./server/links": {
+        "types": "./dist/server/links/index.d.ts",
+        "react-native": "./dist/server/links/index.browser.js",
+        "browser": "./dist/server/links/index.browser.js",
+        "import": "./dist/server/links/index.js",
+        "default": "./dist/server/links/index.js"
+      },
+      "./server/metrics": {
+        "types": "./dist/server/metrics/index.d.ts",
+        "import": "./dist/server/metrics/index.js",
+        "default": "./dist/server/metrics/index.js"
+      },
+      "./server/multipart": {
+        "types": "./dist/server/multipart/index.d.ts",
+        "import": "./dist/server/multipart/index.js",
+        "default": "./dist/server/multipart/index.js"
+      },
+      "./server/proxy": {
+        "types": "./dist/server/proxy/index.d.ts",
+        "import": "./dist/server/proxy/index.js",
+        "default": "./dist/server/proxy/index.js"
+      },
+      "./server/rate-limit": {
+        "types": "./dist/server/rate-limit/index.d.ts",
+        "import": "./dist/server/rate-limit/index.js",
+        "default": "./dist/server/rate-limit/index.js"
+      },
+      "./server/static": {
+        "types": "./dist/server/static/index.d.ts",
+        "import": "./dist/server/static/index.js",
+        "default": "./dist/server/static/index.js"
+      },
+      "./server/swagger": {
+        "types": "./dist/server/swagger/index.d.ts",
+        "import": "./dist/server/swagger/index.js",
+        "default": "./dist/server/swagger/index.js"
+      },
+      "./sms": {
+        "types": "./dist/sms/index.d.ts",
+        "import": "./dist/sms/index.js",
+        "default": "./dist/sms/index.js"
+      },
+      "./system": {
+        "types": "./dist/system/index.d.ts",
+        "react-native": "./dist/system/index.browser.js",
+        "workerd": "./dist/system/index.workerd.js",
+        "browser": "./dist/system/index.browser.js",
+        "import": "./dist/system/index.js",
+        "default": "./dist/system/index.js"
+      },
+      "./testing/faker": {
+        "types": "./dist/testing/faker/index.d.ts",
+        "import": "./dist/testing/faker/index.js",
+        "default": "./dist/testing/faker/index.js"
+      },
+      "./testing/playwright": {
+        "types": "./dist/testing/playwright/index.d.ts",
+        "import": "./dist/testing/playwright/index.js",
+        "default": "./dist/testing/playwright/index.js"
+      },
+      "./testing/react": {
+        "types": "./dist/testing/react/index.d.ts",
+        "import": "./dist/testing/react/index.js",
+        "default": "./dist/testing/react/index.js"
+      },
+      "./testing/vitest": {
+        "types": "./dist/testing/vitest/index.d.ts",
+        "import": "./dist/testing/vitest/index.js",
+        "default": "./dist/testing/vitest/index.js"
+      },
+      "./topic": {
+        "types": "./dist/topic/core/index.d.ts",
+        "import": "./dist/topic/core/index.js",
+        "default": "./dist/topic/core/index.js"
+      },
+      "./topic/redis": {
+        "types": "./dist/topic/redis/index.d.ts",
+        "import": "./dist/topic/redis/index.js",
+        "default": "./dist/topic/redis/index.js"
+      },
+      "./websocket": {
+        "types": "./dist/websocket/index.d.ts",
+        "react-native": "./dist/websocket/index.browser.js",
+        "workerd": "./dist/websocket/index.workerd.js",
+        "browser": "./dist/websocket/index.browser.js",
+        "import": "./dist/websocket/index.js",
+        "default": "./dist/websocket/index.js"
+      },
+      "./tsconfig.base": "./tsconfig.base.json",
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "lint": "alepha lint && yarn build:check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node scripts/build.ts",
+    "build:check": "yarn build --check",
+    "copy": "node scripts/copy-swagger.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "@redis/client": "^6.2.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "cloudflare": "^7.2.0",
+    "dayjs": "^1.11.23",
+    "drizzle-kit": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.4",
+    "magic-string": "^1.4.2",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "postgres": "^3.4.9",
+    "s3mini": "^1.0.2",
+    "typescript": "^7.0.2",
+    "uqr": "^0.1.3",
+    "vite": "^8.3.1",
+    "vite-bundle-analyzer": "^1.3.9",
+    "vitest": "^5.0.2",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260927.1",
+    "@electric-sql/pglite": "^0.5.8",
+    "@faker-js/faker": "^10.6.0",
+    "@prometheus-io/client": "^0.16.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.1",
+    "cron-schedule": "^6.0.0",
+    "jose": "^6.2.12",
+    "jsdom": "^30.1.1",
+    "nodemailer": "^10.0.11",
+    "openid-client": "^6.8.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "swagger-ui-dist": "^5.33.0",
+    "tailwindcss": "^4.3.3",
+    "tsdown": "^0.23.0"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "bun": ">=1.3.0",
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt",
+  "scarfSettings": {
+    "enabled": false
+  }
+}

@@ -1,0 +1,2026 @@
+import { createHash, randomUUID } from "node:crypto";
+
+import { Alepha } from "alepha";
+import { cacheOptions } from "alepha/cache";
+import { DateTimeProvider } from "alepha/datetime";
+import {
+  MemoryDestinationProvider,
+  LogDestinationProvider,
+} from "alepha/logger";
+import { $repository } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $issuer, SecurityProvider, type UserAccount } from "alepha/security";
+import { AlephaServer, ServerProvider } from "alepha/server";
+import { describe, it } from "vitest";
+
+import { OAuthController } from "../controllers/OAuthController.ts";
+import { oauthClientEntity } from "../entities/oauthClientEntity.ts";
+import {
+  type ConsentPageOptions,
+  renderConsentPage,
+} from "../helpers/consentPage.ts";
+import { buildAuthorizationServerMetadata } from "../helpers/oauthMetadata.ts";
+import { AlephaOAuth, oauthOptions } from "../index.ts";
+import {
+  DEVICE_POLL_INTERVAL_SECONDS,
+  DeviceCodeService,
+} from "../services/DeviceCodeService.ts";
+import { OAuthClientService } from "../services/OAuthClientService.ts";
+
+describe("oauth helpers", () => {
+  it("builds AS metadata with absolute endpoints", ({ expect }) => {
+    const m = buildAuthorizationServerMetadata("https://app.com");
+    expect(m.token_endpoint).toBe("https://app.com/oauth/token");
+    expect(m.code_challenge_methods_supported).toEqual(["S256"]);
+  });
+
+  // The token endpoint accepts a `client_secret` in the form body, and this
+  // document advertised `["none"]` alone: it told a conforming confidential
+  // client that its secret would be refused, and contradicted the server's own
+  // OpenID configuration, which has always listed both.
+  it("advertises the auth methods the token endpoint really accepts", ({
+    expect,
+  }) => {
+    const m = buildAuthorizationServerMetadata("https://app.com");
+    expect(m.token_endpoint_auth_methods_supported).toEqual([
+      "none",
+      "client_secret_post",
+    ]);
+    expect(m.grant_types_supported).toContain("refresh_token");
+  });
+
+  it("escapes client name in the consent page", ({ expect }) => {
+    const html = renderConsentPage({
+      clientName: "<script>x</script>",
+      userName: "Bob",
+      scopes: [{ id: "mcp" }],
+      hidden: { client_id: "abc" },
+    });
+    expect(html).not.toContain("<script>x</script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  /**
+   * The consent screen, quest #1322. It used to be a bare card listing a
+   * bullet that read `mcp` - the raw wire token, at somebody about to grant
+   * it.
+   */
+  describe("the consent screen", () => {
+    const render = (options: Partial<ConsentPageOptions> = {}) =>
+      renderConsentPage({
+        clientName: "Claude",
+        userName: "Bob",
+        scopes: [{ id: "mcp" }],
+        hidden: { client_id: "abc" },
+        ...options,
+      });
+
+    it("prints a declared label and description, and keeps the raw id beside them", ({
+      expect,
+    }) => {
+      const html = render({
+        scopes: [
+          {
+            id: "mcp",
+            label: "Projects, quests and folios",
+            description: "Read and manage your projects, quests and folios.",
+          },
+        ],
+      });
+
+      expect(html).toContain("Projects, quests and folios");
+      expect(html).toContain("Read and manage your projects");
+      // The identifier is what the token will carry, so a reader who knows
+      // the protocol can check the copy against it.
+      expect(html).toContain('class="scope-id">mcp<');
+    });
+
+    it("falls back to the raw identifier when the app declared nothing", ({
+      expect,
+    }) => {
+      const html = render({ scopes: [{ id: "mcp" }] });
+
+      expect(html).toContain("mcp");
+      // ...and does not print it twice, once as a label and once as a chip.
+      expect(html).not.toContain('class="scope-id">mcp<');
+    });
+
+    it("says so when nothing beyond sign-in is granted", ({ expect }) => {
+      // An empty intersection is a real outcome, and an empty list reads as a
+      // page that failed to load.
+      expect(render({ scopes: [] })).toContain(
+        "No other access is being granted",
+      );
+    });
+
+    it("names the product being connected to, when the app declared one", ({
+      expect,
+    }) => {
+      expect(render({ productName: "Lore" })).toContain(
+        "wants access to your Lore account",
+      );
+      // ...and never invents one.
+      expect(render()).toContain("wants to connect");
+    });
+
+    /**
+     * The one part of a client's identity the server can vouch for: a
+     * `clientName` is whatever the client registered.
+     */
+    it("shows the host the code will be delivered to", ({ expect }) => {
+      const html = render({ redirectHost: "claude.ai" });
+      expect(html).toContain("claude.ai");
+    });
+
+    it("links revocation only when the app has a page for it", ({ expect }) => {
+      expect(render({ connectionsUrl: "/account/connections" })).toContain(
+        'href="/account/connections"',
+      );
+      expect(render()).not.toContain("revoke this at any time");
+    });
+
+    /**
+     * ⚠️ The constraint the whole file exists under. This page is served to a
+     * browser that has loaded nothing of the app - a native client's popup, an
+     * agent's webview - so a stylesheet link or a font request is a page that
+     * renders unstyled for somebody.
+     */
+    it("requests nothing from the network", ({ expect }) => {
+      const html = render({ productName: "Lore", redirectHost: "claude.ai" });
+
+      expect(html).not.toContain("<script");
+      expect(html).not.toContain("<link");
+      expect(html).not.toContain("http://");
+      expect(html).not.toContain("https://");
+      // Inline, and the only style there is.
+      expect(html).toContain("<style>");
+    });
+
+    it("escapes every value it is handed, not only the client name", ({
+      expect,
+    }) => {
+      const html = render({
+        userName: '"><img src=x onerror=alert(1)>',
+        productName: "<b>Lore</b>",
+        redirectHost: "<i>evil</i>",
+        connectionsUrl: '"><script>x</script>',
+        scopes: [{ id: "<x>", label: "<y>", description: "<z>" }],
+      });
+
+      expect(html).not.toContain("<img src=x");
+      expect(html).not.toContain("<b>Lore</b>");
+      expect(html).not.toContain("<i>evil</i>");
+      expect(html).not.toContain("<script>x</script>");
+      expect(html).not.toContain("<y>");
+      expect(html).not.toContain("<z>");
+    });
+  });
+});
+
+describe("OAuthController", () => {
+  it("serves authorization server metadata with absolute endpoints", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const resp = await fetch(
+      `${hostname}/.well-known/oauth-authorization-server`,
+    );
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.token_endpoint.endsWith("/oauth/token")).toBe(true);
+    expect(body.registration_endpoint.endsWith("/oauth/register")).toBe(true);
+  });
+
+  it("registers a dynamic client and returns a client_id", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Claude",
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+      }),
+    });
+
+    expect(resp.status).toBe(201);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.client_id).toMatch(/^mcp_/);
+  });
+
+  /**
+   * RFC 8252 §7.3 has a native client (a CLI, a desktop MCP client) register
+   * the loopback IP literal. Blight #625 was exactly this registration
+   * turned away, and turned away as a 500.
+   */
+  it("registers a native client on the loopback IP literal", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Native",
+        redirect_uris: ["http://127.0.0.1:39127/callback/1jIsan8OFNhz"],
+      }),
+    });
+
+    expect(resp.status).toBe(201);
+  });
+
+  /**
+   * RFC 7591 §3.2.2: a refused registration is the client's mistake, a 400
+   * with a code it can act on. It used to escape the route as a 500.
+   */
+  it("answers a refused redirect_uri with a 400 and an RFC 7591 body", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Cleartext",
+        redirect_uris: ["http://localhost.example.com/cb"],
+      }),
+    });
+
+    expect(resp.status).toBe(400);
+    expect(resp.headers.get("content-type")).toContain("application/json");
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_redirect_uri");
+    expect(body.error_description).toContain("http://localhost.example.com/cb");
+  });
+
+  /**
+   * Dynamic client registration is unauthenticated by design - a client
+   * discovering this server has no credential yet - which leaves the write
+   * path open: every call creates a row, and nothing bounded how many.
+   */
+  it("throttles a burst of registrations from one address", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const register = () =>
+      fetch(`${hostname}/oauth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Burst",
+          redirect_uris: ["https://example.com/cb"],
+        }),
+      });
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      statuses.push((await register()).status);
+    }
+
+    // A real client registers once and keeps its id, so the budget is small.
+    expect(statuses.filter((s) => s === 201)).toHaveLength(10);
+    // 429, not 400: a caller that waits and retries is doing the right thing,
+    // and only this status tells it so.
+    expect(statuses.filter((s) => s === 429)).toHaveLength(2);
+  });
+});
+
+describe("OAuthController authorize + token", () => {
+  /**
+   * Boot an in-process server with the OAuth module and a "users" issuer
+   * registered with the OAuth client service so the token endpoint can mint
+   * access tokens.
+   */
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+    return { alepha, hostname, service };
+  };
+
+  const registerClient = async (
+    hostname: string,
+    redirectUri: string,
+  ): Promise<string> => {
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Test Client",
+        redirect_uris: [redirectUri],
+      }),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.client_id;
+  };
+
+  it("redirects unauthenticated authorize requests to /login", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const redirectUri = "https://claude.ai/api/mcp/auth_callback";
+    const clientId = await registerClient(hostname, redirectUri);
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_challenge: "x",
+      code_challenge_method: "S256",
+    });
+    const resp = await fetch(`${hostname}/oauth/authorize?${params}`, {
+      redirect: "manual",
+    });
+
+    expect(resp.status).toBe(302);
+    expect(resp.headers.get("location")?.startsWith("/login")).toBe(true);
+  });
+
+  it("rejects authorize requests with an unknown client_id", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: "mcp_unknown",
+      redirect_uri: "https://claude.ai/api/mcp/auth_callback",
+      code_challenge: "x",
+      code_challenge_method: "S256",
+    });
+    const resp = await fetch(`${hostname}/oauth/authorize?${params}`, {
+      redirect: "manual",
+    });
+
+    expect(resp.status).toBe(400);
+    // Never a redirect (RFC 6749 §4.1.2.1), but a page that says what to do:
+    // a client keeping a deleted `client_id` retries into it forever.
+    expect(resp.headers.get("location")).toBeNull();
+    expect(resp.headers.get("content-type")).toContain("text/html");
+    const html = await resp.text();
+    expect(html).toContain("mcp_unknown");
+    expect(html).toContain("Remove the connector");
+  });
+
+  it("advertises the refresh_token grant to a registered client", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "ChatGPT",
+        redirect_uris: ["https://chatgpt.com/connector/oauth/cb"],
+      }),
+    });
+
+    expect(resp.status).toBe(201);
+    const body = (await resp.json()) as { grant_types: string[] };
+    expect(body.grant_types).toEqual(["authorization_code", "refresh_token"]);
+  });
+
+  it("exchanges an authorization code for an access token", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://claude.ai/api/mcp/auth_callback";
+    const clientId = await registerClient(hostname, redirectUri);
+
+    const verifier = "the-code-verifier-value-1234567890";
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const userId = randomUUID();
+
+    const code = await service.createAuthorizationCode("users", {
+      userId,
+      clientId,
+      redirectUri,
+      codeChallenge: challenge,
+      scopes: ["mcp"],
+    });
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(typeof body.access_token).toBe("string");
+    expect(body.access_token.length).toBeGreaterThan(0);
+    expect(body.token_type).toBe("Bearer");
+    expect(body.scope).toBe("mcp");
+  });
+
+  it("rejects an unsupported grant_type on the token endpoint", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("unsupported_grant_type");
+  });
+});
+
+describe("OAuthController refresh_token grant", () => {
+  /**
+   * Boot a server with a **session-backed** issuer (like the platform IdP
+   * realm, which wires `onCreateSession`/`onRefreshSession` via
+   * `alepha/api/users`). Token-only issuers can't refresh through the endpoint
+   * (the old access token isn't carried), so a session store is required to
+   * exercise the refresh grant end-to-end.
+   */
+  const boot = async () => {
+    // refresh_token -> the session row, including the OAuth client it was
+    // minted for. Mirrors `sessions.clientId` in `alepha/api/users`.
+    const sessions = new Map<string, { userId: string; clientId?: string }>();
+
+    class App {
+      issuer = $issuer({
+        name: "users",
+        secret: "test-secret",
+        settings: {
+          onCreateSession: async (user, config) => {
+            const refreshToken = randomUUID();
+            sessions.set(refreshToken, {
+              userId: user.id,
+              clientId: config.clientId,
+            });
+            return { refreshToken, sessionId: randomUUID() };
+          },
+          onRefreshSession: async (refreshToken) => {
+            const session = sessions.get(refreshToken);
+            if (!session) throw new Error("unknown refresh token");
+            return {
+              user: { id: session.userId, roles: [] } as UserAccount,
+              expiresIn: 3600,
+              clientId: session.clientId,
+            };
+          },
+        },
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+    return { alepha, app, hostname, service };
+  };
+
+  const registerClient = async (
+    hostname: string,
+    redirectUri: string,
+  ): Promise<string> => {
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Test Client",
+        redirect_uris: [redirectUri],
+      }),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.client_id;
+  };
+
+  it("re-mints an id_token on the refresh grant for openid clients", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://claude.ai/api/mcp/auth_callback";
+    const clientId = await registerClient(hostname, redirectUri);
+
+    const verifier = "the-code-verifier-value-1234567890";
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const userId = randomUUID();
+
+    // 1) authorization_code exchange → access + refresh + id token.
+    const code = await service.createAuthorizationCode("users", {
+      userId,
+      clientId,
+      redirectUri,
+      codeChallenge: challenge,
+      scopes: ["openid"],
+    });
+    const tokenResp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      }).toString(),
+    });
+    expect(tokenResp.status).toBe(200);
+    const tokenBody = (await tokenResp.json()) as Record<string, string>;
+    expect(typeof tokenBody.refresh_token).toBe("string");
+    expect(typeof tokenBody.id_token).toBe("string");
+
+    // 2) refresh_token grant — MUST return a fresh id_token so an id_token-based
+    //    relying party (the stateless Club RP forwards the id_token as Bearer)
+    //    actually renews its identity, not just the access token.
+    const refreshResp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: tokenBody.refresh_token,
+        client_id: clientId,
+      }).toString(),
+    });
+    expect(refreshResp.status).toBe(200);
+    const refreshBody = (await refreshResp.json()) as Record<string, string>;
+    expect(typeof refreshBody.access_token).toBe("string");
+    expect(refreshBody.token_type).toBe("Bearer");
+    expect(typeof refreshBody.id_token).toBe("string");
+  });
+
+  /**
+   * Run a full authorization_code exchange and return the refresh token the
+   * grant issued, so a test can then present it on the refresh branch.
+   */
+  const mintRefreshToken = async (
+    hostname: string,
+    service: OAuthClientService,
+    clientId: string,
+    redirectUri: string,
+    clientSecret?: string,
+  ): Promise<string> => {
+    const verifier = "the-code-verifier-value-1234567890";
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const code = await service.createAuthorizationCode("users", {
+      userId: randomUUID(),
+      clientId,
+      redirectUri,
+      codeChallenge: challenge,
+      scopes: ["openid"],
+    });
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+        ...(clientSecret ? { client_secret: clientSecret } : {}),
+      }).toString(),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.refresh_token;
+  };
+
+  const decodeJwtPayload = (jwt: string): Record<string, unknown> =>
+    JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString());
+
+  it("refuses a refresh token minted for a different client", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const victimRedirect = "https://victim.example/cb";
+    const victimClient = await registerClient(hostname, victimRedirect);
+    const attackerClient = await registerClient(
+      hostname,
+      "https://attacker.example/cb",
+    );
+
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      victimClient,
+      victimRedirect,
+    );
+
+    // The attacker presents someone else's refresh token under their own
+    // client_id. Unbound, this mints an id_token whose `aud` is the attacker's
+    // client — which any RP that forwards id_tokens as Bearer will accept.
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: attackerClient,
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_grant");
+    expect(body.id_token).toBeUndefined();
+  });
+
+  it("requires the client secret to refresh a confidential client", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://confidential.example/cb";
+    const client = await service.register({
+      realm: "users",
+      clientName: "Confidential Client",
+      redirectUris: [redirectUri],
+      scopes: ["openid"],
+      type: "confidential",
+      secret: "the-client-secret",
+    });
+
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      client.clientId,
+      redirectUri,
+      "the-client-secret",
+    );
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: client.clientId,
+        client_secret: "wrong-secret",
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(401);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+  });
+
+  it("refuses a refresh request from an unknown client", async ({ expect }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://known.example/cb";
+    const clientId = await registerClient(hostname, redirectUri);
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      clientId,
+      redirectUri,
+    );
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: "mcp_does_not_exist",
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+  });
+
+  it("keeps the id_token audience bound to the authenticated client", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://known.example/cb";
+    const clientId = await registerClient(hostname, redirectUri);
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      clientId,
+      redirectUri,
+    );
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(decodeJwtPayload(body.id_token).aud).toBe(clientId);
+  });
+
+  /**
+   * The device grant, as `lore login` runs it: a client id no table holds,
+   * approved through the service the approval page calls, then polled once.
+   * `pollAs` is the client id the poll names, which a well-behaved device
+   * keeps equal to the one it started as.
+   */
+  const mintDeviceRefreshToken = async (
+    alepha: Alepha,
+    hostname: string,
+    userId: string,
+    pollAs = "alepha-cli",
+  ): Promise<string> => {
+    const start = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: "alepha-cli",
+        scope: "cli",
+      }).toString(),
+    });
+    const { device_code, user_code } = (await start.json()) as Record<
+      string,
+      string
+    >;
+    await alepha.inject(DeviceCodeService).decide(user_code, "approve", userId);
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code,
+        client_id: pollAs,
+      }).toString(),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.refresh_token;
+  };
+
+  const refresh = (hostname: string, refreshToken: string, clientId: string) =>
+    fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }).toString(),
+    });
+
+  /**
+   * #Q2387. The device grant never asks for a registration, so this used to
+   * answer `invalid_client`, and a `lore login` lasted one access token.
+   */
+  it("refreshes a device-grant session under the unregistered client it is bound to", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const userId = randomUUID();
+    const refreshToken = await mintDeviceRefreshToken(alepha, hostname, userId);
+    expect(typeof refreshToken).toBe("string");
+
+    const resp = await refresh(hostname, refreshToken, "alepha-cli");
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(decodeJwtPayload(body.access_token).sub).toBe(userId);
+    expect(body.refresh_token).toBe(refreshToken);
+    // The device grant issued none, and no relying party registered this
+    // audience.
+    expect(body.id_token).toBeUndefined();
+  });
+
+  it("refuses a device-grant refresh under another unregistered client id", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+    );
+
+    const resp = await refresh(hostname, refreshToken, "some-other-cli");
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+    expect(body.access_token).toBeUndefined();
+  });
+
+  it("refuses a device-grant refresh presented under a registered client", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const registered = await registerClient(
+      hostname,
+      "https://registered.example/cb",
+    );
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+    );
+
+    const resp = await refresh(hostname, refreshToken, registered);
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_grant");
+    expect(body.id_token).toBeUndefined();
+  });
+
+  /**
+   * #Q2388, the same attack one step earlier: the device names the
+   * registered client on the poll rather than on the refresh. The session
+   * used to be bound to that client, so the refresh above let it through
+   * with an id_token whose `aud` was the registered client.
+   */
+  it("gives a device that polls as a registered client no session to refresh", async ({
+    expect,
+  }) => {
+    const { alepha, hostname } = await boot();
+    const registered = await registerClient(
+      hostname,
+      "https://registered.example/cb",
+    );
+
+    const refreshToken = await mintDeviceRefreshToken(
+      alepha,
+      hostname,
+      randomUUID(),
+      registered,
+    );
+
+    expect(refreshToken).toBeUndefined();
+  });
+
+  /**
+   * ⚠️ The property a registered-client requirement used to give for free: a
+   * session with no OAuth client (an ordinary sign-in) is not refreshable
+   * here, whatever unregistered id the request names.
+   */
+  it("refuses to refresh a session that no OAuth grant created", async ({
+    expect,
+  }) => {
+    const { app, hostname } = await boot();
+    const { refresh_token } = await app.issuer.createToken({
+      id: randomUUID(),
+      roles: [],
+    } as UserAccount);
+
+    const resp = await refresh(hostname, refresh_token ?? "", "alepha-cli");
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+    expect(body.access_token).toBeUndefined();
+  });
+
+  it("refuses a refresh that names no client at all", async ({ expect }) => {
+    const { app, hostname } = await boot();
+    const { refresh_token } = await app.issuer.createToken({
+      id: randomUUID(),
+      roles: [],
+    } as UserAccount);
+
+    const resp = await refresh(hostname, refresh_token ?? "", "");
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+  });
+});
+
+describe("OAuth consent cannot be skipped by the request", () => {
+  /**
+   * Same shape as the authorize+token boot, but the `App` instance is returned
+   * so a test can mint a genuine access token for an already-logged-in victim.
+   */
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+    return { alepha, app, hostname, service };
+  };
+
+  const authorize = async (
+    hostname: string,
+    accessToken: string,
+    params: Record<string, string>,
+  ) => {
+    const query = new URLSearchParams({
+      response_type: "code",
+      code_challenge: "x",
+      code_challenge_method: "S256",
+      ...params,
+    });
+    return fetch(`${hostname}/oauth/authorize?${query}`, {
+      redirect: "manual",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+  };
+
+  it("answers consent_required when an untrusted client asks for prompt=none", async ({
+    expect,
+  }) => {
+    const { app, hostname, service } = await boot();
+    const redirectUri = "https://evil.example/cb";
+    const client = await service.register({
+      realm: "users",
+      clientName: "Registered By Anyone",
+      redirectUris: [redirectUri],
+      scopes: ["mcp"],
+    });
+    // The victim is logged into the AS — the cookie is Lax, so it rides along
+    // on a cross-site top-level GET and the user resolves.
+    const { access_token } = await app.issuer.createToken({
+      id: "victim-user-id",
+      roles: [],
+    } as UserAccount);
+
+    const resp = await authorize(hostname, access_token, {
+      client_id: client.clientId,
+      redirect_uri: redirectUri,
+      prompt: "none",
+      state: "s1",
+    });
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    // prompt=none means "do not show UI", never "consent is granted".
+    expect(location.searchParams.get("code")).toBeNull();
+    expect(location.searchParams.get("error")).toBe("consent_required");
+    expect(location.searchParams.get("state")).toBe("s1");
+  });
+
+  it("still skips consent for a trusted first-party client", async ({
+    expect,
+  }) => {
+    const { app, hostname, service } = await boot();
+    const redirectUri = "https://app.alepha.club/auth/callback";
+    const client = await service.register({
+      realm: "users",
+      clientName: "First Party",
+      redirectUris: [redirectUri],
+      scopes: ["openid"],
+      trusted: true,
+    });
+    const { access_token } = await app.issuer.createToken({
+      id: "user-1",
+      roles: [],
+    } as UserAccount);
+
+    const resp = await authorize(hostname, access_token, {
+      client_id: client.clientId,
+      redirect_uri: redirectUri,
+    });
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    expect(location.searchParams.get("code")).toBeTruthy();
+  });
+});
+
+describe("OAuth bearer tokens are access tokens only", () => {
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    return { alepha, app, service };
+  };
+
+  const resolve = (alepha: Alepha, token: string) =>
+    alepha.inject(SecurityProvider).resolveUserFromServerRequest({
+      url: new URL("https://app.com/mcp"),
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+  it("refuses an authorization code presented as a Bearer token", async ({
+    expect,
+  }) => {
+    const { alepha, service } = await boot();
+
+    const code = await service.createAuthorizationCode("users", {
+      userId: "victim-user-id",
+      clientId: "mcp_x",
+      redirectUri: "https://evil.example/cb",
+      codeChallenge: "x",
+      scopes: ["mcp"],
+    });
+
+    // Seeing a code — browser history, Referer, proxy logs — must not be
+    // enough to act as its subject. Otherwise PKCE protects nothing: the
+    // attacker never has to reach /oauth/token at all.
+    expect(await resolve(alepha, code)).toBeUndefined();
+  });
+
+  it("refuses an id_token presented as a Bearer token", async ({ expect }) => {
+    const { alepha, service } = await boot();
+
+    const idToken = await service.issueIdToken("users", {
+      userId: "victim-user-id",
+      clientId: "mcp_x",
+      issuer: "https://app.com",
+    });
+
+    expect(await resolve(alepha, idToken)).toBeUndefined();
+  });
+
+  it("still accepts a genuine access token", async ({ expect }) => {
+    const { alepha, app } = await boot();
+
+    const { access_token } = await app.issuer.createToken({
+      id: "user-1",
+      roles: [],
+    } as UserAccount);
+
+    expect((await resolve(alepha, access_token))?.id).toBe("user-1");
+  });
+});
+
+describe("device authorization grant", () => {
+  const boot = async () => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+    return alepha;
+  };
+
+  it("advertises the grant so a device can discover it", async ({ expect }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const meta = await fetch(
+      `${hostname}/.well-known/oauth-authorization-server`,
+    ).then((r) => r.json());
+
+    // Discovered rather than configured into every client.
+    expect(meta.device_authorization_endpoint).toBe(
+      `${hostname}/oauth/device_authorization`,
+    );
+    expect(meta.grant_types_supported).toContain(
+      "urn:ietf:params:oauth:grant-type:device_code",
+    );
+  });
+
+  it("issues a code pair and a verification URI a human can use", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const res = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: "cli", scope: "openid" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.user_code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    // A page this module serves itself (#Q2217). It used to advertise
+    // `/device`, which nothing served, so no code could ever be approved.
+    expect(body.verification_uri).toBe(`${hostname}/oauth/device`);
+    // RFC 8628 §3.3.1 — the same page with the code filled in, for anyone who
+    // can follow a link. The plain URI stays, for anyone who cannot.
+    expect(body.verification_uri_complete).toContain("user_code=");
+    expect(body.interval).toBeGreaterThan(0);
+    expect(body.expires_in).toBeGreaterThan(0);
+  });
+
+  it("tells a polling device to keep waiting, in the words RFC 8628 defines", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const start = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: "cli" }),
+    }).then((r) => r.json());
+
+    const res = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code: start.device_code,
+        client_id: "cli",
+      }),
+    });
+    expect(res.status).toBe(400);
+    // A correct client branches on this exact string; anything friendlier would
+    // make it unimplementable.
+    expect((await res.json()).error).toBe("authorization_pending");
+  });
+
+  it("refuses an unknown device code as expired, saying nothing more", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const res = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code: "made-up",
+        client_id: "cli",
+      }),
+    });
+    // Not "no such code": that would confirm which codes ever existed.
+    expect((await res.json()).error).toBe("expired_token");
+  });
+});
+
+/**
+ * The human half of the device grant, #Q2217.
+ *
+ * This module shipped the device's half - start, poll - and advertised a
+ * verification page it did not serve. The CLI's own specs fake the server, so
+ * nothing ever approved a code for real, and `lore login` could only ever
+ * expire. These drive the approval through the page, then poll as the device
+ * would.
+ */
+describe("device approval page", () => {
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+      /**
+       * Nothing on the service revokes a client: revocation is a column
+       * other code writes.
+       */
+      oauthClients = $repository(oauthClientEntity);
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+      productName: "Lore",
+      scopes: {
+        mcp: {
+          label: "Your projects",
+          description: "Read and manage your projects.",
+        },
+      },
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const clients = alepha.inject(OAuthClientService);
+    clients.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+
+    /**
+     * A client somebody registered, which a device may try to pass itself
+     * off as.
+     */
+    const registerClient = async (
+      secret?: string,
+      clientName = "Registered Client",
+    ) => {
+      const client = await clients.register({
+        realm: "users",
+        clientName,
+        type: secret ? "confidential" : "public",
+        secret,
+        redirectUris: ["https://registered.example/cb"],
+        scopes: ["mcp"],
+      });
+      return client.clientId;
+    };
+
+    const revokeClient = async (clientId: string) => {
+      const row = await app.oauthClients.findOne({
+        where: { clientId: { eq: clientId } },
+      });
+      await app.oauthClients.updateById(row!.id, {
+        revokedAt: new Date().toISOString(),
+      });
+    };
+
+    /**
+     * A signed-in human, as the page sees one.
+     */
+    const session = async (id: string) => {
+      const { access_token } = await app.issuer.createToken({
+        id,
+        name: "Bob",
+        roles: [],
+      } as UserAccount);
+      return access_token;
+    };
+
+    /**
+     * What `lore login` does first.
+     */
+    const start = async (clientId = "alepha-cli", secret?: string) => {
+      const res = await fetch(`${hostname}/oauth/device_authorization`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: secret,
+          scope: "mcp",
+        }),
+      });
+      return (await res.json()) as {
+        device_code: string;
+        user_code: string;
+        verification_uri: string;
+        verification_uri_complete: string;
+      };
+    };
+
+    /**
+     * What `lore login` does next, until it is let through.
+     */
+    const poll = async (
+      deviceCode: string,
+      clientId = "alepha-cli",
+      secret?: string,
+    ) => {
+      const res = await fetch(`${hostname}/oauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+          device_code: deviceCode,
+          client_id: clientId,
+          client_secret: secret,
+        }),
+      });
+      return { status: res.status, body: await res.json() };
+    };
+
+    /**
+     * The page, opened in a browser.
+     */
+    const open = (path: string, token?: string) =>
+      fetch(`${hostname}${path}`, {
+        redirect: "manual",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+
+    /**
+     * A click on Allow or Deny: a form post, from the page's own origin.
+     */
+    const answer = (
+      userCode: string,
+      decision: "allow" | "deny",
+      options: { token?: string; origin?: string | null } = {},
+    ) => {
+      const headers: Record<string, string> = {
+        "content-type": "application/x-www-form-urlencoded",
+      };
+      if (options.token) headers.authorization = `Bearer ${options.token}`;
+      const origin = options.origin === undefined ? hostname : options.origin;
+      if (origin) headers.origin = origin;
+      return fetch(`${hostname}/oauth/device`, {
+        method: "POST",
+        redirect: "manual",
+        headers,
+        body: new URLSearchParams({ user_code: userCode, decision }).toString(),
+      });
+    };
+
+    /**
+     * A device honours the poll interval; a test has to as well, or the
+     * second poll is a `slow_down` rather than the answer.
+     */
+    const waitInterval = () =>
+      alepha
+        .inject(DateTimeProvider)
+        .travel([DEVICE_POLL_INTERVAL_SECONDS + 1, "seconds"]);
+
+    return {
+      hostname,
+      session,
+      start,
+      poll,
+      open,
+      answer,
+      waitInterval,
+      registerClient,
+      revokeClient,
+    };
+  };
+
+  const decodeJwt = (jwt: string) =>
+    JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString());
+
+  it("authenticates confidential clients before starting a device flow", async ({
+    expect,
+  }) => {
+    const { hostname, registerClient } = await boot();
+    const clientId = await registerClient("correct-secret");
+    for (const secret of [undefined, "wrong-secret", "correct-secret"]) {
+      const response = await fetch(`${hostname}/oauth/device_authorization`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: clientId, client_secret: secret }),
+      });
+      const body = await response.json();
+      if (secret === "correct-secret") {
+        expect(response.status).toBe(200);
+        expect(body.device_code).toBeTruthy();
+      } else {
+        expect(response.status).toBe(401);
+        expect(body).toEqual({ error: "invalid_client" });
+      }
+    }
+  });
+
+  it("rejects missing and wrong device secrets without spending an approved code", async ({
+    expect,
+  }) => {
+    const { registerClient, start, session, answer, poll } = await boot();
+    const clientId = await registerClient("correct-secret");
+    const { device_code, user_code } = await start(clientId, "correct-secret");
+    await answer(user_code, "allow", { token: await session("user-1") });
+
+    for (const secret of [undefined, "wrong-secret"]) {
+      const refused = await poll(device_code, clientId, secret);
+      expect(refused.status).toBe(401);
+      expect(refused.body).toEqual({ error: "invalid_client" });
+    }
+    const granted = await poll(device_code, clientId, "correct-secret");
+    expect(granted.status).toBe(200);
+    expect(decodeJwt(granted.body.access_token).client_id).toBe(clientId);
+    expect(
+      (await poll(device_code, clientId, "correct-secret")).body.error,
+    ).toBe("expired_token");
+  });
+
+  it("advertises a verification URI that answers", async ({ expect }) => {
+    const { hostname, session, start, open } = await boot();
+    const { verification_uri } = await start();
+
+    const res = await open(
+      verification_uri.slice(hostname.length),
+      await session("user-1"),
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it("sends a signed-out visitor through login and back to the same page", async ({
+    expect,
+  }) => {
+    const { open } = await boot();
+
+    const res = await open("/oauth/device?user_code=CDFG-HJKM");
+
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location") ?? "", "http://x");
+    expect(location.pathname).toBe("/login");
+    // The same parameter `/oauth/authorize` uses, so an app's login page
+    // needs one bridge for both.
+    expect(location.searchParams.get("redirect_uri")).toBe(
+      "/oauth/device?user_code=CDFG-HJKM",
+    );
+  });
+
+  it("asks for the code when the link carried none", async ({ expect }) => {
+    const { session, open } = await boot();
+
+    const res = await open("/oauth/device", await session("user-1"));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain('name="user_code"');
+    expect(html).not.toContain('value="allow"');
+  });
+
+  it("shows the code to check against the device before anything is granted", async ({
+    expect,
+  }) => {
+    const { session, start, open } = await boot();
+    const { user_code, verification_uri_complete } = await start();
+
+    const res = await open(
+      new URL(verification_uri_complete).pathname +
+        new URL(verification_uri_complete).search,
+      await session("user-1"),
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain(user_code);
+    expect(html).toContain("Client-provided ID");
+    expect(html).toContain("alepha-cli");
+    // What the device will get, in the app's own words.
+    expect(html).toContain("Your projects");
+    // Who is granting it, so a wrong-account grant is caught before it happens.
+    expect(html).toContain("Bob");
+    expect(html).toContain('value="allow"');
+    expect(html).toContain('value="deny"');
+  });
+
+  it("shows the name claimed by the registered client that started the flow", async ({
+    expect,
+  }) => {
+    const { registerClient, start, open, session } = await boot();
+    const id = await registerClient(undefined, "<b>Claimed Tool</b>");
+    const { user_code } = await start(id);
+    const response = await open(
+      `/oauth/device?user_code=${user_code}`,
+      await session("user-1"),
+    );
+    const html = await response.text();
+    expect(html).toContain("Client-provided name");
+    expect(html).toContain("&lt;b&gt;Claimed Tool&lt;/b&gt;");
+    expect(html).not.toContain("<b>Claimed Tool</b>");
+    expect(html).toContain("has not been verified");
+  });
+
+  it("refuses a code it does not know, without saying whether it ever existed", async ({
+    expect,
+  }) => {
+    const { session, open } = await boot();
+
+    const res = await open(
+      "/oauth/device?user_code=XXXX-XXXX",
+      await session("user-1"),
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("not valid, has expired, or has already been used");
+    expect(html).not.toContain('value="allow"');
+  });
+
+  it("hands the device a token for the account that approved it", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer, waitInterval } = await boot();
+    const { device_code, user_code } = await start();
+
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+
+    const res = await answer(user_code, "allow", {
+      token: await session("user-1"),
+    });
+    expect(res.status).toBe(200);
+
+    await waitInterval();
+    const granted = await poll(device_code);
+    expect(granted.status).toBe(200);
+    expect(granted.body.scope).toBe("mcp");
+    expect(decodeJwt(granted.body.access_token).sub).toBe("user-1");
+    expect(decodeJwt(granted.body.access_token).client_id).toBe("alepha-cli");
+  });
+
+  it("tells the device access_denied when the human says no", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "deny", {
+      token: await session("user-1"),
+    });
+    expect(res.status).toBe(200);
+
+    expect((await poll(device_code)).body.error).toBe("access_denied");
+  });
+
+  it("does not let a second answer overwrite the first", async ({ expect }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+    const token = await session("user-1");
+
+    await answer(user_code, "deny", { token });
+    const second = await answer(user_code, "allow", { token });
+
+    expect(await second.text()).toContain("has already been used");
+    expect((await poll(device_code)).body.error).toBe("access_denied");
+  });
+
+  it("refuses an answer from a visitor with no session", async ({ expect }) => {
+    const { start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "allow");
+
+    expect(res.status).toBe(401);
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+  });
+
+  /**
+   * ⚠️ The attack this page exists to survive. A device code has no PKCE
+   * binding, so a forged Allow does not produce something useless: it hands
+   * the ATTACKER's device a token for the victim's account. The victim only
+   * has to load a page that posts the attacker's code.
+   */
+  it("refuses an answer posted from another origin", async ({ expect }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "allow", {
+      token: await session("victim"),
+      origin: "https://evil.example",
+    });
+
+    expect(res.status).toBe(403);
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+  });
+
+  it("refuses an answer that names no origin at all", async ({ expect }) => {
+    const { session, start, poll, answer } = await boot();
+    const { device_code, user_code } = await start();
+
+    const res = await answer(user_code, "allow", {
+      token: await session("victim"),
+      origin: null,
+    });
+
+    expect(res.status).toBe(403);
+    expect((await poll(device_code)).body.error).toBe("authorization_pending");
+  });
+
+  /**
+   * #Q2388. The human approved `alepha-cli`; a poll naming a registered
+   * client used to get a session bound to that client, which the refresh
+   * grant then honoured with an id_token whose `aud` was that client.
+   */
+  it("refuses a device that polls as a client it did not start as", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer, waitInterval, registerClient } =
+      await boot();
+    const registered = await registerClient();
+    const { device_code, user_code } = await start();
+    await answer(user_code, "allow", { token: await session("user-1") });
+
+    const refused = await poll(device_code, registered);
+
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toBe("invalid_grant");
+    expect(refused.body.access_token).toBeUndefined();
+    // Spent, like any code that has been answered: presenting it wrongly is
+    // not a free first try.
+    await waitInterval();
+    expect((await poll(device_code)).body.error).toBe("expired_token");
+  });
+
+  /**
+   * A flow started with no `client_id` is recorded under the default one,
+   * and a poll naming none is held to the same default rather than refused:
+   * otherwise the default at the start would only ever produce a code that
+   * cannot be redeemed.
+   */
+  it("binds a flow that named no client to the default one", async ({
+    expect,
+  }) => {
+    const { hostname, session, answer } = await boot();
+    const start = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "mcp" }),
+    });
+    const { device_code, user_code } = (await start.json()) as Record<
+      string,
+      string
+    >;
+    await answer(user_code, "allow", { token: await session("user-1") });
+
+    const res = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, string>;
+    expect(decodeJwt(body.access_token).client_id).toBe("cli");
+  });
+
+  it("refuses a device grant for a client revoked since the flow started", async ({
+    expect,
+  }) => {
+    const { session, start, poll, answer, registerClient, revokeClient } =
+      await boot();
+    const registered = await registerClient();
+    const { device_code, user_code } = await start(registered);
+    await answer(user_code, "allow", { token: await session("user-1") });
+    await revokeClient(registered);
+
+    const refused = await poll(device_code, registered);
+
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toBe("invalid_client");
+    expect(refused.body.access_token).toBeUndefined();
+  });
+});
+
+/**
+ * The two ways the DCR rate limiter used to disappear without saying so.
+ *
+ * Dynamic client registration is unauthenticated by design, so this limiter
+ * is the only thing between an open write path and an unbounded row count.
+ * Both bypasses were silent, which is what made them worth a quest: the
+ * control was absent and looked present.
+ */
+describe("OAuthController — the DCR limiter cannot silently disappear", () => {
+  const boot = async (
+    env?: Record<string, string | boolean>,
+    cache?: object,
+  ) => {
+    // The substitution goes FIRST: the container refuses one for a service
+    // something has already used, and the modules below inject the logger.
+    const alepha = Alepha.create(env ? { env } : undefined)
+      .with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      })
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    if (cache) alepha.set(cacheOptions, cache as any);
+    await alepha.start();
+    return alepha;
+  };
+
+  const register = (hostname: string, name: string) =>
+    fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: name,
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+      }),
+    });
+
+  it("refuses the eleventh registration from one address", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    for (let n = 0; n < 10; n++) {
+      expect((await register(hostname, `Client ${n}`)).status).toBe(201);
+    }
+
+    // The window is fifteen minutes and the counter is created with it, so
+    // the eleventh is refused rather than sliding.
+    const refused = await register(hostname, "Client 11");
+    expect(refused.status).toBe(429);
+  });
+
+  it("counts a registration with no client address, and says so", ({
+    expect,
+  }) => {
+    // Reached directly: a request over a real socket always has a connection
+    // IP, so no HTTP test can produce the `undefined` this branch exists for.
+    class TestOAuthController extends OAuthController {
+      public testBucket = this.registrationBucket.bind(this);
+    }
+
+    const alepha = Alepha.create()
+      .with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      })
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    const controller = alepha.inject(TestOAuthController);
+    const logs = alepha.inject(MemoryDestinationProvider);
+
+    expect(controller.testBucket("203.0.113.7")).toBe("203.0.113.7");
+    expect(logs.logs.filter((l) => l.level === "WARN")).toHaveLength(0);
+
+    // Bucketed, not exempted — the old code returned early and counted
+    // nothing at all.
+    expect(controller.testBucket(undefined)).toBe("unknown");
+    const warnings = logs.logs.filter((l) => l.level === "WARN");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toContain("TRUST_PROXY");
+  });
+
+  it("refuses registration in production when the cache is disabled", async ({
+    expect,
+  }) => {
+    // `incr` answers 1 from a disabled cache, which is indistinguishable from
+    // a first call — so without asking, the endpoint would serve an unlimited
+    // registration path and report success.
+    // Two more env vars, both about getting a production container to boot
+    // at all rather than about the limiter: production refuses the built-in
+    // `APP_SECRET`, and it refuses to push a schema, which this app has no
+    // migrations for. Neither is reached — the 503 fires before any query.
+    const alepha = await boot(
+      {
+        NODE_ENV: "production",
+        APP_SECRET: "a-strong-unique-secret",
+        DATABASE_SYNC: false,
+      },
+      { enabled: false },
+    );
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const resp = await register(hostname, "Claude");
+    expect(resp.status).toBe(503);
+  });
+
+  it("warns but still registers outside production with the cache disabled", async ({
+    expect,
+  }) => {
+    // A developer running with caching off must not be blocked; only a
+    // production deploy is refused.
+    const alepha = await boot(undefined, { enabled: false });
+    const { hostname } = alepha.inject(ServerProvider);
+    const logs = alepha.inject(MemoryDestinationProvider);
+
+    const resp = await register(hostname, "Claude");
+    expect(resp.status).toBe(201);
+    expect(
+      logs.logs.some(
+        (l) => l.level === "WARN" && l.message.includes("unbounded"),
+      ),
+    ).toBe(true);
+  });
+});
+
+/**
+ * #Q2514: once the application declares its scopes, an unknown scope or an
+ * empty grant is refused at the door, instead of reaching the resolver,
+ * which used to read both as an unrestricted token.
+ */
+describe("OAuthController fails closed on scopes", () => {
+  const boot = async () => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+      scopes: {
+        mcp: { label: "Projects", permissions: ["project:read"] },
+        cli: { label: "Terminal", permissions: ["project:read"] },
+      },
+    });
+    await alepha.start();
+    const { hostname } = alepha.inject(ServerProvider);
+    return { hostname };
+  };
+
+  const register = (hostname: string, body: Record<string, unknown>) =>
+    fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Scoped Client",
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+        ...body,
+      }),
+    });
+
+  const startDevice = (hostname: string, form: Record<string, string>) =>
+    fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(form).toString(),
+    });
+
+  it("refuses to register a client for a scope nobody declared", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+
+    const resp = await register(hostname, { scope: "mcp admin" });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client_metadata");
+    expect(body.error_description).toContain("admin");
+  });
+
+  it("answers invalid_scope when no requested scope is one the client holds", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+    const redirectUri = "https://claude.ai/api/mcp/auth_callback";
+    const created = (await (await register(hostname, {})).json()) as Record<
+      string,
+      string
+    >;
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: created.client_id,
+      redirect_uri: redirectUri,
+      code_challenge: "x",
+      code_challenge_method: "S256",
+      scope: "admin",
+      state: "s1",
+    });
+    const resp = await fetch(`${hostname}/oauth/authorize?${params}`, {
+      redirect: "manual",
+    });
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    expect(`${location.origin}${location.pathname}`).toBe(redirectUri);
+    expect(location.searchParams.get("error")).toBe("invalid_scope");
+    expect(location.searchParams.get("state")).toBe("s1");
+  });
+
+  it("refuses a device flow naming no scope, or an undeclared one", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+
+    for (const scope of ["", "admin", "cli admin"]) {
+      const resp = await startDevice(hostname, {
+        client_id: "alepha-cli",
+        scope,
+      });
+      expect(resp.status).toBe(400);
+      expect(((await resp.json()) as { error: string }).error).toBe(
+        "invalid_scope",
+      );
+    }
+
+    const ok = await startDevice(hostname, {
+      client_id: "alepha-cli",
+      scope: "cli",
+    });
+    expect(ok.status).toBe(200);
+  });
+});

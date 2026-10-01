@@ -1,0 +1,364 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+import { $inject, $store, z } from "alepha";
+import { $command } from "alepha/command";
+import { $logger } from "alepha/logger";
+
+import {
+  changelogOptions,
+  DEFAULT_TYPES,
+} from "../../atoms/changelogOptions.ts";
+import { GitMessageParser } from "../../services/GitMessageParser.ts";
+
+export {
+  type ChangelogOptions,
+  changelogOptions,
+  DEFAULT_IGNORE,
+  DEFAULT_TYPES,
+} from "../../atoms/changelogOptions.ts";
+export { GitMessageParser } from "../../services/GitMessageParser.ts";
+
+// =============================================================================
+// GIT PROVIDER
+// =============================================================================
+
+/**
+ * Git provider for executing git commands.
+ * Can be substituted in tests with a mock implementation.
+ *
+ * Takes an argv array so user-supplied refs (`--from`/`--to`) can never be
+ * interpreted by a shell.
+ */
+export class GitProvider {
+  protected readonly execFileAsync = promisify(execFile);
+
+  async exec(args: string[], cwd: string): Promise<string> {
+    const { stdout } = await this.execFileAsync("git", args, { cwd });
+    return stdout;
+  }
+}
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+export interface Commit {
+  hash: string;
+  type: string;
+  scope: string | null;
+  description: string;
+  breaking: boolean;
+  /**
+   * What the commit body said it breaks, one entry per declared item.
+   * Empty when the break was flagged by a `!` or by the word in the
+   * subject, which say THAT something broke and never what.
+   */
+  breakingNotes: string[];
+}
+
+interface ChangelogSection {
+  type: string;
+  title: string;
+  commits: Commit[];
+}
+
+// =============================================================================
+// CHANGELOG COMMAND
+// =============================================================================
+
+/**
+ * Changelog command for generating release notes from git commits.
+ *
+ * Usage:
+ * - `alepha gen changelog` - Show unreleased changes since latest tag to HEAD
+ * - `alepha gen changelog --from=1.0.0` - Show changes from version to HEAD
+ * - `alepha gen changelog --from=1.0.0 --to=1.1.0` - Show changes between two refs
+ * - `alepha gen changelog | tee -a CHANGELOG.md` - Append to file
+ */
+export class ChangelogCommand {
+  /**
+   * Heading for a commit type. A type with no entry here is titled from its own
+   * name, so configuring one that nobody anticipated still produces a section
+   * rather than an empty string.
+   */
+  protected readonly sectionTitles: Record<string, string> = {
+    feat: "Features",
+    fix: "Bug Fixes",
+    perf: "Performance",
+    refactor: "Refactors",
+    docs: "Documentation",
+    revert: "Reverts",
+  };
+
+  protected readonly log = $logger();
+  protected readonly git = $inject(GitProvider);
+  protected readonly parser = $inject(GitMessageParser);
+  protected readonly config = $store(changelogOptions);
+
+  // ---------------------------------------------------------------------------
+  // FORMATTING
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Format a single commit line.
+   * Example: `- **cli**: add new command (\`abc1234\`)`
+   * Breaking changes are flagged: `- **cli**: add new command [BREAKING] (\`abc1234\`)`
+   */
+  protected formatCommit(commit: Commit): string {
+    const breaking = commit.breaking ? " [BREAKING]" : "";
+    return `- **${commit.scope}**: ${this.escapeMarkdown(commit.description)}${breaking} (\`${commit.hash}\`)`;
+  }
+
+  /**
+   * A commit subject made safe to print as a CommonMark bullet: every `\`
+   * and `*` escaped, and every `_` that could open or close emphasis, all
+   * outside backtick code spans, which are left exactly as written.
+   *
+   * ## ⚠️ Why a subject cannot go in raw
+   *
+   * `MCP grows app_instance_*, and sigil_* keeps working` holds a valid
+   * emphasis span, `*, and sigil_*`, so CommonMark reads the two globs as one
+   * italic run. oxfmt then normalises that emphasis to `_` on every
+   * `yarn lint`, and the line became `app_instance__, and sigil__`: silently,
+   * on every run, sitting in the working tree for a careless `git add` to
+   * sweep up (#Q2292). An escaped `\*` is a literal star to CommonMark and
+   * to oxfmt alike, so the line renders as written and survives the
+   * formatter.
+   *
+   * An intraword `_` (`snake_case_name`) is left alone: CommonMark never
+   * reads it as emphasis, and escaping it would only make the file harder to
+   * read. Backslashes are escaped first so an existing `\*` in a subject
+   * stays a backslash followed by a star.
+   *
+   * ## ⚠️ Why an `@word` goes in a code span
+   *
+   * This output is the GitHub release body, and GitHub turns every `@name`
+   * in it into a mention and lists that account under the release's
+   * Contributors: `@file values on flags` put the organization `file` there
+   * (#Q2494). A backslash does not stop it, `\@file` is still a mention;
+   * only a code span does. `@alepha/ui` is left as written, since an
+   * `@org/name` is a team reference rather than a mention, and so is an
+   * address (`ni@example.com`), which GitHub never links.
+   *
+   * The docs changelog page shows subjects as plain text, so `gen-tree.ts`
+   * undoes the escapes when it reads the file.
+   */
+  public escapeMarkdown(text: string): string {
+    // A capturing split keeps the code spans, at the odd indices.
+    return text
+      .split(/(`[^`]*`)/)
+      .map((part, index) =>
+        index % 2 === 1
+          ? part
+          : part
+              .replace(/\\/g, "\\\\")
+              .replace(/\*/g, "\\*")
+              .replace(/(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])/g, "\\_")
+              .replace(
+                /(?<![A-Za-z0-9._/-])@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?![A-Za-z0-9/-])/g,
+                "`$&`",
+              ),
+      )
+      .join("");
+  }
+
+  /**
+   * Format the changelog entry with sections, in configured type order.
+   */
+  protected formatEntry(entry: ChangelogSection[]): string {
+    const lines: string[] = [];
+
+    // Breaking changes first, and as their own section rather than a
+    // suffix. A `[BREAKING]` tag on one line among forty is not something a
+    // reader of a release announcement finds, which is the whole point of
+    // flagging it — the suffix stays on the commit line too, so the section
+    // says what broke and the line says where.
+    const breaking = entry
+      .flatMap((section) => section.commits)
+      .filter((commit) => commit.breaking);
+
+    if (breaking.length > 0) {
+      lines.push("### Breaking Changes\n");
+      for (const commit of breaking) {
+        // A commit flagged by `!` alone declared no prose, so name it by
+        // its subject rather than printing an empty bullet.
+        const notes = commit.breakingNotes.length
+          ? commit.breakingNotes
+          : [commit.description];
+        for (const note of notes) {
+          lines.push(
+            `- **${commit.scope}**: ${this.escapeMarkdown(note)} (\`${commit.hash}\`)`,
+          );
+        }
+      }
+      lines.push("");
+    }
+
+    for (const section of entry) {
+      if (section.commits.length === 0) continue;
+
+      lines.push(`### ${section.title}\n`);
+      for (const commit of section.commits) {
+        lines.push(this.formatCommit(commit));
+      }
+      lines.push("");
+    }
+
+    return lines.join("\n");
+  }
+
+  // ---------------------------------------------------------------------------
+  // PARSING
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Parse git log output into a changelog entry.
+   *
+   * One section per configured type, in the order they were configured — the
+   * parser has already refused everything else, so a commit that arrives here
+   * always has a section to land in.
+   */
+  protected parseCommits(commitsOutput: string): ChangelogSection[] {
+    const types = this.config.types ?? DEFAULT_TYPES;
+    const sections: ChangelogSection[] = types.map((type) => ({
+      type,
+      title: this.sectionTitles[type] ?? type[0].toUpperCase() + type.slice(1),
+      commits: [],
+    }));
+
+    for (const record of commitsOutput.split("\x1e")) {
+      if (!record.trim()) continue;
+
+      const commit = this.parser.parseCommit(
+        record.replace(/^\n/, ""),
+        this.config,
+      );
+      if (!commit) {
+        this.log.trace("Skipping commit", { record });
+        continue;
+      }
+
+      this.log.trace("Parsed commit", { commit });
+
+      // Breaking flag is preserved on the commit itself.
+      const section = sections.find((it) => it.type === commit.type);
+      section?.commits.push(commit);
+    }
+
+    return sections;
+  }
+
+  /**
+   * Check if entry has any public commits.
+   */
+  protected hasChanges(entry: ChangelogSection[]): boolean {
+    return entry.some((section) => section.commits.length > 0);
+  }
+
+  /**
+   * Get the latest version tag.
+   */
+  protected async getLatestTag(
+    git: (args: string[]) => Promise<string>,
+  ): Promise<string | null> {
+    const tagsOutput = await git(["tag", "--sort=-version:refname"]);
+    const tags = tagsOutput
+      .trim()
+      .split("\n")
+      .find((tag) => tag.match(/^\d+\.\d+\.\d+$/));
+
+    return tags || null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // COMMAND
+  // ---------------------------------------------------------------------------
+
+  public readonly command = $command({
+    name: "changelog",
+    description:
+      "Generate changelog from conventional commits (outputs to stdout)",
+    flags: z.object({
+      /**
+       * Show changes from this ref (tag, commit, branch).
+       * Defaults to the latest version tag.
+       * Example: --from=1.0.0
+       */
+      from: z
+        .string()
+        .meta({ aliases: ["f"] })
+        .describe("Starting ref (default: latest tag)")
+        .optional(),
+      /**
+       * Show changes up to this ref (tag, commit, branch).
+       * Defaults to HEAD.
+       * Example: --to=main
+       */
+      to: z
+        .string()
+        .meta({ aliases: ["t"] })
+        .describe("Ending ref (default: HEAD)")
+        .optional(),
+    }),
+    handler: async ({ flags, root }) => {
+      const git = (args: string[]) => this.git.exec(args, root);
+
+      // Determine the starting point
+      let fromRef: string;
+
+      if (flags.from) {
+        // User specified a ref
+        fromRef = flags.from;
+        this.log.debug("Using specified from ref", { from: fromRef });
+      } else {
+        // Use latest tag
+        const latestTag = await this.getLatestTag(git);
+        if (!latestTag) {
+          process.stdout.write("No version tags found in repository\n");
+          return;
+        }
+        fromRef = latestTag;
+        this.log.debug("Using latest tag", { from: fromRef });
+      }
+
+      // Determine the ending point
+      const toRef = flags.to || "HEAD";
+      this.log.debug("Using to ref", { to: toRef });
+
+      // Get commits in range
+      // NOT `--oneline`, which is subject-only. Breaking changes are
+      // declared in the BODY — by the conventional-commits footer, and in
+      // this repository by a bare "Breaking changes" heading — so a
+      // subject-only log cannot see any of them. Over 0.27.0..HEAD that
+      // meant a release with five declared breaks generated an entry with
+      // no [BREAKING] flag at all.
+      //
+      // \x1e (ASCII record separator) rather than a newline, because a body
+      // is multi-line and the parse loop splits records apart.
+      const commitsOutput = await git([
+        "log",
+        `${fromRef}..${toRef}`,
+        "--pretty=format:%h %s%n%b%x1e",
+      ]);
+
+      if (!commitsOutput.trim()) {
+        process.stdout.write(`No changes in range ${fromRef}..${toRef}\n`);
+        return;
+      }
+
+      // Parse and format
+      const entry = this.parseCommits(commitsOutput);
+
+      if (!this.hasChanges(entry)) {
+        process.stdout.write(
+          `No public changes in range ${fromRef}..${toRef}\n`,
+        );
+        return;
+      }
+
+      // Output the formatted changelog (no header - caller adds it if needed)
+      process.stdout.write(this.formatEntry(entry));
+    },
+  });
+}

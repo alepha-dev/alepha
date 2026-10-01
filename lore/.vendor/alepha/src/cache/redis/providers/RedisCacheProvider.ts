@@ -1,0 +1,151 @@
+import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
+import { CacheProvider } from "alepha/cache";
+import { $logger } from "alepha/logger";
+import { RedisProvider } from "alepha/redis";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Redis cache configuration atom.
+ */
+export const redisCacheOptions = $atom({
+  name: "alepha.cache.redis.options",
+  schema: z.object({
+    prefix: z
+      .text({
+        description:
+          "Prefix for all cache keys in Redis. Useful for testing or multi-tenant applications.",
+      })
+      .optional(),
+  }),
+  default: {},
+  serverOnly: true,
+});
+
+export type RedisCacheOptions = Infer<typeof redisCacheOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [redisCacheOptions.key]: RedisCacheOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class RedisCacheProvider extends CacheProvider {
+  protected readonly log = $logger();
+  protected readonly redisProvider = $inject(RedisProvider);
+  protected readonly options = $store(redisCacheOptions);
+  protected readonly alepha = $inject(Alepha);
+
+  public async get(name: string, key: string): Promise<Uint8Array | undefined> {
+    if (!this.alepha.isStarted()) {
+      return;
+    }
+
+    const keyWithPrefix = this.prefix(name, this.escapeKey(key));
+    const buffer = await this.redisProvider.get(keyWithPrefix);
+    if (!buffer) {
+      return;
+    }
+
+    this.log.debug(`Cache hit`, {
+      size: buffer.byteLength,
+      key: keyWithPrefix,
+    });
+
+    return new Uint8Array(buffer);
+  }
+
+  public async set(
+    name: string,
+    key: string,
+    value: Uint8Array | string,
+    ttl?: number,
+  ): Promise<Uint8Array> {
+    // Started, not ready: a write issued from a start hook must land, the
+    // client is open by then. Gating on ready() silently dropped it.
+    if (!this.alepha.isStarted()) {
+      return new Uint8Array(Buffer.from(value));
+    }
+
+    const buffer = Buffer.from(value);
+    const prefix = this.prefix(name, this.escapeKey(key));
+
+    if (ttl) {
+      return new Uint8Array(
+        await this.redisProvider.set(prefix, buffer, {
+          expiration: { type: "PX", value: ttl },
+        }),
+      );
+    }
+
+    return new Uint8Array(await this.redisProvider.set(prefix, buffer));
+  }
+
+  public async del(name: string, ...keys: string[]): Promise<void> {
+    const nameKey = this.prefix(name);
+
+    if (keys.length === 0) {
+      const matched = this.ownKeys(
+        `${nameKey}:`,
+        await this.redisProvider.keys(`${nameKey}:*`),
+      );
+      if (matched.length > 0) {
+        await this.redisProvider.del(matched);
+      }
+      return;
+    }
+
+    // Caller-side keys, always. This used to accept either form and guess
+    // between them with `key.startsWith(nameKey)`, because `keys()` handed
+    // back storage keys; now that it does not, there is one form and no
+    // guess - and a caller whose own key happened to start with the
+    // container prefix is no longer silently mistaken for a storage key.
+    const prefixed = keys.map((key) => this.prefix(name, this.escapeKey(key)));
+    if (prefixed.length > 0) {
+      await this.redisProvider.del(prefixed);
+    }
+  }
+
+  public async has(name: string, key: string): Promise<boolean> {
+    return this.redisProvider.has(this.prefix(name, this.escapeKey(key)));
+  }
+
+  public async keys(name: string, filter?: string): Promise<string[]> {
+    const prefix = `${this.prefix(name)}:`;
+    const pattern = filter
+      ? `${prefix}${this.escapeKey(filter)}*`
+      : `${prefix}*`;
+    return this.callerKeys(prefix, await this.redisProvider.keys(pattern));
+  }
+
+  public async clear(): Promise<void> {
+    this.log.debug("Clearing all cache");
+    const pattern = `${this.prefix()}:*`;
+    const keys = await this.redisProvider.keys(pattern);
+    if (keys.length > 0) {
+      await this.redisProvider.del(keys);
+    }
+  }
+
+  public async incr(
+    name: string,
+    key: string,
+    amount: number,
+    ttl?: number,
+  ): Promise<number> {
+    const keyWithPrefix = this.prefix(name, this.escapeKey(key));
+    return this.redisProvider.incr(keyWithPrefix, amount, ttl);
+  }
+
+  protected prefix(...path: string[]): string {
+    const parts = ["cache", ...path];
+
+    if (this.options.prefix) {
+      parts.unshift(this.options.prefix);
+    }
+
+    return parts.join(":");
+  }
+}

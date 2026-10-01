@@ -1,0 +1,798 @@
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
+
+/**
+ * Options for syncing vendored packages from a remote repository.
+ */
+export interface VendorSyncOptions {
+  root: string;
+  remote: string;
+  branch: string;
+  dir: string;
+  packages: string[];
+  force?: boolean;
+  /**
+   * Whether synced packages get built and their manifests pointed at `dist`
+   * (see {@link VendorService.build}). When `false` the local manifests stay
+   * as the remote committed them, so the baseline is compared untransformed.
+   *
+   * @default true
+   */
+  build?: boolean;
+}
+
+/**
+ * Result of a vendor sync operation.
+ */
+export interface VendorSyncResult {
+  synced: string[];
+  errors: string[];
+  aborted?: VendorDiffResult;
+}
+
+/**
+ * Options for building vendored packages in place, after the consumer has
+ * installed them.
+ */
+export interface VendorBuildOptions {
+  root: string;
+  dir: string;
+  packages: string[];
+  /**
+   * The consumer's package manager, e.g. `yarn`. The build runs as
+   * `<pm> run build` with the package directory as the working directory,
+   * which every package manager spells the same way - unlike the
+   * `--workspace` / `--filter` flags, which none of them agree on.
+   */
+  packageManager: string;
+}
+
+/**
+ * Result of building vendored packages.
+ */
+export interface VendorBuildResult {
+  built: string[];
+  /**
+   * Packages with no `build` script. Not an error: a vendored package that
+   * ships no build is already loadable as whatever it is.
+   */
+  skipped: string[];
+  errors: string[];
+}
+
+/**
+ * Options for diffing vendored packages against a remote repository.
+ */
+export interface VendorDiffOptions {
+  root: string;
+  remote: string;
+  branch: string;
+  dir: string;
+  packages: string[];
+  /**
+   * Whether synced packages get built and their manifests pointed at `dist`
+   * (see {@link VendorService.build}). When `false` the local manifests stay
+   * as the remote committed them, so the baseline is compared untransformed.
+   *
+   * @default true
+   */
+  build?: boolean;
+}
+
+/**
+ * A single line change within a modified file.
+ */
+export interface VendorLineDiff {
+  line: number;
+  type: "added" | "removed";
+  text: string;
+}
+
+/**
+ * A modified file with its line-level changes.
+ */
+export interface VendorFileDiff {
+  file: string;
+  changes: VendorLineDiff[];
+}
+
+/**
+ * Diff result for a single vendored package.
+ */
+export interface VendorPackageDiff {
+  name: string;
+  added: string[];
+  modified: VendorFileDiff[];
+  removed: string[];
+}
+
+/**
+ * Result of a vendor diff operation.
+ */
+export interface VendorDiffResult {
+  packages: VendorPackageDiff[];
+  totalChanges: number;
+}
+
+/**
+ * Shape of the `<dir>/vendor.json` lock file (where `<dir>` is the
+ * configured vendor directory, defaulting to `.vendor`).
+ */
+export interface VendorLock {
+  /**
+   * Git remote URL the vendored sources were synced from. Recorded so any
+   * downstream tool (AI agent, CI script) can re-fetch without needing the
+   * project's `alepha.config.ts`.
+   */
+  remote: string;
+  /**
+   * Commit hash of the synced sources.
+   */
+  commit: string;
+}
+
+/**
+ * Handles syncing and diffing vendored packages from a remote git repository.
+ */
+export class VendorService {
+  /**
+   * Parent directory of vendored packages on the remote. Hardcoded because the
+   * Alepha monorepo lays its packages out under `packages/` and the vendor
+   * tool only targets that layout.
+   */
+  protected readonly remoteDir = "packages";
+
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly log = $logger();
+  protected readonly shell = $inject(ShellProvider);
+  protected readonly fs = $inject(FileSystemProvider);
+
+  /**
+   * Sync vendored packages from a remote repository.
+   *
+   * Without `force`: checks for local modifications by comparing the local
+   * copy against the last-synced commit (stored in `<dir>/vendor.json`).
+   * If modifications are found, aborts without touching local files.
+   *
+   * With `force` (or first sync): replaces local copies unconditionally.
+   */
+  async sync(options: VendorSyncOptions): Promise<VendorSyncResult> {
+    const synced: string[] = [];
+    const errors: string[] = [];
+
+    if (!options.force) {
+      const lock = await this.readLock(options.root, options.dir);
+
+      if (lock) {
+        let baselineDir: string | undefined;
+        try {
+          baselineDir = await this.cloneAtCommit(options.remote, lock.commit);
+          const diffResult = await this.diffFromClone(
+            options.root,
+            baselineDir,
+            options.dir,
+            options.packages,
+            options.build ?? true,
+          );
+
+          if (diffResult.totalChanges > 0) {
+            return { synced: [], errors: [], aborted: diffResult };
+          }
+        } finally {
+          if (baselineDir) {
+            await this.fs.rm(baselineDir, { recursive: true, force: true });
+          }
+        }
+      }
+    }
+
+    let tmpDir: string | undefined;
+
+    try {
+      tmpDir = await this.cloneRemote(options.remote, options.branch);
+
+      for (const pkg of options.packages) {
+        const remotePkgDir = this.fs.join(tmpDir, this.remoteDir, pkg);
+        const localPkgDir = this.fs.join(options.root, options.dir, pkg);
+
+        const remoteExists = await this.fs.exists(remotePkgDir);
+        if (!remoteExists) {
+          errors.push(`Package "${pkg}" not found in remote`);
+          continue;
+        }
+
+        this.log.debug(`Syncing package: ${pkg}`);
+
+        await this.fs.rm(localPkgDir, { recursive: true, force: true });
+        await this.fs.cp(remotePkgDir, localPkgDir, { recursive: true });
+        await this.removeIgnoredFiles(localPkgDir);
+
+        synced.push(pkg);
+      }
+
+      const commit = await this.getCommitHash(tmpDir);
+      await this.writeLock(options.root, options.dir, {
+        remote: options.remote,
+        commit,
+      });
+    } finally {
+      if (tmpDir) {
+        await this.fs.rm(tmpDir, { recursive: true, force: true });
+      }
+    }
+
+    return { synced, errors };
+  }
+
+  /**
+   * Diff vendored packages against the last-synced commit.
+   *
+   * Reads the commit hash from `<dir>/vendor.json`, clones at that commit,
+   * and compares local files to detect modifications since last sync.
+   */
+  async diff(options: VendorDiffOptions): Promise<VendorDiffResult> {
+    const lock = await this.readLock(options.root, options.dir);
+    if (!lock) {
+      return { packages: [], totalChanges: 0 };
+    }
+
+    let tmpDir: string | undefined;
+
+    try {
+      tmpDir = await this.cloneAtCommit(options.remote, lock.commit);
+      return await this.diffFromClone(
+        options.root,
+        tmpDir,
+        options.dir,
+        options.packages,
+        options.build ?? true,
+      );
+    } finally {
+      if (tmpDir) {
+        await this.fs.rm(tmpDir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  /**
+   * Diff local packages against an already-cloned remote.
+   */
+  protected async diffFromClone(
+    root: string,
+    tmpDir: string,
+    dir: string,
+    packages: string[],
+    build = true,
+  ): Promise<VendorDiffResult> {
+    const results: VendorPackageDiff[] = [];
+    let totalChanges = 0;
+
+    for (const pkg of packages) {
+      const remotePkgDir = this.fs.join(tmpDir, this.remoteDir, pkg);
+      const localPkgDir = this.fs.join(root, dir, pkg);
+
+      const remoteExists = await this.fs.exists(remotePkgDir);
+      const localExists = await this.fs.exists(localPkgDir);
+
+      if (!remoteExists && !localExists) {
+        results.push({ name: pkg, added: [], modified: [], removed: [] });
+        continue;
+      }
+
+      if (!remoteExists) {
+        // No baseline = everything local was added by user
+        const localFiles = await this.fs.ls(localPkgDir, { recursive: true });
+        results.push({
+          name: pkg,
+          added: localFiles,
+          modified: [],
+          removed: [],
+        });
+        totalChanges += localFiles.length;
+        continue;
+      }
+
+      if (!localExists) {
+        // Baseline exists but local doesn't = user deleted everything
+        const remoteFiles = await this.fs.ls(remotePkgDir, { recursive: true });
+        results.push({
+          name: pkg,
+          added: [],
+          modified: [],
+          removed: remoteFiles,
+        });
+        totalChanges += remoteFiles.length;
+        continue;
+      }
+
+      // ⚠️ The baseline gets the same `publishConfig` transform the local
+      // copy was given after its build, or every synced package would report
+      // its own `package.json` as a local modification and abort the next
+      // sync. Comparing like with like: a REAL edit to `package.json` - a
+      // changed dependency, a patched script - still shows, because the
+      // transform touches only the keys `publishConfig` names. The clone is
+      // a throwaway temp directory, so mutating it costs nothing. A project
+      // that syncs with `build: false` never transformed its copy, so its
+      // baseline is compared as committed.
+      if (build) {
+        await this.applyPublishConfig(remotePkgDir);
+      }
+
+      const result = await this.diffDirectories(localPkgDir, remotePkgDir);
+      const pkgChanges =
+        result.added.length + result.modified.length + result.removed.length;
+      totalChanges += pkgChanges;
+
+      results.push({
+        name: pkg,
+        added: result.added,
+        modified: result.modified,
+        removed: result.removed,
+      });
+    }
+
+    return { packages: results, totalChanges };
+  }
+
+  /**
+   * Build each vendored package in place, then make it resolve to what it
+   * built.
+   *
+   * ## Why a vendored package has to be built at all
+   *
+   * `alepha vendor sync` copies the framework's **source**. Anything loading
+   * `alepha/*` through Vite is fine, because Vite transforms it; anything
+   * loading it OUTSIDE Vite gets raw TypeScript, and Node's loader cannot
+   * cope. Two failures, and the second has no flag behind it:
+   *
+   * - `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` on a parameter property, which
+   *   strip-only mode refuses because it is a declaration plus an assignment
+   *   rather than an annotation to erase. (A lint rule bans those in `src/`
+   *   now, which is the other half of #Q2150.)
+   * - `ERR_UNKNOWN_FILE_EXTENSION` on `.tsx`, which Node refuses outright:
+   *   JSX needs a transform, not an erasure. `alepha/react`'s barrel
+   *   re-exports fifteen `.tsx` files across seven sub-barrels, `AlephaProvider`
+   *   among them, so **any published package importing `alepha/react` is
+   *   unloadable in a project that vendors the framework.** `@alepha/lore` is
+   *   the first to do it and will not be the last.
+   *
+   * A published `alepha` never sees either, and the reason is `publishConfig`
+   * rather than `files`: the repository's own `exports` map points at
+   * `./src/**\/*.ts`, and `publishConfig.exports` overrides all 78 entries to
+   * `./dist/**\/*.js` at publish time. A vendored checkout is a git clone, so
+   * it gets the committed map and no `dist`. **It is the only shape of this
+   * package that resolves to TypeScript.**
+   *
+   * ## Why in the consumer rather than in the clone
+   *
+   * The clone has no `node_modules`, so building there means
+   * `install && build` on a whole monorepo per sync - minutes of network and
+   * CPU. The consumer, by contrast, declares `.vendor/alepha` and
+   * `.vendor/@alepha/*` as **workspaces**, so its own install has already
+   * placed every devDependency the build needs, `tsdown` included. This runs
+   * after that install and costs one build.
+   *
+   * ⚠️ **Order matters.** `packages/alepha`'s build GENERATES its own
+   * `exports` map, pointing at `src`, so the transform has to come after the
+   * build or the build undoes it.
+   *
+   * ## Why no package tsconfig extends the monorepo root
+   *
+   * In the consumer, `.vendor/alepha/../../tsconfig.json` is the CONSUMER's
+   * root config: no `allowImportingTsExtensions`, and possibly
+   * `exactOptionalPropertyTypes` or `noUncheckedIndexedAccess`. So every
+   * package tsconfig extends `alepha/tsconfig.base` (or, in `alepha` itself,
+   * `./tsconfig.base.json`), which travels with the package (#Q2490).
+   *
+   * A package that fails to build is returned in `errors`, and
+   * `alepha vendor sync` exits non-zero on it: its manifest still points at
+   * `src`, which is the state this build exists to prevent.
+   */
+  async build(options: VendorBuildOptions): Promise<VendorBuildResult> {
+    const built: string[] = [];
+    const skipped: string[] = [];
+    const errors: string[] = [];
+
+    for (const pkg of options.packages) {
+      const pkgDir = this.fs.join(options.root, options.dir, pkg);
+      const manifest = await this.readManifest(pkgDir);
+
+      if (!manifest?.scripts?.build) {
+        skipped.push(pkg);
+        continue;
+      }
+
+      try {
+        this.log.debug(`Building vendored package: ${pkg}`);
+        await this.shell.run([options.packageManager, "run", "build"], {
+          root: pkgDir,
+        });
+        await this.applyPublishConfig(pkgDir);
+        built.push(pkg);
+      } catch (error) {
+        errors.push(
+          `Failed to build "${pkg}": ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    return { built, skipped, errors };
+  }
+
+  /**
+   * Fold a package's `publishConfig` into its manifest, so a vendored copy
+   * resolves the way a published one does.
+   *
+   * ⚠️ **`publishConfig` is kept, not consumed.** That makes the transform
+   * idempotent, which is what lets `diffFromClone` apply it to the baseline
+   * and get a byte-identical answer.
+   *
+   * Returns whether anything changed, so a caller can stay quiet about a
+   * package that declares no `publishConfig`.
+   */
+  protected async applyPublishConfig(pkgDir: string): Promise<boolean> {
+    const manifest = await this.readManifest(pkgDir);
+    const publishConfig = manifest?.publishConfig;
+
+    if (!manifest || !publishConfig || typeof publishConfig !== "object") {
+      return false;
+    }
+
+    const merged = { ...manifest, ...publishConfig };
+    const next = `${JSON.stringify(merged, null, 2)}\n`;
+    const current = `${JSON.stringify(manifest, null, 2)}\n`;
+
+    if (next === current) {
+      return false;
+    }
+
+    await this.fs.writeFile(this.fs.join(pkgDir, "package.json"), next);
+    return true;
+  }
+
+  /**
+   * A package's manifest, or `undefined` when there is none to read.
+   *
+   * Unreadable and unparseable are the same answer on purpose: both mean
+   * "there is nothing here to build or rewrite", and a vendor sync must not
+   * die on one malformed package it was asked to copy.
+   */
+  protected async readManifest(
+    pkgDir: string,
+  ): Promise<Record<string, any> | undefined> {
+    try {
+      const content = await this.fs.readFile(
+        this.fs.join(pkgDir, "package.json"),
+      );
+      return JSON.parse(content.toString());
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Remove test files and ignored directories from a synced package.
+   */
+  protected async removeIgnoredFiles(pkgDir: string): Promise<void> {
+    const allFiles = await this.fs.ls(pkgDir, { recursive: true });
+
+    // Remove ignored files.
+    //
+    // ⚠️ `tsdown.config.ts` is NOT among them, and used to be. A vendored
+    // package now builds itself in place (see `build()`), and
+    // `@alepha/ui`'s build script is a bare `tsdown` that reads exactly that
+    // file - stripping it left a package whose own `build` could not run.
+    // It stays in `isIgnored`, so it is still invisible to the diff.
+    for (const file of allFiles) {
+      if (
+        file.endsWith(".spec.ts") ||
+        file.endsWith(".spec.tsx") ||
+        file === "LICENSE"
+      ) {
+        await this.fs.rm(this.fs.join(pkgDir, file), { force: true });
+      }
+    }
+
+    // Remove ignored directories (find all occurrences at any depth)
+    for (const file of allFiles) {
+      for (const ignored of this.ignoredPaths) {
+        if (
+          file === ignored ||
+          file.startsWith(`${ignored}/`) ||
+          file.includes(`/${ignored}/`) ||
+          file.endsWith(`/${ignored}`)
+        ) {
+          // Extract the path to the ignored directory itself. By segment,
+          // not by substring: `redist/dist/x.js` must resolve to `redist/dist`,
+          // not to the `redist` that merely contains the word.
+          const segments = file.split("/");
+          const depth = segments.indexOf(ignored);
+          const dirPath = this.fs.join(
+            pkgDir,
+            segments.slice(0, depth + 1).join("/"),
+          );
+          await this.fs.rm(dirPath, { recursive: true, force: true });
+        }
+      }
+    }
+  }
+
+  /**
+   * Clone a remote repository into a temporary directory.
+   */
+  protected async cloneRemote(remote: string, branch: string): Promise<string> {
+    const tmpDir = this.fs.join(
+      process.env.TMPDIR || "/tmp",
+      `.alepha-vendor-${this.dateTime.nowMillis()}`,
+    );
+
+    this.log.debug(`Cloning ${remote}#${branch} into ${tmpDir}`);
+
+    const output = await this.shell.run(
+      [
+        "git",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        branch,
+        "--filter=blob:none",
+        remote,
+        tmpDir,
+      ],
+      { capture: true },
+    );
+
+    if (output) {
+      this.log.debug(output);
+    }
+
+    return tmpDir;
+  }
+
+  /**
+   * Clone a remote repository at a specific commit hash.
+   */
+  protected async cloneAtCommit(
+    remote: string,
+    commit: string,
+  ): Promise<string> {
+    const tmpDir = this.fs.join(
+      process.env.TMPDIR || "/tmp",
+      `.alepha-vendor-${this.dateTime.nowMillis()}`,
+    );
+
+    this.log.debug(`Cloning ${remote}@${commit} into ${tmpDir}`);
+
+    await this.shell.run(["git", "init", tmpDir], { capture: true });
+    await this.shell.run(
+      ["git", "-C", tmpDir, "remote", "add", "origin", remote],
+      { capture: true },
+    );
+    await this.shell.run(
+      ["git", "-C", tmpDir, "fetch", "--depth", "1", "origin", commit],
+      { capture: true },
+    );
+    await this.shell.run(["git", "-C", tmpDir, "checkout", "FETCH_HEAD"], {
+      capture: true,
+    });
+
+    return tmpDir;
+  }
+
+  /**
+   * Get the HEAD commit hash from a cloned repository.
+   */
+  protected async getCommitHash(repoDir: string): Promise<string> {
+    const hash = await this.shell.run(
+      ["git", "-C", repoDir, "rev-parse", "HEAD"],
+      { capture: true },
+    );
+    return hash.trim();
+  }
+
+  /**
+   * Read the vendor lock file at `<root>/<dir>/vendor.json`.
+   */
+  protected async readLock(
+    root: string,
+    dir: string,
+  ): Promise<VendorLock | undefined> {
+    const lockPath = this.fs.join(root, dir, "vendor.json");
+    const exists = await this.fs.exists(lockPath);
+    if (!exists) {
+      return undefined;
+    }
+    const content = await this.fs.readFile(lockPath);
+    return JSON.parse(content.toString());
+  }
+
+  /**
+   * Write the vendor lock file to `<root>/<dir>/vendor.json`.
+   */
+  protected async writeLock(
+    root: string,
+    dir: string,
+    lock: VendorLock,
+  ): Promise<void> {
+    const vendorDir = this.fs.join(root, dir);
+    await this.fs.mkdir(vendorDir, { recursive: true });
+    await this.fs.writeFile(
+      this.fs.join(vendorDir, "vendor.json"),
+      JSON.stringify(lock, null, 2),
+    );
+  }
+
+  /**
+   * Directories to ignore during diff comparisons.
+   */
+  protected readonly ignoredPaths = [
+    "__tests__",
+    "assets/swagger-ui",
+    "node_modules",
+    "dist",
+  ];
+
+  /**
+   * Check if a file path should be ignored during diff.
+   */
+  protected isIgnored(filePath: string): boolean {
+    if (
+      filePath.endsWith(".spec.ts") ||
+      filePath.endsWith(".spec.tsx") ||
+      filePath === "LICENSE" ||
+      filePath === "tsdown.config.ts"
+    ) {
+      return true;
+    }
+    return this.ignoredPaths.some(
+      (p) =>
+        filePath === p ||
+        filePath.startsWith(`${p}/`) ||
+        filePath.includes(`/${p}/`) ||
+        filePath.endsWith(`/${p}`),
+    );
+  }
+
+  /**
+   * Recursively compare two directories and return the differences.
+   */
+  protected async diffDirectories(
+    localDir: string,
+    remoteDir: string,
+  ): Promise<{
+    added: string[];
+    modified: VendorFileDiff[];
+    removed: string[];
+  }> {
+    const added: string[] = [];
+    const modified: VendorFileDiff[] = [];
+    const removed: string[] = [];
+
+    const [localFiles, remoteFiles] = await Promise.all([
+      this.fs.ls(localDir, { recursive: true }),
+      this.fs.ls(remoteDir, { recursive: true }),
+    ]);
+
+    const filteredLocal = localFiles.filter((f) => !this.isIgnored(f));
+    const filteredRemote = remoteFiles.filter((f) => !this.isIgnored(f));
+
+    const localSet = new Set(filteredLocal);
+    const remoteSet = new Set(filteredRemote);
+
+    // Files in baseline but not local = user deleted them
+    for (const file of filteredRemote) {
+      if (!localSet.has(file)) {
+        removed.push(file);
+        continue;
+      }
+
+      try {
+        const [localContent, remoteContent] = await Promise.all([
+          this.fs.readFile(this.fs.join(localDir, file)),
+          this.fs.readFile(this.fs.join(remoteDir, file)),
+        ]);
+
+        if (!localContent.equals(remoteContent)) {
+          const changes = this.computeLineDiff(
+            remoteContent.toString(),
+            localContent.toString(),
+          );
+          modified.push({ file, changes });
+        }
+      } catch {
+        // Skip directories and unreadable entries
+      }
+    }
+
+    // Files in local but not baseline = user added them
+    for (const file of filteredLocal) {
+      if (!remoteSet.has(file)) {
+        added.push(file);
+      }
+    }
+
+    return { added, modified, removed };
+  }
+
+  /**
+   * Compute line-level differences between two file contents.
+   *
+   * Uses a longest-common-subsequence algorithm to produce minimal
+   * added/removed line changes with accurate line numbers.
+   */
+  protected computeLineDiff(baseline: string, local: string): VendorLineDiff[] {
+    const baseLines = baseline.split("\n");
+    const localLines = local.split("\n");
+    const lcs = this.longestCommonSubsequence(baseLines, localLines);
+    const changes: VendorLineDiff[] = [];
+
+    let bi = 0;
+    let li = 0;
+    let ci = 0;
+
+    while (bi < baseLines.length || li < localLines.length) {
+      if (ci < lcs.length && bi < baseLines.length && li < localLines.length) {
+        if (baseLines[bi] === lcs[ci] && localLines[li] === lcs[ci]) {
+          // Line is unchanged
+          bi++;
+          li++;
+          ci++;
+        } else if (baseLines[bi] !== lcs[ci]) {
+          changes.push({ line: bi + 1, type: "removed", text: baseLines[bi] });
+          bi++;
+        } else {
+          changes.push({ line: li + 1, type: "added", text: localLines[li] });
+          li++;
+        }
+      } else if (bi < baseLines.length) {
+        changes.push({ line: bi + 1, type: "removed", text: baseLines[bi] });
+        bi++;
+      } else {
+        changes.push({ line: li + 1, type: "added", text: localLines[li] });
+        li++;
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Compute the longest common subsequence of two string arrays.
+   */
+  protected longestCommonSubsequence(a: string[], b: string[]): string[] {
+    const m = a.length;
+    const n = b.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () =>
+      Array(n + 1).fill(0),
+    );
+
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] =
+          a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1] + 1
+            : Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+
+    const result: string[] = [];
+    let i = m;
+    let j = n;
+    while (i > 0 && j > 0) {
+      if (a[i - 1] === b[j - 1]) {
+        result.unshift(a[i - 1]);
+        i--;
+        j--;
+      } else if (dp[i - 1][j] > dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+
+    return result;
+  }
+}

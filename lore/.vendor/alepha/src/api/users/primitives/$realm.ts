@@ -1,0 +1,619 @@
+import { $context, AlephaError } from "alepha";
+import {
+  AlephaApiKeys,
+  ApiKeyNotifications,
+  ApiKeyService,
+} from "alepha/api/keys";
+import {
+  AlephaOAuth,
+  OAuthClientService,
+  OAuthJobs,
+  oauthOptions,
+  OAuthScopeResolver,
+} from "alepha/api/oauth";
+import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
+import { AlephaApiVerification } from "alepha/api/verifications";
+import { mcpStreamableHttpOptions } from "alepha/mcp";
+import type { Repository } from "alepha/orm";
+import {
+  $issuer,
+  $permission,
+  type IssuerPrimitive,
+  type IssuerPrimitiveOptions,
+  type IssuerResolver,
+  SecurityProvider,
+  type SigningConfig,
+} from "alepha/security";
+import {
+  $authApple,
+  $authCredentials,
+  $authFacebook,
+  $authFranceConnect,
+  $authGithub,
+  $authGoogle,
+  $authMicrosoft,
+  type AuthPrimitive,
+  type Credentials,
+  type LinkAccountOptions,
+  type WithLinkFn,
+  type WithLoginFn,
+  type WithSecondFactorFn,
+} from "alepha/server/auth";
+
+import {
+  type RealmAuthSettings,
+  realmAuthSettingsAtom,
+} from "../atoms/realmAuthSettingsAtom.ts";
+import { SessionAudits } from "../audits/SessionAudits.ts";
+import { UserAudits } from "../audits/UserAudits.ts";
+import { AdminAvatarController } from "../controllers/AdminAvatarController.ts";
+import { MyAvatarController } from "../controllers/MyAvatarController.ts";
+import type { identities } from "../entities/identities.ts";
+import type { sessions } from "../entities/sessions.ts";
+import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
+import { UserJobs } from "../jobs/UserJobs.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
+import {
+  RealmProvider,
+  type RegistrationPreAuthorizationFn,
+} from "../providers/RealmProvider.ts";
+import { MfaService } from "../services/MfaService.ts";
+import { SessionService } from "../services/SessionService.ts";
+import { UserStorage } from "../storage/UserStorage.ts";
+
+export type RealmPrimitive = IssuerPrimitive &
+  WithLinkFn &
+  WithLoginFn &
+  WithSecondFactorFn;
+
+/**
+ * Already configured realm for user management.
+ *
+ * Realm contains two roles: `admin` and `user`.
+ *
+ * - `admin`: Has full access to all resources and permissions.
+ * - `user`: Has access to their own resources and permissions, but cannot access admin-level resources.
+ *
+ * Realm uses session management for handling user sessions.
+ *
+ * Environment Variables:
+ * - `APP_SECRET`: Secret key for signing tokens (if not provided in options).
+ */
+
+export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
+  const { alepha } = $context();
+  const sessionService = alepha.inject(SessionService);
+  const securityProvider = alepha.inject(SecurityProvider);
+  const realmProvider = alepha.inject(RealmProvider);
+  const mfaService = alepha.inject(MfaService);
+
+  const name = options.issuer?.name ?? DEFAULT_USER_REALM_NAME;
+
+  // Merge features with defaults
+  const features: RealmFeatures = {
+    notifications: false,
+    apiKeys: false,
+    oauth: false,
+    parameters: false,
+    avatars: false,
+    ...options.features,
+  };
+
+  // `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
+  // need `features.notifications` to send their codes. That used to be
+  // reconciled here by overwriting all three with `false`; it is now refused
+  // by `RealmProvider.register` instead — see the note on
+  // `assertNotificationsCoverSettings` for why silence was the wrong answer.
+  // The check lives there rather than here so a realm registered straight
+  // through the provider, as the tests do, is held to the same rule.
+  const realmRegistration = realmProvider.register(name, options);
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // Enable features based on configuration
+  // Each feature registers its wrapper service which internally uses the module primitives
+
+  if (features.avatars) {
+    alepha.with(UserStorage);
+    // The endpoints too, not just the storage they use. While they sat on the
+    // always-registered `MyProfileController`, its `$inject(UserStorage)`
+    // pulled the storage in anyway and both routes answered on every realm —
+    // so this flag gated nothing observable, and the account UI showed an
+    // avatar picker whether or not the realm wanted one.
+    alepha.with(MyAvatarController);
+    // The operator-side pair, on the same flag: a realm without avatars has
+    // no admin endpoints for them, and the admin UI's control hides itself
+    // because an unregistered action is absent from `/api/_links`.
+    alepha.with(AdminAvatarController);
+  }
+
+  // Infrastructure, not features: registered whatever `features` says. The
+  // user and session audit types are a security baseline, and `UserJobs`
+  // holds the only thing that deletes session rows, so a realm without it
+  // grows its `sessions` table forever. `features.audits` and `features.jobs`
+  // are accepted and ignored, `false` included (see `RealmFeatures`).
+  alepha.with(UserAudits);
+  alepha.with(SessionAudits);
+  alepha.with(UserJobs);
+
+  if (features.notifications) {
+    alepha.with(UserNotifications);
+    alepha.with(AlephaApiVerification);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // Collect custom resolvers that will be registered during $issuer.onInit()
+  // This ensures they are registered AFTER the realm is created (not on the default test realm)
+  const customResolvers: IssuerResolver[] = [
+    ...(options.issuer?.resolvers ?? []),
+  ];
+
+  // Enable API key authentication - must be added to customResolvers before $issuer() call
+  if (features.apiKeys) {
+    alepha.with(AlephaApiKeys);
+    // The expiry notice, when there is a mailer to send it with.
+    if (features.notifications) {
+      alepha.with(ApiKeyNotifications);
+    }
+    const apiKeyService = alepha.inject(ApiKeyService);
+    customResolvers.push(
+      apiKeyService.createResolver({
+        // Keys must die with their account — and must never grant more than
+        // the owner currently holds, so a demotion takes effect immediately
+        // instead of waiting for every outstanding key to expire.
+        resolveOwner: async (userId) => {
+          const user = await realmProvider
+            .userRepository(name)
+            .findById(userId);
+          if (!user) {
+            return undefined;
+          }
+          return { enabled: user.enabled === true, roles: user.roles };
+        },
+      }),
+    );
+  }
+
+  // Filled in below when the oauth feature is on; read lazily by the issuer.
+  let scopeResolver: OAuthScopeResolver | undefined;
+
+  const realm: RealmPrimitive = $issuer({
+    ...options.issuer,
+    name,
+    secret: options.secret ?? securityProvider.secretKey,
+    signing: options.signing,
+    resolvers: customResolvers,
+    roles: options.issuer?.roles ?? [
+      {
+        name: "admin",
+        permissions: [
+          {
+            name: "*",
+          },
+        ],
+      },
+      {
+        name: "user",
+        default: true,
+        permissions: [
+          {
+            name: "*",
+            ownership: true,
+            exclude: ["admin:*"],
+          },
+        ],
+      },
+    ],
+    settings: {
+      accessToken: {
+        expiration: [15, "minutes"],
+      },
+      refreshToken: {
+        expiration: [30, "days"],
+      },
+      // Every hook names its realm. Without it the default realm's tables
+      // were used, and a refresh token minted by another realm was accepted
+      // by this issuer, which then signed an access token for a foreign user.
+      onCreateSession: async (user, config) => {
+        return sessionService.createSession(
+          user,
+          config.expiresIn,
+          name,
+          config.clientId,
+          config.scopes,
+        );
+      },
+      onRefreshSession: async (refreshToken) => {
+        return sessionService.refreshSession(refreshToken, name);
+      },
+      onDeleteSession: async (refreshToken) => {
+        await sessionService.deleteSession(refreshToken, name);
+      },
+      // An OAuth grant's scopes, turned into the permission list its tokens
+      // are limited to. The resolver reads `oauthOptions` at every mint: the
+      // application sets its scope declarations after the realm is created,
+      // and a changed declaration must apply at the next refresh. Without the
+      // oauth feature there is no resolver and a grant narrows nothing.
+      resolveScopePermissions: (scopes) => scopeResolver?.resolve(scopes),
+      ...options.issuer?.settings,
+    },
+  });
+
+  $permission({
+    name: "admin:access",
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // Enable the OAuth 2.1 authorization server.
+  // The OAuth module is realm-agnostic: it mints access tokens through an
+  // issuer handed to it via `registerIssuer`. Here we register the realm's own
+  // issuer plus a loader that maps a `users` row to a `UserAccount`.
+  if (features.oauth) {
+    alepha.with(AlephaOAuth);
+    const oauthService = alepha.inject(OAuthClientService);
+    scopeResolver = alepha.inject(OAuthScopeResolver);
+
+    // Point the OAuth controller at this realm so its endpoints mint tokens
+    // through the issuer we register below. Merge with the current value so a
+    // caller-configured `resource` path is preserved.
+    const currentOAuthOptions =
+      alepha.get(oauthOptions) ?? oauthOptions.options.default;
+    alepha.set(oauthOptions, { ...currentOAuthOptions, realm: name });
+
+    const loadUser = async (userId: string) => {
+      const user = await sessionService.users(name).findOne({
+        where: { id: { eq: userId }, realm: name },
+      });
+      if (!user) {
+        throw new AlephaError(`User '${userId}' not found in realm '${name}'`);
+      }
+      const composedName =
+        [user.firstName, user.lastName]
+          .filter((s): s is string => !!s?.trim())
+          .join(" ")
+          .trim() || undefined;
+      return {
+        id: user.id,
+        roles: user.roles,
+        name: composedName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        username: user.username,
+        picture: user.picture,
+        realm: name,
+      };
+    };
+
+    oauthService.registerIssuer(name, realm, loadUser);
+
+    /*
+      The other half of the same seam. `OAuthJobs.purgeAbandonedClients`
+      deletes registrations nobody ever authorized, and "nobody authorized
+      it" is a question about `sessions` - which is this module's table, not
+      the OAuth module's. `api/users` already depends on `api/oauth`, so the
+      dependency runs the way it already runs and the probe is handed over
+      rather than imported back.
+    */
+    oauthService.registerSessionProbe(async (clientIds) => {
+      const rows = await realmProvider.sessionRepository(name).findMany({
+        where: { clientId: { inArray: clientIds } },
+        columns: ["clientId"],
+      });
+      return new Set(
+        rows
+          .map((row) => row.clientId)
+          .filter((id): id is string => typeof id === "string"),
+      );
+    });
+
+    // The cleanup itself. A module variant, like `UserJobs`: a job that
+    // mounted itself would run in every application that merely imports the
+    // OAuth module.
+    alepha.with(OAuthJobs);
+
+    // Tell the MCP Streamable HTTP transport to challenge unauthenticated
+    // requests with an RFC 9728 401 (`WWW-Authenticate`), so MCP clients
+    // can discover this OAuth server. Decoupled: the transport never
+    // imports the OAuth module — it just reads its own options atom.
+    // Harmless when no MCP transport is mounted; the atom is simply set.
+    const currentMcpOptions =
+      alepha.get(mcpStreamableHttpOptions) ??
+      mcpStreamableHttpOptions.options.default;
+    alepha.set(mcpStreamableHttpOptions, {
+      ...currentMcpOptions,
+      requireAuth: true,
+    });
+  }
+
+  realm.link = (name: string) => {
+    return (ctx: LinkAccountOptions) =>
+      sessionService.link(name, ctx.user, realm.name);
+  };
+
+  // Second factor. Filled the same way as `login` and `link`: the login route
+  // lives in `alepha/server/auth` and must not import this module, so the
+  // realm hands it three closures instead.
+  realm.secondFactor = (user) => mfaService.methodsFor(user.id, realm.name);
+
+  realm.startSecondFactor = (user, method) =>
+    mfaService.start(user.id, method, realm.name);
+
+  realm.verifySecondFactor = (user, method, code) =>
+    mfaService.verify(user.id, method, code, realm.name);
+
+  realm.login = (name: string) => {
+    return async (credentials: Credentials) => {
+      const user = await sessionService.login(
+        name,
+        credentials.username,
+        credentials.password,
+        realm.name,
+      );
+      // Compose display name from first+last for OIDC `name` claim.
+      // Without this, credentials-registered users appear as "Anonymous User".
+      const composedName =
+        [user.firstName, user.lastName]
+          .filter((s): s is string => !!s?.trim())
+          .join(" ")
+          .trim() || undefined;
+      return { ...user, name: composedName };
+    };
+  };
+
+  const identities = options.identities ?? {
+    credentials: true,
+  };
+
+  if (identities) {
+    const auth: Record<string, AuthPrimitive> = {};
+    if (identities.credentials) {
+      auth.credentials = $authCredentials(realm);
+    } else {
+      // if credentials auth is disabled, disable registration as well
+      realmRegistration.settings.registrationAllowed = false;
+    }
+
+    if (identities.google) {
+      auth.google = $authGoogle(realm);
+    }
+
+    if (identities.github) {
+      auth.github = $authGithub(realm);
+    }
+
+    if (identities.apple) {
+      auth.apple = $authApple(realm);
+    }
+
+    if (identities.facebook) {
+      auth.facebook = $authFacebook(realm);
+    }
+
+    if (identities.microsoft) {
+      auth.microsoft = $authMicrosoft(realm);
+    }
+
+    if (identities.franceconnect) {
+      auth.franceconnect = $authFranceConnect(realm);
+    }
+
+    alepha.with(() => auth);
+  }
+
+  if (features.parameters) {
+    alepha.with(AlephaApiParameters);
+    const settingsParam = $parameter({
+      name: `api.realms.${name}`,
+      description: `Authentication and registration settings for realm "${name}"`,
+      schema: realmAuthSettingsAtom.schema,
+      default: realmRegistration.settings,
+    });
+    realmRegistration.settingsParameter = settingsParam;
+    alepha.with(() => ({ [`realmSettings_${name}`]: settingsParam }));
+  }
+
+  return realm;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The surfaces a realm turns on.
+ *
+ * **A feature flag gates a surface, not infrastructure.** Every flag here adds
+ * screens or endpoints a user can see, and an application turns one on because
+ * it wants the feature. Jobs and audits add neither: an audit trail nobody
+ * asked for is a security baseline, and a session table nobody purges is a
+ * leak. So the realm always registers its audit types and its session purge,
+ * and the `jobs` and `audits` keys below are kept only so the applications
+ * that set them keep compiling.
+ */
+export interface RealmFeatures {
+  /**
+   * @deprecated Ignored. The realm's jobs (the expired-session purge) are
+   * always registered: `UserJobs` is the only thing that deletes session rows,
+   * and turning it off grew the `sessions` table forever. Remove the key.
+   */
+  jobs?: boolean;
+
+  /**
+   * Enable notification system for password reset, verification emails, etc.
+   *
+   * Registers the notifications module itself, so there is nothing to add to
+   * your application's `imports` alongside it.
+   *
+   * Required by `settings.verifyEmailRequired`,
+   * `settings.verifyPhoneRequired` and `settings.resetPasswordAllowed` —
+   * each completes by sending a code, so a realm that sets one of them with
+   * this off is refused at boot rather than run with the setting ignored.
+   *
+   * @default false
+   */
+  notifications?: boolean;
+
+  /**
+   * Enable API key authentication for programmatic access.
+   *
+   * When enabled, users can create API keys to access protected endpoints
+   * without using JWT tokens. API keys are useful for:
+   * - Programmatic access (CLI tools, scripts)
+   * - Long-lived authentication tokens
+   * - Third-party integrations (MCP servers)
+   *
+   * API keys can be passed via:
+   * - Query parameter: `?api_key=ak_xxx`
+   * - Bearer header: `Authorization: Bearer ak_xxx`
+   *
+   * @default false
+   */
+  apiKeys?: boolean;
+
+  /**
+   * Enable the OAuth 2.1 authorization server.
+   *
+   * Exposes RFC 9728 / RFC 8414 metadata, RFC 7591 dynamic client
+   * registration, and PKCE authorize/token endpoints so MCP clients
+   * (e.g. Claude) can connect to a protected `/mcp` endpoint without an
+   * API key in the query string.
+   *
+   * @default false
+   */
+  oauth?: boolean;
+
+  /**
+   * Enable runtime configuration management.
+   *
+   * Allows configuring realm settings at runtime with versioning and scheduled activation.
+   *
+   * @default false
+   */
+  parameters?: boolean;
+
+  /**
+   * Enable avatar uploads for user profiles.
+   *
+   * @default false
+   */
+  avatars?: boolean;
+
+  /**
+   * @deprecated Ignored. The user and session audit types are always
+   * registered and always written, `audits: false` included: an audit trail
+   * is a security baseline, not a feature. Remove the key.
+   */
+  audits?: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface RealmOptions {
+  /**
+   * Secret key for signing tokens.
+   *
+   * If not provided, the secret from the SecurityProvider will be used (usually from the APP_SECRET environment variable).
+   */
+  secret?: string;
+
+  /**
+   * Asymmetric signing config for this realm's tokens (OIDC provider mode).
+   * When set, issued tokens are signed asymmetrically and the public keys are
+   * JWKS-publishable. Default is HS256 via `secret`.
+   */
+  signing?: SigningConfig;
+
+  /**
+   * Issuer configuration options.
+   *
+   * It's already pre-configured for user management with admin and user roles.
+   */
+  issuer?: Partial<IssuerPrimitiveOptions>;
+
+  /**
+   * Override entities.
+   */
+  entities?: {
+    users?: Repository<typeof users.schema>;
+    identities?: Repository<typeof identities.schema>;
+    sessions?: Repository<typeof sessions.schema>;
+  };
+
+  settings?: Partial<RealmAuthSettings>;
+
+  /**
+   * Let SPECIFIC addresses register while `settings.registrationAllowed` is
+   * `false`, instead of the realm being open to everyone or to nobody.
+   *
+   * Consulted only when registration is closed, at both entry points that
+   * can create an account: credentials registration and OAuth first login.
+   * An app that invites by email fills this with "was this address invited";
+   * an app that does not leaves it unset and nothing changes.
+   *
+   * ```ts
+   * $realm({
+   *   settings: { registrationAllowed: false },
+   *   isPreAuthorized: (context) =>
+   *     this.alepha
+   *       .inject(InvitationRegistrationService)
+   *       .preAuthorize(context),
+   * });
+   * ```
+   *
+   * @see RegistrationPreAuthorizationFn for what it is handed and what it
+   * may answer, and for the three bypasses it deliberately is not.
+   */
+  isPreAuthorized?: RegistrationPreAuthorizationFn;
+
+  /**
+   * Make the FIRST account created in this realm an administrator, and keep
+   * registration reachable until that account exists.
+   *
+   * For a self-hosted instance an operator just started on their own
+   * machine: they run the container, they register, and from that moment
+   * they own it. There is no seed command, no `ADMIN_PASSWORD` in shell
+   * history, and no password in `docker inspect`.
+   *
+   * Two behaviours, and the second is a guard rather than the main path:
+   *
+   * - **The first account lands `admin`.** {@link isPreAuthorized} cannot do
+   *   this: `admin` is a persisted role granted only from `adminEmails` /
+   *   `adminUsernames`. The account promoted is the OLDEST row in the realm,
+   *   which is what makes two concurrent registrations produce exactly one
+   *   administrator rather than two or none.
+   * - **A closed realm stays reachable while empty.** So an operator who
+   *   sets `registrationAllowed: false` on a fresh instance does not brick
+   *   it, with the only account that could reopen it now uncreatable. It
+   *   logs at warn whenever it fires, because it loosens a setting that was
+   *   explicitly asked for.
+   *
+   * The framework also warns at boot while no account exists, which is what
+   * answers the window between starting the instance and finishing setup.
+   *
+   * ⚠️ **Refused on serverless.** A freshly deployed Worker with an empty
+   * users table would hand admin to whoever registered first, and the lookup
+   * would run on every isolate forever.
+   *
+   * @default undefined (nothing changes)
+   */
+  bootstrapFirstUser?: boolean;
+
+  identities?: {
+    credentials?: true;
+    google?: true;
+    github?: true;
+    apple?: true;
+    facebook?: true;
+    microsoft?: true;
+    franceconnect?: true;
+  };
+
+  /**
+   * Enable or disable realm features.
+   *
+   * Features control which modules are loaded with the realm.
+   */
+  features?: Partial<RealmFeatures>;
+}

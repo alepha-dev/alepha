@@ -1,0 +1,203 @@
+import { $inject, Alepha } from "alepha";
+import { FileSystemProvider } from "alepha/system";
+import type { UserConfig } from "vite";
+
+import { MetaResolver } from "../services/MetaResolver.ts";
+import { ViteUtils } from "../services/ViteUtils.ts";
+import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
+
+/**
+ * Build client-side bundle with Vite.
+ *
+ * Compiles the browser/client code for production,
+ * including code splitting and minification.
+ * Analyze step stays in BuildCommand (ViteBuildProvider).
+ * This task wraps only the actual Vite client build call.
+ */
+export class BuildClientTask extends BuildTask {
+  /**
+   * The prefixes of every content-hashed name the client build writes, at the
+   * root of `dist/public`: `entry.<hash>.js`, `chunk.<hash>.js` and
+   * `asset.<hash>.<ext>`.
+   *
+   * ⚠️ A promise other code keeps: `BuildHeadersTask` caches exactly these
+   * names for a year as immutable, and refuses a file of the app's own public
+   * directory named like one. Rename one here and those rules follow.
+   */
+  public static readonly HASHED_PREFIXES = {
+    entry: "entry.",
+    chunk: "chunk.",
+    asset: "asset.",
+  } as const;
+
+  protected readonly alepha = $inject(Alepha);
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly viteUtils = $inject(ViteUtils);
+  protected readonly metaResolver = $inject(MetaResolver);
+
+  /**
+   * The public directory Vite resolved for the last client build: the app's
+   * own `publicDir` when its vite config sets one, `<root>/public` otherwise,
+   * `undefined` when there was no build or the app turned it off.
+   */
+  protected publicDir?: string;
+
+  /**
+   * See {@link publicDir}.
+   */
+  public getPublicDir(): string | undefined {
+    return this.publicDir;
+  }
+
+  async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
+    if (!ctx.hasClient) {
+      return;
+    }
+
+    const distDir = ctx.options.output?.dist ?? "dist";
+    const publicDir = ctx.options.output?.public ?? "public";
+    const stats = ctx.options.stats ?? false;
+    const isCI = this.alepha.isCI();
+
+    // Write index.html template for Vite to consume
+    const template = this.viteUtils.generateIndexHtml(ctx.entry, {
+      pwa: !!ctx.options.pwa,
+    });
+    await this.fs.mkdir(this.fs.join(ctx.root, "node_modules/.alepha"));
+    const indexHtmlPath = this.fs.join(
+      ctx.root,
+      "node_modules/.alepha/index.html",
+    );
+    await this.fs.writeFile(indexHtmlPath, template);
+
+    try {
+      await ctx.run({
+        name: "build client",
+        handler: async () => {
+          await this.buildClient({
+            dist: `${distDir}/${publicDir}`,
+            stats,
+            silent: !isCI,
+            meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
+          });
+        },
+      });
+    } finally {
+      await this.fs.rm(indexHtmlPath);
+    }
+  }
+
+  protected async buildClient(opts: {
+    dist: string;
+    stats?: boolean | "json";
+    silent?: boolean;
+    /**
+     * The build metadata token, already encoded as a `define` entry.
+     */
+    meta?: Record<string, string>;
+  }): Promise<void> {
+    const { build: viteBuild } = await this.viteUtils.importVite();
+    const plugins: any[] = [];
+
+    const viteReact = await this.viteUtils.importViteReact();
+    if (viteReact) plugins.push(viteReact());
+
+    plugins.push(this.viteUtils.createTsconfigPathsPlugin());
+    plugins.push(this.viteUtils.createSsrPreloadPlugin());
+    // Read from the RESOLVED config, never assumed to be `public/`: the key
+    // is deliberately left to the app's own vite config (see below).
+    plugins.push({
+      name: "alepha:public-dir",
+      configResolved: (config: { publicDir: string }) => {
+        this.publicDir = config.publicDir || undefined;
+      },
+    });
+
+    if (opts.stats) {
+      const viteAnalyzer = await this.viteUtils.importAnalyzer();
+      plugins.push(
+        viteAnalyzer({
+          analyzerMode: opts.stats === "json" ? "json" : "static",
+        }),
+      );
+    }
+
+    const logger = opts.silent
+      ? this.viteUtils.createBufferedLogger()
+      : undefined;
+
+    const viteBuildClientConfig: UserConfig = {
+      mode: "production",
+      logLevel: opts.silent ? "silent" : undefined,
+      define: {
+        "process.env.NODE_ENV": '"production"',
+        // The build metadata token. Baked into BOTH bundles from the one
+        // record on `ctx.meta`, so `alepha.meta` reads the same answer in the
+        // browser as it does on the server.
+        ...opts.meta,
+      },
+      resolve: {
+        dedupe: [
+          "react",
+          "react-dom",
+          "react/jsx-runtime",
+          "react/jsx-dev-runtime",
+        ],
+      },
+      // Deliberately NOT set here. Vite's own `build()` auto-loads the app's
+      // vite.config.ts and merges it under this inline config — an inline
+      // scalar wins over the loaded file on the same key, so hardcoding
+      // `publicDir: "public"` used to silently discard an app-configured
+      // `publicDir` (e.g. a monorepo app whose static assets live in a
+      // sibling package) on every build. Leaving the key unset lets the
+      // app's own config supply it, and Vite's built-in "public" default
+      // apply only when the app never configured one.
+      build: {
+        outDir: opts.dist,
+        manifest: true,
+        ssrManifest: true,
+        chunkSizeWarningLimit: 1000,
+        rolldownOptions: {
+          input: "node_modules/.alepha/index.html",
+          output: {
+            entryFileNames: `${BuildClientTask.HASHED_PREFIXES.entry}[hash].js`,
+            chunkFileNames: `${BuildClientTask.HASHED_PREFIXES.chunk}[hash].js`,
+            assetFileNames: `${BuildClientTask.HASHED_PREFIXES.asset}[hash][extname]`,
+          },
+        },
+      },
+      customLogger: logger,
+      plugins,
+    };
+
+    try {
+      await viteBuild(viteBuildClientConfig);
+      await this.postBuildCleanUpForIndexHtml(opts.dist);
+    } catch (error) {
+      logger?.flush();
+      throw error;
+    }
+  }
+
+  /**
+   * Weird cleanup required because we changed input from "index.html" to "node_modules/.alepha/index.html".
+   *
+   * `dist` is required on purpose: it must be the same directory Vite built
+   * into (`output.dist`/`output.public`). A default here silently pointed the
+   * cleanup at another tree whenever the app customised its output.
+   */
+  public async postBuildCleanUpForIndexHtml(dist: string) {
+    const manifestPath = `${dist}/.vite/manifest.json`;
+    let text = await this.fs.readTextFile(manifestPath);
+    text = text.replaceAll("node_modules/.alepha/index.html", "index.html");
+    await this.fs.writeFile(manifestPath, text);
+    await this.fs.cp(
+      `${dist}/node_modules/.alepha/index.html`,
+      `${dist}/index.html`,
+    );
+    await this.fs.rm(`${dist}/node_modules`, { recursive: true });
+  }
+}

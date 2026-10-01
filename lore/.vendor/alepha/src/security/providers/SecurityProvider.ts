@@ -1,0 +1,1698 @@
+import {
+  $hook,
+  $inject,
+  Alepha,
+  AlephaError,
+  AppNotStartedError,
+  ContainerLockedError,
+} from "alepha";
+import { SecretProvider } from "alepha/crypto";
+import { $logger } from "alepha/logger";
+import { ForbiddenError } from "alepha/server";
+import type { JSONWebKeySet, JWTPayload } from "jose";
+import type { JWTVerifyOptions } from "jose/jwt/verify";
+
+import { currentUserAtom } from "../atoms/currentUserAtom.ts";
+import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
+import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
+import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
+import { SecurityError } from "../errors/SecurityError.ts";
+import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
+import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
+import type { PermissionCatalogue } from "../schemas/permissionCatalogueSchema.ts";
+import type { Permission } from "../schemas/permissionSchema.ts";
+import type { Role } from "../schemas/roleSchema.ts";
+import {
+  type UserAccount,
+  userAccountInfoSchema,
+} from "../schemas/userAccountInfoSchema.ts";
+import { JwtProvider, type SigningConfig } from "./JwtProvider.ts";
+
+export class SecurityProvider {
+  protected readonly UNKNOWN_USER_NAME = "Anonymous User";
+  protected readonly PERMISSION_REGEXP = /^[\w-]+((:[\w-]+)+)?$/;
+  protected readonly PERMISSION_REGEXP_WILDCARD =
+    /^[\w-]+((:[\w-]+)*:\*|(:[\w-]+)+)?$/;
+
+  protected readonly log = $logger();
+  protected readonly jwt = $inject(JwtProvider);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly secretProvider = $inject(SecretProvider);
+
+  public get secretKey(): string {
+    return this.secretProvider.secretKey;
+  }
+
+  /**
+   * The permissions configured for the security provider.
+   */
+  protected readonly permissions: Permission[] = [];
+
+  /**
+   * The realm this provider invents so a test container has somewhere to put
+   * an `admin` role, dropped again by {@link SecurityProvider.createRealm} as
+   * soon as the application declares one of its own.
+   *
+   * Held by REFERENCE, and compared by identity there. It used to be
+   * recognised by its name, which made an application realm called `default`
+   * indistinguishable from it: declaring a second realm silently threw the
+   * first one away, and the failure surfaced far from its cause as a 500 at
+   * token minting reading `No secret key found in the keystore`, because the
+   * discarded realm never had its signing key registered. `default` is a
+   * natural name to pick (it was `DEFAULT_USER_REALM_NAME` itself until
+   * #Q2264 renamed that to `users`). A name is not an identity.
+   */
+  protected placeholderRealm: Realm | undefined = this.alepha.isTest()
+    ? {
+        name: "default",
+        secret: this.secretKey,
+        roles: [
+          {
+            name: "admin",
+            permissions: [
+              {
+                name: "*",
+              },
+            ],
+          },
+        ],
+      }
+    : undefined;
+
+  /**
+   * The realms configured for the security provider.
+   */
+  protected readonly realms: Realm[] = this.placeholderRealm
+    ? [this.placeholderRealm]
+    : [];
+
+  /**
+   * Every role declared through {@link createRole}, with the realms it named.
+   *
+   * Kept because declaration order is not something the declaring code can
+   * control: `$role` and `$issuer` are class fields, and whichever class the
+   * container instantiates first wins. A role used to be pushed into the
+   * realms that happened to exist at that instant, so one declared before its
+   * issuer landed in no realm at all - and under test it was worse, because it
+   * landed in the implicit placeholder realm that `createRealm` then dropped.
+   * Either way, silently.
+   *
+   * `realms: undefined` means every realm, including realms created later.
+   */
+  protected readonly declaredRoles: DeclaredRole[] = [];
+
+  /**
+   * Roles an issuer named by string rather than by reference.
+   *
+   * `$issuer({ roles: ["admin"] })` cannot resolve its own names: the realm
+   * does not exist until the line that creates it, so a lookup scoped to that
+   * realm is empty by construction. The reference is recorded instead and
+   * resolved whenever either side turns up.
+   */
+  protected readonly roleReferences: RoleReference[] = [];
+
+  protected start = $hook({
+    on: "start",
+    handler: async () => {
+      for (const realm of this.realms) {
+        if (realm.signing) {
+          await this.jwt.setSigningKey(realm.name, realm.signing);
+        } else if (realm.secret) {
+          const secret =
+            typeof realm.secret === "function" ? realm.secret() : realm.secret;
+          this.jwt.setKeyLoader(realm.name, secret);
+        }
+
+        // Register default JWT resolver for realms without resolvers
+        if (!realm.resolvers || realm.resolvers.length === 0) {
+          this.registerResolver(
+            this.createDefaultJwtResolver(realm.name),
+            realm.name,
+          );
+        }
+      }
+    },
+  });
+
+  /**
+   * Creates a default JWT resolver for a realm.
+   */
+  protected createDefaultJwtResolver(realmName: string): IssuerResolver {
+    return {
+      priority: 100,
+      onRequest: async (req) => {
+        const auth = req.headers.authorization;
+        if (!auth?.startsWith("Bearer ")) {
+          return null;
+        }
+
+        const token = auth.slice(7);
+
+        // Check if it looks like a JWT (has dots)
+        if (!token.includes(".")) {
+          return null;
+        }
+
+        // Parse and validate JWT
+        const { result } = await this.jwt.parse(token, realmName);
+
+        // Only an access token authenticates. Authorization codes, refresh
+        // tokens and id_tokens are signed with this same key and would
+        // otherwise pass straight through.
+        if (!this.jwt.isAccessToken(realmName, result.protectedHeader)) {
+          return null;
+        }
+
+        // A token minted by another realm must not authenticate here: every
+        // realm signs with the same key by default, so the signature check
+        // passing says nothing about which realm minted it.
+        if (!this.jwt.matchesRealmAudience(realmName, result.payload)) {
+          return null;
+        }
+
+        // Extract user info from JWT payload
+        return this.createUserFromPayload(result.payload, realmName);
+      },
+    };
+  }
+
+  /**
+   * Adds a role to one or more realms.
+   *
+   * Naming a realm that does not exist yet is NOT an error before the
+   * container starts - that is the ordinary `$role`-before-`$issuer` case.
+   * The role is recorded and attached when the realm turns up; if it never
+   * does, the boot fails at `ready` naming both. After start every realm is
+   * known, so an unknown name is a real mistake and still throws at once.
+   *
+   * @param role
+   * @param realms
+   */
+  public createRole(role: Role, ...realms: string[]): Role {
+    this.assertRolePermissions(role);
+
+    if (this.alepha.isStarted()) {
+      for (const name of realms) {
+        if (!this.realms.some((realm) => realm.name === name)) {
+          throw new RealmNotFoundError(name);
+        }
+      }
+    }
+
+    const declared: DeclaredRole = {
+      role,
+      realms: realms.length ? realms : undefined,
+    };
+
+    this.declaredRoles.push(declared);
+    this.reconcileRoles();
+
+    return role;
+  }
+
+  /**
+   * Validate a role's permissions once, independently of which realms it
+   * lands in.
+   *
+   * It used to run inside the realm loop, so a role that matched no realm was
+   * not validated at all - the one case where the declaration is already
+   * wrong was the one case nothing checked.
+   */
+  protected assertRolePermissions(role: Role): void {
+    for (const { name } of role.permissions) {
+      if (!this.alepha.isStarted()) {
+        if (name !== "*" && !this.PERMISSION_REGEXP_WILDCARD.test(name)) {
+          throw new InvalidPermissionError(name);
+        }
+        continue;
+      }
+
+      // Global wildcard is always allowed
+      if (name === "*") {
+        continue;
+      }
+
+      // Check for exact match first
+      const existingExact = this.permissions.find(
+        (it) => this.permissionToString(it) === name,
+      );
+      if (existingExact) {
+        continue;
+      }
+
+      // Check if it's a wildcard pattern (e.g., "admin:api:*")
+      if (name.endsWith(":*")) {
+        const groupPrefix = name.slice(0, -2); // Remove ":*"
+        // Check if any permission exists with this group prefix
+        const existingWithPrefix = this.permissions.find((it) => {
+          if (!it.group) return false;
+          return (
+            it.group === groupPrefix || it.group.startsWith(`${groupPrefix}:`)
+          );
+        });
+        if (existingWithPrefix) {
+          continue;
+        }
+      }
+
+      // Permission not found
+      throw new SecurityError(`Permission '${name}' not found`);
+    }
+  }
+
+  /**
+   * Record that a realm wants a role it knows only by name.
+   *
+   * @see roleReferences
+   */
+  public referenceRole(realm: string, role: string): void {
+    this.roleReferences.push({ realm, role });
+    this.reconcileRoles();
+  }
+
+  /**
+   * Attach every declared role and named reference that can be attached now.
+   *
+   * Idempotent, and cheap enough to run on every declaration: both lists are
+   * the size of an application's security declarations, and running it eagerly
+   * is what makes declaration order stop mattering.
+   */
+  protected reconcileRoles(): void {
+    for (const declared of this.declaredRoles) {
+      for (const realm of this.realms) {
+        if (declared.realms && !declared.realms.includes(realm.name)) {
+          continue;
+        }
+        if (!realm.roles.includes(declared.role)) {
+          realm.roles.push(declared.role);
+        }
+      }
+    }
+
+    for (const reference of this.roleReferences) {
+      const realm = this.realms.find((it) => it.name === reference.realm);
+      const declared = this.declaredRoles.find(
+        (it) => it.role.name === reference.role,
+      );
+
+      if (!realm || !declared) {
+        continue;
+      }
+
+      if (!realm.roles.includes(declared.role)) {
+        realm.roles.push(declared.role);
+      }
+      reference.resolved = true;
+    }
+  }
+
+  /**
+   * Refuse to finish booting with a security declaration that reached
+   * nothing.
+   *
+   * A role in no realm grants nothing and an issuer naming a role that does
+   * not exist protects nothing, and both used to be silent - which is the
+   * failure mode a security primitive can least afford.
+   */
+  protected readonly assertRolesAttached = $hook({
+    on: "ready",
+    handler: () => {
+      const problems: string[] = [];
+
+      for (const declared of this.declaredRoles) {
+        const attached = this.realms.some((realm) =>
+          realm.roles.includes(declared.role),
+        );
+        if (attached) {
+          continue;
+        }
+
+        problems.push(
+          declared.realms
+            ? `Role '${declared.role.name}' names realm(s) ${declared.realms
+                .map((it) => `'${it}'`)
+                .join(", ")}, which no $issuer declared.`
+            : `Role '${declared.role.name}' belongs to no realm - declare an $issuer.`,
+        );
+      }
+
+      for (const reference of this.roleReferences) {
+        if (reference.resolved) {
+          continue;
+        }
+        problems.push(
+          `Issuer '${reference.realm}' names role '${reference.role}', which no $role declared.`,
+        );
+      }
+
+      if (problems.length) {
+        throw new AlephaError(problems.join(" "));
+      }
+    },
+  });
+
+  /**
+   * Adds a permission to the security provider.
+   *
+   * @param raw - The permission to add.
+   */
+  public createPermission(raw: Permission | string): Permission {
+    if (this.alepha.isStarted()) {
+      throw new ContainerLockedError();
+    }
+
+    let permission: Permission;
+    if (typeof raw === "string") {
+      if (!this.PERMISSION_REGEXP.test(raw)) {
+        throw new InvalidPermissionError(raw);
+      }
+
+      const parts = raw.split(":");
+      if (parts.length === 1) {
+        // No group, just name (e.g., "read")
+        permission = { name: parts[0] };
+      } else {
+        // Has group(s) (e.g., "users:read" or "admin:api:users:read")
+        // The last part is the name, everything else is the group
+        const name = parts[parts.length - 1];
+        const groupParts = parts.slice(0, -1);
+
+        if (groupParts.length === 1) {
+          permission = {
+            group: groupParts[0],
+            name,
+          };
+        } else {
+          // Multi-layer group
+          permission = {
+            group: groupParts.join(":"),
+            name,
+          };
+        }
+      }
+    } else {
+      permission = raw;
+    }
+
+    const asString = this.permissionToString(permission);
+    if (!this.PERMISSION_REGEXP.test(asString)) {
+      throw new InvalidPermissionError(asString);
+    }
+
+    const existing = this.permissions.find(
+      (it) => this.permissionToString(it) === asString,
+    );
+
+    if (existing) {
+      // ⚠️ Enrich, never replace and never ignore.
+      //
+      // `$secure({ permissions: ["folio:write"] })` registers a BARE entry -
+      // a group and a name, nothing else - and it does so at class-field
+      // initialisation time. A `$permission({ group: "folio", name: "write",
+      // label })` declared in another class may initialise before or after
+      // it, and class initialisation order is not something anyone should
+      // have to reason about. Returning the existing entry untouched, which
+      // is what this did, silently dropped the label whenever the gate won
+      // the race - so a permission matrix showed a raw string for half its
+      // rows depending on which file the container instantiated first.
+      this.enrichPermission(existing, permission, asString);
+      return existing;
+    }
+
+    this.log.trace(`Creating permission '${asString}'`);
+
+    this.permissions.push(permission);
+
+    return permission;
+  }
+
+  /**
+   * Fold a second declaration of the same permission into the first.
+   *
+   * Absent fields fill in; a field declared twice with two different values is
+   * refused, because the two call sites disagree about what this permission IS
+   * and picking either one would make the answer depend on load order.
+   */
+  protected enrichPermission(
+    existing: Permission,
+    incoming: Permission,
+    asString: string,
+  ): void {
+    for (const key of [
+      "description",
+      "label",
+      "groupLabel",
+      "groupOrder",
+    ] as const) {
+      const value = incoming[key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      const held = existing[key];
+
+      if (held !== undefined && held !== value) {
+        throw new AlephaError(
+          `Permission '${asString}' is declared twice with a different ${key}: '${String(held)}' and '${String(value)}'. ` +
+            "Two declarations of one permission must agree, since which of them lands first is load order.",
+        );
+      }
+
+      (existing as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  /**
+   * The permission registry, read as the grouped, ordered catalogue a
+   * permission matrix renders.
+   *
+   * Everything `$secure()` and `$permission()` ever named is in here: the
+   * former registers a bare entry for every string it is given, the latter
+   * adds the labels. That is what makes this the single vocabulary of an
+   * application, and what lets a consumer enforce "a grant can only name a
+   * registered permission" against something real rather than against a
+   * parallel array somebody has to remember to update.
+   *
+   * Groups are ordered by their declared `groupOrder`, then alphabetically;
+   * a group nobody ordered sorts after every group somebody did, so a
+   * catalogue that declares no order at all still reads as a stable list.
+   * Permissions inside a group are alphabetical.
+   */
+  public permissionCatalogue(): PermissionGroup[] {
+    const groups = new Map<string, PermissionGroup>();
+
+    for (const permission of this.permissions) {
+      const name = permission.group ?? "";
+      let group = groups.get(name);
+
+      if (!group) {
+        group = { name, permissions: [] };
+        groups.set(name, group);
+      }
+
+      group.label ??= permission.groupLabel;
+      group.order ??= permission.groupOrder;
+      group.permissions.push(permission);
+    }
+
+    for (const group of groups.values()) {
+      group.permissions.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return [...groups.values()].sort((a, b) => {
+      // `Infinity` rather than a large constant: an unordered group belongs
+      // after every ordered one whatever numbers the application picked.
+      const left = a.order ?? Number.POSITIVE_INFINITY;
+      const right = b.order ?? Number.POSITIVE_INFINITY;
+      return left === right ? a.name.localeCompare(b.name) : left - right;
+    });
+  }
+
+  /**
+   * The permission catalogue as an editor consumes it
+   * (`permissionCatalogueSchema`): every name the full `group:name`, labels
+   * passed through untranslated.
+   *
+   * @param user - Narrow it to what this identity may grant:
+   * `getPermissions(user)`, its roles within its realm and then its own
+   * permission scope. Omit for the whole registry. Pass the identity itself,
+   * never `{ roles, realm }` rebuilt from it, which drops the scope and shows
+   * a scoped caller a ceiling wider than itself.
+   */
+  public permissionCatalogueFor(user?: {
+    roles?: string[];
+    realm?: string;
+    permissionScope?: string[];
+  }): PermissionCatalogue {
+    const allowed = user
+      ? new Set(
+          this.getPermissions(user).map((it) => this.permissionToString(it)),
+        )
+      : undefined;
+
+    const groups: PermissionCatalogue["groups"] = [];
+    for (const group of this.permissionCatalogue()) {
+      const permissions = group.permissions
+        .map((permission) => ({
+          permission,
+          name: this.permissionToString(permission),
+        }))
+        .filter((it) => !allowed || allowed.has(it.name))
+        .map(({ permission, name }) => ({
+          name,
+          ...(permission.label === undefined
+            ? {}
+            : { label: permission.label }),
+          ...(permission.description === undefined
+            ? {}
+            : { description: permission.description }),
+        }));
+
+      if (permissions.length === 0) {
+        continue;
+      }
+
+      groups.push({
+        name: group.name,
+        ...(group.label === undefined ? {} : { label: group.label }),
+        ...(group.order === undefined ? {} : { order: group.order }),
+        permissions,
+      });
+    }
+
+    return { groups };
+  }
+
+  public createRealm(realm: Realm) {
+    // By identity, never by name: an application realm called `default` is
+    // not this provider's placeholder, and popping it here was silent.
+    if (this.placeholderRealm) {
+      const at = this.realms.indexOf(this.placeholderRealm);
+      if (at >= 0) {
+        this.realms.splice(at, 1);
+      }
+      this.placeholderRealm = undefined;
+    }
+
+    this.realms.push(realm);
+
+    // Roles declared before this realm existed - including any the placeholder
+    // above just took with it - land here.
+    this.reconcileRoles();
+  }
+
+  /**
+   * Updates the roles for a realm then synchronizes the user account provider if available.
+   *
+   * Only available when the app is started.
+   *
+   * @param realm - The realm to update the roles for.
+   * @param roles - The roles to update.
+   */
+  public async updateRealm(realm: string, roles: Role[]): Promise<void> {
+    if (!this.alepha.isStarted()) {
+      throw new AppNotStartedError();
+    }
+
+    const realmInstance = this.realms.find((it) => it.name === realm);
+    if (!realmInstance) {
+      throw new RealmNotFoundError(realm);
+    }
+
+    realmInstance.roles = roles;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Creates a user account from the provided payload.
+   *
+   * @param payload - The payload to create the user account from.
+   * @param [realmName] - The realm containing the roles. Default is all.
+   *
+   * @returns The user info created from the payload.
+   */
+  public createUserFromPayload(
+    payload: JWTPayload,
+    realmName?: string,
+  ): UserAccount {
+    const id = this.getIdFromPayload(payload);
+    const sessionId = this.getSessionIdFromPayload(payload);
+    const rolesFromPayload = this.getRolesFromPayload(payload);
+    const email = this.getEmailFromPayload(payload);
+    const username = this.getUsernameFromPayload(payload);
+    const picture = this.getPictureFromPayload(payload);
+    const name = this.getNameFromPayload(payload);
+    const firstName =
+      typeof payload.given_name === "string" ? payload.given_name : undefined;
+    const lastName =
+      typeof payload.family_name === "string" ? payload.family_name : undefined;
+    const credential = realmName
+      ? this.getCredentialFromPayload(payload)
+      : undefined;
+    const permissionScope = realmName
+      ? this.getPermissionScopeFromPayload(payload)
+      : undefined;
+    const rolesFromSystem = this.getRoles(realmName);
+    const roles = rolesFromPayload
+      .reduce<Role[]>(
+        (arr, roleName) =>
+          arr.concat(rolesFromSystem.filter((it) => it.name === roleName)),
+        [],
+      )
+      .map((it) => it.name);
+
+    const realm = this.realms.find((it) => it.name === realmName);
+    if (realm?.profile) {
+      // Set after the custom mapping, never left to it: a profile function
+      // written before the marker existed would otherwise turn a connected
+      // app's token back into a session.
+      const account = realm.profile(payload);
+      return {
+        ...account,
+        ...(credential ? { credential } : {}),
+        ...(permissionScope ? { permissionScope } : {}),
+      };
+    }
+
+    return {
+      id,
+      roles,
+      name,
+      firstName,
+      lastName,
+      email,
+      username,
+      picture,
+      sessionId,
+      credential,
+      permissionScope,
+    };
+  }
+
+  /**
+   * The permission scope an access token of this realm carries, if any: the
+   * `permission_scope` claim `$issuer` signs from an OAuth grant's declared
+   * scopes. Absent is unrestricted; `[]` is a grant that reaches nothing,
+   * and must stay distinguishable from absent.
+   *
+   * Only read from a realm's own tokens, for the reason given on
+   * {@link getCredentialFromPayload}.
+   */
+  protected getPermissionScopeFromPayload(
+    payload: Record<string, any>,
+  ): string[] | undefined {
+    const claim = payload.permission_scope;
+    if (
+      Array.isArray(claim) &&
+      claim.every((it): it is string => typeof it === "string")
+    ) {
+      return claim;
+    }
+    return undefined;
+  }
+
+  /**
+   * The machine credential an access token of this realm carries, if any.
+   *
+   * A `client_id` claim (the name RFC 9068 gives it) marks a token issued to
+   * an OAuth client: a connected app, not a person signed in. `$issuer`
+   * signs it, so a client cannot strip it.
+   *
+   * Only read from a realm's own tokens: `createUserFromPayload` without a
+   * realm maps an external identity provider's profile, whose claims are not
+   * ours to interpret.
+   */
+  protected getCredentialFromPayload(
+    payload: Record<string, any>,
+  ): UserAccount["credential"] {
+    if (typeof payload.client_id === "string" && payload.client_id !== "") {
+      return { type: "oauth", clientId: payload.client_id };
+    }
+    return undefined;
+  }
+
+  /**
+   * Generic user creation from any source (JWT, API key, etc.).
+   * Handles permission checking, ownership, default roles.
+   */
+  public createUser(
+    userInfo: UserInfo,
+    options: {
+      realm?: string;
+      permission?: Permission | string;
+    } = {},
+  ): UserAccountToken {
+    const realmRoles = this.getRoles(options.realm).filter((it) => it.default);
+    const roles = [...(userInfo.roles ?? [])];
+
+    // Add default roles
+    for (const role of realmRoles) {
+      if (!roles.includes(role.name)) {
+        roles.push(role.name);
+      }
+    }
+
+    let ownership: string | boolean | undefined;
+
+    // Permission check — resolved within the user's realm so a homonymous
+    // role from another realm can't leak its permission set, then narrowed by
+    // the credential's own scope.
+    if (options.permission) {
+      const check = this.checkUserPermission(
+        {
+          roles,
+          realm: options.realm,
+          permissionScope: userInfo.permissionScope,
+        },
+        options.permission,
+      );
+      if (!check.isAuthorized) {
+        throw new SecurityError(
+          `User is not allowed to access '${this.permissionToString(options.permission)}'`,
+        );
+      }
+      ownership = check.ownership;
+    }
+
+    return {
+      ...userInfo,
+      roles,
+      ownership,
+      realm: options.realm,
+    };
+  }
+
+  /**
+   * Register a resolver to a realm.
+   * Resolvers are sorted by priority (lower = first).
+   */
+  public registerResolver(resolver: IssuerResolver, realmName?: string): void {
+    const realm = this.getRealm(realmName);
+    if (!realm.resolvers) {
+      realm.resolvers = [];
+    }
+
+    realm.resolvers.push(resolver);
+    realm.resolvers.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  }
+
+  /**
+   * Get a realm by name.
+   * Throws if realm not found.
+   */
+  public getRealm(realmName?: string): Realm {
+    if (!realmName) {
+      return this.defaultRealm();
+    }
+
+    const realm = this.realms.find((it) => it.name === realmName);
+
+    if (!realm) {
+      throw new RealmNotFoundError(realmName);
+    }
+
+    return realm;
+  }
+
+  /**
+   * The realm a lookup that names none resolves against.
+   *
+   * One realm: that realm, because there is nothing to be ambiguous about.
+   * Several: the one declared `$issuer({ default: true })`, and a refusal if
+   * none is - because the alternative is answering a question the caller did
+   * not ask.
+   *
+   * It used to be `realms[0]`, which made the order of FIELDS in a class a
+   * security-relevant decision that nothing declared and nothing checked. It
+   * cost a verified user their access: an application declared its staff realm
+   * first, and a citizen holding `citizen` in their user row was refused
+   * `citizen:apply`, because the role was resolved among staff roles.
+   *
+   * Refusing rather than picking is the same rule as
+   * {@link JwtProvider.matchesRealmAudience}, and for the same reason: the
+   * ambiguity exists exactly from the second realm on, so that is exactly
+   * where it is refused.
+   */
+  public defaultRealm(): Realm {
+    const declared = this.realms.filter((it) => it.default);
+    if (declared.length === 1) {
+      return declared[0];
+    }
+
+    if (this.realms.length === 1) {
+      return this.realms[0];
+    }
+
+    if (this.realms.length === 0) {
+      throw new RealmNotFoundError("default");
+    }
+
+    throw new AlephaError(
+      declared.length > 1
+        ? `Several realms are declared \`default: true\` (${declared
+            .map((it) => it.name)
+            .join(", ")}). Exactly one may be.`
+        : `This application declares ${this.realms.length} realms (${this.realms
+            .map((it) => it.name)
+            .join(
+              ", ",
+            )}) and a lookup named none of them. Pass the caller's realm, or mark one \`$issuer({ default: true })\` to name the answer once.`,
+    );
+  }
+
+  /**
+   * Resolve user from request using registered resolvers.
+   * Returns undefined if no resolver could authenticate, whether none was
+   * given anything to read or one threw (logged at debug level, then the
+   * next resolver is tried).
+   *
+   * Resolvers from ALL realms are tried, in priority order; the realm the
+   * user ends up in is the one whose resolver accepted the request.
+   */
+  public async resolveUserFromServerRequest(
+    req: { url: URL | string; headers: { authorization?: string } },
+    options: {
+      permission?: Permission | string;
+    } = {},
+  ): Promise<UserAccountToken | undefined> {
+    // Collect all resolvers from all realms with their realm name
+    const allResolvers: Array<{
+      resolver: IssuerResolver;
+      realmName: string;
+    }> = [];
+
+    for (const realm of this.realms) {
+      for (const resolver of realm.resolvers ?? []) {
+        allResolvers.push({ resolver, realmName: realm.name });
+      }
+    }
+
+    // Sort by priority
+    allResolvers.sort(
+      (a, b) => (a.resolver.priority ?? 100) - (b.resolver.priority ?? 100),
+    );
+
+    // Try resolvers in priority order
+    for (const { resolver, realmName } of allResolvers) {
+      let userInfo: UserInfo | null;
+
+      try {
+        userInfo = await resolver.onRequest(req as any);
+      } catch (error) {
+        // Trying the next resolver is deliberate — with several realms
+        // registered, "this one cannot read the token" is the normal case.
+        // But swallowing it silently meant a malformed
+        // bearer ended as a bare `undefined` (i.e. "unauthenticated") with
+        // nothing anywhere to explain why. Debug, so it costs nothing in
+        // production and is there when someone goes looking.
+        this.log.debug(
+          `Auth resolver for realm '${realmName}' declined the request`,
+          error,
+        );
+        continue;
+      }
+
+      if (userInfo) {
+        // User was resolved - now create user and check permissions
+        // (errors from createUser should propagate, not be caught)
+        const user = this.createUser(userInfo, {
+          realm: realmName,
+          permission: options.permission,
+        });
+
+        await this.alepha.events.emit("security:user:created", {
+          realm: realmName,
+          user,
+        });
+
+        return user;
+      }
+    }
+
+    // No resolver matched = no auth provided
+    return undefined;
+  }
+
+  /**
+   * Checks if the user has the specified permission.
+   *
+   * Bonus: we check also if the user has "ownership" flag.
+   *
+   * @param permissionLike - The permission to check for.
+   * @param roleEntries - The roles to check for the permission.
+   */
+  public checkPermission(
+    permissionLike: string | Permission,
+    ...roleEntries: string[]
+  ): SecurityCheckResult {
+    // A realm carried on the permission object scopes role-name resolution
+    // to that realm (see checkPermissionInRealm).
+    const realm =
+      typeof permissionLike === "object"
+        ? (permissionLike as Permission & { realm?: string }).realm
+        : undefined;
+
+    return this.checkRoles(
+      this.rolesForRealm(realm),
+      permissionLike,
+      roleEntries,
+    );
+  }
+
+  /**
+   * The roles a check may resolve against, given the realm it names.
+   *
+   * A DECLARED realm answers with its own roles and nothing else, empty list
+   * included: scanning the other realms when it happened to declare none let
+   * a resolver on that realm borrow whatever homonymous role - up to and
+   * including a "*" admin - some other realm had registered.
+   *
+   * No realm, or a name no `$issuer` declared, falls back to the DEFAULT
+   * realm alone. `alepha/api/users` names its own realms on the user account
+   * without necessarily creating a security realm for each, and that is the
+   * realm-less case wearing a name: it must land where a realm-less caller
+   * lands, not in every realm at once.
+   */
+  protected rolesForRealm(realm?: string): Role[] {
+    if (realm) {
+      const declared = this.realms.find((it) => it.name === realm);
+      if (declared) {
+        return [...declared.roles];
+      }
+    }
+
+    return this.getRoles(this.defaultRealm().name);
+  }
+
+  /**
+   * Like {@link checkPermission}, but resolves role names within the given
+   * realm only. In multi-realm apps every realm defines roles literally named
+   * "admin"/"user" — resolving across ALL realms would grant a user whichever
+   * realm's homonymous role happens to be registered first. Always pass the
+   * authenticated user's realm when it is known.
+   *
+   * Implemented as a thin wrapper over {@link checkPermission} so provider
+   * subclasses overriding that method keep full control.
+   */
+  public checkPermissionInRealm(
+    realm: string | undefined,
+    permissionLike: string | Permission,
+    ...roleEntries: string[]
+  ): SecurityCheckResult {
+    if (!realm) {
+      return this.checkPermission(permissionLike, ...roleEntries);
+    }
+
+    // Reduced to its string form on purpose. Spreading `permissionLike` to
+    // attach the realm looks equivalent, but `$permission` hands us a class
+    // instance whose `name` and `group` are prototype getters: a spread keeps
+    // neither, and the permission silently became "undefined". The string is
+    // all the check reads anyway.
+    return this.checkPermission(
+      {
+        name: this.permissionToString(permissionLike),
+        realm,
+      } as Permission,
+      ...roleEntries,
+    );
+  }
+
+  /**
+   * Whether an identity was authenticated by a machine credential (an API
+   * key) rather than a signed-in session.
+   *
+   * Any `credential` marker counts, whatever its type: a new kind of machine
+   * credential is refused wherever this is asked the moment it sets the
+   * marker, with nothing to declare on any route.
+   *
+   * Read by `$secure({ sessionOnly: true })`, and by the handlers that read
+   * `user` themselves and so sit outside every `$secure` option (the OAuth
+   * consent and device approval routes).
+   */
+  public isMachineCredential(user?: { credential?: unknown }): boolean {
+    return user?.credential != null;
+  }
+
+  /**
+   * Checks a permission for a user: the realm-aware role check first, then the
+   * credential's {@link UserAccount.permissionScope}.
+   *
+   * This is the question every reader of a permission decision about a
+   * CREDENTIAL should ask (`$secure`, `$permission.can`, the links registry).
+   * {@link checkPermissionInRealm} stays a question about roles, for callers
+   * asking what a role grants.
+   *
+   * The scope only ever narrows: a permission the roles refuse stays refused
+   * whatever the scope lists, and `ownership` is the roles' answer untouched.
+   * A refusal says which of the two refused in `deniedBy`, because "your role
+   * lacks this" and "this credential was narrowed below its role" are
+   * different problems for whoever reads the error.
+   */
+  public checkUserPermission(
+    user: { roles?: string[]; realm?: string; permissionScope?: string[] },
+    permissionLike: string | Permission,
+  ): SecurityCheckResult {
+    const result = this.checkPermissionInRealm(
+      user.realm,
+      permissionLike,
+      ...(user.roles ?? []),
+    );
+
+    if (!result.isAuthorized) {
+      return { ...result, deniedBy: "roles" };
+    }
+
+    if (!this.isInPermissionScope(permissionLike, user.permissionScope)) {
+      return { isAuthorized: false, ownership: undefined, deniedBy: "scope" };
+    }
+
+    return result;
+  }
+
+  /**
+   * Whether a permission is inside a permission scope.
+   *
+   * Three states, and the last two must never be confused:
+   * - `undefined`: unrestricted, every permission is inside.
+   * - a non-empty list: the permission must match an entry.
+   * - `[]`: nothing matches.
+   *
+   * An entry may be a pattern, matched by {@link matchesPattern}: the
+   * wildcard sits on the SCOPE entry and is compared to a concrete
+   * permission. That is the opposite direction of
+   * `PermissionRegistryProvider.can()`, whose wildcard sits on the
+   * requirement.
+   */
+  public isInPermissionScope(
+    permissionLike: string | Permission,
+    scope: string[] | undefined,
+  ): boolean {
+    if (scope === undefined) {
+      return true;
+    }
+
+    const permission = this.permissionToString(permissionLike);
+    return scope.some((entry) => this.matchesPattern(permission, entry));
+  }
+
+  /**
+   * Whether a concrete permission name matches a grant pattern.
+   *
+   * - `*` matches everything.
+   * - an exact string matches itself.
+   * - `prefix:*` matches `prefix:anything` at any depth (`admin:api:*`
+   *   matches `admin:api:users:read`), and deliberately NOT the bare `prefix`.
+   *
+   * Shared by role grants, their excludes, and permission scopes, so the three
+   * cannot disagree about what a pattern covers.
+   */
+  protected matchesPattern(permissionName: string, pattern: string): boolean {
+    if (pattern === "*") return true;
+    if (pattern === permissionName) return true;
+
+    if (pattern.endsWith(":*")) {
+      const patternPrefix = pattern.slice(0, -2);
+      // "admin:api" does not match "admin:api:*".
+      if (permissionName === patternPrefix) return false;
+      return permissionName.startsWith(`${patternPrefix}:`);
+    }
+
+    return false;
+  }
+
+  protected checkRoles(
+    candidates: Role[],
+    permissionLike: string | Permission,
+    roleEntries: string[],
+  ): SecurityCheckResult {
+    const roles: Role[] = roleEntries.map((it) => {
+      const role = candidates.find((role) => role.name === it);
+      if (!role) {
+        throw new SecurityError(`Role '${it}' not found`);
+      }
+      return role;
+    });
+
+    const permission = this.permissionToString(permissionLike);
+    const isAdmin = roles.find((it) =>
+      it.permissions.find(
+        (it) => it.name === "*" && !it.exclude && !it.ownership,
+      ),
+    );
+
+    // if the user is an admin, we can return early
+    if (isAdmin) {
+      return {
+        isAuthorized: true,
+        ownership: false,
+      };
+    }
+
+    const result: SecurityCheckResult = {
+      isAuthorized: false,
+      ownership: undefined,
+    };
+
+    for (const role of roles) {
+      // for each role candidate
+      for (const rolePermission of role.permissions) {
+        // for each permission in the role
+        if (this.matchesPattern(permission, rolePermission.name)) {
+          // [feature]: exclude permissions including wildcards
+          if (rolePermission.exclude) {
+            let isExcluded = false;
+            for (const excludePattern of rolePermission.exclude) {
+              if (this.matchesPattern(permission, excludePattern)) {
+                isExcluded = true;
+                break;
+              }
+            }
+            if (isExcluded) {
+              continue;
+            }
+          }
+
+          result.isAuthorized = true; // OK !
+
+          // but we also need to check if the user has ownership
+          if (rolePermission.ownership) {
+            // if ownership is true, we have to check all other matching permissions in case of ownership === false ...
+            result.ownership = rolePermission.ownership;
+          } else {
+            // but if isAuthorized && ownership === false, we can break the loop \ :D /
+            result.ownership = false;
+            return result;
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Creates a user account from the provided payload.
+   */
+  public async createUserFromToken(
+    headerOrToken?: string,
+    options: {
+      permission?: Permission | string;
+      realm?: string;
+      verify?: JWTVerifyOptions;
+    } = {},
+  ): Promise<UserAccountToken> {
+    const token = headerOrToken?.replace(/^Bearer\s+/i, "").trim();
+    if (typeof token !== "string" || token === "") {
+      throw new InvalidTokenError(
+        "Invalid authorization header, maybe token is missing ?",
+      );
+    }
+
+    const { result, keyName: realm } = await this.jwt.parse(
+      token,
+      options.realm,
+      options.verify,
+    );
+
+    const info = this.createUserFromPayload(result.payload, realm);
+    const realmRoles = this.getRoles(realm).filter((it) => it.default);
+    const roles = info.roles ?? [];
+
+    for (const role of realmRoles) {
+      if (!roles.includes(role.name)) {
+        roles.push(role.name);
+      }
+    }
+
+    info.roles = roles;
+
+    await this.alepha.events.emit("security:user:created", {
+      realm,
+      user: info,
+    });
+
+    let ownership: string | boolean | undefined;
+
+    if (options.permission) {
+      const check = this.checkPermissionInRealm(
+        realm,
+        options.permission,
+        ...roles,
+      );
+      if (!check.isAuthorized) {
+        throw new SecurityError(
+          `User is not allowed to access '${this.permissionToString(options.permission)}'`,
+        );
+      }
+
+      ownership = check.ownership;
+    }
+
+    return {
+      ...info,
+      ownership,
+      token,
+      realm,
+    };
+  }
+
+  /**
+   * Checks if a user has a specific role.
+   *
+   * @param roleName - The role to check for.
+   * @param permission - The permission to check for.
+   * @returns True if the user has the role, false otherwise.
+   */
+  public can(roleName: string, permission: string | Permission): boolean {
+    return this.checkPermission(permission, roleName).isAuthorized;
+  }
+
+  /**
+   * Checks if a user has ownership of a specific permission.
+   */
+  public ownership(
+    roleName: string,
+    permission: string | Permission,
+  ): string | boolean | undefined {
+    return this.checkPermission(permission, roleName).ownership;
+  }
+
+  /**
+   * Converts a permission object to a string.
+   *
+   * @param permission
+   */
+  public permissionToString(permission: Permission | string): string {
+    if (typeof permission === "string") {
+      return permission;
+    }
+
+    if (!permission.group) {
+      return permission.name;
+    }
+
+    // Handle multi-layer groups (e.g., "admin:api" or "management:users")
+    const groupParts = Array.isArray(permission.group)
+      ? permission.group
+      : [permission.group];
+
+    return `${groupParts.join(":")}:${permission.name}`;
+  }
+
+  /**
+   * Check that the user belongs to one of the required issuers.
+   */
+  public checkIssuers(user: UserAccountToken, issuers?: string[]) {
+    if (issuers?.length && (!user.realm || !issuers.includes(user.realm))) {
+      throw new ForbiddenError(
+        `User must belong to issuer '${issuers.join("' or '")}' to access this route`,
+      );
+    }
+  }
+
+  /**
+   * Store the resolved user in the atom for downstream access (useAuth, audit trail, etc.).
+   */
+  public storeUserInContext(user: UserAccountToken) {
+    const decoded = this.alepha.codec.decode(userAccountInfoSchema, user);
+    this.alepha.store.set(currentUserAtom, decoded);
+  }
+
+  // accessors
+
+  public getRealms(): Realm[] {
+    return this.realms;
+  }
+
+  /**
+   * Resolve the realm an authenticated admin action is allowed to operate on.
+   *
+   * Admin endpoints accept a client-supplied target realm (e.g. a
+   * `userRealmName` query param). Without scoping, a realm-A admin could act on
+   * realm-B resources by simply naming realm B — a cross-tenant escalation
+   * whenever realms are used as tenant boundaries. This binds the target realm
+   * to the caller's own realm: omitting the target means "my realm"; naming a
+   * *different* realm than the caller's is refused.
+   *
+   * Returns the effective realm to use (may be `undefined` in single-realm apps
+   * where neither the caller nor the request carries a realm).
+   */
+  public assertRealmScope(
+    user: { realm?: string } | undefined,
+    requestedRealm: string | undefined,
+  ): string | undefined {
+    const callerRealm = user?.realm;
+    if (requestedRealm && callerRealm && requestedRealm !== callerRealm) {
+      throw new ForbiddenError(
+        `Cross-realm access denied: authenticated in realm '${callerRealm}', requested realm '${requestedRealm}'.`,
+      );
+    }
+    return requestedRealm ?? callerRealm;
+  }
+
+  /**
+   * Retrieves the user account from the provided user ID.
+   *
+   * @param realm
+   */
+  public getRoles(realm?: string): Role[] {
+    if (realm) {
+      return [...(this.realms.find((it) => it.name === realm)?.roles ?? [])];
+    }
+
+    return this.realms.reduce<Role[]>((arr, it) => arr.concat(it.roles), []);
+  }
+
+  /**
+   * Returns all permissions.
+   *
+   * @param user - Filter permissions by user: what their roles grant, within
+   * their realm, intersected with their `permissionScope` when they carry one.
+   * Passing the identity itself (a `UserAccountToken`) is what applies the
+   * scope; an object rebuilt from its roles and realm silently drops it.
+   *
+   * @return An array containing all permissions.
+   */
+  public getPermissions(user?: {
+    roles?: Array<Role | string>;
+    realm?: string;
+    permissionScope?: string[];
+  }): Permission[] {
+    const granted = this.getRolePermissions(user);
+    const scope = user?.permissionScope;
+    if (scope === undefined) {
+      return granted;
+    }
+
+    return granted.filter((it) => this.isInPermissionScope(it, scope));
+  }
+
+  /**
+   * What a user's roles grant, before any permission scope.
+   */
+  protected getRolePermissions(user?: {
+    roles?: Array<Role | string>;
+    realm?: string;
+  }): Permission[] {
+    if (user?.roles) {
+      const permissions: Permission[] = [];
+      const roles = user.roles ?? [];
+
+      for (const roleOrString of roles) {
+        const role =
+          typeof roleOrString === "string"
+            ? this.rolesForRealm(user.realm).find(
+                (it) => it.name === roleOrString,
+              )
+            : roleOrString;
+
+        if (!role) {
+          const name =
+            typeof roleOrString === "string" ? roleOrString : roleOrString.name;
+          throw new SecurityError(`Role '${name}' not found`);
+        }
+
+        if (role.permissions.some((it) => it.name === "*" && !it.exclude)) {
+          return this.permissions;
+        }
+
+        for (const permission of role.permissions) {
+          let ref: Permission[] = [];
+          if (permission.name === "*") {
+            ref.push(...this.permissions);
+          } else if (permission.name.includes(":")) {
+            // Handle multi-layer wildcards (e.g., "admin:api:*" or "users:read")
+            const parts = permission.name.split(":");
+            const lastPart = parts[parts.length - 1];
+
+            if (lastPart === "*") {
+              // Wildcard at any level (e.g., "admin:*", "admin:api:*")
+              const groupPrefix = parts.slice(0, -1).join(":");
+
+              ref.push(
+                ...this.permissions.filter((it) => {
+                  if (!it.group) return false;
+                  // Match exact group or any sub-group
+                  return (
+                    it.group === groupPrefix ||
+                    it.group.startsWith(`${groupPrefix}:`)
+                  );
+                }),
+              );
+            } else {
+              // Specific permission (e.g., "users:read" or "admin:api:users:read")
+              const name = lastPart;
+              const groupParts = parts.slice(0, -1);
+              const group = groupParts.join(":");
+
+              ref.push(
+                ...this.permissions.filter((it) => {
+                  if (it.name !== name) return false;
+                  if (!it.group) return false;
+                  return it.group === group;
+                }),
+              );
+            }
+          } else {
+            // all permissions without a group
+            ref.push(
+              ...this.permissions.filter(
+                (it) => it.name === permission.name && !it.group,
+              ),
+            );
+          }
+          const exclude = permission.exclude;
+          if (exclude) {
+            // exclude permissions with multi-layer wildcard support
+            ref = ref.filter((it) => {
+              const permString = this.permissionToString(it);
+              return !exclude.some((excludePattern) => {
+                if (excludePattern === permString) return true;
+                if (excludePattern.endsWith(":*")) {
+                  const excludePrefix = excludePattern.slice(0, -2);
+                  return permString.startsWith(`${excludePrefix}:`);
+                }
+                return false;
+              });
+            });
+          }
+          permissions.push(...ref);
+        }
+      }
+
+      return [...new Set(permissions.filter((it) => it != null))];
+    }
+
+    return this.permissions;
+  }
+
+  /**
+   * Retrieves the user ID from the provided payload object.
+   *
+   * @param payload - The payload object from which to extract the user ID.
+   * @return The user ID as a string.
+   */
+  public getIdFromPayload(payload: Record<string, any>): string {
+    if (payload.sub != null) {
+      return String(payload.sub);
+    }
+
+    if (payload.id != null) {
+      return String(payload.id);
+    }
+
+    if (payload.userId != null) {
+      return String(payload.userId);
+    }
+
+    throw new SecurityError("Invalid JWT - missing id");
+  }
+
+  public getSessionIdFromPayload(
+    payload: Record<string, any>,
+  ): string | undefined {
+    if (!payload) {
+      return;
+    }
+    if (payload.sid) {
+      return String(payload.sid);
+    }
+  }
+
+  /**
+   * Retrieves the roles from the provided payload object.
+   * @param payload - The payload object from which to extract the roles.
+   * @return An array of role strings.
+   */
+  public getRolesFromPayload(payload: Record<string, any>): string[] {
+    return payload?.realm_access?.roles ?? payload?.roles ?? [];
+  }
+
+  public getPictureFromPayload(
+    payload: Record<string, any>,
+  ): string | undefined {
+    if (!payload) {
+      return;
+    }
+
+    if (payload.picture) {
+      return payload.picture;
+    }
+
+    if (payload.avatar_url) {
+      return payload.avatar_url;
+    }
+
+    if (payload.user_picture) {
+      return payload.user_picture;
+    }
+
+    return undefined;
+  }
+
+  public getUsernameFromPayload(
+    payload: Record<string, any>,
+  ): string | undefined {
+    if (!payload) {
+      return;
+    }
+
+    if (payload.preferred_username) {
+      return payload.preferred_username;
+    }
+
+    if (payload.username) {
+      return payload.username;
+    }
+
+    return undefined;
+  }
+
+  public getEmailFromPayload(payload: Record<string, any>): string | undefined {
+    if (!payload) {
+      return;
+    }
+
+    if (payload.email) {
+      return payload.email;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Returns the name from the given payload.
+   *
+   * @param payload - The payload object.
+   * @returns The name extracted from the payload, or an empty string if the payload is falsy or no name is found.
+   */
+  public getNameFromPayload(payload: Record<string, any>): string {
+    if (!payload) {
+      return this.UNKNOWN_USER_NAME;
+    }
+
+    if (payload.name) {
+      return payload.name;
+    }
+
+    if (
+      typeof payload.given_name === "string" &&
+      typeof payload.family_name === "string"
+    ) {
+      return `${payload.given_name} ${payload.family_name}`.trim();
+    }
+
+    return this.UNKNOWN_USER_NAME;
+  }
+}
+
+// =====================================================================================================================
+
+/**
+ * A realm definition.
+ */
+export interface Realm {
+  name: string;
+
+  roles: Role[];
+
+  /**
+   * The secret key for the realm.
+   *
+   * Can be also a JWKS URL.
+   */
+  secret?: string | JSONWebKeySet | (() => string);
+
+  /**
+   * Asymmetric signing config. When set, this realm signs its tokens with an
+   * asymmetric key and publishes the public keys via JWKS (see
+   * `JwtProvider.getJwks`). Takes precedence over `secret`.
+   */
+  signing?: SigningConfig;
+
+  /**
+   * Create the user account info based on the raw JWT payload.
+   * By default, SecurityProvider has his own implementation, but this method allow to override it.
+   */
+  profile?: (raw: Record<string, any>) => UserAccount;
+
+  /**
+   * Custom resolvers for this realm (sorted by priority).
+   */
+  resolvers?: IssuerResolver[];
+
+  /**
+   * Answer every lookup that names no realm. At most one realm may carry it.
+   *
+   * @see SecurityProvider.defaultRealm
+   */
+  default?: boolean;
+}
+
+export interface SecurityCheckResult {
+  isAuthorized: boolean;
+  ownership: string | boolean | undefined;
+  /**
+   * Which check refused, when a user-aware check refused: the roles grant no
+   * such permission, or they do and the credential's permission scope does
+   * not. Absent on a role-only check and on success.
+   */
+  deniedBy?: "roles" | "scope";
+}
+
+/**
+ * A role as declared, before it is known which realms will exist.
+ *
+ * @see SecurityProvider.declaredRoles
+ */
+interface DeclaredRole {
+  role: Role;
+  /**
+   * The realms named at declaration, or `undefined` for every realm.
+   */
+  realms?: string[];
+}
+
+/**
+ * A realm's reference to a role it knows only by name.
+ *
+ * @see SecurityProvider.roleReferences
+ */
+interface RoleReference {
+  realm: string;
+  role: string;
+  resolved?: boolean;
+}
+
+/**
+ * One section of {@link SecurityProvider.permissionCatalogue}.
+ *
+ * A group has no declaration of its own - it exists because permissions name
+ * it - so its label and its order are folded up from the permissions inside
+ * it, and every permission in one group has to agree about them.
+ */
+export interface PermissionGroup {
+  /**
+   * The group segment of `group:name`. Empty for a permission declared with
+   * no group at all.
+   */
+  name: string;
+
+  /**
+   * Translation key for the group's human-readable name, when any permission
+   * inside it declared one.
+   */
+  label?: string;
+
+  /**
+   * Declared position, when any permission inside it declared one.
+   */
+  order?: number;
+
+  /**
+   * The group's permissions, alphabetically by name.
+   */
+  permissions: Permission[];
+}

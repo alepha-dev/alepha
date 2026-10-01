@@ -1,0 +1,1085 @@
+import { join } from "node:path";
+
+import {
+  $atom,
+  $env,
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  type Infer,
+  type Middleware,
+  OPTIONS,
+  PipelineHandler,
+  z,
+} from "alepha";
+import { $logger } from "alepha/logger";
+import { ServerHeadProvider } from "alepha/react/head";
+import { type ServerHandler, ServerRouterProvider } from "alepha/server";
+import { ServerLinksProvider } from "alepha/server/links";
+import {
+  EmbeddedStaticFileSource,
+  ServerStaticProvider,
+  type StaticFileSource,
+  staticEmbeddedAtom,
+} from "alepha/server/static";
+import { FileSystemProvider } from "alepha/system";
+
+import { PAGE_ROUTE, type PageServerRoute } from "../constants/PAGE_ROUTE.ts";
+import { Redirection } from "../errors/Redirection.ts";
+import {
+  $page,
+  type PagePrimitiveRenderOptions,
+  type PagePrimitiveRenderResult,
+} from "../primitives/$page.ts";
+import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
+import {
+  type PageRoute,
+  ReactPageProvider,
+  type ReactRouterState,
+  reactPageOptions,
+} from "./ReactPageProvider.ts";
+import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
+import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
+import { SSRManifestProvider } from "./SSRManifestProvider.ts";
+
+/**
+ * React server provider responsible for SSR and static file serving.
+ *
+ * Coordinates between:
+ * - ReactPageProvider: Page routing and layer resolution
+ * - ReactServerTemplateProvider: HTML template parsing and streaming
+ * - ServerHeadProvider: Head content management
+ * - SSRManifestProvider: Module preload link collection
+ *
+ * Uses `react-dom/server` under the hood.
+ */
+export class ReactServerProvider {
+  /**
+   * SSR response headers - pre-allocated to avoid object creation per request.
+   */
+  protected readonly SSR_HEADERS = {
+    "content-type": "text/html",
+    "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    pragma: "no-cache",
+    expires: "0",
+  } as const;
+
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
+  protected readonly env = $env(envSchema);
+  protected readonly pageApi = $inject(ReactPageProvider);
+  protected readonly templateProvider = $inject(ReactServerTemplateProvider);
+  protected readonly serverHeadProvider = $inject(ServerHeadProvider);
+  protected readonly serverStaticProvider = $inject(ServerStaticProvider);
+  protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+  protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
+  protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly reactDomServer = $inject(ReactDomServerProvider);
+
+  /**
+   * Cached check for ServerLinksProvider - avoids has() lookup per request.
+   */
+  protected hasServerLinksProvider = false;
+
+  /**
+   * Lazily built handler for the not-found page, reused by every denied
+   * navigation. Built on first use rather than at registration: most apps
+   * never hit it, and building it eagerly would run `createHandler` for a
+   * route that is already registered by the normal loop.
+   */
+  protected notFoundHandler?: ServerHandler;
+
+  protected readonly options = $store(reactServerOptions);
+  protected readonly pageOptions = $store(reactPageOptions);
+
+  /**
+   * Configure the React server provider.
+   */
+  public readonly onConfigure = $hook({
+    on: "configure",
+    handler: async () => {
+      const pages = this.alepha.primitives($page);
+
+      const ssrEnabled =
+        pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
+
+      // production mode
+      let root = "";
+
+      // A compiled binary carries its own public/: serve that, even when a
+      // public/ directory sits beside it, which can only be a stale one.
+      const embedded = this.alepha.store.get(staticEmbeddedAtom);
+      const embeddedFiles = embedded?.files ?? {};
+
+      if (Object.keys(embeddedFiles).length > 0 && !this.alepha.isViteDev()) {
+        this.log.debug(
+          `Using ${Object.keys(embeddedFiles).length} static files embedded in the binary`,
+        );
+        await this.configureStaticServer(
+          "",
+          this.createEmbeddedSource(embeddedFiles, embedded?.builtAt ?? 0),
+        );
+      } else if (!this.alepha.isServerless() && !this.alepha.isViteDev()) {
+        // non-serverless mode only -> serve static files from disk
+        root = await this.getPublicDirectory();
+        if (!root) {
+          this.log.warn(
+            "Missing static files, static file server will be disabled",
+          );
+        } else {
+          this.log.debug(`Using static files from: ${root}`);
+          await this.configureStaticServer(root);
+        }
+      }
+
+      if (ssrEnabled) {
+        this.registerPages();
+        this.log.info("SSR OK");
+        return;
+      }
+
+      // no SSR enabled, serve a minimal fallback
+      this.log.info("SSR is disabled");
+    },
+  });
+
+  /**
+   * Register all pages as server routes.
+   */
+  protected registerPages(): void {
+    // Set up early head content (entry assets)
+    this.setupEarlyHeadContent();
+
+    // Cache ServerLinksProvider check at startup
+    this.hasServerLinksProvider = this.alepha.has(ServerLinksProvider);
+
+    for (const page of this.pageApi.getPages()) {
+      if (page.component || page.lazy || page.redirect) {
+        this.log.debug(`+ ${page.match} -> ${page.name}`);
+
+        // Collect middleware from the entire parent chain + own page.
+        // Parent middleware runs first (outermost → innermost).
+        const allMiddleware = this.collectMiddleware(page);
+
+        // Separate $cache from server-level middleware.
+        // $cache is applied inside createHandler around the render function,
+        // not around the entire server handler (which works via side effects).
+        const cacheMiddleware = allMiddleware.filter(
+          (m) => m[OPTIONS]?.name === "$cache",
+        );
+        const serverMiddleware = allMiddleware.filter(
+          (m) => m[OPTIONS]?.name !== "$cache",
+        );
+
+        const rawHandler = this.createHandler(page, cacheMiddleware);
+        const handler = this.withStaticFileSkip(
+          page,
+          serverMiddleware.length
+            ? this.withGuardDenial(
+                page,
+                new PipelineHandler(rawHandler, serverMiddleware),
+              )
+            : rawHandler,
+        );
+
+        // Canonical (default-locale) route, served unprefixed.
+        this.serverRouterProvider.createRoute(
+          this.markAsPage(
+            {
+              ...page,
+              schema: undefined, // schema is handled by the page primitive provider
+              // A page's `static` is page-shaped (`{ entries }`) and handled by the
+              // page prerender pass — it must not leak into the route's boolean
+              // `static` snapshot flag.
+              static: undefined,
+              method: "GET",
+              path: page.match,
+              handler,
+            },
+            page,
+          ),
+        );
+
+        // Locale-prefixed variants (`/fr/about`, …) point at the SAME handler.
+        // The handler reads the active locale back out of the request URL, so
+        // no extra route param is needed and matching stays native.
+        // Tested explicitly rather than left to `withPrefix`: on an excluded
+        // page that returns the path unchanged, so the loop below would
+        // re-register `page.match` once per locale — a duplicate route, not a
+        // no-op.
+        if (
+          this.localeProvider.enabled &&
+          !this.localeProvider.isExcluded(page.match)
+        ) {
+          for (const locale of this.localeProvider.prefixedLocales) {
+            const prefixedPath = this.localeProvider.withPrefix(
+              page.match,
+              locale,
+            );
+            this.log.debug(`+ ${prefixedPath} -> ${page.name} (${locale})`);
+            this.serverRouterProvider.createRoute(
+              this.markAsPage(
+                {
+                  ...page,
+                  schema: undefined,
+                  static: undefined,
+                  method: "GET",
+                  path: prefixedPath,
+                  handler,
+                },
+                page,
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Record which `$page` a server route came from.
+   *
+   * `ReactServerErrorProvider` needs it to reach the page's `errorHandler`
+   * when something around the render throws. The spread above already carries
+   * the page's fields onto the route, but reading those back would be sniffing;
+   * the symbol says it outright, and `createRoute` keeps the same object.
+   */
+  protected markAsPage<T extends object>(config: T, page: PageRoute): T {
+    (config as T & PageServerRoute)[PAGE_ROUTE] = page;
+    return config;
+  }
+
+  /**
+   * Set up early head content with entry assets.
+   *
+   * This content is sent immediately when streaming starts, before page loaders run,
+   * allowing the browser to start downloading entry.js and CSS files early.
+   */
+  protected setupEarlyHeadContent(): void {
+    const globalHead = this.serverHeadProvider.resolveGlobalHead();
+    const manifest = this.ssrManifestProvider.getManifest();
+    const faviconTag = this.buildFaviconTag(manifest.favicon);
+
+    // Dev mode: use pre-transformed head content from Vite
+    if (manifest.devHead) {
+      const devContent = faviconTag
+        ? `${faviconTag}\n${manifest.devHead}\n`
+        : `${manifest.devHead}\n`;
+      this.templateProvider.setEarlyHeadContent(devContent, globalHead);
+      // Vite's dev head is the module graph — the client runtime and the entry,
+      // with the stylesheets reachable only through them. There is no subset to
+      // keep, so a dev error page carries the favicon alone and relies on the
+      // inline styles ErrorViewer already ships with.
+      this.templateProvider.setErrorHeadContent(
+        faviconTag ? `${faviconTag}\n` : "",
+        globalHead,
+      );
+      this.log.debug("Early head content set (dev mode)");
+      return;
+    }
+
+    // Production: build from SSR manifest entry assets
+    const parts: string[] = [];
+    if (faviconTag) {
+      parts.push(faviconTag);
+    }
+    const assets = this.ssrManifestProvider.getEntryAssets();
+    if (assets) {
+      for (const css of assets.css) {
+        parts.push(`<link rel="stylesheet" href="${css}">`);
+      }
+    }
+
+    // Everything above is safe on an error page; the entry script is not, so
+    // the two heads fork here. See ReactServerTemplateProvider.errorHeadContent.
+    const styleOnlyParts = [...parts];
+
+    if (assets?.js) {
+      parts.push(
+        `<script type="module" crossorigin="" src="${assets.js}"></script>`,
+      );
+    }
+
+    // The entry's own static graph, which every page needs and nothing about
+    // a request can change. Without it these chunks are discovered only by
+    // parsing entry.js, two sequential round trips deep.
+    const entryGraph = this.templateProvider.renderHeadContent({
+      link: this.ssrManifestProvider.collectEntryGraphLinks(),
+    });
+    if (entryGraph) {
+      parts.push(entryGraph.trimEnd());
+    }
+
+    this.templateProvider.setEarlyHeadContent(
+      parts.length > 0 ? `${parts.join("\n")}\n` : "",
+      globalHead,
+    );
+    this.templateProvider.setErrorHeadContent(
+      styleOnlyParts.length > 0 ? `${styleOnlyParts.join("\n")}\n` : "",
+      globalHead,
+    );
+
+    this.log.debug("Early head content set", {
+      parts: parts.length,
+    });
+  }
+
+  /**
+   * Build a favicon link tag from the manifest favicon value.
+   * Format is "mimeType:/path" (e.g., "image/svg+xml:/favicon.svg").
+   */
+  protected buildFaviconTag(favicon: string | undefined): string | undefined {
+    if (!favicon) {
+      return undefined;
+    }
+    const colonIndex = favicon.indexOf(":");
+    if (colonIndex === -1) {
+      return undefined;
+    }
+    const type = favicon.slice(0, colonIndex);
+    const href = favicon.slice(colonIndex + 1);
+    return `<link rel="icon" type="${type}" href="${href}">`;
+  }
+
+  /**
+   * Get the public directory path where static files are located.
+   */
+  protected async getPublicDirectory(): Promise<string> {
+    const maybe = [
+      join(process.cwd(), `dist/${this.options.publicDir}`),
+      join(process.cwd(), this.options.publicDir),
+    ];
+
+    for (const it of maybe) {
+      if (await this.fs.exists(it)) {
+        return it;
+      }
+    }
+
+    return "";
+  }
+
+  /**
+   * The source for the files embedded in a compiled binary. Its own method so
+   * a spec can replace it: the real one needs the Bun runtime.
+   */
+  protected createEmbeddedSource(
+    files: Record<string, string>,
+    builtAt: number,
+  ): StaticFileSource {
+    return new EmbeddedStaticFileSource(files, builtAt);
+  }
+
+  /**
+   * Configure the static file server to serve files from the given root
+   * directory, or from `source` when the files do not live on disk.
+   */
+  protected async configureStaticServer(
+    root: string,
+    source?: StaticFileSource,
+  ) {
+    await this.serverStaticProvider.createStaticServer(
+      {
+        root,
+        // `dist/public/_headers`, written by `alepha build`: the rules Cloudflare
+        // and Bay apply to these same files, applied here too, so one artifact
+        // sends the same headers on every host. When the file is present its
+        // rules decide caching and `cacheControl` below is ignored; an artifact
+        // built before it existed keeps exactly the behaviour below.
+        headersFile: true,
+        cacheControl: {
+          // `[1, "hour"]`, not `3600`. The field is a `DurationLike`, and a bare
+          // number there is read as **milliseconds**, so `3600` shipped
+          // `cache-control: public, max-age=3.6, immutable` on every asset of
+          // every Alepha app: an hour of caching turned into 3.6 seconds, and a
+          // fractional delta-seconds is not even valid per RFC 9111, so a cache
+          // is free to read it as zero and drop the directive entirely.
+          //
+          // An hour rather than the year `immutable` would normally earn,
+          // because `getCacheControl` selects by file extension and not by
+          // whether the name carries a content hash: `public/logo.png` gets this
+          // same header as `asset.B_Zwhoqw.css`, and a year on a name the user
+          // can overwrite is unrecoverable.
+          maxAge: [1, "hour"],
+          immutable: true,
+        },
+        ...this.options.staticServer,
+      },
+      source,
+    );
+  }
+
+  /**
+   * Resolve the static file pattern from page options.
+   * Returns a compiled RegExp, or `false` if disabled (empty string).
+   */
+  protected resolveStaticFilePattern(): RegExp | false {
+    const pattern = this.pageOptions.staticFilePattern;
+    if (!pattern) return false;
+    return new RegExp(pattern);
+  }
+
+  /**
+   * Refuse a file-like URL on a route that swallows arbitrary paths, before
+   * anything else on that route gets to answer it.
+   *
+   * Bots probe `/wp-login.php` and `/.env`, and a browser holding a previous
+   * build asks for `/chunk.OLD.js` after every deploy. Neither is a page, and
+   * rendering React for them is waste at best.
+   *
+   * ## ⚠️ Two things this used to get wrong
+   *
+   * **It only guarded the catch-all.** A **root-level param** swallows exactly
+   * as much: `/:slug` matches every unclaimed root segment, so an application
+   * that routes projects or profiles at the root took every orphaned asset and
+   * every probe into that page. On lore.alepha.dev, whose `/:projectSlug`
+   * carries `$secure()`, `/chunk.OLD.js` was therefore answered as an
+   * authorization question - a login redirect for a visitor, and a 403
+   * "Access denied" page for a signed-in one, several times a day after a
+   * run of deploys.
+   *
+   * **It sat inside the render**, which is inside the middleware chain. A
+   * guard that has already run has already given the wrong answer, so the
+   * check has to wrap the whole handler rather than live at the end of it.
+   *
+   * A deeper param (`/docs/:slug`) is left alone deliberately: it is scoped
+   * under a segment the application owns, so a dot in it is far likelier to be
+   * meant. `staticFilePattern: ""` disables the whole thing.
+   */
+  protected withStaticFileSkip(
+    route: PageRoute,
+    handler: ServerHandler,
+  ): ServerHandler {
+    // `/*`, or a single root-level param. Both match anything at the root.
+    const swallowsAnyPath =
+      route.match === "/*" || /^\/[:{][^/]+$/.test(route.match);
+
+    const pattern = swallowsAnyPath ? this.resolveStaticFilePattern() : false;
+    if (!pattern) {
+      return handler;
+    }
+
+    return async (serverRequest) => {
+      if (!pattern.test(serverRequest.url.pathname)) {
+        return handler(serverRequest);
+      }
+
+      const { reply } = serverRequest;
+      reply.status = 404;
+      reply.headers["content-type"] = "text/plain";
+      return "Not Found";
+    };
+  }
+
+  /**
+   * Collect middleware from the entire parent chain + the page itself.
+   * Parent middleware runs first (outermost → innermost → page).
+   */
+  protected collectMiddleware(page: PageRoute): Middleware[] {
+    const chain: Middleware[][] = [];
+    let current: PageRoute | undefined = page;
+
+    while (current) {
+      if (current.use?.length) {
+        chain.unshift(current.use);
+      }
+      current = current.parent;
+    }
+
+    return chain.flat();
+  }
+
+  /**
+   * Turn a guard's refusal into the same answer a client-side navigation gives.
+   *
+   * A page's `use` chain runs here, wrapped around the whole route handler, so
+   * it sits *outside* `createLayers` — the loop that owns `errorHandler`. A
+   * guard that throws therefore bypasses every handler an application could have
+   * written, and the two `$secure` variants do not even fail the same way: the
+   * browser short-circuits by returning, the server throws. Left alone, one
+   * guarded URL redirected to login on an in-app navigation and answered a bare
+   * 401 on a hard load or a crawl.
+   *
+   * The two denials get different answers, and neither is the raw error.
+   *
+   * A **401** redirects to login: the visitor is anonymous, and there is a page
+   * that fixes that.
+   *
+   * A **403** renders the not-found page. Redirecting is not an option — the
+   * user is already past login, so a bounce there is a loop — but neither is
+   * letting the error escape: this is a page route, and a page route's caller
+   * is a browser doing a hard navigation. It has asked for HTML, and what it
+   * got was `{"error":"ForbiddenError",…}` painted as text on a white
+   * background, with no styles, no favicon and no way back. Rendering the
+   * app's own `/*` page instead costs nothing, uses whatever design the
+   * project already gave it, and tells a user who cannot enter the one true
+   * thing they can act on: there is nothing here for you.
+   *
+   * It also stops the URL confirming what it is guarding — a signed-in user
+   * probing `/admin` learns only that it is not their app to see, which is the
+   * same answer GitHub gives for a private repository. The real reason stays
+   * in the logs, where the developer is.
+   */
+  protected withGuardDenial(
+    route: PageRoute,
+    handler: { run: (...args: any[]) => any },
+  ): ServerHandler {
+    return async (serverRequest) => {
+      try {
+        return await handler.run(serverRequest);
+      } catch (e) {
+        const status = (e as { status?: number })?.status;
+        if (status !== 401 && status !== 403) {
+          throw e;
+        }
+
+        const { url, reply } = serverRequest;
+
+        if (status === 403) {
+          const notFound = this.resolveNotFoundRoute();
+          // No `/*` page to fall back on — an app with no pages at all. The
+          // error is still the most useful thing we have.
+          if (!notFound) {
+            throw e;
+          }
+
+          this.log.debug("Guard denied page, rendering not-found", {
+            name: route.name,
+            reason: (e as Error)?.message,
+          });
+
+          this.notFoundHandler ??= this.createHandler(notFound);
+          const result = await this.notFoundHandler(serverRequest);
+          reply.status = 404;
+          return result;
+        }
+
+        // Throws for an authenticated caller, or when there is no `login` route
+        // to send an anonymous one to — both cases keep surfacing as errors.
+        const { redirect } = this.pageApi.denyGuardedPage(url);
+
+        this.log.debug("Guard denied page, redirecting", {
+          name: route.name,
+          redirect,
+        });
+
+        reply.status = 302;
+        reply.headers.location = redirect;
+        return;
+      }
+    };
+  }
+
+  /**
+   * The page a denied navigation falls back to.
+   *
+   * Prefers the conventional `notFound` name, then any `/*` catch-all, so an
+   * app that defined its own 404 page gets its own design here rather than the
+   * framework's built-in one.
+   */
+  protected resolveNotFoundRoute(): PageRoute | undefined {
+    const pages = this.pageApi.getPages();
+    return (
+      pages.find((page) => page.name === "notFound") ??
+      pages.find((page) => page.match === "/*" || page.path === "/*")
+    );
+  }
+
+  /**
+   * Create the request handler for a page route.
+   *
+   * When cacheMiddleware is provided, uses a non-streaming path that renders
+   * to a string so the result can be cached. Otherwise uses early HTML streaming.
+   */
+  protected createHandler(
+    route: PageRoute,
+    cacheMiddleware: Middleware[] = [],
+  ): ServerHandler {
+    /*
+     * Buffer when caching demands it, or when the page asked for it.
+     *
+     * `stream: false` exists so a page can choose its status code: the buffered
+     * path calls `onServerResponse` *after* the render, whereas the streaming path
+     * has already flushed the head by then. See `$page`'s `stream` option.
+     */
+    const buffered = cacheMiddleware.length > 0 || route.stream === false;
+
+    return async (serverRequest) => {
+      const { url, reply, query, params } = serverRequest;
+
+      // The file-like URL skip that used to live here is now
+      // `withStaticFileSkip`, wrapped around the whole handler: here it sat
+      // inside the middleware chain, so a page guard answered a probe before
+      // this line was ever reached.
+
+      this.log.trace("Rendering page", { name: route.name });
+
+      // Locale-prefix mode: the URL is the source of truth for language.
+      // Record the active locale so links built during SSR (`pathname()`)
+      // carry the prefix, and so hreflang alternates can be emitted.
+      if (this.localeProvider.enabled) {
+        this.localeProvider.adopt(url.pathname);
+      }
+
+      // Initialize router state
+      const state: ReactRouterState = {
+        url,
+        params,
+        query,
+        name: route.name,
+        onError: () => null,
+        layers: [],
+        meta: {},
+        head: {},
+      };
+
+      // Set up API links if available
+      if (this.hasServerLinksProvider) {
+        this.alepha.store.set(
+          "alepha.server.request.apiLinks",
+          await this.alepha.inject(ServerLinksProvider).getCachedUserApiLinks({
+            // `user` is declaration-merged onto `ServerRequest` by
+            // `alepha/security`, which react cannot import — an optional
+            // module must not become a compile-time dependency of the router.
+            // Hence the cast: the field is real, react just cannot see it.
+            user: (serverRequest as any).user,
+            authorization: serverRequest.headers.authorization,
+          }),
+        );
+      }
+
+      // Route access control is enforced by `use: [$secure(...)]` middleware
+      // in the loader pipeline (below). `$page.can` is a UI-only nav gate
+      // (sidebar visibility / disabled state) and is intentionally NOT consulted
+      // here — it has no server-side permission context to evaluate against.
+
+      await this.alepha.events.emit("react:server:render:begin", {
+        request: serverRequest,
+        state,
+      });
+
+      // Apply SSR headers early
+      Object.assign(reply.headers, this.SSR_HEADERS);
+
+      if (buffered) {
+        // When $cache middleware is present, render to string so the result
+        // is serializable. Streaming is not compatible with $cache since
+        // ReadableStream cannot be serialized/deserialized.
+        const renderFn = async (
+          _url: string,
+        ): Promise<{ html: string; redirect?: string }> => {
+          const { redirect, reactStream } = await this.renderPage(route, state);
+          if (redirect) {
+            return { redirect, html: "" };
+          }
+          const htmlStream = this.templateProvider.createHtmlStream(
+            reactStream!,
+            state,
+            { hydration: true },
+          );
+          return { html: await this.streamToString(htmlStream) };
+        };
+
+        const result = await new PipelineHandler(renderFn, cacheMiddleware).run(
+          url.href,
+        );
+
+        if (result.redirect) {
+          reply.status = 302;
+          reply.headers.location = result.redirect;
+          return;
+        }
+
+        route.onServerResponse?.(serverRequest);
+        reply.body = result.html;
+        return;
+      }
+
+      // Resolve global head for early streaming (htmlAttributes only)
+      let globalHead = this.serverHeadProvider.resolveGlobalHead();
+
+      // In locale-prefix mode the language is known from the URL before any
+      // rendering, so stamp the correct `<html lang>` onto the early head
+      // (per-request copy — never mutate the shared global head).
+      if (this.localeProvider.enabled) {
+        globalHead = {
+          ...globalHead,
+          htmlAttributes: {
+            ...globalHead?.htmlAttributes,
+            lang: this.localeProvider.current,
+          },
+        };
+      }
+
+      // The route's preload links, ahead of the loaders rather than behind
+      // them. Nothing in their resolution reads loader output, and the wait
+      // they used to sit behind is 170ms to 1000ms of a browser holding one
+      // script and nothing else.
+      const preloadHead = this.templateProvider.renderHeadContent({
+        link: this.ssrManifestProvider.collectPreloadLinks(route),
+      });
+
+      // Create optimized HTML stream with early head
+      const htmlStream = this.templateProvider.createEarlyHtmlStream(
+        globalHead,
+        async () => {
+          // === ASYNC WORK (runs while early head is being sent) ===
+          const result = await this.renderPage(route, state, {
+            preloadLinks: false,
+          });
+
+          if (result.redirect) {
+            // Return redirect URL - template provider will inject meta refresh
+            // since HTTP headers have already been sent
+            return { redirect: result.redirect };
+          }
+
+          return { state, reactStream: result.reactStream! };
+        },
+        {
+          hydration: true,
+          state,
+          earlyHead: preloadHead,
+          onError: (error) => {
+            if (error instanceof Redirection) {
+              this.log.debug("Streaming resulted in redirection", {
+                redirect: error.redirect,
+              });
+              // Can't do redirect after streaming started - already handled above
+            } else {
+              // disable logging here, it's noisy and duplicate
+              // this.log.error("HTML stream error", error);
+            }
+          },
+        },
+      );
+
+      this.log.trace("Page streaming started (early head optimization)");
+      route.onServerResponse?.(serverRequest);
+      reply.body = htmlStream.pipeThrough(
+        new TransformStream({
+          flush: () => {
+            this.log.info("Page streaming completed", { name: route.name });
+          },
+        }),
+      );
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Core rendering logic - shared between SSR handler and static prerendering
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Inject SEO `hreflang` alternate links for the current route when
+   * locale-prefix routing is enabled. Each registered locale gets an absolute
+   * alternate URL (the default locale stays unprefixed), plus an `x-default`
+   * pointing at the unprefixed URL — this is what lets crawlers index every
+   * language. Also sets a best-effort `<html lang>` for the non-streaming /
+   * prerender path; the streamed path's `<html lang>` is finalized on the
+   * client (the early HTML head is flushed before the route is known).
+   *
+   * No-op unless `routing: "prefix"` is enabled on the i18n module.
+   */
+  protected injectLocaleHead(state: ReactRouterState): void {
+    if (!this.localeProvider.enabled) {
+      return;
+    }
+
+    const { origin, search } = state.url;
+    const canonical = this.localeProvider.detect(state.url.pathname).pathname;
+
+    // An excluded page has exactly one URL, so there is no alternate to point
+    // at. Emitting them anyway would advertise one URL per language that all
+    // resolve to the same page — the duplicate-content problem hreflang exists
+    // to solve, caused by hreflang.
+    if (this.localeProvider.isExcluded(canonical)) {
+      return;
+    }
+
+    const links = this.localeProvider.locales.map((locale) => ({
+      rel: "alternate",
+      hreflang: locale,
+      href: `${origin}${this.localeProvider.withPrefix(canonical, locale)}${search}`,
+    }));
+    links.push({
+      rel: "alternate",
+      hreflang: "x-default",
+      href: `${origin}${canonical}${search}`,
+    });
+
+    state.head ??= {};
+    state.head.link = [...(state.head.link ?? []), ...links];
+    state.head.htmlAttributes = {
+      ...state.head.htmlAttributes,
+      lang: this.localeProvider.current,
+    };
+  }
+
+  /**
+   * Core page rendering logic shared between SSR handler and static prerendering.
+   *
+   * Handles:
+   * - Layer resolution (loaders)
+   * - Redirect detection
+   * - Head content filling
+   * - Preload link collection
+   * - React stream rendering
+   *
+   * @param route - The page route to render
+   * @param state - The router state
+   * @param options - `preloadLinks: false` when the caller has already put
+   *   them in the early head, which only the streaming path can do
+   * @returns Render result with redirect or React stream
+   */
+  protected async renderPage(
+    route: PageRoute,
+    state: ReactRouterState,
+    options: { preloadLinks?: boolean } = {},
+  ): Promise<{ redirect?: string; reactStream?: ReadableStream<Uint8Array> }> {
+    // Resolve page layers (loaders)
+    const { redirect } = await this.pageApi.createLayers(route, state);
+    if (redirect) {
+      this.log.debug("Resolver resulted in redirection", { redirect });
+      return { redirect };
+    }
+
+    // Fill head from route config
+    this.serverHeadProvider.fillHead(state);
+
+    // Collect and inject modulepreload links for page-specific chunks.
+    //
+    // The streaming path opts out: it emits the same links itself, before this
+    // function is even called, so that the browser starts pulling the page's
+    // chunks while the loaders are still running. The buffered ($cache) and
+    // prerender paths build the whole document from `state.head` and have no
+    // early phase to put them in, so they still fill it here.
+    if (options.preloadLinks !== false) {
+      const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
+      if (preloadLinks.length > 0) {
+        state.head ??= {};
+        state.head.link = [...(state.head.link ?? []), ...preloadLinks];
+      }
+    }
+
+    // Inject SEO hreflang alternates for locale-prefix routing
+    this.injectLocaleHead(state);
+
+    // Render React to stream
+
+    const element = this.pageApi.root(state);
+    this.alepha.store.set("alepha.react.router.state", state);
+
+    // Loaded here rather than imported at the top so the renderer stays off the
+    // cold-start path — and loaded BEFORE the stream opens, because the error
+    // paths inside it are synchronous controller callbacks that can only read
+    // an already-resolved module. See ReactDomServerProvider.
+    const { renderToReadableStream } = await this.reactDomServer.load();
+
+    const reactStream = await renderToReadableStream(element, {
+      onError: (error: unknown) => {
+        if (error instanceof Redirection) {
+          this.log.warn("Redirect during streaming ignored", {
+            redirect: error.redirect,
+          });
+        } else {
+          // disable logging here, it's noisy and duplicate
+          // this.log.error("Streaming render error", error);
+        }
+      },
+    });
+
+    return { reactStream };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Testing utilities - kept for backwards compatibility with tests
+  // ---------------------------------------------------------------------------
+
+  /**
+   * For testing purposes, renders a page to HTML string.
+   * Uses the same streaming code path as production, then collects to string.
+   *
+   * @param name - Page name to render
+   * @param options - Render options (params, query, html, hydration)
+   */
+  public async render(
+    name: string,
+    options: PagePrimitiveRenderOptions = {},
+  ): Promise<PagePrimitiveRenderResult> {
+    const page = this.pageApi.page(name);
+    const url = new URL(this.pageApi.url(name, options));
+    const state: ReactRouterState = {
+      url,
+      params: options.params ?? {},
+      query: options.query ?? {},
+      onError: () => null,
+      layers: [],
+      meta: {},
+      head: {},
+    };
+
+    this.log.trace("Rendering", { url });
+
+    await this.alepha.events.emit("react:server:render:begin", { state });
+
+    // Render page and collect the stream into a serializable result.
+    // This must happen inside the middleware pipeline so that $cache
+    // wraps a function returning { html, redirect? } — not a ReadableStream.
+    // The URL string is passed as argument so middleware like $cache can
+    // derive a unique cache key per URL (params + query).
+    const renderFn = async (
+      _url: string,
+    ): Promise<{
+      html: string;
+      redirect?: string;
+    }> => {
+      const { redirect, reactStream } = await this.renderPage(page, state);
+      if (redirect) {
+        return { redirect, html: "" };
+      }
+
+      if (!options.html) {
+        return { html: await this.streamToString(reactStream!) };
+      }
+
+      const htmlStream = this.templateProvider.createHtmlStream(
+        reactStream!,
+        state,
+        { hydration: options.hydration ?? true },
+      );
+      return { html: await this.streamToString(htmlStream) };
+    };
+
+    const allMiddleware = this.collectMiddleware(page);
+
+    let result: { html: string; redirect?: string } | undefined;
+    try {
+      result = allMiddleware.length
+        ? await new PipelineHandler(renderFn, allMiddleware).run(url.href)
+        : await renderFn(url.href);
+    } catch (e) {
+      // A guard refused an anonymous visitor. The two `$secure` variants
+      // disagree on how they say so — the browser returns, the server throws —
+      // and that disagreement used to reach the user: the same guarded URL
+      // redirected to login on a client-side navigation and answered a bare 401
+      // on a hard load or a crawl.
+      //
+      // The page's own `errorHandler` cannot paper over it either. On the server
+      // the middleware chain wraps the whole render (so `$cache` sees a
+      // `{ html }`), which puts it *outside* `createLayers` — the loop that owns
+      // `errorHandler`. A guard that throws therefore bypasses every handler an
+      // app could have written.
+      //
+      // So translate the throw into the same denial as the short-circuit above.
+      // Only 401: `denyGuardedPage` sends an anonymous visitor to login, and a
+      // 403 is a decision about a known user that must keep its own message
+      // rather than becoming a login loop.
+      if ((e as { status?: number })?.status !== 401) {
+        throw e;
+      }
+
+      const { redirect } = this.pageApi.denyGuardedPage(url);
+      return { state, html: "", redirect };
+    }
+
+    // A guard middleware short-circuited without calling `next`, so `renderFn`
+    // never ran and the pipeline resolved to whatever the guard returned —
+    // `undefined` for `$secure` / `$owns`. Reading `.redirect` off that used to
+    // throw a bare TypeError, which is neither a denial nor a render.
+    //
+    // `$secure` itself dodged this on the server by throwing, so only a
+    // middleware that denies by returning (a paywall, a feature gate, the
+    // browser-shaped guards) could reach it. Route it through the same denial
+    // as client-side navigation instead.
+    if (!result) {
+      const { redirect } = this.pageApi.denyGuardedPage(url);
+      return { state, html: "", redirect };
+    }
+
+    if (result.redirect) {
+      return { state, html: "", redirect: result.redirect };
+    }
+
+    await this.alepha.events.emit("react:server:render:end", {
+      state,
+      html: result.html,
+    });
+
+    return { state, html: result.html };
+  }
+
+  /**
+   * Collect a ReadableStream into a string.
+   */
+  protected async streamToString(
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<string> {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    const chunks: string[] = [];
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(decoder.decode(value, { stream: true }));
+      }
+      chunks.push(decoder.decode()); // Flush remaining
+    } finally {
+      reader.releaseLock();
+    }
+
+    return chunks.join("");
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = z.object({
+  REACT_SSR_ENABLED: z
+    .boolean()
+    .describe(
+      "Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only.",
+    )
+    .meta({ secret: false })
+    .optional(),
+});
+
+declare module "alepha" {
+  interface Env extends Partial<Infer<typeof envSchema>> {}
+}
+
+/**
+ * React server provider configuration atom
+ */
+export const reactServerOptions = $atom({
+  name: "alepha.react.server.options",
+  schema: z.object({
+    publicDir: z.string(),
+    staticServer: z.object({
+      disabled: z.boolean(),
+      path: z.string().describe("URL path where static files will be served."),
+    }),
+  }),
+  default: {
+    publicDir: "public",
+    staticServer: {
+      disabled: false,
+      path: "/",
+    },
+  },
+  serverOnly: true,
+});
+
+export type ReactServerProviderOptions = Infer<
+  typeof reactServerOptions.schema
+>;
+
+declare module "alepha" {
+  interface State {
+    [reactServerOptions.key]: ReactServerProviderOptions;
+  }
+}

@@ -1,0 +1,895 @@
+import { $inject, $store, Alepha } from "alepha";
+import { $job } from "alepha/api/jobs";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import {
+  $repository,
+  DbEntityNotFoundError,
+  type Page,
+  RepositoryProvider,
+} from "alepha/orm";
+
+import {
+  type PaymentIntentEntity,
+  paymentIntents,
+} from "../entities/paymentIntents.ts";
+import { type RefundEntity, refunds } from "../entities/refunds.ts";
+import { PaymentError } from "../errors/PaymentError.ts";
+import {
+  type ElementSessionResult,
+  PaymentProvider,
+  type ProviderAccountOptions,
+  type WebhookEvent,
+} from "../providers/PaymentProvider.ts";
+import { paymentsConfig } from "../schemas/paymentsConfigAtom.ts";
+
+export class PaymentService {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly config = $store(paymentsConfig);
+  protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly provider = $inject(PaymentProvider);
+  protected readonly intentRepo = $repository(paymentIntents);
+  protected readonly repositoryProvider = $inject(RepositoryProvider);
+  protected readonly refundRepo = $repository(refunds);
+
+  /**
+   * Expires stale payment intents that have been in "processing" status
+   * for more than 30 minutes.
+   *
+   * Cadence comes from {@link paymentsConfig}, defaulting to the same
+   * expression as the jobs sweep so Cloudflare emits one shared cron trigger
+   * rather than a second one. The 30-minute cutoff is what bounds correctness
+   * here; the tick only decides how far past it an intent may drift.
+   */
+  protected readonly expireStaleIntents = $job({
+    name: "system.payments.expire-stale-intents",
+    description:
+      "Asks the payment provider about intents processing for over 30 minutes, and expires those still stuck.",
+    cron: this.config.expireStaleIntentsCron,
+    timeout: [30, "seconds"],
+    handler: async () => {
+      const cutoff = this.dateTime.now().subtract(30, "minutes").toISOString();
+
+      const stale = await this.intentRepo.findMany({
+        where: { status: { eq: "processing" }, createdAt: { lt: cutoff } },
+      });
+
+      for (const intent of stale) {
+        // A missing webhook is not a missing payment: ask the PSP before
+        // declaring the intent dead. On providers that can be polled, a
+        // payment the buyer completed settles here instead of being
+        // stomped to "expired" — the Mollie-without-webhook case.
+        const status = await this.syncIntent(intent.id);
+        if (status === "processing") {
+          await this.expireIntent(intent);
+        }
+      }
+    },
+  });
+
+  /**
+   * Ask the PSP to expire or cancel the object behind an intent, so it can no
+   * longer take money. Best effort: a PSP that cannot be reached must not
+   * turn a status change into an error, and a capture that gets through
+   * anyway is still recorded (see {@link VALID_WEBHOOK_TRANSITIONS}).
+   */
+  protected async closeProviderSession(
+    intent: PaymentIntentEntity,
+  ): Promise<void> {
+    if (!intent.providerRef) {
+      return;
+    }
+    try {
+      await this.provider.expireSession(
+        intent.providerRef,
+        this.accountOf(intent),
+      );
+    } catch (error) {
+      this.log.warn(`Failed to close the PSP session for intent ${intent.id}`, {
+        error,
+      });
+    }
+  }
+
+  /**
+   * Expire a single stale intent with a status-guarded claim: a webhook may
+   * capture the payment between the sweep's read and this write, and a
+   * captured payment must never be stomped to "expired".
+   */
+  public async expireIntent(intent: PaymentIntentEntity): Promise<void> {
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: intent.id }, status: { eq: "processing" } },
+        { status: "expired" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        this.log.info(
+          `Skipping expiry: intent ${intent.id} is no longer processing`,
+        );
+        return;
+      }
+      throw error;
+    }
+
+    await this.closeProviderSession(intent);
+
+    this.log.info(`Expired stale intent ${intent.id}`);
+
+    // Tell the domain: an expiry is an outcome like any other. Without
+    // this, a buyer who closed the PSP tab left a `paying` checkout (and
+    // its pending order) stranded forever, invisible to every listener.
+    await this.alepha.events.emit(
+      "payments:expired",
+      {
+        intentId: intent.id,
+        amount: intent.amount,
+        currency: intent.currency,
+        metadata: intent.metadata,
+      },
+      { catch: true },
+    );
+  }
+
+  /**
+   * Reconcile an intent against the PSP's own record: ask the provider
+   * for the session's current status and, when it reports a transition
+   * we never saw, route it through {@link handleWebhookEvent} — the same
+   * guarded path a webhook takes, so ordering and idempotency rules hold.
+   *
+   * Returns the intent's status after the attempt. No-ops (returning the
+   * stored status) when the provider cannot be polled or reports nothing
+   * new.
+   */
+  public async syncIntent(intentId: string): Promise<string> {
+    const intent = await this.getIntent(intentId);
+
+    if (intent.status !== "processing" && intent.status !== "authorized") {
+      return intent.status;
+    }
+    if (!intent.providerRef) {
+      return intent.status;
+    }
+
+    const reported = await this.provider.retrieveSessionStatus(
+      intent.providerRef,
+      this.accountOf(intent),
+    );
+    if (!reported || reported === intent.status) {
+      return intent.status;
+    }
+
+    this.log.info(
+      `Reconciling intent ${intent.id}: provider reports '${reported}'`,
+    );
+    await this.handleWebhookEvent(intent.id, reported);
+
+    return (await this.getIntent(intentId)).status;
+  }
+
+  /**
+   * Create a new payment intent in "created" status.
+   */
+  public async createIntent(
+    amount: number,
+    currency: string,
+    metadata?: unknown,
+    options?: { paymentMethodId?: string; userId?: string },
+  ): Promise<PaymentIntentEntity> {
+    return await this.intentRepo.create({
+      amount,
+      currency: currency.toLowerCase(),
+      status: "created",
+      metadata: metadata as any,
+      paymentMethodId: options?.paymentMethodId,
+      userId: options?.userId,
+    });
+  }
+
+  /**
+   * Create a checkout session with the payment provider and
+   * transition the intent to "processing".
+   */
+  public async createSession(
+    intentId: string,
+    returnUrl: string,
+    authorize?: boolean,
+    userId?: string,
+    options?: {
+      stripeAccount?: string;
+      applicationFeeAmount?: number;
+      /**
+       * Pre-fills the payer's email on the PSP checkout page. Useful when
+       * the session runs on a sub-account (Stripe connected account) where
+       * no customer object exists — without it the hosted checkout makes
+       * the payer retype an address the platform already knows.
+       */
+      customerEmail?: string;
+    },
+  ): Promise<{ url: string; intentId: string }> {
+    const intent = await this.getIntent(intentId);
+    this.assertStatus(intent, "created", "createSession");
+
+    // Verify intent ownership if userId is provided
+    if (userId && intent.userId && intent.userId !== userId) {
+      throw new PaymentError("Payment intent does not belong to this user");
+    }
+
+    // Claim the intent BEFORE the PSP call: two concurrent createSession
+    // calls would otherwise both create sessions, and the loser's ref would
+    // overwrite the winner's — orphaning the payment made against the first
+    // session.
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: intent.id }, status: { eq: "created" } },
+        {
+          status: "processing",
+          ...(userId && !intent.userId ? { userId } : {}),
+        },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new PaymentError(
+          `Cannot createSession: intent ${intent.id} is already being processed`,
+        );
+      }
+      throw error;
+    }
+
+    try {
+      const result = await this.provider.createSession(intent, {
+        returnUrl,
+        authorize,
+        stripeAccount: options?.stripeAccount,
+        applicationFeeAmount: options?.applicationFeeAmount,
+        customerEmail: options?.customerEmail,
+      });
+
+      // The account is recorded with the ref, because every later call
+      // about this session (poll, expiry, capture, refund) must name it.
+      await this.intentRepo.updateById(intent.id, {
+        providerRef: result.providerRef,
+        ...(options?.stripeAccount
+          ? { providerAccount: options.stripeAccount }
+          : {}),
+      });
+
+      return { url: result.url, intentId: intent.id };
+    } catch (error) {
+      // Release the claim so the intent isn't stuck in "processing" with no
+      // session behind it.
+      await this.intentRepo
+        .updateOne(
+          { id: { eq: intent.id }, status: { eq: "processing" } },
+          { status: "created" },
+        )
+        .catch((releaseError) => {
+          this.log.warn(
+            `Failed to release intent ${intent.id} after session failure`,
+            { error: releaseError },
+          );
+        });
+      throw error;
+    }
+  }
+
+  /**
+   * Handle an incoming webhook from the payment provider.
+   */
+  public async handleWebhook(request: Request): Promise<void> {
+    const event = await this.provider.parseWebhook(request);
+    await this.handleParsedWebhook(event);
+  }
+
+  /**
+   * Resolve an already-parsed webhook event to its stored intent and apply
+   * it. Split from `handleWebhook` so callers that parse with a DIFFERENT
+   * verification path (e.g. a connected-accounts endpoint that must first
+   * route the event to a tenant) can reuse the matching + transition logic.
+   */
+  public async handleParsedWebhook(event: WebhookEvent): Promise<void> {
+    let intents = await this.intentRepo.findMany({
+      where: { providerRef: { eq: event.providerRef } },
+      limit: 1,
+    });
+
+    // Session events reference two PSP objects (session + PaymentIntent);
+    // the stored ref is whichever existed at creation time — try the other.
+    if (intents.length === 0 && event.providerRefAlt) {
+      intents = await this.intentRepo.findMany({
+        where: { providerRef: { eq: event.providerRefAlt } },
+        limit: 1,
+      });
+    }
+
+    if (intents.length === 0) {
+      this.log.warn(`Webhook for unknown providerRef: ${event.providerRef}`);
+      return;
+    }
+
+    const intent = intents[0];
+
+    // Session events put the session id in `providerRef` and the (lazily
+    // created) PaymentIntent in `providerRefAlt`. When the stored ref is
+    // still the session id, upgrade it to the PI as soon as an event
+    // reveals it — refunds can only target the PI, never the session.
+    if (
+      event.providerRefAlt &&
+      intent.providerRef === event.providerRef &&
+      event.providerRefAlt !== event.providerRef
+    ) {
+      await this.intentRepo.updateById(intent.id, {
+        providerRef: event.providerRefAlt,
+      });
+    }
+
+    await this.handleWebhookEvent(intent.id, event.status, event.raw);
+  }
+
+  /**
+   * Valid status transitions from webhook events.
+   * Only these transitions are allowed — all others are silently ignored.
+   *
+   * `expired` accepts a late authorization or capture: the PSP page can
+   * outlive the sweep's local expiry (a failed or racing expire call), and a
+   * buyer who pays there has paid. Dropping that event would leave the money
+   * with the merchant, unrecorded, and out of reach of `refund()` and
+   * `void()`, which need the intent to say what the PSP holds. A late
+   * failure records nothing new, so it stays ignored.
+   *
+   * `failed` accepts them for the same reason. A declined card leaves a
+   * Stripe PaymentIntent confirmable, and a second card can succeed on it:
+   * the money is taken, and dropping the event would leave it unrecorded
+   * while the domain has already cancelled the order. Let through, it
+   * reaches the domain's stray-capture path. The PSP object is also cancelled
+   * on the failure itself (see {@link closeProviderSession}), so this is the
+   * backstop for the race, not the common path.
+   */
+  protected static readonly VALID_WEBHOOK_TRANSITIONS: Record<
+    string,
+    string[]
+  > = {
+    processing: ["authorized", "captured", "failed"],
+    authorized: ["captured", "failed"],
+    expired: ["authorized", "captured"],
+    failed: ["authorized", "captured"],
+  };
+
+  /**
+   * Process a webhook event by updating the intent status and emitting
+   * the corresponding payment event.
+   */
+  public async handleWebhookEvent(
+    intentId: string,
+    status: string,
+    raw?: unknown,
+  ): Promise<void> {
+    const intent = await this.getIntent(intentId);
+
+    const eventMap = {
+      authorized: "payments:authorized",
+      captured: "payments:captured",
+      failed: "payments:failed",
+    } as const;
+
+    type WebhookStatus = keyof typeof eventMap;
+    if (!(status in eventMap)) {
+      this.log.warn(`Unknown webhook status: ${status}`);
+      return;
+    }
+
+    const webhookStatus = status as WebhookStatus;
+
+    // Validate status transition
+    const allowed = PaymentService.VALID_WEBHOOK_TRANSITIONS[intent.status];
+    if (!allowed?.includes(webhookStatus)) {
+      this.log.warn(
+        `Ignoring webhook: cannot transition ${intent.status} → ${webhookStatus}`,
+        { intentId: intent.id },
+      );
+      return;
+    }
+
+    // Guarded on the status we validated the transition against. Providers
+    // retry webhooks and can deliver out of order, so two deliveries can pass
+    // the table check against the same snapshot; only the first may write, or
+    // the later one would re-emit a lifecycle event for a transition the
+    // intent already left.
+    const moved = await this.intentRepo
+      .updateOne(
+        { id: { eq: intent.id }, status: { eq: intent.status } },
+        { status: webhookStatus, providerRaw: raw as any },
+      )
+      .catch(() => undefined);
+
+    if (!moved) {
+      this.log.warn(
+        `Ignoring webhook: intent ${intent.id} left '${intent.status}' before the update landed`,
+      );
+      return;
+    }
+
+    if (intent.status === "expired" || intent.status === "failed") {
+      this.log.warn(
+        `Late ${webhookStatus} on ${intent.status} intent ${intent.id}: the PSP session outlived it`,
+        { intentId: intent.id },
+      );
+    }
+
+    // A failure is final for this intent: the domain cancels what it was
+    // paying for. Close the PSP side too, or it stays payable (a declined
+    // card leaves a Stripe PaymentIntent open to a second one).
+    if (webhookStatus === "failed") {
+      await this.closeProviderSession(intent);
+    }
+
+    await this.alepha.events.emit(eventMap[webhookStatus], {
+      intentId: intent.id,
+      amount: intent.amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+  }
+
+  /**
+   * Create a session for an embedded card field, and claim the intent.
+   *
+   * Mirrors {@link createSession}'s state handling — the intent moves to
+   * `processing` before the PSP call, so two concurrent attempts cannot both
+   * create a payment against the same intent.
+   *
+   * @throws PaymentError when the installed provider has no embedded flow. The
+   * caller is expected to have asked first; this is the guard for when it did
+   * not.
+   */
+  public async createElementSession(
+    intentId: string,
+    options: { stripeAccount?: string } = {},
+  ): Promise<ElementSessionResult & { intentId: string }> {
+    const intent = await this.getIntent(intentId);
+    this.assertStatus(intent, "created", "createElementSession");
+
+    if (!this.provider.createElementSession) {
+      throw new PaymentError(
+        `The installed payment provider has no embedded card field. Use createSession() for a redirect instead.`,
+      );
+    }
+
+    // Claim before the PSP call, for the same reason as createSession: the loser
+    // of a race would otherwise overwrite the winner's reference.
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: intent.id }, status: { eq: "created" } },
+        { status: "processing" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new PaymentError(
+          `Cannot createElementSession: intent ${intent.id} is already being processed`,
+        );
+      }
+      throw error;
+    }
+
+    try {
+      const session = await this.provider.createElementSession(intent, options);
+
+      // Stored before the client secret is handed back: the browser cannot
+      // confirm the payment without it, so no webhook for this payment can
+      // arrive before its ref is on the row to match.
+      await this.intentRepo.updateById(intent.id, {
+        providerRef: session.providerRef,
+        ...(options.stripeAccount
+          ? { providerAccount: options.stripeAccount }
+          : {}),
+      });
+
+      return { ...session, intentId: intent.id };
+    } catch (error) {
+      // Same release as createSession: an intent left "processing" with no
+      // payment behind it could only be expired, never paid.
+      await this.intentRepo
+        .updateOne(
+          { id: { eq: intent.id }, status: { eq: "processing" } },
+          { status: "created" },
+        )
+        .catch((releaseError) => {
+          this.log.warn(
+            `Failed to release intent ${intent.id} after element session failure`,
+            { error: releaseError },
+          );
+        });
+      throw error;
+    }
+  }
+
+  /**
+   * Whether the installed provider can host a card field on our own page.
+   * A storefront asks this to decide what to render.
+   */
+  public supportsEmbeddedPayment(): boolean {
+    return typeof this.provider.createElementSession === "function";
+  }
+
+  /**
+   * Capture a previously authorized payment. Optionally specify a different
+   * amount for partial capture.
+   */
+  public async capture(
+    intentId: string,
+    finalAmount?: number,
+  ): Promise<PaymentIntentEntity> {
+    const intent = await this.getIntent(intentId);
+    this.assertStatus(intent, "authorized", "capture");
+
+    const amount = finalAmount ?? intent.amount;
+    if (amount > intent.amount) {
+      throw new PaymentError(
+        `Capture amount ${amount} exceeds authorized amount ${intent.amount}`,
+      );
+    }
+
+    if (intent.providerRef) {
+      await this.provider.capturePayment(
+        intent.providerRef,
+        amount,
+        this.accountOf(intent),
+      );
+    }
+
+    const updated = await this.transition(
+      intent.id,
+      "authorized",
+      { status: "captured", amount },
+      "capture",
+    );
+
+    await this.alepha.events.emit("payments:captured", {
+      intentId: intent.id,
+      amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Void a previously authorized payment before capture.
+   */
+  public async void(intentId: string): Promise<PaymentIntentEntity> {
+    const intent = await this.getIntent(intentId);
+    this.assertStatus(intent, "authorized", "void");
+
+    if (intent.providerRef) {
+      await this.provider.voidPayment(
+        intent.providerRef,
+        this.accountOf(intent),
+      );
+    }
+
+    const updated = await this.transition(
+      intent.id,
+      "authorized",
+      { status: "voided" },
+      "void",
+    );
+
+    await this.alepha.events.emit("payments:voided", {
+      intentId: intent.id,
+      amount: intent.amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Refund a captured payment (partial or full).
+   */
+  public async refund(
+    intentId: string,
+    amount: number,
+    reason?: string,
+    options: {
+      /**
+       * PSP sub-account holding the charge (Stripe connected account).
+       * Defaults to the account the session was created on, so it is only
+       * needed for an intent that predates that record.
+       */
+      stripeAccount?: string;
+    } = {},
+  ): Promise<RefundEntity> {
+    const intent = await this.getIntent(intentId);
+
+    // Reserve the refund with a version-guarded claim. Two concurrent refunds
+    // both reading the same refunded total would otherwise both pass the
+    // remaining-amount check and over-refund (a verified race for cash
+    // intents, which have no PSP to reject the excess).
+    //
+    // Deliberately NOT wrapped in `transactional()`: that would join an
+    // ambient transaction when several refunds run in the same async context,
+    // so one loser's rollback would erase the winner's reservation. The
+    // version-guarded UPDATE is itself atomic, which is all the mutual
+    // exclusion this needs — exactly one caller wins per version.
+    const fresh = await this.getIntent(intentId);
+
+    // Allow refunds from both "captured" and "partially_refunded" states
+    if (fresh.status !== "captured" && fresh.status !== "partially_refunded") {
+      throw new PaymentError(
+        `Cannot refund: intent ${fresh.id} is '${fresh.status}', expected 'captured' or 'partially_refunded'`,
+      );
+    }
+
+    // Validate refund amount against remaining refundable amount.
+    // Pending refunds count as reserved; failed ones never happened.
+    const existingRefunds = await this.refundRepo.findMany({
+      where: { intentId: { eq: fresh.id }, status: { ne: "failed" } },
+    });
+    const totalRefunded = existingRefunds.reduce((sum, r) => sum + r.amount, 0);
+    const remaining = fresh.amount - totalRefunded;
+
+    if (amount > remaining) {
+      throw new PaymentError(
+        `Refund amount ${amount} exceeds remaining refundable amount ${remaining}`,
+      );
+    }
+
+    // Insert the reservation BEFORE the version claim. Ordering matters:
+    // callers read the version first and the refund rows second, so any
+    // competitor that observes our bumped version is guaranteed to also see
+    // this row in its refunded-total read. Claiming first opens a window
+    // where a competitor sees the new version but not yet the new refund —
+    // three concurrent 500s then all pass a "1000 remaining" check.
+    const pending = await this.refundRepo.create({
+      intentId: fresh.id,
+      amount,
+      currency: fresh.currency,
+      status: "pending",
+      reason,
+    });
+
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: fresh.id }, version: { eq: fresh.version } },
+        { version: (fresh.version ?? 0) + 1 },
+      );
+    } catch (error) {
+      // Lost the claim — release the reservation so it stops counting
+      // against the remaining refundable amount.
+      await this.refundRepo.deleteById(pending.id).catch((releaseError) => {
+        this.log.warn(`Failed to release refund reservation ${pending.id}`, {
+          error: releaseError,
+        });
+      });
+      if (error instanceof DbEntityNotFoundError) {
+        throw new PaymentError(
+          `Concurrent refund in progress for intent ${fresh.id}, retry`,
+        );
+      }
+      throw error;
+    }
+
+    // PSP call outside any lock — network I/O must not hold one.
+    let refundProviderRef: string | undefined;
+    try {
+      if (intent.providerRef) {
+        const result = await this.provider.refundPayment(
+          intent.providerRef,
+          amount,
+          options.stripeAccount ? options : this.accountOf(intent),
+        );
+        refundProviderRef = result.providerRef;
+      }
+    } catch (error) {
+      // Release the reservation — a failed refund must not count against
+      // the remaining refundable amount.
+      await this.refundRepo
+        .updateById(pending.id, { status: "failed" })
+        .catch((releaseError) => {
+          this.log.warn(
+            `Failed to mark refund ${pending.id} as failed after PSP error`,
+            { error: releaseError },
+          );
+        });
+      throw error;
+    }
+
+    const refund = await this.refundRepo.updateById(pending.id, {
+      status: "completed",
+      providerRef: refundProviderRef,
+    });
+
+    // Set status from the refunded total as recorded in the database.
+    const allRefunds = await this.refundRepo.findMany({
+      where: { intentId: { eq: intent.id }, status: { ne: "failed" } },
+    });
+    const newTotalRefunded = allRefunds.reduce((sum, r) => sum + r.amount, 0);
+    const newStatus =
+      newTotalRefunded >= intent.amount ? "refunded" : "partially_refunded";
+    await this.intentRepo.updateOne(
+      { id: { eq: intent.id } },
+      { status: newStatus },
+    );
+
+    await this.alepha.events.emit("payments:refunded", {
+      intentId: intent.id,
+      refundId: refund.id,
+      amount,
+      refundedTotal: newTotalRefunded,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+
+    return refund;
+  }
+
+  /**
+   * Record a cash or offline payment directly as captured,
+   * bypassing the checkout flow.
+   */
+  public async recordCashPayment(
+    amount: number,
+    currency: string,
+    metadata?: unknown,
+  ): Promise<PaymentIntentEntity> {
+    const intent = await this.intentRepo.create({
+      amount,
+      currency: currency.toLowerCase(),
+      status: "captured",
+      metadata: metadata as any,
+    });
+
+    await this.alepha.events.emit("payments:captured", {
+      intentId: intent.id,
+      amount,
+      currency,
+      metadata,
+    });
+
+    return intent;
+  }
+
+  /**
+   * Cancel a payment intent that has not yet entered processing.
+   */
+  public async cancel(intentId: string): Promise<PaymentIntentEntity> {
+    const intent = await this.getIntent(intentId);
+    this.assertStatus(intent, "created", "cancel");
+
+    const cancelled = await this.transition(
+      intent.id,
+      "created",
+      { status: "cancelled" },
+      "cancel",
+    );
+
+    await this.alepha.events.emit("payments:cancelled", {
+      intentId: intent.id,
+      amount: intent.amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+
+    return cancelled;
+  }
+
+  /**
+   * Get a payment intent by ID. Throws NotFoundError if not found.
+   */
+  public async getIntent(intentId: string): Promise<PaymentIntentEntity> {
+    return await this.intentRepo.getById(intentId);
+  }
+
+  /**
+   * Best-effort left join embedding the paying user on every admin listing
+   * row, so the UI can render `user.email` instead of the bare `userId`.
+   * Joins `payment_intents.userId` → `users.id`.
+   *
+   * The `users` entity is resolved from the repository registry at runtime
+   * rather than imported — same pattern and same reason as
+   * `FileService.resolveCreatorJoin`: the payments module stays usable
+   * standalone, without `alepha/api/users`. Only applied when the `users`
+   * table is actually registered.
+   */
+  protected resolveUserJoin() {
+    const usersEntity = this.repositoryProvider
+      .getRepositories()
+      .find((repo) => repo.entity.name === "users")?.entity;
+    if (!usersEntity) {
+      return undefined;
+    }
+    return {
+      user: {
+        join: usersEntity,
+        on: ["userId", usersEntity.cols.id] as ["userId", { name: string }],
+      },
+    };
+  }
+
+  /**
+   * Find payment intents with optional filters and pagination. Rows carry a
+   * paying-user summary under `user` when the users table is registered —
+   * see {@link resolveUserJoin}.
+   *
+   * Typed without `user` on purpose, like `FileService.findFiles`: the join
+   * attaches it at runtime and the response schema declares it, while the
+   * inferred type of a registry-resolved join is `Record<string, unknown>`,
+   * which would conflict with the schema's shaped optional.
+   */
+  public async findIntents(query: {
+    status?: string;
+    userId?: string;
+    sort?: string;
+    size?: number;
+    page?: number;
+  }): Promise<Page<PaymentIntentEntity>> {
+    const where = this.intentRepo.createQueryWhere();
+    if (query.status)
+      where.status = { eq: query.status as PaymentIntentEntity["status"] };
+    if (query.userId) where.userId = { eq: query.userId };
+
+    const withUser = this.resolveUserJoin();
+
+    return await this.intentRepo.paginate(
+      query,
+      { where, ...(withUser ? { with: withUser } : {}) },
+      { count: true },
+    );
+  }
+
+  /**
+   * The PSP account an intent's session lives on, in the provider's option
+   * shape. Empty for a session on the platform account.
+   */
+  protected accountOf(intent: PaymentIntentEntity): ProviderAccountOptions {
+    return intent.providerAccount
+      ? { stripeAccount: intent.providerAccount }
+      : {};
+  }
+
+  protected assertStatus(
+    intent: PaymentIntentEntity,
+    expected: PaymentIntentEntity["status"],
+    operation: string,
+  ): void {
+    if (intent.status !== expected) {
+      throw new PaymentError(
+        `Cannot ${operation}: intent ${intent.id} is '${intent.status}', expected '${expected}'`,
+      );
+    }
+  }
+
+  /**
+   * Move an intent from one status to another, refusing the write if the row
+   * left `from` in the meantime.
+   *
+   * `assertStatus` only ever describes the *snapshot* the caller read. Between
+   * that read and the write, a webhook or a second operator can move the row —
+   * and an unguarded `updateById` would happily overwrite them, emitting a
+   * second lifecycle event for a transition that never legitimately happened.
+   * Folding the expected status into the WHERE clause makes the check and the
+   * write one atomic statement.
+   */
+  protected async transition(
+    intentId: string,
+    from: PaymentIntentEntity["status"],
+    data: Record<string, unknown>,
+    operation: string,
+  ): Promise<PaymentIntentEntity> {
+    const updated = await this.intentRepo
+      .updateOne({ id: { eq: intentId }, status: { eq: from } }, data as never)
+      .catch(() => undefined);
+
+    if (!updated) {
+      const current = await this.getIntent(intentId);
+      throw new PaymentError(
+        `Cannot ${operation}: intent ${intentId} is '${current.status}', expected '${from}'`,
+      );
+    }
+
+    return updated;
+  }
+}

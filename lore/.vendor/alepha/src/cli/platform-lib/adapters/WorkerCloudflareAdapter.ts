@@ -1,0 +1,1237 @@
+import { $inject, Alepha, AlephaError } from "alepha";
+import {
+  BuildCloudflareTask,
+  type BuildManifest,
+  buildManifestSchema,
+} from "alepha/cli";
+import type { RunnerMethod } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
+
+import {
+  type EnvironmentOptions,
+  environmentOptionsSchema,
+} from "../schemas/environmentOptions.ts";
+import {
+  type CloudflareAssetEntry,
+  CloudflareAssetManifest,
+} from "../services/CloudflareAssetManifest.ts";
+import {
+  type CloudflareDeployAssets,
+  CloudflareDeployClient,
+  type CloudflareDeployPlan,
+  type CloudflareQueueConsumerSettings,
+} from "../services/CloudflareDeployClient.ts";
+import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
+import {
+  type D1MigrationTransport,
+  D1MigrationsService,
+} from "../services/D1MigrationsService.ts";
+import {
+  PlatformAdapter,
+  type PlatformContext,
+  type PlatformState,
+} from "./PlatformAdapter.ts";
+
+/**
+ * The credential one deploy runs under.
+ *
+ * ⚠️ **Per deploy, not per process.** Every field comes from the estate row,
+ * opened at the moment of use. There is deliberately no way to fill this from
+ * the environment: `CLOUDFLARE_ACCOUNT_ID` inside Lore's Worker is Lore's OWN
+ * account, so an environment fallback would deploy a user's artifact, and
+ * create their database, in the operator's account.
+ */
+export interface WorkerCloudflareCredential {
+  apiToken: string;
+  accountId: string;
+  jurisdiction?: "eu" | "fedramp";
+}
+
+/**
+ * A `PlatformAdapter` a Cloudflare Worker can bundle.
+ *
+ * ## ⚠️ Why `CloudflareAdapter` could not be this
+ *
+ * It shells out. `WranglerApi` for the token and the deploy, `node:crypto` for
+ * the secret hash, `node:fs/promises` for the manifest. All of that is correct
+ * on a laptop and none of it can be bundled for workerd, which is why the
+ * `workerd` entry of `alepha/cli/platform-lib` registered no adapter at all
+ * until this one.
+ *
+ * Composed rather than inherited, and from three pieces that already exist:
+ * `CloudflareProvisionClient` makes the resources, `CloudflareDeployClient`
+ * uploads the Worker, `D1MigrationsService` runs the migrations. This class is
+ * the order they go in.
+ *
+ * ## ⚠️ The order is folio #F1209, and it is the whole of `provision`
+ *
+ * A packed `wrangler.jsonc` carries **no** `d1_databases`, no `r2_buckets` and
+ * no `vars`, deliberately: a build must not freeze a production database id
+ * into stored bytes. So provisioning runs FIRST and the ids it obtains are what
+ * `build` regenerates the config from. Skipping that and uploading the packed
+ * config produces a Worker whose `DATABASE_URL` is absent - `alepha/orm` then
+ * binds `NodeSqliteProvider`, `isServerless()` answers `":memory:"` before the
+ * "DATABASE_URL is required" throw, and the only thing that saves it is
+ * `await import("node:sqlite")` failing on workerd. Loud, but by one step.
+ *
+ * The ids travel on `BuildTaskContext.env` rather than through `process.env`,
+ * which is #288's other half: two deploys share an isolate, and a global that
+ * is saved and restored around a call is a race the second deploy wins.
+ */
+export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions> {
+  /**
+   * The same display name as the wrangler-driven adapter: to an operator both
+   * deploy to Cloudflare, and which one ran is a question of runtime.
+   */
+  static readonly id = "cloudflare";
+  /**
+   * `domain` only: the account, the jurisdiction and the bindings come from
+   * the estate's credential, never from a config file.
+   */
+  static readonly options = environmentOptionsSchema;
+
+  override readonly serverless = true;
+  override readonly cloudflareResources = true;
+
+  protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly buildTask = $inject(BuildCloudflareTask);
+  protected readonly migrations = $inject(D1MigrationsService);
+  protected readonly assetManifest = $inject(CloudflareAssetManifest);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * The credential for the deploy currently running.
+   *
+   * ⚠️ Set by the runner immediately before `up()` and never read from
+   * anywhere else. It is instance state on a service, which is only safe
+   * because a deploy owns its adapter instance: the runner injects a
+   * transient, it does not share one between overlapping deploys.
+   */
+  protected credential?: WorkerCloudflareCredential;
+
+  /**
+   * What `provision` obtained, for `build` to regenerate the config from.
+   */
+  protected provisioned: Record<string, string> = {};
+
+  public use(credential: WorkerCloudflareCredential): this {
+    this.credential = credential;
+    this.provisioned = {};
+    this.provisionedResources = {};
+    return this;
+  }
+
+  /**
+   * What the deployed Worker reads as its environment.
+   *
+   * ⚠️ **Uploaded WITH the script**, as `secret_text` bindings in the same
+   * `PUT`, which is why {@link PlatformAdapter.secrets} stays the inherited
+   * no-op here: a deploy is ONE Worker version, first deploy included, and
+   * the build never runs against the previous secret set. The CLI's
+   * `CloudflareAdapter` does the same through `wrangler deploy
+   * --secrets-file`; see the note in `PlatformOrchestrator.up()`.
+   *
+   * ⚠️ Never logged, never put in a progress line, never returned. The values
+   * exist on this instance for the length of one deploy.
+   */
+  public withSecrets(secrets: Record<string, string>): this {
+    this.appSecrets = secrets;
+    return this;
+  }
+
+  /**
+   * The set {@link withSecrets} was given, empty until it is called.
+   */
+  protected appSecrets: Record<string, string> = {};
+
+  protected get estate(): WorkerCloudflareCredential {
+    if (!this.credential) {
+      throw new AlephaError(
+        "This adapter has no Cloudflare credential. The runner has to call `use()` with the estate's token and account id before driving a deploy; nothing here falls back to the environment.",
+      );
+    }
+    return this.credential;
+  }
+
+  protected provisioner(): CloudflareProvisionClient {
+    return new CloudflareProvisionClient(this.estate);
+  }
+
+  protected deployer(): CloudflareDeployClient {
+    // The clock travels in, because the client is a plain `new` with no
+    // container of its own and the asset session carries a real deadline.
+    return new CloudflareDeployClient({
+      ...this.estate,
+      now: () => this.dateTime.nowMillis(),
+    });
+  }
+
+  /**
+   * Nothing to do, and that is the point.
+   *
+   * On a laptop this is `wrangler whoami`, a round trip that proves a cached
+   * login is still good. Here the credential arrived with the deploy request,
+   * so the only thing to check is that one was supplied - and the first real
+   * call answers 401 if it is wrong, which is a better error than a probe's.
+   */
+  async authenticate(): Promise<void> {
+    void this.estate;
+  }
+
+  /**
+   * Create what the app binds, and remember the ids.
+   *
+   * ⚠️ **Concurrently.** Each resource is its own list-then-create against its
+   * own API, and none reads what another produced, so running them one after
+   * the other only added their latencies: 4 s of a first club deploy were a
+   * D1 then an R2 that could have been one wait. Handed to `run` as an array,
+   * which the CLI's `Runner` and Lore's `DeployRunner.runner` both run in
+   * parallel while still logging one line per resource.
+   */
+  override async provision(
+    ctx: PlatformContext<EnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
+    const api = this.provisioner();
+    const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
+
+    if (ctx.resources.hasDatabase) {
+      const name = ctx.naming.d1();
+      tasks.push({
+        name: `provision d1 (${name})`,
+        handler: async () => {
+          const database = await api.ensureD1(name);
+          // The shape `BuildCloudflareTask.enhanceD1` parses. It is a URL
+          // rather than two variables because that is what the task reads and
+          // what a node deploy sets.
+          this.provisioned.DATABASE_URL = `d1://${name}:${database.uuid}`;
+          this.provisionedResources.d1 = { name, id: database.uuid };
+        },
+      });
+    }
+
+    if (ctx.resources.hasBucket) {
+      const name = ctx.naming.r2();
+      tasks.push({
+        name: `provision r2 (${name})`,
+        handler: async () => {
+          await api.ensureR2(name);
+          this.provisioned.R2_BUCKET_NAME = name;
+          this.provisionedResources.r2 = name;
+        },
+      });
+    }
+
+    if (ctx.resources.hasKV) {
+      const name = ctx.naming.kv();
+      tasks.push({
+        name: `provision kv (${name})`,
+        handler: async () => {
+          const namespace = await api.ensureKV(name);
+          this.provisioned.CLOUDFLARE_KV_NAME = name;
+          this.provisioned.CLOUDFLARE_KV_ID = namespace.id;
+          this.provisionedResources.kv = { name, id: namespace.id };
+        },
+      });
+    }
+
+    if (ctx.resources.hasQueue) {
+      const name = ctx.naming.queue();
+      tasks.push({
+        name: `provision queue (${name})`,
+        handler: async () => {
+          // The dead-letter queue is a real queue too, and a consumer that
+          // names one Cloudflare does not have is refused at bind time.
+          const dlq = `${name}-dlq`;
+          await Promise.all([api.ensureQueue(name), api.ensureQueue(dlq)]);
+          this.provisioned.CLOUDFLARE_QUEUE_NAME = name;
+          this.provisionedResources.queue = name;
+          this.provisionedResources.dlq = dlq;
+        },
+      });
+    }
+
+    if (tasks.length > 0) {
+      await run(tasks);
+    }
+
+    if (ctx.resources.hasAnalytics) {
+      // Analytics Engine datasets are created on first write, so there is
+      // nothing to provision - only a name to pass to the build.
+      this.provisioned.CLOUDFLARE_ANALYTICS_DATASET = ctx.naming.analytics();
+    }
+
+    if (this.jurisdictionOf()) {
+      this.provisioned.CLOUDFLARE_JURISDICTION =
+        this.jurisdictionOf() as string;
+    }
+    if (ctx.options.domain) {
+      this.provisioned.CLOUDFLARE_DOMAIN = ctx.options.domain;
+    }
+  }
+
+  protected jurisdictionOf(): string | undefined {
+    return this.credential?.jurisdiction;
+  }
+
+  /**
+   * Regenerate `wrangler.jsonc` and the Worker entry point against the ids
+   * `provision` just obtained.
+   *
+   * Always prebuilt: Lore's Worker cannot run Vite, so the client always builds
+   * elsewhere and this step only ever emits config.
+   */
+  async build(
+    ctx: PlatformContext<EnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
+    const manifestPath = this.fs.join(ctx.root, "manifest.json");
+    let raw: unknown;
+    try {
+      raw = JSON.parse(await this.fs.readTextFile(manifestPath));
+    } catch (error) {
+      throw new AlephaError(
+        `Cannot read ${manifestPath}: ${(error as Error).message}. A deploy needs the manifest the artifact was packed with.`,
+      );
+    }
+
+    // ⚠️ **Parsed, not cast.** Everything below builds a Worker out of this
+    // object with no live Alepha to check it against, so a manifest that is
+    // truncated or from a different tool emits a Worker with no bindings and
+    // still reports success. Parsing also applies the schema's defaults, which
+    // is what stops an absent `crons` from being a crash rather than an empty
+    // list.
+    //
+    // Refused rather than fallen back on: unlike a local deploy there is no
+    // introspection to fall through to, because the app cannot be booted here.
+    const validated = buildManifestSchema.safeParse(raw);
+    if (!validated.success) {
+      throw new AlephaError(
+        `${manifestPath} is not a valid build manifest: ${validated.error.issues
+          .map(
+            (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
+          )
+          .join(
+            "; ",
+          )}. Rebuild the artifact with \`alepha build --runtime=workerd\`.`,
+      );
+    }
+    const manifest = validated.data as BuildManifest;
+
+    await this.buildTask.run({
+      // Never dereferenced in prebuilt mode: the task reads resources, crons
+      // and containers from the manifest.
+      alepha: null as unknown as Alepha,
+      options: {
+        // ⚠️ Declared, and there is no target any more. `BuildCloudflareTask`
+        // is triggered by the presence of a workerd SLICE, because a
+        // multi-slice build has no single target to name, and this path
+        // regenerating `wrangler.jsonc` is a workerd build by definition.
+        runtime: ["workerd"],
+        runtimes: ["workerd"],
+        // `.` because the artifact unpacked to the contents: there is no
+        // `dist/` under the root to write `wrangler.jsonc` into.
+        output: { dist: ".", public: "public" },
+      },
+      run,
+      root: ctx.root,
+      entry: { root: ctx.root, server: "" },
+      hasClient: false,
+      manifest,
+      flags: { prebuilt: true },
+      // ⚠️ The ids from `provision`, and ONLY those. `ctx.env` present means it
+      // is the whole environment, so this build cannot inherit Lore's own
+      // `DATABASE_URL` for a database it never provisioned.
+      env: this.provisioned,
+    } as never);
+  }
+
+  override async migrate(
+    ctx: PlatformContext<EnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<void> {
+    if (!ctx.resources.hasDatabase) {
+      return;
+    }
+    const name = ctx.naming.d1();
+    await run({
+      name: `migrate d1 (${name})`,
+      handler: async () => {
+        await this.migrations.apply(
+          this.migrationTransport(),
+          name,
+          ctx.root,
+          "migrations/sqlite",
+        );
+      },
+    });
+  }
+
+  /**
+   * The provisioner, answering the id `provision` already obtained instead of
+   * listing every database of the account a second time.
+   */
+  protected migrationTransport(): D1MigrationTransport {
+    const api = this.provisioner();
+    const known = this.provisionedResources.d1;
+    return {
+      resolveD1Id: async (wanted) =>
+        known?.name === wanted ? known.id : await api.resolveD1Id(wanted),
+      d1Query: (databaseId, sql) => api.d1Query(databaseId, sql),
+      d1Import: (databaseId, sql) => api.d1Import(databaseId, sql),
+    };
+  }
+
+  /**
+   * Upload the Worker.
+   *
+   * ⚠️ Reads the config `build` just wrote, and the config only. The packed
+   * one is scratch; this one carries the bindings.
+   */
+  /**
+   * The version the last upload produced, for the runner to record.
+   *
+   * ⚠️ On the instance rather than in the return value, because
+   * `PlatformAdapter.deploy` answers a URL and widening that signature would
+   * touch every adapter for one caller's benefit.
+   */
+  public deployedVersionId?: string;
+
+  /**
+   * What this deploy actually provisioned, by id where one exists.
+   *
+   * ## ⚠️ Recorded so a teardown can delete what Lore MADE
+   *
+   * The names are derived from `(project, env)` and are therefore
+   * reproducible, which makes "recompute the name and delete it" the obvious
+   * implementation and the wrong one: on a lent estate that deletes whatever
+   * currently bears the name, including a database somebody created before
+   * Lore ever saw the account. `alepha platform down` may do that - it runs on
+   * your own machine against your own account, at your own typing - but Lore
+   * holds a credential lent for deploys, and must only ever remove what it can
+   * show it created.
+   *
+   * A D1 database carries its uuid, which survives a rename and is what makes
+   * the delete unambiguous. The rest are names, because Cloudflare identifies
+   * them by name.
+   */
+  public provisionedResources: {
+    worker?: string;
+    d1?: { name: string; id: string };
+    r2?: string;
+    kv?: { name: string; id: string };
+    queue?: string;
+    /**
+     * The queue's dead-letter queue, which `provision` makes beside it.
+     *
+     * ⚠️ Recorded under its own key, never derived from `queue` at teardown:
+     * what may be deleted is what a deploy wrote down, and until this existed
+     * every teardown of a copy with a job queue left `<queue>-dlq` standing in
+     * the estate's account.
+     */
+    dlq?: string;
+    /**
+     * This copy runs a Durable Object namespace, because it uses `$websocket`.
+     *
+     * ⚠️ Not a resource of its own: it has no name and no delete, and the
+     * forced Worker delete takes it. {@link teardownRecorded} reports it gone
+     * with the Worker, which is what lets the caller strike it.
+     */
+    durableObjects?: boolean;
+  } = {};
+
+  async deploy(
+    ctx: PlatformContext<EnvironmentOptions>,
+    run: RunnerMethod,
+  ): Promise<string | undefined> {
+    const worker = ctx.naming.worker();
+    // ⚠️ `ctx.root` IS the build's contents. This adapter runs against an
+    // UNPACKED artifact, and the archive root stopped being a `dist/` wrapper:
+    // `public/`, `server/<runtime>/`, `index.<runtime>.js` and `manifest.json`
+    // are all at the top.
+    const distDir = ctx.root;
+    const config = JSON.parse(
+      await this.fs.readTextFile(this.fs.join(distDir, "wrangler.jsonc")),
+    ) as WranglerConfig;
+
+    // Set by the upload step below and read after it, because `run` does not
+    // carry a return value across both of its implementations - the CLI's
+    // runner answers a string and Lore's shim answers the handler's value.
+    let subdomainError: string | undefined;
+
+    // Recorded before the upload rather than after: a Worker that half-uploads
+    // still exists at Cloudflare, and a teardown that cannot name it is how an
+    // orphan becomes permanent.
+    this.provisionedResources.worker = worker;
+    if (ctx.resources.hasWebSocket) {
+      this.provisionedResources.durableObjects = true;
+    }
+
+    await run({
+      name: `deploy worker (${worker})`,
+      handler: async () => {
+        const modules = await this.modules(distDir, config);
+        // The fallback is the workerd slice's entry wrapper. In practice
+        // `config.main` is always set (to `./main.cloudflare.js`), but a
+        // default naming a file no build produces would be a trap: the
+        // failure below is about a main_module nobody uploaded.
+        const mainModule = this.moduleName(config.main ?? "index.workerd.js");
+
+        // ⚠️ A `main_module` naming no uploaded part is not a validation
+        // error at Cloudflare. It answers `Uncaught SyntaxError: Invalid or
+        // unexpected token at worker.js:1:2`, which names a file nobody
+        // wrote and says nothing about the real mistake. Refusing here keeps
+        // the failure legible and local.
+        if (!modules.some((it) => it.name === mainModule)) {
+          throw new AlephaError(
+            `The deploy config names \`${mainModule}\` as its entry, but the upload carries ${modules
+              .map((it) => `\`${it.name}\``)
+              .join(", ")}. The entry must be one of the modules.`,
+          );
+        }
+
+        // Resolved BEFORE the upload, so a consumer naming a queue the account
+        // does not have refuses the deploy while nothing has changed yet.
+        const queueConsumers = await this.queueConsumers(config);
+
+        const answer = await this.deployer().deploy({
+          scriptName: worker,
+          mainModule,
+          modules,
+          compatibilityDate: config.compatibility_date,
+          compatibilityFlags: config.compatibility_flags,
+          bindings: this.bindings(config),
+          // ⚠️ Sent in the same upload as the code, which is what removes the
+          // window `PlatformOrchestrator.up()`'s two-step ordering leaves open.
+          // `putScript` turns each entry into a `secret_text` binding beside
+          // the resource bindings above.
+          secrets: this.secretsFor(ctx),
+          migrations: config.migrations?.[0],
+          observability: config.observability,
+          placement: config.placement,
+          limits: config.limits,
+          crons: config.triggers?.crons ?? [],
+          // ⚠️ Without this the deploy ships the script and NOTHING under
+          // `public/`, and it does not look like a failure: the asset store
+          // misses, the request falls through to the Worker, and `/` still
+          // answers 200 because the app renders it server-side. Only the
+          // hashed assets 404, so the site is up and unstyled.
+          assets: await this.assets(distDir, config),
+          domain: config.routes?.find((it) => it.custom_domain)
+            ? {
+                hostname: config.routes.find((it) => it.custom_domain)
+                  ?.pattern as string,
+              }
+            : undefined,
+          workersDev: config.workers_dev,
+          queueConsumers,
+        });
+        this.deployedVersionId = answer?.versionId;
+        subdomainError = answer?.subdomainError;
+      },
+    });
+
+    if (ctx.options.domain) {
+      return `https://${ctx.options.domain}`;
+    }
+
+    return await this.workersDevUrl(worker, subdomainError, run);
+  }
+
+  /**
+   * The address a deploy with no custom domain answers on.
+   *
+   * `platformOptions.ts` has documented `domain` as "omit to use the adapter's
+   * default `*.workers.dev` / preview URL" all along, and nothing implemented
+   * the second half: `up` returned `undefined`, so the orchestrator reported
+   * `urls: []`, `DeployRegistry.succeeded` stored no url and skipped its own
+   * `Deployed to ...` line. A user with no domain got a green deploy, a real
+   * Worker, a real database, no link, and nothing saying why.
+   *
+   * The name needs no work: `NamingService.forContext` already builds
+   * `<project>-<env>` and `DeployRunner` passes `${project}-${app}` as the
+   * project, so the script is already `etihad-api-production`. Only the middle
+   * label was missing.
+   *
+   * ⚠️ **Never written back to `app_instances.url`.** That column is what
+   * DERIVES a deploy's domain (`DeployService`), so storing this there would
+   * make the next deploy try to attach the workers.dev host as a Custom
+   * Domain. The deployment row's own `url` is the right and separate place,
+   * and it is what `PlatformOrchestrator` fills from this return value.
+   *
+   * ⚠️ **A step name, not `this.log`.** The deployment log the user reads is
+   * fed by the runner's task names (`DeployRunner.runner`), so a fact that has
+   * to reach them has to be one. An account with no workers.dev subdomain
+   * would otherwise get a successful deploy with no address and no
+   * explanation, which is the state this quest was written about.
+   */
+  protected async workersDevUrl(
+    worker: string,
+    subdomainError: string | undefined,
+    run: RunnerMethod,
+  ): Promise<string | undefined> {
+    if (subdomainError) {
+      await run({
+        name: `No workers.dev address: ${subdomainError}`,
+        handler: async () => {},
+      });
+      return undefined;
+    }
+
+    let url: string | undefined;
+    await run({
+      name: "resolve workers.dev address",
+      handler: async () => {
+        const subdomain = await this.deployer().getSubdomain();
+        if (subdomain) {
+          url = `https://${worker}.${subdomain}.workers.dev`;
+        }
+      },
+    });
+
+    if (!url) {
+      await run({
+        name: "No workers.dev address: this account has no workers.dev subdomain. Register one, or give this app a domain.",
+        handler: async () => {},
+      });
+    }
+
+    return url;
+  }
+
+  /**
+   * The module set, from the config's own `rules` globs.
+   *
+   * ⚠️ No import-graph walk. With `no_bundle` wrangler globs files under the
+   * module root against `rules` and excludes the entry, and the generated
+   * config sets
+   * `rules: [{ type: "ESModule", globs: ["index.workerd.js", "server/workerd/*.js"] }]`,
+   * so the upload set is a directory listing.
+   *
+   * ⚠️ Scoped to the workerd slice, which is why the slices are namespaced. A
+   * `--runtime node,workerd` build leaves both in one `dist/`, and a glob one
+   * level wider uploads every Node chunk with them.
+   */
+  /**
+   * The app's own variables, plus the one the copy's address implies.
+   *
+   * ⚠️ **Parity with `CloudflareAdapter`, which has derived `PUBLIC_URL` from
+   * the configured domain all along.** Without it, absolute links resolve to
+   * nothing at runtime - notification emails, OAuth callbacks and the sitemap
+   * all read it - so the same app deployed from a laptop and through Lore
+   * behaved differently in a way neither side announced.
+   *
+   * An explicit value always wins. On this path it is a variable the operator
+   * set on the copy, and a copy deployed behind a proxy or under a vanity host
+   * has to be able to say so.
+   */
+  protected secretsFor(
+    ctx: PlatformContext<EnvironmentOptions>,
+  ): Record<string, string> {
+    const domain = ctx.options.domain;
+    if (!domain || this.appSecrets.PUBLIC_URL) {
+      return this.appSecrets;
+    }
+    return { ...this.appSecrets, PUBLIC_URL: `https://${domain}` };
+  }
+
+  /**
+   * The name a module is uploaded under, from a path a config wrote relative.
+   *
+   * ⚠️ A generated `wrangler.jsonc` writes `main: "./main.cloudflare.js"`,
+   * and {@link modules} names every part from a directory listing, so the
+   * parts carry no `./`. The two spellings have to be reconciled somewhere,
+   * and it is here rather than in the build, because the upload set is what
+   * defines the namespace the entry has to live in.
+   */
+  protected moduleName(path: string): string {
+    return path.replace(/^\.?\//, "");
+  }
+
+  /**
+   * `dist/public`, as the manifest a deploy is negotiated with plus a reader.
+   *
+   * ⚠️ **`undefined` here is a site that serves nothing but SSR.** The client
+   * runs its whole asset pipeline behind `plan.assets ? …`, so an adapter that
+   * does not answer this silently opts out of it, and the deploy still reports
+   * success. That is what shipped until 2026-09-08.
+   *
+   * ## ⚠️ The manifest is built one file at a time
+   *
+   * {@link CloudflareAssetManifest.build} takes every file's bytes at once,
+   * which is the convenient call and the wrong one here: this runs inside
+   * Lore's 128 MB Worker, and holding the whole tree a second time is the
+   * memory the batching in `CloudflareDeployClient` exists to avoid. Hashing
+   * per entry and reading again through {@link CloudflareDeployAssets.read}
+   * costs a second read of the files Cloudflare actually asks for, which is
+   * usually none of them.
+   *
+   * ## ⚠️ `directory` and `binding` do not go to the API
+   *
+   * They are how wrangler finds the files on a disk Cloudflare never sees.
+   * What must reach it is behaviour - `not_found_handling` and
+   * `run_worker_first` - because those decide whether a miss is a real 404 or
+   * the app's NotFound component served under a 200, which crawlers index.
+   */
+  protected async assets(
+    distDir: string,
+    config: WranglerConfig,
+  ): Promise<CloudflareDeployAssets | undefined> {
+    if (!config.assets) {
+      return undefined;
+    }
+    // ⚠️ When the runner has them, they never touched a filesystem: it walks
+    // the archive instead, because materialising a 49 MB asset tree inside a
+    // 128 MB isolate is what killed `apps/docs`. See {@link useAssets}.
+    //
+    // ⚠️ The runner's own `config` carries the `_headers` / `_redirects` texts
+    // it caught on its first pass, so it is MERGED into the wrangler config
+    // here and never replaced by it: spreading the injected assets and then
+    // setting `config` is the line that silently dropped them.
+    if (this.injectedAssets) {
+      return {
+        ...this.injectedAssets,
+        config: this.assetConfig(config, this.injectedAssets.config),
+      };
+    }
+    const root = this.fs.join(distDir, "public");
+    if (!(await this.fs.exists(root))) {
+      return undefined;
+    }
+
+    const manifest: Record<string, CloudflareAssetEntry> = {};
+    const paths = new Map<string, string>();
+    const texts: Record<string, string> = {};
+    for (const entry of await this.fs.ls(root, { recursive: true })) {
+      const path = this.fs.join(root, entry);
+      // ⚠️ A recursive listing names directories too on the node provider,
+      // and reading one is an error rather than an empty file.
+      if (!(await this.fs.stat(path)).isFile) {
+        continue;
+      }
+      const bytes = new Uint8Array(await this.fs.readFile(path));
+      const key = this.assetManifest.key(entry);
+      // ⚠️ Configuration, not a page: its text goes in the asset config and
+      // the file itself is never uploaded. See `isConfigFile`.
+      if (this.assetManifest.isConfigFile(key)) {
+        const field = this.assetManifest.configField(key);
+        if (field) {
+          texts[field] = new TextDecoder().decode(bytes);
+        }
+        continue;
+      }
+      manifest[key] = {
+        hash: this.assetManifest.hash(bytes, entry),
+        size: bytes.length,
+      };
+      paths.set(key, path);
+    }
+
+    // An `assets` block over an empty directory would open an upload session
+    // for nothing, which Cloudflare answers by asking for nothing - harmless,
+    // and still a request per deploy that says something untrue.
+    if (paths.size === 0) {
+      return undefined;
+    }
+
+    return {
+      manifest,
+      read: async (key) => {
+        const path = paths.get(key);
+        if (!path) {
+          throw new AlephaError(
+            `Cloudflare asked for the asset \`${key}\`, which is not one this deploy sent. Refusing to guess which file it meant.`,
+          );
+        }
+        return new Uint8Array(await this.fs.readFile(path));
+      },
+      ...(this.assetConfig(config, texts)
+        ? { config: this.assetConfig(config, texts) }
+        : undefined),
+    };
+  }
+
+  /**
+   * The asset behaviour that travels to the API, and nothing wrangler-local.
+   *
+   * `directory` and `binding` say how wrangler finds the files on a disk
+   * Cloudflare never sees. `not_found_handling` and `run_worker_first` decide
+   * whether a miss is a real 404 or the app's NotFound component under a 200,
+   * which crawlers index, so those have to arrive.
+   *
+   * `files` is the text of `dist/public/_headers` and `_redirects`, keyed by
+   * the field the API reads them under, which is how wrangler sends them:
+   * raw, for Cloudflare to parse server-side. It is merged in, never
+   * substituted, since a site has both a `not_found_handling` and a
+   * `_headers`.
+   */
+  protected assetConfig(
+    config: WranglerConfig,
+    files: Record<string, unknown> = {},
+  ): Record<string, unknown> | undefined {
+    const assetConfig: Record<string, unknown> = { ...config.assets, ...files };
+    delete assetConfig.directory;
+    delete assetConfig.binding;
+    return Object.keys(assetConfig).length > 0 ? assetConfig : undefined;
+  }
+
+  /**
+   * The assets this deploy ships, supplied by the caller rather than read off
+   * a filesystem.
+   *
+   * ⚠️ **This is how a large site deploys at all.** `DeployRunner` unpacks an
+   * artifact into a `MemoryFileSystemProvider`, and `apps/docs` is 49 MB of
+   * `dist/public` inside a 128 MB isolate - so it never gets as far as being
+   * read. The runner instead walks the archive twice: once to hash, once to
+   * feed the upload, and neither pass keeps a file. Set before `up()`, in the
+   * same place the credential and the secrets are.
+   */
+  public useAssets(assets: CloudflareDeployAssets): this {
+    this.injectedAssets = assets;
+    return this;
+  }
+
+  protected injectedAssets?: CloudflareDeployAssets;
+
+  /**
+   * Whether this entry is the Worker's own entry point.
+   */
+  protected isMainModule(entry: string, config: WranglerConfig): boolean {
+    return this.moduleName(config.main ?? "index.workerd.js") === entry;
+  }
+
+  /**
+   * The `rules` globs the build wrote, or the legacy behaviour when it wrote
+   * none.
+   *
+   * An artifact from a build that predates scoped rules carries no `rules` at
+   * all. Uploading everything is what that build meant, and it was correct for
+   * a single-slice artifact, so an absent list is answered with `undefined`
+   * rather than an empty one that would upload nothing.
+   */
+  protected moduleGlobs(config: WranglerConfig): string[] | undefined {
+    const globs = config.rules?.flatMap((rule) => rule.globs ?? []);
+    return globs?.length ? globs : undefined;
+  }
+
+  /**
+   * Whether one entry path is covered by the config's module globs.
+   *
+   * Only the two shapes `BuildCloudflareTask` emits are understood: an exact
+   * file name, and `<dir>/*.js`. A glob it cannot read is treated as a miss
+   * rather than a match, so an unreadable rule under-uploads and fails loudly
+   * at validation instead of quietly shipping a slice it was meant to exclude.
+   */
+  protected matchesModuleGlobs(
+    entry: string,
+    globs: string[] | undefined,
+  ): boolean {
+    if (!globs) {
+      return true;
+    }
+    return globs.some((glob) => {
+      if (!glob.includes("*")) {
+        return entry === glob;
+      }
+      const [prefix, suffix] = glob.split("*", 2);
+      return (
+        entry.startsWith(prefix) &&
+        entry.endsWith(suffix ?? "") &&
+        // A `*` names files in ONE directory, never a subtree.
+        !entry.slice(prefix.length).includes("/")
+      );
+    });
+  }
+
+  protected async modules(
+    distDir: string,
+    config: WranglerConfig,
+  ): Promise<Array<{ name: string; bytes: Uint8Array }>> {
+    const modules: Array<{ name: string; bytes: Uint8Array }> = [];
+    const entries = await this.fs.ls(distDir, { recursive: true });
+    const globs = this.moduleGlobs(config);
+    for (const entry of entries) {
+      if (!entry.endsWith(".js") && !entry.endsWith(".mjs")) continue;
+      // `public/` is served as assets, not uploaded as modules.
+      if (entry.startsWith("public/")) continue;
+      /*
+        ⚠️ **Scoped to the slice the config names**, not "every .js under the
+        root". A `--runtime node,workerd` artifact carries `server/node/` and
+        `index.node.js` beside the workerd ones, and this walk would upload all
+        of them: a Worker twice the size it needs, or a Node chunk importing a
+        node builtin and a deploy refused at validation.
+
+        `BuildCloudflareTask` already writes globs naming the workerd slice; on
+        the CLI path wrangler applies them itself. Here nothing does, so this
+        is where the same rule has to be enforced, or the two deploy paths
+        disagree about what an artifact contains.
+      */
+      // ⚠️ The entry module is always uploaded, whatever the globs say.
+      // wrangler EXCLUDES `main` from `rules` by design — it is the main
+      // module, not a matched one — so a glob set that happens not to cover it
+      // is correct config and would still make the upload reject itself with
+      // "the entry must be one of the modules".
+      if (
+        !this.isMainModule(entry, config) &&
+        !this.matchesModuleGlobs(entry, globs)
+      ) {
+        continue;
+      }
+      modules.push({
+        name: entry,
+        bytes: new Uint8Array(await this.fs.readFile(`${distDir}/${entry}`)),
+      });
+    }
+    if (modules.length === 0) {
+      throw new AlephaError(
+        `No modules to upload under ${distDir}. The artifact carries no built server.`,
+      );
+    }
+    return modules;
+  }
+
+  /**
+   * The generated config's bindings, as the API's own binding objects.
+   */
+  protected bindings(config: WranglerConfig): Array<Record<string, unknown>> {
+    const bindings: Array<Record<string, unknown>> = [];
+    for (const database of config.d1_databases ?? []) {
+      bindings.push({
+        type: "d1",
+        name: database.binding,
+        id: database.database_id,
+      });
+    }
+    for (const bucket of config.r2_buckets ?? []) {
+      bindings.push({
+        type: "r2_bucket",
+        name: bucket.binding,
+        bucket_name: bucket.bucket_name,
+      });
+    }
+    for (const namespace of config.kv_namespaces ?? []) {
+      bindings.push({
+        type: "kv_namespace",
+        name: namespace.binding,
+        namespace_id: namespace.id,
+      });
+    }
+    for (const queue of config.queues?.producers ?? []) {
+      bindings.push({
+        type: "queue",
+        name: queue.binding,
+        queue_name: queue.queue,
+      });
+    }
+    for (const dataset of config.analytics_engine_datasets ?? []) {
+      bindings.push({
+        type: "analytics_engine",
+        name: dataset.binding,
+        dataset: dataset.dataset,
+      });
+    }
+    // ⚠️ wrangler carries `send_email` on its own, and this upload does not:
+    // an app with `AlephaEmailCloudflare` deployed through Lore would lose
+    // `env.SEND_EMAIL` and fail every send behind a green deploy. The address
+    // keys are the API's own names, so they travel as they are.
+    for (const email of config.send_email ?? []) {
+      bindings.push({ type: "send_email", ...email });
+    }
+    for (const [name, text] of Object.entries(config.vars ?? {})) {
+      bindings.push({ type: "plain_text", name, text: String(text) });
+    }
+    // ⚠️ A separate fact from uploading the files. `not_found_handling`
+    // governs `env.ASSETS.fetch()` from inside the Worker, so an app that
+    // calls it against a missing binding fails at runtime rather than here.
+    if (config.assets?.binding) {
+      bindings.push({ type: "assets", name: config.assets.binding });
+    }
+    return bindings;
+  }
+
+  /**
+   * The generated config's queue consumers, by queue id and in the API's
+   * vocabulary.
+   *
+   * ⚠️ **Without this, nothing consumes the job queue.** `provision` creates
+   * it, `bindings()` gives the Worker a producer, and the consumer
+   * `BuildCloudflareTask.enhanceQueue` writes stayed in the file: an app with
+   * `AlephaApiJobsQueue` would push every `$job` into a queue no Worker reads,
+   * behind a green deploy.
+   *
+   * ⚠️ **Resolved, never created.** A consumer the account has no queue for is
+   * refused by name rather than provisioned here: `provision` makes the queues
+   * Lore records for teardown, and a queue made at deploy time is one no
+   * teardown knows about, on an estate that was only lent. This is also
+   * wrangler's rule, which refuses a consumer of a queue that does not exist.
+   *
+   * ⚠️ **wrangler's units are not the API's.** `max_batch_timeout` is seconds
+   * and `max_wait_time_ms` is milliseconds, the same conversion wrangler makes
+   * on its own way to this endpoint.
+   *
+   * `undefined` for an app that consumes nothing, and then Cloudflare is not
+   * asked about queues at all.
+   */
+  protected async queueConsumers(
+    config: WranglerConfig,
+  ): Promise<CloudflareDeployPlan["queueConsumers"]> {
+    const consumers = config.queues?.consumers ?? [];
+    if (consumers.length === 0) {
+      return undefined;
+    }
+
+    const queues = await this.provisioner().listQueues();
+    return consumers.map((consumer) => {
+      const queue = queues.find((it) => it.queue_name === consumer.queue);
+      if (!queue) {
+        throw new AlephaError(
+          `The deploy config consumes the queue \`${consumer.queue}\`, which this account does not have. Provisioning creates the job queue an app with AlephaApiJobsQueue produces to; any other queue a consumer names has to exist before the deploy.`,
+        );
+      }
+      const settings: CloudflareQueueConsumerSettings = {
+        batch_size: consumer.max_batch_size,
+        max_retries: consumer.max_retries,
+        max_wait_time_ms:
+          consumer.max_batch_timeout === undefined
+            ? undefined
+            : consumer.max_batch_timeout * 1000,
+        max_concurrency: consumer.max_concurrency,
+        retry_delay: consumer.retry_delay,
+      };
+      return {
+        queueId: queue.queue_id,
+        deadLetterQueue: consumer.dead_letter_queue,
+        // Absent keys rather than `undefined` ones, so the body the API gets
+        // states only what the config declared.
+        settings: Object.fromEntries(
+          Object.entries(settings).filter(([, value]) => value !== undefined),
+        ),
+      };
+    });
+  }
+
+  /**
+   * ⚠️ Refused rather than implemented. `inspect` and `teardown` answer `plan`,
+   * `status` and `down`, which are `alepha platform`'s commands and run on a
+   * laptop with the full adapter. A Worker deploy has no surface for them, and
+   * a half-answer here would make `plan` report an empty environment as an
+   * empty one.
+   */
+  async inspect(): Promise<PlatformState> {
+    throw new AlephaError(
+      "The worker-side Cloudflare adapter does not inspect. Run `alepha platform status` locally, where the full adapter is.",
+    );
+  }
+
+  /**
+   * Remove what a redeploy can put back, and keep what it cannot.
+   *
+   * ## ⚠️ The database and the bucket are KEPT, unless the copy is ephemeral
+   *
+   * A Durable Object namespace is NOT in that list, and the difference is
+   * worth stating: `AlephaWebSocketDurableObject` persists nothing - its
+   * storage arms one watchdog alarm - so what it holds is live connections,
+   * which deleting the Worker drops anyway.
+   *
+   * Not an omission and not a first cut. Lore drives this with a credential
+   * lent to it for deploying, so the line is what the next deploy recreates. A
+   * Worker is a build. A KV namespace backs the cache and a queue holds
+   * messages in flight - both come back empty, costing a cold cache and
+   * whatever had not been consumed.
+   *
+   * A database and a bucket are what the build was serving. Cloudflare offers
+   * no rename and no archive to soften that (`d1.update` takes only
+   * `read_replication`, `r2.edit` only a storage class), so "delete it
+   * carefully" has no careful version.
+   *
+   * Keeping them is also what makes this reversible: `ensureD1` and `ensureR2`
+   * resolve by NAME, so a copy destroyed and recreated under the same name
+   * reattaches its own database with every row still in it.
+   *
+   * ## The order is the safety property
+   *
+   * Worker first, so nothing is serving against a queue or a cache that is
+   * about to go, then the queue, then its dead-letter queue - the queue's
+   * consumer is what names it - then the namespace.
+   *
+   * ## ⚠️ It takes a RECORD, not a context
+   *
+   * Every other method here derives names from `ctx.naming`. This one refuses
+   * to: an estate is LENT, so the account holds resources Lore never created,
+   * and what may be deleted is what a deploy wrote down when it made it.
+   *
+   * ## ⚠️ Every failure is reported, never thrown
+   *
+   * The caller's job is to strike what went from the record, so a retry
+   * resumes instead of restarting. A throw would leave it unable to say what
+   * had already gone.
+   */
+  public async teardownRecorded(
+    record: {
+      worker?: string;
+      d1?: { name: string; id: string };
+      r2?: string;
+      kv?: { name: string; id: string };
+      queue?: string;
+      dlq?: string;
+      durableObjects?: boolean;
+    },
+    options: {
+      /**
+       * Take the database and the bucket as well.
+       *
+       * ⚠️ True only for a copy that declared itself EPHEMERAL when it was
+       * created, before it held anything. This adapter cannot tell one copy
+       * from another and does not try: the claim lives on the instance row,
+       * where it was made once and cannot be revised.
+       */
+      purgeStores?: boolean;
+    } = {},
+  ): Promise<{
+    removed: string[];
+    kept: string[];
+    failed: Array<{ resource: string; message: string }>;
+  }> {
+    const api = this.provisioner();
+    const removed: string[] = [];
+    const failed: Array<{ resource: string; message: string }> = [];
+
+    const attempt = async (resource: string, act: () => Promise<void>) => {
+      try {
+        await act();
+        removed.push(resource);
+      } catch (error) {
+        failed.push({
+          resource,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    };
+
+    if (record.worker) {
+      await attempt("worker", () => api.deleteWorker(record.worker as string));
+    }
+    // ⚠️ The namespace has no delete of its own: the forced script delete
+    // above takes it. So it is reported gone whenever the Worker is not left
+    // standing, a record whose Worker an earlier run removed included, or the
+    // caller could never strike it and a copy holding nothing would read as
+    // holding something forever.
+    if (
+      record.durableObjects &&
+      !failed.some((it) => it.resource === "worker")
+    ) {
+      removed.push("durableObjects");
+    }
+    if (record.queue) {
+      await attempt("queue", () => api.deleteQueue(record.queue as string));
+    }
+    if (record.dlq) {
+      await attempt("dlq", () => api.deleteQueue(record.dlq as string));
+    }
+    if (record.kv) {
+      await attempt("kv", () => api.deleteKV(record.kv!.id));
+    }
+
+    // ⚠️ LAST, and only for an ephemeral copy. Everything above is recreated by
+    // the next deploy; these two are not, so they are attempted only once the
+    // cheap things have already gone.
+    if (options.purgeStores) {
+      if (record.r2) {
+        await attempt("r2", () => api.deleteR2(record.r2 as string));
+      }
+      if (record.d1) {
+        await attempt("d1", () => api.deleteD1(record.d1!.id));
+      }
+      return { removed, kept: [], failed };
+    }
+
+    // Named so the caller can say the data is still there, rather than leaving
+    // an operator to assume it either way.
+    const kept = [
+      record.d1 ? `d1:${record.d1.name}` : undefined,
+      record.r2 ? `r2:${record.r2}` : undefined,
+    ].filter((it): it is string => !!it);
+
+    return { removed, kept, failed };
+  }
+
+  /**
+   * ⚠️ The ADAPTER interface's teardown, which this deliberately does not
+   * implement. It derives every name from the context, and on a lent estate
+   * that is the delete this class exists to refuse - see
+   * {@link teardownRecorded}, which takes what a deploy wrote down instead.
+   */
+  async teardown(): Promise<void> {
+    throw new AlephaError(
+      "The worker-side Cloudflare adapter tears down only what a deploy recorded, through `teardownRecorded`. `alepha platform down` is the one that derives names, and it runs locally against your own account.",
+    );
+  }
+}
+
+/**
+ * The slice of a generated `wrangler.jsonc` a deploy reads back.
+ *
+ * Loosely typed on purpose: the file is written by `BuildCloudflareTask`, which
+ * owns its shape, and pinning a second definition here is how the two come to
+ * disagree about a field one of them emits.
+ */
+interface WranglerConfig {
+  main?: string;
+  /**
+   * Module rules, as `BuildCloudflareTask` writes them.
+   *
+   * ⚠️ Under `no_bundle` these globs ARE the upload set, scoped to the workerd
+   * slice. {@link WorkerCloudflareAdapter.modules} applies them by hand,
+   * because on this path nothing else does: the CLI hands the directory to
+   * wrangler, while here the modules are read and posted directly.
+   */
+  rules?: Array<{ type?: string; globs?: string[] }>;
+  compatibility_date?: string;
+  compatibility_flags?: string[];
+  workers_dev?: boolean;
+  vars?: Record<string, unknown>;
+  triggers?: { crons?: string[] };
+  routes?: Array<{ pattern?: string; custom_domain?: boolean }>;
+  /**
+   * `directory` and `binding` are wrangler's own; every other key is asset
+   * behaviour and travels to the API. See {@link WorkerCloudflareAdapter.assets}.
+   */
+  assets?: { directory?: string; binding?: string } & Record<string, unknown>;
+  d1_databases?: Array<{ binding: string; database_id: string }>;
+  r2_buckets?: Array<{ binding: string; bucket_name: string }>;
+  kv_namespaces?: Array<{ binding: string; id: string }>;
+  send_email?: Array<{
+    name: string;
+    destination_address?: string;
+    allowed_destination_addresses?: string[];
+    allowed_sender_addresses?: string[];
+  }>;
+  queues?: {
+    producers?: Array<{ binding: string; queue: string }>;
+    /**
+     * wrangler's consumer keys, which are not the API's. See
+     * {@link WorkerCloudflareAdapter.queueConsumers}.
+     */
+    consumers?: Array<{
+      queue: string;
+      dead_letter_queue?: string;
+      max_retries?: number;
+      max_batch_size?: number;
+      /**
+       * Seconds.
+       */
+      max_batch_timeout?: number;
+      max_concurrency?: number;
+      retry_delay?: number;
+    }>;
+  };
+  analytics_engine_datasets?: Array<{ binding: string; dataset: string }>;
+  migrations?: Array<Record<string, unknown>>;
+  observability?: Record<string, unknown>;
+  placement?: Record<string, unknown>;
+  limits?: Record<string, unknown>;
+}

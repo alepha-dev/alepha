@@ -1,0 +1,1054 @@
+import type { ZodArray, ZodString } from "alepha";
+import {
+  $inject,
+  Alepha,
+  coerceObject,
+  type Infer,
+  SchemaValidationError,
+  type ZObject,
+  type ZType,
+  z,
+} from "alepha";
+import { $logger } from "alepha/logger";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
+
+import { FormValidationError } from "../errors/FormValidationError.ts";
+
+/**
+ * FormModel is a dynamic form handler that generates form inputs based on a provided Zod schema.
+ * It manages form state, handles input changes, and processes form submissions with validation.
+ *
+ * It means to be injected and used within React components to provide a structured way to create and manage forms.
+ *
+ * @see {@link useForm}
+ */
+export class FormModel<T extends ZObject> {
+  protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
+  protected readonly values: Record<string, any> = {};
+  protected readonly initialValues: Record<string, any> = {};
+  /**
+   * Keys a caller has written since the current baseline was installed.
+   *
+   * `keepDirty` used to derive this by comparing each value against the
+   * baseline it was about to replace, which cannot see an edit that RESTORES
+   * that baseline: type "Smith", save, clear the field again while the save
+   * is in flight, and the clear looks exactly like an untouched field, so the
+   * response puts "Smith" back and the user's deletion is undone.
+   *
+   * Recording the write instead is the only way to tell those apart. Cleared
+   * by every re-seed and reset, which is what installs a new baseline.
+   */
+  protected readonly touched = new Set<string>();
+  protected submitInProgress = false;
+
+  public input: SchemaToInput<T>;
+
+  public readonly id: string;
+  public readonly options: FormCtrlOptions<T>;
+
+  constructor(id: string, options: FormCtrlOptions<T>) {
+    this.id = id;
+    this.options = options;
+
+    // Initialize with schema defaults first, then override with initialValues
+    const schemaDefaults = this.extractSchemaDefaults(options.schema);
+    if (Object.keys(schemaDefaults).length > 0) {
+      Object.assign(this.values, schemaDefaults);
+    }
+
+    if (options.initialValues) {
+      // Decode against a partial of the schema so callers can supply incomplete
+      // initial values (the form's whole job is to collect them). Codecs still
+      // run on whatever's provided; missing fields stay undefined and only the
+      // full schema is enforced at submit time.
+      // `validation: false`: a legacy value the schema no longer accepts
+      // must reach the form (and fail at submit), not crash the render.
+      const decoded = this.alepha.codec.decode(
+        options.schema.partial(),
+        options.initialValues,
+        { validation: false },
+      ) as Record<string, any>;
+      Object.assign(
+        this.values,
+        this.flattenObjectValues(options.schema, decoded),
+      );
+    }
+
+    this.initialValues = { ...this.values };
+
+    this.input = this.createProxyFromSchema(options, options.schema, {
+      store: this.values,
+      parent: "",
+    });
+  }
+
+  /**
+   * Flatten nested OBJECT values into the store's dotted-key convention.
+   *
+   * The store is flat on purpose — `createInputFromSchema` keys nested inputs
+   * as `payg.dailyCapCents` and `restructureValues()` rebuilds the nesting at
+   * submit time — and `extractSchemaDefaults` already emits dotted keys. Caller
+   * `initialValues`, however, arrive NESTED (that is the shape of an API
+   * payload), so without this pass `values.payg` sits there as one opaque
+   * object while every nested input reads `values["payg.dailyCapCents"]` and
+   * finds nothing: the controls render empty, and editing one writes a fresh
+   * dotted key while the stale nested object survives into the submit payload.
+   *
+   * The parent key is KEPT alongside its flattened children: `ControlObject`
+   * uses it to tell an initialized object from an absent optional one.
+   * Recursion is schema-driven, so arrays (handled whole by `ControlArray`)
+   * and leaf values are left untouched.
+   */
+  protected flattenObjectValues(
+    schema: ZObject,
+    values: Record<string, any>,
+    prefix = "",
+  ): Record<string, any> {
+    const flat: Record<string, any> = {};
+    const shape = z.schema.shape(schema);
+
+    for (const [key, value] of Object.entries(values)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      flat[fullKey] = value;
+
+      const fieldSchema = shape?.[key];
+      if (!fieldSchema || value == null || typeof value !== "object") {
+        continue;
+      }
+      const inner = z.schema.unwrap(fieldSchema);
+      if (!z.schema.isObject(inner) || Array.isArray(value)) {
+        continue;
+      }
+      Object.assign(
+        flat,
+        this.flattenObjectValues(
+          inner as ZObject,
+          value as Record<string, any>,
+          fullKey,
+        ),
+      );
+    }
+
+    return flat;
+  }
+
+  /**
+   * Extract default values from a zod object schema.
+   * Recursively handles nested objects, unwrapping optional/nullable/default.
+   *
+   * Recursion stops at an OPTIONAL or NULLABLE object. Its inner defaults are
+   * real, but they only apply once the object exists, and seeding them made it
+   * exist: an `address` the user never opened was submitted as
+   * `{ country: "FR" }` while `ControlObject` drew it as not initialised, so
+   * the payload disagreed with the screen. `set()` applies them at the moment
+   * the object is initialised instead.
+   */
+  protected extractSchemaDefaults(
+    schema: ZObject,
+    prefix: string = "",
+  ): Record<string, any> {
+    const defaults: Record<string, any> = {};
+    const shape = z.schema.shape(schema);
+
+    if (Object.keys(shape).length === 0) {
+      return defaults;
+    }
+
+    for (const [key, propSchema] of Object.entries(shape)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+
+      // Unwrap optional / nullable / default wrappers to surface a default
+      // value and any nested object schema.
+      let inner: any = propSchema;
+      let defaultValue: unknown;
+      let absentByDefault = false;
+      while (inner) {
+        if (z.schema.isDefault(inner)) {
+          const dv = inner._zod.def.defaultValue;
+          defaultValue = typeof dv === "function" ? dv() : dv;
+          break;
+        }
+        if (z.schema.isOptional(inner) || z.schema.isNullable(inner)) {
+          // Checked after `isDefault`, so `z.object({…}).optional().default({})`
+          // still seeds: it declares a value for the absent case, which is the
+          // opposite of leaving it absent.
+          absentByDefault = true;
+          inner = inner.unwrap();
+          continue;
+        }
+        break;
+      }
+
+      if (defaultValue !== undefined) {
+        defaults[fullKey] = defaultValue;
+      } else if (absentByDefault && z.schema.isObject(inner)) {
+        // Nothing: the object starts absent, and its inner defaults come with
+        // it when it is initialised.
+      } else if (z.schema.isObject(inner)) {
+        // Recursively extract defaults from nested objects
+        Object.assign(
+          defaults,
+          this.extractSchemaDefaults(inner as ZObject, fullKey),
+        );
+      }
+    }
+
+    return defaults;
+  }
+
+  public get currentValues(): Record<string, any> {
+    return this.restructureValues(this.values);
+  }
+
+  public get props() {
+    return {
+      id: this.id,
+      noValidate: true,
+      /**
+       * Not decoration, and not about where the form posts: `onSubmit` still
+       * handles every submission this component ever sees.
+       *
+       * It is about the submissions it does NOT see. A `<form>` with no
+       * `method` defaults to GET, and with no `action` it targets the current
+       * URL, so any submit that happens before this handler is attached
+       * serialises every named input into the query string. That is reachable
+       * four ways: hydration still in flight on a slow connection, the bundle
+       * failing to load, a JS error breaking hydration, and Enter pressed in a
+       * text field, which fires implicit submission with no click involved.
+       *
+       * On a sign-in form the field is called `password`, so the credential
+       * lands in the address bar, in browser history, in the server's access
+       * log, and in the `Referer` header of the next request out. Declaring
+       * POST makes that same pre-hydration submit a request the server simply
+       * refuses, which is the correct outcome and leaks nothing.
+       */
+      method: "post" as const,
+      onSubmit: (ev?: FormEventLike) => {
+        ev?.preventDefault?.();
+        void this.submit();
+      },
+      onReset: (event: FormEventLike) => this.reset(event),
+    };
+  }
+
+  /**
+   * Replace the form's baseline, and by default everything on screen with it.
+   *
+   * `keepDirty` keeps the fields the user has actually edited. A page that
+   * refetches after a save calls this with the server's answer, and without it
+   * anything typed between submit and response was overwritten by data that
+   * predates it - the user watched their own words disappear.
+   *
+   * "Edited" is derived, not tracked: a key is dirty when its current value
+   * differs from the baseline it was seeded with. That is also why the flag
+   * needs no reset after a submit - this very call installs the new baseline,
+   * so a field the server echoed back unchanged becomes clean again on its
+   * own.
+   */
+  public readonly setInitialValues = (
+    values: Record<string, any>,
+    options: { keepDirty?: boolean } = {},
+  ) => {
+    // Same partial-decode rationale as the constructor — initial values may be
+    // incomplete; full schema is enforced only at submit time.
+    const decoded = this.flattenObjectValues(
+      this.options.schema,
+      this.alepha.codec.decode(this.options.schema.partial(), values, {
+        validation: false,
+      }) as Record<string, any>,
+    );
+
+    // Snapshot the OLD keys before we wipe — without this, fields that
+    // had a value but are absent from the new initialValues never emit
+    // form:change and useFieldValue subscribers keep showing the stale
+    // value. Mirrors the union-of-keys pattern in reset() below.
+    const oldKeys = new Set(Object.keys(this.values));
+
+    const dirty: Record<string, any> = {};
+    if (options.keepDirty) {
+      for (const key of this.touched) {
+        if (oldKeys.has(key)) {
+          dirty[key] = this.values[key];
+        }
+      }
+    }
+
+    for (const key in this.initialValues) {
+      delete (this.initialValues as Record<string, any>)[key];
+    }
+    Object.assign(this.initialValues, decoded);
+
+    for (const key in this.values) {
+      delete this.values[key];
+    }
+    Object.assign(this.values, { ...this.initialValues, ...dirty });
+
+    // This call IS the new baseline, so nothing is outstanding any more -
+    // except a kept value that the server did not echo back, which is still
+    // waiting to be sent and stays touched.
+    this.touched.clear();
+    for (const key of Object.keys(dirty)) {
+      if (!this.sameValue(this.values[key], this.initialValues[key])) {
+        this.touched.add(key);
+      }
+    }
+
+    // Clean keys first, then the ones still differing from the new baseline.
+    // `form:change`'s `initial` flag is what tells a subscriber whether to
+    // mark the form dirty, and that subscriber holds ONE boolean for the
+    // whole form: emitting in this order means the last word belongs to a
+    // dirty field whenever there is one. Without it, a kept edit could keep
+    // its value on screen while the form called itself pristine - and a Save
+    // button gated on `dirty` would never enable to send it.
+    const keys = new Set<string>([...oldKeys, ...Object.keys(this.values)]);
+    const ordered = [...keys].sort(
+      (a, b) => Number(this.touched.has(a)) - Number(this.touched.has(b)),
+    );
+    for (const key of ordered) {
+      const path = `/${key.replaceAll(".", "/")}`;
+      void this.alepha.events.emit(
+        "form:change",
+        {
+          id: this.id,
+          path,
+          value: this.values[key],
+          initial: !this.touched.has(key),
+        },
+        { catch: true },
+      );
+    }
+  };
+
+  /**
+   * Structural equality for two form values.
+   *
+   * Values are plain data (strings, numbers, arrays, plain objects), so
+   * `JSON.stringify` is exact enough and cheap; anything exotic falls back to
+   * reference equality rather than throwing.
+   */
+  protected sameValue(a: unknown, b: unknown): boolean {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
+
+  public readonly reset = (event?: FormEventLike) => {
+    event?.preventDefault?.();
+    // Snapshot all keys that need notification — both keys present
+    // before reset (so subscribers learn the cleared value) and keys
+    // restored from initialValues. Without the union, fields that were
+    // typed but absent from initialValues stay visually stale.
+    const keys = new Set<string>([
+      ...Object.keys(this.values),
+      ...Object.keys(this.initialValues),
+    ]);
+    for (const key in this.values) {
+      delete this.values[key];
+    }
+    Object.assign(this.values, { ...this.initialValues });
+    // Back to the baseline, so nothing is outstanding.
+    this.touched.clear();
+    for (const key of keys) {
+      const path = `/${key.replaceAll(".", "/")}`;
+      void this.alepha.events.emit(
+        "form:change",
+        { id: this.id, path, value: this.values[key] },
+        { catch: true },
+      );
+    }
+    void this.alepha.events.emit(
+      "form:reset",
+      { id: this.id },
+      { catch: true },
+    );
+    this.options.onReset?.();
+  };
+
+  public readonly submit = async () => {
+    if (this.submitInProgress) {
+      this.log.warn(
+        "Form submission already in progress, ignoring duplicate submit.",
+      );
+      return;
+    }
+
+    // Claimed SYNCHRONOUSLY, before the first await. The flag used to be set
+    // only after the two awaited emits below, so a second submit arriving
+    // during them sailed past the guard and ran the handler twice — a
+    // double-clicked button charging a card twice.
+    this.submitInProgress = true;
+
+    // Lifecycle events are best-effort NOTIFICATIONS (loading spinners, toasts,
+    // analytics). A misbehaving listener must never break form state or reject
+    // submit() — hence `{ catch: true }` on every emit below. Without it, a
+    // throwing `react:action:error`/`form:submit:error` listener would skip the
+    // `form:submit:end` "loading off" signal and leave submit buttons stuck in
+    // their loading state forever.
+    await this.alepha.events.emit(
+      "react:action:begin",
+      { type: "form", id: this.id },
+      { catch: true },
+    );
+    await this.alepha.events.emit(
+      "form:submit:begin",
+      { id: this.id },
+      { catch: true },
+    );
+
+    const options = this.options;
+
+    try {
+      let values: Record<string, any> = this.restructureValues(this.values);
+
+      if (z.schema.isSchema(options.schema)) {
+        values = this.decodeValues(options.schema, values);
+      }
+
+      await options.handler(values as any);
+
+      await this.alepha.events.emit(
+        "react:action:success",
+        { type: "form", id: this.id },
+        { catch: true },
+      );
+      await this.alepha.events.emit(
+        "form:submit:success",
+        { id: this.id, values },
+        { catch: true },
+      );
+    } catch (error) {
+      this.log.error("Form submission error:", error);
+
+      // A throwing onError callback must not abort the lifecycle either.
+      try {
+        options.onError?.(error as Error);
+      } catch (handlerError) {
+        this.log.error("Form onError handler threw:", handlerError);
+      }
+
+      await this.alepha.events.emit(
+        "react:action:error",
+        {
+          type: "form",
+          id: this.id,
+          error: error as Error,
+          handled: this.isHandledError(error),
+        },
+        { catch: true },
+      );
+      await this.alepha.events.emit(
+        "form:submit:error",
+        { error: error as Error, id: this.id },
+        { catch: true },
+      );
+    } finally {
+      this.submitInProgress = false;
+
+      // The "loading off" signals live in `finally` so they ALWAYS fire,
+      // even if something above threw — guaranteeing the begin/end pairing
+      // that drives submit-button loading state.
+      await this.alepha.events.emit(
+        "react:action:end",
+        { type: "form", id: this.id },
+        { catch: true },
+      );
+      await this.alepha.events.emit(
+        "form:submit:end",
+        { id: this.id },
+        { catch: true },
+      );
+    }
+  };
+
+  /**
+   * Whether a failed submit has already been shown, so `react:action:error`
+   * carries `handled: true` and `ActionErrorToaster` leaves it alone.
+   *
+   * Two cases, the same rule `useAction` follows plus the form's own:
+   *
+   * - **The form was given an `onError`.** The caller dealt with it, whether
+   *   by a toast of its own or by staying quiet on purpose.
+   * - **A `FormValidationError` names a field.** `useFormState` pins it under
+   *   the field whose path matches, which is the whole reason a handler
+   *   throws one: a wrong password was shown under the field and toasted.
+   *
+   * ⚠️ `FormValidationError`, not any `SchemaValidationError`. A
+   * `SchemaValidationError` raised inside the handler is a response that broke
+   * its own schema: a fault, with a path into the response rather than into
+   * this form, so nothing renders it and it must still toast. And a refusal
+   * with no path has nowhere to render either.
+   */
+  protected isHandledError(error: unknown): boolean {
+    if (this.options.onError) {
+      return true;
+    }
+    return error instanceof FormValidationError && error.value.path !== "";
+  }
+
+  /**
+   * The submitted values, decoded against the form's own schema.
+   *
+   * HTML form controls produce strings; they are coerced to the schema's
+   * scalar types (number/boolean) at this string boundary before strict
+   * decoding, otherwise a `z.number()` field would reject its "42" input.
+   *
+   * ## A refusal here is rethrown as a `FormValidationError`
+   *
+   * A decode failure at this point is the person's input failing the form's
+   * rules: a required field left empty, a number out of range. That is the
+   * same thing a handler says by throwing `FormValidationError`, so it now
+   * arrives as that type too, with the same path and message.
+   *
+   * ⚠️ It matters outside the form. `react:action:error` carries this error,
+   * and the browser sigil files what it receives as a crash unless it can
+   * tell a refusal from a fault: a `SchemaValidationError` raised INSIDE the
+   * handler (a response that broke its own schema) is a fault and still
+   * reports, while this one is somebody leaving a title empty (blight #585,
+   * #Q2343). The subclass keeps every `instanceof SchemaValidationError` and
+   * `value.path` check that routes the error to its field working unchanged.
+   */
+  protected decodeValues(
+    schema: ZObject,
+    values: Record<string, any>,
+  ): Record<string, any> {
+    try {
+      return this.alepha.codec.decode(
+        schema,
+        coerceObject(schema, values),
+      ) as Record<string, any>;
+    } catch (error) {
+      if (
+        error instanceof SchemaValidationError &&
+        !(error instanceof FormValidationError)
+      ) {
+        throw new FormValidationError({
+          message: error.value.message,
+          path: error.value.path,
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Restructures flat keys like "address.city" into nested objects like { address: { city: ... } }
+   * Values are already typed from onChange, so no conversion is needed.
+   */
+  protected restructureValues(store: Record<string, any>): Record<string, any> {
+    const values: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(store)) {
+      if (key.includes(".")) {
+        // nested object: restructure flat key to nested structure
+        this.restructureNestedValue(values, key, value);
+      } else if (
+        value != null &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.getPrototypeOf(value) === Object.prototype
+      ) {
+        // A parent object key coexists with its flattened children (see
+        // flattenObjectValues): copy it so the nested writes below land on
+        // OUR object and never mutate the caller's initialValues.
+        values[key] = { ...value };
+      } else {
+        // value is already typed, just copy it
+        values[key] = value;
+      }
+    }
+
+    return values;
+  }
+
+  /**
+   * Helper to restructure a flat key like "address.city" into nested object structure.
+   * The value is already typed, so we just assign it to the nested path.
+   */
+  protected restructureNestedValue(
+    values: Record<string, any>,
+    key: string,
+    value: any,
+  ) {
+    const pathSegments = key.split(".");
+    const finalPropertyKey = pathSegments.pop();
+    if (!finalPropertyKey) {
+      return;
+    }
+
+    let currentObjectLevel = values;
+
+    // traverse/create the nested structure
+    for (const segment of pathSegments) {
+      currentObjectLevel[segment] ??= {};
+      currentObjectLevel = currentObjectLevel[segment];
+    }
+
+    // value is already typed from onChange, just assign it
+    currentObjectLevel[finalPropertyKey] = value;
+  }
+
+  protected createProxyFromSchema<T extends ZObject>(
+    options: FormCtrlOptions<T>,
+    schema: ZType,
+    context: {
+      parent: string;
+      store: Record<string, any>;
+    },
+  ): SchemaToInput<T> {
+    return new Proxy<SchemaToInput<T>>({} as SchemaToInput<T>, {
+      get: (_, prop: string) => {
+        if (!options.schema || !z.schema.isObject(schema)) {
+          return {};
+        }
+
+        if (prop in z.schema.shape(schema)) {
+          // // it's a nested object, create another proxy
+          // if (z.schema.isObject(schema.properties[prop])) {
+          //   return this.createProxyFromSchema(
+          //     options,
+          //     schema.properties[prop],
+          //     {
+          //       parent: parent ? `${parent}.${prop}` : prop,
+          //       store: context.store,
+          //     },
+          //   );
+          // }
+
+          return this.createInputFromSchema<T>(
+            prop as keyof Infer<T> & string,
+            options,
+            schema,
+            z.schema.requiredKeys(schema).includes(prop as string) || false,
+            context,
+          );
+        }
+      },
+    });
+  }
+
+  protected createInputFromSchema<T extends ZObject>(
+    name: keyof Infer<T> & string,
+    options: FormCtrlOptions<T>,
+    schema: ZObject,
+    required: boolean,
+    context: {
+      parent: string;
+      store: Record<string, any>;
+    },
+  ): BaseInputField {
+    const parent = context.parent || "";
+    const rawField = z.schema.shape(schema)[name];
+    if (!rawField) {
+      return {
+        path: "",
+        required,
+        initialValue: undefined,
+        props: {} as InputHTMLAttributes<unknown>,
+        schema: schema,
+        set: () => {},
+        form: this,
+      };
+    }
+    // Peel optional/nullable/default wrappers so the structural guards below
+    // (`isObject`/`isArray`/`isString`/…, `.maxLength`, format) see the real
+    // schema. Optionality is tracked separately via `isRequired`/`required`.
+    //
+    // ⚠️ The peeled wrappers may carry `.meta()`, which is what labels every
+    // control: `.meta()` binds to one instance, so `.default(x).meta({ title })`
+    // leaves the title on the `ZodDefault` this line throws away, and the field
+    // silently falls back to its prettified property name. `z.schema.meta`
+    // merges the chain, and re-tagging returns a NEW schema rather than
+    // mutating zod's registry for a shared instance.
+    const chainMeta = z.schema.meta(rawField);
+    const unwrapped = z.schema.unwrap(rawField) as typeof rawField;
+    const field = (
+      Object.keys(chainMeta).length
+        ? (unwrapped as any).meta(chainMeta)
+        : unwrapped
+    ) as typeof rawField;
+
+    const isRequired = z.schema.requiredKeys(schema).includes(name) ?? false;
+    const key = parent ? `${parent}.${name}` : name;
+    const path = `/${key.replaceAll(".", "/")}`;
+
+    const set = (value: any) => {
+      const typedValue = this.getValueFromInput(value, field);
+      context.store[key] = typedValue;
+      this.touched.add(key);
+      const objectField = z.schema.unwrap(field);
+      if (typedValue === undefined && z.schema.isObject(objectField)) {
+        // Clearing an object clears its flattened children too, or
+        // `restructureValues` rebuilds the object from them at submit.
+        for (const storeKey of Object.keys(context.store)) {
+          if (storeKey.startsWith(`${key}.`)) delete context.store[storeKey];
+        }
+      } else if (
+        typedValue != null &&
+        typeof typedValue === "object" &&
+        !Array.isArray(typedValue) &&
+        z.schema.isObject(objectField)
+      ) {
+        // The object exists from here on, so its inner defaults apply — this
+        // is the moment `extractSchemaDefaults` deliberately waited for. The
+        // value is flattened over them, so anything it names wins, and the
+        // nested controls read their own dotted keys rather than finding the
+        // object sitting there opaque.
+        Object.assign(
+          context.store,
+          this.extractSchemaDefaults(objectField as ZObject, key),
+          this.flattenObjectValues(
+            objectField as ZObject,
+            typedValue as Record<string, any>,
+            key,
+          ),
+        );
+      }
+      if (options.onChange) {
+        options.onChange(key, typedValue, context.store);
+      }
+      void this.alepha.events.emit(
+        "form:change",
+        { id: this.id, path: path, value: typedValue },
+        { catch: true },
+      );
+    };
+
+    const attr: InputHTMLAttributesLike = {
+      name: key,
+    };
+
+    // Use the form's runtime id (always set — comes from `useId()` when
+    // no explicit `options.id` was provided). This guarantees stable
+    // per-field DOM ids without forcing callers to pass `id`.
+    attr.id = `${this.id}-${key}`;
+    // `data-*` is not in the typed attribute record, but it is the hook every
+    // e2e suite reaches for — carried deliberately, not by accident.
+    (attr as Record<string, unknown>)["data-testid"] = attr.id;
+
+    if (z.schema.isString(field)) {
+      // `isString` returns a plain boolean, not a type predicate: the inferred
+      // predicate leaked zod's non-exported internals into consumers' .d.ts
+      // (TS2883). So the narrowing is done here, guarded by the line above.
+      const str = field as ZodString;
+      if (str.maxLength != null) {
+        attr.maxLength = Number(str.maxLength);
+      }
+
+      if (str.minLength != null) {
+        attr.minLength = Number(str.minLength);
+      }
+    }
+
+    if (isRequired) {
+      attr.required = true;
+    }
+
+    if ("description" in field && typeof field.description === "string") {
+      attr["aria-label"] = field.description;
+    }
+
+    if (z.schema.isInteger(field) || z.schema.isNumber(field)) {
+      attr.type = "number";
+    } else if (name === "password") {
+      attr.type = "password";
+    } else if (name === "email") {
+      attr.type = "email";
+    } else if (name === "url") {
+      attr.type = "url";
+    } else if (z.schema.format(field) === "binary") {
+      // `z.file()` is `any` with a binary format, not a string.
+      attr.type = "file";
+    } else if (z.schema.isString(field)) {
+      if (z.schema.format(field) === "date") {
+        attr.type = "date";
+      } else if (z.schema.format(field) === "time") {
+        attr.type = "time";
+      } else if (z.schema.format(field) === "date-time") {
+        attr.type = "datetime-local";
+      } else {
+        attr.type = "text";
+      }
+    } else if (z.schema.isBoolean(field)) {
+      attr.type = "checkbox";
+    }
+
+    // Self-wiring. `<input {...form.input.username.props} />` — the pattern
+    // useForm's own JSDoc documents — used to produce an input that fed
+    // nothing back: `props` carried id/name/type/validation only, so whatever
+    // the user typed stayed in the DOM and `submit()` shipped an empty object.
+    //
+    // Uncontrolled (`defaultValue` + `onChange`) rather than controlled: form
+    // values live in the model, not in React state, so a keystroke must not
+    // re-render the tree. `useFieldValue` stays the opt-in for reactive reads.
+    // Container fields (object/array) are excluded — they render children, not
+    // an input. Assigned before `onCreateField` so a caller can still override.
+    if (!z.schema.isObject(field) && !z.schema.isArray(field)) {
+      const initialValue = context.store[key];
+      if (attr.type === "checkbox") {
+        attr.defaultChecked = initialValue === true;
+      } else if (attr.type !== "file" && initialValue != null) {
+        attr.defaultValue = initialValue;
+      }
+
+      attr.onChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const target = event.target;
+        if (target.type === "checkbox") {
+          set(target.checked);
+        } else if (target.type === "file") {
+          set(target.files?.[0]);
+        } else {
+          set(target.value);
+        }
+      };
+    }
+
+    if (options.onCreateField) {
+      const customAttr = options.onCreateField(name, field);
+      Object.assign(attr, customAttr);
+    }
+
+    // if type = object, add items: { [key: string]: InputField }
+    if (z.schema.isObject(field)) {
+      return {
+        path,
+        props: attr,
+        schema: field,
+        set,
+        form: this,
+        required,
+        initialValue: context.store[key],
+        items: this.createProxyFromSchema(options, field, {
+          parent: key,
+          store: context.store,
+        }),
+      } as ObjectInputField<any>;
+    }
+
+    // if type = array, add items: InputField[]
+    if (z.schema.isArray(field)) {
+      return {
+        path,
+        props: attr,
+        schema: field,
+        set,
+        form: this,
+        required,
+        initialValue: context.store[key],
+        items: [], // see ArrayInputField — the UI builds the per-row fields
+      } as ArrayInputField<any>;
+    }
+
+    return {
+      path,
+      props: attr,
+      schema: field,
+      set,
+      form: this,
+      required,
+      initialValue: context.store[key],
+    };
+  }
+
+  /**
+   * Convert an input value to the correct type based on the schema.
+   * Handles raw DOM values (strings, booleans from checkboxes, Files, etc.)
+   */
+  protected getValueFromInput(input: any, schema: ZType): any {
+    // Treat null/undefined as "unset" for every schema. Without this the
+    // string branch below stringifies them to "null"/"undefined" (and
+    // the date branches throw on `new Date(undefined)`), which then
+    // round-trips into controlled inputs as literal text — most
+    // visible after the Clear (X) affordance in Control sets
+    // value=undefined and the input promptly displays "undefined".
+    if (input === null || input === undefined) {
+      return undefined;
+    }
+    if (input instanceof File) {
+      // for file inputs, return the File object directly
+      if (z.schema.format(schema) === "binary") {
+        return input;
+      }
+      // for now, ignore other formats
+      return null;
+    }
+
+    if (z.schema.isBoolean(schema)) {
+      // Handle string representations from Select components (Yes/No dropdown)
+      if (input === "true") return true;
+      if (input === "false") return false;
+      if (input === "" || input === null || input === undefined)
+        return undefined;
+      // Handle actual boolean values
+      return !!input;
+    }
+
+    if (z.schema.isNumber(schema)) {
+      // A cleared field is "no value", not 0 (`Number("")` is 0), and text
+      // that is not a number is no value either; `null` would fail an
+      // optional number at submit with a message about the wrong thing.
+      if (input === "") return undefined;
+      const num = Number(input);
+      return Number.isNaN(num) ? undefined : num;
+    }
+
+    if (z.schema.isString(schema)) {
+      const format = z.schema.format(schema);
+      if (format === "date" || format === "time" || format === "date-time") {
+        // A cleared native date/time input emits "" — treat it (and any
+        // unparseable value) as unset instead of throwing on toISOString().
+        if (input === "") return undefined;
+        const date =
+          format === "time" ? new Date(`1970-01-01T${input}`) : new Date(input);
+        if (Number.isNaN(date.getTime())) return undefined;
+        if (format === "date") return date.toISOString().slice(0, 10); // For date input
+        if (format === "time") return date.toISOString().slice(11, 16); // For time input
+        return date.toISOString(); // For datetime-local input
+      }
+      return String(input);
+    }
+
+    return input; // fallback for other types
+  }
+}
+
+export type SchemaToInput<T extends ZObject> = {
+  [K in keyof T["shape"]]: InputField<T["shape"][K]>;
+};
+
+export interface FormEventLike {
+  preventDefault?: () => void;
+  stopPropagation?: () => void;
+}
+
+export type InputField<T extends ZType> = T extends ZObject
+  ? ObjectInputField<T>
+  : T extends ZodArray<infer U extends ZType>
+    ? ArrayInputField<U>
+    : BaseInputField;
+
+export interface BaseInputField {
+  path: string;
+  required: boolean;
+  initialValue: any;
+  props: InputHTMLAttributesLike;
+  schema: ZType;
+  set: (value: any) => void;
+  form: FormModel<any>;
+  items?: any;
+}
+
+export interface ObjectInputField<T extends ZObject> extends BaseInputField {
+  items: SchemaToInput<T>;
+}
+
+/**
+ * An array field.
+ *
+ * `items` is intentionally always `[]` at model level: the model does not know
+ * how many rows exist, so the UI builds the per-row fields itself. The
+ * property is still present and always an array so consumers can
+ * `field.items.map(...)` without a null check — `useForm.browser.spec.tsx`
+ * pins exactly that. Review #3 read it as a "permanently empty typed surface"
+ * and proposed removing it; the test is what says otherwise.
+ */
+export interface ArrayInputField<T extends ZType> extends BaseInputField {
+  items: Array<InputField<T>>;
+}
+
+export type InputHTMLAttributesLike = Pick<
+  InputHTMLAttributes<unknown>,
+  | "id"
+  | "name"
+  | "type"
+  | "value"
+  | "defaultValue"
+  | "defaultChecked"
+  | "required"
+  | "maxLength"
+  | "minLength"
+  | "aria-label"
+> & {
+  value?: any;
+  defaultValue?: any;
+
+  /**
+   * Writes the control's value back into the form model. Spreading `props`
+   * onto an `<input>` is enough to make it a working, uncontrolled field.
+   */
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+};
+
+export type FormCtrlOptions<T extends ZObject> = {
+  /**
+   * The schema defining the structure and validation rules for the form.
+   * This should be a Zod schema object.
+   */
+  schema: T;
+
+  /**
+   * Callback function to handle form submission.
+   * This function will receive the parsed and validated form values.
+   */
+  handler: (values: Infer<T>) => unknown;
+
+  /**
+   * Optional initial values for the form fields.
+   * This can be used to pre-populate the form with existing data.
+   */
+  initialValues?: Partial<Infer<T>>;
+
+  /**
+   * When `initialValues` changes, keep the fields the user has edited.
+   *
+   * On by default, because the common reason `initialValues` changes at all
+   * is a refetch after a save - and re-seeding from it overwrote anything
+   * typed between submit and response with data that predates it.
+   *
+   * Set to `false` for a form that must always mirror its source exactly. To
+   * swap the whole subject (editing record A, then record B), pass the id in
+   * `useForm`'s `deps` instead: that rebuilds the model, which is a cleaner
+   * answer than re-seeding one.
+   */
+  keepDirty?: boolean;
+
+  /**
+   * Optional function to create custom field attributes.
+   * This can be used to add custom validation, styles, or other attributes.
+   */
+  onCreateField?: (
+    name: keyof Infer<T> & string,
+    schema: ZType,
+  ) => InputHTMLAttributes<unknown>;
+
+  /**
+   * Prefix for the generated field IDs and `data-testid` attributes.
+   *
+   * > "username" with id="form-123" will become "form-123-username".
+   *
+   * If omitted, a unique ID is generated automatically (via `useId()`), so
+   * field IDs and test IDs always exist.
+   */
+  id?: string;
+
+  /**
+   * Called when the submit handler throws. Passing one says the failure is
+   * handled here: `react:action:error` still fires, with `handled: true`, and
+   * a mounted `ActionErrorToaster` does not toast it. An `onError` that wants
+   * the toast shows it itself.
+   *
+   * A `FormValidationError` thrown with a field `path` is handled without
+   * one: its message is shown under that field (`useFormState`), not toasted.
+   * Any other error, a refusal with no path included, still toasts when no
+   * `onError` is given.
+   */
+  onError?: (error: Error) => void;
+
+  onChange?: (key: string, value: any, store: Record<string, any>) => void;
+
+  onReset?: () => void;
+};

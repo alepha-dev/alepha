@@ -1,0 +1,262 @@
+import { $inject, $store, AlephaError, z } from "alepha";
+import { PackageManagerUtils } from "alepha/cli";
+import { $command, CommandError } from "alepha/command";
+import { ConsoleColorProvider } from "alepha/logger";
+
+import { vendorOptions } from "../atoms/vendorOptions.ts";
+import type {
+  VendorBuildResult,
+  VendorDiffResult,
+  VendorPackageDiff,
+  VendorSyncResult,
+} from "../services/VendorService.ts";
+import { VendorService } from "../services/VendorService.ts";
+
+export class VendorCommand {
+  /**
+   * Default remote when none is configured. The HTTPS URL is used so anyone
+   * (CI runners, AI agents, contributors without SSH keys) can clone without
+   * extra setup.
+   */
+  protected readonly defaultRemote = "https://github.com/alepha-dev/alepha";
+
+  protected readonly options = $store(vendorOptions);
+  protected readonly vendorService = $inject(VendorService);
+  protected readonly color = $inject(ConsoleColorProvider);
+  protected readonly pm = $inject(PackageManagerUtils);
+
+  /**
+   * Ensure vendor config is present and return resolved options.
+   */
+  protected resolveOptions() {
+    if (!this.options) {
+      throw new AlephaError(
+        "Missing vendor configuration. Register vendor({ packages: [...] }) from alepha/cli/vendor in the plugins of alepha.config.ts.",
+      );
+    }
+    return {
+      remote: this.options.remote ?? this.defaultRemote,
+      branch: this.options.branch ?? "main",
+      dir: this.options.dir ?? ".vendor",
+      packages: this.options.packages,
+      build: this.options.build ?? true,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // alepha vendor sync
+  // ─────────────────────────────────────────────────────────────────────────
+
+  protected readonly syncFlags = z.object({
+    force: z
+      .boolean()
+      .meta({ aliases: ["f"] })
+      .describe("Skip local modification check")
+      .optional(),
+    remote: z
+      .text({
+        description:
+          "Override the configured remote for this invocation. Accepts any git-clone URL, including local paths (`file:///abs/path/to/alepha`). Useful for CI canaries that need to sync against a local checkout instead of the published repo.",
+      })
+      .optional(),
+  });
+
+  protected readonly sync = $command({
+    name: "sync",
+    description: "Replace local packages with remote source",
+    flags: this.syncFlags,
+    handler: async ({ flags, root, run }) => {
+      const opts = this.resolveOptions();
+      const remote = flags.remote ?? opts.remote;
+      const c = this.color;
+
+      let result: VendorSyncResult = { synced: [], errors: [] };
+
+      await run({
+        name: `Syncing from ${opts.branch}`,
+        handler: async () => {
+          result = await this.vendorService.sync({
+            root,
+            remote,
+            branch: opts.branch,
+            dir: opts.dir,
+            packages: opts.packages,
+            force: flags.force,
+            build: opts.build,
+          });
+        },
+      });
+
+      if (result.aborted) {
+        run.end();
+
+        process.stdout.write(
+          `\nLocal modifications detected. Use ${c.set("CYAN", "--force")} to overwrite.\n`,
+        );
+
+        for (const pkg of result.aborted.packages) {
+          this.printPackageDiff(pkg);
+        }
+
+        process.stdout.write("\n");
+        return;
+      }
+
+      let buildResult: VendorBuildResult = {
+        built: [],
+        skipped: [],
+        errors: [],
+      };
+
+      if (result.synced.length > 0) {
+        const pmName = await this.pm.getPackageManager(root);
+        await run(`${pmName} install`, { root });
+
+        // ⚠️ **After the install, and it has to be.** The vendored packages
+        // are workspaces of this project, so the install is what puts their
+        // devDependencies - `tsdown` among them - on disk. Building before
+        // it has no toolchain to build with.
+        //
+        // Without this step the vendored copy serves raw TypeScript to
+        // anything that loads it outside Vite, and `.tsx` cannot be loaded by
+        // Node at all: any published package importing `alepha/react` is
+        // unbootable in a project that vendors the framework (#Q2150). See
+        // `VendorService.build`. A project that opts out with `build: false`
+        // loads every vendored package through Vite and keeps the source
+        // manifests the remote committed.
+        if (opts.build) {
+          await run({
+            name: "Building vendored packages",
+            handler: async () => {
+              buildResult = await this.vendorService.build({
+                root,
+                dir: opts.dir,
+                packages: result.synced,
+                packageManager: pmName,
+              });
+            },
+          });
+        }
+      }
+
+      run.end();
+
+      for (const error of [...result.errors, ...buildResult.errors]) {
+        process.stdout.write(`${c.set("RED", "  error")} ${error}\n`);
+      }
+
+      if (result.synced.length > 0) {
+        process.stdout.write(
+          `\nSynced ${c.set("CYAN", String(result.synced.length))} ${result.synced.length === 1 ? "package" : "packages"} from ${c.set("CYAN", opts.branch)}\n`,
+        );
+        for (const pkg of result.synced) {
+          process.stdout.write(`  ${c.set("GREEN", "\u2713")} ${pkg}\n`);
+        }
+      }
+
+      process.stdout.write("\n");
+
+      // ⚠️ A failed build fails the sync. The copy is on disk, but its
+      // manifest still points at `src`, so anything loading it outside Vite
+      // gets raw TypeScript: the exact state the build exists to prevent.
+      // Reporting success over it is how #Q2490 went unnoticed.
+      if (buildResult.errors.length > 0) {
+        throw new CommandError(
+          `${buildResult.errors.length} vendored ${buildResult.errors.length === 1 ? "package" : "packages"} failed to build (see the errors above)`,
+        );
+      }
+    },
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // alepha vendor diff
+  // ─────────────────────────────────────────────────────────────────────────
+
+  protected readonly diff = $command({
+    name: "diff",
+    description: "Compare local packages against remote",
+    handler: async ({ root, run }) => {
+      const opts = this.resolveOptions();
+
+      let result: VendorDiffResult = { packages: [], totalChanges: 0 };
+
+      await run({
+        name: `Cloning ${opts.remote} at ${opts.branch}`,
+        handler: async () => {
+          result = await this.vendorService.diff({
+            root,
+            remote: opts.remote,
+            branch: opts.branch,
+            dir: opts.dir,
+            packages: opts.packages,
+            build: opts.build,
+          });
+        },
+      });
+
+      run.end();
+
+      if (result.totalChanges === 0) {
+        process.stdout.write("\nNo changes\n\n");
+        return;
+      }
+
+      for (const pkg of result.packages) {
+        this.printPackageDiff(pkg);
+      }
+
+      process.stdout.write("\n");
+    },
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  protected printPackageDiff(pkg: VendorPackageDiff) {
+    const c = this.color;
+    const count = pkg.added.length + pkg.modified.length + pkg.removed.length;
+
+    if (count === 0) {
+      process.stdout.write(`\n${c.set("CYAN", pkg.name)}: no changes\n`);
+      return;
+    }
+
+    process.stdout.write(
+      `\n${c.set("CYAN", pkg.name)}: ${count} ${count === 1 ? "file differs" : "files differ"}\n`,
+    );
+
+    for (const file of pkg.added) {
+      process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
+    }
+
+    for (const fileDiff of pkg.modified) {
+      process.stdout.write(`  ${c.set("ORANGE", "M")} ${fileDiff.file}\n`);
+      for (const change of fileDiff.changes) {
+        const prefix = change.type === "removed" ? "-" : "+";
+        const color = change.type === "removed" ? "RED" : "GREEN";
+        const lineNum = `L${change.line}`;
+        process.stdout.write(
+          `      ${c.set("DIM", lineNum.padEnd(5))} ${c.set(color, `${prefix} ${change.text}`)}\n`,
+        );
+      }
+    }
+
+    for (const file of pkg.removed) {
+      process.stdout.write(`  ${c.set("RED", "D")} ${file}\n`);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Parent command
+  // ─────────────────────────────────────────────────────────────────────────
+
+  public readonly vendor = $command({
+    name: "vendor",
+    description: "Vendor Alepha packages into the project",
+    children: [this.sync, this.diff],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+}

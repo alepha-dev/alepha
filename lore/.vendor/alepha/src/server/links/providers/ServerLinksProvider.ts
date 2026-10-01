@@ -1,0 +1,614 @@
+import { createHash } from "node:crypto";
+
+import { $hook, $inject, $store, Alepha, z } from "alepha";
+import { $logger } from "alepha/logger";
+import type { SecurityProvider, UserAccountToken } from "alepha/security";
+import {
+  $action,
+  $route,
+  $sse,
+  BadRequestError,
+  type ClientRequestEntry,
+  type ClientRequestOptions,
+  type RequestConfigSchema,
+  ServerTimingProvider,
+  serverApiOptions,
+} from "alepha/server";
+
+import type { ApiRegistryResponse } from "../schemas/apiLinksResponseSchema.ts";
+import { type HttpClientLink, LinkProvider } from "./LinkProvider.ts";
+import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
+
+export class ServerLinksProvider {
+  protected readonly serverApi = $store(serverApiOptions);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly linkProvider = $inject(LinkProvider);
+  protected readonly remoteProvider = $inject(RemotePrimitiveProvider);
+  protected readonly serverTimingProvider = $inject(ServerTimingProvider);
+  protected readonly log = $logger();
+
+  /**
+   * Resolved once on start. Undefined when alepha/security is not loaded.
+   */
+  protected securityProvider: SecurityProvider | undefined;
+
+  /**
+   * Registry responses by identity key (see {@link registryCacheKey}).
+   *
+   * Bounded and least-recently-used: the key set is the realm-and-role
+   * combinations a deployment actually serves, which is a handful for most
+   * applications and unbounded for a tenant that mints roles per customer.
+   */
+  protected registryCache = new Map<string, RegistryCacheEntry>();
+
+  /**
+   * How many identities the registry cache keeps.
+   *
+   * Well past any fixed role set, small enough that an application inventing
+   * role combinations cannot turn this into a leak.
+   */
+  protected static readonly MAX_REGISTRY_CACHE = 128;
+
+  public get prefix() {
+    return this.serverApi.prefix;
+  }
+
+  public readonly onRoute = $hook({
+    on: "configure",
+    handler: () => {
+      // convert all $action to local links
+      for (const action of this.alepha.primitives($action)) {
+        const bodyContentType = action.getBodyContentType();
+
+        this.linkProvider.registerLink({
+          name: action.name,
+          group: action.group,
+          schema: action.options.schema,
+          contentType:
+            bodyContentType && bodyContentType !== "application/json"
+              ? bodyContentType
+              : undefined,
+          secured: action.middlewares.some((m) => m?.name === "$secure")
+            ? (action.middlewares.find((m) => m?.name === "$secure")?.options ??
+              true)
+            : undefined,
+          method: action.method === "GET" ? undefined : action.method,
+          prefix: action.prefix,
+          path: action.path,
+          // by local, we mean that it can be called directly via the handler
+          handler: (
+            config: ClientRequestEntry<RequestConfigSchema>,
+            options: ClientRequestOptions = {},
+          ) => action.run(config, options),
+        });
+      }
+
+      // convert all $sse to local links
+      for (const sse of this.alepha.primitives($sse)) {
+        this.linkProvider.registerLink({
+          name: sse.name,
+          group: sse.group,
+          kind: "sse",
+          schema: {
+            body: sse.schema?.body,
+          },
+          method: "POST",
+          prefix: sse.prefix,
+          path: sse.path,
+          handler: async (config) => {
+            return sse.run(config as any) as any;
+          },
+        });
+      }
+    },
+  });
+
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: () => {
+      try {
+        this.securityProvider =
+          this.alepha.inject<SecurityProvider>("SecurityProvider");
+      } catch {
+        this.log.debug(
+          "Security module is not loaded — permission checks are disabled",
+        );
+      }
+    },
+  });
+
+  /**
+   * API registry endpoint — returns all available actions for the user.
+   *
+   * Response is filtered by the user's permissions.
+   * Cached by role set with ETag support.
+   */
+  public readonly links = $route({
+    path: LinkProvider.path.apiLinks,
+    handler: async ({ user, headers, reply }) => {
+      const entry = await this.registryEntry({
+        user,
+        authorization: headers.authorization,
+      });
+
+      // ETag match → 304
+      if (headers["if-none-match"] === entry.etag) {
+        reply.setStatus(304);
+        reply.setHeader("etag", entry.etag);
+        return;
+      }
+
+      reply.setHeader("etag", entry.etag);
+      reply.setHeader("content-type", "application/json");
+      reply.body = entry.json;
+    },
+  });
+
+  /**
+   * On-demand schemas endpoint — returns JSON Schemas for requested actions.
+   *
+   * Schemas are filtered by the user's permissions (same logic as the registry).
+   */
+  public readonly schemas = $route({
+    method: "POST",
+    path: "/api/_links/schemas",
+    schema: {
+      body: z.object({
+        actions: z.array(z.text()),
+      }),
+      response: z.record(
+        z.text(),
+        z.object({
+          body: z.string().optional(),
+          response: z.string().optional(),
+        }),
+      ),
+    },
+    handler: async ({ body, user }) => {
+      const result: Record<string, { body?: string; response?: string }> = {};
+
+      for (const name of body.actions) {
+        const link = this.linkProvider
+          .getServerLinks()
+          .find((l) => l.name === name && !l.host);
+
+        if (!link) continue;
+        if (!this.isLinkAccessible(link, user)) continue;
+
+        const entry: { body?: string; response?: string } = {};
+        if (link.schema?.body) {
+          entry.body = JSON.stringify(link.schema.body);
+        }
+        if (link.schema?.response) {
+          entry.response = JSON.stringify(link.schema.response);
+        }
+        result[name] = entry;
+      }
+
+      return result as any;
+    },
+  });
+
+  /**
+   * Batch endpoint — execute multiple actions in a single HTTP request.
+   * Each sub-request is independent: errors in one don't affect others.
+   */
+  public readonly batch = $route({
+    method: "POST",
+    path: "/api/_batch",
+    schema: {
+      body: z.array(
+        z.object({
+          action: z.text(),
+          params: z.record(z.text(), z.any()).optional(),
+          query: z.record(z.text(), z.any()).optional(),
+          body: z.record(z.text(), z.any()).optional(),
+        }),
+      ),
+      response: z.array(
+        z.object({
+          action: z.text(),
+          status: z.integer(),
+          data: z.any().optional(),
+          error: z.text().optional(),
+        }),
+      ),
+    },
+    handler: async (request) => {
+      const { body } = request;
+      if (body.length > ServerLinksProvider.MAX_BATCH_SIZE) {
+        // The caller sent too many entries — that is a bad request, not a
+        // server fault. A bare AlephaError surfaced as a 500.
+        throw new BadRequestError(
+          `Batch size ${body.length} exceeds maximum of ${ServerLinksProvider.MAX_BATCH_SIZE}`,
+        );
+      }
+
+      const results = await Promise.allSettled(
+        body.map((entry) =>
+          this.linkProvider.follow(entry.action, {
+            params: entry.params as any,
+            query: entry.query as any,
+            body: entry.body as any,
+          }),
+        ),
+      );
+
+      const entries: Array<{
+        action: string;
+        status: number;
+        data?: any;
+        error?: string;
+      }> = [];
+
+      for (const [i, result] of results.entries()) {
+        const action = body[i].action;
+
+        if (result.status === "fulfilled") {
+          entries.push({ action, status: 200, data: result.value });
+          continue;
+        }
+
+        const reason = result.reason;
+        const status = reason?.status ?? 500;
+        const message = reason?.message ?? "Internal error";
+
+        this.log.warn("Batch action failed", {
+          action,
+          status,
+          message,
+          error: reason,
+        });
+
+        await this.reportSubRequestError(request, action, reason);
+
+        // Same rule the single-request path applies in `sendError`: a 5xx
+        // message is internal (DB URLs, upstream errors, credentials in a
+        // connection string) and must not reach the client in production.
+        // 4xx messages are deliberate, client-facing context and are kept.
+        // Without this the batch endpoint was a way around the sanitizer —
+        // and it is the path the React client uses by default.
+        entries.push({
+          action,
+          status,
+          error:
+            status >= 500 && this.alepha.isProduction()
+              ? "Internal Server Error"
+              : message,
+        });
+      }
+
+      return entries;
+    },
+  });
+
+  /**
+   * Announces a sub-request failure on `server:onError`, the way the
+   * single-request path does from `ServerRouterProvider.errorHandler`.
+   *
+   * ⚠️ **Not optional bookkeeping.** This endpoint answers 200 with a
+   * per-entry error, so `errorHandler` — the only other emitter of that event
+   * — never runs for anything that fails in here. Every consumer of the event
+   * (the error logger, the log buffer, crash reporting) was therefore blind
+   * to the batch, and the batch is the path the React client uses by default:
+   * on a client-rendered app it is not some corner of the API surface, it is
+   * the whole of it. An app can lose an entire outage this way and see an
+   * empty crash inbox throughout.
+   *
+   * The route reported is the failing action's own, not `/api/_batch` —
+   * reports that all blame the batch endpoint name the one route that is
+   * always innocent, and group into one useless pile.
+   *
+   * **The batch's own reply is restored afterwards.** A hook may answer the
+   * event by setting a status (that is how a custom error page works, and
+   * `errorHandler` explicitly honours it). Here the response is already
+   * decided: the failure belongs to one entry, and letting a hook promote it
+   * would fail the whole batch — including the entries that succeeded.
+   */
+  protected async reportSubRequestError(
+    request: any,
+    action: string,
+    error: unknown,
+  ): Promise<void> {
+    const reply = request.reply;
+    const status = reply?.status;
+    try {
+      await this.alepha.events.emit("server:onError", {
+        request,
+        route: { path: this.actionPath(action) } as any,
+        error: error as Error,
+      });
+    } catch (hookError) {
+      // A broken observer must never turn a reported failure into a second
+      // one, nor take down the entries that succeeded.
+      this.log.warn("server:onError hook failed for a batch entry", hookError);
+    } finally {
+      if (reply) reply.status = status;
+    }
+  }
+
+  /**
+   * The path a direct HTTP call to `action` would have hit — prefix included,
+   * the same composition {@link LinkProvider.followRemote} performs.
+   *
+   * Reported rather than the bare link path so one failing action reads
+   * identically whether it failed inside a batch or as its own request.
+   * Falls back to the action name when the link is unknown, which is a
+   * poorer label but a truthful one.
+   */
+  protected actionPath(action: string): string {
+    const link = this.linkProvider.links.find((it) => it.name === action);
+    if (!link) return action;
+    return `${link.prefix ?? "/api"}${link.path}`;
+  }
+
+  protected static readonly MAX_BATCH_SIZE = 20;
+
+  /**
+   * Cache key for the registry response.
+   *
+   * Every input {@link isLinkAccessible} reads must appear here, or one
+   * identity's registry is served to another:
+   *
+   * - authentication itself — `$secure()` is auth-only, so an authenticated
+   *   user carrying no roles sees strictly more than an anonymous visitor.
+   *   Keying on roles alone made both `""`.
+   * - the realm — `$secure({ issuers })` filters on it, so realm A and realm B
+   *   with identical role names resolve to different link sets.
+   * - the permission scope — a scoped credential and an unscoped one with the
+   *   same roles see different permissions and different actions, and sharing
+   *   an entry hands whichever called second the first one's registry: the
+   *   harmful direction is a scoped key receiving the full action list. An
+   *   absent scope and an empty one are different identities (`[]` reaches
+   *   nothing), so they must not share a key either; an absent scope keeps
+   *   the key it always had.
+   */
+  protected registryCacheKey(user?: UserAccountToken): string {
+    if (!user) return "anonymous";
+    const roles = user.roles?.slice().sort().join(",") ?? "";
+    const key = `user:${user.realm ?? ""}:${roles}`;
+    if (user.permissionScope === undefined) {
+      return key;
+    }
+    return `${key}:scope=${user.permissionScope.slice().sort().join(",")}`;
+  }
+
+  /**
+   * The registry for an identity, built at most once per identity.
+   *
+   * This is what every caller should reach for. {@link getUserApiLinks} is the
+   * uncached computation underneath: roughly 300 accessibility checks, the
+   * permission walk, and a round trip to every proxy remote, for a result that
+   * is byte-identical for every request with the same identity key.
+   *
+   * The SSR path used to call the uncached one directly, once per rendered
+   * page, while the HTTP route beside it had been caching all along.
+   */
+  public async getCachedUserApiLinks(
+    options: GetApiLinksOptions,
+  ): Promise<ApiRegistryResponse> {
+    return (await this.registryEntry(options)).response;
+  }
+
+  /**
+   * The cached response, its serialization and its ETag, as one entry.
+   *
+   * Serializing here rather than in the route is what lets the two consumers
+   * share a cache: SSR inlines the object, the route answers with the string,
+   * and neither pays for the other's form.
+   */
+  protected async registryEntry(
+    options: GetApiLinksOptions,
+  ): Promise<RegistryCacheEntry> {
+    const key = this.registryCacheKey(options.user);
+
+    const cached = this.registryCache.get(key);
+    if (cached) {
+      // Re-insert to mark it as most recently used: a Map iterates in
+      // insertion order, which is what makes eviction below an LRU.
+      this.registryCache.delete(key);
+      this.registryCache.set(key, cached);
+      return cached;
+    }
+
+    const response = await this.getUserApiLinks(options);
+    const json = JSON.stringify(response);
+    const etag = `"${createHash("md5").update(json).digest("hex")}"`;
+    const entry: RegistryCacheEntry = { response, json, etag };
+
+    while (this.registryCache.size >= ServerLinksProvider.MAX_REGISTRY_CACHE) {
+      const oldest = this.registryCache.keys().next();
+      if (oldest.done) break;
+      this.registryCache.delete(oldest.value);
+    }
+    this.registryCache.set(key, entry);
+
+    return entry;
+  }
+
+  /**
+   * Retrieves API registry for the user based on their permissions.
+   * Will check on local links and remote links.
+   */
+  public async getUserApiLinks(
+    options: GetApiLinksOptions,
+  ): Promise<ApiRegistryResponse> {
+    const { user } = options;
+    const { securityProvider } = this;
+    // The identity itself, so `getPermissions` applies its permission scope.
+    //
+    // Nothing on the browser side needs its own copy of that rule:
+    // `PermissionRegistryProvider` and `$secure.browser` read the flat
+    // `permissions` list and the `actions` this method sends down, so a
+    // registry computed for the scoped identity is already narrowed there.
+    const securityPermissions =
+      securityProvider && user
+        ? securityProvider.getPermissions(user)
+        : undefined;
+
+    const actions: Record<string, any> = {};
+    const permissions: string[] = [];
+    // Actions that exist but this caller may not invoke. Collected only for
+    // authenticated callers — see `restricted` in apiRegistryResponseSchema.
+    const restricted: string[] = [];
+
+    // Collect permissions not related to $action (virtual permissions)
+    for (const permission of securityPermissions ?? []) {
+      if (
+        !permission.path &&
+        !permission.method &&
+        permission.name &&
+        permission.group
+      ) {
+        permissions.push(`${permission.group}:${permission.name}`);
+      }
+    }
+
+    // Add local links
+    for (const link of this.linkProvider.getServerLinks()) {
+      // SKIP REMOTE LINKS, remote links are handled separately for security
+      if (link.host) continue;
+      if (!this.isLinkAccessible(link, user)) {
+        if (user) restricted.push(link.name);
+        continue;
+      }
+
+      actions[link.name] = {
+        path: link.path,
+        method: link.method || undefined,
+        kind: link.kind,
+        contentType: link.contentType,
+        service: link.service,
+        // The last link of a four-step chain, and the only one that is
+        // visible from the client: `$owns({ requires })` folds the permission
+        // into `secure.permissions`, `createMiddleware` puts it in the
+        // middleware's `[OPTIONS]`, `registerLink` above copies it onto
+        // `link.secured`, and this publishes it. Break any of them and
+        // nothing throws - the action simply arrives with no permissions,
+        // `can()` falls through to "the action exists", and every write
+        // control stays visible for a viewer who may not use it.
+        permissions: this.linkProvider.permissionsOfLink(link),
+      };
+    }
+
+    this.serverTimingProvider.beginTiming("fetchRemoteLinks");
+    // TODO: remote links can be cached by user.roles
+    const remoteResults = await Promise.all(
+      this.remoteProvider
+        .getRemotes()
+        .filter((it) => it.proxy) // add only "proxy" remotes
+        .map(async (remote) => {
+          const registry = await remote.links(options);
+          return { remote, registry };
+        }),
+    );
+
+    for (const { remote, registry } of remoteResults) {
+      const remotePrefix = registry.prefix ?? "/api";
+
+      // Merge remote actions
+      for (const [name, action] of Object.entries(registry.actions)) {
+        let path = action.path.replace(remotePrefix, "");
+        if (action.service) {
+          path = `/${action.service}${path}`;
+        }
+
+        actions[name] = {
+          path,
+          method: action.method,
+          contentType: action.contentType,
+          service: remote.name,
+          // Carried across, not recomputed: a remote's gates are the remote's
+          // to state, and dropping them here would make a proxied action the
+          // one thing in the registry a scope cannot narrow.
+          permissions: action.permissions,
+        };
+      }
+
+      // Merge remote permissions
+      if (registry.permissions) {
+        permissions.push(...registry.permissions);
+      }
+    }
+
+    this.serverTimingProvider.endTiming("fetchRemoteLinks");
+
+    return {
+      prefix: this.serverApi.prefix,
+      actions,
+      permissions: permissions.length > 0 ? permissions : undefined,
+      restricted: restricted.length > 0 ? restricted : undefined,
+    };
+  }
+
+  /**
+   * Check if a link is accessible by the given user based on security rules.
+   */
+  protected isLinkAccessible(
+    link: HttpClientLink,
+    user?: UserAccountToken,
+  ): boolean {
+    const { securityProvider } = this;
+
+    if (securityProvider && link.secured) {
+      if (!user) return false;
+
+      if (typeof link.secured === "object") {
+        // issuer check
+        if (
+          link.secured.issuers?.length &&
+          (!user.realm || !link.secured.issuers.includes(user.realm))
+        ) {
+          return false;
+        }
+
+        // role check
+        if (link.secured.roles?.length) {
+          const hasRole = link.secured.roles.some((role: string) =>
+            user.roles?.includes(role),
+          );
+          if (!hasRole) return false;
+        }
+
+        // explicit permission check, in the CALLER'S realm.
+        //
+        // `checkPermission` takes the realm only from a permission OBJECT;
+        // given none it falls back to `realms[0]`, so a second-realm user's
+        // roles were looked up among the first realm's and `checkRoles` threw
+        // on the first name it could not find - a 500 from an endpoint that
+        // runs on every page load, so such a session rendered nothing at all.
+        //
+        // `$secure`, the gate this registry only mirrors, already calls the
+        // realm-aware variant; the two disagreed about the same question.
+        // `registryCacheKey` in this same file already keys the response on
+        // the realm, and its comment says why: realm A and realm B with
+        // identical role names resolve to different link sets. The realm was
+        // known to matter here; only this branch was left behind.
+        //
+        // User-aware, like `$secure` since the permission scope: roles, then
+        // the credential's scope, so a scoped key is not told it may invoke
+        // an action that will refuse it.
+        if (link.secured.permissions?.length) {
+          for (const perm of link.secured.permissions) {
+            const result = securityProvider.checkUserPermission(user, perm);
+            if (!result.isAuthorized) return false;
+          }
+        }
+      }
+      // link.secured === true → auth only, user is already checked above
+    }
+
+    return true;
+  }
+}
+
+export interface GetApiLinksOptions {
+  user?: UserAccountToken;
+  authorization?: string;
+}
+
+interface RegistryCacheEntry {
+  response: ApiRegistryResponse;
+  json: string;
+  etag: string;
+}

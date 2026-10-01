@@ -1,0 +1,65 @@
+/**
+ * Single-use guard for short-lived assertion `jti`s. Bounded + self-pruning so
+ * it can't grow without limit in a long-lived process. Best-effort per-instance
+ * (assertions are also `aud`-bound + ~60s TTL, so a cross-isolate replay window
+ * is tiny); use a shared store if you need a hard cross-instance guarantee.
+ */
+export class JtiReplayGuard {
+  protected readonly seen = new Map<string, number>(); // jti -> expiry epoch ms
+
+  protected readonly ttlMs: number;
+  protected readonly maxEntries: number;
+
+  constructor(ttlMs = 120_000, maxEntries = 10_000) {
+    this.ttlMs = ttlMs;
+    this.maxEntries = maxEntries;
+  }
+
+  /**
+   * Records `jti` and returns true if fresh; false if already used (replay).
+   *
+   * `now` is required rather than defaulted to the wall clock: the replay
+   * window is the whole point of this guard, so the caller — which has a
+   * container and therefore a `DateTimeProvider` — owns the clock. A default
+   * here would make the window untestable from the outside and silently
+   * ignore `travel()` / `pause()`.
+   */
+  check(jti: string, now: number): boolean {
+    this.prune(now);
+    if (this.seen.has(jti)) {
+      return false;
+    }
+    this.seen.set(jti, now + this.ttlMs);
+    return true;
+  }
+
+  /**
+   * Whether `jti` has been recorded and not yet expired, WITHOUT recording it.
+   *
+   * For a caller that has more validation to do before it is willing to spend
+   * the token: it can refuse a replay up front and still leave a first-time
+   * `jti` unspent if one of its own checks fails afterwards. Consuming is
+   * still `check`.
+   */
+  wasUsed(jti: string, now: number): boolean {
+    this.prune(now);
+    return this.seen.has(jti);
+  }
+
+  protected prune(now: number): void {
+    for (const [k, exp] of this.seen) {
+      if (exp <= now) {
+        this.seen.delete(k);
+      }
+    }
+    // Hard cap: if still over budget after dropping expired, evict oldest-first
+    // (Map preserves insertion order).
+    while (this.seen.size >= this.maxEntries) {
+      const oldest = this.seen.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.seen.delete(oldest);
+    }
+  }
+}

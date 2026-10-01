@@ -1,0 +1,153 @@
+import { useRouter } from "alepha/react/router";
+import type { ReactNode } from "react";
+
+import { DropdownMenuSeparator } from "../core/DropdownMenu.tsx";
+import { cn } from "../core/utils.ts";
+import { ButtonDark } from "./ButtonDark.tsx";
+import { ButtonLanguage } from "./ButtonLanguage.tsx";
+import { ButtonTheme } from "./ButtonTheme.tsx";
+import { ButtonUser } from "./ButtonUser.tsx";
+
+export interface AppActionsProps {
+  /**
+   * Extra menu items appended to the account dropdown, below the built-ins
+   * and above Logout. For an application-specific destination — "My orders",
+   * "Billing" — that belongs with the account rather than in the page chrome.
+   */
+  children?: ReactNode;
+
+  /**
+   * Rendered to the left of the cluster: a search trigger, a create button,
+   * anything the surface wants adjacent to these controls.
+   */
+  before?: ReactNode;
+
+  /**
+   * Route name pushed by the "Admin Panel" item. The item is hidden anyway
+   * unless the viewer holds `admin:ui`.
+   *
+   * @default "admin"
+   */
+  adminRouteName?: string;
+
+  /**
+   * Route name pushed by the signed-out state's sign-in button.
+   *
+   * @default "login"
+   */
+  loginRouteName?: string;
+
+  /**
+   * Labels, for an application that localises its chrome. Omitted entries
+   * fall back to each button's own English default.
+   */
+  labels?: {
+    language?: string;
+    signIn?: string;
+    admin?: string;
+    account?: string;
+    logout?: string;
+  };
+
+  /**
+   * Forwarded to {@link ButtonUser.avatar}: overrides what the signed-in
+   * account button shows. Absent, the button draws the viewer's own picture
+   * when they have one and the generic glyph when they do not.
+   */
+  avatar?: ReactNode;
+
+  /**
+   * Below `sm`, drop the three ambient SETTINGS controls - language, theme
+   * and dark mode - and keep only the account button.
+   *
+   * ⚠️ **Opt-in, and it has to be.** On a phone this cluster is most of the
+   * header and half of it is settings a reader changes about once
+   * (feedback #P2144), but hidden must never mean unreachable. So a surface
+   * passes this only when another surface still offers them. `ButtonSettings`
+   * is the other answer: it moves them into the account menu instead of
+   * hiding them.
+   *
+   * A responsive class rather than a media-query hook, deliberately: a hook
+   * re-renders after mount, and on a server-rendered header that means the
+   * buttons paint and then vanish.
+   */
+  compact?: boolean;
+
+  className?: string;
+}
+
+/**
+ * The ambient controls as four buttons: language, theme, dark mode, account.
+ *
+ * ⚠️ **The kit's own shells no longer use it.** `AdminLayout`,
+ * `AccountLayout` and Lore's header draw `ButtonSettings`, which folds
+ * the three settings into the account menu once signed in, and renders this
+ * same row with `placement="buttons"`.
+ *
+ * ### Why this is one component rather than four imports
+ *
+ * It was four imports, in three places — `AdminLayout`, `AccountLayout` and
+ * `apps/lore`'s own header — and they had already drifted: admin rendered no
+ * theme switcher, and Lore's account menu pushed a route that no longer
+ * existed. A cluster that every shell rebuilds by hand is a cluster where
+ * each copy is one refactor away from being subtly wrong.
+ *
+ * ### Each button decides whether it has anything to offer
+ *
+ * There is no "show the language switcher?" prop, and there should not be:
+ * `ButtonLanguage` and `ButtonTheme` already return `null` at one or fewer
+ * options, reading the real registry rather than a flag a caller has to keep
+ * in sync. So an application with a single locale and a single theme renders
+ * exactly two controls here, and gains the others the day it registers a
+ * second — with no change at any call site.
+ *
+ * `ButtonUser` likewise renders a sign-in button when signed out and the
+ * account menu when signed in, and `ButtonUser.AccountMenuItem` hides itself
+ * when no `account` route is mounted.
+ *
+ * ### What it deliberately does not include
+ *
+ * Search. `AdminLayout` keeps its ⌘K trigger outside this cluster because the
+ * Spotlight open-state is local to that layout, so a shared component could
+ * never own it — and Lore's own search is a field-sized element that reads as
+ * a different kind of control next to four icons. Pass it via `before` when a
+ * surface wants it adjacent.
+ */
+export const AppActions = (props: AppActionsProps) => {
+  const router = useRouter<any>();
+
+  return (
+    <div className={cn("flex items-center gap-1", props.className)}>
+      {props.before}
+      {/* `contents` so the three stay direct children of the flex row and
+          keep its `gap-1`; `hidden` wins over `display: contents`, which is
+          what makes the whole group disappear below the breakpoint. */}
+      <div className={cn(props.compact ? "hidden sm:contents" : "contents")}>
+        <ButtonLanguage variant="minimal" label={props.labels?.language} />
+        <ButtonTheme variant="minimal" />
+        <ButtonDark variant="minimal" />
+      </div>
+      <ButtonUser
+        variant="minimal"
+        avatar={props.avatar}
+        signInLabel={props.labels?.signIn}
+        onSignIn={() => router.push(props.loginRouteName ?? "login")}
+      >
+        <ButtonUser.Email />
+        {/* Account before admin — see `ButtonUser`'s `DefaultMenu` for why. */}
+        <ButtonUser.AccountMenuItem label={props.labels?.account} />
+        {/*
+          `routeName`, not `onClick`: both of these are destinations, so they
+          render as real anchors and keep ⌘-click and open-in-new-tab.
+        */}
+        <ButtonUser.AdminMenuItem
+          label={props.labels?.admin}
+          routeName={props.adminRouteName}
+        />
+        {props.children}
+        <DropdownMenuSeparator />
+        <ButtonUser.LogoutMenuItem label={props.labels?.logout} />
+      </ButtonUser>
+    </div>
+  );
+};
