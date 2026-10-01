@@ -66,36 +66,40 @@ describe("@alepha/lore packaging", () => {
   });
 
   /**
-   * Exactly one runtime dependency, and it is `alepha`.
+   * No runtime dependency at all: `alepha` is an optional peer, and the bin
+   * carries its own (#Q2579).
    *
-   * This used to assert none at all, which was right while both halves were
-   * imported by a host that already had `alepha` and could satisfy a peer.
-   * The `lore` bin has no host: `npm i -g "@alepha/lore"` installs into a
-   * directory with nothing else in it, npm 7+ would auto-install the peer,
-   * Yarn would not and pnpm differs again, and a tool people are told to
-   * install globally cannot depend on which manager they used.
+   * The reporter, the client and the `lore()` adapter run inside a host app
+   * and must use the host's `alepha`, never a second copy, so they take it as
+   * a peer. The `lore` bin has no host: `npm i -g "@alepha/lore"` installs
+   * into a directory with nothing else in it, and npm, Yarn and pnpm answer a
+   * peer differently there. So its build inlines `alepha` and imports nothing
+   * but `node:` builtins, which `scripts/check-bin.ts` refuses to let slip.
    *
-   * The list stays closed, because everything else the CLI needs is still
-   * reached through the container: file and git work go through
-   * `FileSystemProvider` and `ShellProvider`, not through a tar or a git
-   * library, and a production app installing this package for the reporter
-   * half pays for none of it.
+   * That is also what lets every consumer take this package from npm whatever
+   * `alepha` it runs, a vendored one included: the bin never reads it.
    */
-  it("depends on alepha at runtime, and on nothing else", () => {
-    expect(Object.keys(manifest.dependencies)).toEqual(["alepha"]);
+  it("has no runtime dependency", () => {
+    expect(manifest.dependencies).toBeUndefined();
   });
 
   /**
-   * A caret rather than an exact pin, and the same range all eight sibling
-   * `@alepha/*` packages declare. It dedupes with a sigil consumer's own
-   * `alepha` anywhere in `0.28.x` instead of guaranteeing a second copy, and
-   * `release.yml` keeps it current for free: `yarn workspaces foreach version`
-   * rewrites inter-workspace ranges in `dependencies` exactly as it already
-   * does in `peerDependencies`.
+   * A caret, the range the sibling `@alepha/*` packages declare as a peer, and
+   * optional, so a global install of the bin is never asked for it.
    */
-  it("takes alepha by caret, and no longer as a peer", () => {
-    expect(manifest.dependencies.alepha).toMatch(/^\^/);
-    expect(manifest.peerDependencies.alepha).toBeUndefined();
+  it("takes alepha as an optional peer, by caret", () => {
+    expect(manifest.peerDependencies.alepha).toMatch(/^\^/);
+    expect(manifest.peerDependenciesMeta.alepha.optional).toBe(true);
+  });
+
+  it("inlines alepha into the bin build only", () => {
+    const config = readFileSync(
+      new URL("../../tsdown.config.ts", import.meta.url),
+      "utf8",
+    );
+
+    expect(config).toContain("alwaysBundle: [/^alepha(\\/|$)/");
+    expect(config.match(/alwaysBundle/g)).toHaveLength(1);
   });
 
   /**
