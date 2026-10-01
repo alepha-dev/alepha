@@ -62,7 +62,7 @@ export default defineConfig({
   plugins: [
     platform({
       environments: {
-        production: cloudflare({ domain: "lore.alepha.dev" }),
+        production: cloudflare({ domain: "myapp.com" }),
         staging: bay({ host: "deploy@bay.example.com" }),
       },
     }),

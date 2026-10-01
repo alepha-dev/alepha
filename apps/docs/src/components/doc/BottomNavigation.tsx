@@ -10,11 +10,11 @@ interface BottomNavigationProps {
 }
 
 /**
- * ⚠️ Scoped to one doc set. The flat `docs` list holds all three now, in root
- * order, so walking it would step off the end of the framework guides and
- * into the Bay introduction - and a name is not unique across products
- * either, so even finding the current page needs the narrowing first (quest
- * #1603).
+ * ⚠️ Scoped to one doc set. The flat `docs` list would hold every doc set in
+ * root order, so walking it would step off the end of one set and into the
+ * next - and a name is not unique across products either, so even finding the
+ * current page needs the narrowing first (quest #1603). The framework is the
+ * only set today, since Bay and Lore left this repository (#E72).
  */
 const BottomNavigation = (props: BottomNavigationProps) => {
   const nav = useMemo(() => {

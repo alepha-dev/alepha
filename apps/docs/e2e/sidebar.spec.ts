@@ -25,6 +25,14 @@ test.describe("Sidebar", () => {
     expect(count).toBeGreaterThan(3);
   });
 
+  test("the Explorer carries the llm folder", async ({ page }) => {
+    // The `llms.txt` entry is appended to the generated tree in
+    // `config/docs.ts`, so it is the one root a regenerated tree cannot bring
+    // back on its own.
+    const explorer = page.locator('nav[aria-label="Documentation explorer"]');
+    await expect(explorer.getByText("llm", { exact: true })).toBeVisible();
+  });
+
   test("clicking sidebar item navigates", async ({ page }) => {
     const sidebar = page.locator('[class*="sidebar"]').first();
 

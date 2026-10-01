@@ -54,9 +54,8 @@ const CommandPalette = () => {
   const { open, openDialog, closeDialog, dialogProps } = useDialog();
 
   // Flatten docs and create Fuse index
-  // Every doc set, unlike the sidebar. The palette is how you jump ACROSS
-  // products - a Bay page is exactly what you cannot reach from the framework
-  // sidebar - so scoping it would remove the one place the split is not felt.
+  // Every doc set in `trees`, which is the framework's alone since Bay and
+  // Lore left this repository (#E72).
   const allDocs = useMemo(
     () => Object.values(trees).flatMap((tree) => flattenTree(tree)),
     [],

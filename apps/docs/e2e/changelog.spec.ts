@@ -28,16 +28,20 @@ test.describe("Changelog", () => {
     await page.goto("/changelog");
     const before = await page.locator("article li").count();
 
-    await page.getByRole("button", { name: "Bay" }).click();
+    const ui = page.getByRole("button", { name: "UI", exact: true });
+    await ui.click();
 
-    await expect(page).toHaveURL(/\?scope=bay$/);
-    await expect(page.getByRole("button", { name: "Bay" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(page).toHaveURL(/\?scope=ui$/);
+    await expect(ui).toHaveAttribute("aria-pressed", "true");
 
-    const scopes = page.locator("article li > span:first-child");
-    await expect(scopes.first()).toHaveText("bay");
+    // The group is wider than its own token: `devtools` and `admin` are UI.
+    const scopes = await page
+      .locator("article li > span:first-child")
+      .allTextContents();
+    expect(scopes.length).toBeGreaterThan(0);
+    for (const scope of scopes) {
+      expect(scope).toMatch(/\b(ui|devtools|admin)\b/);
+    }
     const after = await page.locator("article li").count();
     expect(after).toBeGreaterThan(0);
     expect(after).toBeLessThan(before);
@@ -52,7 +56,7 @@ test.describe("Changelog", () => {
     page,
   }) => {
     // `orm` and `react` name no group, so this exercises the raw form, and
-    // the extra button that shows a filter the six cannot express.
+    // the extra button that shows a filter the four cannot express.
     await page.goto("/changelog?scope=orm,react");
     await expect(
       page.getByRole("button", { name: "orm,react" }),

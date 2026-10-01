@@ -667,39 +667,6 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   HEADER - PRODUCT NAV
-   ----------------------------------------------------------------------------- */
-
-.product-nav {
-  display: flex;
-  align-items: stretch;
-  height: 100%;
-}
-
-.product-nav-link {
-  display: flex;
-  align-items: center;
-  padding: 0 var(--space-4);
-  border-right: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: all var(--duration-normal) var(--ease-default);
-}
-
-.product-nav-link:hover {
-  color: var(--color-text-bright);
-  background: var(--color-surface-hover);
-}
-
-/* Colour only. A weight change would re-measure the text and nudge every link
-   beside it, so the nav would shift as you move between pages. */
-.product-nav-link.is-active {
-  color: var(--color-text-bright);
-}
-
-/* -----------------------------------------------------------------------------
    BLOCK 1 - HERO (centred, generic)
    ----------------------------------------------------------------------------- */
 
@@ -1989,72 +1956,6 @@ html:has(.home-snap) {
   color: var(--color-text-muted);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
-}
-
-/* -----------------------------------------------------------------------------
-   PRODUCT PAGES (Lore, Bay)
-   ----------------------------------------------------------------------------- */
-
-/* A product page is exactly one screen and must not scroll.
-   `.terminal-page` is `min-height: 100vh`, and the header sits above it in flow,
-   so a full-height section pushed the document 40px past the viewport and grew a
-   scrollbar. Subtracting the header is what removes it. */
-.product-page {
-  height: calc(100vh - var(--header-height));
-  min-height: 0;
-  overflow: hidden;
-}
-
-.product-page .hero-section {
-  min-height: calc(100vh - var(--header-height));
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.product-try {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-.product-try-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--color-cyan);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-}
-
-.product-try-link:hover {
-  border-bottom-color: currentColor;
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--space-4);
-}
-
-.product-card {
-  padding: var(--space-6);
-  background: var(--color-bg-panel);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-}
-
-.product-card-title {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-bright);
-}
-
-.product-card-body {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
 }
 
 /* -----------------------------------------------------------------------------

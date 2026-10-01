@@ -1,6 +1,6 @@
 import { $env, z } from "alepha";
 import { $head, type Head, type HeadLink } from "alepha/react/head";
-import { $page, NotFound, Redirection } from "alepha/react/router";
+import { $page, NotFound } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
 import { HttpError, NotFoundError } from "alepha/server";
 
@@ -9,20 +9,18 @@ import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
 import { DOCS_THEME_BOOT_SCRIPT } from "./components/layout/docsTheme.ts";
 import Layout from "./components/layout/Layout.tsx";
-import BayHome from "./components/product/BayHome.tsx";
-import LoreHome from "./components/product/LoreHome.tsx";
 import type { DocProduct } from "./config/docs.ts";
 import { changelog, docs, docsHref, docsOf } from "./config/docs.ts";
 
 /**
- * `<link rel="alternate">` to a doc set's `llms.txt`, the index an agent
+ * `<link rel="alternate">` to the site's `llms.txt`, the index an agent
  * should read instead of the HTML around it.
  */
-const llmsLink = (product: DocProduct): HeadLink => ({
+const llmsLink: HeadLink = {
   rel: "alternate",
   type: "text/plain",
-  href: product ? `/${product}/llms.txt` : "/llms.txt",
-});
+  href: "/llms.txt",
+};
 
 declare module "alepha/react/router" {
   interface PagePrimitiveOptions {
@@ -40,11 +38,11 @@ export class AppRouter {
     }),
   );
 
-  // The `llms.txt` files are written by `gen:llms` after the build, so no
-  // page knows about them; listing them here is how a crawler does.
+  // `llms.txt` is written by `gen:llms` after the build, so no page knows
+  // about it; listing it here is how a crawler does.
   sitemap = $sitemap({
     hostname: this.env.PUBLIC_URL,
-    urls: ["/llms.txt", "/bay/llms.txt", "/lore/llms.txt"],
+    urls: ["/llms.txt"],
   });
 
   head = $head(() => {
@@ -86,8 +84,8 @@ export class AppRouter {
           href: "/apple-touch-icon.png",
         },
         // For agents that land on any page: the index they should read
-        // instead of the HTML. Bay and Lore pages add their own beside it.
-        llmsLink(""),
+        // instead of the HTML.
+        llmsLink,
       ],
       // One `theme-color` per scheme, so the phone's address bar matches the
       // page it is framing instead of guessing. Both values are `--color-bg`
@@ -118,41 +116,11 @@ export class AppRouter {
     component: Layout,
     children: () => [
       this.home,
-      this.lore,
-      this.bay,
       this.changelog,
       this.m,
-      this.bayDocs,
-      this.loreDocs,
       this.github404,
       this.notFound,
     ],
-  });
-
-  lore = $page({
-    path: "/lore",
-    component: LoreHome,
-    label: "Lore",
-    static: true,
-    head: () => ({
-      title: "Lore. Project management, for agents too.",
-      description:
-        "An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, readable and writable over MCP.",
-      link: [llmsLink("lore")],
-    }),
-  });
-
-  bay = $page({
-    path: "/bay",
-    component: BayHome,
-    label: "Bay",
-    static: true,
-    head: () => ({
-      title: "Bay. Your own VPS, without the yak shaving.",
-      description:
-        "A self-hosted application server for Alepha apps, with TLS, rollback and process isolation handled for you.",
-      link: [llmsLink("bay")],
-    }),
   });
 
   home = $page({
@@ -177,14 +145,14 @@ export class AppRouter {
   });
 
   /**
-   * The framework docs, and the ONLY one of the three whose URLs are frozen.
-   * 378 pages live under `/docs/:slug` and every link to them, internal and
-   * external, would break if this moved (quest #1603).
+   * The framework docs. Their URLs are frozen: 378 pages live under
+   * `/docs/:slug` and every link to them, internal and external, would break
+   * if this moved (quest #1603).
    *
-   * It also carries the redirects for the two doc sets that DID move: a slug
-   * beginning `bay-` or `lore-` was a Bay or Lore page under this route until
-   * this change, and those URLs are live. The check runs before the lookup
-   * because there is no longer a framework page by either name to find.
+   * Bay and Lore had their own doc sets here until they left this repository
+   * (#E72). Their old URLs, `/bay/docs/*`, `/lore/docs/*` and the older flat
+   * `/docs/bay-*` and `/docs/lore-*`, are redirected to their repositories by
+   * `public/_redirects`, at the edge, before any route sees them.
    */
   m = $page({
     sidebar: true,
@@ -201,59 +169,7 @@ export class AppRouter {
         label: it.name,
       })),
     },
-    loader: async ({ params }) => {
-      for (const product of ["bay", "lore"] as const) {
-        if (params.slug.startsWith(`${product}-`)) {
-          throw new Redirection(
-            docsHref({
-              product,
-              slug: params.slug.slice(product.length + 1),
-            }),
-          );
-        }
-      }
-      return this.loadDoc("", params.slug);
-    },
-    head: (args) => this.docHead(args),
-    errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
-        return <NotFound />;
-      }
-    },
-  });
-
-  bayDocs = $page({
-    sidebar: true,
-    path: "/bay/docs/:slug",
-    component: Docs,
-    schema: { params: z.object({ slug: z.text() }) },
-    static: {
-      entries: docsOf("bay").map((it) => ({
-        params: { slug: it.slug },
-        label: it.name,
-      })),
-    },
-    loader: async ({ params }) => this.loadDoc("bay", params.slug),
-    head: (args) => this.docHead(args),
-    errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
-        return <NotFound />;
-      }
-    },
-  });
-
-  loreDocs = $page({
-    sidebar: true,
-    path: "/lore/docs/:slug",
-    component: Docs,
-    schema: { params: z.object({ slug: z.text() }) },
-    static: {
-      entries: docsOf("lore").map((it) => ({
-        params: { slug: it.slug },
-        label: it.name,
-      })),
-    },
-    loader: async ({ params }) => this.loadDoc("lore", params.slug),
+    loader: async ({ params }) => this.loadDoc("", params.slug),
     head: (args) => this.docHead(args),
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {
@@ -263,9 +179,9 @@ export class AppRouter {
   });
 
   /**
-   * ⚠️ Narrowed by product, not by slug alone. A slug is unique only within a
-   * doc set now, so `guides-introduction` exists three times and a search of
-   * the flat list would answer with whichever came first.
+   * Narrowed by product as well as by slug: a slug is unique only within a doc
+   * set, and the framework is the only doc set today, but a second one would
+   * bring a second `guides-introduction` with it.
    */
   protected async loadDoc(product: DocProduct, slug: string) {
     for (const doc of docs) {
@@ -300,9 +216,6 @@ export class AppRouter {
     const link: HeadLink[] = [
       { rel: "alternate", type: "text/markdown", href: `${docsHref(args)}.md` },
     ];
-    if (args.product) {
-      link.push(llmsLink(args.product));
-    }
 
     return {
       title,

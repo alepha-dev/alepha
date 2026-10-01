@@ -1,12 +1,16 @@
 /**
  * Which doc set a page belongs to, which is also its first URL segment: `""`
- * is the framework at `/docs/:slug`, `"bay"` is `/bay/docs/:slug`.
+ * is the framework at `/docs/:slug`, and another product `p` would live at
+ * `/p/docs/:slug`.
  *
- * ⚠️ A slug is unique only within a product. `guides-introduction` exists in
- * all three, so anything that names a file or a route by slug has to carry
- * the product beside it (quest #1603).
+ * The framework is the only doc set now. Bay and Lore had theirs here until
+ * they left this repository (#E72), and the product dimension stays so that a
+ * second doc set costs a root and a route rather than a refactor.
+ *
+ * ⚠️ A slug is unique only within a product, so anything that names a file or
+ * a route by slug carries the product beside it (quest #1603).
  */
-export type DocProduct = "" | "bay" | "lore";
+export type DocProduct = "";
 
 export type DocItem = {
   product: DocProduct;

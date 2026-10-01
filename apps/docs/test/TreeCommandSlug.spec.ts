@@ -15,8 +15,8 @@ describe("TreeCommand slug", () => {
     });
 
     it("should keep interior digits that are followed by a dash", () => {
-      // The strip used to be unanchored, so `3-oauth2-setup` published at
-      // `/lore/docs/guides-oauthsetup`. Nothing turned red: the page still
+      // The strip used to be unanchored, so a `3-oauth2-setup` guide
+      // published as `guides-oauthsetup`. Nothing turned red: the page still
       // built and still rendered, only its URL was silently wrong.
       const tree = boot();
 
@@ -56,11 +56,11 @@ describe("TreeCommand slug", () => {
     it("shows an escaped subject as the commit wrote it", () => {
       expect(
         parse(
-          "- **lore**: MCP grows app_instance\\_\\*, and sigil\\_\\* keeps working (`d2d83d62`)",
+          "- **mcp**: tools grow app_instance\\_\\*, and job\\_\\* keeps working (`d2d83d62`)",
         ),
       ).toEqual({
-        scope: "lore",
-        message: "MCP grows app_instance_*, and sigil_* keeps working",
+        scope: "mcp",
+        message: "tools grow app_instance_*, and job_* keeps working",
         commit: "d2d83d62",
       });
     });

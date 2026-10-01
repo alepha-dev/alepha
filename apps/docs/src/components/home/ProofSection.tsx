@@ -11,10 +11,8 @@ const ProofSection = () => {
         <CopyCommand command="npx alepha@latest init my-app" />
 
         <p className="proof-license">
-          100% open source, 100% MIT. The framework, Lore and Bay all live in
-          one public repository and ship on the same version, so every release
-          is proved by applications that use it. Nothing here is a paid tier of
-          something else.
+          100% open source, 100% MIT, in one public repository. Nothing here is
+          a paid tier of something else.
         </p>
 
         <div className="proof-links flex gap-6">

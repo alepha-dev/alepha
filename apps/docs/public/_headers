@@ -5,8 +5,8 @@
 # "Static File Headers".
 #
 # Every host that serves these files itself applies the merged file:
-# Cloudflare (docs deploys through `lore apps deploy`), Bay, and the app's own
-# server. Cloudflare defaults every file to
+# Cloudflare (docs deploys through `alepha platform up`), Bay, and the app's
+# own server. Cloudflare defaults every file to
 # `cache-control: public, max-age=0, must-revalidate`, which is right for a
 # docs page and is what a file no rule caches gets everywhere.
 

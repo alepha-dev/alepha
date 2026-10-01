@@ -6,23 +6,21 @@ import { AlephaCommands } from "./scripts/commands.ts";
 export default defineConfig({
   plugins: [
     // The changelog is the release note for everything this repository ships:
-    // the `alepha` modules, its `api/*` sub-modules, every published
-    // `@alepha/*` package, and the two applications that are products in their
-    // own right, Lore and Bay. Everything else, the examples and the private
+    // the `alepha` modules, its `api/*` sub-modules and every published
+    // `@alepha/*` package. Everything else, the examples and the private
     // packages, is invisible here without anyone having to remember it.
     //
-    // `lore` and `bay` were added in 0.29. They are deployed products with
-    // their own pages on the site, and a reader of alepha.dev/changelog wants
-    // to know what moved in them; the page's scope filter is what keeps them
-    // out of the way of someone who only cares about the framework.
+    // `lore` and `bay` were added in 0.29, when Lore and Bay were products
+    // shipped from this repository with their own pages on the site. They
+    // left with their repositories in #E72, and their past entries stay in
+    // CHANGELOG.md.
     //
     // This was a denylist until 0.25, and the denylist is why `pulse` and
     // `shop` reached the notes for a release nobody shipped them in: it only
     // ever excluded what someone thought to add, and an app born after the
     // last edit is published by default. An allowlist fails the other way,
     // which is the one you notice: a missing entry gets reported, a leaked one
-    // does not. Adding `bay` and `lore` above is that report being acted on,
-    // not the rule being loosened.
+    // does not.
     //
     // Scopes match on the segment before `/`, so `api` covers `api/users` and
     // `react` covers `react/form`.
@@ -80,9 +78,6 @@ export default defineConfig({
         "auth",
         "cookies",
         "platform",
-        // applications shipped from this repository
-        "bay",
-        "lore",
       ],
     }),
   ],

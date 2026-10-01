@@ -124,9 +124,7 @@ const PlatformSection = () => {
                 <span className="deploy-result-arrow" aria-hidden="true">
                   →
                 </span>
-                <span className="deploy-result-url">
-                  https://lore.alepha.dev
-                </span>
+                <span className="deploy-result-url">https://myapp.com</span>
               </p>
             </div>
           </div>

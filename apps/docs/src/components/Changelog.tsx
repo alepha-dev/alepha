@@ -38,10 +38,9 @@ const CHANGELOG_URL =
 /**
  * The recent release history on one route, every release open.
  *
- * `?scope=` narrows it: a group id from the buttons (`framework`, `cli`, `ui`,
- * `lore`, `bay`) or a raw comma-separated list of scope tokens. A release with
- * nothing left after filtering drops off the timeline rather than showing an
- * empty card.
+ * `?scope=` narrows it: a group id from the buttons (`framework`, `cli`, `ui`)
+ * or a raw comma-separated list of scope tokens. A release with nothing left
+ * after filtering drops off the timeline rather than showing an empty card.
  */
 const Changelog = (props: ChangelogProps) => {
   const [params, setParams] = useQueryParams(changelogScopeQuerySchema, {

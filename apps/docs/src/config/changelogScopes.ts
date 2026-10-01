@@ -8,22 +8,22 @@
  * - `?scope=orm,react` is the raw form: a comma-separated list of tokens,
  *   matched against a scope name by name, so `api` selects `api/users` and
  *   `api/users` selects it too.
- * - The six buttons above the timeline write a *group* id into that same
- *   param. Four of them (`cli`, `ui`, `lore`, `bay`) are also real scope
- *   tokens, so a hand-typed `?scope=ui` and the UI button agree; the group is
- *   simply the wider reading, taking `devtools` along with `ui`.
+ * - The four buttons above the timeline write a *group* id into that same
+ *   param. Two of them (`cli`, `ui`) are also real scope tokens, so a
+ *   hand-typed `?scope=ui` and the UI button agree; the group is simply the
+ *   wider reading, taking `devtools` along with `ui`.
  *
  * `framework` is the one id that is not a scope: it is defined as everything
- * the other four groups do not claim. Written as a complement rather than a
- * list because a list is wrong the moment a module is added, and wrong in the
- * direction nobody notices - a new module would quietly appear under no filter
- * at all.
+ * the other groups, and the retired scopes, do not claim. Written as a
+ * complement rather than a list because a list is wrong the moment a module
+ * is added, and wrong in the direction nobody notices - a new module would
+ * quietly appear under no filter at all.
  *
  * ⚠️ Groups are decided per comma-separated scope, and on its *namespace* -
- * the segment before the first `/`. A commit scoped `analytics,ui,lore`
- * changed a framework module, the UI and Lore, and is shown under all three;
- * matching on every slash segment instead would have made `ui/admin` framework
- * work, because `admin` is nobody's module.
+ * the segment before the first `/`. A commit scoped `analytics,ui` changed a
+ * framework module and the UI, and is shown under both; matching on every
+ * slash segment instead would have made `ui/admin` framework work, because
+ * `admin` is nobody's module.
  */
 
 export interface ChangelogScopeGroup {
@@ -40,8 +40,6 @@ export const changelogScopeGroups: ChangelogScopeGroup[] = [
   { id: "framework", label: "Framework" },
   { id: "cli", label: "CLI" },
   { id: "ui", label: "UI" },
-  { id: "lore", label: "Lore" },
-  { id: "bay", label: "Bay" },
 ];
 
 /**
@@ -58,14 +56,22 @@ export const changelogScopeGroups: ChangelogScopeGroup[] = [
 const GROUP_SCOPES: Record<string, string[]> = {
   cli: ["cli", "command", "platform", "vite", "build"],
   ui: ["ui", "devtools", "admin", "admin-ui"],
-  lore: ["lore"],
-  bay: ["bay"],
 };
 
 /**
  * The groups `framework` is the complement of.
  */
-const NON_FRAMEWORK_GROUPS = ["cli", "ui", "lore", "bay"];
+const NON_FRAMEWORK_GROUPS = ["cli", "ui"];
+
+/**
+ * Namespaces that are not the framework and have no button any more.
+ *
+ * Lore and Bay had a group each until they left this repository for their
+ * own (#E72). Their past entries stay in `CHANGELOG.md`, so they are still on
+ * this page under All, and `?scope=lore` still finds them as a raw token; this
+ * is what keeps `framework` from claiming them.
+ */
+const RETIRED_SCOPES = new Set(["lore", "bay"]);
 
 /**
  * Read the `scope` param into the tokens to filter on. An empty or absent
@@ -108,6 +114,7 @@ const matchesToken = (parts: string[], token: string): boolean => {
 };
 
 const isClaimed = (part: string): boolean =>
+  RETIRED_SCOPES.has(namespaceOf(part)) ||
   NON_FRAMEWORK_GROUPS.some((group) =>
     GROUP_SCOPES[group].includes(namespaceOf(part)),
   );

@@ -2,3 +2,16 @@
 # follows the redirect, so every `curl ... alepha.dev/bay/install.sh | sh`
 # already written down keeps working.
 /bay/install.sh https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh 302
+
+# Lore and Bay had their pages and docs on this site until they left this
+# repository (#E72). Every URL they used, the flat `/docs/<product>-*` slugs
+# included, now lands on the repository that documents them. First match wins,
+# so the installer rule above stays first.
+/lore/docs/* https://github.com/alepha-dev/lore 302
+/lore/* https://github.com/alepha-dev/lore 302
+/lore https://github.com/alepha-dev/lore 302
+/bay/docs/* https://github.com/alepha-dev/bay 302
+/bay/* https://github.com/alepha-dev/bay 302
+/bay https://github.com/alepha-dev/bay 302
+/docs/lore-* https://github.com/alepha-dev/lore 302
+/docs/bay-* https://github.com/alepha-dev/bay 302

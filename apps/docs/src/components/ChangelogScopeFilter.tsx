@@ -14,11 +14,11 @@ export interface ChangelogScopeFilterProps {
 }
 
 /**
- * The six buttons above the timeline, each writing its group id into
+ * The four buttons above the timeline, each writing its group id into
  * `?scope=`. `All` writes nothing and clears the param.
  *
  * `?scope=` also accepts raw scope tokens that name no group, so a URL can
- * always say something the buttons cannot. When it does, a seventh button
+ * always say something the buttons cannot. When it does, a fifth button
  * appears carrying that value, so the page never filters silently.
  */
 const ChangelogScopeFilter = (props: ChangelogScopeFilterProps) => {

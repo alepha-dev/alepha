@@ -657,8 +657,12 @@ if (setupViolations.length > 0) {
  *
  * `superpowers` is excluded for the same reason `check-docs` excludes it: an
  * archive of past plans, true when written and not a claim about today.
+ *
+ * `lore` and `bay` are no longer published: Lore and Bay left this repository
+ * with their docs (#E72). The directories are kept only until the cleanup
+ * quest removes them, so the history extraction still carries them.
  */
-const DOCS_EXCLUDED = new Set(["superpowers"]);
+const DOCS_EXCLUDED = new Set(["superpowers", "lore", "bay"]);
 const GEN_TREE = "apps/docs/scripts/gen-tree.ts";
 const genTreeSource = readFileSync(GEN_TREE, "utf8");
 const docRootViolations: string[] = [];

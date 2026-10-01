@@ -19,17 +19,6 @@ import { getInitialMode, MODE_KEY, type Mode } from "./docsTheme.ts";
 // HEADER - IDE STYLE
 // =============================================================================
 
-/**
- * The four products, sitting next to the version chip because they share its
- * version number and its changelog. Commerce ships as a framework package for
- * now and so has no page of its own yet.
- */
-const PRODUCTS = [
-  { href: "/", label: "Framework" },
-  { href: "/lore", label: "Lore" },
-  { href: "/bay", label: "Bay" },
-];
-
 export interface HeaderProps {
   showTabs?: boolean;
 }
@@ -101,8 +90,8 @@ const Header = (props: HeaderProps) => {
           className="version-btn hidden-mobile flex h-full items-center gap-2 border-r px-4"
           style={{
             // Set here rather than in CSS because the inline colour on this
-            // element would win over a class. Colour only, like the product
-            // links: a weight change would re-measure the chip.
+            // element would win over a class. Colour only: a weight change
+            // would re-measure the chip.
             color:
               routerState.url.pathname === "/changelog"
                 ? "var(--color-text-bright)"
@@ -118,34 +107,6 @@ const Header = (props: HeaderProps) => {
           <IconGitBranch size={14} />
           <span>v{alepha.meta.version}</span>
         </Link>
-
-        {/* Products. One version number covers all of them, which is why they
-            sit next to it rather than in their own nav. */}
-        <nav className="product-nav hidden-mobile" aria-label="Products">
-          {PRODUCTS.map((it) => {
-            // Framework owns TWO spaces, `/` and `/docs/*`, and cannot match
-            // by prefix because `/` is a prefix of everything. It used to
-            // match `/` exactly, which meant no product was highlighted on any
-            // of its 378 doc pages. The others match their prefix, which is
-            // what lights Lore up on `/lore/docs/...` (quest #1603).
-            const path = routerState.url.pathname;
-            const active =
-              it.href === "/"
-                ? path === "/" || path.startsWith("/docs")
-                : path.startsWith(it.href);
-
-            return (
-              <Link
-                key={it.href}
-                href={it.href}
-                className={`product-nav-link${active ? " is-active" : ""}`}
-                aria-current={active ? "page" : undefined}
-              >
-                {it.label}
-              </Link>
-            );
-          })}
-        </nav>
 
         {/* Tabs - Only shown on docs pages, hidden on mobile */}
         {showTabs && (

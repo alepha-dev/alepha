@@ -18,48 +18,35 @@ import { snippets } from "./snippets.ts";
 /**
  * The `docs/` roots this command publishes, and where each lands in the tree.
  *
- * It used to be one hardcoded `docs/framework`, so `docs/bay` and `docs/lore`
- * were written, maintained and validated - `check-docs` walks all of `docs/`,
- * not just the framework - and then published nowhere. Two introduction pages
- * nobody could read, with nothing anywhere to say they were missing.
+ * ⚠️ `scripts/check-conventions.ts` holds every directory under `docs/` to
+ * this list: one that is neither here nor in its `DOCS_EXCLUDED` is a doc tree
+ * written, validated by `check-docs`, and silently published nowhere.
  *
- * ⚠️ **`product` is the URL space, and every root now carries an empty
- * category.** Bay and Lore used to be seeded with `5-bay` / `6-lore`, which
- * did two jobs at once: it sorted them after `4-cli` in the one shared tree,
- * and it prefixed their slugs so they published as `/docs/bay-...`. That made
- * a Bay guide read as a framework page that happened to be named `bay-`
- * something. Each product now has its own URL space (`/bay/docs/:slug`), its
- * own tree and its own sidebar, so neither job is needed and both roots go
- * back to a plain empty category (quest #1603).
+ * **`product` is the URL space.** The framework is `""`, so its pages stay at
+ * `/docs/:slug` and all 378 existing URLs keep working; it also keeps an empty
+ * category, because prefixing it would rewrite every one of them. Bay and Lore
+ * were published here too, each at `/<product>/docs/:slug` with its own tree
+ * and sidebar (quest #1603), until they left this repository with their docs
+ * (#E72). A second doc set would come back the same way: a root here, a
+ * product in `DOC_PRODUCTS`, a route in `AppRouter`.
  *
- * `framework` keeps its empty category for the reason it always had: it is the
- * bulk of the site, and prefixing it would rewrite every existing `/docs/...`
- * URL. That constraint is untouched here - this moves the two small doc sets
- * and leaves all 378 framework URLs exactly where they are.
+ * A slug is unique only WITHIN a product, so everything downstream that names
+ * a file by slug carries the product too - see `outputName` and `gen-llms.ts`.
  *
- * A slug is therefore unique only WITHIN a product: `guides-introduction`
- * exists in all three. Everything downstream that names a file by slug has to
- * carry the product too - see `outputName` and `gen-llms.ts`.
- *
- * `level` starts at 0 everywhere now, so the recursion guard counts the same
- * tree depth in all three.
+ * `level` starts at 0, so the recursion guard counts tree depth from the root.
  */
 const DOC_ROOTS: Array<{
   dir: string;
   category: string;
   level: number;
   product: DocProduct;
-}> = [
-  { dir: "docs/framework", category: "", level: 0, product: "" },
-  { dir: "docs/bay", category: "", level: 0, product: "bay" },
-  { dir: "docs/lore", category: "", level: 0, product: "lore" },
-];
+}> = [{ dir: "docs/framework", category: "", level: 0, product: "" }];
 
 /**
  * A slug's namespace, and the first URL segment that goes with it: `""` for
- * the framework at `/docs/:slug`, `"bay"` for `/bay/docs/:slug`.
+ * the framework at `/docs/:slug`, the only doc set today.
  */
-export const DOC_PRODUCTS = ["", "bay", "lore"] as const;
+export const DOC_PRODUCTS = [""] as const;
 
 /**
  * Command for generating documentation tree for the website
@@ -1078,9 +1065,9 @@ export class TreeCommand {
             .replaceAll("\t", "  ");
 
           // ⚠️ The product is part of the filename, not decoration. A slug is
-          // unique only within a product now, so `guides-introduction` exists
-          // three times and one flat directory would have kept the last one
-          // written.
+          // unique only within a product, so with two doc sets one flat
+          // directory would keep whichever `guides-introduction` was written
+          // last.
           const filename = `${this.outputName(item)}.ts`;
           await writeFile(
             path.join(outputDir, filename),
@@ -1124,8 +1111,7 @@ export class TreeCommand {
         }
 
         // One tree per product, so each sidebar shows its own doc set and
-        // nothing else. They used to share a tree, which is why bay and lore
-        // needed a seeded category to sort after `4-cli`.
+        // nothing else.
         const trees: Record<string, DocNode[]> = {};
         for (const product of DOC_PRODUCTS) {
           trees[product] = this.buildTree(

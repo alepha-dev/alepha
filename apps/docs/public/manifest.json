@@ -1,7 +1,7 @@
 {
   "name": "Alepha",
   "short_name": "Alepha",
-  "description": "A full-stack TypeScript ecosystem: the Alepha framework, Alepha Lore and Alepha Bay.",
+  "description": "A full-stack TypeScript framework. One schema, everywhere.",
   "display": "standalone",
   "start_url": "/",
   "background_color": "#010409",

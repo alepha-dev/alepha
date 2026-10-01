@@ -37,7 +37,7 @@ The deployment lifecycle runs in a fixed order:
 authenticate → provision → build → migrate → deploy → secrets
 ```
 
-Each step is handled by an **adapter**, and an environment names its adapter by calling the adapter's factory: `cloudflare()` (Workers, recommended) and `bay()` (self-hosted) ship with `alepha/cli/platform`, and `lore()` ships with `@alepha/lore/cli` (see [the Lore adapter](#the-lore-adapter)). There is no list of adapter names to extend: an adapter is an import, so [writing your own](#writing-an-adapter) needs nothing from the framework.
+Each step is handled by an **adapter**, and an environment names its adapter by calling the adapter's factory: `cloudflare()` (Workers, recommended) and `bay()` (self-hosted) ship with `alepha/cli/platform`. There is no list of adapter names to extend: an adapter is an import, so [writing your own](#writing-an-adapter) needs nothing from the framework.
 
 Alias: `alepha p` (or `alepha platform`).
 
@@ -55,13 +55,13 @@ Common flags accepted by most subcommands:
 
 `platform()` accepts the following options:
 
-| Option         | Type     | Default             | Description                                                                                            |
-| -------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------ |
-| `name`         | `string` | `package.json` name | The **app** name: one workspace is one app. Used as the prefix of every resource name.                 |
-| `project`      | `string` | -                   | The project the app belongs to. Set, it goes in front of the app name: `<project>-<app>-<env>`.        |
-| `default`      | `string` | `"production"`      | Default environment when `--env` is omitted.                                                           |
-| `secrets`      | `object` | -                   | The secret key set override (`keys`), and an external store - see [the secrets command](#secrets-1).   |
-| `environments` | `Record` | -                   | Named environments, each the result of an adapter factory: `cloudflare(...)`, `bay(...)`, `lore(...)`. |
+| Option         | Type     | Default             | Description                                                                                          |
+| -------------- | -------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `name`         | `string` | `package.json` name | The **app** name: one workspace is one app. Used as the prefix of every resource name.               |
+| `project`      | `string` | -                   | The project the app belongs to. Set, it goes in front of the app name: `<project>-<app>-<env>`.      |
+| `default`      | `string` | `"production"`      | Default environment when `--env` is omitted.                                                         |
+| `secrets`      | `object` | -                   | The secret key set override (`keys`), and an external store - see [the secrets command](#secrets-1). |
+| `environments` | `Record` | -                   | Named environments, each the result of an adapter factory: `cloudflare(...)`, `bay(...)`.            |
 
 `--env` can only name a key of `environments`: anything else is refused before an adapter runs. Each environment's options are validated against its adapter's own schema when it is resolved, and a bad one is refused by environment name.
 
@@ -76,8 +76,6 @@ From `alepha/cli/platform`. Node only.
 | `jurisdiction` | `"eu" \| "fedramp"`           | Cloudflare data jurisdiction for R2 buckets and D1 databases.                                                               |
 | `accountId`    | `string`                      | Cloudflare account ID. Falls back to `CLOUDFLARE_ACCOUNT_ID`, then to the token's account when it is scoped to exactly one. |
 
-A multi-tenant app on wildcard hosts (`*.club.myapp.com`) does not deploy through `alepha platform`: it deploys through [Lore](/docs/guides-deployment-lore), one copy per tenant.
-
 ### `bay()`
 
 From `alepha/cli/platform`. Node only.
@@ -87,16 +85,6 @@ From `alepha/cli/platform`. Node only.
 | `host`   | `string` | **Required**, here or through `BAY_HOST`. SSH destination of the Bay server (an ssh alias works). `BAY_HOST` overrides it.                            |
 | `domain` | `string` | Domain Bay registers for the app, which answers ACME for it. A plain host.                                                                            |
 | `socket` | `string` | Absolute path of Bay's control socket - required on any host whose Bay root isn't `$HOME/bay-data`. See the [Bay guide](/docs/guides-deployment-bay). |
-
-### `lore()`
-
-From `@alepha/lore/cli`. See [the Lore adapter](#the-lore-adapter).
-
-| Option    | Type     | Description                                                                                                  |
-| --------- | -------- | ------------------------------------------------------------------------------------------------------------ |
-| `project` | `string` | The Lore project slug. `LORE_PROJECT` overrides, so `lore()` with no arguments is legal in CI.               |
-| `url`     | `string` | Origin of the Lore instance. Defaults to `https://lore.alepha.dev`; `LORE_URL` overrides.                    |
-| `estate`  | `string` | The estate a copy created by the first `up` deploys to, by slug. Omitted, the one lent to the project first. |
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
@@ -437,32 +425,6 @@ alepha p up --env tmp-pr-42
 # ... test ...
 alepha p down --env tmp-pr-42   # no confirmation
 ```
-
-## The Lore adapter
-
-`lore()` from `@alepha/lore/cli` makes `alepha platform up` deploy through [Lore](/docs/guides-deployment-lore): the same command, whatever the destination.
-
-```typescript
-import { platform } from "alepha/cli/platform";
-import { lore } from "@alepha/lore/cli";
-
-platform({
-  name: "docs",
-  environments: {
-    production: lore({ project: "alepha" }),
-  },
-});
-```
-
-The copy is `platform().name` and the environment's key. What differs from the other adapters:
-
-- **It builds and pushes, and Lore deploys.** `up` builds the runtime the copy's estate accepts (`alepha build --runtime <that runtime>`, run by the binary you invoked), pushes it as `latest`, then starts the run in Lore and follows it to the end. Lore migrates server-side, so there is no local migration step.
-- **The secrets are sealed by Lore.** The same key set as every adapter is pushed into the copy's sealed set before the run starts. The push is additive: a key Lore holds that your `.env` lacks is left alone, `SIGIL_KEY` is never written, and the names Lore reserves are skipped.
-- **A first `up` creates the copy** on the estate lent to the project first (or `lore({ estate })`). It is safe here because `--env` can only name a key of your committed config.
-- **`down` keeps the database and the bucket**, removing the Worker, queue and cache, which the next `up` rebuilds. **Unless the copy is ephemeral**: then it loses its data too, and `alepha platform down` refuses it, even with `--yes`, naming the `lore apps destroy --confirm <app>/<env>` command to run instead.
-- The estate owns the host, so the address `up` prints is the one Lore reports for the run.
-
-**`alepha platform up` or `lore deploy`?** `up` always builds what is in the working tree and places it. `lore deploy --tag 1.2.3` deploys a build Lore already stores, without building: promotion. Use `up` for the inner loop and the committed environments, `lore deploy --tag` to promote a tested artifact.
 
 ## Writing an adapter
 

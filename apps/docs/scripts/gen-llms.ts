@@ -14,35 +14,13 @@ interface DocItem {
 }
 
 /**
- * What heads each product's own `llms.txt`, and describes it from the
- * framework's. The framework's preamble lives in `public/llms-index.md`, long
- * enough to deserve a file and audited by `check:docs`; Bay and Lore need a
- * title and a sentence. Same sentences as their home pages in `AppRouter`.
- */
-const PRODUCTS: Record<
-  Exclude<DocProduct, "">,
-  { title: string; summary: string }
-> = {
-  bay: {
-    title: "Bay",
-    summary:
-      "A self-hosted application server for Alepha apps, with TLS, rollback and process isolation handled for you.",
-  },
-  lore: {
-    title: "Lore",
-    summary:
-      "An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, readable and writable over MCP.",
-  },
-};
-
-/**
- * Generates one `llms.txt` per doc set, and the raw markdown every one of
- * them links to.
+ * Generates the site's `llms.txt`, and the raw markdown every line of it links
+ * to.
  *
- * - `/llms.txt`: the framework, `public/llms-index.md` followed by its page
- *   list, and a pointer to each product's own index.
- * - `/bay/llms.txt`, `/lore/llms.txt`: the products, each at the root of its
- *   own URL space, beside `/bay/docs/*` and `/lore/docs/*`.
+ * `/llms.txt` is the framework: `public/llms-index.md`, long enough to deserve
+ * a file and audited by `check:docs`, followed by its page list. Bay and Lore
+ * had their own, at `/bay/llms.txt` and `/lore/llms.txt`, until they left this
+ * repository (#E72).
  *
  * ⚠️ There is no `llms-full.txt` any more, deliberately. It concatenated every
  * page into ~1.2 MB (~290k tokens): larger than most context windows, and a
@@ -54,8 +32,7 @@ export class LlmsCommand {
 
   llms = $command({
     name: "gen:llms",
-    description:
-      "Generate one llms.txt per doc set, and the raw markdown pages they link to",
+    description: "Generate llms.txt, and the raw markdown pages it links to",
     handler: async ({ run }) => {
       const docsDir = join(import.meta.dirname, "../.gen");
       const publicDir = join(import.meta.dirname, "../public");
@@ -71,9 +48,6 @@ export class LlmsCommand {
 
       const indexModule = await import("../.gen/index.ts");
       const trees = indexModule.trees as Record<DocProduct, DocNode[]>;
-      const products = (
-        Object.keys(PRODUCTS) as Array<keyof typeof PRODUCTS>
-      ).filter((product) => (trees[product] ?? []).length > 0);
 
       await run("write llms.txt", async () => {
         const preamble = await fs.readFile(
@@ -83,35 +57,8 @@ export class LlmsCommand {
 
         await this.write(
           join(outputDir, "llms.txt"),
-          [
-            preamble.trimEnd(),
-            "",
-            this.renderTree(trees[""] ?? []),
-            "## Other products",
-            "",
-            ...products.map(
-              (product) =>
-                `- [${PRODUCTS[product].title}](https://alepha.dev/${product}/llms.txt): ${PRODUCTS[product].summary}`,
-            ),
-            "",
-          ].join("\n"),
+          [preamble.trimEnd(), "", this.renderTree(trees[""] ?? [])].join("\n"),
         );
-
-        for (const product of products) {
-          const { title, summary } = PRODUCTS[product];
-          await this.write(
-            join(outputDir, product, "llms.txt"),
-            [
-              `# ${title}`,
-              "",
-              `> ${summary}`,
-              "",
-              "Framework documentation: https://alepha.dev/llms.txt",
-              "",
-              this.renderTree(trees[product]),
-            ].join("\n"),
-          );
-        }
       });
 
       await run("copy markdown files to dist", async () => {
@@ -121,9 +68,9 @@ export class LlmsCommand {
         let copiedCount = 0;
         for (const doc of docs) {
           // The product goes in the PATH, mirroring the URL these files
-          // stand in for: `/docs/x.md`, `/bay/docs/x.md`. A slug is unique
-          // only within a product now, so a flat directory would have kept
-          // whichever of the three was written last (quest #1603).
+          // stand in for: `/docs/x.md` for the framework, `/<product>/docs/x.md`
+          // for any other doc set. A slug is unique only within a product, so
+          // a flat directory would keep whichever was written last (#1603).
           const destDir = doc.product
             ? join(outputDir, doc.product, "docs")
             : join(outputDir, "docs");
@@ -152,8 +99,8 @@ export class LlmsCommand {
   /**
    * One doc set's page list: a `##` per top-level category, one link per page.
    *
-   * Every `href` already carries its product prefix (`/bay/docs/…`), so the
-   * absolute URLs need nothing done to them here.
+   * Every `href` already carries its full path (`/docs/…`), so the absolute
+   * URLs need nothing done to them here.
    */
   protected renderTree(tree: DocNode[]): string {
     const lines: string[] = [];
