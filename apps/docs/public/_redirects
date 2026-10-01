@@ -1,0 +1,4 @@
+# Bay left this repository (#E72) and carries its own installer. `curl -sSL`
+# follows the redirect, so every `curl ... alepha.dev/bay/install.sh | sh`
+# already written down keeps working.
+/bay/install.sh https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh 302

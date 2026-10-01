@@ -106,9 +106,7 @@ jobs:
       # Dropping the flag to bump them anyway is what broke the first 0.27.0
       # attempt: `--all` also reaches the root workspace and the example apps,
       # and `yarn version` fails on a workspace with no version rather than
-      # skipping it, so `foreach` aborts on the first one. `bay` still gets a
-      # version in its binary, from the `alepha` number by way of the ldflags
-      # further down, which is where it always came from.
+      # skipping it, so `foreach` aborts on the first one.
       #
       # `scripts/check-conventions.ts` guards the invariant, so the next
       # violation surfaces in `yarn v` instead of here, in a release someone
@@ -238,56 +236,12 @@ jobs:
           cp CHANGELOG.md packages/alepha/CHANGELOG.md
 
       # ──────────────────────────────────────────────────────────────────
-      # Bay binaries.
-      #
-      # Filenames carry NO version. GitHub serves every asset at two URLs, and
-      # the mutable one only works when the name is constant:
-      #
-      #   .../releases/download/<version>/bay-linux-amd64   immutable, auditable
-      #   .../releases/latest/download/bay-linux-amd64      what `curl | sh` uses
-      #
-      # Put the version in the filename and you lose the second one. The version
-      # is already carried by the release the asset hangs on — and, for the
-      # binary, by `bay version`.
-      # ──────────────────────────────────────────────────────────────────
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: apps/bay/go.mod
-          cache-dependency-path: apps/bay/go.sum
-
-      - name: Build Bay binaries
-        working-directory: apps/bay
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/artifacts"
-          for arch in amd64 arm64; do
-            # CGO off so the binary is static and runs on any glibc/musl.
-            # -trimpath keeps build paths out of it; -s -w drop the symbol table.
-            GOOS=linux GOARCH="$arch" CGO_ENABLED=0 go build \
-              -trimpath \
-              -ldflags "-s -w -X main.version=${VERSION}" \
-              -o "$RUNNER_TEMP/artifacts/bay-linux-${arch}" \
-              ./cmd/bay
-          done
-
-      - name: Checksum Bay binaries
-        working-directory: ${{ runner.temp }}/artifacts
-        run: |
-          # The installer downloads a binary and runs it as root — the highest
-          # privilege operation in the whole system. Without this, a truncated
-          # download and a tampered one are indistinguishable from a good one.
-          sha256sum bay-linux-amd64 bay-linux-arm64 > SHA256SUMS
-          cat SHA256SUMS
-
-      # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
       # nothing else. From here on it is public.
       #
-      # Last, so that every artifact — the JS packages and both Go binaries —
-      # is known to build before any of it ships. A Go compile error after
-      # `npm publish` would otherwise strand a published version.
+      # Last, so that every artifact is known to build before any of it ships.
+      # Bay's binaries left with Bay (#E72): github.com/alepha-dev/bay
+      # releases them itself.
       # ──────────────────────────────────────────────────────────────────
       - name: Publish to NPM
         if: inputs.resume_tag == ''
@@ -365,10 +319,6 @@ jobs:
           body_path: /tmp/release_notes.txt
           draft: false
           prerelease: false
-          files: |
-            ${{ runner.temp }}/artifacts/bay-linux-amd64
-            ${{ runner.temp }}/artifacts/bay-linux-arm64
-            ${{ runner.temp }}/artifacts/SHA256SUMS
 
       # ──────────────────────────────────────────────────────────────
       # Lore, last.
