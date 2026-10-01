@@ -19,6 +19,11 @@ on:
         description: "Version to release, without a leading v (e.g. 0.31.0)"
         required: true
         type: string
+      dry_run:
+        description: "Dry run: validate, test, build and checksum, but create no tag and no GitHub release"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -70,6 +75,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ inputs.version }}
@@ -80,3 +86,24 @@ jobs:
             ${{ runner.temp }}/artifacts/bay-linux-amd64
             ${{ runner.temp }}/artifacts/bay-linux-arm64
             ${{ runner.temp }}/artifacts/SHA256SUMS
+
+      - name: Summary
+        working-directory: ${{ runner.temp }}/artifacts
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            verb="Dry run: would have released"
+          else
+            verb="Released"
+          fi
+          {
+            echo "### ${verb} Bay ${VERSION}"
+            echo ""
+            echo '```'
+            ls -l bay-linux-amd64 bay-linux-arm64 | awk '{print $5, $NF}'
+            echo ""
+            cat SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
