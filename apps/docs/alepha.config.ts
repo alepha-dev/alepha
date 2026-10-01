@@ -37,13 +37,12 @@ export default defineConfig({
   // Workers Static Assets is a static host with a worker attached as the
   // fallback: the asset manifest is consulted first, and a match is served from
   // the edge without invoking the worker - free and unlimited on every plan.
-  // The worker exists for `POST /api/sigil/ingest` and nothing else: docs
-  // registers no `$action` of its own, and `@alepha/lore` needs a same-origin
-  // endpoint to post to. That endpoint is the one thing a purely static host
-  // cannot offer, and it is where the visitor IP becomes a salted hash and
-  // where the sigil credential stays instead of shipping to every reader. It
-  // is the whole reason this site left GitHub Pages, which could host the
-  // files perfectly well and could not host that.
+  //
+  // The worker serves nothing a reader asks for. It existed for
+  // `POST /api/sigil/ingest`, the endpoint `@alepha/lore` posted page views
+  // to, and that reporter left with Lore (#E72), so a page load, an asset and
+  // a 404 never invoke it. The adapter has no assets-only mode yet, which is
+  // the only reason a `main` is still deployed at all.
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   // Static routing: the worker is invoked for `/api/*` and nothing else.
@@ -62,9 +61,11 @@ export default defineConfig({
   // reachable and serve the prerendered `404.html` with a real 404.
   //
   // Safe here because every route is prerendered (`static: true`, and
-  // `static.entries` for `/docs/:slug`), so nothing but the sigil endpoint needs
-  // to reach the worker. An app with a `$route` at a root path - which never
-  // lives under `/api` - would need that path listed here too.
+  // `static.entries` for `/docs/:slug`), so nothing needs to reach the worker.
+  // `/api/*` stays listed because listing a route is what moves a miss to
+  // `404-page`; no client code posts there any more. An app with a `$route` at
+  // a root path - which never lives under `/api` - would need that path listed
+  // here too.
   // ---------------------------------------------------------------------------
   build: {
     cloudflare: {

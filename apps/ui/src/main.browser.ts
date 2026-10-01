@@ -1,4 +1,3 @@
-import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
 
 import { UiWeb } from "./web/index.ts";
@@ -18,8 +17,6 @@ const alepha = Alepha.create({
  * reads the action registry SSR seeded into the store and calls those actions
  * over HTTP, which is the same path any real Alepha app takes.
  */
-alepha //
-  .with(AlephaSigil)
-  .with(UiWeb);
+alepha.with(UiWeb);
 
 run(alepha);

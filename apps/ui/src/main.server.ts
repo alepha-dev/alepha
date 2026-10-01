@@ -1,4 +1,3 @@
-import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
 
 import { UiShowcase } from "./showcase/index.ts";
@@ -20,15 +19,9 @@ const alepha = Alepha.create({
  * at load with "does not provide an export named '$action'" and takes the whole
  * page with it. The browser never needs the controller: it resolves actions
  * through the registry and calls them over HTTP.
- *
- * `AlephaSigil` reports page views, Web Vitals and grouped errors to the sink
- * named by `SIGIL_SINK`, under this site's own sigil. It is inert without
- * `SIGIL_KEY` and inert outside production, so dev and the e2e suite send
- * nothing.
  */
 alepha //
   .with(UiShowcase)
-  .with(AlephaSigil)
   .with(UiWeb);
 
 run(alepha);

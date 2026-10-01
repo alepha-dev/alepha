@@ -1,4 +1,3 @@
-import { AlephaSigil } from "@alepha/lore/sigil";
 import { AccountRouter } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
@@ -26,28 +25,11 @@ import { ShopI18n } from "./ShopI18n.ts";
  * columns or a translations table, and that decision belongs to a shop with a
  * second market — see the note in `ShopI18n`.
  *
- * `AlephaSigil` reports page views, Web Vitals and grouped errors to the sink
- * named by `SIGIL_SINK` (defaulting to the public Lore instance), under the
- * `shop-production` sigil, which lives in Lore project 1 (Alepha) rather than
- * a shop project of its own, that one having been merged away. Nothing here
- * says so: the project rides in `SIGIL_KEY`, which is shaped
- * `sg_alepha_<secret>` for exactly that reason. It is inert without
- * `SIGIL_KEY` and inert outside production, so dev and the e2e suite send
- * nothing.
- *
- * ⚠️ This used to claim importing the module mounts nothing and the storefront
- * gets no floating feedback button. It does get one: `<SigilRoot />` is pushed
- * into the root component list by the module itself, and production has been
- * serving the button at bottom-right this whole time. Whether a shop wants it
- * is a real question, and the answer is one field away either way:
- * `SIGIL_CONFIG={"feedbackButton":"hidden"}` keeps the URL and drops the
- * control.
- *
  * @module shop.web
  */
 export const ShopWeb = $module({
   name: "shop.web",
-  imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi, AlephaSigil],
+  imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
   atoms: [panierAtom],
   /*
    * `AuthRouter` is the whole sign-in surface: it mounts `/auth/login`,
