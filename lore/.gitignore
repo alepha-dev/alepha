@@ -1,0 +1,38 @@
+.DS_Store
+
+node_modules
+dist
+coverage
+test-report.junit.xml
+test-results
+playwright-report
+
+.yarn
+.idea
+.env
+/.claude/
+.codex
+.run
+.gen
+.playwright-mcp
+.playwright-cli
+.playwright
+
+**/.env.*
+!**/.env.example
+
+.e2e-tmp
+docs/superpowers
+.superpowers
+
+# Design mockups: local working artifacts, not part of the app.
+apps/lore/assets/mockups/
+
+# Artifacts produced by `alepha pack`, one per deploy, in the workspace root.
+*.tar.gz
+*.tar.zst
+
+# workerd's cf-metadata cache, written by miniflare the first time a test boots
+# a worker.
+.wrangler
+.bay

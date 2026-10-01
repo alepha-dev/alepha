@@ -1,0 +1,38 @@
+ignores:
+  - "alepha"
+  - "@alepha/ui"
+  # The root devDependency is what makes Yarn link `node_modules/.bin/lore`,
+  # so every `yarn lore ...` step in CI stops resolving the moment somebody
+  # deletes it as unused.
+  - "@alepha/lore"
+  # `@alepha/lore` peers on `lore` to type `@alepha/lore/cli` against Lore's
+  # own controllers. The edge is `import type` and nothing else.
+  - "lore"
+  - "@vitejs/plugin-react"
+  - "jsdom"
+  - "@vitest/coverage-v8"
+  - "drizzle-kit"
+  - "vite"
+  - "vite-bundle-analyzer"
+  - "@types/react"
+  - "@types/react-dom"
+  - "@types/bun"
+  - "oxfmt"
+  - "oxlint"
+  - "oxlint-tsgolint"
+  - "typescript"
+  - "vitest"
+  - "react-is"
+  - "@playwright/test"
+  - "wrangler"
+  - "bun"
+  - "bun:sqlite"
+  - "bun:test"
+  - "cloudflare:workers"
+  - "tailwindcss"
+  - "@tailwindcss/vite"
+  - "tw-animate-css"
+
+ignore-patterns:
+  - "dist"
+  - "assets"

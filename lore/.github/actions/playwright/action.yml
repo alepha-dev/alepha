@@ -1,0 +1,43 @@
+name: Playwright
+description: Cache and install the chromium build the e2e suites drive
+
+runs:
+  using: composite
+  steps:
+    # Keyed on the exact Playwright version rather than on the lockfile: the
+    # lockfile churns constantly in a monorepo this size, and a miss that
+    # only costs a re-download is not worth taking on every dependency bump.
+    - name: Resolve the Playwright version
+      id: playwright-version
+      run: |
+        version="$(yarn playwright --version | tr -d '\n' | sed 's/.* //')"
+        [ -n "$version" ] || { echo "could not resolve the Playwright version"; exit 1; }
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+    # `--with-deps` is deliberately absent. On `ubuntu-latest` every shared
+    # library chromium needs is already on the image; all the flag adds is
+    # nine font packages, and it pays for them by putting `apt-get update`
+    # against `azure.archive.ubuntu.com` on the critical path. On 2026-08-19
+    # that mirror flapped and took the e2e job of three consecutive pushes
+    # with it, at up to 12min per fetch, each run reported `cancelled` with
+    # no test output and each skipping the Lore deploy.
+    #
+    # The suites render Latin text only and there is no screenshot
+    # comparison anywhere, so nothing can observe a glyph. If a runner image
+    # ever does drop a real chromium dependency the failure is a missing
+    # `.so` at browser launch - restore the flag then, off the critical path.
+    #
+    # ⚠️ `timeout 240`, not `timeout-minutes: 4`, and not by preference:
+    # GitHub does not support `timeout-minutes` on a step inside a composite
+    # action. The bound is the point (see the mirror flap above), so it is
+    # enforced by coreutils instead. Exit 124 is the timeout.
+    - name: Install Playwright
+      run: timeout 240 yarn playwright install chromium
+      shell: bash

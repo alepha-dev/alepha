@@ -1,0 +1,72 @@
+name: Deploy latest
+
+permissions:
+  contents: read
+
+# Lore ships to lore.alepha.dev once Verify succeeds on a push to main. There
+# is no human gate: read "Migration safety on D1" in apps/lore/CLAUDE.md before
+# pushing a migration.
+on:
+  workflow_run:
+    workflows: ["Verify"]
+    types:
+      - completed
+    branches:
+      - main
+
+concurrency:
+  group: deploy-latest-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+env:
+  LORE_PROJECT: lore
+
+jobs:
+  deploy-lore-production:
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # ⚠️ The Worker is `lore-production` (`platform({ name: "lore" })`).
+      # Any other name provisions an empty D1 and moves lore.alepha.dev onto it.
+      - name: Deploy
+        working-directory: apps/lore
+        run: yarn alepha platform up --env production
+        env:
+          GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.APP_GITHUB_CLIENT_SECRET }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+
+      - name: Build lore (node + workerd)
+        working-directory: apps/lore
+        run: yarn alepha build
+
+      - name: Push lore artifact to Lore
+        working-directory: apps/lore
+        run: yarn lore artifacts push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

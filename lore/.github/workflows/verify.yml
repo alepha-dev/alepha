@@ -1,0 +1,144 @@
+name: Verify
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: verify-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LORE_PROJECT: lore
+
+# CI is the gate: a green `yarn v` is not. Every branch push runs this graph.
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Lint Project
+        run: yarn lint
+
+      # `yarn lint` fixes in place; a diff after it means a commit that was
+      # never linted.
+      - name: Lint Left Nothing To Fix
+        run: git diff --exit-code
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Dependencies Check
+        run: yarn check:deps
+
+      - name: i18n Catalog Check
+        run: yarn check:i18n
+
+      - name: DB Migrations Check
+        run: yarn check:migrations
+
+      - name: Conventions Check
+        run: yarn check:conventions
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Test Project
+        run: yarn alepha test --shard ${{ matrix.shard }}/2
+
+  e2e-lore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build Lore
+        run: yarn w lore build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+
+      - name: Run E2E Tests
+        timeout-minutes: 20
+        run: yarn w lore e2e --shard=${{ matrix.shard }}/6
+
+  e2e-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The Bay end-to-end builds the real Bay and runs it against this Lore.
+      - name: Checkout Bay
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: alepha-dev/bay
+          path: .bay
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build Project
+        run: yarn build
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .bay/go.mod
+          cache-dependency-path: .bay/go.sum
+
+      - name: Run CLI E2E Tests
+        timeout-minutes: 10
+        run: yarn e2e-cli
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build the image
+        run: yarn w lore build:docker
+
+      - name: Smoke test the image
+        run: bash scripts/docker-smoke.sh
+
+      - name: Check the image size budget
+        run: node scripts/docker-size.ts

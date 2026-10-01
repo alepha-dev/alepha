@@ -1,0 +1,141 @@
+name: Release
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  LORE_PROJECT: lore
+
+# One version for Lore and its client: `apps/lore` (what /version reports and
+# the image is tagged with) and `@alepha/lore` (the npm package) move together.
+# The changelog is Lore's own release feature: the quests attached to the
+# release in the Lore project, frozen when it is published.
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - minor
+          - patch
+          - major
+        default: "minor"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.x"
+          cache: "yarn"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Bump Version
+        env:
+          VERSION_BUMP: ${{ inputs.version_bump }}
+        run: |
+          yarn workspace @alepha/lore version "${VERSION_BUMP}"
+          yarn workspace lore version "${VERSION_BUMP}"
+
+      - name: Get New Version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./packages/@alepha/lore/package.json').version")
+          LORE=$(node -p "require('./apps/lore/package.json').version")
+          if [ "$VERSION" != "$LORE" ]; then
+            echo "::error::@alepha/lore is ${VERSION} but lore is ${LORE}: they release together"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and Tag Release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git add -A
+          git commit -m "release: ${VERSION}"
+          git tag -a "${VERSION}" -m "release: ${VERSION}"
+
+      - name: Build
+        run: yarn build
+
+      - name: Publish @alepha/lore to npm
+        run: yarn workspace @alepha/lore npm publish --tolerate-republish --access public
+
+      - name: Push Changes and Tags
+        run: git push --follow-tags
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push the Lore Image
+        working-directory: apps/lore
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          yarn alepha image --tag "ghcr.io/alepha-dev/lore:${VERSION}"
+          docker tag "ghcr.io/alepha-dev/lore:${VERSION}" "ghcr.io/alepha-dev/lore:latest"
+          docker push "ghcr.io/alepha-dev/lore:${VERSION}"
+          docker push "ghcr.io/alepha-dev/lore:latest"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+
+      - name: Push lore artifact to Lore (node + workerd)
+        working-directory: apps/lore
+        run: yarn lore artifacts push --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Record the Lore image in Lore
+        working-directory: apps/lore
+        run: >-
+          yarn lore artifacts push-image
+          --tag "$VERSION"
+          --image "ghcr.io/alepha-dev/lore:$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Publish the Lore release
+        run: yarn lore releases publish --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}

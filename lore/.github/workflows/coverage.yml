@@ -1,0 +1,35 @@
+name: Coverage
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "37 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LORE_PROJECT: lore
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Test With Coverage
+        run: yarn alepha test --coverage
+
+      - name: Push Coverage To Lore
+        run: yarn lore quality push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

@@ -1,0 +1,284 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // The vendored framework is linted where it is developed, alepha-dev/alepha,
+  // and stays byte-identical to it here.
+  "ignorePatterns": [".vendor/**"],
+  // `correctness` (code that is outright wrong) and `perf`, both errors, so
+  // `yarn lint` and the CI `checks` job fail on a new finding.
+  //
+  // The wider categories were measured, not guessed. `suspicious` reports 7018
+  // findings on this repo and 5769 of them are `react/react-in-jsx-scope`
+  // alone, a rule that predates the automatic JSX runtime this repo compiles
+  // with; `pedantic` is 9036, `style` 114300, `restriction` 45102. The handful
+  // of `suspicious` rules that do earn their keep are enabled by name below
+  // instead. A gate nobody can pass is a gate nobody keeps.
+  "categories": {
+    "correctness": "error",
+    "perf": "error"
+  },
+  "options": {
+    // Type-aware rules, via the `oxlint-tsgolint` binary that ships alongside
+    // oxlint. This is the one thing the previous toolchain could not do at
+    // all: Biome is type-agnostic, so `no-floating-promises`,
+    // `require-array-sort-compare` and `no-base-to-string` had no equivalent.
+    // It costs about 4s across this repo.
+    "typeAware": true,
+    // A suppression that no longer suppresses anything is a lie about the code
+    // under it. Biome accumulated 60 of these before anyone noticed, and 17
+    // dead `eslint-disable` comments were still in the tree years after ESLint
+    // left. Reported as an error so they get deleted rather than re-read.
+    "reportUnusedDisableDirectives": "error"
+  },
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "react-hooks",
+    "import",
+    "promise",
+    "vitest",
+    "jsx-a11y"
+  ],
+  "rules": {
+    // A TypeScript parameter property is not a type annotation that can be
+    // erased. `constructor(protected readonly deps: D) {}` is a field
+    // declaration plus an assignment that has to be GENERATED, so Node's
+    // strip-only TypeScript loader refuses it outright:
+    //
+    //   SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]: TypeScript parameter
+    //   property is not supported in strip-only mode
+    //
+    // Nothing notices against a published `alepha`, which ships compiled
+    // `dist`. It bites a checkout that VENDORS the framework, where
+    // `alepha vendor` symlinks the source into `node_modules`: anything
+    // loading it through Vite is fine, anything loading it from Node is not.
+    // `--experimental-transform-types` would fix it and is rejected inside
+    // NODE_OPTIONS, so there is no escape hatch on the consumer's side.
+    //
+    // Enabled as a rule rather than fixed by hand across the 44 sites that
+    // existed when this landed, because the ones that had already been fixed
+    // one at a time kept coming back: every hand edit holds for exactly the
+    // file it touched, and the failure it prevents names a file nobody was
+    // working on, on the day something reachable first imports it.
+    "typescript/parameter-properties": "error",
+    // ---------------------------------------------------------------------
+    // Enabled by name out of `suspicious`, which is otherwise far too noisy.
+    // ---------------------------------------------------------------------
+    // A component declared inside another component is a NEW type on every
+    // render, so React unmounts and remounts the subtree, losing its state and
+    // its DOM. The single most expensive React mistake that still type-checks.
+    //
+    // `allowAsProps` because the default flags render props too, and all 164
+    // sites in this repo are render props: `DataTable`'s `filters.render`,
+    // its column cells, and the admin panels built on them. Those are CALLED
+    // (`props.filters.render(form)`), never mounted, so no remount can happen.
+    // With the option set the rule reports zero here — which is the point: it
+    // now guards the real pattern instead of drowning it.
+    "react/no-unstable-nested-components": ["error", { "allowAsProps": true }],
+    // A `.then()` branch that returns nothing silently resolves the chain to
+    // `undefined`, so the next link receives nothing and the bug surfaces
+    // somewhere else entirely.
+    //
+    // `ignoreLastCallback` because the LAST callback in a chain is where side
+    // effects belong — `.then(res => setQuests(res.content))` has nothing to
+    // hand on and no one to hand it to. Without the option the rule reports 51
+    // findings here, 43 of them terminal callbacks; with it, the 8 that remain
+    // are all genuine mid-chain swallows.
+    "promise/always-return": ["error", { "ignoreLastCallback": true }],
+    // `unicorn/no-array-reverse` and friends stay; `react/memo-dependencies`
+    // does not. It is `exhaustive-deps` for `useMemo`/`useCallback`, so it
+    // rests on the same premise as `react-hooks/exhaustive-deps` below and
+    // fails for the same reason: every one of its 41 findings here was a
+    // `useMemo` closing over a DI primitive (`alepha.inject(service)`,
+    // `linkProvider.client(scope)`) that is stable for the lifetime of the
+    // container, or a dep list chosen deliberately with the reason written
+    // above it. Enabling one while disabling the other would be incoherent.
+    // An import kept only for its side effects, in a codebase where side
+    // effects belong in the DI container.
+    //
+    // The `allow` list is the set where a side-effect import IS the interface:
+    // a stylesheet has nothing to export, and dayjs plugins and locales
+    // register themselves onto the shared dayjs instance by being imported.
+    "import/no-unassigned-import": [
+      "error",
+      { "allow": ["**/*.css", "dayjs/plugin/*", "dayjs/locale/*"] }
+    ],
+    // `reverse()` mutates in place; `toReversed()` is what almost every call
+    // site meant.
+    "unicorn/no-array-reverse": "error",
+    // A hook below a conditional `return` is legal on every render where the
+    // condition holds, and the "rendered fewer hooks than expected" crash on
+    // the first render where it does not. `ProjectView` shipped that shape:
+    // two hooks under `if (!project) return null`, which only ever ran once
+    // the project atom was filled.
+    //
+    // Named explicitly because listing `react-hooks` in `plugins` is not
+    // enough — the rule is not in any category this config turns on, so the
+    // plugin loaded and reported nothing. Verified both ways against a probe
+    // file before and after.
+    //
+    // It costs one naming rule elsewhere: a plain function called `useX` reads
+    // as a hook to this rule and to every human, so parser helpers get real
+    // verbs (`ensureParticipant`, not `useParticipant`).
+    "react-hooks/rules-of-hooks": "error",
+
+    // ---------------------------------------------------------------------
+    // Off, each because its premise does not hold in an Alepha app.
+    // ---------------------------------------------------------------------
+    // `perf`, and wrong here: sequential awaits in a loop are usually the
+    // point (ordered migrations, rate-limited calls). 586 findings, no bugs.
+    "no-await-in-loop": "off",
+    // `perf`, and was `noArrayIndexKey: off` under Biome for the same reason:
+    // the lists that use an index key are positional and never reordered.
+    "react/no-array-index-key": "off",
+    // Every one of the 40 sites was deliberate. Three shapes: the latest-ref
+    // pattern (`ref.current = props.onChange`), which exists so a subscription
+    // made once can reach the newest closure and which an effect assigns too
+    // late for; refs that cache a value across renders precisely so
+    // re-rendering is NOT triggered; and plain false positives, a ref object
+    // passed down as a `ref` prop and a ref read inside a `useState` lazy
+    // initializer, neither of which is a render-phase read at all. The rule
+    // encodes React Compiler semantics, which this codebase does not opt into.
+    "react/refs": "off",
+    // Every site is `{Icon && <Icon />}` where `Icon` came out of a
+    // module-level registry (`ICONS[name] ?? CircleDashed`). The rule cannot
+    // follow the lookup, so it reads a capitalised local as a component built
+    // during render.
+    "react/static-components": "off",
+    // Not a correctness rule at all: it reports where React Compiler would
+    // have to skip a component because its inferred deps differ from the
+    // hand-written ones. This repo does not compile with React Compiler.
+    "react/preserve-manual-memoization": "off",
+    // Was `useExhaustiveDependencies: off` under Biome. Alepha's hooks take
+    // primitives from the DI container, which are stable for the lifetime of
+    // the container and which the rule cannot know are stable.
+    "react-hooks/exhaustive-deps": "off",
+    // Biome split unused bindings in two: `noUnusedImports` was an error with
+    // a safe fix, `noUnusedVariables` and `noUnusedFunctionParameters` were
+    // off. oxlint has no rule that separates the import half from the variable
+    // half, so the choice is all or nothing, and all is the better end state.
+    //
+    // Parameters stay exempt (`args: "none"`): an interface-mandated signature
+    // routinely ignores an argument, and renaming those to `_` across every
+    // implementation of a provider contract is churn with no reader benefit.
+    // `^_` is the escape hatch for the rare deliberate binding.
+    "no-unused-vars": [
+      "error",
+      {
+        "args": "none",
+        "caughtErrors": "none",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    // Every spec in this repo takes `expect` from the Vitest fixture
+    // (`test("…", async ({ expect }) => …)`) rather than importing it, and the
+    // rule counts assertions by identifier — so it reports 477 tests full of
+    // assertions as having none.
+    "vitest/expect-expect": "off",
+    // Style, not correctness: `expect(fn).toThrow()` without a message is the
+    // documented pattern in CLAUDE.md and reads fine.
+    "vitest/require-to-throw-message": "off",
+    // Would require a type argument on every `vi.fn()` in the repo. The mocks
+    // that matter here are DI substitutions, not typed call recorders.
+    "vitest/require-mock-type-parameters": "off",
+    // Fires on the retry/timeout specs, which legitimately assert different
+    // things per branch.
+    "vitest/no-conditional-expect": "off",
+    // Vitest's `expect` takes an optional message as its second argument
+    // (`expect(value, "which key failed")`), which Jest's does not. The rule
+    // defaults to Jest's arity and reports every use of it.
+    "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // Jest-era aliases, `toThrowError` above all: Vitest 5 marks it
+    // `@deprecated Use toThrow instead`, and it is the same matcher, so the
+    // fixer's rewrite changes no behaviour. A rule rather than a one-off
+    // find-and-replace, so the alias cannot come back one call site at a time.
+    "vitest/no-alias-methods": "error",
+    // Lexicographic `.sort()` on numbers is the bug this catches
+    // (`[1, 2, 10]` sorts to `[1, 10, 2]`), and it found five latent ones here,
+    // each passing only because every value happened to be a single digit.
+    // `ignoreStringArrays` matches typescript-eslint's own default: on a real
+    // `string[]` the default sort IS the intended order. It exempts nothing in
+    // this repo today, where the flagged arrays were `any[]` and
+    // `(string | undefined)[]`, but it keeps the rule honest as those get typed.
+    "typescript/require-array-sort-compare": [
+      "error",
+      { "ignoreStringArrays": true }
+    ],
+    // Numbers and booleans in a template are unambiguous and universal in log
+    // and error messages. What the rule is worth having for is objects and
+    // nullish values, which render as `[object Object]` and `undefined`.
+    //
+    // `allowNever` covers the exhaustiveness guard — `throw new AlephaError(
+    // \`unknown aggregate '${aggregate}'\`)` after every case is handled, where
+    // the value is `never` by construction and the template is the diagnostic.
+    "typescript/restrict-template-expressions": [
+      "error",
+      {
+        "allowNumber": true,
+        "allowBoolean": true,
+        "allowRegExp": true,
+        "allowNever": true
+      }
+    ],
+    // The `perf` category's one bad rule here. Every finding is the standard
+    // immutable map (`rows.map(r => ({ ...r, extra }))`), and its only
+    // mechanical fix is `Object.assign(r, …)`, which MUTATES the row it was
+    // handed — applied blindly it rewrote 18 files, including one that would
+    // have permanently mutated a module-level array. Spreading each item is
+    // linear anyway; the quadratic case is spreading an ACCUMULATOR, and
+    // `oxc/no-accumulating-spread` stays on to catch exactly that.
+    "oxc/no-map-spread": "off",
+    // Same blind spot as `anchor-has-content` below, and it reports the same
+    // nine `render={<a />}` templates. The four findings that were real — an
+    // unlabelled select-all checkbox, an unlabelled row checkbox, and two
+    // action-column headers — are fixed; what is left is only the render prop.
+    "jsx-a11y/control-has-associated-label": "off",
+    // Cannot see through Base UI's `render` prop. Every finding is
+    // `<Button render={<a href="…" />}>{tr("…")}</Button>`, where the anchor is
+    // a TEMPLATE that Base UI clones with the button's children — so the
+    // rendered `<a>` has content, and the rule is reading the template.
+    "jsx-a11y/anchor-has-content": "off",
+    // Tag purity, not accessibility, and it fights a component library that
+    // builds ARIA widgets on purpose. Of its 38 findings: `role="img"` on
+    // `<svg>` is the RECOMMENDED way to label an SVG and the suggested `<img>`
+    // does not apply; `role="group"`, `status`, `separator`, `dialog`, `list`
+    // and `region` on a `<div>` are composite-widget roles whose suggested tags
+    // (`fieldset`, `optgroup`, `details`…) carry layout and semantics of their
+    // own; and the `role="button"`/`role="link"` sites are correct ARIA
+    // implementations — `tabIndex` plus an Enter/Space `onKeyDown`, shadcn's
+    // own `BreadcrumbPage`, or a Base UI control whose non-native branch
+    // overwrites the role and has the reason written above it. The rules that
+    // catch a genuinely inaccessible element — `click-events-have-key-events`,
+    // `no-static-element-interactions` — stay on.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Control characters in regexes are intentional here — ANSI stripping and
+    // the log formatters. Biome's equivalent was suppressed at four sites.
+    "no-control-regex": "off"
+  },
+  "overrides": [
+    {
+      // `unbound-method` guards a real bug — a method passed as a callback
+      // loses its `this` — but nothing in a spec file does that. What specs DO
+      // do is name a method without calling it, three ways the rule cannot
+      // tell apart from the bug: `expect(mockLogger.error).toHaveBeenCalled()`,
+      // save-and-restore patching (`const original = process.stdout.write`),
+      // and pulling one method off a prototype to test it in isolation. All 13
+      // findings in specs were one of those; the rule stays on for src/.
+      "files": [
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/__tests__/**",
+        "**/test/**",
+        "**/e2e/**"
+      ],
+      "rules": {
+        "typescript/unbound-method": "off",
+        // A test harness builds a fresh container per render on purpose; there
+        // are no consumers to spare a re-render.
+        "react/jsx-no-constructed-context-values": "off"
+      }
+    }
+  ]
+}
