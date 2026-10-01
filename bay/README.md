@@ -7,6 +7,13 @@ backup schedule for every app on the host.
 An artifact goes in over SSH, an HTTPS URL comes out.
 
 ```bash
+curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sudo sh
+```
+
+The installer fetches the newest [release](https://github.com/alepha-dev/bay/releases)
+for the host's architecture and verifies its checksum. Or build it yourself:
+
+```bash
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bay ./cmd/bay
 scp bay root@HOST:/opt/bay/bin/bay
 ```
@@ -15,7 +22,7 @@ scp bay root@HOST:/opt/bay/bin/bay
 a fifth - granting a human or a CI job the right to deploy - that is the one
 people miss and the source of every confusing first-deploy failure.
 
-The full design lives in the **bay** directory of the Alepha project in Lore.
+The design notes live in the Lore project **Bay** (`lore.alepha.dev/bay`), and in the `alepha-bay` directory of the Alepha project for what predates it.
 
 ## The shape of it
 

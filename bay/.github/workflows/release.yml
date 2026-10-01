@@ -1,0 +1,82 @@
+name: Release
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# Builds the two binaries Bay ships, tags the commit and publishes a GitHub
+# release carrying them and their SHA256SUMS. `install.sh` downloads from
+# `releases/latest/download`, so the newest release is what a fresh install
+# gets. Bay's versions continued from the monorepo's: 0.30.0 was the last one
+# released from alepha-dev/alepha. No changelog for now.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without a leading v (e.g. 0.31.0)"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate the version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version must be MAJOR.MINOR.PATCH, got '${VERSION}'"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" >/dev/null; then
+            echo "::error::Tag ${VERSION} already exists"
+            exit 1
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build Bay binaries
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH="$arch" CGO_ENABLED=0 go build \
+              -trimpath \
+              -ldflags "-s -w -X main.version=${VERSION}" \
+              -o "$RUNNER_TEMP/artifacts/bay-linux-${arch}" \
+              ./cmd/bay
+          done
+
+      - name: Checksum Bay binaries
+        working-directory: ${{ runner.temp }}/artifacts
+        run: |
+          sha256sum bay-linux-amd64 bay-linux-arm64 > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ inputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ runner.temp }}/artifacts/bay-linux-amd64
+            ${{ runner.temp }}/artifacts/bay-linux-arm64
+            ${{ runner.temp }}/artifacts/SHA256SUMS
