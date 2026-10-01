@@ -69,6 +69,12 @@ export default defineConfig([
   // optimisation: a bin has no consumers, so its types are dead weight, and
   // emitting them hands `scripts/check-dts.ts` a new `.d.ts` to walk for the
   // private `lore` workspace it exists to keep out of `dist`.
+  //
+  // ⚠️ It INLINES `alepha` (and zod with it), unlike every other entry. The
+  // subpaths above run inside a host app and must use its `alepha`, so it is
+  // an optional peer; a global install has no host, so the bin carries its own
+  // and runs whatever `alepha` the machine has, or none. `scripts/check-bin.ts`
+  // refuses a build whose bin imports anything but `node:` builtins.
   {
     entry: "src/bin/index.ts",
     format: ["esm"],
@@ -77,6 +83,6 @@ export default defineConfig([
     fixedExtension: false,
     outDir: "dist/bin",
     dts: false,
-    deps,
+    deps: { alwaysBundle: [/^alepha(\/|$)/, zod, /^@alepha\/lore(\/|$)/] },
   },
 ]);

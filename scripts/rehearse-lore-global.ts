@@ -5,28 +5,22 @@
  * `apps/e2e-cli` proves the tarball installs and the bin runs, but only under
  * npm and only as a local dependency. The headline of the standalone CLI is a
  * GLOBAL install, and a global install has no host project: nothing is there
- * to satisfy a peer, hoist a dependency, or supply `alepha`. That is the whole
- * reason `alepha` is a dependency of this package rather than a peer, and npm,
- * Yarn, pnpm and Bun each answer it differently.
+ * to satisfy a peer, hoist a dependency, or supply `alepha`. npm, Yarn, pnpm
+ * and Bun each answer that differently.
  *
- * ## ⚠️ Why this cannot use the packed tarball
+ * ## ⚠️ The bin carries its own `alepha`
  *
- * Installing `lore.tgz` globally works, resolves `alepha@^0.28.0` from
- * **registry.npmjs.org**, and then dies:
+ * `alepha` is an optional PEER of this package: `./sigil`, `./client` and the
+ * `lore()` adapter run inside the host app and must use its `alepha`, never a
+ * second copy. The `lore` binary has no host, so its build inlines `alepha`
+ * (`tsdown.config.ts`) and imports nothing but `node:` builtins
+ * (`scripts/check-bin.ts`). A global install therefore pulls no `alepha` at
+ * all, and this rehearsal publishes `@alepha/lore` alone. Before that, the bin
+ * resolved `alepha` from the registry and broke whenever the published one was
+ * older than the working tree's.
  *
- * ```
- * SyntaxError: The requested module 'alepha/cli' does not provide an export
- *   named 'WorkspacePacker'
- * ```
- *
- * The published `alepha` is the previous release; the working tree's
- * `@alepha/lore` is built against the working tree's `alepha`. They ship
- * together (`release.yml` bumps every workspace in lockstep), so this is an
- * artefact of the rehearsal rather than a defect - but it means the rehearsal
- * has to publish BOTH packages to a registry it controls, or it tests a
- * combination that will never exist.
- *
- * Hence verdaccio. `compose.yml` runs it on 14873, config and reasoning in
+ * Verdaccio is still the registry, because three of the four managers install
+ * by name. `compose.yml` runs it on 14873, config and reasoning in
  * `scripts/verdaccio.yaml`.
  *
  * ## The two traps
@@ -41,7 +35,7 @@
  *
  * ## Leaves the registry as it found it
  *
- * Verdaccio is shared across worktrees, so both packages are unpublished on
+ * Verdaccio is shared across worktrees, so the package is unpublished on
  * the way out, whether or not the run succeeded.
  *
  * Usage:  node scripts/rehearse-lore-global.ts [--registry http://localhost:14873]
@@ -268,14 +262,10 @@ const unpublish = (spec: string): void => {
 };
 
 const main = (): void => {
-  for (const built of [
-    "packages/alepha/dist/bin/index.js",
-    "packages/@alepha/lore/dist/bin/index.js",
-  ]) {
-    if (!existsSync(join(ROOT, built))) {
-      console.error(`${built} is missing. Run \`yarn build\` first.`);
-      process.exit(1);
-    }
+  const built = "packages/@alepha/lore/dist/bin/index.js";
+  if (!existsSync(join(ROOT, built))) {
+    console.error(`${built} is missing. Run \`yarn build\` first.`);
+    process.exit(1);
   }
 
   rmSync(LAB, { recursive: true, force: true });
@@ -283,7 +273,6 @@ const main = (): void => {
 
   // `yarn pack`, not `npm pack`: the `publishConfig` overrides that repoint
   // `bin` and the `exports` map at `dist/` are a yarn extension.
-  sh("yarn", ["workspace", "alepha", "pack", "-o", join(TARBALLS, "a.tgz")]);
   sh("yarn", [
     "workspace",
     "@alepha/lore",
@@ -294,7 +283,6 @@ const main = (): void => {
 
   const failures: string[] = [];
   try {
-    publish("a.tgz");
     publish("l.tgz");
 
     for (const manager of MANAGERS) {
@@ -328,7 +316,6 @@ const main = (): void => {
     }
   } finally {
     unpublish(`@alepha/lore@${VERSION}`);
-    unpublish(`alepha@${VERSION}`);
     rmSync(LAB, { recursive: true, force: true });
   }
 
