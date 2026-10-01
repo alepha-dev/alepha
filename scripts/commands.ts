@@ -5,17 +5,15 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
 /**
- * The repository's own commands: `clean`, `verify` / `v` and `verify:go` /
- * `v:go`. Each takes the slot of a CLI built-in of the same name - the CLI
- * keeps the LAST registration for a name and `defineConfig` registers its
- * services after the built-ins, so each one here is the one `--help` lists
- * and the one that runs.
+ * The repository's own commands: `clean` and `verify` / `v`. Each takes the
+ * slot of a CLI built-in of the same name - the CLI keeps the LAST
+ * registration for a name and `defineConfig` registers its services after the
+ * built-ins, so each one here is the one `--help` lists and the one that runs.
  *
  * `clean` replaces nothing conceptually, only scope: the CLI's own `clean`
  * removes one app's `dist`, this one removes generated files for the whole
- * repository. `verify` and `verify:go` replace nothing either: the CLI's own
- * `verify` is a single-app pipeline and this monorepo needs the workspace
- * fan-out instead.
+ * repository. `verify` replaces nothing either: the CLI's own `verify` is a
+ * single-app pipeline and this monorepo needs the workspace fan-out instead.
  */
 export class AlephaCommands {
   protected readonly log = $logger();
@@ -82,8 +80,8 @@ export class AlephaCommands {
    * clock for an answer CI now gives in about five, in parallel, for free.
    *
    * So: push the branch. Every branch triggers the full graph (checks, test
-   * x6, e2e-apps, e2e-lore x6, e2e-cli, docker, bay), and that graph - not a
-   * green terminal here - is what says the work is sound.
+   * x6, e2e-apps, e2e-cli), and that graph - not a green terminal here - is
+   * what says the work is sound.
    *
    * What survives is worth about three minutes, measured: ~146s of it is
    * `yarn test`, and lint plus the six parallel audits are under 30s
@@ -182,7 +180,6 @@ export class AlephaCommands {
         `yarn check:deps`,
         `yarn check:conventions`,
         `yarn check:docs`,
-        `yarn check:i18n`,
         `yarn check:migrations`,
       ]);
       await this.assertServicesUp();
@@ -193,45 +190,6 @@ export class AlephaCommands {
       // reproduces the same way twice.
       await run(`yarn test`);
       await run(`yarn test:bun`);
-    },
-  });
-
-  /**
-   * `verify:go` is not a valid identifier, so unlike `clean` and `verify` it
-   * cannot take its name from the property key.
-   */
-  public readonly verifyGo = $command({
-    name: "verify:go",
-    aliases: ["v:go"],
-    description: "Run the Go suite (apps/bay) on the platform it ships for.",
-    // No slot. It runs in a container of its own and touches none of the four
-    // services, so it has nothing to contend with `verify` over.
-    handler: async ({ run }) => {
-      // A lane of its own rather than a step inside `verify`, because the two
-      // toolchains have nothing to say to each other: every Go file in this
-      // repo is `apps/bay`, one module, with no edge into the TypeScript
-      // graph. Running it on every `yarn v` meant a container start, ~20s,
-      // for a change that could not possibly have touched it, which is most
-      // changes.
-      //
-      // Gating it on `git diff` was the other option and was rejected: a
-      // heuristic that misfires skips silently, and a silent skip is exactly
-      // the failure this repo keeps paying for. A separate command cannot be
-      // silently wrong: Go is either what you asked for or it is not.
-      //
-      // ⚠️ The trade is real: `yarn v` no longer covers Go. The `bay` CI job
-      // runs unconditionally on every PR and push, so nothing reaches main
-      // unchecked, but a local green now means less than it did. Touch
-      // `apps/bay`, run this.
-      //
-      // Not the native `go test`: that is GREEN while skipping every test of
-      // `Systemd.render()`, the sandbox directives, the memory and CPU
-      // ceilings, the stop timeout, because those files are `//go:build
-      // linux` and do not compile on the machine this is usually run from.
-      // `test:linux` reproduces the `bay` CI job in a container: gofmt, vet,
-      // build, the whole suite, and a cross-compile for both Linux
-      // architectures.
-      await run(`yarn w bay test:linux`);
     },
   });
 

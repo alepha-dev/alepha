@@ -1,1 +1,0 @@
-ALTER TABLE `projects` ADD `default_surface` text;

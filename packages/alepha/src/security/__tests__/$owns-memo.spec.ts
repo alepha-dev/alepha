@@ -145,7 +145,8 @@ const createApp = (cache?: { ttl: number }) => {
      * endpoint itself: importing `alepha/server/links` from a spec under
      * `src/security` would add a `security -> server/links` edge to the
      * module graph and the build's cycle check refuses it (the real endpoint
-     * is covered at the app level, in `apps/lore`). What the memo actually
+     * is covered at the app level, in Lore, github.com/alepha-dev/lore). What
+     * the memo actually
      * depends on is here either way - one request layer, seven action forks,
      * started together.
      */

@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent } from "../../core/DropdownMenu.tsx";
 import { ButtonUser } from "../ButtonUser.tsx";
 
 /**
- * What this pins is the bug that prompted the shared cluster: `apps/lore`'s
+ * What this pins is the bug that prompted the shared cluster: Lore's
  * header pushed a route called `me`, which stopped existing when the profile
  * pages moved to `/account`. It kept compiling — `router.push` falls back to a
  * plain `string` overload — and threw only when somebody clicked it.

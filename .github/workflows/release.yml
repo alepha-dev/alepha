@@ -3,10 +3,6 @@ name: Release
 permissions:
   contents: write
   id-token: write
-  # ⚠️ Required for the ghcr push below, and it has to be spelled out:
-  # naming ANY permission drops every unnamed scope to `none`, so a token that
-  # otherwise looks fully privileged 403s on the registry without this line.
-  packages: write
 
 # One release at a time, and never cancel one.
 #
@@ -49,7 +45,7 @@ on:
       # With a tag here the job checks that tag out, skips the bump, the
       # changelog, the commit, npm and the push, takes the release notes from
       # the tag's CHANGELOG.md, and runs every other step as usual. Each of
-      # those is safe to repeat (see the comment above the Lore pushes), and
+      # those is safe to repeat (see the comment above the Lore publish), and
       # the workflow file is the one on the dispatched branch, so the fix that
       # unblocks the release is the one that runs.
       resume_tag:
@@ -97,9 +93,9 @@ jobs:
       #
       # What this one encodes is the repository's version invariant: a
       # workspace declares a `version` if and only if it is published. Private
-      # workspaces ship as a GitHub release asset (`bay`) or a Cloudflare
-      # deploy (`lore`), never as an npm package, so a number in their
-      # manifest is decoration, and decoration drifts. `@alepha/commerce`,
+      # workspaces (the docs, the showcase, the examples) never ship as an npm
+      # package, so a number in their manifest is decoration, and decoration
+      # drifts. `@alepha/commerce`,
       # `payments-mollie` and `sigil` sat at 0.1.0, 0.20.6 and 0.20.1 while
       # `alepha` reached 0.26.0. They now carry no version at all.
       #
@@ -261,52 +257,6 @@ jobs:
         run: |
           git push --follow-tags
 
-      # ──────────────────────────────────────────────────────────────────
-      # The self-hosted Lore image, `docker pull ghcr.io/alepha-dev/lore`.
-      #
-      # After the git push rather than between it and `npm publish`: a pushed
-      # image tag is irreversible in the same way a published version is, and
-      # slotting it into the npm/git window would widen the one tear this
-      # ordering exists to keep narrow.
-      #
-      # It reuses the `yarn build` above, so there is no second build of the
-      # app, and it builds the image with `alepha image`: the command the
-      # `docker` job in `verify.yml` runs on every push. One build path, so
-      # release day is never the first time it runs. 0.30.0 died here on a
-      # hand-written `buildx` call that still looked for the Dockerfile in
-      # `dist/` after #Q2433 moved it to `apps/lore/` (#Q2492, #Q2493).
-      #
-      # ⚠️ amd64 only (#Q2493). The image was multi-arch until then, which is
-      # what needed buildx and QEMU, and what kept Release on a build of its
-      # own. Apple Silicon still runs it through Rosetta; an ARM server does
-      # not. Bringing arm64 back belongs in `alepha image` (a `--platform`
-      # flag), never in a second hand-written build here.
-      #
-      # The OCI labels come from `alepha image` too: `source`, `title` and the
-      # rest are `LABEL` lines in the committed Dockerfile, and `version`,
-      # `revision` and `created` are passed by the CLI because Lore's config
-      # sets `oci: true`.
-      # ──────────────────────────────────────────────────────────────────
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Two tags, both fixed. Nothing floating: Lore's version IS the
-      # framework's, so a `:0` tag would move across unrelated framework
-      # majors.
-      - name: Build and Push the Lore Image
-        working-directory: apps/lore
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          yarn alepha image --tag "ghcr.io/alepha-dev/lore:${VERSION}"
-          docker tag "ghcr.io/alepha-dev/lore:${VERSION}" "ghcr.io/alepha-dev/lore:latest"
-          docker push "ghcr.io/alepha-dev/lore:${VERSION}"
-          docker push "ghcr.io/alepha-dev/lore:latest"
-
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
       # working pipeline. The reorder happened, so the split has no reason left
@@ -321,108 +271,45 @@ jobs:
           prerelease: false
 
       # ──────────────────────────────────────────────────────────────
-      # Lore, last.
-      #
-      # `lore` ships as ONE archive carrying both slices (#Q2464): its config
-      # declares `runtime: ["node", "workerd"]`, so the `yarn build` far above
-      # already produced the node slice the `ghcr.io/alepha-dev/lore` image
-      # runs and the workerd slice `lore.alepha.dev` serves. Lore stores it as
-      # one row with both runtimes, and deploys either slice from it.
-      #
-      # ⚠️ There is no second, workerd-only Lore push any more, and there must
-      # not be one: a runtime lives in at most one archive per tag, so it would
-      # overlap the two-slice archive and be refused as a conflict.
+      # The docs rebuild and the Lore release, last.
       #
       # `docs` is rebuilt here for workerd and deployed by `platform up
-      # --prebuilt` at the very end (#Q2576); it is no longer pushed to Lore.
+      # --prebuilt` at the very end (#Q2576).
       #
       # ⚠️ The docs rebuild sits HERE, at the very end, and cannot move earlier:
       # `alepha build --runtime=workerd` cleans `dist/` and replaces it.
       #
       # ⚠️ `gen:llms` follows EVERY docs build, node and workerd alike. It writes
       # the `llms.txt` files and the raw markdown into `dist/public`, which
-      # `alepha build` does not produce, so an archive pushed without it serves
+      # `alepha build` does not produce, so a build deployed without it serves
       # an `alepha.dev` with no `llms.txt` at all. The docs `build` script runs
       # it, which covers `yarn build` above; the workerd rebuild below calls
       # `alepha build` directly, so it runs it itself.
       #
-      # No Cloudflare credentials are needed and none are present: the build
-      # emits `wrangler.jsonc` from env vars and never calls the API. The
-      # bindings it cannot see (`DATABASE_URL` above all) are simply absent
-      # from the generated config - the artifact is storage today, and the
-      # thing that deploys it later is what resolves bindings.
+      # The rebuild needs no Cloudflare credentials: the build emits
+      # `wrangler.jsonc` from env vars and never calls the API.
       #
       # `ui` and `shop` are deliberately absent. Neither is versioned by this
       # release - `ui` is a showcase and `shop` an example - and CI keeps a
       # `latest` of shop's workerd build in `deploy-shop-production`.
       #
-      # None of these steps is `continue-on-error`. A swallowed push is how
+      # None of these steps is `continue-on-error`. A swallowed step is how
       # 0.28.0 reached npm with no Lore artifact of its own: `No Lore project
       # named`, a warning annotation, a green run, and nobody the wiser until
       # someone went looking months later. A failure here reddens the release
       # run, which is honest rather than dangerous BECAUSE of where these
-      # steps sit: npm, the tag, ghcr and the GitHub Release are all done
-      # above. Nothing is torn by going red, and re-running the job re-pushes
-      # cleanly - the uploader is idempotent on identical bytes and the
-      # publish exits 0 on an already-published release.
+      # steps sit: npm, the tag and the GitHub Release are all done above.
+      # Nothing is torn by going red, and re-running the job publishes again
+      # cleanly: the publish exits 0 on an already-published release.
       #
-      # Each push runs INSIDE its app, because `lore artifacts push` packs the
-      # workspace it is run in and reads its `package.json` - which is also
-      # where the app name comes from, so there is no `--app` to keep in
-      # agreement with the directory. The destination comes from the
-      # workflow-level `LORE_PROJECT` at the top of this file. The publish
-      # needs neither and runs from the root.
-      #
-      # `--tag` is the version, byte for byte: `releases.tag` preserves case
-      # so the artifact and the release meet on the same string. A version
-      # with no Lore release exits 0 with a log line, and a re-run of this job
-      # finds it already published and exits 0 again.
+      # The publish runs from the root and reports to the workflow-level
+      # `LORE_PROJECT` at the top of this file. `--tag` is the version, byte
+      # for byte: `releases.tag` preserves case. A version with no Lore release
+      # exits 0 with a log line.
       # ──────────────────────────────────────────────────────────────
-      - name: Push lore artifact to Lore (node + workerd)
-        working-directory: apps/lore
-        run: >-
-          yarn lore artifacts push
-          --tag "$VERSION"
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
-
-      # Build and push kept as separate steps per app, so a red one says which
-      # half failed: a bundler error and a registry error need different people
-      # looking at them.
       - name: Rebuild docs for workerd
         working-directory: apps/docs
         run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
-
-      # The image, as a reference rather than as bytes. Lore reads what the
-      # image says about itself out of ghcr - its `dev.alepha.runtime` label
-      # and its OCI index - so this step names only the tag and the reference.
-      # There is no `--runtime` and no `--arch` to pass.
-      #
-      # ⚠️ HERE, at the end with the other pushes, and not beside the buildx
-      # step. The reason is the block comment above: npm, the git tag, ghcr
-      # and the GitHub Release are all done by now, so a red step tears
-      # nothing. Wedged between the build and `Create GitHub Release` it could
-      # redden the run before the GitHub Release exists, which is the exact
-      # property this placement protects. Not `continue-on-error`, for the
-      # same reason none of its neighbours is.
-      #
-      # ⚠️ The VERSION tag only. `latest` moves after the release through a
-      # separate CI push, so it is not this step's fact to state, and a
-      # `latest` row would be stale the moment anything else ships.
-      #
-      # No `--digest`: within one job nobody re-pushes an immutable version
-      # tag, and `Docker-Content-Digest` answers the same question at read
-      # time. The flag exists for somebody else's CI.
-      - name: Record the Lore image in Lore
-        working-directory: apps/lore
-        run: >-
-          yarn lore artifacts push-image
-          --tag "$VERSION"
-          --image "ghcr.io/alepha-dev/lore:$VERSION"
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish the Lore release
         run: yarn lore releases publish --tag "$VERSION"

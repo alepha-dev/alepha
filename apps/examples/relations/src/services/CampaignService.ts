@@ -5,7 +5,8 @@ import { relations } from "../relations.ts";
 /**
  * The kind of service Lore is full of, written against relations.
  *
- * Every method here has a direct counterpart in `apps/lore/src/api` that
+ * Every method here has a direct counterpart in Lore's API
+ * (github.com/alepha-dev/lore) that
  * currently spells the join out by hand. The comments name them so the
  * comparison is checkable rather than rhetorical.
  */

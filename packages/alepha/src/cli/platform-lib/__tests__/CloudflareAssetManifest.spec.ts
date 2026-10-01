@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { extname, join, relative, resolve } from "node:path";
+import { extname } from "node:path";
 
 import { describe, it } from "vitest";
 
@@ -97,33 +96,40 @@ describe("the Cloudflare asset manifest", () => {
   });
 
   /**
-   * The parity check that matters, over a real build rather than fixtures.
+   * The parity check that matters, over files the size of a real build.
    *
-   * Skipped when `apps/lore/dist/public` has not been built, because a spec
-   * that requires a build to have happened is a spec that fails for the wrong
-   * reason on a clean checkout. `yarn v` builds before it tests, so this runs
-   * there.
+   * The fixtures above are a few bytes each, so they never cross
+   * `BASE64_CHUNK`: the one place a reproduction can be right on a small file
+   * and wrong on a bundle. This ran over a built `apps/lore/dist/public` until
+   * Lore left for github.com/alepha-dev/lore (#E72); deterministic bytes at
+   * and around the chunk boundary prove the same thing without a build, so it
+   * runs on every checkout instead of being skipped on a clean one.
    */
-  it("agrees with wrangler over a real built asset tree", async ({
+  it("agrees with wrangler on files past the base64 chunk size", async ({
     expect,
-    skip,
   }) => {
-    const root = resolve(__dirname, "../../../../../../apps/lore/dist/public");
-    const files = await import("node:fs/promises")
-      .then((fs) => fs.readdir(root, { recursive: true, withFileTypes: true }))
-      .catch(() => undefined);
-    if (!files) {
-      skip("apps/lore/dist/public is not built");
-      return;
-    }
+    // A fixed linear congruential sequence: bytes that look like a binary
+    // asset, identical on every run.
+    const bytesOf = (length: number, seed: number): Buffer => {
+      const out = Buffer.alloc(length);
+      let state = seed;
+      for (let i = 0; i < length; i++) {
+        state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+        out[i] = state >>> 24;
+      }
+      return out;
+    };
 
-    const entries = files
-      .filter((it) => it.isFile())
-      .map((it) => relative(root, join(it.parentPath, it.name)));
-    expect(entries.length).toBeGreaterThan(0);
+    const chunk = 0x8000;
+    const cases: Array<[string, Buffer]> = [
+      ["assets/below.js", bytesOf(chunk - 1, 1)],
+      ["assets/exact.css", bytesOf(chunk, 2)],
+      ["assets/above.js.map", bytesOf(chunk + 1, 3)],
+      ["fonts/inter.woff2", bytesOf(chunk * 3 + 7, 4)],
+      ["assets/vendor.js", bytesOf(250_000, 5)],
+    ];
 
-    for (const path of entries) {
-      const bytes = readFileSync(join(root, path));
+    for (const [path, bytes] of cases) {
       expect(manifest.hash(new Uint8Array(bytes), path), path).toBe(
         await wranglerHash(bytes, path),
       );

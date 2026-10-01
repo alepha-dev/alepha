@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `due_at` integer;

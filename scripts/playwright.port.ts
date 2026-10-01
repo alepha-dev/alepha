@@ -15,23 +15,20 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  * (`default % 100`) and so depended on two unrelated numbers staying
  * coordinated by comment.
  *
- * Slots 2 and 9 are free. Past that, raise the band's `stride`.
+ * Slots 1, 2, 7, 8 and 9 are free. Past that, raise the band's `stride`.
  *
  * ⚠️ Numbers are not reshuffled when a suite goes away. Slot 2 was
- * `apps/examples/playground`, retired once `apps/ui` replaced it; renumbering
- * the survivors would move every other suite's derived port for no gain.
+ * `apps/examples/playground`, retired once `apps/ui` replaced it; slots 1, 7
+ * and 8 were Lore's suite and the Bay end-to-end, which left with Lore and Bay
+ * for their own repositories (#E72). Renumbering the survivors would move
+ * every other suite's derived port for no gain.
  */
 export const E2E_SLOTS = {
   docs: 0,
-  lore: 1,
   shop: 3,
   ssr: 4,
   "ssr-dev": 5,
   ui: 6,
-  // The Bay end-to-end (apps/e2e-cli/src/bay.e2e.spec.ts) boots two servers:
-  // a Lore instance and a Bay proxy, one slot each.
-  bay: 7,
-  "bay-proxy": 8,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;
@@ -39,7 +36,7 @@ export type E2eApp = keyof typeof E2E_SLOTS;
 /**
  * The e2e port for one suite, shared by every Playwright config in the repo.
  *
- * Same reasoning as `vitest.projects.ts`: a setting that must hold across six
+ * Same reasoning as `vitest.projects.ts`: a setting that must hold across five
  * configs lives in one place, and a caller contributes nothing but its own
  * name.
  *
@@ -61,24 +58,12 @@ export type E2eApp = keyof typeof E2E_SLOTS;
  *
  * Nothing else in the repo may allocate inside the e2e band. The answer is
  * memoised through `E2E_PORT`, so a suite calling this from both its config
- * and its setup gets the same port twice (`apps/e2e-cli/src/bay.e2e.spec.ts`
- * depends on exactly that), and `E2E_PORT` set by hand overrides the whole
- * thing.
+ * and its setup gets the same port twice, and `E2E_PORT` set by hand
+ * overrides the whole thing.
  *
  * @param app the suite's key in {@link E2E_SLOTS}.
  */
 export const e2ePort = createE2ePortAllocator(E2E_SLOTS);
-
-/**
- * A port for ONE Playwright worker of a suite that boots a server per worker.
- *
- * `apps/lore` does: each worker boots its own instance on its own in-memory
- * database, which is what lets its specs run `fullyParallel` (see
- * `apps/lore/e2e/_fixtures.ts`). Never memoised; see
- * `E2ePortAllocator.worker`.
- */
-export const e2eWorkerPort = (app: E2eApp, workerIndex: number): number =>
-  e2ePort.worker(app, workerIndex);
 
 export const E2E_BAND_START = e2ePort.band.start;
 export const E2E_BAND_END = e2ePort.band.end;

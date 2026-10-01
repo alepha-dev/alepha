@@ -28,7 +28,7 @@ export interface SettingsHeadingProps {
  * uses it directly instead of hand-rolling the markup.
  *
  * That hand-rolling is the failure this prevents, and it had already happened:
- * `apps/lore`'s account pages grew an `<h2 className="text-base font-semibold">`
+ * Lore's account pages grew an `<h2 className="text-base font-semibold">`
  * on one page and a bare `<span className="text-xs">` with no title at all on
  * another, so the `/account` rail led to three different type scales depending
  * on which entry you clicked. Nothing was broken and nothing could have failed

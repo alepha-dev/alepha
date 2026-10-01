@@ -121,8 +121,8 @@ export * from "./tasks/BuildTask.ts";
  * container that injected one. `lore apps build` needs
  * {@link BuildCloudflareTask}; declared in `AlephaCli` that would grow the
  * `lore` binary a `build`, a `dev`, a `db` and a `verify` under a second name
- * and a second release cadence. `@alepha/lore`'s `commandSurface.spec.ts` is
- * the guard, and `commandSurface` here is the framework-side half.
+ * and a second release cadence. `@alepha/lore`'s `commandSurface.spec.ts`
+ * (github.com/alepha-dev/lore) is the guard, and `commandSurface` here is the framework-side half.
  *
  * Neither obvious escape works, which is why the fix is which module declares
  * what: `getTopLevelCommands` subtracts by `children`, so hiding a command

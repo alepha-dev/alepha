@@ -10,10 +10,9 @@ export default defineConfig({
      *
      * `ViteDevServerProvider` resolves the dev port as `SERVER_PORT` → this
      * value → 5173, so pinning it here is what stops the shop landing on
-     * Vite's default. That default is shared ground: `apps/lore` documents
-     * 5173 as its own dev URL, and the root `alepha dev` hands out 5173 + the
-     * app's index across all fourteen apps under `apps/` — which reaches 5186,
-     * hence a port well clear of that whole run.
+     * Vite's default. That default is shared ground: the root `alepha dev`
+     * hands out 5173 + the app's index across every app under `apps/`, hence a
+     * port well clear of that whole run.
      *
      * Two dev servers on one port is not a hypothetical here: several agents
      * work this repo at once, one git worktree each. `playwright.port.ts` has

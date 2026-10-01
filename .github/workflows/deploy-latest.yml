@@ -27,16 +27,8 @@ permissions:
 #     is a feature: deploy logic cannot be edited from a branch, so a branch
 #     cannot teach itself to deploy.
 #
-# ⚠️ **One property of the old single file could not survive the split.**
-# `deploy-lore-production` deliberately did NOT list `docker` in its `needs`,
-# so a docker flake could never block a Cloudflare Worker deploy that touches
-# nothing the image contains. A `workflow_run` gate is atomic - Verify passed
-# or it did not - so `docker` and `bay` now gate every deploy here. The cost
-# is a delayed deploy that the next push recovers; the fix, if it ever bites,
-# is to move those two jobs into a workflow of their own rather than to weaken
-# the condition below.
-#
-# Per-deploy gating went the same way: ui and shop used to need only
+# ⚠️ **Per-deploy gating could not survive the split.** A `workflow_run` gate
+# is atomic - Verify passed or it did not. ui and shop used to need only
 # `[checks, test]` and could ship while e2e was still running. They now wait
 # for all of Verify, which costs them a minute or two and is arguably more
 # honest.
@@ -79,13 +71,14 @@ concurrency:
   # interrupted one is a broken production.
   cancel-in-progress: false
 
-# Where every `lore` command in this workflow reports, named once so no step
-# can forget. A step that means to push somewhere else passes `--project`, and
-# exactly one does.
+# Where a `lore` command in this workflow would report, named once so no step
+# can forget. None runs here since Lore's own deploy left with Lore for
+# github.com/alepha-dev/lore (#E72); the variable stays so this file,
+# `verify.yml` and `release.yml` keep naming the same project.
 #
 # It used to come from `lore({ project: "alepha" })` in `alepha.config.ts`,
 # which meant it came from whichever directory a step happened to run in.
-# `apps/lore`'s config named no project, so its artifact push died on
+# Lore's own config named no project, so its artifact push died on
 # `No Lore project named`, `continue-on-error` swallowed it, and the 0.28.0
 # release shipped green without Lore's own artifact. A workflow-level default
 # is the shape that cannot do that again.
@@ -172,85 +165,3 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-
-  deploy-lore-production:
-    # ⚠️ OFF since 2026-10-01: Lore deploys from github.com/alepha-dev/lore
-    # (#E72, #Q2583). Left in place, a push here would redeploy the old
-    # apps/lore over it. The job goes with apps/lore in the cleanup (#Q2585).
-    #
-    # As the two jobs above, plus one more clause. Lore has never deployed on
-    # a Release - its old guard was `event_name == 'push' && ref == main`, so
-    # the `workflow_run` half that let docs, ui and shop ship on a Release
-    # deliberately excluded it. `workflow_run.event` is what Verify itself was
-    # triggered by, so `== 'push'` preserves exactly that.
-    if: false
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: lore-production
-
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      # The key is the whole enrolment: it authorises the reporting and names
-      # the project, so nothing has to be kept in sync with it. SIGIL_CONFIG is
-      # optional switches, and SIGIL_SINK is unset because Lore reports to the
-      # default sink, which is itself. Absent, the module goes inert rather
-      # than failing, so a missing one here costs telemetry and nothing else.
-      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
-      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # Same as the ui deploy: without the tags `alepha.meta.version`
-          # reports "latest".
-          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
-          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
-          # several agents pushing to main is routinely a commit nothing has
-          # verified. It is the single most important line in this file.
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-tags: true
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Deploy
-        working-directory: apps/lore
-        run: yarn alepha platform up --env production
-        env:
-          GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}
-          GITHUB_CLIENT_SECRET: ${{ secrets.APP_GITHUB_CLIENT_SECRET }}
-          APP_SECRET: ${{ secrets.APP_SECRET }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
-
-          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
-          # No SIGIL_SINK here on purpose. Lore IS the sink, and a Cloudflare
-          # Worker cannot fetch its own hostname, so pointing Lore at an origin
-          # would make every flush a failed subrequest. It still reports: the
-          # key above enrols it, and `LoreSigilSinkProvider` routes its own
-          # batches in process instead of over HTTP.
-
-      # Lore's own build, stored as `latest` (#Q2464): one archive carrying
-      # the node and workerd slices, ready for the move from `alepha platform`
-      # to Lore Deploy.
-      #
-      # ⚠️ Its own build, not `platform up`'s. `platform up` builds with
-      # `--runtime=workerd`, so the `dist/` it leaves holds the workerd slice
-      # alone; a bare `alepha build` follows the config's
-      # `runtime: ["node", "workerd"]`, the same bytes `release.yml` pushes.
-      #
-      # AFTER the deploy on purpose: the push then lands on the Lore it just
-      # shipped, so a new manifest shape is never sent to an older registry.
-      - name: Build lore (node + workerd)
-        working-directory: apps/lore
-        run: yarn alepha build
-
-      - name: Push lore artifact to Lore
-        working-directory: apps/lore
-        run: yarn lore artifacts push
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

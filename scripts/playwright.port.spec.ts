@@ -6,7 +6,6 @@ import {
   E2E_BAND_START,
   E2E_SLOTS,
   type E2eApp,
-  e2eWorkerPort,
 } from "./playwright.port.ts";
 
 /**
@@ -66,27 +65,6 @@ describe("E2E_SLOTS", () => {
 
   it("keeps the band this repo's port table advertises", ({ expect }) => {
     expect([E2E_BAND_START, E2E_BAND_END]).toEqual([4300, 4999]);
-  });
-});
-
-describe("e2eWorkerPort", () => {
-  it("hands lore's workers distinct ports inside lore's own slot", ({
-    expect,
-  }) => {
-    const saved = process.env.E2E_PORT;
-    delete process.env.E2E_PORT;
-    try {
-      const ports = Array.from({ length: 7 }, (_, i) =>
-        e2eWorkerPort("lore", i),
-      );
-      expect(new Set(ports).size).toBe(ports.length);
-      for (const port of ports) {
-        expect(port % 10).toBe(E2E_SLOTS.lore);
-        expect(RESERVED.has(port)).toBe(false);
-      }
-    } finally {
-      if (saved !== undefined) process.env.E2E_PORT = saved;
-    }
   });
 });
 

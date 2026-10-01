@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `board_rank` text;

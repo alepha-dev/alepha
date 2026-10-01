@@ -36,7 +36,7 @@ export const shopAdminOptions: AdminRouterOptions = {
    * So the mark stays (it is exactly what an icon rail wants) and the words
    * go. `justify-center` re-centres the mark once the text beside it is gone,
    * and the horizontal padding drops so the rail's own centring is not fought.
-   * `AdminBrand` in `apps/lore` carries the same three classes for the same
+   * `AdminBrand` in Lore carries the same three classes for the same
    * reason.
    */
   brand: (

@@ -1,1 +1,0 @@
-ALTER TABLE `artifacts` ADD `manifest` text;

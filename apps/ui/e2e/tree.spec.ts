@@ -22,7 +22,7 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
  *
  * Chromium only converts HELD mouse movement into drag events, so a single
  * `dragTo` hop leaves the drop target without a `dragover` and the row lands
- * nowhere. The same finding is written on `apps/lore`'s own tree drag case.
+ * nowhere. The same finding is written on Lore's own tree drag case.
  *
  * `ratio` is a fraction of the target row's height, because that is what the
  * zones are: a branch splits 28% / 44% / 28% into before / inside / after, and

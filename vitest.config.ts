@@ -3,12 +3,10 @@ import { defineConfig } from "vitest/config";
 import { projects as docs } from "./apps/docs/vitest.config.ts";
 import { projects as relations } from "./apps/examples/relations/vitest.config.ts";
 import { projects as shop } from "./apps/examples/shop/vitest.config.ts";
-import { projects as lore } from "./apps/lore/vitest.config.ts";
 import { projects as uiApp } from "./apps/ui/vitest.config.ts";
 import { projects as commerce } from "./packages/@alepha/commerce/vitest.config.ts";
 import { projects as devtools } from "./packages/@alepha/devtools/vitest.config.ts";
 import { projects as discord } from "./packages/@alepha/discord/vitest.config.ts";
-import { projects as loreSdk } from "./packages/@alepha/lore/vitest.config.ts";
 import { projects as paymentsStripe } from "./packages/@alepha/payments-stripe/vitest.config.ts";
 import { projects as protobuf } from "./packages/@alepha/protobuf/vitest.config.ts";
 import { projects as ui } from "./packages/@alepha/ui/vitest.config.ts";
@@ -92,8 +90,6 @@ export default defineConfig({
       ...devtools,
       ...discord,
       ...docs,
-      ...lore,
-      ...loreSdk,
       ...paymentsStripe,
       ...protobuf,
       ...relations,

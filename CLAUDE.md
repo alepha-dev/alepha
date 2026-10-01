@@ -23,13 +23,12 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 ### Verifying
 
-- `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn copy` (generators, then lint), then typecheck and the five `check:*` audits in parallel, then `test` and `test:bun`. About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
+- `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn copy` (generators, then lint), then typecheck and the four `check:*` audits in parallel, then `test` and `test:bun`. About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
   - Needs Docker running (postgres, redis, versitygw).
   - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
   - One run per machine across every worktree: a second `yarn v` queues, since both test lanes drive the one postgres on 15432. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
   - Skip it when it has nothing to read: nothing for a `.gitignore` line, `yarn oxfmt <file>` for markdown prose, plus `yarn check:docs` when the file is a guide or a README with code samples.
-- **Pushing the branch** is the real gate: `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel. There is no full local pipeline. A re-push cancels the previous run.
-- `yarn v:go` runs `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile). **Run it when you touch `apps/bay`**: `yarn v` says nothing about Go, and `yarn w bay test` skips every `//go:build linux` file on macOS.
+- **Pushing the branch** is the real gate: `checks`, `test` (x6), `e2e-apps` and `e2e-cli`, in parallel. There is no full local pipeline. A re-push cancels the previous run.
 - `yarn clean` removes generated files and `packages/*/node_modules`, including the `dist` a following command may need. `yarn v` never runs it.
 - Also: `yarn w <workspace> <command>` (one workspace), `yarn build` (tsdown), `yarn test` (Vitest), `yarn lint` (oxlint `--fix`, then oxfmt), `yarn typecheck`.
 
@@ -37,7 +36,7 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 ### Workspace checks
 
-`yarn check:deps` (depcheck), `check:i18n`, `check:migrations`, `check:docs` (`apps/docs/scripts/check-docs.ts`: doc code samples against the source, generated pages against the index, meaningful only after `yarn copy`) and `check:conventions` (`scripts/check-conventions.ts`). The first four fan out to every workspace exposing the script. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
+`yarn check:deps` (depcheck), `check:migrations`, `check:docs` (`apps/docs/scripts/check-docs.ts`: doc code samples against the source, generated pages against the index, meaningful only after `yarn copy`) and `check:conventions` (`scripts/check-conventions.ts`). The first three fan out to every workspace exposing the script. ⚠️ A root fan-out script must keep at least one workspace exposing it: with none left, `yarn workspaces foreach -Apt run <name>` runs the root's own script, which calls itself, and the recursion filled 48 GB of memory in seconds when `check:i18n` lost its last workspace (#E72). It was removed then; remove the root script with the last workspace that needs it. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
 
 ### One artifact, N runtimes
 
@@ -54,18 +53,18 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 - Primitives carry a `$` prefix (`$action`, `$entity`, `$repository`), services are wired by the DI container (`$inject()`), event names follow `namespace:action:status`, React hooks are `use` + noun.
 - **`alepha`** (`packages/alepha/src/`) exports 50+ sub-modules, imported as `alepha/<module>` (`alepha/server`, `alepha/api/users`).
 - **`@alepha/ui`**: Base UI + Tailwind components in seventeen modules, `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core`; the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. Edited in place, no registry. `check:conventions` guards the map: `core` imports no other module, `organizations` only `core`, `form`, `table`, `settings`, the wrappers and `i18n/fr` only `core`, and there is no cycle.
-- **`@alepha/lore`**: the reporting half of a sigil. An app sends page views, Web Vitals and errors to `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`, shaped `sg_<project>_<secret>`: the only required variable and the only secret. `SIGIL_CONFIG` is optional switches.
+- **`lore`**: the Lore CLI, from the npm package `@alepha/lore` (a root devDependency, so `yarn lore` resolves). CI uses it for `yarn lore releases publish` (`release.yml`) and `yarn lore quality push` (`coverage.yml`), both against project `alepha`. Its source lives in the Lore repository.
 - Others: `@alepha/devtools`, `@alepha/commerce`, `@alepha/payments-stripe`, `@alepha/discord`, `@alepha/protobuf`, `create-alepha`.
 
-### Lore (`apps/lore`)
+### Deploys
 
-The only public Alepha application, at `lore.alepha.dev`, kept here to **dogfood the framework**: when working on it, `packages/alepha` and `packages/@alepha/ui` are fair game, edited in place and shipped in the same commit.
+This repository is the framework only. Lore (https://github.com/alepha-dev/lore) and Bay (https://github.com/alepha-dev/bay) live in repositories of their own and build, deploy and release from there.
 
-`main` auto-deploys to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. The docs at `alepha.dev` are the exception: they document the published framework, so only **Release** (`release.yml`) deploys them. A Verify cancelled by a newer push leaves that commit undeployed until the next green push. Lore migrations (`apps/lore/migrations/sqlite/`) target D1, which has a cascade-on-DROP-TABLE quirk: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing anything that touches them.
+`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. The docs at `alepha.dev` are the exception: they document the published framework, so only **Release** (`release.yml`) deploys them. A Verify cancelled by a newer push leaves that commit undeployed until the next green push.
 
 ### Lore MCP: the planning memory
 
-Decisions, plans and bug reports live in the **Alepha project, id `1`**. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
+Decisions, plans and bug reports for the framework, this repository, live in the **Alepha project, id `1`**. Lore's own work is project `74` (https://lore.alepha.dev/lore) and Bay's is project `75` (https://lore.alepha.dev/bay): file there, not in `1`, for a change to either application. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
 
 - Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note.
@@ -107,12 +106,12 @@ Every workspace holding specs owns a `vitest.config.ts` calling `workspaceProjec
 
 ### Ports
 
-| band                        | owner                                                                                                                                                            |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `3300-3399`                 | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, lore 3303, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312 |
-| `5173+`                     | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                            |
-| `4300-4999`                 | **e2e, and nothing else**                                                                                                                                        |
-| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / versitygw)                                                                                                       |
+| band                        | owner                                                                                                                                                 |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `3300-3399`                 | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312 |
+| `5173+`                     | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                 |
+| `4300-4999`                 | **e2e, and nothing else**                                                                                                                             |
+| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / versitygw)                                                                                            |
 
 ⚠️ `check:conventions` reads this table: every dev port must appear in the `3300-3399` row.
 
@@ -172,19 +171,19 @@ Not obvious from the code, so read them before writing any.
 - **No React Context for anything app-wide**: use `$atom` + `useStore`. The exemption is state scoped to a subtree (the parts of one compound component, or what a provider gives its descendants), since an `$atom` holds one value per container. Each such `createContext` carries the marker `Context exemption:` and its reason in the comment directly above it.
 - **Inside `@alepha/ui`, imports are relative and name a concrete file** (`../core/Button.tsx`), never `@alepha/ui` or a module's `index.ts`. Outside it, import from the module subpath (`@alepha/ui/admin`), never a file inside. `check:conventions` refuses both.
 - **Always a `Control*` for a field** (`<Control select>` / `<ControlSelect>`), never a hand-built picker. `Control` binds to a form field, so a picker with local state becomes a one-field `useForm`: `initialValues` for what the server says, `onChange` for a control that saves on change, `useFormValues` where a `useState` was read.
-- **Never `window.confirm()` / `alert()` / `prompt()`**: `const dialog = useDialog()`, then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (a `Promise<boolean>`), `dialog.alert(...)` or `dialog.prompt(...)`. Lore's `Layout.tsx` mounts `<DialogProvider>`.
+- **Never `window.confirm()` / `alert()` / `prompt()`**: `const dialog = useDialog()`, then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (a `Promise<boolean>`), `dialog.alert(...)` or `dialog.prompt(...)`. The shop's `Layout.tsx` mounts `<DialogProvider>`.
 
 ### Calling the API from React
 
 ⚠️ No `check:conventions` rule enforces this and none is coming (#E59): this section is the guard. A change that moves one of these rules updates it in the same commit.
 
 - **Every call on a `useClient()` result goes through `useQuery` (a read), `useAction` (a write), a `useForm` handler, or a `DataTable`'s `fetch` / `summary.fetch`.** Never a `useEffect` with an `alive` flag, never an async function with its own `try/catch` and toast.
-- **One `ActionErrorToaster` sits at the app root** (Lore's and the shop's `Layout.tsx`; a non-`embedded` `AppShell` mounts its own), so a failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself, passes `onError`, which marks it `handled`. A `FormValidationError` with a field `path` is handled already.
+- **One `ActionErrorToaster` sits at the app root** (the shop's `Layout.tsx`; a non-`embedded` `AppShell` mounts its own), so a failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself, passes `onError`, which marks it `handled`. A `FormValidationError` with a field `path` is handled already.
 - ⚠️ **`run()` drops a call made while one is in flight, and resolves `undefined` on failure.** Disable every control of the action on `loading`, page-wide rather than per row, and put follow-ups inside the handler: `await save.run(); close()` closes the dialog on a failure.
 - ⚠️ **`useAction` appends `{ signal }` as the handler's last argument.** No optional or defaulted trailing parameter: it would receive `{ signal }`, and TypeScript does not catch it. Make it required or take one object, and type the hook explicitly (`useAction<[id: string], boolean>`).
 - **An optimistic update restores its snapshot in the handler's `catch` and rethrows.** `onError` never saw the snapshot, and the rethrow is what reports the failure.
 - **A read that a write refreshes has a key**: kebab-case resource, then project id, then anything narrower (`["project-users", projectId]`). The write declares `invalidates`, or calls `useQueryClient().invalidate` when the key needs a handler-only argument.
-- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteOrganizationMember`, `usePanier`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed. **A hook whose functions other handlers compose keeps rejecting** (`useQuestMutations`); its callers run it inside their own `useAction`.
+- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteOrganizationMember`, `usePanier`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed. **A hook whose functions other handlers compose keeps rejecting** (Lore's `useQuestMutations`); its callers run it inside their own `useAction`.
 - **A callback whose promise an awaiting consumer needs stays a plain function** (markdown upload hooks, an analytics transport), with its reason in a comment.
 - **Never `catch (x: any)`.** Read `.message` through `instanceof Error`. The toast says `error.message`, never a translated "something went wrong" in front of it.
 

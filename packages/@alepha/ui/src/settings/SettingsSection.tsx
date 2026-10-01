@@ -39,7 +39,7 @@ export interface SettingsSectionProps {
  * `divide-y` land flush between rows.
  *
  * The rule is one or the other, never both — so do **not** "fix" this to a
- * numeric `py-4` / `py-3`. Several pages in `apps/lore`'s project settings did
+ * numeric `py-4` / `py-3`. Several pages in Lore's project settings did
  * exactly that and they are the ones that look wrong next to these.
  */
 export const SettingsSection = (props: SettingsSectionProps) => {

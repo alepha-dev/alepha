@@ -39,8 +39,8 @@ export interface CloudflareAssetEntry {
  *
  * `crypto.subtle` has no BLAKE3, and wrangler's `blake3-wasm` carries a wasm
  * binary and is Node-only. `@noble/hashes/blake3` is pure JS and runs in a
- * Worker. Verified byte-identical against `blake3-wasm` over the real
- * `apps/lore/dist/public` tree - see `CloudflareAssetManifest.spec.ts`.
+ * Worker. Verified byte-identical against `blake3-wasm`, on files past the
+ * base64 chunk size too - see `CloudflareAssetManifest.spec.ts`.
  */
 export class CloudflareAssetManifest {
   /**

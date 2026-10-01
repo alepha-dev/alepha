@@ -1,1 +1,0 @@
-ALTER TABLE `projects` ADD `kanban_column_config` text;

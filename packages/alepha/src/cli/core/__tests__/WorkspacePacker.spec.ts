@@ -27,7 +27,7 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
  * What `alepha pack` writes, and what it deliberately leaves out.
  *
  * ⚠️ **`*.map` is excluded from the artifact and kept in a sibling** (#1515).
- * Measured on `apps/lore/dist`: 266 of 267 server JS files had a map, and they
+ * Measured on Lore's `dist`: 266 of 267 server JS files had a map, and they
  * were roughly 5 MB of a 6.4 MB gzipped archive that no runtime reads -
  * Cloudflare treats source maps as a separate opt-in. The exclusion is only
  * safe because the sibling exists: a pattern added to `EXCLUDES` with no route

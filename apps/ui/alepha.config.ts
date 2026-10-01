@@ -14,7 +14,7 @@ export default defineConfig({
   // is running IS the framework version. Declared rather than left to the
   // built-in git-tag chain because this deploys on every push to main while
   // tags exist only on releases, so the chain would report "latest" almost
-  // always. Same reasoning as `apps/docs` and `apps/lore`.
+  // always. Same reasoning as `apps/docs`.
   meta: { version: pkg.version },
   env: {
     // Here rather than in `.env.production` because it is the site's public

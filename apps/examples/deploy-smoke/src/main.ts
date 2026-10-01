@@ -1,4 +1,3 @@
-import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
 import { AlephaApiFiles } from "alepha/api/files";
 
@@ -11,7 +10,6 @@ const alepha = Alepha.create({
 });
 
 alepha.with(AlephaApiFiles);
-alepha.with(AlephaSigil);
 alepha.with(SmokeApi);
 
 run(alepha);

@@ -14,7 +14,8 @@ export const quests = $entity({
     }),
     createdBy: db.ref(z.uuid(), () => users.cols.id, { onDelete: "cascade" }),
     /**
-     * Soft delete, exactly as `apps/lore/src/api/entities/quests.ts` has it.
+     * Soft delete, exactly as Lore's `entities/quests.ts` has it
+     * (github.com/alepha-dev/lore).
      * `Repository` filters this out of every read automatically — which is the
      * behaviour the RQB spike has to prove it can keep.
      */

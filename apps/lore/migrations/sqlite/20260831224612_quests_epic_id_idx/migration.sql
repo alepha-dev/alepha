@@ -1,1 +1,0 @@
-CREATE INDEX `quests_epic_id_idx` ON `quests` (`epic_id`);

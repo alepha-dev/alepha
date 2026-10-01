@@ -81,8 +81,8 @@ export default defineConfig({
       ],
     }),
   ],
-  // The repository's own commands: `clean`, `verify` / `v` and `verify:go` /
-  // `v:go`. Each takes the slot of the CLI built-in with the same name, since
-  // the CLI keeps the last registration and these register after the core.
+  // The repository's own commands: `clean` and `verify` / `v`. Each takes the
+  // slot of the CLI built-in with the same name, since the CLI keeps the last
+  // registration and these register after the core.
   services: [AlephaCommands],
 });

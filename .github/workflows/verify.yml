@@ -36,8 +36,9 @@ concurrency:
   # Namespaced by event, because `github.ref` for a `workflow_run` is the
   # DEFAULT BRANCH: a Release follow-up used to land in the push-to-main group
   # and cancel that run mid-test, and the push run is the only one that goes on
-  # to deploy Lore. Lore silently did not ship, and the evidence was a run
-  # marked `cancelled` that reads exactly like "superseded by a newer push".
+  # to the deploys. Lore (deployed from here then) silently did not ship, and
+  # the evidence was a run marked `cancelled` that reads exactly like
+  # "superseded by a newer push".
   # Two Releases in a row still supersede each other: both land in the
   # `workflow_run` group, on the same ref.
   #
@@ -47,20 +48,20 @@ concurrency:
   cancel-in-progress: true
 
 # ⚠️ **Nothing in this workflow runs a `lore` command any more** - those went
-# to `deploy-latest.yml` with the deploy jobs, and this variable is inherited
-# by the test jobs alone now.
+# to `deploy-latest.yml` with the deploy jobs, then left with Lore's own
+# deploy (#E72), and this variable is inherited by the test jobs alone now.
 #
 # It stays because removing it is a change to the environment the suite runs
-# in, not a tidy-up. `apps/lore`'s push-image spec was written specifically to
-# blank it (a spec container merges over `process.env`, so a value set for
-# every job reaches the code under test), and that spec is green against this
-# being set. Dropping it is its own change, with its own run to prove it.
+# in, not a tidy-up (a spec container merges over `process.env`, so a value
+# set for every job reaches the code under test). The spec written to blank
+# it left with Lore for github.com/alepha-dev/lore (#E72); dropping the
+# variable is still its own change, with its own run to prove it.
 #
 # The paragraphs below are the history of why it is declared once at the top.
 #
 # It used to come from `lore({ project: "alepha" })` in `alepha.config.ts`,
 # which meant it came from whichever directory a step happened to run in.
-# `apps/lore`'s config named no project, so its artifact push died on
+# Lore's own config named no project, so its artifact push died on
 # `No Lore project named`, `continue-on-error` swallowed it, and the 0.28.0
 # release shipped green without Lore's own artifact. A workflow-level default
 # is the shape that cannot do that again.
@@ -147,9 +148,6 @@ jobs:
 
       - name: Dependencies Check
         run: yarn check:deps
-
-      - name: i18n Catalog Check
-        run: yarn check:i18n
 
       - name: DB Migrations Check
         run: yarn check:migrations
@@ -280,31 +278,28 @@ jobs:
         run: yarn test:bun
 
   # ──────────────────────────────────────────────────────────────────────
-  # Build + E2E, as three jobs. The long pole of the workflow, and the half
+  # Build + E2E, as two jobs. The long pole of the workflow, and the half
   # of `yarn v` the two jobs above skip.
   #
   # One job until 2026-09-09, where `yarn e2e` ran every app's suite through
   # `foreach -p` and then `yarn e2e-cli` after it. Measured on run
   # 34291618784: 653s for the suites, of which **lore alone was 10.8 minutes**
   # (171 tests, 2 workers) and every other app finished inside 2.1 minutes.
-  # One suite was the whole wall clock, so one suite gets its own job - and
-  # with it, the handle sharding needs (`playwright test --shard=i/N`, which
-  # `apps/lore` is already safe for: `fullyParallel` with one Lore instance
-  # per worker and no shared `webServer`).
+  # Lore's suite then got a sharded job of its own, until Lore left for
+  # github.com/alepha-dev/lore (#E72).
   #
   # Each builds its own rather than sharing one through an artifact, and that
   # is arithmetic, not laziness: a serialised build job costs its own ~82s of
   # setup before anything can start, which is more than the download saves.
-  # Three builds in parallel are cheaper than one in front.
+  # Two builds in parallel are cheaper than one in front.
   #
-  # ⚠️ **And each builds only what it tests.** Until 2026-09-22 all three ran
-  # `yarn build`, every workspace, 164s of a 6.5min `e2e-apps` on run
+  # ⚠️ **And each builds only what it tests.** Until 2026-09-22 every e2e job
+  # ran `yarn build`, every workspace, 164s of a 6.5min `e2e-apps` on run
   # 35669284608. An app does not need a single package built: every
   # framework package's `exports` points at `src/`, the `alepha` bin is
   # `src/bin/index.ts`, and `alepha build` compiles the framework from source
-  # into the app's own `dist/`. The `docker` job had already been proving it,
-  # building Lore with no `yarn build` in front. `e2e-cli` is the exception
-  # and keeps `yarn build`: it runs `yarn pack`, and the tarball carries each
+  # into the app's own `dist/`. `e2e-cli` is the exception and keeps
+  # `yarn build`: it runs `yarn pack`, and the tarball carries each
   # package's `dist/`.
   #
   # The suites are bounded on the STEP, not just the job. Playwright's
@@ -316,7 +311,7 @@ jobs:
   #
   # No service containers on any of them, deliberately. Only `vitest.config.ts`
   # points at those, and that is `test` above: every app these jobs build is
-  # SQLite or nothing (shop injects `:memory:`, lore and docs inject no
+  # SQLite or nothing (shop injects `:memory:`, docs injects no
   # `DATABASE_URL` at all, and `alepha/orm` picks SQLite unless the URL starts
   # with `d1:`). Nothing here references REDIS_URL or S3_ENDPOINT, and
   # `node dist` does not read `.env`, so the containers were unreachable
@@ -339,23 +334,22 @@ jobs:
       - name: Prepare
         run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
-      # The four apps the step below runs, and nothing else: Lore alone was
-      # 59s of the old `yarn build` here, the last thing it finished, for a
-      # suite this job excludes. Their suites read their own `dist/` only.
+      # The four apps the step below runs, and nothing else. Their suites
+      # read their own `dist/` only.
       - name: Build Project
         run: yarn workspaces foreach -Apt --include '{docs,ui,shop,ssr}' run build
 
       - name: Setup Playwright
         uses: ./.github/actions/playwright
 
-      # `yarn e2e` minus lore: docs, ui, examples/shop and examples/ssr.
+      # `yarn e2e`: docs, ui, examples/shop and examples/ssr.
       #
       # ⚠️ **`--exclude alepha-monorepo` is load-bearing and is NOT tidy-up.**
       # `-A` includes the repository root, the root workspace has an `e2e`
       # script of its own, and that script is `foreach -Apt run e2e` with no
       # exclusions - so dropping this flag makes the step run every suite a
-      # second time, lore included, both copies at once. That is not a
-      # theoretical risk: it is what the first version of this job did.
+      # second time, both copies at once. That is not a theoretical risk: it
+      # is what the first version of this job did.
       # Two concurrent `docs` runs then raced for the same derived port and
       # the step died on `EADDRINUSE` after 11 minutes, which reads as a
       # flaky port allocator rather than as a recursive foreach.
@@ -365,73 +359,9 @@ jobs:
       # calling root `e2e`) and saves nothing here, where the caller is a
       # shell rather than the script being called. A root `e2e:apps` script
       # was tried first for exactly that reason and recursed the same way.
-      #
-      # `--exclude lore` matches the ident, so it drops `apps/lore` and
-      # leaves `packages/@alepha/lore` (which has no `e2e` script) alone.
       - name: Run E2E Tests
         timeout-minutes: 20
-        run: yarn workspaces foreach -Apt --exclude lore --exclude alepha-monorepo run e2e
-
-  e2e-lore:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      # Same reasoning as `test` above: a red shard must not hide its
-      # siblings' results.
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6]
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Clean
-        run: yarn clean
-
-      # See `test` above: the generators and oxfmt, not `yarn lint`.
-      - name: Prepare
-        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
-
-      # Lore alone, as the `docker` job has always built it: the suite starts
-      # each worker's Lore from `apps/lore/dist` and reads no other workspace's.
-      - name: Build Project
-        run: yarn w lore build
-
-      - name: Setup Playwright
-        uses: ./.github/actions/playwright
-
-      # Sharded six ways, which `apps/lore` is already safe for: it is
-      # `fullyParallel` with one Lore instance per worker and no shared
-      # `webServer`, so a shard shares nothing with its siblings and they are
-      # on separate runners anyway.
-      #
-      # ⚠️ This job is floor-bound, not work-bound, so it scales far worse
-      # than `test` does and the ceiling argument there applies harder here.
-      # At four (run #1691) the shards were 7.4 / 5.7 / 6.1 / 7.2min against
-      # 14.8min unsharded: only 2x, because ~218s of each shard is checkout,
-      # setup, `yarn copy`, `yarn build` and the browser install before one
-      # test runs. Six takes it to ~6.3min and eight would take it to ~5.5,
-      # which is under `e2e-apps` and therefore worth nothing. (Measured
-      # before the build step shrank to Lore alone: the floor is lower now,
-      # so re-measure before arguing the shard count from these numbers.)
-      #
-      # ⚠️ Playwright shards by test COUNT, and lore's tests vary a lot in
-      # duration - hence the 5.7 to 7.4 spread above from an even split of
-      # 174 tests. Smaller shards make that imbalance relatively worse, so
-      # the projection above is the optimistic end.
-      #
-      # ⚠️ `apps/lore/playwright.config.ts` sets `globalTimeout: 900_000`, and
-      # that number was sized against this suite running alongside four others
-      # on one runner. It now bounds a QUARTER of the suite on a runner of its
-      # own, so it is generous rather than wrong - the safe direction, but no
-      # longer the measurement its comment describes. Re-read that comment
-      # before tightening it.
-      - name: Run E2E Tests
-        timeout-minutes: 20
-        run: yarn w lore e2e --shard=${{ matrix.shard }}/6
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run e2e
 
   # Its own job for the reason it was already its own step: `e2e-cli` packs
   # the workspace with `yarn pack` and installs the tarball into a throwaway
@@ -454,26 +384,16 @@ jobs:
       - name: Prepare
         run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
-      # The tarball carries `dist/`, so the build has to have happened: see
-      # the header of `apps/e2e-cli/src/lore.e2e.spec.ts`, which fails with a
-      # named error rather than a mysterious one when it has not.
+      # The tarball carries `dist/`, so the build has to have happened:
+      # `apps/e2e-cli/src/cli.e2e.spec.ts` fails with a named error rather
+      # than a mysterious one when it has not.
       - name: Build Project
         run: yarn build
 
-      # The Bay end-to-end in e2e-cli builds the real bay binary natively
-      # (apps/e2e-cli/src/bay.e2e.spec.ts) and fails loudly without go, on
-      # purpose: a skipped Go test is how a green run lies. The bay job has Go
-      # and no Node, this one has Node and no Go, so Go is added here.
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: apps/bay/go.mod
-          cache-dependency-path: apps/bay/go.sum
-
       # `cli.e2e.spec.ts` serves the node build under Deno and fails without
-      # it, for the same reason as Go above. `v2.x` rather than a pin: only
-      # the current Deno is supported, and a new release that breaks the node
-      # slice is exactly what the test is there to notice.
+      # it, on purpose: a skipped test is how a green run lies. `v2.x` rather
+      # than a pin: only the current Deno is supported, and a new release that
+      # breaks the node slice is exactly what the test is there to notice.
       - name: Setup Deno
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
@@ -482,114 +402,3 @@ jobs:
       - name: Run CLI E2E Tests
         timeout-minutes: 10
         run: yarn e2e-cli
-
-  # ──────────────────────────────────────────────────────────────────────
-  # The self-hosted Lore image. `docker run -p 3000:3000 -v lore:/data <image>`
-  # is the whole promise of that image, and nothing in `yarn v` exercises it:
-  # a build producing an image that cannot boot is exactly as green as one
-  # that works.
-  #
-  # Here rather than in the Release workflow, because the release only builds
-  # the image when someone dispatches it and the push step sits AFTER
-  # `npm publish` - so a broken Dockerfile would be found on release day, past
-  # the irreversible half of the pipeline. Here rather than in `e2e-cli`,
-  # because that runs inside `yarn v` and a docker build does not fit the
-  # 10-minute budget. The runners already have a docker daemon (the `checks`
-  # and `test` jobs' `services:` need one) and public-repo minutes are free.
-  #
-  # ⚠️ **`deploy-lore-production` used to deliberately NOT gate on this job,
-  # and as of the 2026-09-09 workflow split it does.** That job ships a
-  # Cloudflare Worker and touches nothing this one builds, so keeping it out of
-  # `needs` meant a docker flake or a slow image build could never block a
-  # production deploy with no relationship to the image.
-  #
-  # `deploy-latest.yml` gates on this WORKFLOW's conclusion, which is atomic:
-  # Verify passed or it did not. There is no way to say "all of it except
-  # docker" across a workflow boundary. So the exception is gone, and a docker
-  # flake now costs a deploy that the next push recovers. If that ever bites,
-  # the fix is to move this job and `bay` into a workflow of their own - not to
-  # weaken the condition in `deploy-latest.yml`.
-  # ──────────────────────────────────────────────────────────────────────
-  docker:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Prepare
-        run: yarn copy
-
-      # `alepha build` + `alepha image --tag`: the bundle, the generated
-      # Dockerfile and `docker build` in one step, with the tag and the OCI
-      # labels coming from `apps/lore/alepha.config.ts`.
-      #
-      # ⚠️ `alepha image` is also how Release builds the published image, so
-      # this step is the release build, run on every push. Keep it the only
-      # one: 0.30.0 failed on a second, hand-written build that nothing here
-      # exercised (#Q2492, #Q2493). The image is amd64 only, so there is no
-      # QEMU and no buildx to set up.
-      - name: Build the image
-        run: yarn w lore build:docker
-
-      - name: Smoke test the image
-        run: bash scripts/docker-smoke.sh
-
-      # Measures the image built above rather than building one of its own.
-      - name: Check the image size budget
-        run: node scripts/docker-size.ts
-
-  # ──────────────────────────────────────────────────────────────────────
-  # Bay - the Go control plane. Nothing in the yarn pipeline compiles or tests
-  # it, which is how a `.gitignore` pattern that swallowed the whole
-  # `cmd/bay/` directory reached a commit unnoticed.
-  #
-  # Cross-compiles as well as builds: Bay is developed on macOS and only ever
-  # runs on Linux, so a Linux-only compile error would otherwise surface on
-  # the VPS rather than here.
-  # ──────────────────────────────────────────────────────────────────────
-  bay:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    defaults:
-      run:
-        working-directory: apps/bay
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          # Read from go.mod so the version lives in exactly one place.
-          go-version-file: apps/bay/go.mod
-          cache-dependency-path: apps/bay/go.sum
-
-      - name: Verify Formatting
-        # `gofmt -l` lists misformatted files and exits 0 either way, so the
-        # test has to be on its output.
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "Not gofmt'd:"; echo "$unformatted"; exit 1
-          fi
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Build
-        run: go build ./...
-
-      - name: Test
-        run: go test ./...
-
-      - name: Cross-compile for the targets Bay actually runs on
-        run: |
-          for target in amd64 arm64; do
-            echo "→ linux/$target"
-            GOOS=linux GOARCH=$target CGO_ENABLED=0 go build -o /dev/null ./cmd/bay
-          done

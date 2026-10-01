@@ -157,7 +157,7 @@ for the same reason `min`/`max` were never admitted: an aggregate in this seam h
 after a rollup and identical across every backend, not merely plausible on the one you tested
 against.
 
-The portable replacement is the pattern `apps/lore`'s own `sigil_views` dataset already uses:
+The portable replacement is the pattern [Lore](https://github.com/alepha-dev/lore)'s own `sigil_views` dataset already uses:
 declare a measure that is `1` per event (call it `count`, or anything else) and `sum` it. That is
 an ordinary `sum`, so it survives a rollup and a sampled backend for the same reason any other
 measure does:
@@ -186,7 +186,7 @@ caller-side and obvious rather than needing a merge-rule enforcement layer insid
 A dataset cannot answer "how many _distinct_ visitors" - a distinct count cannot survive
 sampling (a sampled window drops rows, so a naive `COUNT(DISTINCT ...)` under-counts) or a
 rollup (once hour buckets fold into a day bucket, which visitor hashes contributed to which hour
-is gone). `apps/lore` keeps unique-visitor counts on its own table
+is gone). Lore keeps unique-visitor counts on its own table
 (`LoreAnalyticsStore`/`sigil_uniques_daily`) for exactly this reason - see that class's doc for
 the full argument. If your app needs distinct counts, they need their own storage; `$analytics`
 is not the tool for them.
@@ -195,7 +195,7 @@ is not the tool for them.
 
 A percentile does not merge across buckets, but a histogram does - so a percentile is modelled
 as an ordinary dimension holding the bucket index, with `count` (or whatever you call the
-measure) as the thing you sum. This is exactly how `apps/lore` tracks Web Vitals:
+measure) as the thing you sum. This is exactly how Lore tracks Web Vitals:
 
 ```typescript
 import { $analytics } from "alepha/api/analytics";
@@ -389,7 +389,7 @@ backlog.
 
 ## Registering the module
 
-A real example, from `apps/lore`:
+A real example, from [Lore](https://github.com/alepha-dev/lore):
 
 ```typescript
 import { AlephaApiAnalyticsRollup } from "alepha/api/analytics";
@@ -408,7 +408,7 @@ export const LoreApi = $module({
 ```
 
 `LoreAnalytics` itself just declares two datasets - this is close to the real
-`apps/lore/src/api/entities/loreAnalytics.ts`:
+`entities/loreAnalytics.ts` in the Lore repository:
 
 ```typescript
 import { $analytics } from "alepha/api/analytics";

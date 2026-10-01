@@ -159,7 +159,7 @@ export class WorkspacePacker {
    * ⚠️ **`*.map` is here, so this changes what EVERY `alepha pack` produces**,
    * not only what Lore stores. Deliberate: no runtime reads a source map out
    * of a tarball, and Cloudflare treats them as a separate opt-in
-   * (`upload_source_maps`). Measured on `apps/lore/dist`, 266 of 267 server JS
+   * (`upload_source_maps`). Measured on Lore's `dist`, 266 of 267 server JS
    * files had a sibling map and they were roughly 5 MB of a 6.4 MB gzipped
    * archive - a 4x on every push, every pull and every stored version.
    *

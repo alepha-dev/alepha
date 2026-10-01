@@ -8,7 +8,7 @@ import { SettingsSection } from "../SettingsSection.tsx";
 /**
  * These pin the padding contract, which is the one thing about this kit that
  * is invisible in a screenshot review and has already gone wrong four times
- * by hand in `apps/lore`: the card must carry `py-0` and each row its own
+ * by hand in Lore: the card must carry `py-0` and each row its own
  * `py-3`. Doubling them produces a thick blank band top and bottom.
  */
 describe("SettingsSection", () => {

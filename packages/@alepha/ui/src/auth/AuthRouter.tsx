@@ -29,9 +29,9 @@ import { AuthVerifyEmail } from "./AuthVerifyEmail.tsx";
  * `@alepha/mantine/auth/AuthRouter` used to do exactly this, and was deleted with
  * Mantine without being ported. What survived were the components — the bricks
  * without the thing that assembled them — so every application rebuilt the same
- * four pages by hand: `apps/lore` in 414 lines across two files, `apps/examples/shop` in
+ * four pages by hand: Lore in 414 lines across two files, `apps/examples/shop` in
  * three more. `apps/examples/shop` has since been moved onto this router and deleted its
- * three; `apps/lore` still has its own.
+ * three; Lore (github.com/alepha-dev/lore) still has its own.
  *
  * Worse, the components kept the old router's paths as their fallbacks
  * (`props.loginPath ?? "/auth/login"`). Those defaults described a topology

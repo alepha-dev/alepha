@@ -66,10 +66,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const thisFile = fileURLToPath(import.meta.url);
 const ROOT = resolve(dirname(thisFile), "../../.."); // apps/e2e-cli/src -> monorepo root
-// A SUBDIRECTORY of `.e2e-tmp`, not `.e2e-tmp` itself. `lore.e2e.spec.ts`
-// takes the sibling one: vitest runs spec files in parallel workers, and both
-// suites wipe their work directory on the way in, so sharing the root would
-// mean one deleting the other's tarballs mid-install.
+// A SUBDIRECTORY of `.e2e-tmp`, not `.e2e-tmp` itself: vitest runs spec files
+// in parallel workers and each suite wipes its work directory on the way in,
+// so a second suite sharing the root would delete this one's tarballs
+// mid-install. A new spec here takes a sibling directory of its own.
 const WORK_DIR = join(ROOT, ".e2e-tmp", "cli");
 const TARBALL_DIR = join(WORK_DIR, "tarballs");
 const PROJECT_DIR = join(WORK_DIR, "proj");
@@ -827,8 +827,8 @@ describe("Alepha CLI E2E", () => {
      * are not supported, so a failure here means a new Deno broke the node
      * slice, or Alepha started leaning on a node API the shim lacks.
      *
-     * ⚠️ FAILS when `deno` is missing rather than skipping, like the Go build
-     * in `bay.e2e.spec.ts`: a skipped runtime test is how a green run lies.
+     * ⚠️ FAILS when `deno` is missing rather than skipping: a skipped runtime
+     * test is how a green run lies.
      * The `e2e-cli` job installs it.
      *
      * Runs on the build the test above left in `dist/`, and before the

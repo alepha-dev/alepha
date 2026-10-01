@@ -18,7 +18,7 @@ export interface PermissionMatrixRowLabelProps {
  * affordance, "there is more to know here", not "this does something".
  *
  * Needs a `TooltipProvider` above it, like every other tooltip in this
- * package; `apps/ui` and `apps/lore` both mount one in their layout.
+ * package; `apps/ui` and Lore both mount one in their layout.
  */
 export const PermissionMatrixRowLabel = (
   props: PermissionMatrixRowLabelProps,

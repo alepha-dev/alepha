@@ -308,7 +308,7 @@ export class BuildServerTask extends BuildTask {
             // graph, and no amount of dynamic-importing at the call sites could
             // move it: eagerness follows chunk membership, not import style.
             //
-            // Measured on `apps/lore` (workerd): dropping the group moved the
+            // Measured on Lore (workerd): dropping the group moved the
             // renderer to a genuinely async chunk and took the eagerly-parsed
             // server bundle from ~1556KB to ~1329KB. Splitting the group in two
             // instead — a `react-dom-server` group ahead of a `react` group with

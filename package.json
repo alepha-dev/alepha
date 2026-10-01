@@ -15,8 +15,6 @@
     "a": "yarn alepha",
     "v": "yarn alepha verify",
     "verify": "yarn alepha verify",
-    "verify:go": "yarn alepha verify:go",
-    "v:go": "yarn alepha verify:go",
     "clean": "yarn alepha clean",
     "copy": "yarn workspaces foreach -Apt run copy && yarn lint",
     "lint": "yarn alepha lint",
@@ -25,7 +23,6 @@
     "check:deps": "yarn workspaces foreach -Apt exec depcheck .",
     "check:conventions": "node scripts/check-conventions.ts",
     "check:docs": "yarn workspaces foreach -Apt run check:docs",
-    "check:i18n": "yarn workspaces foreach -Apt run check:i18n",
     "check:migrations": "yarn workspaces foreach -Apt run check:migrations",
     "build": "yarn workspaces foreach -Apt run build",
     "test:bun": "bun test ./packages/**/*.bun.spec.ts",
@@ -33,7 +30,7 @@
     "e2e-cli": "yarn w e2e-cli test"
   },
   "devDependencies": {
-    "@alepha/lore": "workspace:*",
+    "@alepha/lore": "^0.30.0",
     "@playwright/test": "^1.63.0",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.3",

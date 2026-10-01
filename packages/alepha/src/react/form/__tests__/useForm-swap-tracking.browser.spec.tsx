@@ -18,7 +18,7 @@ import { useForm, useFormState, useFormValues } from "../index.ts";
  * forever: the values/dirty/loading they returned froze at whatever the
  * old form last held, and never moved again for the new one.
  *
- * Found while building Lore's folio workspace (apps/lore) — the shell
+ * Found while building Lore's folio workspace (github.com/alepha-dev/lore) — the shell
  * that replaces one folio's editor buffer with another's when the user
  * switches documents. Lore works around the underlying issue locally by
  * forcing a full remount instead of relying on `deps` (see

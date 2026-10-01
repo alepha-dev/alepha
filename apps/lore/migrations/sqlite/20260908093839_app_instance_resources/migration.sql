@@ -1,1 +1,0 @@
-ALTER TABLE `app_instances` ADD `resources` text;

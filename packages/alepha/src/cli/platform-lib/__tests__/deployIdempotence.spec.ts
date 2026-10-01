@@ -19,7 +19,8 @@ import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
  *
  * ## ⚠️ Why twice is the case that matters
  *
- * A Lore deploy is a `$job` (`DeployJobs` in `apps/lore`), and a retried or
+ * A Lore deploy is a `$job` (`DeployJobs`, in github.com/alepha-dev/lore),
+ * and a retried or
  * rescheduled execution replays the whole run. So every step has to be safe
  * to repeat, and `DeployJobs` says it is: provisioning finds before it
  * creates, the asset upload dedups by content hash, the script upload is a

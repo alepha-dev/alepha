@@ -18,8 +18,8 @@ import { ActionErrorToaster } from "../ActionErrorToaster.tsx";
  * That ownership is the whole point of the component, and it is what a call
  * site quietly takes back by catching its own failure, calling `toast.error`
  * and rethrowing - the rethrow still arrives here, so the same sentence lands
- * twice as two identical stacked toasts. `apps/lore/e2e/admin-user-detail`
- * caught exactly that on the admin profile form, where a refused duplicate
+ * twice as two identical stacked toasts. Lore's `admin-user-detail` e2e
+ * (github.com/alepha-dev/lore) caught exactly that on the admin profile form, where a refused duplicate
  * email matched two elements instead of one. A page that wants different
  * wording has `format`; a page that wants no toast at all has `filter`.
  *

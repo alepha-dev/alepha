@@ -61,8 +61,8 @@ type ExportsEntry = string | { types?: string; import?: string };
  * is in scope there and the exemption a build script might claim does not
  * apply.
  *
- * Deliberately not every app: `apps/lore` and the examples are a much larger
- * sweep and their own decision, not a side effect of this one.
+ * Deliberately not every app: the examples are a much larger sweep and their
+ * own decision, not a side effect of this one.
  */
 const SRC = "packages/alepha/src";
 
@@ -171,9 +171,8 @@ if (stale.length > 0) {
 /**
  * A workspace declares a `version` if and only if it is published.
  *
- * A private workspace ships as a GitHub release asset (`bay`) or a Cloudflare
- * deploy (`lore`), never to the registry, so a number in its manifest is
- * decoration that nothing bumps. `@alepha/commerce`, `payments-mollie` and
+ * A private workspace (the docs, the showcase, the examples) never ships to the
+ * registry, so a number in its manifest is decoration that nothing bumps. `@alepha/commerce`, `payments-mollie` and
  * `sigil` drifted to 0.1.0, 0.20.6 and 0.20.1 while `alepha` reached 0.26.0.
  *
  * The release job's bump step encodes the invariant directly, filtering with
@@ -323,8 +322,7 @@ if (subpathViolations.length > 0) {
  * service, which is the whole reason the container exists.
  *
  * ⚠️ SCOPE. This reads only the trees that have actually been cleaned:
- * `cli/`, `api/users/` and `system/` in the framework, plus the whole Lore
- * API. It is not repo-wide because it cannot yet be - `server/`, `react/`
+ * `cli/`, `api/users/` and `system/` in the framework. It is not repo-wide because it cannot yet be - `server/`, `react/`
  * and `core/` still carry about a hundred module-level declarations between
  * them, and an allowlist that large is the "list of things nobody dares
  * touch" this file warns about above. Add a tree here once it is clean,
@@ -340,7 +338,6 @@ const NO_MODULE_CODE_TREES = [
   `${SRC}/cli`,
   `${SRC}/api/users`,
   `${SRC}/system`,
-  "apps/lore/src/api",
 ];
 const SERVICE_DIRS = [
   "services",
@@ -509,8 +506,8 @@ if (portViolations.length > 0) {
  * `github.ref` for a `workflow_run` event is the default branch, so the naive
  * `group: ci-${{ github.ref }}` put a Release follow-up in the same group as a
  * push to main. With `cancel-in-progress`, the follow-up cancelled the push run
- * mid-test - and that push run is the only one carrying
- * `deploy-lore-production`. The symptom is a run marked `cancelled`,
+ * mid-test - and that push run was the only one carrying
+ * `deploy-lore-production` then. The symptom is a run marked `cancelled`,
  * indistinguishable from the ordinary "a newer push superseded this one", and a
  * deploy that simply never happened.
  *
@@ -573,7 +570,7 @@ if (concurrencyViolations.length > 0) {
       "A `workflow_run` run resolves `github.ref` to the default branch, so a\n" +
       "group keyed on `github.ref` alone puts it in the same group as a push to\n" +
       "main. With `cancel-in-progress`, the Release follow-up then cancels the\n" +
-      "push run that carries the Lore deploy, and nothing goes red.\n",
+      "push run the deploys wait on, and nothing goes red.\n",
   );
   process.exit(1);
 }
@@ -657,12 +654,8 @@ if (setupViolations.length > 0) {
  *
  * `superpowers` is excluded for the same reason `check-docs` excludes it: an
  * archive of past plans, true when written and not a claim about today.
- *
- * `lore` and `bay` are no longer published: Lore and Bay left this repository
- * with their docs (#E72). The directories are kept only until the cleanup
- * quest removes them, so the history extraction still carries them.
  */
-const DOCS_EXCLUDED = new Set(["superpowers", "lore", "bay"]);
+const DOCS_EXCLUDED = new Set(["superpowers"]);
 const GEN_TREE = "apps/docs/scripts/gen-tree.ts";
 const genTreeSource = readFileSync(GEN_TREE, "utf8");
 const docRootViolations: string[] = [];
@@ -1007,120 +1000,6 @@ if (vitestViolations.length > 0) {
 }
 
 /**
- * `currentProjectAtom` is written through `setCurrentProject`, never through
- * the setter `useStore` hands back.
- *
- * ## Why a mechanical rule rather than a comment
- *
- * There already was a comment, and a helper, and eight call sites using it.
- * The ninth reached for `const [project, setProject] = useStore(...)` and
- * wrote the update response straight in - which drops `permissions`, because
- * `updateProjectById` answers `projectResourceSchema` and that schema
- * deliberately does not carry an effective permission set (it is also the
- * shape of `getMyProjects` and the Kanban payload). `canInProject` answers
- * FALSE for an absent set, on purpose, so the entire sidebar disappeared
- * until the next full page load. Feedback #P2141, and it was the second time:
- * the capability toggle did the same thing before it.
- *
- * A reader cannot see any of that at the call site. The write looks like
- * every other `useStore` setter in the tree, and the field it silently
- * discards is not mentioned within a hundred lines of it. That is exactly the
- * kind of rule that belongs here rather than in review.
- *
- * Reading the atom is untouched: `const [project] = useStore(...)` is what
- * most of these files do and is correct.
- */
-const PROJECT_ATOM_WRITER =
-  "apps/lore/src/web/app/services/currentProjectWrite.ts";
-const projectAtomViolations: string[] = [];
-
-const atomReaders = execFileSync("git", ["ls-files", "apps/lore/src/web"], {
-  encoding: "utf8",
-})
-  .trim()
-  .split("\n")
-  .filter((file) => /\.tsx?$/.test(file) && !file.includes(".spec."));
-
-for (const file of atomReaders) {
-  if (file === PROJECT_ATOM_WRITER) continue;
-  const source = readFileSync(file, "utf8");
-  // The SETTER being destructured, not the read: a two-element pattern.
-  if (
-    /const\s*\[[^\]]*,[^\]]*\]\s*=\s*useStore\(\s*currentProjectAtom\s*\)/.test(
-      source,
-    )
-  ) {
-    projectAtomViolations.push(
-      `  ${file}\n    → takes the setter from \`useStore(currentProjectAtom)\`;` +
-        " write through `setCurrentProject` so `permissions` and `rank` survive",
-    );
-  }
-}
-
-if (projectAtomViolations.length > 0) {
-  console.error(
-    `\n${projectAtomViolations.length} currentProjectAtom write(s) bypassing the helper:\n\n` +
-      `${projectAtomViolations.join("\n")}\n\n` +
-      "`updateProjectById` and friends answer a narrow project resource with\n" +
-      "no `permissions` on it, and `canInProject` reads an absent set as false.\n" +
-      "A direct write therefore hides every rank-gated control on the page -\n" +
-      "the whole sidebar - until the next navigation. `setCurrentProject`\n" +
-      "carries the two loader-only fields forward.\n",
-  );
-  process.exit(1);
-}
-
-/**
- * Lore holds no `$transactional` (#E69).
- *
- * ## Why a mechanical rule rather than a comment
- *
- * Lore runs on Cloudflare D1, which has no transactions: `$transactional()`
- * runs its handler in place there, and a throw rolls nothing back. Twenty-nine
- * actions carried one anyway, each promising an atomicity production never
- * had, and the specs could not tell, because the SQLite driver they ran on
- * does roll back (#F1348). Every one was replaced by a pattern that holds on
- * D1: `db.version()` with `save()`, a precondition in the write's WHERE, a
- * safe write order, a name claimed first, or a best-effort step after the
- * main write. A new `$transactional` would read as protection and give none.
- *
- * Code only: the text is stripped of comments and strings first, so the
- * notes that explain why the primitive is gone do not trip it. Specs are
- * skipped. There is no exemption list: the one legitimate transaction, an
- * ownership transfer, lives in the framework's `MemberService`.
- */
-const transactionalViolations: string[] = [];
-
-const loreSources = execFileSync("git", ["ls-files", "apps/lore/src"], {
-  encoding: "utf8",
-})
-  .trim()
-  .split("\n")
-  .filter((file) => /\.tsx?$/.test(file) && !file.includes(".spec."));
-
-for (const file of loreSources) {
-  const code = stripLiterals(readFileSync(file, "utf8"));
-  if (/\$transactional\b/.test(code)) {
-    transactionalViolations.push(
-      `  ${file}\n    → uses \`$transactional\`, which is a no-op on D1`,
-    );
-  }
-}
-
-if (transactionalViolations.length > 0) {
-  console.error(
-    `\n${transactionalViolations.length} Lore file(s) using $transactional:\n\n` +
-      `${transactionalViolations.join("\n")}\n\n` +
-      "Lore runs on D1, which has no transactions: the handler runs in place\n" +
-      "and a throw rolls nothing back. Use one of the five patterns instead\n" +
-      "(folio #F1348): db.version() with save(), the precondition in the\n" +
-      "write's WHERE, a safe write order, the name claimed first, or\n" +
-      "BestEffort.run for what follows the main write.\n",
-  );
-  process.exit(1);
-}
-
-/**
  * Every `$job` names itself `[system.]<domain>.<action>`, and `system.` means
  * shipped from `packages/`.
  *
@@ -1139,7 +1018,7 @@ if (transactionalViolations.length > 0) {
  * rule cannot read it. Specs are exempt: they declare jobs for pretend
  * applications, and the registration check still binds them. Files are read
  * whole rather than through `grep`, which skips a file holding a NUL byte as
- * binary (`apps/lore/src/api/jobs/SigilJobs.ts` has one on purpose).
+ * binary (Lore's `SigilJobs.ts` had one on purpose).
  */
 const JOB_NAME = /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
 const jobNameViolations: string[] = [];

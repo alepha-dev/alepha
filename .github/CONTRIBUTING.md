@@ -23,20 +23,16 @@ yarn v
 ```
 
 `yarn v` runs: install → lint → (typecheck, check:deps, check:conventions,
-check:docs, check:i18n, check:migrations) in parallel → test → test:bun. About
+check:docs, check:migrations) in parallel → test → test:bun. About
 three minutes, most of it the unit suite. It needs
 [Docker](https://www.docker.com/) running, for the Postgres, Redis and S3
 containers the integration tests use.
 
 **It is the inner loop, not the gate.** It does not build, and it runs no e2e.
 What proves a change is **pushing the branch**: every branch triggers the full
-CI graph (`checks`, `test` x6, `e2e-apps`, `e2e-lore` x6, `e2e-cli`, `docker`,
-`bay`), which runs in parallel on GitHub's runners in about five minutes. Push
-early, keep working, read the result when it lands.
-
-|             |                                                                                                                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `yarn v:go` | the Go suite for `apps/bay`, in a container. **`yarn v` does not run it**, and the tests for the systemd half are `//go:build linux`, so a native `go test` on macOS compiles them and runs none. Run this if you touched `apps/bay` |
+CI graph (`checks`, `test` x6, `e2e-apps`, `e2e-cli`), which runs in parallel
+on GitHub's runners in about five minutes. Push early, keep working, read the
+result when it lands.
 
 ## Making Changes
 

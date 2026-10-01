@@ -16,8 +16,8 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
  * what `lore apps build` would have done: a second `build`, `dev`, `db` and
  * `verify` under the `lore` binary's name and release cadence.
  *
- * `@alepha/lore`'s own `commandSurface.spec.ts` asserts the same property from
- * the consumer's side. This half fails in the package that caused it, so the
+ * `@alepha/lore`'s own `commandSurface.spec.ts` (github.com/alepha-dev/lore)
+ * asserts the same property from the consumer's side. This half fails in the package that caused it, so the
  * next person to add a task learns the rule where the task is written.
  */
 class TestCliProvider extends CliProvider {

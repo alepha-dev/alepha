@@ -87,7 +87,7 @@ export interface AppActionsProps {
  * ### Why this is one component rather than four imports
  *
  * It was four imports, in three places — `AdminLayout`, `AccountLayout` and
- * `apps/lore`'s own header — and they had already drifted: admin rendered no
+ * Lore's own header — and they had already drifted: admin rendered no
  * theme switcher, and Lore's account menu pushed a route that no longer
  * existed. A cluster that every shell rebuilds by hand is a cluster where
  * each copy is one refactor away from being subtly wrong.

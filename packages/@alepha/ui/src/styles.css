@@ -152,7 +152,7 @@
    * `code`/`pre` from `--font-mono`).
    *
    * ⚠️ `--font-heading` has no such machinery behind it, which is exactly how
-   * its predecessor died. `apps/lore` carried a `--font-display` token that
+   * its predecessor died. Lore carried a `--font-display` token that
    * four themes set and NOTHING read: it was declared in a plain `:root`
    * rather than in `@theme`, so Tailwind generated no utility for it, and no
    * hand-written rule consumed it either. Three display faces were
@@ -559,7 +559,7 @@
   --state-layer-weak: color-mix(in oklch, var(--foreground) 5%, transparent);
 
   /* `--accent` and `--sidebar-accent` are PURE interaction tokens across this
-   * package and apps/lore — every single use is hover/focus/open/selected,
+   * package and Lore (github.com/alepha-dev/lore) — every single use is hover/focus/open/selected,
    * never an opaque surface (verified by grep, incl. the bare `bg-accent`
    * selected-state uses). So the wash goes on the token itself and reaches
    * every state variant at once — hover, focus, data-open, data-highlighted,

@@ -9,7 +9,8 @@ import { AuthRouter } from "../AuthRouter.tsx";
  *
  * The four pages it mounts are what `@alepha/mantine/auth/AuthRouter` used to
  * provide before it was deleted with Mantine and not ported — which is why both
- * `apps/lore` and `apps/examples/shop` ended up rebuilding the same screens by hand.
+ * Lore (github.com/alepha-dev/lore) and `apps/examples/shop` ended up rebuilding
+ * the same screens by hand.
  *
  * The paths are asserted literally because they are a contract, not an
  * implementation detail: the auth components fall back to exactly these strings
