@@ -189,11 +189,11 @@ jobs:
   # handful of files, and vitest refuses outright when the shard count
   # exceeds the file count.
   #
-  # Coverage is NOT measured here. It lives in `coverage.yml`, nightly, and
+  # Coverage is NOT measured here. It lives in `nightly.yml`, nightly, and
   # that file carries the reasoning: Lore keeps one quality row per branch per
   # day, so eighteen of the ~19 pushes a day were overwritten before anyone
   # read them, and the instrumentation was costing ~2min on the critical path
-  # to the deploys to produce them. Read `coverage.yml` before moving it back.
+  # to the deploys to produce them. Read `nightly.yml` before moving it back.
   # ──────────────────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
@@ -259,7 +259,7 @@ jobs:
       - name: Prepare
         run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
 
-      # No `--coverage`. That flag is what `coverage.yml` runs nightly, and it
+      # No `--coverage`. That flag is what `nightly.yml` runs nightly, and it
       # carries five of the nine numbers Lore stores, not four: it also turns
       # on the JSON test reporter. Nothing in this job reads either report.
       - name: Test Project

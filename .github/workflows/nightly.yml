@@ -1,4 +1,4 @@
-name: Coverage
+name: Nightly
 
 permissions:
   contents: read
@@ -34,7 +34,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: coverage-${{ github.ref }}
+  group: nightly-${{ github.ref }}
   cancel-in-progress: true
 
 # Same default as CI: the project every `lore` command in this workflow
