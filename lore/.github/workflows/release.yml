@@ -28,6 +28,11 @@ on:
           - patch
           - major
         default: "minor"
+      dry_run:
+        description: "Dry run: build and check everything, publish nothing (no npm, no tag, no image push, no GitHub or Lore release)"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -87,30 +92,49 @@ jobs:
       - name: Build
         run: yarn build
 
+      # ── Everything above stays on the runner. From here on a real run
+      # publishes, and a dry run (`dry_run`) only checks what it would publish.
+
+      - name: List what npm would receive (dry run)
+        if: inputs.dry_run
+        run: yarn workspace @alepha/lore pack --dry-run
+
       - name: Publish @alepha/lore to npm
+        if: ${{ !inputs.dry_run }}
         run: yarn workspace @alepha/lore npm publish --tolerate-republish --access public
 
       - name: Push Changes and Tags
+        if: ${{ !inputs.dry_run }}
         run: git push --follow-tags
 
       - name: Log in to GitHub Container Registry
+        if: ${{ !inputs.dry_run }}
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push the Lore Image
+      # Built in a dry run too: an image that does not build is exactly what a
+      # rehearsal is for.
+      - name: Build the Lore Image
         working-directory: apps/lore
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           yarn alepha image --tag "ghcr.io/alepha-dev/lore:${VERSION}"
           docker tag "ghcr.io/alepha-dev/lore:${VERSION}" "ghcr.io/alepha-dev/lore:latest"
+
+      - name: Push the Lore Image
+        if: ${{ !inputs.dry_run }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
           docker push "ghcr.io/alepha-dev/lore:${VERSION}"
           docker push "ghcr.io/alepha-dev/lore:latest"
 
       - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.version.outputs.version }}
@@ -118,6 +142,7 @@ jobs:
           generate_release_notes: true
 
       - name: Push lore artifact to Lore (node + workerd)
+        if: ${{ !inputs.dry_run }}
         working-directory: apps/lore
         run: yarn lore artifacts push --tag "$VERSION"
         env:
@@ -125,6 +150,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
 
       - name: Record the Lore image in Lore
+        if: ${{ !inputs.dry_run }}
         working-directory: apps/lore
         run: >-
           yarn lore artifacts push-image
@@ -135,7 +161,26 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish the Lore release
+        if: ${{ !inputs.dry_run }}
         run: yarn lore releases publish --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Summary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            verb="Dry run: would have released"
+          else
+            verb="Released"
+          fi
+          {
+            echo "### ${verb} ${VERSION}"
+            echo ""
+            echo "- \`@alepha/lore@${VERSION}\` to npm"
+            echo "- \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`"
+            echo "- git tag \`${VERSION}\`, the GitHub release, and the Lore release \`${VERSION}\` (project lore)"
+          } >> "$GITHUB_STEP_SUMMARY"

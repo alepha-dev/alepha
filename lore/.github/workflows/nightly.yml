@@ -1,4 +1,4 @@
-name: Coverage
+name: Nightly
 
 permissions:
   contents: read
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: coverage-${{ github.ref }}
+  group: nightly-${{ github.ref }}
   cancel-in-progress: true
 
 env:
