@@ -1,0 +1,211 @@
+{
+  "cases": [
+    {
+      "name": "the root page gets the site-wide rule",
+      "path": "/",
+      "status": 200,
+      "defaults": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a hashed chunk is immutable",
+      "path": "/chunk.AbCd1234.js",
+      "status": 200,
+      "defaults": {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a 304 gets the same headers as the 200",
+      "path": "/chunk.AbCd1234.js",
+      "status": 304,
+      "defaults": {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a hashed image under a broad image rule is still immutable, not joined",
+      "path": "/asset.AbCd1234.png",
+      "status": 200,
+      "defaults": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a non-hashed image gets the author's one-day rule",
+      "path": "/logo.png",
+      "status": 200,
+      "defaults": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=86400",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a percent-encoded path matches a rule written encoded",
+      "path": "/docs/caf%C3%A9",
+      "status": 200,
+      "defaults": {
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff",
+        "x-encoded": "exact"
+      }
+    },
+    {
+      "name": "the same path encoded in lowercase is compared as received and does not match (Cloudflare redirects it to the uppercase form)",
+      "path": "/docs/caf%c3%a9",
+      "status": 307,
+      "defaults": {},
+      "expected": {
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a miss answered with a fallback page matches the missed path, never the page",
+      "path": "/missing/page",
+      "status": 404,
+      "defaults": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a later rule replaces a header an earlier one set, after removing it",
+      "path": "/app/main.js",
+      "status": 200,
+      "defaults": {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'self'; img-src https://cdn.example.com",
+        "x-scope": "app-script"
+      }
+    },
+    {
+      "name": "a fallback page under a prefix gets the prefix rule and not the script rule",
+      "path": "/app/settings",
+      "status": 404,
+      "defaults": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'self'; img-src https://cdn.example.com"
+      }
+    },
+    {
+      "name": "a star after a slash needs the slash: /app does not match /app/*",
+      "path": "/app",
+      "status": 404,
+      "defaults": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a rule replaces the host's content type",
+      "path": "/bay/install.sh",
+      "status": 200,
+      "defaults": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "application/x-sh"
+      },
+      "expected": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/plain; charset=utf-8",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "a removal with no set leaves the host default removed",
+      "path": "/raw/data.txt",
+      "status": 200,
+      "defaults": {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/plain; charset=utf-8",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "name": "an unindented header line belongs to the rule above it",
+      "path": "/flat",
+      "status": 404,
+      "defaults": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "expected": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff",
+        "x-flat": "yes"
+      }
+    }
+  ]
+}

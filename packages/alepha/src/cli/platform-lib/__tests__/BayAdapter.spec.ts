@@ -1440,20 +1440,15 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
 describe("BayAdapter — the Bay-owned key list", () => {
   it("still matches Bay's own, which is the authority", async () => {
     /*
-      A cross-language guard, and the only thing that can catch this drift: a
-      key added to `bayOwnedKeys` on the Go side breaks nothing here — the
-      adapter simply starts pushing it, and Bay starts refusing every deploy
-      of any app that sets it. The Go list is the authority; this asserts the
-      TypeScript mirror has not fallen behind it.
-
-      If this fails because the Go file moved, update the path — do not delete
-      the test.
+      A cross-language guard: a key added to `bayOwnedKeys` on the Go side
+      breaks nothing here — the adapter simply starts pushing it, and Bay
+      starts refusing every deploy of any app that sets it. The Go list is the
+      authority. Since Bay left the monorepo (#E72) this reads a copy of its
+      block (`fixtures/bay-owned-keys.go.txt`), refreshed in the same change
+      as the mirror: the guard holds the two in step, it no longer sees Bay.
     */
     const source = await readFile(
-      new URL(
-        "../../../../../../apps/bay/internal/deploy/deploy.go",
-        import.meta.url,
-      ),
+      new URL("./fixtures/bay-owned-keys.go.txt", import.meta.url),
       "utf8",
     );
     const block = source.match(

@@ -1,0 +1,188 @@
+{
+  "refusals": [
+    {
+      "name": "a line over 2,000 characters, which Cloudflare skips",
+      "file": "refusals/line-too-long",
+      "problems": [
+        {
+          "reason": "line-too-long",
+          "lines": [2]
+        }
+      ]
+    },
+    {
+      "name": "a rule naming a host",
+      "file": "refusals/host-rule",
+      "problems": [
+        {
+          "reason": "host-rule",
+          "lines": [1]
+        }
+      ]
+    },
+    {
+      "name": "a header with no space before `://`, which Cloudflare reads as a host rule",
+      "file": "refusals/host-rule-in-a-header",
+      "problems": [
+        {
+          "reason": "host-rule",
+          "lines": [3]
+        }
+      ]
+    },
+    {
+      "name": "a named placeholder",
+      "file": "refusals/placeholder",
+      "problems": [
+        {
+          "reason": "placeholder",
+          "lines": [1]
+        }
+      ]
+    },
+    {
+      "name": "two stars, a rule Cloudflare drops silently",
+      "file": "refusals/multiple-wildcards",
+      "problems": [
+        {
+          "reason": "multiple-wildcards",
+          "lines": [1]
+        }
+      ]
+    },
+    {
+      "name": "a path a URL parser would rewrite: a raw non-ASCII character, a dot segment",
+      "file": "refusals/path-encoding",
+      "problems": [
+        {
+          "reason": "path-encoding",
+          "lines": [1]
+        },
+        {
+          "reason": "path-encoding",
+          "lines": [4]
+        }
+      ]
+    },
+    {
+      "name": "a header line before any path",
+      "file": "refusals/header-outside-rule",
+      "problems": [
+        {
+          "reason": "header-outside-rule",
+          "lines": [1]
+        }
+      ]
+    },
+    {
+      "name": "a line that is neither a header nor a removal",
+      "file": "refusals/invalid-line",
+      "problems": [
+        {
+          "reason": "invalid-line",
+          "lines": [3]
+        }
+      ]
+    },
+    {
+      "name": "`!Name` without its space",
+      "file": "refusals/unset-without-space",
+      "problems": [
+        {
+          "reason": "unset-without-space",
+          "lines": [2]
+        }
+      ]
+    },
+    {
+      "name": "a header name with a space in it",
+      "file": "refusals/header-name",
+      "problems": [
+        {
+          "reason": "header-name",
+          "lines": [2]
+        }
+      ]
+    },
+    {
+      "name": "a header with no value",
+      "file": "refusals/empty-value",
+      "problems": [
+        {
+          "reason": "empty-value",
+          "lines": [2]
+        }
+      ]
+    },
+    {
+      "name": "`:splat` in a value, substituted by Cloudflare only",
+      "file": "refusals/splat-in-value",
+      "problems": [
+        {
+          "reason": "splat-in-value",
+          "lines": [2]
+        }
+      ]
+    },
+    {
+      "name": "one header set twice in one rule, whatever the case of its name, which Cloudflare joins at parse time",
+      "file": "refusals/duplicate-header",
+      "problems": [
+        {
+          "reason": "duplicate-header",
+          "lines": [2, 3]
+        }
+      ]
+    },
+    {
+      "name": "a rule with no header line",
+      "file": "refusals/empty-rule",
+      "problems": [
+        {
+          "reason": "empty-rule",
+          "lines": [1]
+        }
+      ]
+    },
+    {
+      "name": "one path twice, where Cloudflare keeps the second rule's headers at the first one's place",
+      "file": "refusals/duplicate-path",
+      "problems": [
+        {
+          "reason": "duplicate-path",
+          "lines": [1, 4]
+        }
+      ]
+    },
+    {
+      "name": "101 rules, over Cloudflare's limit of 100",
+      "file": "refusals/too-many-rules",
+      "problems": [
+        {
+          "reason": "too-many-rules",
+          "lines": [201]
+        }
+      ]
+    },
+    {
+      "name": "two rules that both match /asset.<hash>.png and both set Cache-Control, the later without `! Cache-Control`",
+      "file": "refusals/silent-join",
+      "problems": [
+        {
+          "reason": "silent-join",
+          "lines": [2, 5]
+        }
+      ]
+    },
+    {
+      "name": "an exact path under a star rule, both setting one header",
+      "file": "refusals/silent-join-exact-path",
+      "problems": [
+        {
+          "reason": "silent-join",
+          "lines": [2, 5]
+        }
+      ]
+    }
+  ]
+}

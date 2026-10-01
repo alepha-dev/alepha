@@ -1,0 +1,52 @@
+# The conformance fixture shared by the two _headers readers of epic #E49:
+# packages/alepha/src/server/static/services/HeadersFileReader.ts and
+# apps/bay/internal/headers. cases.json says what a response carries after
+# these rules; README.md says how that was checked against Cloudflare.
+
+# Site-wide, first, as the build writes it.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+
+# A broad author rule a hashed image also matches.
+/*.png
+  Cache-Control: public, max-age=86400
+
+# An exact path, percent-encoded the way a browser sends it.
+/docs/caf%C3%A9
+  X-Encoded: exact
+
+# Overrides a header an earlier rule set: the removal comes first. The value
+# of Content-Security-Policy carries its own colons.
+/app/*
+  ! X-Frame-Options
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; img-src https://cdn.example.com
+
+# A header no other rule sets, on a pattern with text on both sides of `*`.
+/app/*.js
+  X-Scope: app-script
+
+# Replaces a host default other than Cache-Control.
+/bay/install.sh
+  Content-Type: text/plain; charset=utf-8
+
+# Removes a host default and sets nothing in its place.
+/raw/*
+  ! Cache-Control
+
+# Indentation is optional.
+/flat
+X-Flat: yes
+
+/entry.*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/chunk.*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/asset.*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
