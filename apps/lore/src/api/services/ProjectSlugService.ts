@@ -39,11 +39,6 @@ export class ProjectSlugService {
     // those paths answered by the server before its own pages.
     "ws",
     "estates",
-    // The bay console's old root. It moved to `/account/estates/:estateId`
-    // (#E68) with no redirect, and stays reserved so a `/bay/...` link
-    // somebody still holds reads as a 404 rather than as a stranger's
-    // project that claimed the name.
-    "bay",
     "assets",
     "static",
     "public",
