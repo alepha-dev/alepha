@@ -50,8 +50,8 @@ export class DocsCommand {
    * repository root.
    */
   public readonly pageTrees = {
-    reference: "docs/framework/2-reference",
-    packages: "docs/framework/3-packages",
+    reference: "docs/2-reference",
+    packages: "docs/3-packages",
   };
 
   /**

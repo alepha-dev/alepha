@@ -25,7 +25,7 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 - `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn copy` (generators, then lint), then typecheck and the four `check:*` audits in parallel, then `test` and `test:bun`. About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
   - Needs Docker running (postgres, redis, versitygw).
-  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/framework/2-reference`, `docs/framework/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
+  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/2-reference`, `docs/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
   - One run per machine across every worktree: a second `yarn v` queues, since both test lanes drive the one postgres on 15432. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
   - Skip it when it has nothing to read: nothing for a `.gitignore` line, `yarn oxfmt <file>` for markdown prose, plus `yarn check:docs` when the file is a guide or a README with code samples.
 - **Pushing the branch** is the real gate: `checks`, `test` (x6), `e2e-apps` and `e2e-cli`, in parallel. There is no full local pipeline. A re-push cancels the previous run.
@@ -150,7 +150,7 @@ Not obvious from the code, so read them before writing any.
 - **Never a single-line JSDoc** (`/** text */`): always the multi-line form.
 - **One schema per file.** The one exemption is a table filter's `schema`, inline in a `DataTable`'s `filters.fields` record. A schema naming a domain type is imported, never redeclared, and only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel (hence `orderStatusSchema.ts` in `@alepha/commerce`).
 - Rename files with `git mv`.
-- A public API or behavior change updates `docs/framework/1-guides/`. `2-reference` and `3-packages` are generated: fix the JSDoc, never those files.
+- A public API or behavior change updates `docs/1-guides/`. `2-reference` and `3-packages` are generated: fix the JSDoc, never those files.
 
 ### Typing traps
 

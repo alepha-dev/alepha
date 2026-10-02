@@ -20,7 +20,7 @@ describe("CheckDocsCommand", () => {
     };
   };
 
-  const paths = ["docs/framework/2-reference", "packages/alepha/README.md"];
+  const paths = ["docs/2-reference", "packages/alepha/README.md"];
   const diff = `git diff --name-status --no-renames -z -- ${paths.join(" ")}`;
   const untracked = `git ls-files --others --exclude-standard -z -- ${paths.join(" ")}`;
 
@@ -46,9 +46,9 @@ describe("CheckDocsCommand", () => {
         diff,
         [
           "M",
-          "docs/framework/2-reference/1-primitives/$page.md",
+          "docs/2-reference/1-primitives/$page.md",
           "D",
-          "docs/framework/2-reference/1-primitives/$gone.md",
+          "docs/2-reference/1-primitives/$gone.md",
           "M",
           "packages/alepha/README.md",
           "",
@@ -59,14 +59,14 @@ describe("CheckDocsCommand", () => {
 
       expect(problems).toEqual([
         {
-          path: "docs/framework/2-reference/1-primitives/$page.md",
+          path: "docs/2-reference/1-primitives/$page.md",
           message:
-            "docs/framework/2-reference/1-primitives/$page.md - generated, and differs from what is staged",
+            "docs/2-reference/1-primitives/$page.md - generated, and differs from what is staged",
         },
         {
-          path: "docs/framework/2-reference/1-primitives/$gone.md",
+          path: "docs/2-reference/1-primitives/$gone.md",
           message:
-            "docs/framework/2-reference/1-primitives/$gone.md - no longer generated, and its deletion is not staged",
+            "docs/2-reference/1-primitives/$gone.md - no longer generated, and its deletion is not staged",
         },
         {
           path: "packages/alepha/README.md",
@@ -83,16 +83,16 @@ describe("CheckDocsCommand", () => {
       const { check, shell } = boot();
       shell.outputs.set(
         untracked,
-        "docs/framework/2-reference/1-primitives/$pageNav.md\0",
+        "docs/2-reference/1-primitives/$pageNav.md\0",
       );
 
       const problems = await check.testUnstagedOutputs("/repo", paths);
 
       expect(problems).toEqual([
         {
-          path: "docs/framework/2-reference/1-primitives/$pageNav.md",
+          path: "docs/2-reference/1-primitives/$pageNav.md",
           message:
-            "docs/framework/2-reference/1-primitives/$pageNav.md - generated, and not added to git",
+            "docs/2-reference/1-primitives/$pageNav.md - generated, and not added to git",
         },
       ]);
     });

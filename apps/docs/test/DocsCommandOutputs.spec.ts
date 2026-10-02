@@ -31,8 +31,8 @@ describe("DocsCommand", () => {
         const outputs = await Alepha.create().inject(DocsCommand).outputs(root);
 
         expect(outputs).toEqual([
-          "docs/framework/2-reference",
-          "docs/framework/3-packages",
+          "docs/2-reference",
+          "docs/3-packages",
           "packages/@alepha/ui/README.md",
           "packages/alepha/README.md",
         ]);

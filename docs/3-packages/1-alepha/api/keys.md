@@ -36,7 +36,7 @@ API key management module for programmatic access.
 - 15-minute validation caching, and query param (`?api_key=`) and Bearer
   header support
 
-See the API keys guide (`docs/framework/1-guides/4-server/21-api-keys.md`).
+See the API keys guide (`docs/1-guides/4-server/21-api-keys.md`).
 
 **Integration:**
 A realm registers all of it with `features: { apiKeys: true }`. To enable

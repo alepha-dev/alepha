@@ -40,7 +40,7 @@ const DOC_ROOTS: Array<{
   category: string;
   level: number;
   product: DocProduct;
-}> = [{ dir: "docs/framework", category: "", level: 0, product: "" }];
+}> = [{ dir: "docs", category: "", level: 0, product: "" }];
 
 /**
  * A slug's namespace, and the first URL segment that goes with it: `""` for
@@ -580,7 +580,7 @@ export class TreeCommand {
     ).map((e) => e.entry);
 
     for (const entry of sortedEntries) {
-      if (entry.name === "plans") continue;
+      if (entry.name === "plans" || entry.name === "superpowers") continue;
 
       const entryPath = join(dir, entry.name);
       const cleanedName = this.cleanName(entry.name);

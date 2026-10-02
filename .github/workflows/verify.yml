@@ -248,7 +248,7 @@ jobs:
       # is oxlint (19s) then oxfmt (6s), measured on run 35669284608, and every
       # runner but `checks` repeated it for nothing.
       #
-      # oxfmt stays: the generators write unformatted pages (`docs/framework`,
+      # oxfmt stays: the generators write unformatted pages (`docs/`,
       # every package README) and the committed copies are the formatted ones,
       # so without it the suite would run on a tree `yarn v` never sees.
       #

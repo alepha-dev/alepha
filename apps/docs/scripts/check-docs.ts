@@ -372,7 +372,7 @@ export class CheckDocsCommand {
    * someone clicking the link would ever find out.
    *
    * Resolved against the file names `gen-docs` writes under
-   * `docs/framework/2-reference`, not against the site's routing table -
+   * `docs/2-reference`, not against the site's routing table -
    * `gen-tree` turns exactly those names into slugs, so this is one
    * indirection closer to the thing being asserted and it works without
    * building the site.
@@ -438,7 +438,7 @@ export class CheckDocsCommand {
     healed: string[];
     uncovered: string[];
   }> {
-    const dir = join(root, "docs/framework/2-reference/1-primitives");
+    const dir = join(root, "docs/2-reference/1-primitives");
     if (!(await this.fs.exists(dir))) {
       return { regressions: [], healed: [], uncovered: [] };
     }
@@ -447,9 +447,7 @@ export class CheckDocsCommand {
       .filter((name) => name.endsWith(".md"))
       .map((name) => name.replace(/\.md$/, ""));
 
-    const guides = await this.listMarkdown(
-      join(root, "docs/framework/1-guides"),
-    );
+    const guides = await this.listMarkdown(join(root, "docs/1-guides"));
     const corpus = (
       await Promise.all(guides.map((file) => this.fs.readFile(file)))
     )
@@ -504,7 +502,7 @@ export class CheckDocsCommand {
     ];
 
     for (const [dir, prefix] of sources) {
-      const from = join(root, "docs/framework/2-reference", dir);
+      const from = join(root, "docs/2-reference", dir);
       if (!(await this.fs.exists(from))) continue;
       for (const name of await this.fs.ls(from)) {
         if (name.endsWith(".md")) {
