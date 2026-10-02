@@ -30,21 +30,21 @@
     "e2e-cli": "yarn w e2e-cli test"
   },
   "devDependencies": {
-    "@alepha/lore": "^0.30.0",
+    "@alepha/lore": "^0.31.1",
     "@playwright/test": "^1.63.0",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
-    "@vitest/coverage-v8": "^5.0.2",
+    "@vitest/coverage-v8": "^5.0.3",
     "alepha": "^0.30.0",
     "depcheck": "^1.4.7",
-    "oxfmt": "^0.70.0",
-    "oxlint": "^1.85.0",
+    "oxfmt": "^0.71.0",
+    "oxlint": "^1.86.0",
     "oxlint-tsgolint": "^7.0.2003",
-    "rolldown": "~1.2.11",
+    "rolldown": "~1.2.12",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2"
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   },
   "dependenciesMeta": {
     "esbuild": {

@@ -12,6 +12,6 @@
   },
   "devDependencies": {
     "drizzle-orm": "1.0.0-rc.4",
-    "miniflare": "5.20260926.0-alpha"
+    "miniflare": "5.20260930.0-alpha"
   }
 }

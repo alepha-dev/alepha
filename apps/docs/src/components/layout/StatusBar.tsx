@@ -92,7 +92,7 @@ export default StatusBar;
 // =============================================================================
 
 const LiveClock = () => {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(() => new Date());
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);

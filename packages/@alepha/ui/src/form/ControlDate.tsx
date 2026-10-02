@@ -84,6 +84,9 @@ export interface ControlDateProps {
 export const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
+  // Read once at mount: the current year bounds the birthdate picker, and a
+  // render must not call `new Date()` (`react(purity)`).
+  const [thisYear] = React.useState(() => new Date().getFullYear());
 
   if (!props.input?.props) return null;
 
@@ -120,8 +123,6 @@ export const ControlDate = (props: ControlDateProps) => {
       </FormField>
     );
   }
-
-  const thisYear = new Date().getFullYear();
 
   return (
     <FormField

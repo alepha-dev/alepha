@@ -15,14 +15,14 @@
     "@alepha/devtools": "workspace:*",
     "@alepha/ui": "workspace:*",
     "alepha": "workspace:^",
-    "lucide-react": "^1.48.0",
+    "lucide-react": "^1.49.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.3.1",
-    "wrangler": "^4.142.0"
+    "vite": "^8.3.2",
+    "wrangler": "^4.145.0"
   }
 }

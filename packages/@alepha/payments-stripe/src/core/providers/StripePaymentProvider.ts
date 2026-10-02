@@ -567,7 +567,6 @@ export class StripePaymentProvider implements PaymentProvider {
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
-          configurations: ["merchant"],
           refresh_url: opts.refreshUrl,
           return_url: opts.returnUrl,
         },
