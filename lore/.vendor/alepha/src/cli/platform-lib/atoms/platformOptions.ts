@@ -16,9 +16,22 @@ export const platformOptions = $atom({
       /**
        * The APP name: one workspace is one app, and every resource an adapter
        * names derives from it. Defaults to the workspace package.json "name".
-       * There is no project concept in `alepha platform`.
        */
       name: z.text().optional(),
+
+      /**
+       * The project the app belongs to, when several apps share one account.
+       *
+       * Set, every resource is named `<project>-<app>-<env>`
+       * (`alepha-docs-production`); unset, `<app>-<env>`. It only prefixes
+       * names: there is no project resource, and nothing else reads it.
+       *
+       * ⚠️ Adding or removing it renames every resource of the app. The next
+       * `up` provisions fresh ones under the new names (an empty database
+       * included) and leaves the old ones behind, so read `alepha platform
+       * plan` first.
+       */
+      project: z.text().optional(),
 
       /**
        * Default environment when --env is omitted.

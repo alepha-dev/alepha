@@ -16,7 +16,8 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  * delete** within the hot-to-rolled step, so no total the UI shows ever
  * changes — only the resolution of the time axis does.
  *
- * Modelled on `apps/lore`'s `SigilJobs`, the Worker-tested prior art for this
+ * Modelled on Lore's `SigilJobs` (github.com/alepha-dev/lore), the
+ * Worker-tested prior art for this
  * exact shape (hourly sweep, capped backlog, fold-not-delete). It cannot
  * reuse that class's mechanism directly, though: `SigilJobs` holds
  * `$repository` handles onto two known tables and scans them with SQL this

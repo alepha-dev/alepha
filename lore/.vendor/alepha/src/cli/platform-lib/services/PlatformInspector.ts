@@ -7,6 +7,10 @@ import { platformOptions } from "../atoms/platformOptions.ts";
 import { NamingService } from "./NamingService.ts";
 
 export interface ResolvedPlatformConfig {
+  /**
+   * The prefix every resource is named after: the slugified app name, behind
+   * `platform({ project })` when one is set (`alepha-docs`).
+   */
   project: string;
   defaultEnv: string;
   environments: Record<string, EnvironmentDescriptor>;
@@ -42,9 +46,11 @@ export class PlatformInspector {
   public async resolveConfig(root: string): Promise<ResolvedPlatformConfig> {
     if (this.options) {
       const opts = this.options;
-      const project = await this.resolveProjectName(root, opts.name);
+      const app = await this.resolveProjectName(root, opts.name);
       return {
-        project: this.naming.slugify(project),
+        project: this.naming.slugify(
+          opts.project ? `${opts.project}-${app}` : app,
+        ),
         defaultEnv: opts.default ?? "production",
         environments: opts.environments,
       };

@@ -107,7 +107,7 @@ export interface DataTableFilterControlProps {
  * from the icon changing.
  *
  * ⚠️ The tooltip needs a `TooltipProvider` above it, like every other tooltip
- * in this package; `apps/ui` and `apps/lore` both mount one in their layout.
+ * in this package; `apps/ui` and Lore both mount one in their layout.
  *
  * The value has to clear through `onClear` rather than through the control,
  * because the container is given `active` and cannot reach into the field it

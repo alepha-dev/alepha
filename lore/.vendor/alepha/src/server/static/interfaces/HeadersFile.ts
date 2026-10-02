@@ -50,7 +50,7 @@ export interface HeadersRuleSet {
  * Why a `_headers` file is refused, as a code rather than a sentence.
  *
  * The TypeScript reader and Bay's Go reader share one conformance fixture
- * (`apps/bay/internal/headers/testdata/`), and its refusal cases name these
+ * (Bay's `internal/headers/testdata/`, copied as `__tests__/fixtures/bay-headers/`), and its refusal cases name these
  * codes and the lines involved, never message text, so the two languages
  * agree on WHAT is refused without having to agree on how it is worded.
  */

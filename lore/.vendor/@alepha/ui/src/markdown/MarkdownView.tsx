@@ -27,11 +27,12 @@ import { SpoilerSpan } from "./SpoilerSpan.tsx";
  *
  * ⚠️ A lazy import a bundler decides to inline fails silently: the feature
  * still works and the cost moves into the entry chunk. After changing this,
- * build and confirm the diagram code is in a chunk of its own and the entry
- * has none of it:
+ * build an app that renders a `MarkdownView` (Lore does, in
+ * github.com/alepha-dev/lore) and confirm, from its directory, that the
+ * diagram code is in a chunk of its own and the entry has none of it:
  *
- *     yarn w lore build
- *     grep -rl 'addBorderSegments\|sequenceDiagram' apps/lore/dist/public/
+ *     yarn alepha build
+ *     grep -rl 'addBorderSegments\|sequenceDiagram' dist/public/
  */
 const MermaidFence = lazy(() => import("./diagram/MermaidFence.tsx"));
 

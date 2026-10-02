@@ -20,7 +20,7 @@ import { healthSchema } from "../schemas/healthSchema.ts";
  *
  * Not a security concern to have on by default: it says nothing an unauthorized
  * caller can use, and both this and `/metrics` are masked from the public host
- * by the reverse proxy - see `apps/bay/internal/proxy`.
+ * by the reverse proxy - see Bay's `internal/proxy` (github.com/alepha-dev/bay).
  */
 export class ServerHealthProvider {
   protected readonly time: DateTimeProvider = $inject(DateTimeProvider);

@@ -49,10 +49,10 @@ export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
 /**
  * The keys Bay writes into every instance's `.env` itself.
  *
- * A mirror of `bayOwnedKeys` in `apps/bay/internal/deploy/deploy.go`, which
+ * A mirror of `bayOwnedKeys` in Bay's `internal/deploy/deploy.go` (github.com/alepha-dev/bay), which
  * is the authority: Bay REFUSES a secrets file holding one of these, naming
- * it, and the refusal fails the whole deploy. `BayAdapter.spec.ts` reads the
- * Go source and fails if the two lists diverge.
+ * it, and the refusal fails the whole deploy. `BayAdapter.spec.ts` reads a
+ * copy of the Go block and fails if the two lists diverge.
  *
  * Here rather than on `BayAdapter` because Lore reads it too, under
  * workerd, when it answers a Bay machine's secret pull - and `BayAdapter`

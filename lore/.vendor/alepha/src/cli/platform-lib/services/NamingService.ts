@@ -1,9 +1,11 @@
 /**
  * Generates deterministic resource names for cloud deployments.
  *
- * Pattern: `<project>-<env>`. All segments are slugified (lowercase,
- * alphanumeric + dashes, max 63 chars). One app per workspace, see
- * `alepha platform`.
+ * Pattern: `<project>-<env>`, where `project` is the prefix
+ * `PlatformInspector` resolves: the app name, behind `platform({ project })`
+ * when one is set, so `<app>-<env>` or `<project>-<app>-<env>`. All segments
+ * are slugified (lowercase, alphanumeric + dashes, max 63 chars). One app per
+ * workspace, see `alepha platform`.
  */
 export class NamingService {
   public forContext(project: string, env: string): NamingContext {

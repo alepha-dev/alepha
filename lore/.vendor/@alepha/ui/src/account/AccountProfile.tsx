@@ -82,7 +82,8 @@ const AccountProfile = (props: AccountProfileProps) => {
    * handle from the address and drops whatever the client sent, so the
    * registration form is right to hide a field the user does not choose — but
    * the account page is where an existing, already-derived username is shown,
-   * and `apps/lore` runs exactly this mode. Whether editing it there should be
+   * and Lore (github.com/alepha-dev/lore) runs exactly this mode. Whether
+   * editing it there should be
    * possible at all is a real question (a rename desyncs it from the email
    * that produced it, and `updateMyProfile` does not re-run the slugger), but
    * it is a separate one from "this realm has no usernames", and answering it

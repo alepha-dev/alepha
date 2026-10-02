@@ -318,7 +318,7 @@ export class BayAdapter extends PlatformAdapter<BayEnvironmentOptions> {
       return new AlephaError(
         `Signed in to ${host}, but its \`bay\` has no \`env\` command, so there is nowhere to put ` +
           "this app's secrets — it answered with its usage banner instead. Upgrade `bay` on the " +
-          `host (see apps/bay/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
+          `host (see https://github.com/alepha-dev/bay/blob/main/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
       );
     }
     if (/unknown flag "--secrets-file"/i.test(detail)) {
@@ -329,7 +329,7 @@ export class BayAdapter extends PlatformAdapter<BayEnvironmentOptions> {
       // is still serving.
       return new AlephaError(
         `Signed in to ${host}, but its \`bay\` does not know \`--secrets-file\`, so this app's ` +
-          "secrets have nowhere to go. Upgrade `bay` on the host (see apps/bay/INSTALL.md). " +
+          "secrets have nowhere to go. Upgrade `bay` on the host (see https://github.com/alepha-dev/bay/blob/main/INSTALL.md). " +
           "Nothing was deployed — the release that was serving still is. " +
           `(${detail.slice(0, 200)})`,
       );
@@ -807,15 +807,15 @@ export class BayAdapter extends PlatformAdapter<BayEnvironmentOptions> {
   /**
    * The keys Bay writes into every instance's `.env` itself.
    *
-   * A mirror of `bayOwnedKeys` in `apps/bay/internal/deploy/deploy.go`, which
+   * A mirror of `bayOwnedKeys` in Bay's `internal/deploy/deploy.go` (github.com/alepha-dev/bay), which
    * is the authority — Bay REFUSES a push containing one of these, naming it.
    * Filtering here turns that refusal into a skipped key with a log line
    * instead of a failed deploy, which matters because a workspace's
    * `.env.production` legitimately carries `APP_SECRET` and `DATABASE_URL` for
    * the platform it was first written for.
    *
-   * The copy is guarded rather than trusted: `BayAdapter.spec.ts` reads the Go
-   * source and fails if the two lists diverge. Without that, a key added on
+   * The copy is guarded rather than trusted: `BayAdapter.spec.ts` reads a copy
+   * of the Go block and fails if the two lists diverge. Without that, a key added on
    * the Go side would not break anything here — it would just start failing
    * every deploy of any app that happens to set it.
    *

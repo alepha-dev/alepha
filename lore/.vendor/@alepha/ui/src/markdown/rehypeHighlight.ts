@@ -26,7 +26,7 @@ import { visit } from "unist-util-visit";
  * until the plugin became this file.
  *
  * ⚠️ Twelve of these are a contract with Lore:
- * `apps/lore/src/web/app/components/shared/attachmentPreview.ts` fences a
+ * its `attachmentPreview.ts` (github.com/alepha-dev/lore) fences a
  * text attachment with a highlight.js name (json, xml, yaml, typescript,
  * javascript, css, bash, sql, python, go, rust, ini). Drop one here and that
  * preview loses its colour, silently. `dockerfile` and `markdown` are used by
