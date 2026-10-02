@@ -127,6 +127,22 @@ export class ParameterProvider {
   protected readonly loadPromises = new Map<string, Promise<void>>();
 
   /**
+   * How long `get()` waits on a shared load before starting its own.
+   *
+   * ⚠️ On Cloudflare Workers a load's I/O belongs to the request that started
+   * it. When that request is canceled (a client that disconnects mid-render)
+   * its D1 query never settles, so the shared promise never settles either:
+   * its `finally` never runs, it stays in {@link loadPromises}, and every
+   * later `get()` on that isolate awaited it forever. On 2026-10-02 that hung
+   * 20 to 40% of Lore's server-rendered pages, the ones reading realm
+   * settings, with no exception and 2ms of CPU.
+   *
+   * Past this bound the waiter starts a load its own request owns. A healthy
+   * load is milliseconds, so a slow one costs a duplicate query at worst.
+   */
+  protected readonly sharedLoadWaitMs: number = 3_000;
+
+  /**
    * Generation counter per parameter — incremented on each doLoad call.
    * Used to discard results from superseded loads.
    */
@@ -207,17 +223,7 @@ export class ParameterProvider {
   public async get(name: string): Promise<unknown> {
     const ck = this.cacheKey(name);
     if (!this.loaded.has(ck) || this.isStale(ck)) {
-      if (!this.loadPromises.has(ck)) {
-        // Clear in `finally`, not just on the success paths inside doLoad: a
-        // rejected promise left in the map is re-awaited by every subsequent
-        // get(), so one transient DB failure poisoned the parameter until
-        // the process restarted.
-        this.loadPromises.set(
-          ck,
-          this.doLoad(name).finally(() => this.loadPromises.delete(ck)),
-        );
-      }
-      await this.loadPromises.get(ck);
+      await this.awaitSharedLoad(name, ck);
     }
 
     // Check if cached next has become current
@@ -294,13 +300,61 @@ export class ParameterProvider {
    * Deduplicates concurrent calls via shared promise.
    */
   public async load(name: string): Promise<void> {
-    const ck = this.cacheKey(name);
-    // Same rule as `get()`: a failed load must not linger in the map.
-    this.loadPromises.set(
-      ck,
-      this.doLoad(name).finally(() => this.loadPromises.delete(ck)),
-    );
-    await this.loadPromises.get(ck);
+    await this.startLoad(name, this.cacheKey(name));
+  }
+
+  /**
+   * Start a load and share it under `ck` until it settles.
+   */
+  protected startLoad(name: string, ck: string): Promise<void> {
+    // Clear in `finally`, not just on the success paths inside doLoad: a
+    // rejected promise left in the map is re-awaited by every subsequent
+    // get(), so one transient DB failure poisoned the parameter until the
+    // process restarted. Only its OWN entry, though: a load that settles
+    // after a newer one replaced it must not evict the newer one.
+    const promise: Promise<void> = this.doLoad(name).finally(() => {
+      if (this.loadPromises.get(ck) === promise) {
+        this.loadPromises.delete(ck);
+      }
+    });
+    this.loadPromises.set(ck, promise);
+    return promise;
+  }
+
+  /**
+   * Join the in-flight load for `ck`, or start one, without ever waiting on
+   * a load that will not settle (see {@link sharedLoadWaitMs}).
+   */
+  protected async awaitSharedLoad(name: string, ck: string): Promise<void> {
+    const shared = this.loadPromises.get(ck) ?? this.startLoad(name, ck);
+    if (await this.settlesWithin(shared, this.sharedLoadWaitMs)) {
+      return;
+    }
+    this.log.warn("Parameter load did not settle, starting a new one", {
+      name,
+      waitedMs: this.sharedLoadWaitMs,
+    });
+    await this.startLoad(name, ck);
+  }
+
+  /**
+   * Whether `promise` settles within `ms`. A rejection propagates.
+   */
+  protected async settlesWithin(
+    promise: Promise<void>,
+    ms: number,
+  ): Promise<boolean> {
+    const timer = new AbortController();
+    try {
+      return await Promise.race([
+        promise.then(() => true),
+        this.dateTimeProvider
+          .wait(ms, { signal: timer.signal })
+          .then(() => false),
+      ]);
+    } finally {
+      timer.abort();
+    }
   }
 
   /**
