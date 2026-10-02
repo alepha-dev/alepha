@@ -1,6 +1,6 @@
 {
   "name": "@alepha/lore",
-  "version": "0.31.0",
+  "version": "0.31.1",
   "description": "The Lore client for Alepha apps: the sigil reporter, and the CLI that talks to a Lore instance.",
   "keywords": [
     "alepha",
