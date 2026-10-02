@@ -307,9 +307,14 @@ func nodeWithSQLite(t *testing.T) string {
 
 func runNode(t *testing.T, node, script string, args ...string) string {
 	t.Helper()
-	out, err := exec.Command(node, append([]string{"-e", script}, args...)...).CombinedOutput()
+	// Stdout only: a Node where node:sqlite is still experimental prints a
+	// warning on stderr, and that must not read as the query's answer.
+	cmd := exec.Command(node, append([]string{"-e", script}, args...)...)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("node: %v\n%s", err, out)
+		t.Fatalf("node: %v\n%s", err, stderr.String())
 	}
 	return string(out)
 }
