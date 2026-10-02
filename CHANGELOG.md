@@ -1,3 +1,39 @@
+## [0.31.0] - 2026-10-02
+
+### Breaking Changes
+
+- **ui**: Button takes Blueprint's intent x variant, and an href (`a4981817`)
+- **ui**: POST /users/me/mfa/totp/recovery-codes takes a { code } body. (`b80f9c0d`)
+
+### Features
+
+- **sigil**: the lore binary carries its own alepha, and alepha is an optional peer #Q2579 (`ed0e5faa`)
+- **platform**: platform({ project }) names resources <project>-<app>-<env> #Q2575 (`f6f0cc34`)
+- **orm**: every update bumps db.version(), save() works on a copy, a mismatch answers 409 #E69 #Q2544 (`aeff06d1`)
+- **cli**: on D1 with replicas, a request that can write reads from the primary #E69 #Q2558 (`8ef98a9b`)
+- **orm**: DATABASE_TRANSACTIONS=false runs specs without transactions, as on D1 #E69 #Q2545 (`6967a9f1`)
+- **ui**: MyOrganizationInvitations is a DataTable #E68 #Q2534 (`ccb618bb`)
+- **ui**: account Connected apps is a DataTable #E68 #Q2533 (`933cc2b0`)
+- **ui**: account API keys is a DataTable with create in the toolbar #E68 #Q2532 (`1d6df0f9`)
+- **ui**: account Sessions is a DataTable #E68 #Q2531 (`1466ba98`)
+- **ui**: the account area is a root NavShell with a floating sidebar, like AdminRouter #E68 #Q2530 (`9839b4dc`)
+- **ui**: the admin Files storage card toggles its bar between share of the quota and share of the total #Q2500 (`c460ea32`)
+- **ui**: the notifications dropdown's header sits on the chrome surface with its bevel #Q2497 (`0fe0bfc2`)
+- **ui**: the filter bar centres its +, names it when alone, gives every filter an icon, and lets options follow other filters (`a639e99c`)
+- **ui**: fields fill the row on mobile, the clear button floats over the value, and selects carry an icon (`0768b041`)
+- **cli**: alepha db migrations create formats the migrations it generates with oxfmt #Q2495 (`d5827c30`)
+- **ui**: Button takes Blueprint's intent x variant, and an href [BREAKING] (`a4981817`)
+
+### Bug Fixes
+
+- **ui**: ControlDate reads the current year from DateTimeProvider (`44e93767`)
+- **api/parameters**: a shared load whose request was canceled no longer hangs every later get() #Q2588 (`82f2f108`)
+- **orm**: raw SQL joins the open transaction on Postgres; ownership transfer is one guarded statement #E69 #Q2556 (`8a39621d`)
+- **ui**: MFA recovery codes close only on an explicit confirmation, and can be regenerated from the account page with a code #Q2518 [BREAKING] (`b80f9c0d`)
+- **ui**: the DataTable bulk bar draws no stray border on its buttons, and its close button is minimal #Q2499 (`c6b364f5`)
+- **cli**: gen changelog puts an `@word` in a code span, so a release mentions nobody #Q2494 (`b63d90ac`)
+- **ui**: the active segment's count is readable on the blue primary (`6e98f72d`)
+
 ## [0.30.0] - 2026-09-23
 
 ### Breaking Changes

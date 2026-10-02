@@ -50,13 +50,13 @@
   "devDependencies": {
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.3",
-    "alepha": "0.30.0",
+    "alepha": "0.31.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
   },
   "peerDependencies": {
-    "alepha": "^0.30.0"
+    "alepha": "^0.31.0"
   },
   "engines": {
     "node": ">=22.0.0"
