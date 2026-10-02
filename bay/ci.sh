@@ -1,13 +1,13 @@
 #!/usr/bin/env sh
 #
-# The checks Bay must pass, in the order the `bay` CI job runs them.
+# The checks Bay must pass, in the order the CI `check` job runs them.
 #
 # A file of its own rather than a string passed to `sh -c`, so there is no
 # nested quoting to work around — the previous version could not write an
 # apostrophe in its own error message.
 #
-# Run inside the container by `test-linux.sh`, and mirrored by the `bay` job
-# in .github/workflows/verify.yml. The two must stay in step: this one exists
+# Run inside the container by `test-linux.sh`, and mirrored by the `check` job
+# in .github/workflows/ci.yml. The two must stay in step: this one exists
 # so a break is found before the push, not by the push.
 
 set -eu

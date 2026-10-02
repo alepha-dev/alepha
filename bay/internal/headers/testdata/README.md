@@ -6,10 +6,11 @@ what they both run:
 
 - TypeScript: `packages/alepha/src/server/static/services/HeadersFileReader.ts`,
   run by `packages/alepha/src/server/static/__tests__/HeadersFileReader.spec.ts`.
-- Go: `apps/bay/internal/headers`, run by its own tests.
+- Go: `internal/headers`, run by its own tests.
 
-It lives here because Bay's Go tests run in a container that sees only
-`apps/bay`, read-only.
+This copy is the authority. The framework mirrors it under
+`packages/alepha/src/server/static/__tests__/fixtures/bay-headers/` in
+`alepha-dev/alepha`; a change here is copied there in the same breath.
 
 ## Files
 
@@ -30,13 +31,15 @@ It lives here because Bay's Go tests run in a container that sees only
 Two implementations agreeing with each other prove little if both disagree
 with Cloudflare, so `cases.json` is checked against Cloudflare's own code:
 wrangler parses `_headers` and miniflare's asset worker applies it, the same
-code a deploy runs. From the repository root:
+code a deploy runs. The script takes wrangler from the working directory's
+`node_modules`, which Bay has none of, so run it from the root of an
+`alepha-dev/alepha` checkout:
 
 ```bash
-node apps/bay/internal/headers/testdata/cloudflare.mjs
+node <path-to-bay>/internal/headers/testdata/cloudflare.mjs
 ```
 
-It boots workerd through `wrangler dev`, so it is not part of `yarn test`.
+It boots workerd through `wrangler dev`, so it is not part of any test run.
 **Run it whenever `_headers` or `cases.json` changes.** Each case must answer,
 for every header `_headers` names and every header the case lists, the value
 `expected` or nothing. Last run: 2026-09-13, wrangler 4.130.0, all 14 cases

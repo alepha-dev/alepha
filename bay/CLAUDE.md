@@ -17,6 +17,19 @@ the Alepha project), and its history came with it.
   running.
 - CI (`.github/workflows/ci.yml`, job `check`) runs the same on every push. It
   is the gate.
+- Two tests skip unless a tool is on PATH, and a skip prints `ok`: the ACME
+  issuance test in `internal/tlsconf` needs `pebble` and `pebble-challtestsrv`
+  (installed by CI and the container, same version in both), and the backup
+  round trip in `internal/backup` needs a `node` with `node:sqlite`.
+- The Go version lives in `go.mod` and in `ARG GO_VERSION` in the `Dockerfile`;
+  `ci.sh` fails when they differ.
+
+## Releases
+
+`.github/workflows/release.yml` is run by hand (`workflow_dispatch`, with a
+dry-run switch): it builds the linux amd64 and arm64 binaries, tags the commit
+and publishes a GitHub release with `SHA256SUMS`. `install.sh` installs from
+`releases/latest`.
 
 ## Planning lives in Lore
 

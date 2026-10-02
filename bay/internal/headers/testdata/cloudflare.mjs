@@ -1,9 +1,10 @@
 // Checks cases.json against Cloudflare's own code: wrangler parses _headers
 // and miniflare's asset worker applies it, exactly as a deploy would. Boots
-// workerd, so it is not part of `yarn test`. Run it from the repo root whenever
-// _headers or cases.json changes:
+// workerd, so it is not part of any test run. Run it whenever _headers or
+// cases.json changes, from the root of an alepha-dev/alepha checkout, whose
+// node_modules provides wrangler:
 //
-//   node apps/bay/internal/headers/testdata/cloudflare.mjs
+//   node <path-to-bay>/internal/headers/testdata/cloudflare.mjs
 //
 // Every header the fixture's _headers names, plus every header a case lists,
 // must be what Cloudflare answers: the value expected, or absent.

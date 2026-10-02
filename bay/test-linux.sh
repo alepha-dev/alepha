@@ -32,11 +32,11 @@ if ! docker info >/dev/null 2>&1; then
   echo "test-linux: Docker is not running." >&2
   echo "  The Linux-only tests cannot run without it, and skipping them would" >&2
   echo "  report success for a suite that never executed. Start Docker and" >&2
-  echo "  re-run, or push and let the 'bay' CI job cover it." >&2
+  echo "  re-run, or push and let the CI 'check' job cover it." >&2
   exit 1
 fi
 
-echo "test-linux: reproducing the 'bay' CI job in a container"
+echo "test-linux: reproducing the CI 'check' job in a container"
 
 # `run --rm`, not `up`: this is a task, and its exit code is the whole result.
 # Compose rebuilds the image by itself when the Dockerfile or go.mod moves, so
