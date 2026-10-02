@@ -134,7 +134,7 @@ const sharedTestOptions = () => ({
   env: {
     // Do NOT set LOG_LEVEL here. When it is unset in test mode, Alepha's
     // logger buffers logs in memory and prints them to the console only when
-    // a test fails (see packages/alepha/src/logger/index.ts). Setting any
+    // a test fails (see .vendor/alepha/src/logger/index.ts). Setting any
     // LOG_LEVEL opts out of that and makes warn/error spam every passing test.
     //
     // ⚠️ `TZ` is applied before a *process* starts, so it works under the

@@ -7,10 +7,11 @@ import { type Infer, z } from "alepha";
  * of one POST to the machine-facing result route, addressed by command id
  * under the estate secret.
  *
- * ⚠️ **This mirrors `logsResult` in `apps/bay/cmd/bay/logsaction.go`, field
+ * ⚠️ **This mirrors `logsResult` in Bay's `cmd/bay/logsaction.go`, field
  * for field**, and the pair is pinned by one fixture both suites read
- * (`apps/bay/cmd/bay/testdata/logs-result.json`). It has already drifted once:
- * the first cut here accepted `lines: string[]`, so every real upload would
+ * (Bay's `cmd/bay/testdata/logs-result.json`, copied here to
+ * `test/fixtures/bay/logs-result.json`). It has already drifted once: the
+ * first cut here accepted `lines: string[]`, so every real upload would
  * have been a 400 and the three flags below would have been stripped in
  * silence. The fixture exists so that cannot recur.
  *

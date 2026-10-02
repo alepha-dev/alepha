@@ -21,7 +21,7 @@ import { estates } from "./estates.ts";
  * intent is persisted and the unit disabled), so the way back is `start` or a
  * deploy, and the UI confirms destructively before sending it.
  *
- * The machine's own `actionKind` in `apps/bay/cmd/bay/actions.go` is the other
+ * The machine's own `actionKind` in Bay's `cmd/bay/actions.go` is the other
  * half of this enum, and neither may grow without the other.
  */
 export const ESTATE_COMMAND_KINDS = [

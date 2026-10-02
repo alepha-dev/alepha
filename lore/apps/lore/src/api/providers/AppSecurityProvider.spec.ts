@@ -20,7 +20,7 @@ import { LoreApi } from "../index.ts";
  * open on the deployed instance and closed on a self-hosted image?
  *
  * The generic half ("a parameter flip gates `RegistrationService`") is
- * already proven in `packages/alepha/src/api/users/__tests__/$realm.spec.ts`
+ * already proven in alepha-dev/alepha, `src/api/users/__tests__/$realm.spec.ts`,
  * and is not repeated here. What is Lore-specific, and what silently closing
  * production would look like, is the default rule below.
  *

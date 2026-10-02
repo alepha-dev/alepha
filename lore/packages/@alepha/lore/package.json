@@ -12,12 +12,12 @@
     "sigil",
     "typescript"
   ],
-  "homepage": "https://alepha.dev",
+  "homepage": "https://lore.alepha.dev",
   "license": "MIT",
   "author": "Nicolas Foures",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alepha-dev/alepha.git"
+    "url": "git+https://github.com/alepha-dev/lore.git"
   },
   "bin": "./src/bin/index.ts",
   "files": [

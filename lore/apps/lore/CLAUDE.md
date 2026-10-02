@@ -1021,8 +1021,8 @@ yarn lint              # oxlint --fix, then oxfmt
 yarn test              # vitest run
 yarn e2e               # playwright test
 yarn db:generate       # Generate new migration from entity changes
-yarn v                 # Inner loop: lint, typecheck, the five audits, unit tests. NOT the gate
-                       # -> the gate is pushing the branch: CI runs the full graph in ~5min
+yarn v                 # From the repo root: lint, typecheck, audits, unit tests, build, both e2e suites
+yarn v --fast          # The inner loop: stops after the unit tests. CI stays the gate
 yarn deploy            # alepha platform up -e production (Cloudflare D1)
 ```
 
@@ -1413,8 +1413,6 @@ The root `vitest.config.ts`'s "node" project has no `include` filter (removed to
 Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check that could not have gone red — with a different mechanism: wrong runner, not empty database.
 
 **The fix for face 2 was structural, not the missing line.** The browser project now comes from `workspaceProjects` in the `scripts/vitest.projects.ts`, which every workspace config calls with nothing but its own name and a `jsdom` flag. Add a jsdom setting there, never to a caller. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while still running in the wrong environment, so every assertion about persisted pane preferences would be testing nothing.
-
-The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/examples/shop` declares the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added there resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
 
 117 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 

@@ -27,9 +27,10 @@ A small edit (a few lines, no decision anyone would look for later) goes straigh
 
 ### Verifying
 
-- `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, lint, then typecheck and the audits (`check:deps`, `check:conventions`, `check:i18n`, `check:migrations`), then `yarn test`. It cannot catch a build failure, an SSR regression or anything an e2e covers. No service is needed: every spec runs on SQLite.
+- `yarn v` (`yarn alepha verify`) runs what CI runs, the Docker image aside: install, lint, then typecheck and the audits (`check:deps`, `check:conventions`, `check:i18n`, `check:migrations`), `yarn test`, `yarn build`, `yarn e2e` and `yarn e2e-cli`. `e2e-cli` needs a Bay checkout and Go: `BAY_DIR`, else `.bay`, else a sibling `../bay`; `yarn v` refuses up front when none exists. No service is needed: every spec runs on SQLite.
+- `yarn v --fast` is the **inner loop**: it stops after `yarn test`, so it cannot catch a build failure, an SSR regression or anything an e2e covers.
 - `yarn w lore test` / `yarn w @alepha/lore test` for one workspace, `yarn w lore vitest run <pattern>` for one file.
-- `yarn w lore e2e` needs `yarn w lore build` first; `yarn e2e-cli` needs `yarn build` and a Bay checkout (`BAY_DIR`, default `.bay`).
+- `yarn w lore e2e` needs `yarn w lore build` first; `yarn e2e-cli` needs `yarn build` and the Bay checkout above.
 
 ### Releasing
 
@@ -80,7 +81,7 @@ Not obvious from the code, so read them before writing any.
 - **No code outside classes**: no standalone functions or constants in service files, so everything stays substitutable.
 - **Never `private`**, always `protected`. No `_` prefix on class members.
 - **Never a single-line JSDoc** (`/** text */`): always the multi-line form.
-- **One schema per file.** The one exemption is a table filter's `schema`, inline in a `DataTable`'s `filters.fields` record. A schema naming a domain type is imported, never redeclared, and only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel (hence `orderStatusSchema.ts` in `@alepha/commerce`).
+- **One schema per file.** The one exemption is a table filter's `schema`, inline in a `DataTable`'s `filters.fields` record. A schema naming a domain type is imported, never redeclared, and only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel.
 - Rename files with `git mv`.
 
 ### Typing traps
@@ -94,13 +95,13 @@ Not obvious from the code, so read them before writing any.
 
 ### React components
 
-⚠️ These are enforced by review in this repository; `check:conventions` enforces them only inside `@alepha/ui`, which is vendored.
+⚠️ These are enforced by review: `check:conventions` checks none of them here.
 
-- **One component per file.** An extracted inner `Header` of `ParentComponent.tsx` becomes `ParentComponentHeader.tsx`. The exemption is a compound primitive family (`UI_COMPOUND_FILES` in the script, such as `src/core/DropdownMenu.tsx`).
+- **One component per file.** An extracted inner `Header` of `ParentComponent.tsx` becomes `ParentComponentHeader.tsx`. The exemption is a compound family whose parts only make sense together.
 - **File order:** props interface, component, the rest.
 - **Arrow functions, never `function`**, and **props never destructured in the parameter list**: `const MyComponent = (props: MyComponentProps) => {}`, with `MyComponentProps` a named exported interface in the same file.
 - **No React Context for anything app-wide**: use `$atom` + `useStore`. The exemption is state scoped to a subtree (the parts of one compound component, or what a provider gives its descendants), since an `$atom` holds one value per container. Each such `createContext` carries the marker `Context exemption:` and its reason in the comment directly above it.
-- **Inside `@alepha/ui`, imports are relative and name a concrete file** (`../core/Button.tsx`), never `@alepha/ui` or a module's `index.ts`. Outside it, import from the module subpath (`@alepha/ui/admin`), never a file inside. `check:conventions` refuses both.
+- **Import `@alepha/ui` from its module subpath** (`@alepha/ui/admin`), never a file inside it.
 - **Always a `Control*` for a field** (`<Control select>` / `<ControlSelect>`), never a hand-built picker. `Control` binds to a form field, so a picker with local state becomes a one-field `useForm`: `initialValues` for what the server says, `onChange` for a control that saves on change, `useFormValues` where a `useState` was read.
 - **Never `window.confirm()` / `alert()` / `prompt()`**: `const dialog = useDialog()`, then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (a `Promise<boolean>`), `dialog.alert(...)` or `dialog.prompt(...)`. Lore's `Layout.tsx` mounts `<DialogProvider>`.
 
@@ -109,12 +110,12 @@ Not obvious from the code, so read them before writing any.
 ⚠️ No `check:conventions` rule enforces this and none is coming (#E59): this section is the guard. A change that moves one of these rules updates it in the same commit.
 
 - **Every call on a `useClient()` result goes through `useQuery` (a read), `useAction` (a write), a `useForm` handler, or a `DataTable`'s `fetch` / `summary.fetch`.** Never a `useEffect` with an `alive` flag, never an async function with its own `try/catch` and toast.
-- **One `ActionErrorToaster` sits at the app root** (Lore's and the shop's `Layout.tsx`; a non-`embedded` `AppShell` mounts its own), so a failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself, passes `onError`, which marks it `handled`. A `FormValidationError` with a field `path` is handled already.
+- **One `ActionErrorToaster` sits at the app root** (Lore's `Layout.tsx`; a non-`embedded` `AppShell` mounts its own), so a failure is never toasted by hand. A failure that must stay quiet, or that the page shows itself, passes `onError`, which marks it `handled`. A `FormValidationError` with a field `path` is handled already.
 - ⚠️ **`run()` drops a call made while one is in flight, and resolves `undefined` on failure.** Disable every control of the action on `loading`, page-wide rather than per row, and put follow-ups inside the handler: `await save.run(); close()` closes the dialog on a failure.
 - ⚠️ **`useAction` appends `{ signal }` as the handler's last argument.** No optional or defaulted trailing parameter: it would receive `{ signal }`, and TypeScript does not catch it. Make it required or take one object, and type the hook explicitly (`useAction<[id: string], boolean>`).
 - **An optimistic update restores its snapshot in the handler's `catch` and rethrows.** `onError` never saw the snapshot, and the rethrow is what reports the failure.
 - **A read that a write refreshes has a key**: kebab-case resource, then project id, then anything narrower (`["project-users", projectId]`). The write declares `invalidates`, or calls `useQueryClient().invalidate` when the key needs a handler-only argument.
-- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteOrganizationMember`, `usePanier`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed. **A hook whose functions other handlers compose keeps rejecting** (`useQuestMutations`); its callers run it inside their own `useAction`.
+- **A wrapper hook that owns an interaction returns its verbs as `useAction` runs** (`useInviteOrganizationMember`): `true` when it happened, `false` when the user backed out or a local check refused, `undefined` when the request failed. **A hook whose functions other handlers compose keeps rejecting** (`useQuestMutations`); its callers run it inside their own `useAction`.
 - **A callback whose promise an awaiting consumer needs stays a plain function** (markdown upload hooks, an analytics transport), with its reason in a comment.
 - **Never `catch (x: any)`.** Read `.message` through `instanceof Error`. The toast says `error.message`, never a translated "something went wrong" in front of it.
 

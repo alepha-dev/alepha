@@ -95,7 +95,7 @@ class Routes {
  * `e.detail` double-click guard, the chevron and the row as separate
  * targets, the memoised row, the named transition list, the press transform
  * dropped while dragging, and the whole indent-guide spec (which was its own
- * file here). They are `packages/@alepha/ui/src/tree/__tests__/`, and
+ * file here). They are `src/tree/__tests__/` of `@alepha/ui` in alepha-dev/alepha, and
  * duplicating them here would mean two files going red for one bug and
  * neither of them owning it.
  *

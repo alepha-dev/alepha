@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+import { AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 
 /**
@@ -26,19 +30,26 @@ export class LoreCommands {
   });
 
   /**
-   * The inner loop, and deliberately NOT the gate: push the branch, CI runs
-   * the whole graph (checks, test, e2e x6, e2e-cli, docker) in a few minutes.
+   * Everything CI runs that a laptop can: lint, typecheck, audits, unit
+   * tests, then the build and both end-to-end suites. `--fast` stops after
+   * the unit tests, the inner loop: it cannot catch a build failure, an SSR
+   * regression or anything an e2e covers. Only the Docker image is left to CI.
    *
-   * It catches a typo, a bad import, a broken unit test, a missing i18n key or
-   * migration. It cannot catch a build failure, an SSR regression or anything
-   * an e2e covers.
+   * `e2e-cli` drives a real Bay, so it needs a Bay checkout: `BAY_DIR`, else
+   * `.bay` (where CI clones it), else a sibling `../bay`.
    */
   public readonly verify = $command({
     aliases: ["v"],
     description:
-      "Fast local checks: lint, typecheck, audits, unit tests. CI is the gate - push the branch.",
+      "Lint, typecheck, audits, unit tests, build and e2e. --fast stops after the unit tests.",
+    flags: z.object({
+      fast: z
+        .boolean()
+        .describe("Skip the build and the e2e suites")
+        .optional(),
+    }),
     exclusive: true,
-    handler: async ({ run }) => {
+    handler: async ({ run, flags, root }) => {
       process.env.CI = "true";
       process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
 
@@ -52,6 +63,37 @@ export class LoreCommands {
         "yarn check:migrations",
       ]);
       await run("yarn test");
+
+      if (flags.fast) {
+        return;
+      }
+
+      process.env.BAY_DIR = this.bayDir(root);
+
+      await run("yarn build");
+      await run("yarn e2e");
+      await run("yarn e2e-cli");
     },
   });
+
+  /**
+   * The Bay checkout `e2e-cli` builds and runs. Refused up front rather than
+   * after the build, since the suite never skips a missing Bay.
+   */
+  protected bayDir(root: string): string {
+    const candidates = [
+      process.env.BAY_DIR,
+      join(root, ".bay"),
+      join(root, "..", "bay"),
+    ].filter((dir): dir is string => !!dir);
+
+    const found = candidates.find((dir) => existsSync(join(dir, "go.mod")));
+    if (!found) {
+      throw new AlephaError(
+        `No Bay checkout for e2e-cli (looked in ${candidates.join(", ")}). ` +
+          "Clone github.com/alepha-dev/bay to .bay, set BAY_DIR, or run yarn v --fast.",
+      );
+    }
+    return found;
+  }
 }

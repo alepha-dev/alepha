@@ -575,8 +575,8 @@ describe("Project activity table", () => {
      * real HTTP and this file's `asUser` shim injects an identity into the
      * container rather than a bearer, so a `.fetch` case fails on
      * authentication and proves nothing about coercion. The boundary itself
-     * is `coerceStrings`, and `packages/alepha/src/core/__tests__/dateRange
-     * .spec.ts` covers both shapes a range arrives in: the comma-joined form
+     * is `coerceStrings`, and alepha-dev/alepha's
+     * `src/core/__tests__/dateRange.spec.ts` covers both shapes a range arrives in: the comma-joined form
      * a hand-written URL sends, and the JSON form `HttpClient.queryParams`
      * produces for any object-valued query param.
      */

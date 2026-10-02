@@ -21,7 +21,7 @@ import { DeployService } from "../services/DeployService.ts";
  *
  * And a retried or rescheduled execution **replays work**, so every step has to
  * be idempotent. It is, and
- * `packages/alepha/src/cli/platform-lib/__tests__/deployIdempotence.spec.ts`
+ * `src/cli/platform-lib/__tests__/deployIdempotence.spec.ts` in alepha-dev/alepha
  * says so rather than leaving it to be assumed, by running one deploy twice
  * against a fake account that refuses a duplicate the way Cloudflare does:
  * provisioning finds before it creates, asset upload dedups by content hash,

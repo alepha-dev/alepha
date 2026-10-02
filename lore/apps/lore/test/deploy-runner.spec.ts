@@ -28,7 +28,7 @@ import { gzip, type TarEntry, tar } from "./fixtures/artifactTarball.ts";
  * guard ever runs under them. A replay driven through these fakes never
  * exercises what makes a replay safe. It is checked in two places instead:
  *
- * - `packages/alepha/src/cli/platform-lib/__tests__/deployIdempotence.spec.ts`
+ * - `src/cli/platform-lib/__tests__/deployIdempotence.spec.ts` in alepha-dev/alepha
  *   runs one Worker deploy twice through the real clients, against a fake
  *   account behind `fetch` that refuses a duplicate the way Cloudflare does.
  * - `deployments.spec.ts`, beside this file, holds the half that is Lore's

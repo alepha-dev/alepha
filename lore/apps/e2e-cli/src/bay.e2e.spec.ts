@@ -575,8 +575,8 @@ describe("Bay connector against a real Lore", () => {
       built = await run("go", ["build", "-o", bay.bin, "./cmd/bay"], BAY_DIR);
     } catch (error) {
       throw new Error(
-        "bay.e2e.spec.ts needs a Go toolchain to build apps/bay, and none was found on PATH. " +
-          "Install Go (apps/bay/go.mod names the version) rather than skipping: a skipped Go test " +
+        "bay.e2e.spec.ts needs a Go toolchain to build Bay, and none was found on PATH. " +
+          "Install Go (Bay's go.mod names the version) rather than skipping: a skipped Go test " +
           `is how a green run lies. (${error instanceof Error ? error.message : "spawn failed"})`,
       );
     }

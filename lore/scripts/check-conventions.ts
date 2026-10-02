@@ -72,23 +72,11 @@ const workspaces: Workspace[] = execFileSync(
  * contain while every test stayed green.
  *
  * The exemptions below are the shapes that legitimately have no `@module`.
- *
- * `@alepha/ui` was one, with a blanket `"*"`: it exported one wildcard subpath
- * per component and had no file to hold a block. It is seventeen modules now,
- * each an `index.ts` with its own `@module`, and the rules that keep that map
- * honest are further down.
  */
 const SUBPATH_EXEMPT: Record<string, string | string[]> = {
   // A container, not a module. `.` is the DI kernel itself; `$module` is
   // declared *by* it.
   alepha: ["."],
-  // `./vat` is `services/VatCalculator.ts` - a class handed a public path,
-  // the same mistake sigil spent 13 subpaths on. Exempt rather than fixed
-  // because commerce is private and its whole surface is already queued for
-  // restructure: 15 subpaths, a build that emits one entry, and no
-  // `publishConfig` at all, so 14 of them would resolve to nothing in a
-  // tarball. Delete this line when that lands - it must not outlive it.
-  "@alepha/commerce": ["./vat"],
 };
 
 const subpathViolations: string[] = [];
@@ -527,10 +515,9 @@ if (aliasViolations.length > 0) {
  *
  * Until Vitest 5, Vitest walked up from its cwd until it found a config.
  * Before per-workspace configs existed that walk always ended at the
- * repository root, whose `test.root` was the repository, so
- * `yarn w @alepha/protobuf test` ran all 892 specs in the monorepo and
- * `yarn w alepha test` ran 328 files that are not in `packages/alepha`. Every
- * one of those commands reported success, so nobody had a reason to look.
+ * repository root, whose `test.root` was the repository, so a workspace's
+ * `test` script ran every spec in the repository, not its own. Every one of
+ * those commands reported success, so nobody had a reason to look.
  * Vitest 5 no longer walks up, which only makes the miss quieter: a workspace
  * without its own config now runs its specs on bare defaults, with no service
  * env, no Paris timezone, no tsconfig aliases and no jsdom project.
@@ -562,8 +549,8 @@ const unitSpecFiles = execFileSync(
 
 /**
  * The workspace a file belongs to: the longest location that prefixes it.
- * `apps/examples/shop` and the root workspace `.` both prefix a shop spec, and
- * only the longest is the owner.
+ * `apps/lore` and the root workspace `.` both prefix a Lore spec, and only the
+ * longest is the owner.
  */
 const specOwnerOf = (file: string): Workspace | undefined =>
   workspaces
