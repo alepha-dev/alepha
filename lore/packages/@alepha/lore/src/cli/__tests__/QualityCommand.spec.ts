@@ -202,15 +202,41 @@ describe("lore quality push", () => {
   });
 
   describe("which commit", () => {
-    it("prefers what CI already knows", async () => {
+    /**
+     * ⚠️ `GITHUB_SHA` is the commit the run started on. The Release job
+     * commits `release: X` before it pushes, and 0.31.1's artifacts were
+     * recorded against the commit before it.
+     */
+    it("names the checked-out commit, not the one the run started on", async () => {
       const ctx = await push({
         env: { GITHUB_SHA: "cafebabe1234", GITHUB_REF_NAME: "release/1.0" },
-        git: { "git rev-parse HEAD": "should-not-be-read\n" },
+        git: { "git rev-parse HEAD": "e278fe15abcd\n" },
       });
 
-      expect(ctx.link.pushes[0].body.commitSha).toBe("cafebabe1234");
+      expect(ctx.link.pushes[0].body.commitSha).toBe("e278fe15abcd");
       expect(ctx.link.pushes[0].body.branch).toBe("release/1.0");
-      expect(ctx.shell.calls).toHaveLength(0);
+    });
+
+    it("takes the branch from CI without asking git", async () => {
+      const ctx = await push({
+        env: { GITHUB_SHA: "cafebabe1234", GITHUB_REF_NAME: "release/1.0" },
+        git: { "git rev-parse --abbrev-ref HEAD": "HEAD\n" },
+      });
+
+      expect(ctx.link.pushes[0].body.branch).toBe("release/1.0");
+      expect(ctx.shell.wasCalled("git rev-parse --abbrev-ref HEAD")).toBe(
+        false,
+      );
+    });
+
+    it("falls back to GITHUB_SHA where git names no commit", async () => {
+      const ctx = await setup({
+        env: { GITHUB_SHA: "cafebabe1234", GITHUB_REF_NAME: "main" },
+      });
+      ctx.shell.errors.set("git rev-parse HEAD", "not a git repository");
+      await ctx.cli.run(ctx.command.push, { argv: "", root: "/repo" });
+
+      expect(ctx.link.pushes[0].body.commitSha).toBe("cafebabe1234");
     });
 
     /**

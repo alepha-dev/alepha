@@ -4,9 +4,14 @@ import { ShellProvider } from "alepha/system";
 /**
  * Which commit, and which branch, a run belongs to.
  *
- * CI already knows both, so ask it first: `GITHUB_SHA` and `GITHUB_REF_NAME`
- * are set on every GitHub Actions run and cost no subprocess. The git fallback
- * is for a developer running the command on a laptop.
+ * The commit is asked of git first, and `GITHUB_SHA` is only the fallback for
+ * a run with no repository. ⚠️ `GITHUB_SHA` is the commit a run STARTED on: a
+ * job that commits before it pushes (the Release job commits `release: X` and
+ * tags it) builds a commit `GITHUB_SHA` does not name, and its artifacts were
+ * recorded one release behind.
+ *
+ * The branch is the other way round: `GITHUB_REF_NAME` first, because a CI
+ * checkout is detached and git cannot name it (see `branch`).
  */
 export class GitContextService {
   protected readonly shell = $inject(ShellProvider);
@@ -21,12 +26,9 @@ export class GitContextService {
   public async resolve(root: string): Promise<GitContext> {
     const sha = String(this.env.GITHUB_SHA ?? "");
     const ref = String(this.env.GITHUB_REF_NAME ?? "");
-    if (sha && ref) {
-      return { commitSha: sha, branch: ref };
-    }
 
     return {
-      commitSha: sha || (await this.git(root, "git rev-parse HEAD")),
+      commitSha: (await this.git(root, "git rev-parse HEAD")) || sha,
       branch: ref || (await this.branch(root)),
     };
   }
