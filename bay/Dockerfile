@@ -9,9 +9,8 @@
 # so what gets tested is the working tree — uncommitted changes included, which
 # is the whole point of running this before a push.
 
-# Pinned here rather than passed in, because Compose interpolates its whole file
-# before consulting profiles — a required build arg for this service would make
-# a plain `docker compose up` fail for postgres and redis too.
+# Pinned here rather than passed in: a required build arg would turn a plain
+# `./test-linux.sh` into a command that needs an environment variable first.
 #
 # The duplicate with go.mod is deliberate and is not left on trust, though the
 # two directions fail differently:
@@ -24,7 +23,7 @@
 #   writing `1.26` here (which resolves to the latest 1.26.x) would test Bay on
 #   a Go it does not ship on, and say nothing. That is the case ci.sh catches,
 #   by comparing the running toolchain against the `go` directive.
-ARG GO_VERSION=1.26.1
+ARG GO_VERSION=1.27.1
 FROM golang:${GO_VERSION}
 
 WORKDIR /src
@@ -41,6 +40,11 @@ WORKDIR /src
 # otherwise, so the version stays correct with nothing to remember.
 COPY go.mod go.sum ./
 RUN go mod download
+
+# Pebble, Let's Encrypt's test CA, so the ACME issuance test in
+# internal/tlsconf runs here instead of skipping. Same version as the CI job.
+RUN go install github.com/letsencrypt/pebble/v2/cmd/pebble@v2.10.1 \
+      github.com/letsencrypt/pebble/v2/cmd/pebble-challtestsrv@v2.10.1
 
 # Modules are already present and the source is mounted read-only, so nothing
 # may reach out to the network or rewrite go.mod mid-run. A missing dependency

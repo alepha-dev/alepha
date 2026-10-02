@@ -36,6 +36,9 @@ type Config struct {
 type Client struct {
 	cfg  Config
 	http *http.Client
+	// now is the signing clock. A field rather than a direct time.Now() call so
+	// the tests can pin the signature to AWS's published vectors.
+	now func() time.Time
 }
 
 func New(cfg Config) (*Client, error) {
@@ -46,7 +49,7 @@ func New(cfg Config) (*Client, error) {
 		cfg.Region = "auto"
 	}
 	cfg.Endpoint = strings.TrimRight(cfg.Endpoint, "/")
-	return &Client{cfg: cfg, http: &http.Client{Timeout: 10 * time.Minute}}, nil
+	return &Client{cfg: cfg, http: &http.Client{Timeout: 10 * time.Minute}, now: time.Now}, nil
 }
 
 // Object is one entry of a listing.
@@ -176,7 +179,7 @@ func (c *Client) do(ctx context.Context, method, key string, query url.Values, b
 
 // sign applies AWS Signature Version 4 to the request.
 func (c *Client) sign(req *http.Request, path string, query url.Values, body []byte) {
-	now := time.Now().UTC()
+	now := c.now().UTC()
 	amzDate := now.Format("20060102T150405Z")
 	dateStamp := now.Format("20060102")
 

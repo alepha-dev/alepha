@@ -42,6 +42,15 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Install Pebble
+        # Let's Encrypt's test CA. Without it the ACME issuance test in
+        # internal/tlsconf skips, and the one path that fails silently for 90
+        # days goes untested. Same version as the Dockerfile.
+        run: |
+          go install github.com/letsencrypt/pebble/v2/cmd/pebble@v2.10.1 \
+            github.com/letsencrypt/pebble/v2/cmd/pebble-challtestsrv@v2.10.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
       - name: Test
         run: go test ./...
 
