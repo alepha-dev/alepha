@@ -31,9 +31,8 @@ export const SIGIL_FEEDBACK_HIDDEN = "hidden";
 /**
  * Narrow an arbitrary string to a position, falling back to the default.
  *
- * `undefined` is the normal case, not an error: the column backing this is
- * nullable so that every sigil predating it keeps the original bottom-right
- * placement with no backfill.
+ * `undefined` is the normal case, not an error: an app that sets no
+ * `SIGIL_CONFIG.feedbackButton` keeps the default bottom-right placement.
  */
 export const sigilFeedbackPositionOf = (
   value: string | undefined,

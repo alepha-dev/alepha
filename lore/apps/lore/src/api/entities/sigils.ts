@@ -1,4 +1,3 @@
-import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/lore/sigil";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
@@ -73,62 +72,6 @@ export const sigils = $entity({
      * Capability buckets this sigil's ingest endpoint accepts.
      */
     kinds: db.default(z.array(z.string().max(50)).max(10), []),
-    /**
-     * @deprecated Frozen dead column — nothing reads or writes it.
-     *
-     * It held the corner this app's feedback button sits in, and shipped to
-     * third-party pages through `/sigils/config`, which the reporting client
-     * polled. That round trip was removed: a fetched config survives neither a
-     * serverless isolate nor a prerender, so an app now declares the placement
-     * in its own `SIGIL_CONFIG.feedbackButton`. The Lore-side setting outlived
-     * the mechanism that delivered it and could not take effect at all.
-     *
-     * The column stays rather than being dropped, for the same reason
-     * `projects.unlockedFeatures` and `quests.note` stay: `sigils` is the
-     * CASCADE parent of its analytics tables, and a `DROP COLUMN` that
-     * drizzle turns into a table rebuild is the wipe bomb documented in
-     * CLAUDE.md. It is also why the column is nullable with no `db.default` —
-     * a nullable `ADD COLUMN` was the one shape that avoided a rebuild going
-     * in, and staying put is the one shape that avoids one coming out.
-     */
-    feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
-    /**
-     * @deprecated Frozen dead column — nothing WRITES it since #1767.
-     *
-     * The address moved to `app_instances.url`, which is where it belongs: it
-     * describes the deployed copy rather than the credential, and an instance
-     * has one whether or not it ever mints a sigil. The backfill copied every
-     * value across, `updateSigil` lost the field, and `AppService.setUrl` is the
-     * write path now. The last readers are the pre-v3 app page's own, and they
-     * move onto the instance resource with #1774.
-     *
-     * The column stays rather than being dropped, for the reason
-     * {@link feedbackPosition} does: `sigils` is the CASCADE parent of its
-     * analytics tables, and a `DROP COLUMN` drizzle turns into a table rebuild
-     * is the wipe bomb documented in `apps/lore/CLAUDE.md`.
-     *
-     * What it was, for a reader of an older migration:
-     *
-     * The override half of the answer, and the reason there are two columns
-     * rather than one: {@link lastSeenHost} is the address the app reports
-     * from, which is right almost always and cannot be right for everyone. An
-     * app served on an apex and a `www` has two, and whichever reported last
-     * would win; an app that only ever uses the Feedback capability never
-     * posts to the ingest at all and so reports none. Neither is a bug to fix
-     * in the detection - they are cases where only the operator knows the
-     * canonical answer.
-     *
-     * A full URL, not a host, because this one is typed: someone pinning an
-     * address may well want a path on it, and refusing that would be refusing
-     * the only thing the manual field is for.
-     *
-     * Optional, and deliberately without a `db.default` - the same shape
-     * {@link feedbackPosition} carries, for the same reason. `sigils` is the
-     * CASCADE parent of its analytics tables, and a nullable `ADD COLUMN`
-     * is the one shape that does not make drizzle rebuild the table. See
-     * `apps/lore/CLAUDE.md`.
-     */
-    url: z.string().max(2048).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     createdAt: db.createdAt(),
     /**
@@ -146,9 +89,11 @@ export const sigils = $entity({
      *
      * A host, never a URL - the `Host` header carries no scheme, and the UI
      * renders `https://` in front of it rather than pretending to know.
-     * {@link url} wins wherever it is set.
+     * The instance's own `app_instances.url` wins wherever it is set.
      *
-     * Nullable for the same table-rebuild reason as {@link url}.
+     * Nullable: `sigils` is the CASCADE parent of its analytics tables, and a
+     * nullable `ADD COLUMN` is the one shape that does not make drizzle
+     * rebuild it.
      */
     lastSeenHost: z.string().max(253).optional(),
     /**
@@ -171,9 +116,7 @@ export const sigils = $entity({
      * than reading as undefined. Nothing here may become required.
      *
      * Optional, and without a `db.default`, for the same table-rebuild reason
-     * as {@link url} and {@link lastSeenHost}: `sigils` is the CASCADE parent
-     * of its analytics tables, and a nullable `ADD COLUMN` is the one
-     * shape that does not make drizzle rebuild it.
+     * as {@link lastSeenHost}.
      */
     reportedConfig: z
       .object({

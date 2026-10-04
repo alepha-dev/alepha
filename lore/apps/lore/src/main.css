@@ -645,7 +645,7 @@ body::before {
  *
  * The design runs the prose straight on under the summary divider rather
  * than boxing it in a form field, which is what every other caller of the
- * shared editor (quest descriptions, quest notes) still wants — so `bare`
+ * shared editor (quest descriptions, completion messages) still wants — so `bare`
  * drops the frame and sets the body at the design's own size.
  *
  * Applied to the VIEW face only. Edit mode is raw markdown in a monospace

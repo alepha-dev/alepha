@@ -43,15 +43,12 @@ export class QuestResourceMapper {
   }
 
   mapQuestToResource(quest: Quest): QuestResource {
-    // `note` is a dead column, read only because the entity still declares
-    // it until its drop (#E74): it never leaves the server.
-    const { note, ...row } = quest;
     // Synthesize objective IDs for legacy rows so clients always see one.
     // Backfill uses the current array position — deterministic for legacy
     // data (pre-dates ID writes), so consecutive reads return stable IDs.
     // The next write persists these IDs, after which the synthesis is a
     // no-op.
-    const objectives = row.objectives.map((obj, index) =>
+    const objectives = quest.objectives.map((obj, index) =>
       obj.id != null ? { ...obj, id: obj.id } : { ...obj, id: index },
     );
 
@@ -73,7 +70,7 @@ export class QuestResourceMapper {
     }
 
     return {
-      ...row,
+      ...quest,
       objectives,
       metadata: {
         status: this.questStatus(quest),

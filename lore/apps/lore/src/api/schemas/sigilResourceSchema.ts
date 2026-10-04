@@ -21,12 +21,6 @@ export const sigilResourceSchema = sigils.schema.omit({
   tokenHash: true,
   // A raw uuid nothing on this surface resolves to a person.
   createdBy: true,
-  // Two dead columns, declared on the entity only until their drop (#E74).
-  // The feedback button's corner is the reporting app's own
-  // `SIGIL_CONFIG.feedbackButton`, and an app's address is what it reports
-  // (`lastSeenHost`) or the instance's own `url`.
-  feedbackPosition: true,
-  url: true,
 });
 
 export type SigilResource = Infer<typeof sigilResourceSchema>;
