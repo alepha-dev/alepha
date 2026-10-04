@@ -21,7 +21,7 @@ runs:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
 
-    # `--with-deps` is deliberately absent. On `ubuntu-latest` every shared
+    # `--with-deps` is deliberately absent. On the runner image every shared
     # library chromium needs is already on the image; all the flag adds is
     # nine font packages, and it pays for them by putting `apt-get update`
     # against `azure.archive.ubuntu.com` on the critical path. On 2026-08-19
