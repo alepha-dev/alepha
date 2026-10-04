@@ -1,13 +1,14 @@
 import { AutoForm } from "@alepha/ui/form";
 import { jsonSchemaToZod, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import type { DevActionMetadata } from "alepha/inspector";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
 import { useCallback, useMemo, useState } from "react";
 
-import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
 import { useActionHistory } from "../../hooks/useActionHistory.ts";
+import { useRunAppUrl } from "../../hooks/useRunAppUrl.ts";
 
 const EMPTY_SCHEMA = z.object({});
 
@@ -71,6 +72,8 @@ export const ActionTryIt = (props: ActionTryItProps) => {
     [bodySchema],
   );
 
+  const appUrl = useRunAppUrl();
+
   const buildUrl = useCallback((): string => {
     let url = action.fullPath;
     if (paramsSchema) {
@@ -97,14 +100,11 @@ export const ActionTryIt = (props: ActionTryItProps) => {
     const started = performance.now();
     try {
       const isGet = action.method.toUpperCase() === "GET";
-      const res = await http.fetch(buildUrl(), {
+      // Through the devtools server, to the app's own HTTP port: the page is
+      // not on the app's origin. No cookie crosses that proxy, so Try It runs
+      // unauthenticated.
+      const res = await http.fetch(appUrl(buildUrl()), {
         method: action.method,
-        // Devtools is served from the application's own origin, so the session
-        // cookie is the credential. Stated rather than left to the browser
-        // default, because the whole point of the request is to run as whoever
-        // is signed in: an implicit default is not something the next reader
-        // should have to look up.
-        credentials: "include",
         body:
           !isGet && bodySchema
             ? JSON.stringify(bodyForm.currentValues)
@@ -137,6 +137,7 @@ export const ActionTryIt = (props: ActionTryItProps) => {
     }
   }, [
     action,
+    appUrl,
     http,
     buildUrl,
     bodySchema,

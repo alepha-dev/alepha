@@ -2,6 +2,7 @@ import { useRouter } from "alepha/react/router";
 import { useMemo } from "react";
 
 import type { AppRouter } from "../../AppRouter.tsx";
+import { useRunId } from "../../hooks/useRunId.ts";
 import { useDatabaseTable } from "./DatabaseTableContext.ts";
 import { RecordForm } from "./RecordForm.tsx";
 
@@ -26,6 +27,7 @@ export interface DatabaseRecordPageProps {
  */
 const DatabaseRecordPage = (props: DatabaseRecordPageProps) => {
   const router = useRouter<AppRouter>();
+  const runId = useRunId();
   const grid = useDatabaseTable();
   const isNew = props.recordId === "new";
 
@@ -55,7 +57,7 @@ const DatabaseRecordPage = (props: DatabaseRecordPageProps) => {
       onDelete={() => record && grid.removeIds([String(record[grid.pk])])}
       onClose={() =>
         router.push("rowsTable", {
-          params: { table: props.table },
+          params: { runId, table: props.table },
           query: router.query,
         })
       }

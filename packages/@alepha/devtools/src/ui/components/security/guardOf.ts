@@ -1,4 +1,4 @@
-import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
+import type { DevActionMetadata } from "alepha/inspector";
 
 export interface ActionGuard {
   /**

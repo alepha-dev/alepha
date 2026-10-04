@@ -126,6 +126,7 @@ export class BuildPipeline {
     return {
       ...current,
       stats: request.stats ?? current.stats ?? false,
+      inspect: request.inspect ?? current.inspect ?? false,
       runtime,
       runtimes,
       output: request.output
@@ -339,6 +340,12 @@ export interface BuildRequest {
    * Generate a bundle stats report.
    */
   stats?: boolean | "json";
+
+  /**
+   * Bundle `alepha/inspector` into the server slices (not workerd), off until
+   * the process runs with `ALEPHA_INSPECT=1`.
+   */
+  inspect?: boolean;
 
   /**
    * Skip the bundle steps and only regenerate deploy config.

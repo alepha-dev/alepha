@@ -46,6 +46,16 @@ export const buildOptions = $atom({
     stats: z.union([z.boolean(), z.enum(["json"])]).optional(),
 
     /**
+     * Bundle `alepha/inspector` into the server, registered before the app
+     * starts, so the production build can be inspected by devtools.
+     *
+     * It still stays off until the process is started with
+     * `ALEPHA_INSPECT=1`. A build without this flag carries none of it. No
+     * effect on a workerd slice, which has no socket to serve it on.
+     */
+    inspect: z.boolean().optional(),
+
+    /**
      * The runtime, or runtimes, the server is linked for.
      *
      * - `node` - Node.js (the default, and the universal floor: it runs under

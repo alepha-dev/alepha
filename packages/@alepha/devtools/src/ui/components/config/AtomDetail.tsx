@@ -1,12 +1,13 @@
 import { AutoForm } from "@alepha/ui/form";
 import { jsonSchemaToZod, z } from "alepha";
+import type { DevAtomMetadata } from "alepha/inspector";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
 import { RotateCcw, Save } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import type { DevAtomMetadata } from "../../../schemas/DevAtomMetadata.ts";
+import { useRunApi } from "../../hooks/useRunApi.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
 import { AtomChannels } from "./AtomChannels.tsx";
 import { AtomMutations } from "./AtomMutations.tsx";
@@ -20,6 +21,7 @@ export interface AtomDetailProps {
 export const AtomDetail = (props: AtomDetailProps) => {
   const atom = props.atom;
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const [jsonMode, setJsonMode] = useState(false);
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export const AtomDetail = (props: AtomDetailProps) => {
     async (value: unknown) => {
       setStatus(null);
       try {
-        const res = await http.fetch("/__devtools/api/atoms", {
+        const res = await http.fetch(api("/atoms"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: atom.name, value }),
@@ -83,7 +85,7 @@ export const AtomDetail = (props: AtomDetailProps) => {
         setStatus(e?.message ?? "Failed to save");
       }
     },
-    [http, atom.name, props],
+    [http, api, atom.name, props],
   );
 
   return (

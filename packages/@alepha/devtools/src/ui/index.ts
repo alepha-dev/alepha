@@ -3,6 +3,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 
 import { AppRouter } from "./AppRouter.tsx";
 import { devMetadataAtom } from "./atoms/devMetadataAtom.ts";
+import { devRunsAtom } from "./atoms/devRunsAtom.ts";
 
 /**
  * The devtools browser application.
@@ -17,5 +18,5 @@ export const DevToolsApp = $module({
   name: "alepha.devtools.ui",
   imports: [AlephaReactI18n],
   services: [AppRouter],
-  atoms: [devMetadataAtom],
+  atoms: [devMetadataAtom, devRunsAtom],
 });

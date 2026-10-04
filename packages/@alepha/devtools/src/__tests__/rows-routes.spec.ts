@@ -55,13 +55,17 @@ describe("the devtools Rows routes", () => {
   }) => {
     const { layersOf } = await setup();
 
-    const layers = await layersOf("rowsRecord", { table: "users", id: "42" });
+    const layers = await layersOf("rowsRecord", {
+      runId: "abcd1234",
+      table: "users",
+      id: "42",
+    });
 
     expect(layers.map((layer) => layer.key)).toEqual([
-      "/",
-      "/rows",
-      "/rows/users",
-      "/rows/users/42",
+      "/apps/abcd1234",
+      "/apps/abcd1234/rows",
+      "/apps/abcd1234/rows/users",
+      "/apps/abcd1234/rows/users/42",
     ]);
   });
 
@@ -70,10 +74,13 @@ describe("the devtools Rows routes", () => {
   }) => {
     const { layersOf } = await setup();
 
-    const table = await layersOf("rowsTable", { table: "users" });
+    const table = await layersOf("rowsTable", {
+      runId: "abcd1234",
+      table: "users",
+    });
     const record = await layersOf(
       "rowsRecord",
-      { table: "users", id: "42" },
+      { runId: "abcd1234", table: "users", id: "42" },
       table,
     );
 
@@ -95,13 +102,20 @@ describe("the devtools Rows routes", () => {
   }) => {
     const { layersOf } = await setup();
 
-    const users = await layersOf("rowsTable", { table: "users" });
-    const posts = await layersOf("rowsTable", { table: "posts" }, users);
+    const users = await layersOf("rowsTable", {
+      runId: "abcd1234",
+      table: "users",
+    });
+    const posts = await layersOf(
+      "rowsTable",
+      { runId: "abcd1234", table: "posts" },
+      users,
+    );
 
     expect(posts.map((layer) => layer.key)).toEqual([
-      "/",
-      "/rows",
-      "/rows/posts",
+      "/apps/abcd1234",
+      "/apps/abcd1234/rows",
+      "/apps/abcd1234/rows/posts",
     ]);
     expect(posts.map((layer) => layer.cache === true)).toEqual([
       true,

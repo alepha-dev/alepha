@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { LogEntry } from "../../hooks/useLogTail.ts";
 import { DetailFields } from "../declared/DetailFields.tsx";
 import { detectEventType } from "./DevLogs.tsx";
+import { StackTrace } from "./StackTrace.tsx";
 
 export interface LogDetailProps {
   entry: LogEntry;
@@ -97,9 +98,7 @@ export const LogDetail = (props: LogDetailProps) => {
       {entry.stack && (
         <>
           <div className="dt-section-label">Stack</div>
-          <pre className="dt-pre" style={{ color: "var(--dt-error)" }}>
-            {entry.stack}
-          </pre>
+          <StackTrace stack={entry.stack} />
         </>
       )}
     </div>

@@ -815,6 +815,8 @@ export class DocsCommand {
             ? `alepha/${moduleName}`
             : `alepha/${moduleName.substring(0, idx)}/${moduleName.substring(idx + 1)}`;
       md += `Part of the \`alepha\` package. Import from \`${importPath}\`.\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\n`;
+    } else if (this.isToolPackage(pkgJson)) {
+      md += `\`\`\`bash\nnpx ${pkgJson.name}\n\`\`\`\n\n`;
     } else {
       md += `\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     }
@@ -860,8 +862,23 @@ export class DocsCommand {
     if (pkgJson.description) md += `${pkgJson.description}\n\n`;
     md += isCreatePackage
       ? `## Usage\n\n\`\`\`bash\nnpm create alepha my-app\n\`\`\`\n\n`
-      : `## Installation\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
+      : this.isToolPackage(pkgJson)
+        ? `## Usage\n\n\`\`\`bash\nnpx ${pkgJson.name}\n\`\`\`\n\n`
+        : `## Installation\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     return `${md}${doc}\n`;
+  }
+
+  /**
+   * A package that is run with `npx`, never installed into an app: one with
+   * a `bin` (`@alepha/devtools`). `create-alepha` has its own wording, and
+   * `alepha` ships a CLI beside the library every app imports.
+   */
+  isToolPackage(pkgJson: any): boolean {
+    return (
+      !!pkgJson.bin &&
+      pkgJson.name !== "alepha" &&
+      !pkgJson.name.startsWith("create-")
+    );
   }
 
   generatePackageReadme(
@@ -880,7 +897,9 @@ export class DocsCommand {
     if (pkgJson.description) md += `${pkgJson.description}\n\n`;
     md += isCreatePackage
       ? `## Usage\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm create alepha my-app\n\`\`\`\n\n`
-      : `## Installation\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
+      : this.isToolPackage(pkgJson)
+        ? `## Usage\n\nPart of the Alepha framework, run rather than installed:\n\n\`\`\`bash\nnpx ${pkgJson.name}\n\`\`\`\n\n`
+        : `## Installation\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     if (doc) md += `${doc}\n\n`;
     if (data.description) md += `## Module\n\n${data.description}\n\n`;
     md += this.generateApiReference(

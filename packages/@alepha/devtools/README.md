@@ -1,32 +1,47 @@
 # Alepha @alepha/devtools
 
-Developer tools for Alepha applications.
+Alepha DevTools: every app running on this machine, inspected from one place. Run it with npx @alepha/devtools.
 
-## Installation
+## Usage
 
-Part of the Alepha framework, published on its own:
+Part of the Alepha framework, run rather than installed:
 
 ```bash
-npm install @alepha/devtools
+npx @alepha/devtools
 ```
 
-## Module
+## What it is
 
-Runtime inspection and debugging UI.
+A local web app that finds every Alepha app running on your machine and
+inspects it: actions, pages, jobs, topics, caches, storages, realms and roles;
+the database schema and its rows; environment and atoms; the dependency graph;
+the email and SMS outbox; and a live log tail. It is a tool you run, never a
+dependency of your app.
 
-**Features:**
+```bash
+npx @alepha/devtools              # 127.0.0.1:3310, or the next free port
+npx @alepha/devtools --port 4000  # a port of your choice
+npx @alepha/devtools --no-open    # do not open the browser
+```
 
-- DevTools UI at `GET /__devtools`
-- Application metadata at `GET /__devtools/api/metadata`
-- Last 10,000 logs at `GET /__devtools/api/logs`
-- Runtime inspection of actions, jobs, topics, storages
-- Log viewer with filtering
-- React Flow visualization
-- Provider and module browsing
+## How it finds your apps
 
-## API Reference
+Every app `alepha dev` runs carries `alepha/inspector`: it announces itself in
+`~/.alepha/run/` and serves the inspector over a Unix socket only you can
+open. The devtools lists that directory, follows apps as they start, stop and
+hot-reload, and talks to each one through its socket. Nothing is added to your
+app, and nothing listens on its port.
 
-### Providers
+A production build is inspectable when built with `alepha build --inspect`
+and started with `ALEPHA_INSPECT=1`. See the
+[Inspector guide](https://alepha.dev/docs/guides-core-inspector) for that,
+for Docker, and for writing a tool of your own on the same protocol.
 
-- [`DevAtomLogProvider`](https://alepha.dev/docs/reference-providers-devatomlogprovider) - In-memory ring buffer of `state:mutate` events, powering the devtools
-- [`DevLogStoreProvider`](https://alepha.dev/docs/reference-providers-devlogstoreprovider) - The devtools log buffer, and the part of it that outlives the process.
+## Security
+
+The devtools reads and writes your apps' state (database rows, atoms, jobs)
+and shows their environment, secrets included. It listens on `127.0.0.1` only,
+answers only to a loopback `Host` on its own port (which defeats DNS
+rebinding), refuses a request whose `Origin` is another site's, and never
+sends a CORS header: a web page you have open can neither read it nor write
+through it.

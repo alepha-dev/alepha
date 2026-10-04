@@ -1183,3 +1183,18 @@ body:has(.dt-root) {
   background: var(--primary);
   filter: brightness(0.95);
 }
+
+/* A stack frame that opens in the editor. ---------------------------------- */
+
+.dt-link {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.dt-link:hover,
+.dt-link:focus-visible {
+  color: var(--dt-fg);
+  text-decoration-style: solid;
+}

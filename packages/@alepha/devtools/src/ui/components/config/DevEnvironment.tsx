@@ -1,7 +1,7 @@
+import type { DevEnvMetadata } from "alepha/inspector";
 import { Check, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { DevEnvMetadata } from "../../../schemas/DevEnvMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";

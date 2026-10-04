@@ -3,6 +3,7 @@ import { RotateCw } from "lucide-react";
 
 import { useLogTail } from "../../hooks/useLogTail.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
+import { useRunHref } from "../../hooks/useRunHref.ts";
 import { DevError } from "../shared/DevError.tsx";
 import { DevSectionHeader } from "../shared/DevSectionHeader.tsx";
 import { DashboardEvents } from "./DashboardEvents.tsx";
@@ -13,6 +14,7 @@ import { DashboardSystemStrip } from "./DashboardSystemStrip.tsx";
 export const DevDashboard = () => {
   const meta = useMetadata();
   const router = useRouter();
+  const href = useRunHref();
   const tail = useLogTail({
     level: "DEBUG",
     type: "",
@@ -54,7 +56,7 @@ export const DevDashboard = () => {
         <DashboardEvents entries={tail.entries} />
         <DashboardLogs
           entries={tail.entries}
-          onViewAll={() => router.push("/logs")}
+          onViewAll={() => router.push(href("/logs"))}
         />
       </div>
 

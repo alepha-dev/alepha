@@ -1,4 +1,4 @@
-import type { DevSystem } from "../../../schemas/DevMetadata.ts";
+import type { DevSystem } from "alepha/inspector";
 
 export interface DashboardSystemStripProps {
   system?: DevSystem;

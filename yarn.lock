@@ -71,7 +71,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools@workspace:*, @alepha/devtools@workspace:packages/@alepha/devtools":
+"@alepha/devtools@workspace:packages/@alepha/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/@alepha/devtools"
   dependencies:
@@ -91,10 +91,8 @@ __metadata:
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.2"
     vitest: "npm:^5.0.3"
-  peerDependencies:
-    alepha: ^0.31.0
-    react: ^19
-    react-dom: ^19
+  bin:
+    alepha-devtools: ./dist/bin.js
   languageName: unknown
   linkType: soft
 
@@ -7551,7 +7549,6 @@ __metadata:
   resolution: "shop@workspace:apps/examples/shop"
   dependencies:
     "@alepha/commerce": "workspace:*"
-    "@alepha/devtools": "workspace:*"
     "@alepha/payments-stripe": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@fontsource-variable/archivo": "npm:^5.3.0"
@@ -7937,7 +7934,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "totp-example@workspace:apps/examples/totp"
   dependencies:
-    "@alepha/devtools": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.3"
     alepha: "workspace:^"

@@ -1,7 +1,7 @@
+import type { DevPageMetadata } from "alepha/inspector";
 import { FileText } from "lucide-react";
 import { useMemo } from "react";
 
-import type { DevPageMetadata } from "../../../schemas/DevPageMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";

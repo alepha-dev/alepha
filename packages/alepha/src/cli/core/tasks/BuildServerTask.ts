@@ -134,6 +134,7 @@ export class BuildServerTask extends BuildTask {
             meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
             allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
             ssr,
+            inspect: this.inspects(ctx, runtime),
           });
           ssr ??= built.ssr;
           if (runtime === this.slices.primary(runtimes)) {
@@ -202,6 +203,20 @@ export class BuildServerTask extends BuildTask {
     });
   }
 
+  /**
+   * Whether a slice carries the inspector: asked for with `--inspect`, and a
+   * runtime that can serve its socket. workerd has no filesystem to put one
+   * on, so it is left out there, with one line saying so.
+   */
+  protected inspects(ctx: BuildTaskContext, runtime: BuildRuntime): boolean {
+    if (!ctx.options.inspect) return false;
+    if (runtime === "workerd") {
+      this.log.info("--inspect: the workerd slice carries no inspector");
+      return false;
+    }
+    return true;
+  }
+
   protected async buildServer(opts: {
     root: string;
     entry: string;
@@ -234,6 +249,10 @@ export class BuildServerTask extends BuildTask {
      * the build.
      */
     allowUnresolvedPreloads?: string[];
+    /**
+     * Bundle `alepha/inspector` and register it before the app starts.
+     */
+    inspect?: boolean;
   }): Promise<{ entryFile: string; externals: string[]; ssr?: SsrManifest }> {
     const serverDir = this.slices.serverDir(opts.runtime);
     const conditions: string[] = [];
@@ -289,20 +308,30 @@ export class BuildServerTask extends BuildTask {
     // entry that both runs the real app entry (for its side effects) and
     // re-exports the DO class. The same `entry` is passed to `build.ssr` and
     // to `extractEntryFromBundle`, so the facade chunk is found.
+    //
+    // `--inspect` goes through the same generated entry. Imports evaluate in
+    // order, so the app entry runs first: `run()` publishes the app on
+    // `globalThis.__alepha` and defers its start to a timer, and the inspector
+    // is registered here, synchronously, before that timer fires.
     let entry = opts.entry;
-    if (this.exportDurableObject) {
+    if (this.exportDurableObject || opts.inspect) {
       const entryAbsolute = isAbsolute(opts.entry)
         ? opts.entry
         : join(opts.root, opts.entry);
       // Named after the runtime: two slices generating the same file would
       // race, and only one of them builds what it thinks it built.
       const generated = `${opts.distDir}/.alepha-${opts.runtime}-entry.mjs`;
+      let source = `import ${JSON.stringify(entryAbsolute)};\n`;
+      if (this.exportDurableObject) {
+        source += `export { AlephaWebSocketDurableObject } from "alepha/websocket";\n`;
+      }
+      if (opts.inspect) {
+        source +=
+          `import { AlephaInspector } from "alepha/inspector";\n` +
+          `globalThis.__alepha?.with(AlephaInspector);\n`;
+      }
       await this.fs.mkdir(opts.distDir);
-      await this.fs.writeFile(
-        generated,
-        `import ${JSON.stringify(entryAbsolute)};\n` +
-          `export { AlephaWebSocketDurableObject } from "alepha/websocket";\n`,
-      );
+      await this.fs.writeFile(generated, source);
       entry = generated;
     }
 
@@ -398,6 +427,12 @@ export class BuildServerTask extends BuildTask {
     }
 
     const entryFile = this.extractEntryFromBundle(opts.root, entry, result);
+
+    // The generated entry is a build input, not part of the artifact: it
+    // names the app's entry by its absolute path on this machine.
+    if (entry !== opts.entry) {
+      await this.fs.rm(entry, { force: true });
+    }
 
     // Read once per BUILD, not once per slice. The directory it reads is
     // deleted by `run` after the last slice, so a second read would find
