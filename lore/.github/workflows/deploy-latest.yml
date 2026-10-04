@@ -46,6 +46,14 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      # The restore point, in the log, before `platform up` migrates (#Q2603).
+      # Time Travel restores to any minute of the last 30 days anyway; the
+      # bookmark makes that restore one copy-paste:
+      #   wrangler d1 time-travel restore lore-production --bookmark=<it>
+      - name: Time Travel bookmark
+        working-directory: apps/lore
+        run: yarn wrangler d1 time-travel info lore-production
+
       # ⚠️ The Worker is `lore-production` (`platform({ name: "lore" })`).
       # Any other name provisions an empty D1 and moves lore.alepha.dev onto it.
       - name: Deploy

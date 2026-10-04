@@ -6,6 +6,7 @@ import { cloudflare, platform } from "alepha/cli/platform";
 // workflow bumps `apps/lore` and `@alepha/lore` together. /version still
 // reports the framework it runs on, as `framework`.
 import pkg from "./package.json" with { type: "json" };
+import { RehearseMigrationCommand } from "./scripts/rehearsal/RehearseMigrationCommand.ts";
 
 export default defineConfig({
   // ⚠️ Top-level `image:`, not `build.docker`. Config follows the command that
@@ -284,6 +285,10 @@ export default defineConfig({
         "parameters.",
       ],
     }),
+    // `alepha rehearse`: the pending migrations applied to a throwaway copy
+    // of lore-production, row counts compared (#Q2603). Run by the
+    // `Rehearse migration` workflow, never from a laptop.
+    RehearseMigrationCommand,
     // Retired app-local commands, kept as notes:
     // Pulling the production D1 into the local dev SQLite is now a
     // baseline command: `alepha platform db export [--env] [--tenant]

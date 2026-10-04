@@ -1,0 +1,52 @@
+name: Rehearse migration
+
+permissions:
+  contents: read
+
+# Applies the pending migrations of the dispatched branch to a throwaway copy
+# of lore-production, through the same D1 import flow `platform up` uses, and
+# fails when a row count moves or a table disappears that no
+# `alepha-allow-drop-table` marker names (#Q2603, #E74).
+#
+# Evidence, not a gate: the gate is migration-safety.spec.ts. Run it on the
+# branch that carries a destructive migration and link the run from its quest.
+#
+# ⚠️ The export is every production row. It lives only on this runner and in
+# the `lore-rehearsal` copy, both deleted below whatever happens, and no
+# artifact is uploaded. The log carries table names and counts, never a row.
+on:
+  workflow_dispatch:
+
+concurrency:
+  # One copy name, so one rehearsal at a time.
+  group: rehearse-migration
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Rehearse
+        working-directory: apps/lore
+        run: yarn alepha rehearse --env production
+
+      # The command cleans up after itself; this covers a process that died
+      # before its `finally` ran.
+      - name: Delete the copy and the dump
+        if: always()
+        working-directory: apps/lore
+        run: |
+          rm -rf node_modules/.alepha/rehearsal
+          yarn wrangler d1 delete lore-rehearsal --skip-confirmation || true
