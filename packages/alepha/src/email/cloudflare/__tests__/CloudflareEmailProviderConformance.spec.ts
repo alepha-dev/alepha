@@ -16,7 +16,7 @@ class RecordingBinding implements CloudflareEmailBinding {
     message: CloudflareEmailSendMessage,
   ): Promise<CloudflareEmailSendResult> {
     this.calls.push(message);
-    return { id: "cf-msg-1", status: "queued" };
+    return { messageId: "cf-msg-1" };
   }
 }
 
