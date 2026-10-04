@@ -16,7 +16,7 @@ import type { InspectorRegistry } from "./InspectorRegistry.ts";
 /**
  * A log entry as the inspector serves it: numbered, so a reader can resume.
  */
-export type InspectorLogEntry = LogEntry & { seq: number };
+export type InspectorLogEntry = LogEntry & { seq: number; stack?: string };
 
 export interface InspectorTailOptions {
   /**
@@ -321,8 +321,26 @@ export class InspectorConnection {
    * codes the pretty formatter put in messages.
    */
   protected stripAnsi(entry: InspectorLogEntry): InspectorLogEntry {
-    return typeof entry.message === "string"
-      ? { ...entry, message: entry.message.replace(/\u001b\[[0-9;]*m/g, "") }
-      : entry;
+    const stack = this.stackOf(entry.data);
+    const cleaned =
+      typeof entry.message === "string"
+        ? { ...entry, message: entry.message.replace(/\u001b\[[0-9;]*m/g, "") }
+        : entry;
+    return stack ? { ...cleaned, stack } : cleaned;
+  }
+
+  /**
+   * The stack of the error an entry carries, lifted to `stack` as the live
+   * `/logs` route does.
+   */
+  protected stackOf(data: unknown): string | undefined {
+    if (!data || typeof data !== "object") return undefined;
+    const own = (data as { stack?: unknown }).stack;
+    if (typeof own === "string") return own;
+    for (const value of Object.values(data)) {
+      const nested = (value as { stack?: unknown } | null)?.stack;
+      if (typeof nested === "string") return nested;
+    }
+    return undefined;
   }
 }

@@ -1,7 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Alepha } from "alepha";
 import { AlephaInspector, InspectorRunProvider } from "alepha/inspector";
@@ -10,6 +11,24 @@ import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
 import { afterEach, describe, it } from "vitest";
 
 import { AlephaDevtoolsServer } from "../server/index.ts";
+import { GitStateProvider } from "../server/providers/GitStateProvider.ts";
+import { EditorLauncher } from "../server/services/EditorLauncher.ts";
+
+/**
+ * Records what would be opened instead of opening it.
+ */
+class TestEditorLauncher extends EditorLauncher {
+  public opened: Array<[string, number, number]> = [];
+
+  public override async open(
+    file: string,
+    line: number,
+    column = 1,
+  ): Promise<string> {
+    this.opened.push([file, line, column]);
+    return "test-editor";
+  }
+}
 
 /**
  * A route of the inspected app itself, for Try It.
@@ -51,13 +70,14 @@ describe("the devtools server", () => {
       env: { ALEPHA_RUN_DIR: runDir, SERVER_PORT: 0 },
     })
       .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
+      .with({ provide: EditorLauncher, use: TestEditorLauncher })
       .with(AlephaDevtoolsServer);
     await devtools.start();
     cleanups.push(() => devtools.stop());
 
     const base = devtools.inject(ServerProvider).hostname;
     const runId = app.inject(InspectorRunProvider).runId;
-    return { app, base, runId, runDir, root };
+    return { app, devtools, base, runId, runDir, root };
   };
 
   it("lists the running apps", async ({ expect }) => {
@@ -195,5 +215,54 @@ describe("the devtools server", () => {
 
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("hi");
+  });
+
+  it("reports the worktree's git state with the runs, once refreshed", async ({
+    expect,
+  }) => {
+    const { app, devtools, base } = await setup();
+    const gitRoot = (await app.inject(InspectorRunProvider).entry()).gitRoot;
+
+    await fetch(`${base}/runs`);
+    await devtools.inject(GitStateProvider).refresh();
+    const body = await (await fetch(`${base}/runs`)).json();
+
+    // The spec runs inside this repository's checkout.
+    expect(gitRoot).toBeDefined();
+    expect(body.worktrees[gitRoot!]).toMatchObject({
+      worktree: gitRoot,
+      branch: expect.any(String),
+      dirty: expect.any(Number),
+    });
+  });
+
+  it("opens the app's own files in the editor, and nothing else", async ({
+    expect,
+  }) => {
+    const { devtools, base, runId } = await setup();
+    const editor = devtools.inject(TestEditorLauncher);
+    const open = (file: string) =>
+      fetch(`${base}/apps/${runId}/editor`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ file, line: 3, column: 1 }),
+      });
+
+    // The app's cwd is the test process's: a file under it opens.
+    const own = fileURLToPath(new URL("../bin.ts", import.meta.url));
+    expect((await open(own)).status).toBe(200);
+    expect(editor.opened).toEqual([[own, 3, 1]]);
+
+    // A relative path resolves against the app's directory.
+    expect((await open(relative(process.cwd(), own))).status).toBe(200);
+
+    // Outside the app, or a dependency inside it: refused, nothing opened.
+    expect((await open("/etc/hosts")).status).toBe(400);
+    expect((await open("../../../package.json")).status).toBe(400);
+    expect(
+      (await open(`${process.cwd()}/node_modules/alepha/package.json`)).status,
+    ).toBe(400);
+    expect((await open("src/missing.ts")).status).toBe(404);
+    expect(editor.opened).toHaveLength(2);
   });
 });

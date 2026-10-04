@@ -16,12 +16,12 @@ export const inspectorRunEntrySchema = z.object({
    * The `name` of the nearest `package.json` above `cwd`, else its basename.
    */
   name: z.text(),
-  cwd: z.text(),
+  cwd: z.text({ size: "long" }),
   /**
    * The nearest ancestor of `cwd` holding `.git` (a directory, or a
    * worktree's file). Absent outside a repository.
    */
-  gitRoot: z.text().optional(),
+  gitRoot: z.text({ size: "long" }).optional(),
   pid: z.integer(),
   mode: z.enum(["development", "production"]),
   alephaVersion: z.text(),
@@ -38,11 +38,11 @@ export const inspectorRunEntrySchema = z.object({
    * `/root/.alepha/run/x.sock`, a path the host cannot open, so the reader
    * resolves the name against the directory it found the entry in.
    */
-  socket: z.text(),
+  socket: z.text({ size: "long" }),
   /**
    * Absolute path of the log file the process persists to, which outlives it.
    */
-  logFile: z.text().optional(),
+  logFile: z.text({ size: "long" }).optional(),
 });
 
 export type InspectorRunEntry = Infer<typeof inspectorRunEntrySchema>;

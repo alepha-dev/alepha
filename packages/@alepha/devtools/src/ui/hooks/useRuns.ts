@@ -1,10 +1,12 @@
-import type { InspectorRun } from "alepha/inspector";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { HttpClient } from "alepha/server";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { devRunsAtom } from "../atoms/devRunsAtom.ts";
 
 /**
- * The runs on this machine, from the devtools server, kept current.
+ * The runs on this machine, from the devtools server, kept current, with the
+ * git state of their worktrees.
  *
  * Polled: apps start, stop and restart (every HMR reload under `alepha dev`
  * is a new run), and the list has to follow without a reload. Live runs
@@ -12,30 +14,22 @@ import { useCallback, useEffect, useState } from "react";
  */
 export const useRuns = (pollMs = 2000) => {
   const http = useInject(HttpClient);
-  const [runs, setRuns] = useState<InspectorRun[]>([]);
+  const [state, setState] = useStore(devRunsAtom);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
   const load = useCallback(async () => {
     try {
       const res = await http.fetch("/runs");
-      const list = ((res.data as any)?.runs ?? []) as InspectorRun[];
-      setRuns(
-        list.toSorted((a, b) =>
-          a.status === b.status
-            ? b.startedAt.localeCompare(a.startedAt)
-            : a.status === "live"
-              ? -1
-              : 1,
-        ),
-      );
+      const data = (res.data ?? {}) as any;
+      setState({ runs: data.runs ?? [], worktrees: data.worktrees ?? {} });
       setError(undefined);
     } catch (e: any) {
       setError(e?.message ?? "Failed to list the running apps");
     } finally {
       setLoaded(true);
     }
-  }, [http]);
+  }, [http, setState]);
 
   useEffect(() => {
     // An effect that starts an I/O load is the "synchronize with an external
@@ -47,5 +41,23 @@ export const useRuns = (pollMs = 2000) => {
     return () => clearInterval(id);
   }, [load, pollMs]);
 
-  return { runs, loaded, error, reload: load };
+  const runs = useMemo(
+    () =>
+      (state?.runs ?? []).toSorted((a, b) =>
+        a.status === b.status
+          ? b.startedAt.localeCompare(a.startedAt)
+          : a.status === "live"
+            ? -1
+            : 1,
+      ),
+    [state],
+  );
+
+  return {
+    runs,
+    worktrees: state?.worktrees ?? {},
+    loaded,
+    error,
+    reload: load,
+  };
 };

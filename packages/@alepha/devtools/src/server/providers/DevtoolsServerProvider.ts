@@ -9,9 +9,17 @@ import {
 import { $logger } from "alepha/logger";
 import {
   $route,
+  BadRequestError,
+  NotFoundError,
   type ServerRequest,
   ServerRouterProvider,
 } from "alepha/server";
+import { FileSystemProvider } from "alepha/system";
+
+import { migrationDriftSchema } from "../schemas/migrationDriftSchema.ts";
+import { worktreeStateSchema } from "../schemas/worktreeStateSchema.ts";
+import { EditorLauncher } from "../services/EditorLauncher.ts";
+import { GitStateProvider } from "./GitStateProvider.ts";
 
 /**
  * The devtools server: the list of runs, and a proxy from the browser to
@@ -31,6 +39,9 @@ export class DevtoolsServerProvider {
   protected readonly client = $inject(InspectorClient);
   protected readonly registry = $inject(InspectorRegistry);
   protected readonly serverRouter = $inject(ServerRouterProvider);
+  protected readonly gitState = $inject(GitStateProvider);
+  protected readonly editor = $inject(EditorLauncher);
+  protected readonly fs = $inject(FileSystemProvider);
 
   /**
    * Request bodies are JSON edits from the UI.
@@ -39,17 +50,99 @@ export class DevtoolsServerProvider {
 
   /**
    * Every run the UI can switch to: live ones, then the last dead run of each
-   * app while its logs remain. The UI polls it to follow apps as they start,
-   * stop, and restart.
+   * app while its logs remain, with the git state of their worktrees. The UI
+   * polls it to follow apps as they start, stop, and restart.
    */
   protected readonly runsRoute = $route({
     method: "GET",
     path: "/runs",
     silent: true,
     schema: {
-      response: z.object({ runs: z.array(inspectorRunSchema) }),
+      response: z.object({
+        runs: z.array(inspectorRunSchema),
+        /**
+         * By worktree root (a run's `gitRoot`), as last refreshed.
+         */
+        worktrees: z.record(z.text(), worktreeStateSchema),
+      }),
     },
-    handler: async () => ({ runs: await this.client.discover() }),
+    handler: async () => {
+      const runs = await this.client.discover();
+      this.gitState.observe(runs);
+      return { runs, worktrees: this.gitState.snapshot() };
+    },
+  });
+
+  /**
+   * The app's migration files that differ from the default branch, as last
+   * refreshed; `pending` until the first refresh has run.
+   */
+  protected readonly migrationsRoute = $route({
+    method: "GET",
+    path: "/apps/:runId/migrations",
+    silent: true,
+    schema: {
+      params: z.object({ runId: z.text() }),
+      response: migrationDriftSchema.extend({
+        pending: z.boolean().optional(),
+      }),
+    },
+    handler: async ({ params }) => {
+      const run = await this.registry.get(params.runId);
+      if (!run) throw new NotFoundError(`No run ${params.runId}`);
+      if (!run.gitRoot) return { files: [] };
+
+      const drift = this.gitState.driftOf(run.cwd);
+      if (drift) return drift;
+      this.gitState.observe([run]);
+      return { files: [], pending: true };
+    },
+  });
+
+  /**
+   * Open a file of the app at a line, in the developer's editor. Only a file
+   * inside the app's own directory, and never under `node_modules`: a stack
+   * frame elsewhere is not the app's code, and this must not become a way to
+   * open arbitrary paths.
+   */
+  protected readonly editorRoute = $route({
+    method: "POST",
+    path: "/apps/:runId/editor",
+    silent: true,
+    schema: {
+      params: z.object({ runId: z.text() }),
+      body: z.object({
+        file: z.text({ size: "long" }),
+        line: z.integer(),
+        column: z.integer().optional(),
+      }),
+      response: z.object({ editor: z.text() }),
+    },
+    handler: async ({ params, body }) => {
+      const run = await this.registry.get(params.runId);
+      if (!run) throw new NotFoundError(`No run ${params.runId}`);
+
+      const file = this.fs.resolve(run.cwd, body.file);
+      const inside = file.startsWith(`${run.cwd.replace(/[\\/]$/, "")}/`);
+      if (!inside || /[\\/]node_modules[\\/]/.test(file)) {
+        throw new BadRequestError(
+          "Only the app's own files open in the editor",
+        );
+      }
+      if (!(await this.fs.exists(file))) {
+        throw new NotFoundError(`No file ${file}`);
+      }
+
+      try {
+        return {
+          editor: await this.editor.open(file, body.line, body.column ?? 1),
+        };
+      } catch (error) {
+        throw new BadRequestError(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    },
   });
 
   /**

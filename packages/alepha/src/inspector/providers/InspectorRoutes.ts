@@ -1,7 +1,7 @@
 import { $inject, $store, Alepha, z } from "alepha";
 import { JobService } from "alepha/api/jobs";
 import { localEmailOptions } from "alepha/email";
-import { $logger } from "alepha/logger";
+import { $logger, JsonFormatterProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
 import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider } from "alepha/system";
@@ -41,6 +41,7 @@ export class InspectorRoutes {
   protected readonly logStore = $inject(DevLogStoreProvider);
   protected readonly atomLog = $inject(DevAtomLogProvider);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly json = $inject(JsonFormatterProvider);
   protected readonly emailOptions = $store(localEmailOptions);
   protected readonly smsOptions = $store(localSmsOptions);
 
@@ -177,7 +178,7 @@ export class InspectorRoutes {
            * and that path is the whole point of the footer: it is what you
            * need when you go looking outside devtools.
            */
-          directory: z.text(),
+          directory: z.text({ size: "long" }),
         }),
       },
       handler: async () => {
@@ -208,7 +209,7 @@ export class InspectorRoutes {
            * spelled out a second time. An app that moved its outbox used to
            * see an empty screen here with no hint as to why.
            */
-          directory: z.text(),
+          directory: z.text({ size: "long" }),
         }),
       },
       handler: async () => {
@@ -575,7 +576,7 @@ export class InspectorRoutes {
     }
 
     return {
-      logs: entries.map((e) => this.stripAnsiEntry(e)),
+      logs: entries.map((e) => this.serializeEntry(e)),
       total,
       hasMore,
       dropped: this.logStore.dropped(),
@@ -609,6 +610,38 @@ export class InspectorRoutes {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * A log entry as it crosses the wire: colour codes stripped, errors
+   * expanded (an Error serializes as `{}`), and the first error's stack lifted
+   * to `stack`, which the log panel renders as a trace.
+   */
+  protected serializeEntry<T extends { message?: string; data?: unknown }>(
+    entry: T,
+  ): T & { stack?: string } {
+    const data = this.json.serializeData(entry.data);
+    const stack = this.stackOf(data);
+    return {
+      ...this.stripAnsiEntry(entry),
+      data,
+      ...(stack ? { stack } : {}),
+    };
+  }
+
+  /**
+   * The stack of the error a log entry carries: its `data` itself, or one of
+   * its values (`log.error("...", { error })`), already serialized.
+   */
+  protected stackOf(data: unknown): string | undefined {
+    if (!data || typeof data !== "object") return undefined;
+    const own = (data as { stack?: unknown }).stack;
+    if (typeof own === "string") return own;
+    for (const value of Object.values(data)) {
+      const nested = (value as { stack?: unknown } | null)?.stack;
+      if (typeof nested === "string") return nested;
+    }
+    return undefined;
   }
 
   /**

@@ -166,3 +166,31 @@ describe("InspectorDispatcher", () => {
     await alepha.stop();
   });
 });
+
+describe("InspectorRoutes: GET /logs and errors", () => {
+  it("expands an error and lifts its stack, which JSON alone would lose", async () => {
+    const alepha = await boot();
+    const { MemoryDestinationProvider } = await import("alepha/logger");
+    const memory = alepha.inject(MemoryDestinationProvider);
+    const error = new Error("boom");
+    memory.write("", {
+      level: "ERROR",
+      message: "failed",
+      service: "spec",
+      module: "spec",
+      timestamp: 1,
+      data: { error },
+    });
+
+    const { body } = await call(alepha, "GET", "/logs", {
+      query: { limit: "5" },
+    });
+    const entry = body.logs.find((e: any) => e.message === "failed");
+
+    expect(entry.data.error).toMatchObject({ name: "Error", message: "boom" });
+    expect(entry.stack).toContain("boom");
+    expect(entry.stack).toContain("InspectorRoutes.spec");
+
+    await alepha.stop();
+  });
+});

@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   $logger,
+  JsonFormatterProvider,
   LogDestinationProvider,
   type LogEntry,
   MemoryDestinationProvider,
@@ -35,6 +36,7 @@ export class DevLogStoreProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly memory = $inject(MemoryDestinationProvider);
   protected readonly destination = $inject(LogDestinationProvider);
+  protected readonly json = $inject(JsonFormatterProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -284,7 +286,12 @@ export class DevLogStoreProvider {
 
   protected serialize(entry: LogEntry): string {
     try {
-      return JSON.stringify(entry);
+      // Errors expanded: `JSON.stringify` writes an Error as `{}`, which is
+      // the one thing a crashed run's log most needs to keep.
+      return JSON.stringify({
+        ...entry,
+        data: this.json.serializeData(entry.data),
+      });
     } catch {
       // A circular or otherwise unserialisable `data` payload must not cost the
       // whole line. The message is the part someone came here to read.
