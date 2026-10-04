@@ -25,10 +25,11 @@ permissions:
 # ────────────────────────────────────────────────────────────────────────
 on:
   schedule:
-    # Off-peak, and not on the hour: GitHub queues every `0 * * * *` cron in
-    # the world at once and delays them by 5-15min under that load. The minute
-    # is arbitrary, the point is that it is nobody's round number.
-    - cron: "17 3 * * *"
+    # 3am Paris time, DST included: `timezone` makes GitHub read the cron in
+    # Europe/Paris instead of UTC. A cron on the hour may start 5-15min late,
+    # since GitHub queues every `0 * * * *` in the world at once.
+    - cron: "0 3 * * *"
+      timezone: "Europe/Paris"
   # Manual runs, which is how this gets proven after a change to it rather
   # than by waiting until tomorrow morning.
   workflow_dispatch:
