@@ -176,7 +176,21 @@ describe("the back button", () => {
       await router.push("/notes");
     });
     expect(router.canGoBack).toBe(true);
-    expect(await back.press()).toBe("back");
+
+    // history.back() resolves before its popstate: wait for the navigation
+    // to land, or React renders after the test environment is gone.
+    const popped = new Promise((resolve) =>
+      window.addEventListener("popstate", resolve, { once: true }),
+    );
+    let result: string | undefined;
+    await act(async () => {
+      result = await back.press();
+      await popped;
+    });
+    await act(async () => {});
+
+    expect(result).toBe("back");
+    expect(window.location.pathname).toBe("/");
     expect(back.exits).toBe(1);
     await alepha.stop();
   });
