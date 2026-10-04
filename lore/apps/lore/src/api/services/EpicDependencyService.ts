@@ -113,10 +113,11 @@ export class EpicDependencyService {
    * is the whole thing this column exists to stop.
    *
    * Deliberately total and never throwing: it is a rendering helper, and a
-   * page must not fail to draw because of a cycle. A cycle cannot be written
-   * through {@link resolve}, but rows predating it - or written by a future
-   * path that forgets to call it - fall back to `number` order rather than
-   * looping. `seen` is what makes that a fallback and not a hang.
+   * page must not fail to draw because of a cycle. {@link resolve} refuses
+   * one on write, but D1 has no transactions, so two racing writes can each
+   * pass the check and close a cycle together. Such rows fall back to
+   * `number` order rather than looping; `seen` is what makes that a fallback
+   * and not a hang.
    */
   order<T extends Pick<Epic, "id" | "number" | "dependsOn">>(list: T[]): T[] {
     const byId = new Map(list.map((epic) => [epic.id, epic]));

@@ -147,7 +147,6 @@ export default {
   "folios.history.action.create": "Créé",
   "folios.history.action.edit": "Édité",
   "folios.history.action.rename": "Renommé",
-  "folios.history.action.tag-change": "Tags modifiés",
   "folios.history.action.revert": "Restauré",
 
   "folios.wikilink.broken.title": "Lien cassé",

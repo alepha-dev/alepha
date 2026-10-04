@@ -6,7 +6,7 @@ import { folios } from "./folios.ts";
 
 /**
  * Append-only revision log for folios — the folio's revision history.
- * One row per non-trivial mutation (edit / rename / tag-change / revert).
+ * One row per non-trivial mutation (edit / rename / revert).
  * AI agents edit folios often; without revisions there's no recovery
  * short of "remember what it said yesterday" — which an agent can't.
  *
@@ -46,15 +46,13 @@ export const folioRevisions = $entity({
       onDelete: "set null",
     }),
     /**
-     * ⚠️ `tag-change` is no longer PRODUCED — the tag feature was removed
-     * (feedback #62) — but it must stay in this enum: production rows
-     * already carry it, and a row whose stored value is missing from the
-     * schema fails to decode, taking the whole query with it. That is the
-     * 2026-08-05 required-JSON-key incident, and it is a read outage, not a
-     * cosmetic drift. See apps/lore/CLAUDE.md.
+     * Validated on read: a stored value missing from this enum fails to
+     * decode and takes the whole history query with it (the 2026-08-05
+     * class). Retiring a value is therefore a data migration first, as
+     * `tag-change` was (#E74: its rows became `edit`).
      */
     action: z
-      .enum(["create", "edit", "rename", "tag-change", "revert"])
+      .enum(["create", "edit", "rename", "revert"])
       .meta({ mode: "text" }),
     /**
      * Snapshot of the folio's content at the time of the revision, or `""`

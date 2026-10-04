@@ -180,7 +180,10 @@ describe("quest objectives cap, end to end", () => {
       // A deliberate reach past the API, and the only way to build this
       // fixture: the API is precisely what refuses to create such a row now.
       const repo = (ctx.quests as any).quests;
-      await repo.updateById(questId, { objectives: objectives(OVER) });
+      // Stored with ids, as every row is since #E74.
+      await repo.updateById(questId, {
+        objectives: objectives(OVER).map((it, id) => ({ ...it, id })),
+      });
     });
 
     it("can still be renamed, sending its objectives back unchanged", async () => {

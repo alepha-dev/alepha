@@ -127,7 +127,8 @@ export class ReleaseFlowLayout {
     // Columns come from depth. A cycle has no root, so the walk never
     // reaches it and its epics would vanish: promote the lowest number still
     // unplaced, cut the edge INTO it so it is a real root, and walk again.
-    // `resolve` refuses cycles on write, so this is for rows that predate it.
+    // `resolve` refuses cycles on write, but D1 has no transactions, so two
+    // racing writes can still close one; this keeps the page drawing it.
     const placed = new Set<number>();
     const assignDepth = (group: ReleaseFlowEpicGroup, depth: number) => {
       if (placed.has(group.epic.id)) return;

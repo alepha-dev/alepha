@@ -20,7 +20,6 @@ import {
   Pin,
   PinOff,
   RotateCcw,
-  Tag,
   Type,
   User,
 } from "lucide-react";
@@ -94,13 +93,6 @@ export interface FolioHistoryTabProps {
   onReverted: (folio: Folio) => Promise<void>;
 }
 
-/**
- * ⚠️ `tag-change` is still handled here even though the tag feature is
- * gone. Nothing PRODUCES that action anymore, but production rows already
- * carry it and this component has to keep labelling them — a revision list
- * that renders nothing for a real row is worse than one naming a feature
- * that no longer exists.
- */
 const ActionLabel = (props: { action: FolioRevision["action"] }) => {
   const { tr } = useI18n<I18n, "en">();
   switch (props.action) {
@@ -110,8 +102,6 @@ const ActionLabel = (props: { action: FolioRevision["action"] }) => {
       return <>{tr("folios.history.action.edit")}</>;
     case "rename":
       return <>{tr("folios.history.action.rename")}</>;
-    case "tag-change":
-      return <>{tr("folios.history.action.tag-change")}</>;
     case "revert":
       return <>{tr("folios.history.action.revert")}</>;
   }
@@ -125,8 +115,6 @@ const actionIcon = (action: FolioRevision["action"]) => {
       return <Pencil className="size-4" />;
     case "rename":
       return <Type className="size-4" />;
-    case "tag-change":
-      return <Tag className="size-4" />;
     case "revert":
       return <RotateCcw className="size-4" />;
   }

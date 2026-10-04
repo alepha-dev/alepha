@@ -53,8 +53,9 @@ export const projectListResultSchema = z.object({
        * carry the full set for the ONE project they are about, which is
        * where an agent asks "may I do this".
        *
-       * Absent for a project whose membership row predates epic #E39's
-       * backfill, which reads as `member`.
+       * Absent when `ProjectTools` has no rank to name: a project with no
+       * organization, a caller with no membership row (an admin reading
+       * through the role), or no signed-in `me`.
        */
       rank: rankRefSchema.optional(),
     }),

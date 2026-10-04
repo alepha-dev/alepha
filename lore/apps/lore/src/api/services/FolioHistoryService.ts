@@ -18,10 +18,6 @@ import type { Folio } from "../entities/folios.ts";
  *
  * When both apply at once, content wins so the History tab labels the
  * dominant change.
- *
- * ⚠️ `tag-change` is still a member of this union and is deliberately never
- * returned: the tag feature is gone, but production rows already carry that
- * action and the column's schema has to keep decoding them.
  */
 export type RevisionAction = FolioRevision["action"];
 

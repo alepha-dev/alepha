@@ -43,14 +43,7 @@ export class QuestResourceMapper {
   }
 
   mapQuestToResource(quest: Quest): QuestResource {
-    // Synthesize objective IDs for legacy rows so clients always see one.
-    // Backfill uses the current array position — deterministic for legacy
-    // data (pre-dates ID writes), so consecutive reads return stable IDs.
-    // The next write persists these IDs, after which the synthesis is a
-    // no-op.
-    const objectives = quest.objectives.map((obj, index) =>
-      obj.id != null ? { ...obj, id: obj.id } : { ...obj, id: index },
-    );
+    const objectives = quest.objectives;
 
     const completedObjectives = objectives.filter((o) => o.completed).length;
     // Deliberately disjoint from `completed`: `completeQuest` refuses to

@@ -37,33 +37,9 @@ const questMetadataSchema = z.object({
 });
 
 /**
- * An objective as every read hands it out.
- *
- * The entity declares `id` optional, because legacy rows pre-date the field
- * and the column is only backfilled on write. `mapQuestToResource`
- * synthesizes one for those rows on the way out, so a READ always carries an
- * id even when the stored row does not. Restating that here is what lets
- * callers address an objective without a null check that can never fire.
- */
-const questObjectiveResourceSchema = z.object({
-  id: z.integer().min(0),
-  title: z.string(),
-  completed: z.boolean(),
-  /**
-   * Set when the quest was completed with this objective still unticked.
-   * A waived objective stays `completed: false`; the reason is what stands
-   * in for the tick. See the entity for why.
-   */
-  waivedReason: z.string().optional(),
-  waivedBy: z.uuid().optional(),
-  waivedAt: z.datetime().optional(),
-});
-
-/**
  * Quest entity + server-computed metadata.
  */
 export const questResourceSchema = quests.schema.extend({
-  objectives: z.array(questObjectiveResourceSchema),
   metadata: questMetadataSchema,
 });
 

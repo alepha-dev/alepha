@@ -176,39 +176,4 @@ describe("QuestController completeObjective", () => {
       after.data.history.filter((h) => h.action === "objective_completed"),
     ).toEqual([]);
   });
-
-  it("backfills legacy objectives missing ids on first write", async ({
-    expect,
-  }) => {
-    const user = await createUser(ctx);
-    const { id: questId } = await seedAcceptedQuest(ctx, user, [
-      { title: "Legacy A", completed: false },
-      { title: "Legacy B", completed: false },
-    ]);
-
-    // Simulate a row written before the id column existed: strip ids.
-    const repo = ctx.quests.quests;
-    await repo.updateById(questId, {
-      objectives: [
-        { title: "Legacy A", completed: false },
-        { title: "Legacy B", completed: false },
-      ] as never,
-    });
-
-    const after = await ctx.quests.completeObjective.fetch(
-      { params: { id: questId }, body: { objectiveId: 1 } },
-      { user },
-    );
-
-    // Both objectives now have ids (0 and 1, matching their original indices).
-    expect(after.data.objectives.map((o) => o.id)).toEqual([0, 1]);
-    expect(after.data.objectives[1]?.completed).toBe(true);
-    expect(
-      after.data.history.filter((h) => h.action === "objective_completed"),
-    ).toHaveLength(1);
-
-    // Sanity: repo returns the same ids on subsequent reads (persistent).
-    const reread = await repo.findOne({ where: { id: { eq: questId } } });
-    expect(reread?.objectives.map((o) => o.id)).toEqual([0, 1]);
-  });
 });

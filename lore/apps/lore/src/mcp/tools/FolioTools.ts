@@ -7,6 +7,7 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioAttachmentController } from "../../api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { folioRevisions } from "../../api/entities/folioRevisions.ts";
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
@@ -562,7 +563,7 @@ export class FolioTools {
 
   folio_history = $tool({
     description:
-      "List the revision history of a folio (newest first). Each entry includes `action` (create / edit / rename / revert — plus the retired `tag-change` on rows written before folio tags were removed), `at` timestamp, the user who made the change, and a snapshot of the folio's title/content/summary at the time. Capped at 10 revisions per folio by default (oldest non-pinned drop off when the cap is exceeded). Use this to see how a folio evolved, then `folio_revert` to roll back if needed.",
+      "List the revision history of a folio (newest first). Each entry includes `action` (create / edit / rename / revert), `at` timestamp, the user who made the change, and a snapshot of the folio's title/content/summary at the time. Capped at 10 revisions per folio by default (oldest non-pinned drop off when the cap is exceeded). Use this to see how a folio evolved, then `folio_revert` to roll back if needed.",
     title: "Folio history",
     annotations: {
       readOnlyHint: true,
@@ -576,13 +577,7 @@ export class FolioTools {
             id: z.uuid(),
             at: z.string(),
             byUserId: z.uuid().optional(),
-            action: z.enum([
-              "create",
-              "edit",
-              "rename",
-              "tag-change",
-              "revert",
-            ]),
+            action: folioRevisions.schema.shape.action,
             titleSnapshot: z.string(),
             summarySnapshot: z.string(),
             contentSnapshot: z.string(),

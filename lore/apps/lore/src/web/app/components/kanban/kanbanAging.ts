@@ -42,11 +42,11 @@ export class KanbanAging {
   /**
    * When the card arrived in its current column, as best the record shows.
    *
-   * `moved` entries only started being written with this feature, so an
-   * older card falls back to `acceptedAt` — the moment it entered the
-   * accepted band at all. That is the honest answer for existing data
-   * rather than a fabricated one, and it converges on the exact answer as
-   * soon as the card is moved once.
+   * The last `moved` entry when there is one. Without one, `acceptedAt`: only
+   * the board's move action writes `moved`, and accepting a quest does not,
+   * so a card accepted and never moved arrived in its first column when it
+   * was accepted. Not a legacy fallback: it is the only record of that
+   * arrival.
    */
   protected enteredAt(quest: QuestResource): string | undefined {
     const moves = (quest.history ?? []).filter(

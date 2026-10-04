@@ -113,23 +113,20 @@ export class QuestService {
   protected readonly questShortId = $sequence();
 
   /**
-   * Backfill / generate stable `id` for each objective in the array.
-   * - Legacy objectives (`id == null` across the board): assign by current
-   *   index — deterministic, matches what the mapper synthesizes on read.
-   * - Mixed sets (some have ids): preserve existing ids, assign
-   *   `max(existing) + 1, +2, ...` to the ones missing one.
+   * Give every objective without an `id` the next free one: existing ids are
+   * kept, the rest get `max(existing) + 1, +2, ...` (from 0 when none has
+   * one). What a write path calls on objectives a caller sent.
    */
-  ensureObjectiveIds(objectives: Quest["objectives"]): Quest["objectives"] {
+  ensureObjectiveIds(
+    objectives: Array<
+      Omit<Quest["objectives"][number], "id"> & { id?: number }
+    >,
+  ): Quest["objectives"] {
     const used = new Set<number>();
     for (const o of objectives) if (o.id != null) used.add(o.id);
-    const legacy = used.size === 0;
     let nextFreeId = used.size > 0 ? Math.max(...used) + 1 : 0;
-    return objectives.map((obj, index) => {
-      if (obj.id != null) return obj;
-      if (legacy) {
-        used.add(index);
-        return { ...obj, id: index };
-      }
+    return objectives.map((obj) => {
+      if (obj.id != null) return { ...obj, id: obj.id };
       while (used.has(nextFreeId)) nextFreeId++;
       const id = nextFreeId++;
       used.add(id);

@@ -397,23 +397,6 @@ export class QuestController {
   }
 
   /**
-   * Backfill / generate stable `id` for each objective in the array.
-   * - Legacy objectives (`id == null` across the board): assign by current
-   *   index — deterministic, matches what the mapper synthesizes on read so
-   *   history entries keyed by that id stay valid.
-   * - Mixed sets (some have ids, new ones don't): preserve existing ids,
-   *   assign `max(existing) + 1, +2, ...` to the ones missing one.
-   *
-   * Persisted on every write that touches `objectives` so the next read
-   * sees real ids and the synthesis becomes a no-op.
-   */
-  protected ensureObjectiveIds(
-    objectives: Quest["objectives"],
-  ): Quest["objectives"] {
-    return this.questService.ensureObjectiveIds(objectives);
-  }
-
-  /**
    * A comma-separated query param, as a list of trimmed, non-empty values.
    *
    * ⚠️ Never throws and never rejects. A hand-edited link, a stale bookmark
@@ -2497,10 +2480,7 @@ export class QuestController {
 
       const now = this.dt.nowISOString();
 
-      // Backfill ids before addressing anything by id, same invariant
-      // `completeObjective` keeps: what is read out of `objectives` goes
-      // back in with stable ids.
-      const objectives = this.ensureObjectiveIds(quest.objectives);
+      const objectives = quest.objectives;
       const waivedEvents: Quest["history"] = [];
 
       for (const waiver of body?.waive ?? []) {
@@ -2662,6 +2642,15 @@ export class QuestController {
         })
         .partial()
         .extend({
+          // An objective may arrive without its `id` (a row the editor just
+          // added); `ensureObjectiveIds` gives it one before the write.
+          objectives: z
+            .array(
+              quests.schema.shape.objectives.element.extend({
+                id: z.integer().min(0).optional(),
+              }),
+            )
+            .optional(),
           // `dependsOn` is special-cased: `null` clears the link, integer
           // sets it. Picking from the entity schema would emit
           // `optional<integer>` only, dropping the explicit-clear path.
@@ -2815,7 +2804,9 @@ export class QuestController {
       // silently repointed every `objective_completed` history row at a
       // different objective.
       if (body.objectives !== undefined) {
-        patch.objectives = this.ensureObjectiveIds(body.objectives);
+        patch.objectives = this.questService.ensureObjectiveIds(
+          body.objectives,
+        );
       }
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
@@ -2959,9 +2950,8 @@ export class QuestController {
       }),
       body: z.object({
         /**
-         * Per-quest objective id (see `ensureObjectiveIds`). The UI gets
-         * these ids back from `mapQuestToResource` — legacy quests are
-         * lazily normalized so this value is always defined client-side.
+         * Per-quest objective id (see `QuestService.ensureObjectiveIds`),
+         * carried on every objective the API hands out.
          */
         objectiveId: z.integer().min(0),
       }),
@@ -2972,10 +2962,7 @@ export class QuestController {
         "in_progress",
       ]);
 
-      // Backfill ids for legacy rows before the lookup — preserves the
-      // controller's invariant that anything we read out of `objectives`
-      // also goes back in with stable ids on the write below.
-      const objectives = this.ensureObjectiveIds(quest.objectives);
+      const objectives = quest.objectives;
       const target = objectives.find((o) => o.id === body.objectiveId);
       if (!target) {
         throw new BadRequestError("Objective not found");
@@ -3035,9 +3022,9 @@ export class QuestController {
              * The id this objective already has. Optional so the web
              * editor can add a row without inventing one, but a caller
              * that HAS the id must send it back: `ensureObjectiveIds`
-             * treats an array with no ids at all as legacy and numbers it
-             * by position, which repoints every `objective_completed`
-             * history row at whatever now sits at that index.
+             * numbers an array with no ids at all from 0, which repoints
+             * every `objective_completed` history row at whatever now sits
+             * at that index.
              */
             id: z.integer().min(0).optional(),
             title: z.string(),
@@ -3072,7 +3059,7 @@ export class QuestController {
       }
 
       const updated = await this.quests.updateById(params.id, {
-        objectives: this.ensureObjectiveIds(body.objectives),
+        objectives: this.questService.ensureObjectiveIds(body.objectives),
         history: [
           ...quest.history,
           {

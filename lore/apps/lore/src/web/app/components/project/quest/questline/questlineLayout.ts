@@ -136,7 +136,9 @@ export class QuestlineLayout<T extends QuestlineItem> {
     for (const root of roots) collect(root);
 
     // A `dependsOn` cycle has no root, so the walk above never reached it and
-    // those quests would silently vanish from the board. Promote the lowest
+    // those quests would silently vanish from the board. It is live data:
+    // quest `dependsOn` has no write-time cycle check, only a self-reference
+    // refusal. Promote the lowest
     // shortId still uncovered and walk again; `track` breaks the cycle itself.
     for (const quest of [...quests].sort((a, b) => a.shortId - b.shortId)) {
       if (!covered.has(quest.id)) collect(quest);
@@ -167,7 +169,8 @@ export class QuestlineLayout<T extends QuestlineItem> {
   ): QuestlineTrack<T> {
     const nodes: QuestlineNode<T>[] = [];
     const rowOf = new Map<number, number>();
-    // A corrupt dependsOn cycle would otherwise recurse forever.
+    // A dependsOn cycle (nothing refuses one on write) would otherwise
+    // recurse forever.
     const seen = new Set<number>();
     let nextRow = 0;
 

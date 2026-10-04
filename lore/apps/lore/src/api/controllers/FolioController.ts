@@ -12,6 +12,7 @@ import {
 } from "alepha/server";
 
 import { folioDirectories } from "../entities/folioDirectories.ts";
+import { folioRevisions } from "../entities/folioRevisions.ts";
 import {
   type Folio,
   buildFolioSearchText,
@@ -1232,9 +1233,7 @@ export class FolioController {
           z.object({
             id: z.uuid(),
             at: z.string(),
-            action: z
-              .enum(["create", "edit", "rename", "tag-change", "revert"])
-              .meta({ mode: "text" }),
+            action: folioRevisions.schema.shape.action,
             byUserId: z.uuid().optional(),
             byUsername: z.string().optional(),
             byAvatarUrl: z.string().optional(),
@@ -1312,9 +1311,7 @@ export class FolioController {
         z.object({
           id: z.uuid(),
           at: z.string(),
-          action: z
-            .enum(["create", "edit", "rename", "tag-change", "revert"])
-            .meta({ mode: "text" }),
+          action: folioRevisions.schema.shape.action,
           pinned: z.boolean(),
           titleSnapshot: z.string(),
           summarySnapshot: z.string(),

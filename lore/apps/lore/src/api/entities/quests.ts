@@ -165,11 +165,11 @@ export const quests = $entity({
         z.object({
           /**
            * Per-quest integer identifier, stable across reorders / edits.
-           * Optional because legacy rows pre-date this field — the controller
-           * lazily backfills (id = index) on first write that touches the
-           * objectives array. New objectives get `max(existing) + 1`.
+           * New objectives get `max(existing) + 1` (`QuestService
+           * .ensureObjectiveIds`). Rows that predate the field were numbered
+           * by position in `20261004234306_objective_ids_tag_change` (#E74).
            */
-          id: z.integer().min(0).optional(),
+          id: z.integer().min(0),
           title: z.string(),
           completed: z.boolean(),
           /**
