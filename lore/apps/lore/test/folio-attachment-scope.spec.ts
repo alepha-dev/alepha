@@ -319,6 +319,49 @@ describe("folio attachments are scoped to one folio", () => {
     );
   });
 
+  it("finds the folio by the new attachment name after a rename, and not by the old one", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const project = await ctx.projectController.createProject.fetch(
+      { body: { title: "Blob rename search" } },
+      { user: owner },
+    );
+    const folio = await ctx.folioController.create.fetch(
+      {
+        body: {
+          title: "Notes",
+          projectId: project.data.id,
+          content: "![A diagram](assets/Photo.webp)",
+        },
+      },
+      { user: owner },
+    );
+    const fileId = await uploadedFile(ctx, owner, "Photo.webp");
+    await ctx.attachmentController.registerAttachment.fetch(
+      {
+        params: { projectId: project.data.id },
+        body: { fileId, name: "Photo.webp", folioId: folio.data.id },
+      },
+      { user: owner },
+    );
+
+    await ctx.attachmentController.renameAttachment.fetch(
+      { params: { id: fileId }, body: { name: "Sunset.webp" } },
+      { user: owner },
+    );
+
+    const search = async (q: string) =>
+      (
+        await ctx.folioController.list.fetch(
+          { query: { projectId: project.data.id, q } },
+          { user: owner },
+        )
+      ).data.map((row) => row.id);
+    expect(await search("sunset.webp")).toEqual([folio.data.id]);
+    expect(await search("photo.webp")).toEqual([]);
+  });
+
   it("rewrites a reference whose name contains parentheses", async ({
     expect,
   }) => {

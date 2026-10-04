@@ -224,11 +224,19 @@ export class FolioAttachmentService {
     // `encodeURIComponent` so it cannot drift from what the reader accepts:
     // the difference is parentheses, which `autoSuffix` puts in every
     // collision name.
+    //
+    // `searchText` moves in the same statement (#Q2559), or search keeps
+    // matching the old name until the folio is next saved. It is the
+    // lowercased content, so the same rewrite applies to the lowercased
+    // forms. Lowercased here in JS, never with SQL `lower()`, which folds
+    // ASCII only on SQLite and would disagree with `buildFolioSearchText`.
     const t = this.folioRows.table;
     const replacement = `](${folioAssetPath(to)})`;
     let content = sql`${t.content}`;
+    let searchText = sql`${t.searchText}`;
     for (const form of forms) {
       content = sql`replace(${content}, ${form}, ${replacement})`;
+      searchText = sql`replace(${searchText}, ${form.toLowerCase()}, ${replacement.toLowerCase()})`;
     }
     await this.folioRows
       .updateOne(
@@ -237,7 +245,7 @@ export class FolioAttachmentService {
           protected: { eq: false },
           or: forms.map((form) => ({ content: { like: `%${form}%` } })),
         },
-        { content },
+        { content, searchText },
       )
       .catch((error: unknown) => {
         // The references went away meanwhile: nothing to rewrite.
