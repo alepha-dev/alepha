@@ -54,6 +54,11 @@ export class BuildCompressTask extends BuildTask {
     if (ctx.flags?.prebuilt) {
       return;
     }
+    // A WebView reads the bundle from disk inside the app, where nothing
+    // negotiates an encoding: the sidecars would only triple the app's size.
+    if (ctx.flags?.shell) {
+      return;
+    }
     // Cloudflare Workers Static Assets compresses at the edge and has no
     // filename negotiation — there is no request that can ever reach a `.br`
     // sidecar as an encoding. Uploading them anyway made a third of the asset

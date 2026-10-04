@@ -136,4 +136,52 @@ describe("BuildClientTask", () => {
 
     expect(vite.configs[0].publicDir).toBeUndefined();
   });
+
+  describe("caller constants", () => {
+    const seed = async (fs: MemoryFileSystemProvider) => {
+      await fs.mkdir("dist/public/node_modules/.alepha", { recursive: true });
+      await fs.writeFile(
+        "dist/public/.vite/manifest.json",
+        JSON.stringify({ "node_modules/.alepha/index.html": { file: "e.js" } }),
+      );
+      await fs.writeFile(
+        "dist/public/node_modules/.alepha/index.html",
+        "<html></html>",
+      );
+    };
+
+    it("adds the caller's constants to the client bundle's define", async ({
+      expect,
+    }) => {
+      // The only channel from a build into browser code: `alepha.env` is
+      // empty in the browser. `@alepha/capacitor` passes its public config
+      // through here.
+      const { task, fs, vite } = setup();
+      await seed(fs);
+
+      await task.run({
+        ...createContext(undefined),
+        define: { __APP_CONFIG__: '{"apiUrl":"https://api.test"}' },
+      });
+
+      expect(vite.configs[0].define.__APP_CONFIG__).toBe(
+        '{"apiUrl":"https://api.test"}',
+      );
+    });
+
+    it("hands Vite the same define as before when the caller adds none", async ({
+      expect,
+    }) => {
+      // The same inline config is what keeps a plain `alepha build` producing
+      // the bundle it always produced.
+      const { task, fs, vite } = setup();
+      await seed(fs);
+
+      await task.run(createContext(undefined));
+
+      expect(vite.configs[0].define).toEqual({
+        "process.env.NODE_ENV": '"production"',
+      });
+    });
+  });
 });

@@ -3,6 +3,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
+import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
 
@@ -290,6 +291,111 @@ describe('a static build, declared as runtime: ["static"]', () => {
       await (task as any).cleanDist("/root/my-app/dist", "public");
 
       expect(await fs.exists("/root/my-app/dist/index.js")).toBe(false);
+    });
+  });
+
+  describe("an app shell", () => {
+    const runShell = async (html: string | undefined) => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      const task = alepha.inject(BuildStaticTask);
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      const emitted: string[] = [];
+
+      await task.run({
+        alepha: {
+          isConfigured: () => true,
+          primitives: () => [],
+          events: {
+            emit: async (name: string, event: { html?: string }) => {
+              emitted.push(name);
+              if (name === "react:server:shell") event.html = html;
+            },
+          },
+        },
+        root: "/root/my-app",
+        options: { runtime: "static" },
+        run: async (step: { handler: () => Promise<void> }) => step.handler(),
+        flags: { shell: true },
+      } as any);
+
+      return { fs, emitted };
+    };
+
+    it("writes the document the server renders with no page in it", async () => {
+      const { fs, emitted } = await runShell(
+        '<html><body><div id="root"></div></body></html>',
+      );
+
+      expect(emitted).toEqual(["react:server:shell"]);
+      expect(fs.getFileContent("/root/my-app/dist/public/index.html")).toBe(
+        '<html><body><div id="root"></div></body></html>',
+      );
+    });
+
+    it("writes none of a static host's files", async () => {
+      // A WebView never asks for them: 200.html and 404.html are a host's
+      // fallbacks and CNAME names a domain the app does not have.
+      const { fs } = await runShell("<html></html>");
+
+      for (const file of ["200.html", "404.html", "CNAME"]) {
+        expect(await fs.exists(`/root/my-app/dist/public/${file}`)).toBe(false);
+      }
+    });
+
+    it("refuses an app with no React server renderer", async () => {
+      await expect(runShell(undefined)).rejects.toThrow(/React pages/);
+    });
+
+    it("skips the sidecars and _headers", async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      await fs.mkdir("/root/my-app/dist/public");
+      await fs.writeFile(
+        "/root/my-app/dist/public/index.html",
+        "<html></html>",
+      );
+      const ctx = {
+        alepha: fakeAlepha,
+        root: "/root/my-app",
+        hasClient: true,
+        options: { runtime: "static" },
+        run: async (step: { handler: () => Promise<void> }) => step.handler(),
+        flags: { shell: true },
+      } as any;
+
+      await alepha.inject(BuildCompressTask).run(ctx);
+      await alepha.inject(BuildHeadersTask).run(ctx);
+
+      expect(await fs.exists("/root/my-app/dist/public/index.html.br")).toBe(
+        false,
+      );
+      expect(await fs.exists("/root/my-app/dist/public/_headers")).toBe(false);
+    });
+  });
+
+  describe("an app with no page at /", () => {
+    it("names what is missing instead of failing on a file it never wrote", async () => {
+      // It used to reach `readFile(dist/public/index.html)` and throw a bare
+      // ENOENT on a path the author never wrote.
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      await expect(
+        alepha.inject(BuildStaticTask).run({
+          alepha: { isConfigured: () => true, primitives: () => [] },
+          root: "/root/my-app",
+          options: { runtime: "static" },
+          run: async (step: { handler: () => Promise<void> }) => step.handler(),
+        } as any),
+      ).rejects.toThrow(/has none/);
     });
   });
 });

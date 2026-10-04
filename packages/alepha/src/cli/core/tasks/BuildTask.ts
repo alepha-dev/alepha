@@ -82,6 +82,13 @@ export interface BuildTaskContext {
    */
   manifest: BuildManifest | null;
 
+  /**
+   * Constants the caller adds to the client bundle's Vite `define`, already
+   * encoded as source text. Absent for `alepha build`, whose client bundle
+   * then carries exactly what it always did.
+   */
+  define?: Record<string, string>;
+
   flags?: {
     image?: boolean | string;
     /**
@@ -103,6 +110,12 @@ export interface BuildTaskContext {
      * per-deploy overrides.
      */
     prebuilt?: boolean;
+    /**
+     * An app shell: a static build reduced to what a WebView loads. No page is
+     * rendered (so no loader runs), and nothing a static host reads is written:
+     * no compressed sidecars, `_headers`, `CNAME`, `200.html` or `404.html`.
+     */
+    shell?: boolean;
   };
 }
 

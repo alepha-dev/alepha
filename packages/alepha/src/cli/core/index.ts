@@ -38,6 +38,7 @@ import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
+import { BuildPipeline } from "./services/BuildPipeline.ts";
 import { BuildSlices } from "./services/BuildSlices.ts";
 import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
@@ -91,6 +92,7 @@ export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ArchiveCompressor.ts";
+export * from "./services/BuildPipeline.ts";
 export * from "./services/BuildSlices.ts";
 export * from "./services/DockerImageBuilder.ts";
 export * from "./services/ViteUtils.ts";
@@ -152,6 +154,7 @@ export const AlephaCliServices = $module({
     ViteBuildProvider,
     ArchiveCompressor,
     BuildSlices,
+    BuildPipeline,
     DockerImageBuilder,
     WorkspaceCompiler,
     WorkspacePacker,

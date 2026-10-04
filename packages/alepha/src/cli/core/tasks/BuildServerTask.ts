@@ -91,9 +91,22 @@ export class BuildServerTask extends BuildTask {
     // Declared order, straight from the resolved options. Never sorted: the
     // first entry is the primary, and reordering it here would change what
     // `dist/package.json` points at and what a deployer spawns.
-    const runtimes = this.slices.resolve(
-      ctx.options.runtimes ?? ctx.options.runtime,
-    );
+    //
+    // ⚠️ Through `fromOptions`, not `resolve(runtimes ?? runtime)`. A static
+    // build resolves `runtimes` to `[]`, and `[] ?? runtime` is `[]`, which
+    // `resolve` reads as "nothing declared" and answers with the default
+    // `["node"]`: every static build compiled a node slice and then deleted it.
+    const runtimes = this.slices.fromOptions(ctx.options);
+
+    // A static build links no server, but its static task still renders `/`
+    // in this process, and that render needs what the client build left
+    // behind: the preload table (entry script, stylesheets) and the favicon.
+    if (runtimes.length === 0) {
+      if (clientBuilt) {
+        await this.prepareStaticRender(ctx, distDir, publicDir);
+      }
+      return;
+    }
 
     // Read once and reused by every slice: the client bundle is
     // runtime-agnostic, so its manifests answer the same for all of them, and
@@ -150,6 +163,43 @@ export class BuildServerTask extends BuildTask {
     if (ssr?.viteDir) {
       await this.fs.rm(ssr.viteDir, { recursive: true });
     }
+  }
+
+  /**
+   * Hand a static build's renderer the client manifests, then remove what the
+   * server would have consumed.
+   *
+   * The same two steps {@link run} takes after linking slices, without the
+   * link: the SSR manifest goes into the app's store (where
+   * `ReactServerProvider` reads its entry assets), the client `index.html` is
+   * removed so the static task renders its own, and `.vite` is deleted.
+   */
+  protected async prepareStaticRender(
+    ctx: BuildTaskContext,
+    distDir: string,
+    publicDir: string,
+  ): Promise<void> {
+    await ctx.run({
+      name: "read client manifests",
+      handler: async () => {
+        const { resolveConfig } = await this.viteUtils.importVite();
+        const resolved = await resolveConfig(
+          { mode: "production", logLevel: "silent" },
+          "build",
+        );
+        const ssr = await this.readSsrManifest({
+          distDir,
+          clientDir: publicDir,
+          base: resolved.base,
+          allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
+        });
+        ctx.alepha.store.set("alepha.react.ssr.manifest" as any, ssr.data);
+        await this.fs.rm(
+          this.fs.join(ctx.root, distDir, publicDir, "index.html"),
+        );
+        await this.fs.rm(ssr.viteDir, { recursive: true });
+      },
+    });
   }
 
   protected async buildServer(opts: {

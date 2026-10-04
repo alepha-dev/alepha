@@ -59,6 +59,10 @@ export class BuildHeadersTask extends BuildTask {
     if (ctx.flags?.prebuilt) {
       return;
     }
+    // A WebView never reads `_headers`; it is a static host's file.
+    if (ctx.flags?.shell) {
+      return;
+    }
     const dist = ctx.options.output?.dist ?? "dist";
     const pub = ctx.options.output?.public ?? "public";
     const dir = this.fs.join(ctx.root, dist, pub);

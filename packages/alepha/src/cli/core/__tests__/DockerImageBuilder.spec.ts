@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import type { ImageOptions } from "../atoms/imageOptions.ts";
-import { BuildCommand } from "../commands/build.ts";
+import { BuildPipeline } from "../services/BuildPipeline.ts";
 import {
   DockerImageBuilder,
   type ImageContext,
@@ -17,9 +17,9 @@ import {
 /**
  * Exposes the pipeline's order, which is the whole of the next spec.
  */
-class TestBuildCommand extends BuildCommand {
+class TestBuildPipeline extends BuildPipeline {
   public order(): string[] {
-    return this.pipeline.map((task) => task.constructor.name);
+    return this.tasks.map((task) => task.constructor.name);
   }
 }
 
@@ -36,7 +36,7 @@ describe("DockerImageBuilder", () => {
    * command runs.
    */
   it("is not a build task any more", ({ expect }) => {
-    const order = Alepha.create().inject(TestBuildCommand).order();
+    const order = Alepha.create().inject(TestBuildPipeline).order();
     expect(order).not.toContain("BuildDockerTask");
     expect(order).not.toContain("BuildCompileTask");
     // The tasks that write into `dist/public` are still there, and still

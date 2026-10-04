@@ -23,6 +23,14 @@ export class ServerHeadProvider {
   }
 
   /**
+   * Resolve every global `$head` entry in full (title, meta, link, script,
+   * attributes), with no page involved. What an app shell's document carries.
+   */
+  public resolveGlobal(): Head {
+    return this.headProvider.resolveGlobal();
+  }
+
+  /**
    * Fill head state from route configurations.
    * Delegates to HeadProvider to merge head data from all route layers.
    */

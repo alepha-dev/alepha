@@ -327,6 +327,41 @@ export class ReactServerProvider {
   }
 
   /**
+   * Answers `react:server:shell`, the way a build reaches {@link renderShell}.
+   *
+   * An event rather than a call because the build runs in the CLI's process,
+   * which loads the application through Vite: the app's `ReactServerProvider`
+   * is another module instance than any class the CLI could import, so
+   * `alepha.inject(ReactServerProvider)` from there would build a second,
+   * unconfigured provider. An event name crosses that boundary.
+   */
+  protected readonly onShell = $hook({
+    on: "react:server:shell",
+    handler: (event) => {
+      event.html = this.renderShell();
+    },
+  });
+
+  /**
+   * The application's document with an empty root, rendered without any page.
+   *
+   * No loader runs, which is the point: an app shell (the `index.html` a
+   * native WebView boots from) is built where the API may not exist, and
+   * whatever a page loaded would be stripped from the shell anyway. Global
+   * `$head` entries and the entry assets still apply, so the document is what
+   * a server-rendered page would start with.
+   */
+  public renderShell(): string {
+    this.setupEarlyHeadContent();
+
+    const head = this.serverHeadProvider.resolveGlobal();
+    head.title ??= "App";
+    head.htmlAttributes = { lang: "en", ...head.htmlAttributes };
+
+    return this.templateProvider.renderShellDocument(head);
+  }
+
+  /**
    * Build a favicon link tag from the manifest favicon value.
    * Format is "mimeType:/path" (e.g., "image/svg+xml:/favicon.svg").
    */

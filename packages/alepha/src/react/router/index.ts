@@ -59,6 +59,14 @@ declare module "alepha" {
       state: ReactRouterState;
     };
     /**
+     * Asks the server renderer for the application's document with an empty
+     * root, rendered without any page (no loader runs). The handler fills
+     * `html`. Emitted by the static build of an app shell.
+     */
+    "react:server:shell": {
+      html?: string;
+    };
+    /**
      * Fires when the React application has been rendered on the server.
      */
     "react:server:render:end": {

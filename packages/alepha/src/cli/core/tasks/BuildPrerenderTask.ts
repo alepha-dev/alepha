@@ -45,6 +45,11 @@ export class BuildPrerenderTask extends BuildTask {
     if (!ctx.hasClient) {
       return;
     }
+    // An app shell renders no page: a prerendered one would run its loader
+    // at build time, against an API the build may not reach.
+    if (ctx.flags?.shell) {
+      return;
+    }
 
     const pages = this.getStaticPages(ctx);
     const routes = this.getStaticRoutePrimitives(ctx);

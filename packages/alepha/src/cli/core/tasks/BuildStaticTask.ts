@@ -37,6 +37,17 @@ export class BuildStaticTask extends BuildTask {
     const clientDir = ctx.options.output?.public ?? "public";
     const publicDir = this.fs.join(ctx.root, distDir, clientDir);
 
+    if (ctx.flags?.shell) {
+      await ctx.run({
+        name: "generate app shell",
+        handler: async () => {
+          await this.renderShell(ctx, publicDir);
+          await this.cleanDist(this.fs.join(ctx.root, distDir), clientDir);
+        },
+      });
+      return;
+    }
+
     await ctx.run({
       name: "generate static site",
       handler: async () => {
@@ -82,6 +93,40 @@ export class BuildStaticTask extends BuildTask {
   }
 
   /**
+   * Write an app shell's `index.html`: the application's document with an
+   * empty root, and nothing else.
+   *
+   * No page is rendered, so no loader runs: a shell build needs no API, and a
+   * page's data would be stripped from the shell anyway. The document still
+   * goes through the server template, so global `$head` entries (language,
+   * viewport, theme script) and the entry assets are what a rendered page
+   * would carry.
+   */
+  protected async renderShell(
+    ctx: BuildTaskContext,
+    publicDir: string,
+  ): Promise<void> {
+    if (!ctx.alepha.isConfigured()) {
+      await ctx.alepha.events.emit("configure", ctx.alepha);
+    }
+
+    // An event, not `inject(ReactServerProvider)`: the app was loaded through
+    // Vite, so its provider is another module instance than the CLI's.
+    const event: { html?: string } = {};
+    await ctx.alepha.events.emit("react:server:shell" as any, event);
+    if (!event.html) {
+      throw new AlephaError(
+        "An app shell is rendered by alepha/react/router's server renderer, and this app does not load it. A shell is for an app with React pages.",
+      );
+    }
+    const html = event.html;
+    const filepath = this.fs.join(publicDir, "index.html");
+
+    await this.fs.mkdir(dirname(filepath));
+    await this.fs.writeFile(filepath, html);
+  }
+
+  /**
    * Copy a client the workspace built itself into the client directory.
    *
    * Everything else this task can ship, Alepha rendered: its own Vite client
@@ -118,7 +163,7 @@ export class BuildStaticTask extends BuildTask {
 
     if (!(await this.fs.exists(from))) {
       throw new AlephaError(
-        `static.source "${source}" does not exist (looked in ${from}). Run the client build that fills it before \`alepha build --target=static\`.`,
+        `static.source "${source}" does not exist (looked in ${from}). Run the client build that fills it before \`alepha build --runtime static\`.`,
       );
     }
 
@@ -142,7 +187,9 @@ export class BuildStaticTask extends BuildTask {
     );
 
     if (!rootPage) {
-      return;
+      throw new AlephaError(
+        'A static build renders the $page at / into index.html, and this app has none. Add a $page with path: "/", or point build.static.source at a client you built yourself.',
+      );
     }
 
     const { html } = await rootPage.render({ html: true });

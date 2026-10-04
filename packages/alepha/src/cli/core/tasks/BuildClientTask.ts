@@ -82,6 +82,7 @@ export class BuildClientTask extends BuildTask {
             stats,
             silent: !isCI,
             meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
+            define: ctx.define,
           });
         },
       });
@@ -98,6 +99,11 @@ export class BuildClientTask extends BuildTask {
      * The build metadata token, already encoded as a `define` entry.
      */
     meta?: Record<string, string>;
+    /**
+     * The caller's own constants, already encoded. Spread last, so a caller
+     * cannot be shadowed by the build; absent, the bundle is unchanged.
+     */
+    define?: Record<string, string>;
   }): Promise<void> {
     const { build: viteBuild } = await this.viteUtils.importVite();
     const plugins: any[] = [];
@@ -138,6 +144,7 @@ export class BuildClientTask extends BuildTask {
         // record on `ctx.meta`, so `alepha.meta` reads the same answer in the
         // browser as it does on the server.
         ...opts.meta,
+        ...opts.define,
       },
       resolve: {
         dedupe: [
