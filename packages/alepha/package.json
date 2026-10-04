@@ -233,6 +233,13 @@
       "import": "./src/email/smtp/index.ts",
       "default": "./src/email/smtp/index.ts"
     },
+    "./inspector": {
+      "types": "./src/inspector/index.ts",
+      "react-native": "./src/inspector/index.browser.ts",
+      "browser": "./src/inspector/index.browser.ts",
+      "import": "./src/inspector/index.ts",
+      "default": "./src/inspector/index.ts"
+    },
     "./lock": {
       "types": "./src/lock/core/index.ts",
       "import": "./src/lock/core/index.ts",
@@ -685,6 +692,13 @@
         "workerd": "./dist/email/smtp/index.workerd.js",
         "import": "./dist/email/smtp/index.js",
         "default": "./dist/email/smtp/index.js"
+      },
+      "./inspector": {
+        "types": "./dist/inspector/index.d.ts",
+        "react-native": "./dist/inspector/index.browser.js",
+        "browser": "./dist/inspector/index.browser.js",
+        "import": "./dist/inspector/index.js",
+        "default": "./dist/inspector/index.js"
       },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",

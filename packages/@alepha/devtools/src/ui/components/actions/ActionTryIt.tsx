@@ -1,12 +1,12 @@
 import { AutoForm } from "@alepha/ui/form";
 import { jsonSchemaToZod, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import type { DevActionMetadata } from "alepha/inspector";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
 import { useCallback, useMemo, useState } from "react";
 
-import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
 import { useActionHistory } from "../../hooks/useActionHistory.ts";
 
 const EMPTY_SCHEMA = z.object({});

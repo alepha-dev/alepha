@@ -1,28 +1,17 @@
 import { $module } from "alepha";
+import { AlephaInspector, InspectorRoutes } from "alepha/inspector";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerStatic } from "alepha/server/static";
 
-import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
 import { DevToolsProvider } from "./providers/DevToolsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./index.shared.ts";
-export * from "./providers/DevToolsMetadataProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
- * Runtime inspection and debugging UI.
+ * The in-app devtools UI, served by the application itself at `/__devtools`.
  *
- * **Features:**
- * - DevTools UI at `GET /__devtools`
- * - Application metadata at `GET /__devtools/api/metadata`
- * - Last 10,000 logs at `GET /__devtools/api/logs`
- * - Runtime inspection of actions, jobs, topics, storages
- * - Log viewer with filtering
- * - React Flow visualization
- * - Provider and module browsing
+ * What it shows comes from `alepha/inspector`, whose route table this module
+ * mounts under `/__devtools/api`.
  *
  * @module alepha.devtools
  */
@@ -30,21 +19,25 @@ export const AlephaDevtools = $module({
   name: "alepha.devtools",
   primitives: [],
   register: (alepha) => {
-    // SECURITY: DevTools mounts unauthenticated endpoints that read and MUTATE
-    // application state — arbitrary DB create/update/delete, atom writes, and
-    // cleartext env (secrets) via `/__devtools/api/metadata`. It must NEVER be exposed
-    // on a deployed app. Guard registration here (like sigil does) so that
-    // importing this module into a production server graph — as the module docs
-    // suggest — cannot accidentally expose those routes. The route-bearing
-    // providers are intentionally NOT listed under `services` (which would
-    // auto-inject them regardless of this guard); they are registered only in
-    // non-production, so their `$route` fields never mount in prod.
+    // SECURITY: the inspector's routes read and MUTATE application state
+    // (arbitrary DB create/update/delete, atom writes) and serve the env,
+    // secrets included, in cleartext. Mounted here they sit on the app's own
+    // public port, so this refuses production outright, even where the
+    // inspector itself was opted into: that opt-in is for its socket.
     if (alepha.isProduction()) {
       return;
     }
+
+    alepha.with(AlephaInspector);
+
+    // The inspector applies its own guard (development only, unless
+    // `ALEPHA_INSPECT=1`); without its routes there is nothing to mount.
+    if (!alepha.has(InspectorRoutes)) {
+      return;
+    }
+
     alepha.with(AlephaServer);
     alepha.with(AlephaServerStatic);
     alepha.with(DevToolsProvider);
-    alepha.with(DevToolsMetadataProvider);
   },
 });

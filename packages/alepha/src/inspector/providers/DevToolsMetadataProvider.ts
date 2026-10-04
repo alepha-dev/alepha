@@ -15,7 +15,6 @@ import {
   PG_VERSION,
   RepositoryProvider,
 } from "alepha/orm";
-import { $page } from "alepha/react/router";
 import { $issuer, SecurityProvider } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { $topic } from "alepha/topic";
@@ -85,7 +84,7 @@ export class DevToolsMetadataProvider {
    * Jobs declared with `$job`.
    *
    * Declarative only. Execution counts, last-run and the rows themselves are
-   * runtime state and come from `GET /__devtools/api/jobs`, which reads the
+   * runtime state and come from the inspector's `GET /jobs`, which reads the
    * durable outbox table via `JobService`.
    */
   public getJobs(): DevJobMetadata[] {
@@ -283,7 +282,10 @@ export class DevToolsMetadataProvider {
   }
 
   public getPages(): DevPageMetadata[] {
-    const pagePrimitives = this.alepha.primitives($page);
+    // Looked up by name rather than through the `$page` factory: importing
+    // `alepha/react/router` here would make React a dependency of every app
+    // `alepha dev` injects the inspector into, and an API-only app has none.
+    const pagePrimitives = this.alepha.primitives<any>("$page");
 
     return pagePrimitives.map((page: any) => {
       // Resolve children (can be an array or a function returning an array)

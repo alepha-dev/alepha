@@ -39,6 +39,7 @@ export default defineConfig({
         "crypto",
         "datetime",
         "email",
+        "inspector",
         "lock",
         "logger",
         "mcp",

@@ -26,8 +26,8 @@ import { DEV_LOG_RESTART_TYPE } from "../schemas/DevLogMarker.ts";
  * alone, so a busy session cannot silently evict the crash you restarted to
  * read.
  *
- * Dev only. `AlephaDevtools` refuses to register in production, so nothing here
- * can turn into a production log sink.
+ * Dev only. `AlephaInspector` refuses to register in production unless asked
+ * explicitly, so nothing here turns into a production log sink by accident.
  */
 export class DevLogStoreProvider {
   protected readonly log = $logger();
@@ -238,7 +238,7 @@ export class DevLogStoreProvider {
       level: "INFO",
       message: "App Restarted",
       service: "DevLogStoreProvider",
-      module: "alepha.devtools",
+      module: "alepha.inspector",
       timestamp: this.dateTime.nowMillis(),
       data: { type: DEV_LOG_RESTART_TYPE },
     };

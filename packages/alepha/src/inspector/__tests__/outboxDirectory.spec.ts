@@ -1,26 +1,17 @@
-import { mkdirSync } from "node:fs";
-
 import { Alepha } from "alepha";
 import { localEmailOptions } from "alepha/email";
-import { AlephaServer, ServerProvider } from "alepha/server";
 import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { beforeAll, describe, it } from "vitest";
+import { describe, it } from "vitest";
 
-import { AlephaDevtools } from "../index.ts";
-
-// The module serves its built UI from `assets/ui`, a gitignored build artifact
-// that is absent in CI. Same shim as DevToolsProvider.spec.ts.
-beforeAll(() => {
-  mkdirSync(new URL("../../assets/ui", import.meta.url), { recursive: true });
-});
+import { AlephaInspector } from "../index.ts";
+import { InspectorDispatcher } from "../services/InspectorDispatcher.ts";
 
 describe("the devtools outbox", () => {
   const boot = async (dirs: { emails: string; sms: string }) => {
-    const alepha = Alepha.create({ env: { SERVER_PORT: 0 } })
+    const alepha = Alepha.create({ env: { ALEPHA_INSPECT: "1" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with(AlephaServer)
-      .with(AlephaDevtools);
+      .with(AlephaInspector);
 
     // What an app does when it moves its scratch data out of the bundle -
     // which is what `DATA_DIR` does for it in production.
@@ -49,9 +40,10 @@ describe("the devtools outbox", () => {
       }),
     );
 
-    const host = alepha.inject(ServerProvider).hostname;
-    const res = await fetch(`${host}/__devtools/api/sms`);
-    const body = (await res.json()) as {
+    const res = await alepha
+      .inject(InspectorDispatcher)
+      .dispatch({ method: "GET", path: "/sms" });
+    const body = res.body as {
       messages: Array<{ to: string; message: string }>;
       directory: string;
     };
@@ -82,9 +74,10 @@ describe("the devtools outbox", () => {
       }),
     );
 
-    const host = alepha.inject(ServerProvider).hostname;
-    const res = await fetch(`${host}/__devtools/api/emails`);
-    const body = (await res.json()) as {
+    const res = await alepha
+      .inject(InspectorDispatcher)
+      .dispatch({ method: "GET", path: "/emails" });
+    const body = res.body as {
       emails: Array<{ subject: string }>;
       directory: string;
     };

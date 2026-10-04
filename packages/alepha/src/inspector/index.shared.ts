@@ -1,3 +1,4 @@
+export * from "./interfaces/InspectorRoute.ts";
 export * from "./schemas/DevActionMetadata.ts";
 export * from "./schemas/DevAtomMetadata.ts";
 export * from "./schemas/DevCacheMetadata.ts";
@@ -8,7 +9,9 @@ export * from "./schemas/DevLogMarker.ts";
 export * from "./schemas/DevMetadata.ts";
 export * from "./schemas/DevModuleMetadata.ts";
 export * from "./schemas/DevPageMetadata.ts";
+export * from "./schemas/DevPermissionMetadata.ts";
 export * from "./schemas/DevProviderMetadata.ts";
 export * from "./schemas/DevRealmMetadata.ts";
+export * from "./schemas/DevRoleMetadata.ts";
 export * from "./schemas/DevStorageMetadata.ts";
 export * from "./schemas/DevTopicMetadata.ts";

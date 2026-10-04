@@ -1,6 +1,5 @@
+import type { DevAtomMetadata } from "alepha/inspector";
 import { ArrowRight } from "lucide-react";
-
-import type { DevAtomMetadata } from "../../../schemas/DevAtomMetadata.ts";
 
 export interface AtomChannelsProps {
   atom: DevAtomMetadata;

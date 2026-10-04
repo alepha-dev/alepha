@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { DevLogStoreProvider } from "alepha";
+import { DevLogStoreProvider } from "alepha/inspector";
 ```
 
 ## Overview
@@ -24,5 +24,5 @@ ring eviction in `MemoryDestinationProvider` keeps applying to the live run
 alone, so a busy session cannot silently evict the crash you restarted to
 read.
 
-Dev only. `AlephaDevtools` refuses to register in production, so nothing here
-can turn into a production log sink.
+Dev only. `AlephaInspector` refuses to register in production unless asked
+explicitly, so nothing here turns into a production log sink by accident.

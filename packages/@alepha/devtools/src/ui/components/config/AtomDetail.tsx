@@ -1,12 +1,12 @@
 import { AutoForm } from "@alepha/ui/form";
 import { jsonSchemaToZod, z } from "alepha";
+import type { DevAtomMetadata } from "alepha/inspector";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
 import { RotateCcw, Save } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import type { DevAtomMetadata } from "../../../schemas/DevAtomMetadata.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
 import { AtomChannels } from "./AtomChannels.tsx";
 import { AtomMutations } from "./AtomMutations.tsx";

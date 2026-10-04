@@ -1,6 +1,5 @@
+import type { DevMetadata } from "alepha/inspector";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-import type { DevMetadata } from "../../../schemas/DevMetadata.ts";
 
 export interface CommandPaletteProps {
   metadata?: DevMetadata;

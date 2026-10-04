@@ -41,7 +41,9 @@ class HeaderSecurityProvider extends SecurityProvider {
 }
 
 const boot = async (secured: boolean) => {
-  const alepha = Alepha.create({ env: { SERVER_PORT: 0, LOG_LEVEL: "error" } })
+  const alepha = Alepha.create({
+    env: { SERVER_PORT: 0, LOG_LEVEL: "error", ALEPHA_INSPECT: "1" },
+  })
     .with(AlephaServer)
     .with(AlephaDevtools);
 

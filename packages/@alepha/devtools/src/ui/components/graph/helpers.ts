@@ -1,4 +1,4 @@
-import type { DevProviderMetadata } from "@alepha/devtools";
+import type { DevProviderMetadata } from "alepha/inspector";
 
 import type {
   GraphFilters,

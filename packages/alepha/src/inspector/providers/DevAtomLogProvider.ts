@@ -14,7 +14,7 @@ export interface AtomMutationEntry {
  *
  * `serverOnly` atoms are never buffered: `serverOnly` is documented as a
  * security guard (its value must never reach a browser), and this buffer
- * backs the `GET /__devtools/api/atoms/log` route, served straight to the
+ * backs the inspector's `GET /atoms/log` route, served straight to the
  * devtools UI. A mutation on a raw state key with no registered atom
  * (`StateManager.getAtom()` returns `undefined`) is still logged as before -
  * only known `serverOnly` atoms are skipped.

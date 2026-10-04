@@ -1,19 +1,9 @@
-import { mkdirSync } from "node:fs";
-
 import { Alepha } from "alepha";
 import { type LogEntry, MemoryDestinationProvider } from "alepha/logger";
-import { AlephaServer, ServerProvider } from "alepha/server";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { AlephaDevtools } from "../index.ts";
-
-// Outside production the module serves its built UI from `assets/ui`, a
-// gitignored build artifact that is absent in CI, and ServerStaticProvider
-// would fail to boot on the missing directory. Same shim as
-// DevToolsProvider.spec.ts.
-beforeAll(() => {
-  mkdirSync(new URL("../../assets/ui", import.meta.url), { recursive: true });
-});
+import { AlephaInspector } from "../index.ts";
+import { InspectorDispatcher } from "../services/InspectorDispatcher.ts";
 
 /**
  * One page of the tail, as the browser hook asks for it.
@@ -27,18 +17,22 @@ interface LogPage {
 
 describe("the devtools log tail", () => {
   const boot = async () => {
-    const alepha = Alepha.create({ env: { SERVER_PORT: 0 } })
-      .with(AlephaServer)
-      .with(AlephaDevtools);
+    const alepha = Alepha.create({ env: { ALEPHA_INSPECT: "1" } }).with(
+      AlephaInspector,
+    );
     await alepha.start();
 
-    const host = alepha.inject(ServerProvider).hostname;
+    const dispatcher = alepha.inject(InspectorDispatcher);
     const page = async (after?: number, limit = 200): Promise<LogPage> => {
-      const q = new URLSearchParams({ limit: String(limit) });
-      if (after !== undefined) q.set("after", String(after));
-      const res = await fetch(`${host}/__devtools/api/logs?${q}`);
+      const query: Record<string, string> = { limit: String(limit) };
+      if (after !== undefined) query.after = String(after);
+      const res = await dispatcher.dispatch({
+        method: "GET",
+        path: "/logs",
+        query,
+      });
       expect(res.status).toBe(200);
-      return (await res.json()) as LogPage;
+      return JSON.parse(JSON.stringify(res.body)) as LogPage;
     };
 
     return { alepha, page, memory: alepha.inject(MemoryDestinationProvider) };

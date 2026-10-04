@@ -6,7 +6,7 @@ import { jobRetentionSchema } from "alepha/api/jobs";
  *
  * This is the declarative half only — what the primitive says. Execution
  * counts, last-run and the execution rows themselves are runtime state and
- * come from `GET /__devtools/api/jobs`, which reads the durable outbox table.
+ * come from the inspector's `GET /jobs`, which reads the durable outbox table.
  */
 export const devJobMetadataSchema = z.object({
   name: z.text(),

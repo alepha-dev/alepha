@@ -12,21 +12,13 @@ npm install @alepha/devtools
 
 ## Module
 
-Runtime inspection and debugging UI.
+The in-app devtools UI, served by the application itself at `/__devtools`.
 
-**Features:**
-
-- DevTools UI at `GET /__devtools`
-- Application metadata at `GET /__devtools/api/metadata`
-- Last 10,000 logs at `GET /__devtools/api/logs`
-- Runtime inspection of actions, jobs, topics, storages
-- Log viewer with filtering
-- React Flow visualization
-- Provider and module browsing
+What it shows comes from `alepha/inspector`, whose route table this module
+mounts under `/__devtools/api`.
 
 ## API Reference
 
 ### Providers
 
-- [`DevAtomLogProvider`](https://alepha.dev/docs/reference-providers-devatomlogprovider) - In-memory ring buffer of `state:mutate` events, powering the devtools
-- [`DevLogStoreProvider`](https://alepha.dev/docs/reference-providers-devlogstoreprovider) - The devtools log buffer, and the part of it that outlives the process.
+- [`DevToolsProvider`](https://alepha.dev/docs/reference-providers-devtoolsprovider) - The in-app devtools: the UI at `/__devtools`, and the inspector's routes

@@ -1,14 +1,8 @@
+import { type DevMetadata, devMetadataSchema } from "alepha/inspector";
 import { useInject, useStore } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useState } from "react";
 
-// Relative, never the package's own `@alepha/devtools` barrel: importing the
-// public entrypoint from inside the package creates the circular dependency
-// the build's module analysis flags.
-import {
-  type DevMetadata,
-  devMetadataSchema,
-} from "../../schemas/DevMetadata.ts";
 import { devMetadataAtom } from "../atoms/devMetadataAtom.ts";
 
 export interface UseMetadataResult {

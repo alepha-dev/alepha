@@ -1,3 +1,4 @@
+import type { DevMetadata } from "alepha/inspector";
 import { useRouter } from "alepha/react/router";
 import {
   Archive,
@@ -13,8 +14,6 @@ import {
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
-
-import type { DevMetadata } from "../../../schemas/DevMetadata.ts";
 
 export interface DashboardPrimitivesProps {
   metadata?: DevMetadata;

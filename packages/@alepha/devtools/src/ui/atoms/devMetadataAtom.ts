@@ -1,6 +1,5 @@
 import { $atom } from "alepha";
-
-import { devMetadataSchema } from "../../schemas/DevMetadata.ts";
+import { devMetadataSchema } from "alepha/inspector";
 
 /**
  * The one copy of `/__devtools/api/metadata` the UI keeps.
