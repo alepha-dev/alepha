@@ -5,10 +5,12 @@ import { $command } from "alepha/command";
 import type { CapacitorPlatform } from "../atoms/capacitorOptions.ts";
 import { CapacitorDev } from "../services/CapacitorDev.ts";
 import { CapacitorInit } from "../services/CapacitorInit.ts";
+import { CapacitorLock } from "../services/CapacitorLock.ts";
 import { CapacitorNativeBuild } from "../services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "../services/CapacitorPackages.ts";
 import { CapacitorProject } from "../services/CapacitorProject.ts";
 import { CapacitorSync } from "../services/CapacitorSync.ts";
+import { NativeIdentity } from "../services/NativeIdentity.ts";
 
 /**
  * The `alepha capacitor` family: the native app of an Alepha project.
@@ -21,6 +23,18 @@ export class CapacitorCommand {
   protected readonly project = $inject(CapacitorProject);
   protected readonly packages = $inject(CapacitorPackages);
   protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly lock = $inject(CapacitorLock);
+  protected readonly identity = $inject(NativeIdentity);
+
+  /**
+   * `--variant`, on every command: which identity it works on.
+   */
+  protected readonly variant = z
+    .string()
+    .describe(
+      "The variant to work on, or base; required once capacitor({ variants }) declares any",
+    )
+    .optional();
 
   public readonly init = $command({
     name: "init",
@@ -33,15 +47,19 @@ export class CapacitorCommand {
           "Only this platform, instead of every platform the config declares",
         )
         .optional(),
+      variant: this.variant,
     }),
     handler: async ({ flags, run, root }) => {
-      await this.initService.run({
-        root,
-        run,
-        platforms: flags.platform
-          ? [flags.platform as CapacitorPlatform]
-          : undefined,
-      });
+      this.project.select(flags.variant);
+      await this.lock.hold(root, () =>
+        this.initService.run({
+          root,
+          run,
+          platforms: flags.platform
+            ? [flags.platform as CapacitorPlatform]
+            : undefined,
+        }),
+      );
     },
   });
 
@@ -56,9 +74,16 @@ export class CapacitorCommand {
         .meta({ aliases: ["web-only"] })
         .describe("Build the shell only, without touching the native projects")
         .optional(),
+      variant: this.variant,
     }),
     handler: async ({ flags, run, root }) => {
-      await this.syncService.run({ root, run, webOnly: flags.webOnly });
+      this.project.select(flags.variant);
+      await this.lock.hold(root, async () => {
+        if (!flags.webOnly) {
+          await this.prepare(root);
+        }
+        await this.syncService.run({ root, run, webOnly: flags.webOnly });
+      });
     },
   });
 
@@ -100,19 +125,25 @@ export class CapacitorCommand {
         .meta({ aliases: ["android-release-type"] })
         .describe("Android release: bundle or APK (default: AAB)")
         .optional(),
+      variant: this.variant,
     }),
     handler: async ({ args, flags, run, root }) => {
-      await this.buildService.run({
-        root,
-        run,
-        platform: this.platformOf(args),
-        release: flags.release,
-        device: flags.device,
-        exportMethod: flags.exportMethod,
-        androidReleaseType: flags.androidReleaseType as
-          | "AAB"
-          | "APK"
-          | undefined,
+      this.project.select(flags.variant);
+      const platform = this.platformOf(args);
+      await this.lock.hold(root, async () => {
+        await this.prepare(root);
+        await this.buildService.run({
+          root,
+          run,
+          platform,
+          release: flags.release,
+          device: flags.device,
+          exportMethod: flags.exportMethod,
+          androidReleaseType: flags.androidReleaseType as
+            | "AAB"
+            | "APK"
+            | undefined,
+        });
       });
     },
   });
@@ -147,6 +178,7 @@ export class CapacitorCommand {
           "Put back the native files an interrupted dev run changed, then exit",
         )
         .optional(),
+      variant: this.variant,
     }),
     handler: async ({ args, flags, root }) => {
       if (flags.restore) {
@@ -158,12 +190,17 @@ export class CapacitorCommand {
           "Name the platform: alepha capacitor dev ios|android.",
         );
       }
-      await this.devService.run({
-        root,
-        platform: this.platformOf(args),
-        target: flags.target,
-        host: flags.host,
-        api: flags.api,
+      this.project.select(flags.variant);
+      const platform = this.platformOf(args);
+      await this.lock.hold(root, async () => {
+        await this.prepare(root);
+        await this.devService.run({
+          root,
+          platform,
+          target: flags.target,
+          host: flags.host,
+          api: flags.api,
+        });
       });
     },
   });
@@ -172,13 +209,19 @@ export class CapacitorCommand {
     name: "open",
     description: "Open the native project in Xcode or Android Studio",
     args: z.text({ title: "platform" }),
-    handler: async ({ args, run, root }) => {
+    flags: z.object({ variant: this.variant }),
+    handler: async ({ args, flags, run, root }) => {
+      this.project.select(flags.variant);
       const platform = this.platformOf(args);
-      this.project.options();
-      const pm = await this.pm.getPackageManager(root);
-      await run(this.packages.cap(pm, `open ${platform}`), {
-        alias: `cap open ${platform}`,
-        root,
+      await this.lock.hold(root, async () => {
+        // The IDE shows the selected variant, never whichever one a previous
+        // command left prepared.
+        await this.prepare(root);
+        const pm = await this.pm.getPackageManager(root);
+        await run(this.packages.cap(pm, `open ${platform}`), {
+          alias: `cap open ${platform}`,
+          root,
+        });
       });
     },
   });
@@ -191,6 +234,18 @@ export class CapacitorCommand {
       help();
     },
   });
+
+  /**
+   * Write the selected variant's identity into the native projects. An app
+   * without variants keeps the identity init wrote, untouched.
+   */
+  protected async prepare(root: string): Promise<void> {
+    if (!this.project.hasVariants()) {
+      return;
+    }
+    const options = this.project.options();
+    await this.identity.apply(root, options, this.project.platforms(options));
+  }
 
   protected platformOf(value: string): CapacitorPlatform {
     if (value !== "ios" && value !== "android") {

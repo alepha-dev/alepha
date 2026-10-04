@@ -30,7 +30,7 @@ Then open http://localhost:3313.
 ## The browser suite
 
 `yarn w mobile e2e` builds the API and the app shell (`alepha capacitor sync
---web-only`) and serves them on two e2e ports, then checks in Chromium that
+--web-only --variant base`) and serves them on two e2e ports, then checks in Chromium that
 the shell boots from `index.html`, that its first loader reaches the API on
 the other origin, and that an unreachable or silent API lands on the offline
 screen within the boot deadline, with a retry that recovers. It runs in CI's
@@ -84,10 +84,20 @@ named by `MOBILE_API_URL`, the HTTPS address of `serve:workerd` above:
 
 ```bash
 export MOBILE_API_URL=https://192.168.1.48:8443
-yarn alepha capacitor sync           # the shell into dist-capacitor/, then cap sync
-yarn alepha capacitor build android  # a debug APK, recorded in capacitor.builds.json
-yarn alepha capacitor build ios      # a simulator .app (--device for a phone, needs iosTeamId)
-yarn alepha capacitor open ios       # Xcode
+yarn alepha capacitor sync --variant base           # the shell into dist-capacitor/base/, then cap sync
+yarn alepha capacitor build android --variant base  # a debug APK, recorded in capacitor.builds.json
+yarn alepha capacitor build ios --variant base      # a simulator .app (--device for a phone, needs iosTeamId)
+yarn alepha capacitor open ios --variant base       # Xcode
+```
+
+It declares a second variant, `acme`: another installable app (bundle id
+`dev.alepha.mobile.acme`, name "Acme Notes", scheme `acmenotes://`, its own
+icon) calling `MOBILE_ACME_API_URL`. Every command names the variant it works
+on; switching rewrites the bundle id, name, scheme and icons in the one pair
+of native projects, so build each in turn to install both side by side:
+
+```bash
+MOBILE_ACME_API_URL=https://192.168.1.48:8443 yarn alepha capacitor build android --variant acme
 ```
 
 Android needs a JDK 21 (`JAVA_HOME` at Android Studio's

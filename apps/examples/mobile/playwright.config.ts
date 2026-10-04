@@ -54,7 +54,7 @@ export default defineConfig({
     {
       reuseExistingServer: false,
       command:
-        "yarn alepha capacitor sync --web-only && node scripts/serve-shell.ts",
+        "yarn alepha capacitor sync --web-only --variant base && node scripts/serve-shell.ts",
       url: `http://localhost:${shellPort}`,
       timeout: 240_000,
       env: {

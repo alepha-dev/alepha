@@ -1,8 +1,8 @@
 /**
- * Serve the app shell `alepha capacitor sync --web-only` built into
- * `dist-capacitor/public`, the way a WebView does: every path that is not a
- * file answers `index.html`, and nothing else is behind it. For the browser
- * suite only; `SHELL_PORT` names the port.
+ * Serve the app shell `alepha capacitor sync --web-only --variant base`
+ * built into `dist-capacitor/base/public`, the way a WebView does: every
+ * path that is not a file answers `index.html`, and nothing else is behind
+ * it. For the browser suite only; `SHELL_PORT` names the port.
  */
 import { readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -11,6 +11,7 @@ import { extname, join, normalize } from "node:path";
 const root = join(
   new URL("..", import.meta.url).pathname,
   "dist-capacitor",
+  "base",
   "public",
 );
 const port = Number(process.env.SHELL_PORT);

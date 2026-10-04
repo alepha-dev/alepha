@@ -5,7 +5,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "dev.alepha.mobile",
   appName: "Alepha Mobile",
-  webDir: "dist-capacitor/public",
+  webDir: "dist-capacitor/base/public",
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

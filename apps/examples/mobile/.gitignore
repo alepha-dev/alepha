@@ -5,3 +5,6 @@
 *.p12
 *.mobileprovision
 /.capacitor-dev.json
+
+# @alepha/capacitor: the app shell and signing keys
+/.capacitor-lock

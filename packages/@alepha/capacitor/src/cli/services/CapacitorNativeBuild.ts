@@ -86,7 +86,7 @@ export class CapacitorNativeBuild {
       appId: options.appId,
       appName: options.appName,
       scheme: options.scheme,
-      variant: "base",
+      variant: this.project.variant(),
     };
     const { fingerprint, inputs } = await this.fingerprint.compute({
       root,
@@ -97,6 +97,7 @@ export class CapacitorNativeBuild {
       appId: options.appId,
       platform,
       versionBuild,
+      variant: this.project.variant(),
       fingerprint,
       inputs,
     });
@@ -116,7 +117,7 @@ export class CapacitorNativeBuild {
       appId: options.appId,
       platform,
       versionBuild,
-      variant: "base",
+      variant: this.project.variant(),
       configuration: opts.release ? "release" : "debug",
       fingerprint,
       inputs,

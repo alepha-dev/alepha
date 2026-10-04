@@ -8,6 +8,7 @@ import {
 import { CapacitorCommand } from "./commands/CapacitorCommand.ts";
 import { CapacitorDev } from "./services/CapacitorDev.ts";
 import { CapacitorInit } from "./services/CapacitorInit.ts";
+import { CapacitorLock } from "./services/CapacitorLock.ts";
 import { CapacitorNativeBuild } from "./services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "./services/CapacitorPackages.ts";
 import { CapacitorProject } from "./services/CapacitorProject.ts";
@@ -16,6 +17,7 @@ import { NativeAssets } from "./services/NativeAssets.ts";
 import { NativeBuildRecords } from "./services/NativeBuildRecords.ts";
 import { NativeFingerprint } from "./services/NativeFingerprint.ts";
 import { NativeGuard } from "./services/NativeGuard.ts";
+import { NativeIdentity } from "./services/NativeIdentity.ts";
 import { NativeSchemes } from "./services/NativeSchemes.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -27,6 +29,7 @@ export * from "./schemas/capacitorIconSchema.ts";
 export * from "./schemas/capacitorIdentitySchema.ts";
 export * from "./services/CapacitorDev.ts";
 export * from "./services/CapacitorInit.ts";
+export * from "./services/CapacitorLock.ts";
 export * from "./services/CapacitorNativeBuild.ts";
 export * from "./services/CapacitorPackages.ts";
 export * from "./services/CapacitorProject.ts";
@@ -35,6 +38,7 @@ export * from "./services/NativeAssets.ts";
 export * from "./services/NativeBuildRecords.ts";
 export * from "./services/NativeFingerprint.ts";
 export * from "./services/NativeGuard.ts";
+export * from "./services/NativeIdentity.ts";
 export * from "./services/NativeSchemes.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -73,6 +77,14 @@ export * from "./services/NativeSchemes.ts";
  *   server over the LAN, with hot reload;
  * - `alepha capacitor open ios|android` opens Xcode or Android Studio.
  *
+ * `variants: { acme: { appId, appName, scheme, apiUrl, icon } }` declares
+ * other installable apps from the same code. Every command then takes
+ * `--variant <name>` (or `--variant base`), refuses without it, and first
+ * writes that identity into the one pair of native projects
+ * ({@link NativeIdentity}); each variant's shell builds into
+ * `dist-capacitor/<variant>/`. One command runs at a time per project
+ * ({@link CapacitorLock}).
+ *
  * Node only: this entry reaches the file system, the shell and the build
  * pipeline. Browser code imports `@alepha/capacitor` (the `core` entry).
  *
@@ -86,6 +98,8 @@ export const AlephaCliCapacitorPlugin = $module({
     CapacitorPackages,
     NativeSchemes,
     NativeAssets,
+    NativeIdentity,
+    CapacitorLock,
     NativeGuard,
     NativeFingerprint,
     NativeBuildRecords,

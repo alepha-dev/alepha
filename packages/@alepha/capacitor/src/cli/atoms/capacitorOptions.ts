@@ -25,6 +25,16 @@ export const capacitorOptions = $atom({
        * `server.url`, which would ship a WebView pointed at a server.
        */
       config: z.record(z.string(), z.any()).optional(),
+
+      /**
+       * Other installable apps built from this one, by name: each overrides
+       * identity keys of the base (`appId`, `appName`, `scheme`, `apiUrl`,
+       * `icon`, `iosTeamId`, `env`). Once any is declared, every command
+       * names the one it works on with `--variant`, `base` included.
+       */
+      variants: z
+        .record(z.string(), capacitorIdentitySchema.partial())
+        .optional(),
     })
     .optional(),
 });

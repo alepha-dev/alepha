@@ -76,6 +76,18 @@ const setup = async (opts: { host?: "darwin" | "linux" } = {}) => {
       `${ROOT}/android/app/src/main/AndroidManifest.xml`,
       capacitorTemplates.androidManifest,
     );
+    await fs.writeFile(
+      `${ROOT}/ios/App/App.xcodeproj/project.pbxproj`,
+      capacitorTemplates.pbxproj,
+    );
+    await fs.writeFile(
+      `${ROOT}/android/app/build.gradle`,
+      capacitorTemplates.appBuildGradle,
+    );
+    await fs.writeFile(
+      `${ROOT}/android/app/src/main/res/values/strings.xml`,
+      capacitorTemplates.stringsXml,
+    );
   };
 
   /**

@@ -30,9 +30,9 @@ export class CapacitorProject {
   public static readonly DIST_DIR = "dist-capacitor";
 
   /**
-   * The directory Capacitor copies into the native projects.
+   * The name of the identity declared at the top of `capacitor({ ... })`.
    */
-  public static readonly WEB_DIR = `${CapacitorProject.DIST_DIR}/public`;
+  public static readonly BASE_VARIANT = "base";
 
   /**
    * The viewport of the shell's document: edge to edge, so the safe-area
@@ -56,9 +56,97 @@ export class CapacitorProject {
   protected readonly optionsStore = $store(capacitorOptions);
 
   /**
-   * The declared options, or a refusal naming where they go.
+   * The variant the running command works on, once {@link select}ed.
+   */
+  protected selected?: string;
+
+  /**
+   * Choose the identity this command works on, from its `--variant` flag,
+   * and check every declared identity first.
+   *
+   * With variants declared, an omitted flag is refused, so a command never
+   * acts on whichever variant happened to be prepared last; `base` names the
+   * top-level identity. Without variants, the flag may only say `base`.
+   */
+  public select(variant: string | undefined): void {
+    const declared = this.declared();
+    this.validate(declared);
+    const names = Object.keys(declared.variants ?? {});
+
+    if (variant === undefined) {
+      if (names.length > 0) {
+        throw this.unselected(names);
+      }
+      this.selected = CapacitorProject.BASE_VARIANT;
+      return;
+    }
+    if (variant !== CapacitorProject.BASE_VARIANT && !names.includes(variant)) {
+      throw new AlephaError(
+        `Unknown variant "${variant}". Declared: ${[CapacitorProject.BASE_VARIANT, ...names].join(", ")}.`,
+      );
+    }
+    this.selected = variant;
+  }
+
+  /**
+   * The options of the selected identity: the base, with the selected
+   * variant's keys over it. Refused when variants exist and none was
+   * selected.
    */
   public options(): CapacitorOptions {
+    const declared = this.declared();
+    const names = Object.keys(declared.variants ?? {});
+    const selected = this.selected;
+
+    if (selected === undefined) {
+      if (names.length > 0) {
+        throw this.unselected(names);
+      }
+      return declared;
+    }
+    if (selected === CapacitorProject.BASE_VARIANT) {
+      return declared;
+    }
+    return { ...declared, ...declared.variants?.[selected] };
+  }
+
+  /**
+   * The selected variant's name: `base` without variants.
+   */
+  public variant(): string {
+    return this.selected ?? CapacitorProject.BASE_VARIANT;
+  }
+
+  /**
+   * Whether `capacitor({ ... })` declares variants.
+   */
+  public hasVariants(): boolean {
+    return Object.keys(this.optionsStore?.variants ?? {}).length > 0;
+  }
+
+  /**
+   * Where the selected identity's shell is built: `dist-capacitor/` for an
+   * app without variants, `dist-capacitor/<variant>/` for each identity of
+   * one with variants, so no variant's build overwrites another's.
+   */
+  public distDir(): string {
+    return this.hasVariants()
+      ? `${CapacitorProject.DIST_DIR}/${this.variant()}`
+      : CapacitorProject.DIST_DIR;
+  }
+
+  /**
+   * The directory Capacitor copies into the native projects: the shell's
+   * `public/`.
+   */
+  public webDir(): string {
+    return `${this.distDir()}/public`;
+  }
+
+  /**
+   * The options as declared, or a refusal naming where they go.
+   */
+  protected declared(): CapacitorOptions {
     const options = this.optionsStore;
     if (!options) {
       throw new AlephaError(
@@ -66,6 +154,69 @@ export class CapacitorProject {
       );
     }
     return options;
+  }
+
+  protected unselected(names: string[]): AlephaError {
+    return new AlephaError(
+      `This app declares variants (${names.join(", ")}): name the one to work on with --variant <name>, or --variant ${CapacitorProject.BASE_VARIANT} for the base identity.`,
+    );
+  }
+
+  /**
+   * Refuse identities that cannot be installed side by side or switched
+   * between cleanly, and public env that looks like a credential.
+   */
+  protected validate(declared: CapacitorOptions): void {
+    const variants = Object.entries(declared.variants ?? {});
+    const identities: Array<[string, CapacitorOptions]> = [
+      [CapacitorProject.BASE_VARIANT, declared],
+      ...variants.map(([name, overrides]): [string, CapacitorOptions] => [
+        name,
+        { ...declared, ...overrides },
+      ]),
+    ];
+
+    for (const [name] of variants) {
+      if (
+        name === CapacitorProject.BASE_VARIANT ||
+        !/^[a-z][a-z0-9-]*$/.test(name)
+      ) {
+        throw new AlephaError(
+          `Variant name "${name}" must be lowercase letters, digits and dashes, and cannot be "${CapacitorProject.BASE_VARIANT}".`,
+        );
+      }
+    }
+
+    for (const key of ["appId", "scheme"] as const) {
+      const seen = new Map<string, string>();
+      for (const [name, identity] of identities) {
+        const other = seen.get(identity[key]);
+        if (other) {
+          throw new AlephaError(
+            `Variants "${other}" and "${name}" share the ${key} "${identity[key]}": installed side by side, one would replace or shadow the other. Give each its own.`,
+          );
+        }
+        seen.set(identity[key], name);
+      }
+    }
+
+    if (!declared.icon && variants.some(([, overrides]) => overrides.icon)) {
+      throw new AlephaError(
+        "A variant declares an icon but the base does not: switching back to the base could not restore Capacitor's default icon. Declare a base icon too.",
+      );
+    }
+
+    for (const [name, identity] of identities) {
+      for (const key of Object.keys(identity.env ?? {})) {
+        if (
+          /SECRET|PASSWORD|PASSWD|TOKEN|PRIVATE|CREDENTIAL|API_?KEY/i.test(key)
+        ) {
+          throw new AlephaError(
+            `env.${key} of "${name}" looks like a credential. env ships inside the app for anyone to read: keep secrets on the server, and signing keys in the environment of the build.`,
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -156,7 +307,7 @@ export class CapacitorProject {
   ): CapacitorPublicConfig {
     return {
       appId: options.appId,
-      variant: "base",
+      variant: this.variant(),
       scheme: options.scheme,
       mode,
       apiUrl,
@@ -179,7 +330,7 @@ export class CapacitorProject {
    * command into a rewrite.
    */
   public renderCapacitorConfig(options: CapacitorOptions): string {
-    const extra = { ...options.config };
+    const extra: Record<string, unknown> = { ...options.config };
     for (const key of ["appId", "appName", "webDir"]) {
       if (key in extra) {
         throw new AlephaError(
@@ -207,7 +358,7 @@ export class CapacitorProject {
     const config = {
       appId: options.appId,
       appName: options.appName,
-      webDir: CapacitorProject.WEB_DIR,
+      webDir: this.webDir(),
       ...extra,
       plugins,
     };

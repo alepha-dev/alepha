@@ -46,6 +46,7 @@ describe("NativeFingerprint", () => {
       "file:android/app/build.gradle",
       "file:android/app/src/main/AndroidManifest.xml",
       "file:android/app/src/main/java/dev/alepha/mobile/MainActivity.java",
+      "file:android/app/src/main/res/values/strings.xml",
       "file:android/build.gradle",
     ]);
   });

@@ -4,14 +4,10 @@ import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import type {
-  CapacitorOptions,
-  CapacitorPlatform,
-} from "../atoms/capacitorOptions.ts";
+import type { CapacitorPlatform } from "../atoms/capacitorOptions.ts";
 import { CapacitorPackages } from "./CapacitorPackages.ts";
 import { CapacitorProject } from "./CapacitorProject.ts";
-import { NativeAssets } from "./NativeAssets.ts";
-import { NativeSchemes } from "./NativeSchemes.ts";
+import { NativeIdentity } from "./NativeIdentity.ts";
 
 /**
  * `alepha capacitor init`: give an Alepha app its native projects.
@@ -27,9 +23,10 @@ import { NativeSchemes } from "./NativeSchemes.ts";
  *    is the user's, and is refused rather than overwritten);
  * 4. add the ignore rules for build outputs and signing keys;
  * 5. run `cap add` for each platform whose project does not exist yet;
- * 6. register the custom URL scheme in each native project;
- * 7. with an `icon` configured, generate the icons and the splash
- *    ({@link NativeAssets}); without one, Capacitor's default icon stays.
+ * 6. write the identity into each native project ({@link NativeIdentity}):
+ *    bundle id, display name, the custom URL scheme and, with an `icon`
+ *    configured, the icons and the splash (without one, Capacitor's default
+ *    icon stays).
  *
  * The native projects are source, checked in like any other: only their
  * build outputs are ignored.
@@ -40,8 +37,7 @@ export class CapacitorInit {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly project = $inject(CapacitorProject);
   protected readonly packages = $inject(CapacitorPackages);
-  protected readonly schemes = $inject(NativeSchemes);
-  protected readonly assets = $inject(NativeAssets);
+  protected readonly identity = $inject(NativeIdentity);
 
   /**
    * What the app's `.gitignore` must carry. The native templates ignore their
@@ -51,6 +47,7 @@ export class CapacitorInit {
   protected readonly ignoreRules = [
     `/${CapacitorProject.DIST_DIR}`,
     "/.capacitor-dev.json",
+    "/.capacitor-lock",
     "*.keystore",
     "*.jks",
     "*.p12",
@@ -97,21 +94,11 @@ export class CapacitorInit {
     }
 
     await run({
-      name: "register the URL scheme",
+      name: "write the native identity",
       handler: async () => {
-        await this.registerScheme(root, options, platforms);
+        await this.identity.apply(root, options, platforms);
       },
     });
-
-    const icon = options.icon;
-    if (icon) {
-      await run({
-        name: "generate icons and splash",
-        handler: async () => {
-          await this.assets.generate(root, icon, platforms);
-        },
-      });
-    }
   }
 
   /**
@@ -192,11 +179,11 @@ export class CapacitorInit {
    * shell yet, so a placeholder stands in; the directory is ignored.
    */
   protected async ensureWebDir(root: string): Promise<void> {
-    const index = this.fs.join(root, CapacitorProject.WEB_DIR, "index.html");
+    const index = this.fs.join(root, this.project.webDir(), "index.html");
     if (await this.fs.exists(index)) {
       return;
     }
-    await this.fs.mkdir(this.fs.join(root, CapacitorProject.WEB_DIR), {
+    await this.fs.mkdir(this.fs.join(root, this.project.webDir()), {
       recursive: true,
     });
     await this.fs.writeFile(
@@ -246,38 +233,5 @@ export class CapacitorInit {
     }
     config.ignorePatterns = [...patterns, ...missing];
     await this.fs.writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
-  }
-
-  protected async registerScheme(
-    root: string,
-    options: CapacitorOptions,
-    platforms: CapacitorPlatform[],
-  ): Promise<void> {
-    if (platforms.includes("ios")) {
-      const path = this.project.infoPlistPath(root);
-      if (await this.fs.exists(path)) {
-        const next = this.schemes.registerIos(
-          await this.fs.readTextFile(path),
-          options.scheme,
-          options.appId,
-        );
-        if (next !== null) {
-          await this.fs.writeFile(path, next);
-        }
-      }
-    }
-
-    if (platforms.includes("android")) {
-      const path = this.project.androidManifestPath(root);
-      if (await this.fs.exists(path)) {
-        const next = this.schemes.registerAndroid(
-          await this.fs.readTextFile(path),
-          options.scheme,
-        );
-        if (next !== null) {
-          await this.fs.writeFile(path, next);
-        }
-      }
-    }
   }
 }

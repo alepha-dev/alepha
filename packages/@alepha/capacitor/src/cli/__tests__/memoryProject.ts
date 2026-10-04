@@ -43,7 +43,7 @@ export const seedNativeProject = async (
 
   await fs.writeFile(
     `${root}/ios/App/App.xcodeproj/project.pbxproj`,
-    "buildSettings = {\n\t\t\t\tCURRENT_PROJECT_VERSION = 1;\n};\nbuildSettings = {\n\t\t\t\tCURRENT_PROJECT_VERSION = 1;\n};\n",
+    capacitorTemplates.pbxproj,
   );
   await fs.writeFile(
     `${root}/ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`,
@@ -62,7 +62,11 @@ export const seedNativeProject = async (
 
   await fs.writeFile(
     `${root}/android/app/build.gradle`,
-    "android {\n    defaultConfig {\n        versionCode 1\n    }\n}\n",
+    capacitorTemplates.appBuildGradle,
+  );
+  await fs.writeFile(
+    `${root}/android/app/src/main/res/values/strings.xml`,
+    capacitorTemplates.stringsXml,
   );
   await fs.writeFile(`${root}/android/build.gradle`, "buildscript {}");
   await fs.writeFile(

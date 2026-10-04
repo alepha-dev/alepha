@@ -90,6 +90,7 @@ export class NativeBuildRecords {
       appId: string;
       platform: CapacitorPlatform;
       versionBuild: string;
+      variant?: string;
       fingerprint: string;
       inputs: Record<string, string>;
     },
@@ -98,7 +99,8 @@ export class NativeBuildRecords {
       (record) =>
         record.appId === candidate.appId &&
         record.platform === candidate.platform &&
-        record.versionBuild === candidate.versionBuild,
+        record.versionBuild === candidate.versionBuild &&
+        record.variant === (candidate.variant ?? "base"),
     );
     if (!existing) {
       return "new";

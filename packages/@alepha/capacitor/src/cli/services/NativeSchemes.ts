@@ -87,6 +87,14 @@ export class NativeSchemes {
     ].join("\n");
   }
 
+  /**
+   * The `CFBundleURLTypes` key and array the plugin registers, as it writes
+   * them: what a variant switch replaces.
+   */
+  public iosUrlTypes(scheme: string, appId: string): string {
+    return this.iosBlock(scheme, appId);
+  }
+
   protected iosBlock(scheme: string, appId: string): string {
     return [
       "\t<key>CFBundleURLTypes</key>",
