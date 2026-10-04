@@ -133,6 +133,20 @@ export class ReactBrowserProvider {
     return div;
   }
 
+  /**
+   * Answers the URL the first screen should show, before anything renders.
+   *
+   * Awaited at the top of a client-rendered boot. A path it returns (`/notes/42`,
+   * with query and hash) replaces the address bar's entry, so the first
+   * transition renders it and the history holds it. `undefined` keeps the
+   * page's own URL. A native shell's deep-link handler installs one: the
+   * WebView always loads `index.html`, and the link that launched the app has
+   * to land somewhere before the router reads the location.
+   *
+   * Never used when hydrating server HTML: the server already rendered a URL.
+   */
+  public initialUrlResolver?: () => Promise<string | undefined>;
+
   public transitioning?: {
     to: string;
     from?: string;
@@ -688,6 +702,17 @@ export class ReactBrowserProvider {
       const hydration = this.getHydrationState();
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
 
+      if (!hydration && this.initialUrlResolver) {
+        const initial = await this.initialUrlResolver();
+        if (initial) {
+          this.history.replaceState(
+            this.history.state,
+            "",
+            this.base + initial,
+          );
+        }
+      }
+
       try {
         if (this.bootOptions.offline && !hydration) {
           await this.bootWithDeadline(previous);
@@ -721,11 +746,16 @@ export class ReactBrowserProvider {
       }
 
       // Stamp the entry the app booted on, so returning to it can be restored
-      // like any other.
+      // like any other. Under the URL the first screen committed, which is
+      // not the one it was asked for when its loader redirected (a protected
+      // page sending a visitor to login): the address bar must not keep
+      // showing the page that refused.
+      const committed =
+        this.state.url.pathname + this.state.url.search + this.state.url.hash;
       this.history.replaceState(
         { ...this.history.state, alephaKey: this.historyKey },
         "",
-        this.location.href,
+        committed === this.url ? this.location.href : this.base + committed,
       );
 
       window.addEventListener("popstate", () => {

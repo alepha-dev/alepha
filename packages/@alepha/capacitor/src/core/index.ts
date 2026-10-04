@@ -5,10 +5,12 @@ import { ReactAuthTransport } from "alepha/react/auth";
 import { AppStateProvider } from "./providers/AppStateProvider.ts";
 import { CapacitorConfigProvider } from "./providers/CapacitorConfigProvider.ts";
 import { ContentInspector } from "./providers/ContentInspector.ts";
+import { DeepLinkProvider } from "./providers/DeepLinkProvider.ts";
 import { DeviceProvider } from "./providers/DeviceProvider.ts";
 import { HapticsProvider } from "./providers/HapticsProvider.ts";
 import { NativeAppStateProvider } from "./providers/NativeAppStateProvider.ts";
 import { NativeAuthTransport } from "./providers/NativeAuthTransport.ts";
+import { NativeDeepLinkProvider } from "./providers/NativeDeepLinkProvider.ts";
 import { NativeDeviceProvider } from "./providers/NativeDeviceProvider.ts";
 import { NativeHapticsProvider } from "./providers/NativeHapticsProvider.ts";
 import { NativeStatusBarProvider } from "./providers/NativeStatusBarProvider.ts";
@@ -20,16 +22,19 @@ import { NativeSession } from "./services/NativeSession.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./interfaces/DeepLink.ts";
 export * from "./interfaces/DeviceInfo.ts";
 export * from "./interfaces/WebContent.ts";
 export * from "./providers/AppStateProvider.ts";
 export * from "./providers/CapacitorConfigProvider.ts";
 export * from "./providers/ContentInspector.ts";
+export * from "./providers/DeepLinkProvider.ts";
 export * from "./providers/DeviceProvider.ts";
 export * from "./providers/HapticsProvider.ts";
 export * from "./providers/MemoryAppStateProvider.ts";
 export * from "./providers/MemoryCapacitorConfigProvider.ts";
 export * from "./providers/MemoryContentInspector.ts";
+export * from "./providers/MemoryDeepLinkProvider.ts";
 export * from "./providers/MemoryDeviceProvider.ts";
 export * from "./providers/MemoryHapticsProvider.ts";
 export * from "./providers/MemoryStatusBarProvider.ts";
@@ -37,6 +42,7 @@ export * from "./providers/MemoryTokenStorageProvider.ts";
 export * from "./providers/MemoryWebContentProvider.ts";
 export * from "./providers/NativeAppStateProvider.ts";
 export * from "./providers/NativeAuthTransport.ts";
+export * from "./providers/NativeDeepLinkProvider.ts";
 export * from "./providers/NativeDeviceProvider.ts";
 export * from "./providers/NativeHapticsProvider.ts";
 export * from "./providers/NativeStatusBarProvider.ts";
@@ -83,6 +89,7 @@ declare module "alepha" {
  *   a live update through a substituted {@link ContentInspector});
  * - {@link HapticsProvider}, {@link AppStateProvider}, {@link DeviceProvider},
  *   {@link StatusBarProvider};
+ * - {@link DeepLinkProvider}: `<scheme>://app/<path>` links, cold and warm;
  * - natively, {@link NativeAuthTransport}: `ReactAuth` signs in against the
  *   API with a password and keeps the session in secure storage
  *   ({@link TokenStorageProvider}) as a Bearer token. Register this module
@@ -105,6 +112,7 @@ export const AlephaCapacitor = $module({
       alepha.with({ provide: AppStateProvider, use: NativeAppStateProvider });
       alepha.with({ provide: DeviceProvider, use: NativeDeviceProvider });
       alepha.with({ provide: StatusBarProvider, use: NativeStatusBarProvider });
+      alepha.with({ provide: DeepLinkProvider, use: NativeDeepLinkProvider });
       alepha.with({
         provide: TokenStorageProvider,
         use: NativeTokenStorageProvider,
@@ -124,5 +132,6 @@ export const AlephaCapacitor = $module({
     StatusBarProvider,
     TokenStorageProvider,
     NativeSession,
+    DeepLinkProvider,
   ],
 });
