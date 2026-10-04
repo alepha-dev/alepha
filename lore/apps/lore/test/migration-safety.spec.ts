@@ -216,6 +216,105 @@ const unsanctionedDrops = (
   );
 };
 
+/**
+ * The newest migration on disk when the cascade refusal below landed (#Q2602).
+ *
+ * Only migrations AFTER it are held to that refusal. Older ones shipped long
+ * ago, and one of them (`20260801154537_sigil_family_rebuild`) sanctions a
+ * `sigils` drop that has CASCADE children: refusing it now would change
+ * nothing in production and only turn the suite red.
+ */
+const CASCADE_BASELINE = "20260929135124_folio_version";
+
+/**
+ * The slice of a drizzle-kit snapshot.json this guard reads: its foreign keys.
+ */
+interface SnapshotDdl {
+  ddl: Array<{
+    entityType: string;
+    table?: string;
+    tableTo?: string;
+    columns?: string[];
+    onDelete?: string;
+  }>;
+}
+
+const migrationSnapshot = (dir: string): SnapshotDdl =>
+  JSON.parse(readFileSync(join(MIGRATIONS, dir, "snapshot.json"), "utf8"));
+
+/**
+ * Every table a migration drops, bare or inside drizzle-kit's rebuild pattern
+ * (`CREATE TABLE __new_x`, copy, `DROP TABLE x`, `RENAME TO x`): the rebuild
+ * carries a plain `DROP TABLE x` too, so one pattern finds both. Comments are
+ * skipped, as in `unsanctionedDrops`.
+ */
+const droppedTables = (sql: string): string[] => [
+  ...new Set(
+    [
+      ...statementsOnly(sql).matchAll(
+        /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?[`"]?(\w+)[`"]?/gi,
+      ),
+    ].map((match) => match[1]),
+  ),
+];
+
+/**
+ * The children a `DROP TABLE` of `table` would empty or detach, read from the
+ * snapshot the migration runs AGAINST (the previous migration's), never from
+ * the current entities: a migration that deletes an entity, or removes a ref in
+ * the same change, would otherwise vanish from the walk.
+ *
+ * CASCADE deletes the child rows and SET NULL detaches them, both silently.
+ * RESTRICT and NO ACTION make the drop fail, and D1 rolls a failed import
+ * back, so neither is listed. A self-reference is not a child: its rows leave
+ * with the table.
+ */
+const destructiveChildren = (table: string, previous: SnapshotDdl): string[] =>
+  previous.ddl
+    .filter(
+      (entry) =>
+        entry.entityType === "fks" &&
+        entry.tableTo === table &&
+        entry.table !== table &&
+        (entry.onDelete === "CASCADE" || entry.onDelete === "SET NULL"),
+    )
+    .map((fk) => `${fk.table}.${(fk.columns ?? []).join(",")} (${fk.onDelete})`)
+    .sort();
+
+/**
+ * What a migration newer than `CASCADE_BASELINE` may not drop.
+ *
+ * - A table with CASCADE or SET NULL children, **whatever `SANCTIONED_DROPS`
+ *   says**: no entry can excuse it. Remove a column with `DROP COLUMN`
+ *   instead, which drizzle-kit generates on its own for a column with no FK.
+ * - Any other table without a `SANCTIONED_DROPS` entry for this migration,
+ *   whether or not an entity still declares it.
+ *
+ * The framework's `alepha-allow-drop-table` marker is checked separately, by
+ * `check:migrations`; a sanctioned leaf needs both.
+ */
+const dropViolations = (
+  dir: string,
+  sql: string,
+  previous: SnapshotDdl,
+  sanctionedDrops: Record<string, string[]> = SANCTIONED_DROPS,
+): string[] => {
+  if (dir <= CASCADE_BASELINE) return [];
+  const sanctioned = sanctionedDrops[dir] ?? [];
+  return droppedTables(sql).flatMap((table) => {
+    const children = destructiveChildren(table, previous);
+    if (children.length > 0) {
+      return [
+        `${table} has children it would wipe or detach: ${children.join(", ")}. ` +
+          `No SANCTIONED_DROPS entry can excuse that: see "Migration safety on D1" in apps/lore/CLAUDE.md.`,
+      ];
+    }
+    return sanctioned.includes(table)
+      ? []
+      : [`${table} is dropped without a SANCTIONED_DROPS entry`];
+  });
+};
+
 describe("migration safety", () => {
   it("never drops a table this app owns, unsanctioned", async ({ expect }) => {
     const guarded = [...(await entityTables()), ...RENAMED_AWAY];
@@ -293,6 +392,139 @@ describe("migration safety", () => {
         guarded,
       ),
     ).toEqual(["sigils"]);
+  });
+
+  it("never drops a table with children after the baseline, sanctioned or not", ({
+    expect,
+  }) => {
+    const dirs = migrationDirs();
+    expect(dirs).toContain(CASCADE_BASELINE);
+
+    for (const dir of dirs.slice(dirs.indexOf(CASCADE_BASELINE) + 1)) {
+      const previous = migrationSnapshot(dirs[dirs.indexOf(dir) - 1]);
+      expect(
+        dropViolations(dir, migrationSql(dir), previous),
+        `${dir} drops a table it may not`,
+      ).toEqual([]);
+    }
+  });
+
+  describe("the cascade refusal", () => {
+    const fk = (table: string, tableTo: string, onDelete: string) => ({
+      entityType: "fks",
+      table,
+      tableTo,
+      columns: [`${tableTo}_id`],
+      onDelete,
+    });
+    const after = "20990101000000_synthetic";
+
+    it("refuses the 2026-05 rebuild even when it is sanctioned", ({
+      expect,
+    }) => {
+      // `0023_special_purifiers` predates the baseline migration and is not on
+      // disk, so its shape is rebuilt here: `campaigns` with CASCADE children,
+      // dropped by drizzle-kit's rebuild to move a column default.
+      const previous = {
+        ddl: [
+          fk("characters", "campaigns", "CASCADE"),
+          fk("quests", "campaigns", "CASCADE"),
+          fk("folios", "campaigns", "CASCADE"),
+        ],
+      };
+      const rebuild = `
+        PRAGMA foreign_keys=OFF;--> statement-breakpoint
+        CREATE TABLE \`__new_campaigns\` (\`id\` integer PRIMARY KEY);--> statement-breakpoint
+        INSERT INTO \`__new_campaigns\` SELECT \`id\` FROM \`campaigns\`;--> statement-breakpoint
+        -- alepha-allow-drop-table: the default moved
+        DROP TABLE \`campaigns\`;--> statement-breakpoint
+        ALTER TABLE \`__new_campaigns\` RENAME TO \`campaigns\`;--> statement-breakpoint
+        PRAGMA foreign_keys=ON;
+      `;
+
+      const [violation] = dropViolations(after, rebuild, previous, {
+        [after]: ["campaigns"],
+      });
+      expect(violation).toContain("campaigns has children");
+      expect(violation).toContain("characters.campaigns_id (CASCADE)");
+      expect(violation).toContain("Migration safety on D1");
+    });
+
+    it("refuses a parent whose only children are SET NULL", ({ expect }) => {
+      const previous = {
+        ddl: [
+          fk("blights", "sigils", "SET NULL"),
+          fk("app_instances", "sigils", "SET NULL"),
+        ],
+      };
+
+      expect(
+        dropViolations(after, "DROP TABLE `sigils`;", previous, {
+          [after]: ["sigils"],
+        }),
+      ).toEqual([
+        expect.stringContaining(
+          "app_instances.sigils_id (SET NULL), blights.sigils_id (SET NULL)",
+        ),
+      ]);
+    });
+
+    it("ignores RESTRICT children and self-references", ({ expect }) => {
+      const previous = {
+        ddl: [
+          fk("audits", "quests", "RESTRICT"),
+          fk("quests", "quests", "SET NULL"),
+        ],
+      };
+
+      expect(
+        dropViolations(after, "DROP TABLE `quests`;", previous, {
+          [after]: ["quests"],
+        }),
+      ).toEqual([]);
+    });
+
+    it("accepts a sanctioned leaf rebuild, and only a sanctioned one", ({
+      expect,
+    }) => {
+      // `folio_blobs` points at its parents and nothing points at it.
+      const previous = {
+        ddl: [
+          fk("folio_blobs", "projects", "CASCADE"),
+          fk("folio_blobs", "folios", "CASCADE"),
+        ],
+      };
+      const rebuild = `
+        CREATE TABLE \`__new_folio_blobs\` (\`id\` text PRIMARY KEY);--> statement-breakpoint
+        INSERT INTO \`__new_folio_blobs\` SELECT \`id\` FROM \`folio_blobs\`;--> statement-breakpoint
+        -- alepha-allow-drop-table: folio_blobs is a leaf
+        DROP TABLE \`folio_blobs\`;--> statement-breakpoint
+        ALTER TABLE \`__new_folio_blobs\` RENAME TO \`folio_blobs\`;
+      `;
+
+      expect(
+        dropViolations(after, rebuild, previous, { [after]: ["folio_blobs"] }),
+      ).toEqual([]);
+      expect(dropViolations(after, rebuild, previous, {})).toEqual([
+        "folio_blobs is dropped without a SANCTIONED_DROPS entry",
+      ]);
+    });
+
+    it("still accepts the sigil family rebuild, which predates the baseline", ({
+      expect,
+    }) => {
+      const dirs = migrationDirs();
+      const rebuild = dirs.find((dir) =>
+        dir.endsWith("_sigil_family_rebuild"),
+      )!;
+      const previous = migrationSnapshot(dirs[dirs.indexOf(rebuild) - 1]);
+
+      // It does drop a parent: the refusal would bite if it applied.
+      expect(destructiveChildren("sigils", previous)).not.toEqual([]);
+      expect(dropViolations(rebuild, migrationSql(rebuild), previous)).toEqual(
+        [],
+      );
+    });
   });
 
   it("keeps every project row and its children when the sigil family is rebuilt", ({
