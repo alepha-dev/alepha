@@ -48,6 +48,7 @@ export class CapacitorInit {
    */
   protected readonly ignoreRules = [
     `/${CapacitorProject.DIST_DIR}`,
+    "/.capacitor-dev.json",
     "*.keystore",
     "*.jks",
     "*.p12",

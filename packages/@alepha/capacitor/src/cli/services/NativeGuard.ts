@@ -43,6 +43,12 @@ export class NativeGuard {
 
     await this.inspectSourceConfig(root, findings);
 
+    if (await this.fs.exists(this.fs.join(root, ".capacitor-dev.json"))) {
+      findings.push(
+        ".capacitor-dev.json: an interrupted alepha capacitor dev left native files changed. Run alepha capacitor dev --restore.",
+      );
+    }
+
     if (platforms.includes("ios")) {
       await this.inspectCopiedConfig(
         root,

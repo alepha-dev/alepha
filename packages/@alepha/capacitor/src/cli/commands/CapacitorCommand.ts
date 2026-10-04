@@ -3,6 +3,7 @@ import { PackageManagerUtils } from "alepha/cli";
 import { $command } from "alepha/command";
 
 import type { CapacitorPlatform } from "../atoms/capacitorOptions.ts";
+import { CapacitorDev } from "../services/CapacitorDev.ts";
 import { CapacitorInit } from "../services/CapacitorInit.ts";
 import { CapacitorNativeBuild } from "../services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "../services/CapacitorPackages.ts";
@@ -14,6 +15,7 @@ import { CapacitorSync } from "../services/CapacitorSync.ts";
  */
 export class CapacitorCommand {
   protected readonly initService = $inject(CapacitorInit);
+  protected readonly devService = $inject(CapacitorDev);
   protected readonly syncService = $inject(CapacitorSync);
   protected readonly buildService = $inject(CapacitorNativeBuild);
   protected readonly project = $inject(CapacitorProject);
@@ -115,6 +117,57 @@ export class CapacitorCommand {
     },
   });
 
+  public readonly dev = $command({
+    name: "dev",
+    description:
+      "Run the app on a device or simulator against the Vite dev server over the LAN, with hot reload (cap run -l)",
+    args: z.text({ title: "platform" }).optional(),
+    flags: z.object({
+      target: z
+        .string()
+        .describe(
+          "The device or simulator id, as cap run --target takes it (unrelated to the removed alepha build --target)",
+        )
+        .optional(),
+      host: z
+        .string()
+        .describe(
+          "The address the device reaches this machine on (default: localhost for a simulator, the LAN IPv4 for a device)",
+        )
+        .optional(),
+      api: z
+        .string()
+        .describe(
+          "The API origin the app calls, instead of the configured apiUrl",
+        )
+        .optional(),
+      restore: z
+        .boolean()
+        .describe(
+          "Put back the native files an interrupted dev run changed, then exit",
+        )
+        .optional(),
+    }),
+    handler: async ({ args, flags, root }) => {
+      if (flags.restore) {
+        await this.devService.restore(root);
+        return;
+      }
+      if (!args) {
+        throw new AlephaError(
+          "Name the platform: alepha capacitor dev ios|android.",
+        );
+      }
+      await this.devService.run({
+        root,
+        platform: this.platformOf(args),
+        target: flags.target,
+        host: flags.host,
+        api: flags.api,
+      });
+    },
+  });
+
   public readonly open = $command({
     name: "open",
     description: "Open the native project in Xcode or Android Studio",
@@ -133,7 +186,7 @@ export class CapacitorCommand {
   public readonly capacitor = $command({
     name: "capacitor",
     description: "Build and run the native app (iOS and Android)",
-    children: [this.init, this.sync, this.build, this.open],
+    children: [this.init, this.sync, this.build, this.dev, this.open],
     handler: async ({ help }) => {
       help();
     },

@@ -38,6 +38,26 @@ export interface DevServerOptions {
    * Port to bind, from `dev.port` in alepha.config.ts.
    */
   port?: number;
+
+  /**
+   * Interface to bind. Unset, Vite's default: localhost only. `0.0.0.0`
+   * serves the LAN, which a phone needs (`alepha capacitor dev`).
+   */
+  host?: string;
+
+  /**
+   * The address announced in the startup log when `host` binds every
+   * interface, e.g. the LAN IP a phone reaches the server on.
+   */
+  displayHost?: string;
+
+  /**
+   * Constants for the app's code, already encoded as source text
+   * (`JSON.stringify(value)`). Applied to the server modules through Vite's
+   * `define`, and to the browser as globals set before the entry runs: in
+   * dev, Vite's `define` never reaches client modules.
+   */
+  define?: Record<string, string>;
 }
 
 /**
@@ -161,9 +181,22 @@ export class ViteDevServerProvider {
     await this.listen();
 
     const port = this.server.config.server.port ?? 5173;
-    const url = `http://localhost:${port}/`;
+    const host =
+      this.options.host && this.options.host !== "localhost"
+        ? (this.options.displayHost ?? this.options.host)
+        : "localhost";
+    const url = `http://${host}:${port}/`;
     const log = this.alepha?.log ?? this.log;
     log.info(`Listening on ${this.colors.set("CYAN", url)}`);
+  }
+
+  /**
+   * Stop the app and close the Vite server: what a command that started the
+   * dev server for a bounded task (`alepha capacitor dev`) does when it ends.
+   */
+  public async close(): Promise<void> {
+    await this.alepha?.stop();
+    await this.server?.close();
   }
 
   /**
@@ -227,7 +260,10 @@ export class ViteDevServerProvider {
       // Without this, `alepha.meta` under `alepha dev` silently falls back to
       // the no-build record and `/version` reports name "unknown" - no error
       // anywhere, since the token is simply never substituted.
-      define: this.metaResolver.define(this.devMeta),
+      define: {
+        ...this.metaResolver.define(this.devMeta),
+        ...this.options.define,
+      },
       resolve: {
         dedupe: [
           "react",
@@ -238,6 +274,12 @@ export class ViteDevServerProvider {
       },
       server: {
         port,
+        host: this.options.host,
+        // The app owns its CORS policy (`alepha/server/cors`). Vite's own
+        // middleware answered every preflight first, granting any localhost
+        // origin and refusing `capacitor://localhost` and LAN origins
+        // whatever the app had configured.
+        cors: false,
         // Without this Vite silently takes the next free port, so a second
         // app in the same repository starts on 5174 and every URL pinned to
         // 5173 (devtools, OAuth redirect URIs) breaks with nothing in the
@@ -326,7 +368,7 @@ export class ViteDevServerProvider {
       if ((err as { code?: string })?.code === "EADDRINUSE") {
         throw new AlephaError(
           `Port ${port} is already in use, so the dev server cannot start. ` +
-            "Stop whatever holds it, or pass --port.",
+            "Stop whatever holds it, or move this app: dev.port in alepha.config.ts, or SERVER_PORT.",
           { cause: err },
         );
       }
@@ -714,6 +756,13 @@ export class ViteDevServerProvider {
         .define(this.devMeta)
         .__ALEPHA_META__.replaceAll("<", "\\u003c");
       tags.push(`<script>globalThis.__ALEPHA_META__=${token};</script>`);
+    }
+
+    // The caller's constants, the same way and for the same reason.
+    for (const [name, value] of Object.entries(this.options.define ?? {})) {
+      tags.push(
+        `<script>globalThis[${JSON.stringify(name)}]=${value.replaceAll("<", "\\u003c")};</script>`,
+      );
     }
 
     // Reload handler: polls /__alepha/ready before reloading to avoid

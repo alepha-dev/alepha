@@ -4,3 +4,4 @@
 *.jks
 *.p12
 *.mobileprovision
+/.capacitor-dev.json

@@ -136,6 +136,76 @@ class FixedMetaResolver extends MetaResolver {
   }
 }
 
+/**
+ * A provider whose dev head can be read without a Vite server.
+ */
+class HeadViteDevServerProvider extends ViteDevServerProvider {
+  public async head(options: Partial<DevServerOptions>): Promise<string> {
+    this.options = options as DevServerOptions;
+    this.server = {
+      transformIndexHtml: async (_url: string, html: string) => html,
+    } as any;
+    return this.generateDevHead();
+  }
+}
+
+describe("ViteDevServerProvider: host, constants and CORS", () => {
+  const configFor = async (options: Partial<DevServerOptions>) => {
+    const alepha = Alepha.create()
+      .with({ provide: ViteUtils, use: RecordingViteUtils })
+      .with({ provide: MetaResolver, use: FixedMetaResolver });
+    await alepha
+      .inject(ViteDevServerProvider)
+      .init({
+        root: "/app",
+        entry: { root: "/app", server: "src/main.server.ts" },
+        port: 4321,
+        ...options,
+      } as DevServerOptions)
+      .catch(() => undefined);
+    return alepha.inject(RecordingViteUtils).configs[0] as any;
+  };
+
+  it("binds the host it is given, and only then", async ({ expect }) => {
+    expect((await configFor({ host: "0.0.0.0" })).server.host).toBe("0.0.0.0");
+    expect((await configFor({})).server.host).toBeUndefined();
+  });
+
+  it("leaves CORS to the app", async ({ expect }) => {
+    // Vite's middleware answered preflights before the app's own policy.
+    expect((await configFor({})).server.cors).toBe(false);
+  });
+
+  it("adds the caller's constants to the server's define", async ({
+    expect,
+  }) => {
+    const config = await configFor({
+      define: { __APP_CONFIG__: '{"mode":"dev"}' },
+    });
+
+    expect(config.define.__APP_CONFIG__).toBe('{"mode":"dev"}');
+  });
+
+  it("hands the caller's constants to the browser as globals, and nothing without them", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const provider = alepha.inject(HeadViteDevServerProvider);
+    const entry = { root: "/app", server: "src/main.server.ts" };
+
+    const withConstants = await provider.head({
+      entry,
+      define: { __APP_CONFIG__: '{"apiUrl":"https://api.test"}' },
+    });
+    const plain = await provider.head({ entry });
+
+    expect(withConstants).toContain(
+      'globalThis["__APP_CONFIG__"]={"apiUrl":"https://api.test"};',
+    );
+    expect(plain).not.toContain("__APP_CONFIG__");
+  });
+});
+
 describe("ViteDevServerProvider: the Vite server it creates", () => {
   it("renders the app's .client modules on the server as the build does: not at all", async ({
     expect,

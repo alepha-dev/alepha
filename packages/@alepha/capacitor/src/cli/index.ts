@@ -6,6 +6,7 @@ import {
   capacitorOptions,
 } from "./atoms/capacitorOptions.ts";
 import { CapacitorCommand } from "./commands/CapacitorCommand.ts";
+import { CapacitorDev } from "./services/CapacitorDev.ts";
 import { CapacitorInit } from "./services/CapacitorInit.ts";
 import { CapacitorNativeBuild } from "./services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "./services/CapacitorPackages.ts";
@@ -22,6 +23,7 @@ export * from "./atoms/capacitorOptions.ts";
 export * from "./commands/CapacitorCommand.ts";
 export * from "./schemas/capacitorBuildRecordSchema.ts";
 export * from "./schemas/capacitorIdentitySchema.ts";
+export * from "./services/CapacitorDev.ts";
 export * from "./services/CapacitorInit.ts";
 export * from "./services/CapacitorNativeBuild.ts";
 export * from "./services/CapacitorPackages.ts";
@@ -64,6 +66,8 @@ export * from "./services/NativeSchemes.ts";
  *   copies it into the native projects;
  * - `alepha capacitor build ios|android` syncs, compiles a binary and records
  *   it in `capacitor.builds.json`;
+ * - `alepha capacitor dev ios|android` runs the app against the Vite dev
+ *   server over the LAN, with hot reload;
  * - `alepha capacitor open ios|android` opens Xcode or Android Studio.
  *
  * Node only: this entry reaches the file system, the shell and the build
@@ -84,6 +88,7 @@ export const AlephaCliCapacitorPlugin = $module({
     CapacitorInit,
     CapacitorSync,
     CapacitorNativeBuild,
+    CapacitorDev,
     CapacitorCommand,
   ],
 });
