@@ -29,11 +29,12 @@ export class HeadProvider {
   /**
    * Resolve global head configuration (from $head primitives only).
    *
-   * This is used to get htmlAttributes early, before page loaders run.
-   * Only htmlAttributes from global $head are allowed; page-level htmlAttributes
-   * are ignored for early streaming optimization.
+   * This is used to get what the document starts with early, before page
+   * loaders run: `htmlAttributes`, `charset` and `viewport`. Only global
+   * `$head` entries can set them; page-level values are ignored for early
+   * streaming optimization.
    *
-   * @returns Merged global head with htmlAttributes
+   * @returns Merged global head with htmlAttributes, charset and viewport
    */
   public resolveGlobalHead(): Head {
     const head: Head = {
@@ -50,6 +51,14 @@ export class HeadProvider {
           ...head.htmlAttributes,
           ...resolved.htmlAttributes,
         };
+      }
+      // The early head writes these two before any page renders: dropped
+      // here, `$head({ viewport })` never reached the document.
+      if (resolved.charset) {
+        head.charset = resolved.charset;
+      }
+      if (resolved.viewport) {
+        head.viewport = resolved.viewport;
       }
     }
 

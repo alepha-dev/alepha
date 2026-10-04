@@ -6,6 +6,12 @@ const config: CapacitorConfig = {
   appId: "dev.alepha.mobile",
   appName: "Alepha Mobile",
   webDir: "dist-capacitor/public",
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: 8000,
+    },
+  },
 };
 
 export default config;

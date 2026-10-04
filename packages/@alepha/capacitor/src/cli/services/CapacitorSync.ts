@@ -82,6 +82,7 @@ export class CapacitorSync {
       root,
       run,
       shell: true,
+      shellViewport: CapacitorProject.SHELL_VIEWPORT,
       output: { dist: CapacitorProject.DIST_DIR },
       define: this.project.defineFor(publicConfig),
     });

@@ -1,6 +1,7 @@
+import { HapticsProvider } from "@alepha/capacitor";
 import { Button, Card, CardContent, useDialog } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
-import { useAction, useClient } from "alepha/react";
+import { useAction, useClient, useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useRouter } from "alepha/react/router";
 
@@ -20,6 +21,7 @@ const Notes = (props: NotesProps) => {
   const api = useClient<NoteController>();
   const dialog = useDialog();
   const router = useRouter();
+  const haptics = useInject(HapticsProvider);
 
   const form = useForm({
     schema: createNoteSchema,
@@ -40,11 +42,13 @@ const Notes = (props: NotesProps) => {
           destructive: true,
         });
         if (!confirmed) return;
+        // A no-op in a browser; on a phone, the confirmation is felt.
+        void haptics.impact("medium");
         await api.deleteNote({ params: { id } });
         await router.reload();
       },
     },
-    [api, dialog, router],
+    [api, dialog, router, haptics],
   );
 
   return (

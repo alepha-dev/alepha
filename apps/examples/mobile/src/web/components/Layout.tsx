@@ -9,20 +9,24 @@ import { Link, NestedView } from "alepha/react/router";
 export const Layout = () => {
   return (
     <DialogProvider>
-      <div className="flex min-h-dvh flex-col">
-        <header className="flex items-center gap-4 border-b px-4 py-3">
-          <Link href="/" className="font-semibold">
-            Mobile
-          </Link>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link href="/notes">Notes</Link>
-          </nav>
-          <div className="ml-auto">
-            <ButtonUser />
+      <div className="px-safe flex min-h-dvh flex-col">
+        <header className="pt-safe border-b">
+          <div className="flex items-center gap-4 px-4 py-3">
+            <Link href="/" className="font-semibold">
+              Mobile
+            </Link>
+            <nav className="flex items-center gap-4 text-sm">
+              <Link href="/notes">Notes</Link>
+            </nav>
+            <div className="ml-auto">
+              <ButtonUser />
+            </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
-          <NestedView />
+        <main className="pb-safe mx-auto w-full max-w-xl flex-1">
+          <div className="px-4 py-6">
+            <NestedView />
+          </div>
         </main>
       </div>
       <Toaster />

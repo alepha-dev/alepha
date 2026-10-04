@@ -61,10 +61,12 @@ declare module "alepha" {
     /**
      * Asks the server renderer for the application's document with an empty
      * root, rendered without any page (no loader runs). The handler fills
-     * `html`. Emitted by the static build of an app shell.
+     * `html`. Emitted by the static build of an app shell; `viewport`, when
+     * set, replaces the app's own (a native shell's `viewport-fit=cover`).
      */
     "react:server:shell": {
       html?: string;
+      viewport?: string;
     };
     /**
      * The first screen of a browser boot settled, once per boot: `healthy`

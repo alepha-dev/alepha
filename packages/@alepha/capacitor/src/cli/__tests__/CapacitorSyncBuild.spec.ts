@@ -95,6 +95,7 @@ describe("alepha capacitor sync", () => {
     const [request] = pipeline.requests;
     expect(request.shell).toBe(true);
     expect(request.output).toEqual({ dist: "dist-capacitor" });
+    expect(request.shellViewport).toContain("viewport-fit=cover");
     expect(JSON.parse(request.define?.__ALEPHA_CAPACITOR__ ?? "{}")).toEqual({
       appId: "dev.alepha.mobile",
       variant: "base",

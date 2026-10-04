@@ -116,6 +116,12 @@ export interface BuildTaskContext {
      * no compressed sidecars, `_headers`, `CNAME`, `200.html` or `404.html`.
      */
     shell?: boolean;
+    /**
+     * The viewport an app shell's document declares, over the app's own
+     * (`$head({ viewport })`, else the default). A native shell sets
+     * `viewport-fit=cover`, which a website must not.
+     */
+    shellViewport?: string;
   };
 }
 

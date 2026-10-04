@@ -75,6 +75,7 @@
     "@capacitor/core": "8.5.2",
     "@capacitor/device": "8.0.3",
     "@capacitor/haptics": "8.0.2",
+    "@capacitor/splash-screen": "8.0.2",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
@@ -92,6 +93,7 @@
     "@capacitor/core": "^8.4.0",
     "@capacitor/device": "^8.0.0",
     "@capacitor/haptics": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
     "alepha": "^0.31.0"
   },
   "peerDependenciesMeta": {
@@ -108,6 +110,9 @@
       "optional": true
     },
     "@capacitor/haptics": {
+      "optional": true
+    },
+    "@capacitor/splash-screen": {
       "optional": true
     }
   },

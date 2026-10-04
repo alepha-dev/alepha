@@ -34,6 +34,23 @@ export class CapacitorProject {
    */
   public static readonly WEB_DIR = `${CapacitorProject.DIST_DIR}/public`;
 
+  /**
+   * The viewport of the shell's document: edge to edge, so the safe-area
+   * insets are the app's to pad. Only the shell declares it; the same app
+   * served as a website keeps its own.
+   */
+  public static readonly SHELL_VIEWPORT =
+    "width=device-width, initial-scale=1, viewport-fit=cover";
+
+  /**
+   * How long the native splash may stay up on its own. The app hides it as
+   * soon as its first screen settles (`react:boot:settled`), healthy or
+   * failed; this backstop only covers a WebView where JavaScript never got
+   * that far. The router's boot deadline (`reactBootOptions.deadline`,
+   * 5000 ms by default) plus 3000 ms.
+   */
+  public static readonly SPLASH_BACKSTOP = 8000;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly optionsStore = $store(capacitorOptions);
@@ -180,11 +197,19 @@ export class CapacitorProject {
       );
     }
 
+    const plugins = { ...(extra.plugins as Record<string, unknown>) };
+    plugins.SplashScreen = {
+      launchAutoHide: true,
+      launchShowDuration: CapacitorProject.SPLASH_BACKSTOP,
+      ...(plugins.SplashScreen as Record<string, unknown>),
+    };
+
     const config = {
       appId: options.appId,
       appName: options.appName,
       webDir: CapacitorProject.WEB_DIR,
       ...extra,
+      plugins,
     };
 
     return [

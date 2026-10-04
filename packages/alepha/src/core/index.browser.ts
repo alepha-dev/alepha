@@ -35,6 +35,27 @@ export const run = (
       }
     } catch (error) {
       alepha.log?.error("Alepha failed to start", error);
+
+      // A page left blank says nothing, and inside a native shell it is all
+      // the user sees once the splash is gone. Plain DOM, no React: whatever
+      // failed may be the renderer. A page that already shows something (a
+      // server-rendered one) is left alone.
+      const body = typeof document === "undefined" ? undefined : document.body;
+      if (body && !body.innerText?.trim() && !body.textContent?.trim()) {
+        const box = document.createElement("div");
+        box.setAttribute("data-alepha-start-failed", "");
+        box.setAttribute("role", "alert");
+        box.style.cssText =
+          "font-family:system-ui,sans-serif;padding:24px;text-align:center;";
+        const message = document.createElement("p");
+        message.textContent = "The app could not start.";
+        const reload = document.createElement("button");
+        reload.type = "button";
+        reload.textContent = "Reload";
+        reload.addEventListener("click", () => window.location.reload());
+        box.append(message, reload);
+        body.append(box);
+      }
     }
   })();
 

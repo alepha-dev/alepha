@@ -14,6 +14,7 @@ __metadata:
     "@capacitor/core": "npm:8.5.2"
     "@capacitor/device": "npm:8.0.3"
     "@capacitor/haptics": "npm:8.0.2"
+    "@capacitor/splash-screen": "npm:8.0.2"
     "@types/bun": "npm:^1.4.2"
     "@types/node": "npm:^26.6.3"
     "@types/react": "npm:^19.3.0"
@@ -30,6 +31,7 @@ __metadata:
     "@capacitor/core": ^8.4.0
     "@capacitor/device": ^8.0.0
     "@capacitor/haptics": ^8.0.0
+    "@capacitor/splash-screen": ^8.0.0
     alepha: ^0.31.0
   peerDependenciesMeta:
     "@aparajita/capacitor-secure-storage":
@@ -41,6 +43,8 @@ __metadata:
     "@capacitor/device":
       optional: true
     "@capacitor/haptics":
+      optional: true
+    "@capacitor/splash-screen":
       optional: true
   languageName: unknown
   linkType: soft

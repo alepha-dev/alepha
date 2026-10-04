@@ -295,7 +295,10 @@ describe('a static build, declared as runtime: ["static"]', () => {
   });
 
   describe("an app shell", () => {
-    const runShell = async (html: string | undefined) => {
+    const runShell = async (
+      html: string | undefined,
+      flags: { shellViewport?: string } = {},
+    ) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -303,26 +306,41 @@ describe('a static build, declared as runtime: ["static"]', () => {
       const task = alepha.inject(BuildStaticTask);
       const fs = alepha.inject(MemoryFileSystemProvider);
       const emitted: string[] = [];
+      const viewports: Array<string | undefined> = [];
 
       await task.run({
         alepha: {
           isConfigured: () => true,
           primitives: () => [],
           events: {
-            emit: async (name: string, event: { html?: string }) => {
+            emit: async (
+              name: string,
+              event: { html?: string; viewport?: string },
+            ) => {
               emitted.push(name);
-              if (name === "react:server:shell") event.html = html;
+              if (name === "react:server:shell") {
+                event.html = html;
+                viewports.push(event.viewport);
+              }
             },
           },
         },
         root: "/root/my-app",
         options: { runtime: "static" },
         run: async (step: { handler: () => Promise<void> }) => step.handler(),
-        flags: { shell: true },
+        flags: { shell: true, ...flags },
       } as any);
 
-      return { fs, emitted };
+      return { fs, emitted, viewports };
     };
+
+    it("hands the renderer the shell's own viewport", async () => {
+      const { viewports } = await runShell("<html></html>", {
+        shellViewport: "width=device-width, viewport-fit=cover",
+      });
+
+      expect(viewports).toEqual(["width=device-width, viewport-fit=cover"]);
+    });
 
     it("writes the document the server renders with no page in it", async () => {
       const { fs, emitted } = await runShell(

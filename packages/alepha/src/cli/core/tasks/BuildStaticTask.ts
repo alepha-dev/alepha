@@ -112,7 +112,9 @@ export class BuildStaticTask extends BuildTask {
 
     // An event, not `inject(ReactServerProvider)`: the app was loaded through
     // Vite, so its provider is another module instance than the CLI's.
-    const event: { html?: string } = {};
+    const event: { html?: string; viewport?: string } = {
+      viewport: ctx.flags?.shellViewport,
+    };
     await ctx.alepha.events.emit("react:server:shell" as any, event);
     if (!event.html) {
       throw new AlephaError(

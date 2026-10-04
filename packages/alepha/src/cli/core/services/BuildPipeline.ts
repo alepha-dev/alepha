@@ -250,7 +250,11 @@ export class BuildPipeline {
       meta,
       manifest,
       define: request.define,
-      flags: { prebuilt: request.prebuilt, shell: request.shell },
+      flags: {
+        prebuilt: request.prebuilt,
+        shell: request.shell,
+        shellViewport: request.shellViewport,
+      },
     };
 
     for (const task of this.tasks) {
@@ -324,6 +328,12 @@ export interface BuildRequest {
    * An app shell: a lean static build for a WebView. See {@link BuildPipeline}.
    */
   shell?: boolean;
+
+  /**
+   * The viewport the shell's document declares instead of the app's own.
+   * Only read with `shell`.
+   */
+  shellViewport?: string;
 
   /**
    * Generate a bundle stats report.

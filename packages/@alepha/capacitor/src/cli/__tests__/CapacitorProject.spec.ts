@@ -62,6 +62,12 @@ describe("CapacitorProject", () => {
           '  appId: "dev.alepha.mobile",',
           '  appName: "Mobile",',
           '  webDir: "dist-capacitor/public",',
+          "  plugins: {",
+          "    SplashScreen: {",
+          "      launchAutoHide: true,",
+          "      launchShowDuration: 8000,",
+          "    },",
+          "  },",
           "};",
           "",
           "export default config;",
@@ -70,14 +76,22 @@ describe("CapacitorProject", () => {
       );
     });
 
-    it("merges the extra config", ({ expect }) => {
+    it("merges the extra config over the splash backstop", ({ expect }) => {
       const content = project().renderCapacitorConfig({
         ...options,
-        config: { plugins: { SplashScreen: { launchShowDuration: 8000 } } },
+        config: {
+          plugins: {
+            SplashScreen: { launchShowDuration: 12000 },
+            App: { disableBackButtonHandler: false },
+          },
+        },
       });
 
       expect(content).toContain(
-        "  plugins: {\n    SplashScreen: {\n      launchShowDuration: 8000,\n    },\n  },",
+        "    SplashScreen: {\n      launchAutoHide: true,\n      launchShowDuration: 12000,\n    },",
+      );
+      expect(content).toContain(
+        "    App: {\n      disableBackButtonHandler: false,",
       );
     });
 

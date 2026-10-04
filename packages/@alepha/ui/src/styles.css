@@ -87,6 +87,41 @@
   }
 }
 
+/*
+ * Safe areas, opt-in: padding that keeps content clear of a notch, the
+ * status bar and the home indicator in an edge-to-edge native shell.
+ *
+ * `--safe-area-inset-*` first: Capacitor's `SystemBars` injects them, because
+ * Android WebViews older than 140 misreport `env(safe-area-inset-*)`. Then
+ * `env()`, which is all an iPhone needs. Both resolve to 0 in a browser and
+ * in any document without `viewport-fit=cover`, so the same markup serves the
+ * website unchanged. Each sets the padding outright: put the inset on an
+ * element of its own, not on one that has a padding utility already.
+ */
+@utility pt-safe {
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+}
+
+@utility pb-safe {
+  padding-bottom: var(
+    --safe-area-inset-bottom,
+    env(safe-area-inset-bottom, 0px)
+  );
+}
+
+@utility pl-safe {
+  padding-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+
+@utility pr-safe {
+  padding-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+}
+
+@utility px-safe {
+  padding-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  padding-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -433,6 +468,34 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /*
+   * Browser tells removed inside a native shell only (`data-native`, set by
+   * `@alepha/capacitor`): no grey flash on tap, no rubber band past the page,
+   * no long-press preview of links and images. Selection is never touched,
+   * and fields and editable text keep their callout, so typing, copying and
+   * assistive technology work as they do on the web.
+   */
+  html[data-native] {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  html[data-native] body {
+    -webkit-touch-callout: none;
+  }
+
+  html[data-native]
+    :is(
+      input,
+      textarea,
+      select,
+      [contenteditable]:not([contenteditable="false"]),
+      .select-text,
+      .select-all
+    ) {
+    -webkit-touch-callout: default;
   }
 
   /*
